@@ -14,7 +14,6 @@ This document outlines the strict standard for defining and managing epics withi
 - **Required Metadata Fields**:
   - `status`: The current state of the epic. Allowed values: `todo`, `in-progress`, `done`.
   - `title`: The human-readable title of the epic.
-  - `owner`: The person or team responsible for the epic.
   - `created_at`: The creation date (YYYY-MM-DD).
 
 ## 3. Required Epic Structure
@@ -52,7 +51,6 @@ A checklist of sub-tasks or stories that make up the epic. Use standard GitHub m
 ---
 status: todo
 title: User Authentication
-owner: User / Auto
 created_at: 2026-03-30
 ---
 
