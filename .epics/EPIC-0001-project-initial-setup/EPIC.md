@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 title: Project Initial Setup
 created_at: 2026-03-30
 ---
@@ -38,9 +38,9 @@ We will utilize a monorepo-style structure. `apps/` will contain our runnable ap
 - `.github/workflows/ci.yml` exists and defines jobs for `gui`, `backend`, and `cli`.
 
 ## Task Breakdown
-- [ ] Create `apps/gui` foundation
-- [ ] Create `apps/backend` foundation
-- [ ] Create `apps/cli` foundation
-- [ ] Create shared TypeSpec contract foundation
-- [ ] Create root `.gitignore`
-- [ ] Set up `.github/workflows/ci.yml`
+- [x] Create `apps/gui` foundation
+- [x] Create `apps/backend` foundation
+- [x] Create `apps/cli` foundation
+- [x] Create shared TypeSpec contract foundation
+- [x] Create root `.gitignore`
+- [x] Set up `.github/workflows/ci.yml`
