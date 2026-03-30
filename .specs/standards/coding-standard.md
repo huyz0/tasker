@@ -42,3 +42,6 @@ This document outlines the strict coding standards and best practices for the pr
 - **State Management (Frontend)**: Local state (`useState`) for isolated interactions. **TanStack Query** for all server state. Avoid heavy Redux/Zustand unless orchestrating complex client-side workflows (e.g., React Flow interactions).
 - **UI Architecture (Frontend)**: Follow standard **Shadcn** patterns for primitives, using Tailwind CSS utility classes heavily. Do not try to extract complex custom CSS unless strictly required.
 - **Eventing (Backend)**: When a transactional action occurs in MySQL, any side-effect must happen asynchronously via emitting an event to **NATS**.
+
+## 6. Boilerplate & Licensing
+- **License Headers**: Do not include copyright or license header blocks (e.g., MIT, Apache notices) at the top of individual source files. These take up unnecessary vertical space and reduce readability. Licensing is managed at the repository level via the root `LICENSE` file.
