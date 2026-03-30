@@ -1,0 +1,35 @@
+# Agent OS Standards Index
+
+standards:
+  - id: coding-standard
+    title: Coding Standards
+    description: Core rules for file size, dependencies, cohesion, and linting.
+    file: coding-standard.md
+  - id: testing-standard
+    title: Testing & QA Standards
+    description: Requirements for Test-Driven Development (TDD) workflows and 80-90% coverage targets.
+    file: testing-standard.md
+  - id: ui-ux-standard
+    title: UI/UX Standards
+    description: Standards for accessible, consistent, and responsive design systems.
+    file: ui-ux-standard.md
+  - id: frontend-standard
+    title: Frontend Specific Standards
+    description: Architectural and best-practice standards for React/Next.js/Vite frontend apps.
+    file: frontend-standard.md
+  - id: security-standard
+    title: Security Standards
+    description: Critical security practices for vulnerability mitigation, RBAC, and input validation.
+    file: security-standard.md
+  - id: api-standard
+    title: API Architecture Standards
+    description: Strict guidelines for designing, exposing, and consuming REST APIs.
+    file: api-standard.md
+  - id: git-workflow-standard
+    title: Git & Workflow Standards
+    description: Git workflow rules, including Conventional Commits, trunk-based dev, and PR specs.
+    file: git-workflow-standard.md
+  - id: observability-standard
+    title: Observability & Error Handling
+    description: Telemetry, JSON structured logging, and standardized HTTP Problem Detail errors.
+    file: observability-standard.md
