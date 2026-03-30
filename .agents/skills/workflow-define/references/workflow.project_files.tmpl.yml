@@ -1,0 +1,43 @@
+version: 2
+
+epics:
+  type: project_files # Instead of git, we use 'project_files' for local markdown, or 'jira', 'linear' for external.
+  config:
+    project_files:
+      path: .epics/
+      name_template: EPIC.md
+
+test_plan:
+  type: project_files
+  config:
+    project_files:
+      path: .test-plans/
+      name_template: TEST-PLAN.md
+
+architecture_design:
+  type: project_files
+  config:
+    project_files:
+      path: .epics/{epic_id}/architecture/
+      name_template: ARCHITECTURE.md
+
+ux_design:
+  type: project_files
+  config:
+    project_files:
+      path: .epics/{epic_id}/designs/
+      name_template: UX-DESIGN.md
+
+reviews:
+  type: project_files
+  config:
+    project_files:
+      path: .epics/{epic_id}/reviews/
+      name_templates:
+        architecture: ARCH-REVIEW-v{N}.md
+        ux: UX-REVIEW-v{N}.md
+        qa_plan: QA-PLAN-REVIEW-v{N}.md
+        qa_implement: QA-REVIEW-v{N}.md
+        architecture_code: ARCH-CODE-REVIEW-v{N}.md
+        security: SECURITY-REVIEW-v{N}.md
+        code: CODE-REVIEW-v{N}.md
