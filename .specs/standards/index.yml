@@ -33,3 +33,11 @@ standards:
     title: Observability & Error Handling
     description: Telemetry, JSON structured logging, and standardized HTTP Problem Detail errors.
     file: observability-standard.md
+  - id: epic-standard
+    title: Epic Management Standards
+    description: Guidelines for defining, formatting, and storing epics in the project.
+    file: epic-standard.md
+  - id: test-plan-standard
+    title: Test Plan & Case Management Standards
+    description: Robust guidelines for defining test plans, scenarios, and test cases linked to epics.
+    file: test-plan-standard.md
