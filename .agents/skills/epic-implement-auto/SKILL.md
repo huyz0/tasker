@@ -32,7 +32,7 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
    - Ask user ONE question: "Has this epic been reviewed and approved for implementation? (yes/no)"
    - If "no" → stop and output: `Please review the epic first. Run /epic-define-auto to regenerate if needed.`
 4. **Rejection Recovery Check:**
-   - Before starting, check `EPIC.md` for any `reviews:` marked `rejected` (e.g. `code: rejected`, `security: rejected`).
+   - Before starting, check `EPIC.md` for any `design_reviews:` or `reviews:` marked `rejected` (e.g. `architecture: rejected`, `code: rejected`).
    - If found, stop standard execution. Read the latest `.epics/EPIC-<id>/reviews/[TYPE]-REVIEW-v[N].md` file that triggered the rejection, and strictly execute the modifications required by the final feedback.
 5. **Load Context:**
    - Read `.specs/product/architecture.md` — understand bounded contexts, patterns.
@@ -62,7 +62,7 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
 6. **Update Status:**
    - Set epic frontmatter `status: in-progress`.
 7. **Execute Task Breakdown:**
-   - Process only `not-started` and `partially-done` tasks sequentially.
+   - Process `not-started` and `partially-done` tasks. Where tasks are completely independent (e.g., disjoint backend vs frontend tasks), spawn concurrent sub-agents to implement them in parallel. Otherwise, process them sequentially to avoid merge conflicts.
    - Skip tasks already reconciled as `fully-done`.
    - For each task:
      a. Plan the implementation approach (for `partially-done`, plan only the remaining work).

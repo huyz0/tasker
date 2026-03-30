@@ -1,0 +1,6 @@
+version: v2
+modules:
+  - path: .
+    excludes:
+      - node_modules
+      - tsp-output

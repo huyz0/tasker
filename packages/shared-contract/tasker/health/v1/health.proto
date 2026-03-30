@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package tasker.health.v1;
+
+option go_package = "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1";
+
+message PingRequest {}
+
+message PingResponse {
+  string message = 1;
+  string dbStatus = 2;
+}
+
+service HealthService {
+  rpc Ping(PingRequest) returns (PingResponse);
+}

@@ -13,6 +13,9 @@ This document outlines the strict standard for defining and managing epics withi
 - **YAML Frontmatter**: Every `EPIC.md` file MUST contain YAML frontmatter at the top of the document to provide essential metadata.
 - **Required Metadata Fields**:
   - `status`: The current state of the epic. Allowed values: `todo`, `in-progress`, `done`.
+  - `designs`: Status of design artifact generation (`architecture`, `ux`, `qa_plan`). Allowed values: `pending`, `completed`, `n/a`.
+  - `design_reviews`: Status of the design peer reviews (`architecture`, `ux`, `qa_plan`). Allowed values: `pending`, `approved`, `rejected`, `n/a`.
+  - `reviews`: Status of post-implementation code reviews (`code`, `security`, `qa_implement`, `architecture_code`). Allowed values: `pending`, `approved`, `rejected`, `n/a`.
   - `title`: The human-readable title of the epic.
   - `created_at`: The creation date (YYYY-MM-DD).
 
@@ -50,6 +53,19 @@ A checklist of sub-tasks or stories that make up the epic. Use standard GitHub m
 ```markdown
 ---
 status: todo
+designs:
+  architecture: pending
+  ux: pending
+  qa_plan: pending
+design_reviews:
+  architecture: pending
+  ux: pending
+  qa_plan: pending
+reviews:
+  code: pending
+  security: pending
+  qa_implement: pending
+  architecture_code: pending
 title: User Authentication
 created_at: 2026-03-30
 ---

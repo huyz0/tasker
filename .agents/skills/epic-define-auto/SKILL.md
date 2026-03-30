@@ -19,6 +19,7 @@ Given a topic or feature name, autonomously research the codebase and product do
 - DO NOT duplicate scope already covered by existing epics in `.epics/`.
 - ALWAYS read product docs before drafting. Skipping context gathering is UNACCEPTABLE.
 - ALWAYS set `status: todo` — this skill defines only, it does NOT implement.
+- ALWAYS set irrelevant items in the frontmatter `designs`, `design_reviews`, or `reviews` blocks to `n/a` (e.g., set `ux: n/a` if the epic only targets backend architecture).
 
 # Instructions
 1. **Receive Topic:** Accept the epic topic/feature name from the user's message. This is the ONLY user input required.
@@ -62,10 +63,15 @@ Given a topic or feature name, autonomously research the codebase and product do
 ```markdown
 ---
 status: todo
-reviews:
+designs:
   architecture: pending
   ux: pending
   qa_plan: pending
+design_reviews:
+  architecture: pending
+  ux: pending
+  qa_plan: pending
+reviews:
   code: pending
   security: pending
   qa_implement: pending

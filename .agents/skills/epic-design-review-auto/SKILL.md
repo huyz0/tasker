@@ -12,14 +12,15 @@ Autonomously run `architecture-review-auto`, `ux-design-review-auto`, and `qa-pl
 # Constraints
 - MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
 - ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
-- DO NOT ask questions. Run completely autonomously.
+- Utilize concurrent sub-agents to run independent reviews in parallel.
 
 # Instructions
 1. **Target:** Accept epic ID from user.
-2. **Artifact Applicability:** Check `.epics/EPIC-<id>/` and `.test-plans/` for generated design artifacts (Architecture, UX, QA Plan) to determine what actually needs reviewing.
-3. **Architecture Review:** If `ARCHITECTURE.md` exists, execute `.agents/skills/architecture-review-auto/SKILL.md`.
-4. **UX Design Review:** If `UX-DESIGN.md` or mockups exist, execute `.agents/skills/ux-design-review-auto/SKILL.md`.
-5. **QA Plan Review:** If `TEST-PLAN.md` exists, execute `.agents/skills/qa-plan-review-auto/SKILL.md`.
+2. **Artifact Applicability:** Check `.epics/EPIC-<id>/` and `.test-plans/` for generated design artifacts to determine what needs reviewing. If an artifact type does not exist and was skipped, explicitly update the frontmatter `design_reviews` field for that review type to `n/a` in `EPIC.md`.
+3. **Parallel Reviews:** Spawn concurrent sub-agents to execute the applicable reviews in parallel:
+   - `.agents/skills/architecture-review-auto/SKILL.md`
+   - `.agents/skills/ux-design-review-auto/SKILL.md`
+   - `.agents/skills/qa-plan-review-auto/SKILL.md`
 6. **Cross-Artifact Consistency Check:** 
    - Verify that the `TEST-PLAN.md` covers the UI states mocked up in the `designs/` folder.
    - Verify that the `ARCHITECTURE.md` defines the backend services required for those UI mocks.

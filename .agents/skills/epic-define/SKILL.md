@@ -17,6 +17,7 @@ Create a detailed, standardized Epic in `.epics/` aligning with `.specs/standard
 - DO NOT leave short answers as-is. Expand user input into professional markdown.
 - DO NOT deviate from `.specs/standards/epic-standard.md`.
 - DO NOT output conversational filler ("I'll guide", "Great!", "Let's do this").
+- ALWAYS initialize the YAML `designs`, `design_reviews`, and `reviews` blocks correctly. If a specific phase component is completely irrelevant (e.g., `ux` for a pure backend migration), explicitly set it to `n/a` instead of `pending` across all applicable sections.
 
 # Instructions
 1. **Title & Objective:** Ask for title and primary business goal/problem solved. Wait for answer.
@@ -39,10 +40,15 @@ Create a detailed, standardized Epic in `.epics/` aligning with `.specs/standard
 ```markdown
 ---
 status: todo
-reviews:
+designs:
   architecture: pending
   ux: pending
   qa_plan: pending
+design_reviews:
+  architecture: pending
+  ux: pending
+  qa_plan: pending
+reviews:
   code: pending
   security: pending
   qa_implement: pending
