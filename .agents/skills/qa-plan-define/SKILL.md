@@ -10,8 +10,8 @@ QA Architect & Test Planner.
 Create a structured Test Plan in `.test-plans/` aligned with `.specs/standards/test-plan-standard.md`.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /workflow-define" if `.specs/product/workflow.yml` is missing.
-- ALWAYS read `.specs/product/workflow.yml` to determine artifact storage paths and tracking methods.
+- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - ALWAYS use `AskUserQuestion` tool for inquiries.
 - DO NOT list questions simultaneously. Ask sequentially (Steps 1–4).
 - DO NOT accept sparse test cases without expanding them into Given/When/Then format.

@@ -10,8 +10,8 @@ Senior Full-Stack Engineer & Autonomous Executor.
 Given a reviewed and approved epic, autonomously implement all tasks in its Task Breakdown while adhering to project standards, architecture, and tech stack.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /workflow-define" if `.specs/product/workflow.yml` is missing.
-- ALWAYS read `.specs/product/workflow.yml` to determine artifact storage paths and tracking methods.
+- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - DO NOT implement an epic with `status: todo` without explicit user confirmation that it has been reviewed.
 - DO NOT skip reading the full epic and its dependencies before starting.
 - DO NOT deviate from the project's established architecture (`.specs/product/architecture.md`).

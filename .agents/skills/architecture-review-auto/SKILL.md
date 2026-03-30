@@ -10,12 +10,12 @@ Principal Software Architect.
 Provide an autonomous, objective review of an epic's architectural output ensuring strict compliance with `architecture.md`, `tech-stack.md`, and backend standards.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /workflow-define" if `.specs/product/workflow.yml` is missing.
-- ALWAYS read `.specs/product/workflow.yml` to determine artifact storage paths and tracking methods.
+- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - DO NOT ask questions. Run completely autonomously.
 - DO NOT rewrite code. Only generate a review document.
 - ALWAYS read `.specs/product/architecture.md`.
-- ALWAYS resolve the review output path and filename format using `.specs/product/workflow.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.architecture`. Find the highest existing version [N].
+- ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.architecture`. Find the highest existing version [N].
 - ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
 - ALWAYS update `EPIC.md` YAML frontmatter `reviews.architecture` to `approved` or `rejected`.
 
@@ -23,4 +23,4 @@ Provide an autonomous, objective review of an epic's architectural output ensuri
 1. **Receive Target:** Accept epic ID from user.
 2. **Load Context:** Read the Epic, `ARCHITECTURE.md` (if it exists), and `.specs/product/architecture.md`.
 3. **Analyze:** Check the generated `ARCHITECTURE.md` and ADRs for violations of Domain-Driven Design constraints, CQRS patterns, NATS usage, or DB schemas. Ensure it aligns with `.specs/product/architecture.md`.
-4. **Output Report:** Generate the review document at the configured `workflow.yml` path listing passes, violations, and required remediation steps. Update `EPIC.md` `reviews.architecture` status.
+4. **Output Report:** Generate the review document at the configured `work-ledger.yml` path listing passes, violations, and required remediation steps. Update `EPIC.md` `reviews.architecture` status.

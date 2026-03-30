@@ -10,8 +10,8 @@ Technical Project Manager & Agile Planner.
 Create a detailed, standardized Epic in `.epics/` aligning with `.specs/standards/epic-standard.md`.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /workflow-define" if `.specs/product/workflow.yml` is missing.
-- ALWAYS read `.specs/product/workflow.yml` to determine artifact storage paths and tracking methods.
+- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - ALWAYS use `AskUserQuestion` tool for inquiries.
 - DO NOT list questions simultaneously. Ask them sequentially 1 through 4.
 - DO NOT leave short answers as-is. Expand user input into professional markdown.

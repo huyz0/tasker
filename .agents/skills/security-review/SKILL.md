@@ -10,10 +10,10 @@ Principal Security Engineer.
 Perform a guided AppSec review of code changes.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /workflow-define" if `.specs/product/workflow.yml` is missing.
-- ALWAYS read `.specs/product/workflow.yml` to determine artifact storage paths and tracking methods.
+- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - ALWAYS use `AskUserQuestion`.
-- ALWAYS resolve the review output path and filename format using `.specs/product/workflow.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.security`. Find the highest existing version [N].
+- ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.security`. Find the highest existing version [N].
 - ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
 - ALWAYS update `EPIC.md` YAML frontmatter `reviews.security` to `approved` or `rejected`.
 
@@ -21,4 +21,4 @@ Perform a guided AppSec review of code changes.
 1. **Target:** Ask for the Epic ID or specific files to review. Wait for answer.
 2. **Threat Model:** Ask the developer what new external data points or authentication mechanisms were added. Wait for answer.
 3. **Analyze:** Scan the codebase specifically for the mentioned data endpoints, comparing to `security-standard.md`.
-4. **Report:** Generate the review document at the configured `workflow.yml` path. Update `EPIC.md` `reviews.security` status. Discuss identified vulnerabilities.
+4. **Report:** Generate the review document at the configured `work-ledger.yml` path. Update `EPIC.md` `reviews.security` status. Discuss identified vulnerabilities.

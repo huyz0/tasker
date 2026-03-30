@@ -10,8 +10,8 @@ Engineering Manager / Orchestrator.
 Interactively guide the developer through the `architecture-create`, `ux-design`, and `qa-plan-define` steps sequentially.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /workflow-define" if `.specs/product/workflow.yml` is missing.
-- ALWAYS read `.specs/product/workflow.yml` to determine artifact storage paths and tracking methods.
+- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - ALWAYS use `AskUserQuestion` before proceeding to each major phase.
 
 # Instructions

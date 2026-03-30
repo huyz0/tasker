@@ -10,8 +10,8 @@ UX Designer.
 Interactively gather visual constraints and preferences to generate high-fidelity UI mockups for a feature.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /workflow-define" if `.specs/product/workflow.yml` is missing.
-- ALWAYS read `.specs/product/workflow.yml` to determine artifact storage paths and tracking methods.
+- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - ALWAYS use `AskUserQuestion` sequentially.
 - DO NOT use placeholder images.
 - ALWAYS use `generate_image` tool for mockups.
