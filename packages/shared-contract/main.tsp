@@ -15,4 +15,6 @@ model PingResponse {
   @field(2) dbStatus: string;
 }
 
-op ping(request: PingRequest): PingResponse;
+interface HealthService {
+  ping(request: PingRequest): PingResponse;
+}

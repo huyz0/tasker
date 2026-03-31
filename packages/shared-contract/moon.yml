@@ -8,9 +8,10 @@ tasks:
       - '**/*.tsp'
 
   compile:
-    command: 'npx tsp compile main.tsp'
+    script: 'npx tsp compile main.tsp && npx buf generate'
     inputs:
       - '**/*.tsp'
       - 'package.json'
     outputs:
       - 'tsp-output'
+      - 'gen'

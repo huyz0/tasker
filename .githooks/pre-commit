@@ -14,9 +14,8 @@ fi
 
 echo "Running checks via moon (this will be instant if cached)..."
 
-# Run all the checks that the pre-commit originally had, but through moon
-$MOON_CMD run gui:lint backend:test cli:format cli:vet cli:test shared-contract:format shared-contract:compile
-
+# Run ALL project checks (lint, format, test, typecheck, build) to guarantee CI success
+$MOON_CMD check --all
 if [ $? -ne 0 ]; then
   echo "❌ Pre-commit checks failed. Please fix before committing."
   exit 1

@@ -11,12 +11,13 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@bufbuild/protobuf": "^2.11.0",
+    "@connectrpc/connect": "^2.1.1",
     "@typespec/compiler": "^1.10.0"
   },
   "devDependencies": {
     "@bufbuild/buf": "^1.66.1",
-    "@bufbuild/protoc-gen-es": "^1.10.1",
-    "@connectrpc/protoc-gen-connect-es": "^1.7.0",
+    "@bufbuild/protoc-gen-es": "^2.11.0",
     "@typespec/protobuf": "^0.80.0"
   }
 }

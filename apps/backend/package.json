@@ -8,11 +8,11 @@
     "drizzle-kit": "^0.31.10"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^6.0.2"
   },
   "dependencies": {
-    "@connectrpc/connect": "^1.7.0",
-    "@connectrpc/connect-node": "^1.7.0",
+    "@connectrpc/connect": "^2.1.1",
+    "@connectrpc/connect-node": "^2.1.1",
     "drizzle-orm": "^0.45.2",
     "mysql2": "^3.20.0",
     "shared-contract": "file:../../packages/shared-contract"
