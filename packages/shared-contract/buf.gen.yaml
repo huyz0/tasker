@@ -4,13 +4,11 @@ plugins:
     out: gen/ts
     opt: target=ts
 
-  - local: protoc-gen-go
+  - remote: buf.build/protocolbuffers/go:v1.36.0
     out: ../../apps/cli/gen
     opt:
       - paths=source_relative
-      - Mtasker/health/v1.proto=github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1
-  - local: protoc-gen-connect-go
+  - remote: buf.build/connectrpc/go:v1.17.0
     out: ../../apps/cli/gen
     opt:
       - paths=source_relative
-      - Mtasker/health/v1.proto=github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1
