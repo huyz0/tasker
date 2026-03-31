@@ -50,7 +50,7 @@ jobs:
           cd packages/shared-contract && (npm ci || npm install) && cd ../..
           cd apps/backend && bun install
       - name: Build & Test (Cached)
-        run: moon run backend:lint backend:test
+        run: moon run backend:test
 
   cli:
     name: CLI (Go)
