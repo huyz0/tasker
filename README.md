@@ -58,6 +58,45 @@ To deeply understand how these isolated skills chain together, how they discover
 
 ---
 
+## 🚀 Developer Setup & Prerequisites
+
+This project utilizes [Moonrepo](https://moonrepo.dev/) as its polyglot build system and task runner, backed by the `proto` toolchain manager. This ensures that every developer (and AI agent) automatically uses the exact same versions of Node.js, Bun, and Go without manual installation fighting.
+
+### 1. Install Moon
+You must install the Moon CLI globally. This will also install `proto`.
+
+```bash
+# Using npm
+npm install -g @moonrepo/cli
+
+# OR using the installation script (Mac/Linux)
+curl -fsSL https://moonrepo.dev/install/moon.sh | bash
+```
+
+### 2. Initialize the Toolchain
+Once Moon is installed, navigate to the project root and run:
+
+```bash
+moon setup
+```
+Moon will automatically read `.prototools` and locally download the exact, pinned versions of Node.js, Bun, and Go required for this project natively into `~/.proto`.
+
+### 3. Running Tasks
+You do not need to manually `cd` into directories to run scripts. Moon handles aggressive caching and dependencies automatically:
+
+```bash
+# Run the complete cached CI pipeline locally (lint, format, test, build for all apps)
+moon check
+
+# Run a specific task (e.g., build the React GUI)
+moon run gui:build
+
+# Run all tests across the monorepo simultaneously
+moon run :test
+```
+
+---
+
 ## 📦 Monorepo Structure
 
 Beyond the `.specs/` configuration layer, the functional execution environment is organized as follows:
