@@ -1,0 +1,12 @@
+{
+  "name": "markdown-lint-skill",
+  "version": "1.0.0",
+  "description": "Deterministic markdown lint + Mermaid validation for AI-generated artifacts",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@a24z/mermaid-parser": "^1.0.0",
+    "glob": "^11.0.0",
+    "markdownlint-cli2": "^0.22.0"
+  }
+}

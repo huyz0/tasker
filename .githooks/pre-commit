@@ -1,0 +1,45 @@
+#!/bin/sh
+
+echo "======================================"
+echo "    Running pre-commit CI checks      "
+echo "======================================"
+
+# GUI Checks
+echo "[1/4] Checking GUI (React/Vite) in apps/gui..."
+cd apps/gui || exit 1
+npm run lint || { echo "❌ GUI linting failed. Please fix before committing."; exit 1; }
+cd ../..
+echo "✅ GUI checks passed."
+
+# Backend Checks
+echo "[2/4] Checking Backend (Bun) in apps/backend..."
+cd apps/backend || exit 1
+bun test || { echo "❌ Backend tests failed. Please fix before committing."; exit 1; }
+cd ../..
+echo "✅ Backend checks passed."
+
+# CLI Checks
+echo "[3/4] Checking CLI (Go) in apps/cli..."
+cd apps/cli || exit 1
+unformatted=$(gofmt -l .)
+if [ -n "$unformatted" ]; then
+  echo "❌ Go code is not formatted. Run 'gofmt -w .' on these files:"
+  echo "$unformatted"
+  exit 1
+fi
+go vet ./... || { echo "❌ Go vet failed."; exit 1; }
+go test ./... || { echo "❌ Go tests failed."; exit 1; }
+cd ../..
+echo "✅ CLI checks passed."
+
+# Shared Contract Checks
+echo "[4/4] Checking Shared Contract (TypeSpec) in packages/shared-contract..."
+cd packages/shared-contract || exit 1
+npx tsp format --check "**/*.tsp" || { echo "❌ TypeSpec format check failed."; exit 1; }
+npx tsp compile main.tsp || { echo "❌ TypeSpec compilation failed."; exit 1; }
+cd ../..
+echo "✅ Shared Contract checks passed."
+
+echo "======================================"
+echo "    All Local Checks Passed! 🚀       "
+echo "======================================"

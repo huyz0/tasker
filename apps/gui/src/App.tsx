@@ -11,7 +11,7 @@ const transport = createConnectTransport({
 const client = createClient(HealthService, transport);
 
 function App() {
-  const [timestamp, setTimestamp] = useState(Date.now());
+  const [timestamp, setTimestamp] = useState(() => Date.now());
   const { data, error, isLoading } = useQuery({
     queryKey: ['healthPing', timestamp],
     queryFn: async () => {

@@ -3,11 +3,9 @@ import "@typespec/protobuf";
 using TypeSpec.Protobuf;
 
 @package({
-  name: "tasker.health.v1"
+  name: "tasker.health.v1",
 })
-@TypeSpec.service(#{
-  title: "Health Service"
-})
+@TypeSpec.service(#{ title: "Health Service" })
 namespace Tasker.Health.V1;
 
 model PingRequest {}

@@ -31,3 +31,11 @@ This document enforces a strict standardized git workflow for both human develop
 ## 4. Merging
 - **Squash and Merge**: Prefer "Squash and Merge" for PRs into `main`. This maintains a linear, clean commit history on the default branch where each commit represents a single, complete logical change.
 - **Syncing Branches**: Before asking for review, the author is responsible for rebasing their feature branch against the most recent `main` branch to resolve conflicts cleanly in isolation.
+
+## 5. Pre-Commit Verification
+- **Local Validation**: Before creating a commit, developers and AI agents MUST verify the changes locally by running the same checks executed by the CI pipeline.
+- **Required Checks**: 
+  - **Formatting**: Run `gofmt -w .` (Go) or equivalent formatters.
+  - **Linting**: Run `npm run lint` or `bunx eslint .` and ensure no errors, especially React hook purity or unused variables.
+  - **Testing**: Run the local test suites (`bun test`, `npm test`, `go test -v ./...`) and ensure all tests pass. If initializing a new app, ensure at least one test exists so the test runner doesn't fail.
+- **Action**: Never commit code that fails these local checks. Iterate on the code until the checks pass before staging.
