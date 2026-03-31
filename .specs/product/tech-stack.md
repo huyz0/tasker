@@ -37,6 +37,10 @@
 - **CLI & Human Interfaces**: Real-time web GUI and a dedicated Command Line Interface (CLI) built in Go, providing fast, statically compiled binaries for operators and AI agents.
 - **AI Agent Skills**: Dynamically loadable and packageable tools/scripts that agents can execute to interact with the system. They are designed to be frictionlessly installable and runnable on-the-fly using commands like `npx skills <skill-name>` or `npx skills`.
 - **System Context Integration**: Model Context Protocol (MCP) Config
+## Monorepo & Build System
+- **Build System & Caching**: Moonrepo (fast polyglot task runner with aggressive local and CI caching).
+- **Toolchain Manager**: Proto (ensures deterministic, automatically managed versions of Node.js, Bun, and Go across all developer and agent environments).
+
 ## Quality & Continuous Integration
 ### Static Analysis & Quality
 - **ESLint**: With plugins for React, TypeScript, and Tailwind CSS.
