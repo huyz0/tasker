@@ -1,0 +1,35 @@
+$schema: https://moonrepo.dev/schemas/project.json
+language: system
+
+dependsOn:
+  - shared-contract
+
+tasks:
+  lint:
+    command: 'npm run lint'
+    inputs:
+      - 'src/**/*'
+      - 'package.json'
+      - 'eslint.config.js'
+
+  typecheck:
+    command: 'npx tsc --noEmit'
+    inputs:
+      - 'src/**/*'
+      - 'tsconfig.json'
+
+  test:
+    command: 'npm test'
+    inputs:
+      - 'src/**/*'
+
+  build:
+    command: 'npm run build'
+    inputs:
+      - 'src/**/*'
+      - 'index.html'
+      - 'vite.config.*'
+      - 'package.json'
+      - 'package-lock.json'
+    outputs:
+      - 'dist'

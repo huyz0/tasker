@@ -1,0 +1,34 @@
+$schema: https://moonrepo.dev/schemas/project.json
+language: system
+
+dependsOn:
+  - shared-contract
+
+tasks:
+  format:
+    command: 'gofmt -l .'
+    inputs:
+      - '**/*.go'
+
+  vet:
+    command: 'go vet ./...'
+    inputs:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+
+  test:
+    command: 'go test -v ./...'
+    inputs:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+
+  build:
+    command: 'go build -v ./...'
+    inputs:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+    outputs:
+      - 'cli' # the standard go output, cache misses won't hurt if we get it slightly wrong but should match default outputs.

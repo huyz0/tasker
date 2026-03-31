@@ -33,9 +33,8 @@ This document enforces a strict standardized git workflow for both human develop
 - **Syncing Branches**: Before asking for review, the author is responsible for rebasing their feature branch against the most recent `main` branch to resolve conflicts cleanly in isolation.
 
 ## 5. Pre-Commit Verification
-- **Local Validation**: Before creating a commit, developers and AI agents MUST verify the changes locally by running the same checks executed by the CI pipeline.
+- **Local Validation**: Before creating a commit, developers and AI agents MUST verify the changes locally by running the same checks executed by the CI pipeline, powered by Moonrepo.
 - **Required Checks**: 
-  - **Formatting**: Run `gofmt -w .` (Go) or equivalent formatters.
-  - **Linting**: Run `npm run lint` or `bunx eslint .` and ensure no errors, especially React hook purity or unused variables.
-  - **Testing**: Run the local test suites (`bun test`, `npm test`, `go test -v ./...`) and ensure all tests pass. If initializing a new app, ensure at least one test exists so the test runner doesn't fail.
-- **Action**: Never commit code that fails these local checks. Iterate on the code until the checks pass before staging.
+  - Run the cached pipeline for all components: `moon run gui:lint backend:test cli:format cli:vet cli:test shared-contract:format shared-contract:compile`.
+  - Because Moon caches successful task executions, this will only run checks on projects that have actually changed, saving significant time.
+- **Action**: Never commit code that fails these local checks. Iterate on the code until the moon pipeline succeeds before staging.

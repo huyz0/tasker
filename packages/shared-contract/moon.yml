@@ -1,0 +1,16 @@
+$schema: https://moonrepo.dev/schemas/project.json
+language: system
+
+tasks:
+  format:
+    command: 'npx tsp format --check "**/*.tsp"'
+    inputs:
+      - '**/*.tsp'
+
+  compile:
+    command: 'npx tsp compile main.tsp'
+    inputs:
+      - '**/*.tsp'
+      - 'package.json'
+    outputs:
+      - 'tsp-output'

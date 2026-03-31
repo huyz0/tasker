@@ -50,3 +50,7 @@ apps/cli/cli
 
 # TypeSpec
 tsp-output/
+
+# moon
+.moon/cache
+.moon/docker

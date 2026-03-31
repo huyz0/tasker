@@ -1,0 +1,21 @@
+$schema: https://moonrepo.dev/schemas/project.json
+language: system
+
+dependsOn:
+  - shared-contract
+
+tasks:
+  lint:
+    command: 'bunx eslint .'
+    inputs:
+      - 'src/**/*'
+      - 'eslint.config.js'
+      - '.eslintrc.*'
+
+  test:
+    command: 'bun test'
+    inputs:
+      - 'src/**/*'
+      - 'test/**/*'
+      - 'package.json'
+      - 'bun.lockb'
