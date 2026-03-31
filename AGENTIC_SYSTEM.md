@@ -17,23 +17,23 @@ graph TD
     User([Developer / Human]) --> |Triggers| Workflow
     
     subgraph "Agentic Engine (.agents/)"
-        Workflow[/Workflows / Slash Commands\n(.agents/workflows/)/]
-        Skill[Agent Skills\n(.agents/skills/)]
+        Workflow[/"Workflows / Slash Commands\n(.agents/workflows/)"/]
+        Skill["Agent Skills\n(.agents/skills/)"]
         
         Workflow -->|Orchestrates| Skill
         Skill <--> |Cross-calls| Skill
     end
 
     subgraph "Knowledge Base (.specs/)"
-        Specs[(Standards\nCoding, QA, Sec)]
-        Product[(Product\nMission, Roadmap)]
-        Arch[(Architecture\nADRs)]
+        Specs[("Standards\nCoding, QA, Sec")]
+        Product[("Product\nMission, Roadmap")]
+        Arch[("Architecture\nADRs")]
     end
     
     subgraph "Execution Output"
-        Epics[/Epics\n(.epics/)/]
-        TestPlans[/Test Plans\n(.test-plans/)/]
-        Code[Source Code / Apps]
+        Epics[/"Epics\n(.epics/)"/]
+        TestPlans[/"Test Plans\n(.test-plans/)"/]
+        Code["Source Code / Apps"]
     end
 
     Skill -->|Reads Context| Specs
