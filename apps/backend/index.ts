@@ -1,5 +1,5 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
-import { HealthService } from "shared-contract/gen/ts/main_connect";
+import { HealthService } from "shared-contract/gen/ts/tasker/health/v1/health_connect";
 import * as http from "node:http";
 import { setupDatabase } from "./db";
 

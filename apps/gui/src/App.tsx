@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { HealthService } from "shared-contract/gen/ts/main_connect";
+import { HealthService } from "shared-contract/gen/ts/tasker/health/v1/health_connect";
 
 const transport = createConnectTransport({
   baseUrl: "http://localhost:8080",
