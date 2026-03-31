@@ -30,5 +30,3 @@ tasks:
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
-    outputs:
-      - 'cli' # the standard go output, cache misses won't hurt if we get it slightly wrong but should match default outputs.

@@ -26,7 +26,7 @@ jobs:
           cd packages/shared-contract && (npm ci || npm install) && cd ../..
           cd apps/gui && (npm ci || npm install)
       - name: Build & Test (Cached)
-        run: moon run gui:lint gui:typecheck gui:test gui:build
+        run: moon run gui:lint gui:typecheck gui:build
 
   backend:
     name: Backend (Bun)

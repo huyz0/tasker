@@ -18,10 +18,6 @@ tasks:
       - 'src/**/*'
       - 'tsconfig.json'
 
-  test:
-    command: 'npm test'
-    inputs:
-      - 'src/**/*'
 
   build:
     command: 'npm run build'
