@@ -24,7 +24,7 @@ jobs:
         run: |
           # Install shared contract first so it can compile
           cd packages/shared-contract && (npm ci || npm install) && cd ../..
-          cd apps/gui && (npm ci || npm install)
+          cd apps/gui && (npm ci --legacy-peer-deps || npm install --legacy-peer-deps)
       - name: Build & Test (Cached)
         run: moon run gui:lint gui:typecheck gui:build
 
