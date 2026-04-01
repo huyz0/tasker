@@ -41,3 +41,7 @@ standards:
     title: Test Plan & Case Management Standards
     description: Robust guidelines for defining test plans, scenarios, and test cases linked to epics.
     file: test-plan-standard.md
+  - id: dependency-standard
+    title: Dependency Standards
+    description: Rules for version selection, evaluation, and ecosystem-specific dependency management.
+    file: dependency-standard.md
