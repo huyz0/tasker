@@ -1,15 +1,11 @@
-$schema: https://moonrepo.dev/schemas/project.json
-language: system
-
-dependsOn:
-  - shared-contract
-
 tasks:
-
-  test:
-    command: 'bun test'
+  build:
+    command: 'bun build ./index.ts --target bun --outdir dist'
+  build-standalone:
+    command: 'bun run build:standalone'
     inputs:
-      - 'src/**/*'
-      - 'test/**/*'
-      - 'package.json'
-      - 'bun.lockb'
+      - 'index.ts'
+      - 'db.ts'
+      - 'schema*.ts'
+    outputs:
+      - 'tasker-standalone'

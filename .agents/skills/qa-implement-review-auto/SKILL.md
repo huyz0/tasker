@@ -22,5 +22,5 @@ Provide an autonomous review of implemented tests for an epic, guaranteeing all 
 # Instructions
 1. **Receive Target:** Accept epic ID from user.
 2. **Load Context:** Read the epic's `TEST-PLAN.md` and `.specs/standards/testing-standard.md`.
-3. **Analyze Codebase:** Search the codebase for integration, unit, and E2E test files matching the implementation. Check if the `Given/When/Then` cases are actually executed.
+3. **Analyze Codebase:** Search the codebase for integration, unit, and E2E test files matching the implementation. Check if the `Given/When/Then` cases are actually executed. You MUST physically run the test suite (e.g. `npx moon run <project>:test`) in the terminal to verify that the tests genuinely pass and generate coverage, rather than just statically reading the code.
 4. **Output Report:** Generate the review document at the configured `work-ledger.yml` path tracking each test case's status (Covered / Missing / Flaky) and code-quality findings. Update `EPIC.md` `reviews.qa_implement` status.

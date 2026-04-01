@@ -5,6 +5,9 @@ node_modules
 out
 dist
 *.tgz
+tasker-standalone
+*.map
+*.sqlite
 
 # code coverage
 coverage

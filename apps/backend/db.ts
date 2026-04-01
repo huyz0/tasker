@@ -1,18 +1,29 @@
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle as drizzleMysql } from "drizzle-orm/mysql2";
+import { drizzle as drizzleSqlite } from "drizzle-orm/bun-sqlite";
+import { Database } from "bun:sqlite";
 import mysql from "mysql2/promise";
-import { text, varchar, mysqlTable } from "drizzle-orm/mysql-core";
+import * as schemaMysql from "./schema.mysql";
+import * as schemaSqlite from "./schema.sqlite";
 
-export const testSchema = mysqlTable("schema_migrations_test", {
-  id: varchar("id", { length: 256 }).primaryKey(),
-});
+export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql") {
+  if (driver === "sqlite") {
+    const sqlite = new Database(".sqlite");
+    
+    // Automatic Migration & FTS5 Proof Of Concept Initialization
+    sqlite.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations_test (id TEXT PRIMARY KEY);
+      CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(title, body, content="");
+    `).run();
+    
+    return drizzleSqlite(sqlite, { schema: schemaSqlite });
+  }
 
-export async function setupDatabase() {
   const connection = await mysql.createConnection({
-    host: "127.0.0.1",
-    user: "root",
-    password: "password",
-    database: "tasker",
+    host: process.env.DB_HOST || "127.0.0.1",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "password",
+    database: process.env.DB_NAME || "tasker",
     port: 3306
   });
-  return drizzle(connection);
+  return drizzleMysql(connection, { schema: schemaMysql, mode: "default" });
 }

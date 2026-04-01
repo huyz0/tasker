@@ -21,6 +21,6 @@ Autonomously evaluate the written source code within an epic's branch or scope a
 # Instructions
 1. **Receive Target:** Accept epic ID from user.
 2. **Load Context:** Read the Epic's scope and the `coding-standard.md`.
-3. **Analyze:** Verify the implemented source code for the epic. Check for correct module boundaries, cyclomatic complexity, unhandled edge cases, and hardcoded values.
+3. **Analyze:** Verify the implemented source code for the epic. Check for correct module boundaries, cyclomatic complexity, unhandled edge cases, and hardcoded values. You MUST run `npx moon check --all` or the specific project build securely in the terminal to verify the code genuinely compiles without errors before approving.
 4. **Determine Version:** Check `.epics/EPIC-<id>/reviews/` for existing `CODE-REVIEW-v*.md` files. Increment version (e.g., `-v1`, `-v2`).
 5. **Output Report:** Generate the review document at the configured `work-ledger.yml` path listing passes, specific file/line feedback, and the final decision. Update `EPIC.md` `reviews.code` status.

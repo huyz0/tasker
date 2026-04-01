@@ -23,4 +23,5 @@ Autonomously run the `code-review-auto`, `qa-implement-review-auto`, `architectu
    - `.agents/skills/qa-implement-review-auto/SKILL.md`
    - `.agents/skills/architecture-code-review-auto/SKILL.md`
    - `.agents/skills/security-review-auto/SKILL.md`
-4. **Report:** Output a combined health summary of the applicable generated review documents.
+4. **Local CI Verification:** Run the `.agents/skills/local-ci-run/SKILL.md` skill to safely test the GitHub workflows locally without pushing. A review cannot be fully approved if the CI pipeline fails.
+5. **Report:** Output a combined health summary of the applicable generated review documents, explicitly including the results of the local CI run.

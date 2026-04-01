@@ -72,7 +72,8 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
      e. Write or update tests per testing-standard.
      f. Mark task as complete (`- [x]`) in the EPIC.md. Remove any `<!-- partial -->` notes.
 8. **Verification:**
-   - Run full lint, type-check, and test suite.
+   - You MUST run the full lint, type-check, and test suite physically in the terminal (e.g., `npx moon check --all`). Do not assume code works without running it.
+   - After local verification, you MUST execute the `.agents/skills/local-ci-run/SKILL.md` workflow to verify GitHub workflows pass locally.
    - Verify all Definition of Done criteria are met.
    - Document any unresolved items.
 9. **Finalize:**

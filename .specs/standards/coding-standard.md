@@ -37,6 +37,7 @@ This document outlines the strict coding standards and best practices for the pr
   - `any` is forbidden. Use `unknown` or strictly type the object. 
   - All runtime boundary data must be validated using **Zod** (or ArkType) before crossing into business logic.
 - **Dead Code**: Ensure tools like `Knip` report absolute zero. Remove unused files, types, and dependencies immediately.
+- **Agent Execution**: AI Agents acting as engineers or reviewers MUST physically execute linting, type-checking, and build commands (e.g., `npx moon check --all`) in a terminal to verify the code genuinely compiles before considering a task completely implemented or reviewed.
 
 ## 5. Technology-Specific Rules
 - **State Management (Frontend)**: Local state (`useState`) for isolated interactions. **TanStack Query** for all server state. Avoid heavy Redux/Zustand unless orchestrating complex client-side workflows (e.g., React Flow interactions).

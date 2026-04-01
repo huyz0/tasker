@@ -13,6 +13,7 @@ This document establishes the expectations for code testing, coverage, and the d
 - **Baseline Minimum**: All code (both frontend and backend) must maintain a strict minimum of **80% test coverage** for statements, branches, and functions.
 - **Target Goal**: We aim to achieve **90% coverage**, particularly within the Backend's core Domain logic (Bounded Contexts) and the Frontend's complex custom hooks and utility functions.
 - **Enforcement**: CI pipelines should be configured to fail if a pull request drops the overall project coverage below 80% or fails to cover new statements adequately.
+- **Agent Enforcement**: AI Agents implementing or reviewing epics MUST physically execute the test suite (e.g., `npx moon run <project>:test`) to verify the code hits coverage goals. AI Agents MUST also execute the `.agents/skills/local-ci-run/SKILL.md` skill to ensure the entire local test workflow is passing successfully before marking implementation or review stages 'done' or 'approved'.
 
 ## 3. Focus Areas and Tools
 - **Unit Tests (`Vitest`)**: Fast, heavily isolated tests focusing on single functions, classes, or hooks. The majority of your 80-90% coverage goal should be achieved here.
