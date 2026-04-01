@@ -56,7 +56,7 @@ Given a topic or feature name, autonomously research the codebase and product do
    - Use current date for `created_at`.
 9. **Confirmation:**
    - Display the generated epic path.
-   - Remind user: "Review and optimize this epic before running `/epic-implement-auto`."
+   - Remind user: "Review and optimize this epic before running `/epic-design-auto`."
 
 # Output Format
 ## EPIC.md Template
@@ -109,5 +109,5 @@ created_at: [YYYY-MM-DD]
 ✓ Epic EPIC-[id]-[kebab-case-title] defined successfully.
   Path: .epics/EPIC-[id]-[kebab-case-title]/EPIC.md
   Status: todo (ready for human review)
-  Next step: Review & optimize, then run /epic-implement-auto
+  Next step: Review & optimize, then run /epic-design-auto
 ```

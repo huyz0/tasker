@@ -26,3 +26,4 @@ Implement an epic interactively, checking with the user between major tasks.
    c. Perform the code changes.
    d. Ask user: "Are you satisfied with the result? Can I mark this task checking as [x]?"
    e. Repeat until the epic is done.
+5. **Completion:** Suggest the user run `/epic-implement-review` when the epic is completely finished.

@@ -42,7 +42,7 @@ Given an epic identifier, autonomously parse the epic's requirements, determine 
    - Set YAML metadata: `status: draft`, `epic_link: EPIC-<id>`, `author: Auto`, and current date.
 7. **Confirmation:**
    - Output the generated file path.
-   - Remind user: "Review this test plan before running `/epic-implement-auto`."
+   - Remind user: "Review this test plan before running `/epic-design-review-auto`."
 
 # Output Format
 ## TEST-PLAN.md Template

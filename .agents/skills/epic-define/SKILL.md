@@ -83,3 +83,4 @@ created_at: [Insert Current Date YYYY-MM-DD]
 
 ## Success Context
 `✓ Epic [ID] created successfully: .epics/EPIC-[id]-[kebab-case-title]/EPIC.md`
+`Next step: Run /epic-design`

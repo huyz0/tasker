@@ -65,7 +65,7 @@ Given an epic, autonomously produce UI mockup images and UX flow diagrams coveri
    - Include interaction notes, accessibility callouts, and component mapping.
 9. **Confirmation:**
    - Output the design package path and a summary of screens/flows produced.
-   - Remind user: "Review these designs before running `/epic-implement-auto`."
+   - Remind user: "Review these designs before running `/epic-design-review-auto`."
 
 # Output Format
 ## Directory Structure
@@ -133,5 +133,5 @@ created_at: YYYY-MM-DD
   Screens: [count] mockups generated
   Flows: [count] UX flows mapped
   Status: draft (ready for human review)
-  Next step: Review designs, then run /epic-implement-auto
+  Next step: Review designs, then run /epic-design-review-auto
 ```

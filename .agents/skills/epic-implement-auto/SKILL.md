@@ -96,5 +96,5 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
   Tasks: [completed]/[total]
   Tests: [pass]/[fail]/[skip]
   Blockers: [list or "None"]
-  Next steps: [if any]
+  Next step: Run /epic-implement-review-auto
 ```

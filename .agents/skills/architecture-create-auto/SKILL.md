@@ -42,7 +42,7 @@ Given an epic, autonomously evaluate its technical complexity, map its requireme
    - For each identified key decision, write a separate ADR file in `.epics/EPIC-<id>/architecture/ADR-<num>-<title>.md`.
 8. **Confirmation:**
    - Output the generated file paths.
-   - Remind user: "Review these architectural designs before running `/epic-implement-auto`."
+   - Remind user: "Review these architectural designs before running `/epic-design-review-auto`."
 
 # Output Format
 ## Directory Structure

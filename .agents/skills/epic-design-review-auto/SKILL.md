@@ -1,5 +1,5 @@
 ---
-name: epic-design-auto-review
+name: epic-design-review-auto
 description: Autonomously reviews the architecture, UX, and test plan artifacts for completeness and consistency.
 ---
 

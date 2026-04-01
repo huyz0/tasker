@@ -1,5 +1,5 @@
 ---
-name: epic-implement-auto-review
+name: epic-implement-review-auto
 description: Orchestrates the post-implementation automated reviews (QA, Security, Architecture-Code Check).
 ---
 

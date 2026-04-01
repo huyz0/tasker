@@ -23,4 +23,4 @@ Autonomously run the `architecture-create-auto`, `ux-design-auto`, and `qa-plan-
 6. **Report & Next Steps:**
    - Output success messages for all three artifacts generated across `.epics/EPIC-<id>/architecture/`, `.../designs/`, and `.test-plans/`.
    - Update `EPIC.md` status to `design-ready`.
-   - Remind the user to run `/epic-design-auto-review` to validate the outputs.
+   - Remind the user to run `/epic-design-review-auto` to validate the outputs.
