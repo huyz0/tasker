@@ -1,4 +1,9 @@
 tasks:
+  test:
+    command: 'bun run vitest run'
+    inputs:
+      - 'src/**/*'
+      - '**/*.test.ts'
   build:
     command: 'bun build ./index.ts --target bun --outdir dist'
   build-standalone:
