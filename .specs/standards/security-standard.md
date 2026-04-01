@@ -1,29 +1,37 @@
 # Security Standards
 
-This document enforces critical foundational security practices that must be adopted across all layers of the project stack.
+## 1. Validation & Deserialization
 
-## 1. Input Validation & Deserialization
-- **Rule**: Never trust input. Not from the client, not from internal queue events, and not from external webhooks.
-- **Zod Schemas**: Every interaction over a network boundary—REST, GraphQL, gRPC, WebSocket messages—must be fundamentally validated against strict schemas (like Zod or ArkType) *before* hitting domain business logic.
-- **Type Coercion**: Ensure serializers cannot maliciously interpret unexpected object shapes. Strip all unlisted fields from incoming JSON payloads by default.
+- **Rule**: Never trust boundary inputs (Client API, Webhook, Queue Events).
+- **Zod**: Validation via strict schema (Zod/ArkType) occurs BEFORE execution
+  hits domain logic.
+- **Coercion**: Strip unlisted JSON fields from incoming properties natively.
 
-## 2. Authentication & Authorization (RBAC)
-- **Authentication Lifecycle**: Session management or JWT verification must be explicitly proven via middleware on any route handling protected data.
-- **Role-Based Access Control (RBAC)**: Validating *who* the user is not enough. You must also validate *what they are allowed to do*. Do not assume a user ID in the JWT gives them ownership of a resource. Backend handlers must verify the user's role/ownership against the requested entity in the database layer.
-- **Fail Closed**: All new backend endpoints default to being rejected (401/403) unless specifically decorated or mapped to an open/public route definition.
+## 2. Authentication & Authorization
+
+- **Verification Lifecycle**: Route middleware must assert Authentication
+  tokens.
+- **RBAC Ownership**: Backend handlers MUST verify the authenticated `userId`
+  genuinely holds ownership/role rights against the target database resource.
+  Simply logging in is insufficient.
+- **Fail Closed**: All new backend controllers default to `401/403` denied
+  unless explictly decorated as public.
 
 ## 3. Vulnerability Mitigation
-- **XSS (Cross-Site Scripting)**:
-  - Use modern framework APIs (like React) that automatically HTML-encode variables in templates.
-  - Never use dangerous APIs like `dangerouslySetInnerHTML` unless explicitly required, and only then with data processed through a trusted HTML sanitizer library like DOMPurify.
-- **CSRF (Cross-Site Request Forgery)**:
-  - If using cookie-based auth, set `SameSite=Strict` or `Lax` and use `HttpOnly` and `Secure`.
-  - Prefer Anti-CSRF token exchanges for state-mutating requests (`POST`, `PUT`, `DELETE`, `PATCH`) if relying solely on persistent session cookies without `SameSite` protections.
 
-## 4. Secrets management
-- **Hardcoding**: Absolutely zero hardcoded credentials, tokens, or private URLs in the repository. Do not commit `.env` or configuration containing live non-empty keys.
-- **CI/CD Visibility**: Scripts or CI workflows must mask secrets. Avoid echoing variables into logs.
+- **XSS**: Use React/Template auto-encoding. Never inject raw HTML without
+  `DOMPurify` overrides.
+- **CSRF**: Apply `SameSite=Lax/Strict`, `HttpOnly`, and `Secure` to session
+  cookies.
+
+## 4. Secrets Config
+
+- **Zero Hardcoding**: Do NOT commit `.env` values or raw API keys in code.
+- **CI Safety**: CI/CD must mechanically mask secrets on terminal output.
 
 ## 5. Dependency Security
-- **Auditing**: Leverage automated tooling (`npm audit` or external scanners like Snyk) to block builds if a high-severity CVSS score vulnerability is found in the dependency tree.
-- **Locking**: Always use lockfiles (`package-lock.json`, `pnpm-lock.yaml`) and lock library versions explicitly in production dependencies.
+
+- **Auditing**: Break builds on high CVSS vulnerability alerts (`npm audit` /
+  Snyk).
+- **Locking**: Enforce deterministic versioning via `pnpm-lock.yaml` or
+  `package-lock.json`.

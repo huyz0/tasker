@@ -1,40 +1,41 @@
 # API Architecture Standards
 
-This document outlines the strict guidelines for designing, exposing, and consuming APIs within the project, ensuring consistency across all backend endpoints.
+## 1. RESTful Endpoints
 
-## 1. RESTful Endpoints & Resource Naming
-- **Nouns, not Verbs**: Endpoints must represent resources (e.g., `/api/v1/workspaces`, not `/api/v1/getWorkspaces`). Actions on resources should use appropriate HTTP verbs (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`).
-- **Pluralization**: Resource names should always be plural to ensure consistency (`/users`, `/tasks`, `/organizations`).
-- **Nesting Level Limit**: Do not deeply nest relational endpoints. Limit nesting to one level of depth (e.g., `/workspaces/{id}/tasks`). For deeper hierarchical access, query the sub-resource directly with a filter (e.g., `/tasks?workspaceId={id}`).
+- **Nouns, not Verbs**: Use resources (`/api/v1/workspaces`), not verbs
+  (`/getWorkspaces`). Use standard HTTP verbs (`GET`, `POST`, `PUT`, `PATCH`,
+  `DELETE`).
+- **Pluralization**: Force plural resource names (`/users`, `/tasks`).
+- **Nesting Limit**: Max 1 level depth (`/workspaces/{id}/tasks`). For deeper
+  traversal, filter flat resources: `/tasks?workspaceId={id}`.
 
 ## 2. Standardized JSON Envelope
-- **The Wrapper**: All API responses (success and error) must be wrapped in a predictable, top-level object. Do not return bare arrays or primitive types.
-  ```json
-  {
-    "data": { ... }, // The actual requested payload (Array or Object)
-    "meta": { ... }  // Optional metadata (pagination, cursors, request IDs)
-  }
-  ```
-- **Error Shape**: Error responses must follow a strict, unified problem details format (similar to RFC 7807) under an `error` key instead of `data`.
 
-## 3. Correct HTTP Status Codes
-- **Rule**: Map your logical application results to standard HTTP semantics accurately.
-- **Success Modes**: 
-  - `200 OK` (Standard success)
-  - `201 Created` (Returned strictly after a successful `POST` that creates a new record)
-  - `204 No Content` (For successful `DELETE` or empty `PUT` updates)
-- **Error Modes**: 
-  - `400 Bad Request` (Zod validation failures, malformed syntax)
-  - `401 Unauthorized` (Missing or invalid auth token)
-  - `403 Forbidden` (RBAC failure; valid user but insufficient permissions)
-  - `404 Not Found` (Resource does not exist)
-  - `409 Conflict` (Duplicate record creation, optimistic locking failures)
+- **Wrapper**: Wrap all responses in `{ data: any, meta?: any }`. Never return
+  bare primitives or arrays.
+- **Error Shape**: Format errors via strict RFC 7807 problem details inside
+  `error` key (omit `data`).
 
-## 4. API Versioning
-- **URI Versioning**: Standard REST APIs must begin with an explicit version namespace (e.g., `/api/v1/...`). 
-- **Breaking Changes**: A new version (`v2`) must be created if there are any backwards-incompatible contract changes (e.g., removing a field, changing a field type). Adding optional fields is considered non-breaking.
+## 3. HTTP Status Codes
+
+- `200 OK`: Standard success.
+- `201 Created`: ONLY after successful `POST`.
+- `204 No Content`: Successful `DELETE` or empty `PUT`.
+- `400 Bad Request`: Validation/Zod failures.
+- `401 Unauthorized`: Missing/invalid token.
+- `403 Forbidden`: RBAC failure (valid token, unauthorized action).
+- `404 Not Found`: Resource missing.
+- `409 Conflict`: Duplicates or locking failures.
+
+## 4. Versioning
+
+- **URI Versioning**: Require namespace (`/api/v1/...`).
+- **Breaking Changes**: Require new version (e.g., `v2`). Optional fields are
+  non-breaking.
 
 ## 5. Pagination & Cursors
-- **Default Limits**: List endpoints must never return unbounded data. Default to a reasonable limit (e.g., 20 or 50 items).
-- **Cursor-based Preference**: Prefer cursor-based pagination (`?cursor=xyz&limit=20`) over offset-based (`?page=2&limit=20`) for massive datasets or real-time feeds to prevent data-skipping anomalies.
-- **Standard Query Params**: Use `limit` and `cursor` consistently across the entire API surface.
+
+- **Limits**: Cap list endpoints (e.g., 20 or 50 items max). No unbounded data.
+- **Cursors**: Prefer cursor-based (`?cursor=xyz&limit=20`) over offset-based
+  (`?page=2`).
+- **Params**: Consistently use `limit` and `cursor`.
