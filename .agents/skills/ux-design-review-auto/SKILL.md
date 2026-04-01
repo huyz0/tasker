@@ -7,7 +7,7 @@ description: Autonomously reviews generated UX designs and mockups against proje
 Senior UX Reviewer / Product Designer.
 
 # Goal
-Provide an autonomous review of the UX designs and user flows generated for an epic prior to implementation.
+Provide an autonomous review of the UX designs and user flows generated for an epic prior to implementation, ensuring alignment with AI-agent best practices (trust, transparency, feedback).
 
 # Constraints
 - MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
@@ -20,6 +20,6 @@ Provide an autonomous review of the UX designs and user flows generated for an e
 
 # Instructions
 1. **Receive Target:** Accept epic ID from user.
-2. **Load Context:** Read the Epic's scope, `.specs/standards/ui-ux-standard.md`, and the generated UX designs.
-3. **Analyze Designs:** Check for adherence to the design system, accessibility guidelines, edge cases, and ensure all user flows described in the epic are accounted for in the designs.
+2. **Load Context:** You MUST use `view_file` to read the Epic's scope, `.specs/standards/ui-ux-standard.md`, and the `.agents/skills/ux-design-review-auto/references/REVIEW-HEURISTICS.md`. Then load the generated UX designs.
+3. **Analyze Designs:** Check for adherence to the design system and explicitly validate against the `REVIEW-HEURISTICS.md` standards. Prioritize analyzing Agentic Transparency (e.g., exposed reasoning), Appropriate Trust (e.g., manual overrides, robust error recovery), and Closed Feedback Loops (e.g., explicit correction mechanisms).
 4. **Output Report:** Generate the review document at the configured `work-ledger.yml` path listing passes, accessibility/design-system violations, and required remediation steps before implementation. Update `EPIC.md` `reviews.ux` status.

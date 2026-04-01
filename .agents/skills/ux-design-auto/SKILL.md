@@ -19,6 +19,7 @@ Given an epic, autonomously produce UI mockup images and UX flow diagrams coveri
 - DO NOT use placeholder images. Use the `generate_image` tool for every mockup.
 - DO NOT generate a single monolithic mockup. Produce one image per screen/view.
 - ALWAYS follow accessibility standards (WCAG 2.1 AA) in mockup designs.
+- ALWAYS incorporate AI agent trust and transparency best practices (e.g., expose AI thought logs, provide clear error-handling/manual overrides, close feedback loops).
 - ALWAYS produce a UX flow diagram connecting all screens.
 
 # Instructions
@@ -31,7 +32,8 @@ Given an epic, autonomously produce UI mockup images and UX flow diagrams coveri
    - Read `.specs/standards/ui-ux-standard.md` — extract design tokens, accessibility rules, responsive requirements.
    - Read `.specs/standards/frontend-standard.md` — extract component architecture patterns.
    - Read `.specs/product/architecture.md` — understand which components the UI interacts with.
-   - Read `.specs/product/mission.md` — understand target users (AI agents vs humans) and their interaction surfaces.
+   - Read `.specs/product/mission.md` — understand target users.
+   - **MUST Read Local References**: Read `.agents/skills/ux-design-auto/references/ACCESSIBILITY.md`, `.agents/skills/ux-design-auto/references/MOTION-SPEC.md`, and `.agents/skills/ux-design-auto/references/RESPONSIVE-DESIGN.md` using your `view_file` tool to apply community best-practices to your designs.
 4. **Survey Existing Designs:**
    - Check if `.epics/EPIC-<id>/designs/` already exists.
    - If it does, read existing `UX-DESIGN.md` to understand prior work and avoid duplicating.
@@ -41,7 +43,7 @@ Given an epic, autonomously produce UI mockup images and UX flow diagrams coveri
      - **Screen name** (e.g., "Login Page", "Task List View", "Agent Config Modal")
      - **Purpose** — what the user accomplishes here.
      - **Key elements** — inputs, buttons, data displays, navigation.
-     - **States** — default, loading, empty, error, success.
+     - **States** — default, loading, empty, error, success, and any agentic feedback states (e.g., AI generating, AI error, manual override).
 6. **Define UX Flows:**
    - Map the user journey through the screens as sequential flows.
    - Identify:
@@ -118,6 +120,11 @@ created_at: YYYY-MM-DD
 | Element | Trigger | Action | Feedback |
 |---------|---------|--------|----------|
 | [Button/Link] | Click/Hover | [What happens] | [Visual/audio feedback] |
+
+## Agentic Behavior & Feedback
+- **Transparency:** [How the AI's reasoning or active state is exposed to the user]
+- **Trust & Overrides:** [Error recovery paths and manual takeover modes]
+- **Feedback Loops:** [Explicit and implicit user feedback mechanisms]
 
 ## Responsive Considerations
 [Notes on mobile/tablet adaptations]

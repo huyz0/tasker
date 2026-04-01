@@ -4,7 +4,7 @@ This document outlines the design standard for the project, aimed at ensuring an
 
 ## 1. Design Tokens & System
 - **Rule**: Never use hardcoded colors or ad-hoc pixel values (e.g., `style={{ color: '#123456' }}`).
-- **Action**: Strictly use the established **Tailwind CSS** utility classes mapping directly to our predefined design tokens (e.g., `text-primary`, `bg-background`, `spacing-4`).
+- **Action**: Strictly use the established **Tailwind CSS** utility classes mapping directly to our predefined design tokens (e.g., `text-primary`, `bg-background`, `spacing-4`). Avoid generic, timid AI palettes (like simple purple-on-white or gray scales); instead, commit to cohesive, bold, and characterful color systems using CSS variables with sharp accents.
 - **Components**: Rely exclusively on our standardized UI library (e.g., **Shadcn UI**). If a component doesn't exist, create it following the library's internal composition rules.
 
 ## 2. Accessibility (a11y)
@@ -18,10 +18,16 @@ This document outlines the design standard for the project, aimed at ensuring an
 - **No Overflowing Content**: Ensure horizontal scrolling does not occur on constrained screen widths unless it is explicitly intended within a particular component (e.g., a data table wrapper).
 
 ## 4. Micro-interactions & Polish
-- **Hover & Active States**: All interactive elements (buttons, links, row items) must have distinct `hover:`, `focus:`, and `active:` states.
-- **Smooth Transitions**: Utilize Tailwind’s transition utilities (`transition-all duration-200 ease-in-out`) to avoid jarring visual jumps during state changes.
-- **Loading & Error Flows**: Prevent layout shifts during loading by providing consistent Skeleton screens. Avoid blank "dead ends" on errors by always offering a recovery path (e.g., a "Retry" button).
+- **Hover & Active States**: All interactive elements must have distinct `hover:`, `focus:`, and `active:` states.
+- **Immediate Feedback**: Ensure immediate feedback (within 100ms) for every interaction.
+- **Direct Manipulation**: Favor direct manipulation patterns (e.g., inline editing, drag-and-drop) over separate forms or disconnected controls.
+- **Intentional Motion & View Transitions**: Prioritize high-impact moments (like well-orchestrated page loads or shared-element morphing) by utilizing native browser **View Transitions** (`document.startViewTransition` or React's `<ViewTransition>`) instead of heavy JS animation libraries. Use standard Tailwind transitions (`duration-200`) for micro-interactions.
+    - **Directional Slides** (forward/back) must solely be used to communicate hierarchical spatial depth (e.g., list → detail view).
+    - **Lateral Navigation** (e.g., tab switching) must use cross-fades or remain un-animated.
+    - Animations must gracefully degrade on unsupported browsers and strictly respect `prefers-reduced-motion`.
+- **Loading & Error Flows**: Prevent layout shifts with Skeleton screens. Always offer a recovery path on errors (e.g., a "Retry" button).
 
 ## 5. Visual Hierarchy & Spacing
-- **Typography Matrix**: Maintain a clear scaling system for typography (`h1` through `h6`, `body`, `small`) corresponding to specific classes.
+- **Typography Matrix**: Maintain a clear scaling system (`h1` through `h6`, `body`, `small`). **Crucial Rule:** Avoid generic AI font choices natively (e.g., Inter, Roboto, Space Grotesk) unless explicitly aligned with the brand. Choose distinctive display fonts paired with highly readable body fonts.
+- **Compositional Layout**: Embrace functional layering, grid discipline, and occasionally unexpected layouts (asymmetry or overlap) for high-impact landing pages.
 - **Consistent Proximity**: Adhere to Gestalt principles. Group logically related items closer together and provide distinct padding/margins between separate sections.

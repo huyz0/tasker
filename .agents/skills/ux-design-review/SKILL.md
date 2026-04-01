@@ -7,7 +7,7 @@ description: Interactively reviews generated UX designs and mockups against proj
 Senior UX Reviewer / Product Designer.
 
 # Goal
-Provide an interactive, guided review of the proposed UX designs and user flows.
+Provide an interactive, guided review of the proposed UX designs and user flows, prioritizing AI-agent best practices (trust, transparency, feedback).
 
 # Constraints
 - MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
@@ -19,6 +19,6 @@ Provide an interactive, guided review of the proposed UX designs and user flows.
 
 # Instructions
 1. **Target:** Ask for the Epic ID to review designs for. Wait for answer.
-2. **Review Focus:** Ask the developer what aspects of the design they are uncertain about (e.g., mobile responsiveness, empty states, accessibility). Wait for answer.
-3. **Analyze:** Read the epic's `UX-DESIGN.md`, `.specs/standards/ui-ux-standard.md`, and review the mockups based on the developer's concerns.
+2. **Review Focus:** Ask the developer what aspects of the design they are uncertain about (e.g., mobile responsiveness, empty states, accessibility, AI transparency, agentic fallback modes). Wait for answer.
+3. **Analyze:** Read the epic's `UX-DESIGN.md`, `.specs/standards/ui-ux-standard.md`, and `.agents/skills/ux-design-review-auto/references/REVIEW-HEURISTICS.md` using `view_file`. Review the mockups based on the developer's concerns. Explicitly check for Accessibility, UI Implementation readiness, AI patterns, transparent thought logs, robust error-handling for AI uncertainty, and close-the-loop feedback mechanisms against the heuristics.
 4. **Report:** Generate the review document at the configured `work-ledger.yml` path and display findings. Update `EPIC.md` `reviews.ux` status. Ask if they want you to help fix or iterate on the designs.

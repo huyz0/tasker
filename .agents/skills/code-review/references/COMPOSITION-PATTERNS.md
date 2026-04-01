@@ -1,0 +1,1 @@
+../../code-review-auto/references/COMPOSITION-PATTERNS.md
