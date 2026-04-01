@@ -38,6 +38,12 @@
 - **CLI & Human Interfaces**: Real-time web GUI and a dedicated Command Line Interface (CLI) built in Go, providing fast, statically compiled binaries for operators and AI agents.
 - **AI Agent Skills**: Dynamically loadable and packageable tools/scripts that agents can execute to interact with the system. They are designed to be frictionlessly installable and runnable on-the-fly using commands like `npx skills <skill-name>` or `npx skills`.
 - **System Context Integration**: Model Context Protocol (MCP) Config
+
+## Observability & Telemetry
+- **Standard**: OpenTelemetry (OTel) for distributed tracing, metrics, and structured logging.
+- **Exporting**: Instrumentation is agnostic of the observability backend. The system can be configured via environment variables (e.g., `OTEL_EXPORTER_OTLP_ENDPOINT`) to publish telemetry via OTLP to well-known observability servers (such as Prometheus, Grafana Tempo, Datadog, or Jaeger) in production.
+- **Local/Portable Execution**: When running as a single-bundle portable deployment (local mode), the OTel SDK gracefully defaults to a no-op or stdout console exporter. This ensures the standalone executable runs smoothly without connectivity errors or requiring local observability infrastructure.
+
 ## Monorepo & Build System
 - **Build System & Caching**: Moonrepo (fast polyglot task runner with aggressive local and CI caching).
 - **Toolchain Manager**: Proto (ensures deterministic, automatically managed versions of Node.js, Bun, and Go across all developer and agent environments).

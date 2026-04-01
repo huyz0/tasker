@@ -6,7 +6,7 @@ Tasker operates as the foundational **Task Management System for AI Agents and H
 - **External Integrations**:
   - *Identity/Auth*: Google Auth (OAuth2.1) for humans; Machine-to-Machine (M2M) API tokens tailored for Agents.
   - *AI Execution Platforms*: Interfaces with external autonomous agent runtimes via standardized API contracts (TypeSpec).
-  - *Monitoring & Observability*: OpenTelemetry for tracing agent actions across systems.
+  - *Monitoring & Observability*: OpenTelemetry (OTel) for distributed tracing, metrics, and structured logging. In production environments, it is configured via standard environment variables (OTLP) to seamlessly export to well-known observability platforms like Datadog, Prometheus, Grafana Tempo, or Jaeger. In standalone/portable local deployments, it gracefully falls back to no-op or stdout reporting to prevent unreachable dependency errors.
 
 ## Component Design (Container View)
 
