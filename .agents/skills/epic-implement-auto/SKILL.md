@@ -73,6 +73,7 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
      f. Mark task as complete (`- [x]`) in the EPIC.md. Remove any `<!-- partial -->` notes.
 8. **Verification:**
    - You MUST run the full lint, type-check, and test suite physically in the terminal (e.g., `npx moon check --all`). Do not assume code works without running it.
+   - **Workflow Consistency:** If you modified `.githooks/pre-commit` or `.specs/standards/git-workflow-standard.md`, strictly verify that the documented required checks perfectly match the executable shell script.
    - After local verification, you MUST execute the `.agents/skills/local-ci-run/SKILL.md` workflow to verify GitHub workflows pass locally.
    - Verify all Definition of Done criteria are met.
    - Document any unresolved items.

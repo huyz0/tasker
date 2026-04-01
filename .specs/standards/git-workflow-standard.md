@@ -25,7 +25,11 @@ This document enforces a strict standardized git workflow for both human develop
 
 ## 3. Pull Request Requirements
 - **Atomic PRs**: Keep Pull Requests focused on solving a single problem/issue to ease the cognitive load on reviewers and to simplify rollbacks. If a PR contains sprawling changes across the entire codebase, the reviewer should reject it immediately.
-- **Templates**: Utilize the repository's `.github/pull_request_template.md` (or equivalent) to provide context, list related issue links, and outline what reviewers should look for.
+- **Templates**: Utilize the repository's `.github/pull_request_template.md` to provide context, list related issue links, and outline what reviewers should look for. Every PR description MUST include:
+  - **Context**: Describe the initial problem, issue number, and what this PR proposes to fix.
+  - **Changes**: A clear breakdown of the changes by component layers (Frontend, Backend, CLI, Contracts/Specs).
+  - **Testing Details**: How changes were validated (e.g., instructions for reproducing logic flows and running tests).
+  - **Quality Checklist**: Explicit acknowledgment of adhering to lint rules, running pre-commit moon tasks (`moon check --all`), and properly forming Conventional Commit histories.
 - **CI Enforcement / Status Checks**: Merging is strictly blocked until all unit test suites, integration tests, E2E checks, and linters return successfully. "Bypassing" CI because "I just changed CSS" is absolutely forbidden.
 
 ## 4. Merging
@@ -35,6 +39,6 @@ This document enforces a strict standardized git workflow for both human develop
 ## 5. Pre-Commit Verification
 - **Local Validation**: Before creating a commit, developers and AI agents MUST verify the changes locally by running the same checks executed by the CI pipeline, powered by Moonrepo.
 - **Required Checks**: 
-  - Run the cached pipeline for all components: `moon run gui:lint backend:test cli:format cli:vet cli:test shared-contract:format shared-contract:compile`.
-  - Because Moon caches successful task executions, this will only run checks on projects that have actually changed, saving significant time.
+  - Run the complete cached pipeline via `moon check --all`. This natively maps to linting, formatting, testing, and building across all polyglot projects in the monorepo concurrently.
+  - Because Moon caches successful task executions locally, this will optimally execute checks strictly on projects that have explicitly changed or have cache misses, saving significant CI iteration time.
 - **Action**: Never commit code that fails these local checks. Iterate on the code until the moon pipeline succeeds before staging.
