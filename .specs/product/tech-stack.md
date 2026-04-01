@@ -15,7 +15,7 @@
 ## Backend
 - **Runtime**: Bun
 - **Language**: TypeScript
-- **Protocol**: gRPC over HTTPS (via Connect-RPC for Streaming)
+- **Protocol**: gRPC over HTTPS (via Connect-RPC for Streaming). For single-bundle, local execution, this dynamically bypasses the network stack to use lightweight, zero-latency **in-process function calls**, whilst strictly honoring the exact same TypeSpec/Connect-RPC message contracts.
 - **Messaging**: NATS for Scalable Pub/Sub
 - **Authentication**: OAuth2.1 (Google Auth)
 
@@ -29,8 +29,9 @@
 - **Distribution**: GoReleaser for automated multi-platform binary compilation and release.
 
 ## Database
-- **Storage**: MySQL
+- **Primary Storage**: MySQL
 - **Search & Analytics**: OpenSearch
+- **Local/Embedded Option**: Abstractions provided to swap out the primary database and search engines specifically for `bun:sqlite` combined with the FTS5 extension. This provides natively embedded transactional integrity and full-text search within the Bun runtime, perfectly supporting single-package, zero-config local deployments.
 
 ## Other Tools & Interfacing
 - **API Contract**: TypeSpec

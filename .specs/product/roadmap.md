@@ -3,6 +3,7 @@
 ## Phase 1: MVP
 
 - Setup core API, CLI tools, agent skills, and real-time GUI.
+- Single-bundle portable packaging option (frontend and backend combined) with an embedded database handling both transactions and search, enabling easy local execution without complicated server-side setup.
 - Manage organizations/users (admin & non-admin roles), teams, and approaches for seed admin/user setup.
 - Authentication: Login with Google and invite users by email.
 - Manage hierarchical organization structure.

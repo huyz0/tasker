@@ -16,6 +16,7 @@ Tasker operates as the foundational **Task Management System for AI Agents and H
 - **Event Bus**: NATS. The central nervous system of the architecture decoupling side-effects from primary logic, capable of scaling to 40K+ concurrent pub/sub connections.
 - **Primary Data Store**: MySQL. The source of truth for transactional states.
 - **Search & Analytics**: OpenSearch. Handles heavy reading and complex filtering (e.g., retrieving failed task logs across multiple teams) without impacting MySQL performance.
+- **Data Storage Abstraction**: The backend provides flexible interfaces for both the transactional database and search layers. This abstraction allows seamless switching between enterprise clustered components (MySQL/OpenSearch) and `bun:sqlite` with the FTS5 extension, empowering standalone, zero-config local execution without losing full-text search capability.
 
 ## Architectural Patterns & Intents
 
@@ -44,6 +45,7 @@ Because AI agents and humans interact fundamentally differently, the CLI must pr
   - **Multi-Surface Accessibility**: Rather than just `stdio`, the CLI is simultaneously exposed via the **Model Context Protocol (MCP)** using JSON-RPC, or as a plugin/extension.
 
 ## Deployment View
+- **Packaging & Portability**: The architecture leverages `bun build --compile` natively with `bun:sqlite` to package the frontend and backend into a single, highly portable, easy-to-run executable with zero external database dependencies. In this standalone mode, frontend-to-backend network overhead is eliminated; communication is routed via lightweight, in-process function calls that still rigorously align with the defined Connect-RPC API contracts.
 - **Infrastructure**: Cloud-native, relying on containerized application deployments (e.g., Docker + Kubernetes, or AWS ECS/GCP Cloud Run).
 - **Backend Nodes**: Bun Backend containers run immutably and scale horizontally behind a load balancer to accommodate streaming (Connect-RPC) requests.
 - **Data Layers**: Managed MySQL with Read Replicas and point-in-time recovery. Managed OpenSearch cluster.
