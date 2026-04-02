@@ -25,7 +25,17 @@ Autonomously evaluate the written source code within an epic's branch or scope a
    - **Completeness Check:** Explicitly check if the implementation fulfills EVERY single task in the Epic's Task Breakdown and ALL criteria in the "Definition of Done". If anything is missed, you MUST reject the review.
    - **Real Implementation Check:** Explicitly verify that the code implements REAL business logic and database operations. If the implementation uses hardcoded mock data or bypasses the database for core operations, you MUST reject the review.
    - Check for correct module boundaries, adherence to the React design composition patterns (avoiding boolean props), cyclomatic complexity, unhandled edge cases, and hardcoded values. 
-   - You MUST run `bunx moon check --all` (to verify the code compiles) AND the `.agents/skills/local-ci-run/SKILL.md` workflow (to verify CI pipelines pass) locally securely in the terminal before approving.
+   - You MUST physically run the validation commands in the terminal before approving. Refer to project rules and standards to ensure build, test green, ci can run in local and met test coverage target. Verify the CI pipelines pass locally (e.g., using `.agents/skills/local-ci-run/SKILL.md` or equivalent project standards).
    - **Workflow Consistency:** If the epic modifies `.githooks/pre-commit` or `.specs/standards/git-workflow-standard.md`, you MUST explicitly verify that the shell commands in the hook perfectly match the documented required checks.
 4. **Determine Version:** Check `.epics/EPIC-<id>/reviews/` for existing `CODE-REVIEW-v*.md` files. Increment version (e.g., `-v1`, `-v2`).
-5. **Output Report:** Generate the review document at the configured `work-ledger.yml` path listing passes, specific file/line feedback, and the final decision. Update `EPIC.md` `reviews.code` status.
+5. **Output Report:** Generate the review document at the configured `work-ledger.yml` path. The core review findings MUST be provided in a deterministic YAML block directly within the Markdown file, formatted EXACTLY as follows:
+
+```yaml
+findings:
+  - file: "path/to/file.ts"
+    line: 42
+    severity: "High" # or Critical, Medium, Low
+    comment: "Detailed explanation of the issue."
+```
+
+Do not use Markdown tables for the findings. Update `EPIC.md` `reviews.code` status.

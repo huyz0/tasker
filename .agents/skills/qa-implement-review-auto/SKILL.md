@@ -24,5 +24,15 @@ Provide an autonomous review of implemented tests for an epic, guaranteeing all 
 2. **Load Context:** Read the epic's `TEST-PLAN.md` and `.specs/standards/testing-standard.md`.
 3. **Analyze Codebase:** Search the codebase for integration, unit, and E2E test files matching the implementation. 
    - **Completeness Check:** You MUST verify that the tests cover ALL test cases specified in the `TEST-PLAN.md` and fulfill every item in the Epic's Definition of Done and Task Breakdown. If any required test case or implementation detail is missing, you MUST reject the review.
-   - Check if the `Given/When/Then` cases are actually executed. You MUST physically run the test suite (e.g. `bunx moon run <project>:test`) in the terminal to verify that the tests genuinely pass and generate coverage, rather than just statically reading the code.
-4. **Output Report:** Generate the review document at the configured `work-ledger.yml` path tracking each test case's status (Covered / Missing / Flaky) and code-quality findings. Update `EPIC.md` `reviews.qa_implement` status.
+   - Check if the `Given/When/Then` cases are actually executed. You MUST physically run the test suite in the terminal to verify that the tests genuinely pass and generate coverage, rather than just statically reading the code. Refer to project rules and standards to ensure build, test green, ci can run in local and met test coverage target.
+4. **Output Report:** Generate the review document at the configured `work-ledger.yml` path. The test case coverage and code-quality findings MUST be provided in a deterministic YAML block directly within the Markdown file, formatted EXACTLY as follows:
+
+```yaml
+findings:
+  - file: "path/to/test.ts"
+    line: 15
+    status: "Missing" # or Covered, Flaky
+    comment: "This test case from the TEST-PLAN is not implemented."
+```
+
+Do not use Markdown tables for the findings. Update `EPIC.md` `reviews.qa_implement` status.

@@ -24,4 +24,14 @@ Provide an autonomous static analysis and architectural security review of newly
 3. **Analyze Codebase:** Scan the bounded contexts modified by the epic. 
    - **Completeness Check:** Verify that the implementation genuinely fulfills the epic's "Definition of Done" and Task Breakdown from a security feature completeness perspective (e.g. if an auth flow is specified, it MUST literally exist). Reject if missing.
    - Look for input sanitization (Zod), unhedged DB queries, missing authentication/authorization checks, and improper secrets handling.
-4. **Output Report:** Generate the review document at the configured `work-ledger.yml` path assigning a severity (Critical, High, Medium, Low) to any discovered vulnerabilities and detailing how to fix them. Update `EPIC.md` `reviews.security` status.
+4. **Output Report:** Generate the review document at the configured `work-ledger.yml` path. The core vulnerabilities and findings MUST be provided in a deterministic YAML block directly within the Markdown file, formatted EXACTLY as follows:
+
+```yaml
+findings:
+  - file: "path/to/auth.ts"
+    line: 110
+    severity: "Critical" # or High, Medium, Low
+    comment: "Missing input sanitization leading to injection vulnerability."
+```
+
+Do not use Markdown tables for the findings. Update `EPIC.md` `reviews.security` status.

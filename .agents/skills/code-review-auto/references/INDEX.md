@@ -6,6 +6,7 @@ When analyzing code for a review, evaluate the target files and use `view_file` 
 Based on the review focus (or automatically based on the complexity of the diff), use `view_file` to load the relevant evaluation principles:
 - **Security Context:** `.agents/skills/code-review-auto/references/code-review-principles/security-review.md`
 - **Logic & Execution Context:** `.agents/skills/code-review-auto/references/code-review-principles/logic-and-edge-cases.md`
+- **Architecture & Design Context:** `.agents/skills/code-review-auto/references/code-review-principles/architecture-and-code-smells.md`
 - **Performance Context:** `.agents/skills/code-review-auto/references/code-review-principles/performance-and-scale.md`
 - **Quality & Communication (Always Load):** `.agents/skills/code-review-auto/references/code-review-principles/agentic-quality.md`
 
