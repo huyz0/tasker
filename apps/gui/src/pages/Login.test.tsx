@@ -1,36 +1,36 @@
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { describe, it, expect, afterEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import LoginPage from './Login';
 
 describe('LoginPage Component', () => {
   afterEach(() => {
-    cleanup();
+    vi.unstubAllGlobals();
   });
 
-  it('should render the login card correctly', () => {
+  it('should render the page title and subtitle', () => {
     render(<LoginPage />);
-    expect(screen.getByText('Tasker')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Tasker' })).toBeDefined();
     expect(screen.getByText('Autonomous SDLC Platform')).toBeDefined();
-    expect(screen.getByText('Continue with Google')).toBeDefined();
   });
 
-  it('should trigger redirect to the backend auth endpoint when Google is clicked', () => {
-    // Scaffold: mock window.location.href changes using Object.defineProperty
-    const originalLocation = window.location;
-    // @ts-expect-error: Intentionally bypassing readonly for testing
-    delete window.location;
-    // @ts-expect-error: Bypassing string & Location type mismatch
-    window.location = { ...originalLocation, href: '' } as unknown as Location;
+  it('should render the Google login button', () => {
+    render(<LoginPage />);
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+  });
+
+  it('should redirect to the backend OAuth endpoint when the button is clicked', () => {
+    const location = { ...window.location, href: '' };
+    vi.stubGlobal('location', location);
 
     render(<LoginPage />);
-    
-    const loginButton = screen.getByText('Continue with Google');
-    fireEvent.click(loginButton);
-    
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+
     expect(window.location.href).toBe('/api/auth/google/login');
-    
-    // Restore window.location
-    // @ts-expect-error: Bypassing string & Location type mismatch
-    window.location = originalLocation as unknown as Location;
+  });
+
+  it('should only render a single button', () => {
+    render(<LoginPage />);
+    expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 });
+

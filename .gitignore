@@ -63,3 +63,7 @@ tsp-output/
 coverage/
 *.coverage
 *coverage*.out
+
+# Tmp
+.tmp
+.tmp/

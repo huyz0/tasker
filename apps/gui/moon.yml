@@ -18,6 +18,12 @@ tasks:
       - 'src/**/*'
       - 'tsconfig.json'
 
+  test:
+    command: 'bun run test:coverage'
+    inputs:
+      - 'src/**/*'
+      - 'vitest.config.ts'
+      - 'package.json'
 
   build:
     command: 'bun run build'
