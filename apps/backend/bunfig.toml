@@ -1,6 +1,13 @@
 [test]
 coverage = true
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "src/index.ts",
+  "src/db/db.ts",
+  "src/db/schema.*.ts",
+  "src/test/**"
+]
 
 [test.coverageThreshold]
 line = 80
-function = 70
+function = 80
