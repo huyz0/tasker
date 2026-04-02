@@ -17,6 +17,7 @@ Given a topic or feature name, autonomously research the codebase and product do
 - DO NOT deviate from `.specs/standards/epic-standard.md`.
 - DO NOT leave sections vague. Use concrete, actionable language derived from gathered context.
 - DO NOT duplicate scope already covered by existing epics in `.epics/`.
+- MUST explicitly mandate that the implementation MUST BE end-to-end and working. No mocked database logic or fake endpoints are allowed in the Definition of Done.
 - ALWAYS read product docs before drafting. Skipping context gathering is UNACCEPTABLE.
 - ALWAYS set `status: todo` — this skill defines only, it does NOT implement.
 - ALWAYS set irrelevant items in the frontmatter `designs`, `design_reviews`, or `reviews` blocks to `n/a` (e.g., set `ux: n/a` if the epic only targets backend architecture).

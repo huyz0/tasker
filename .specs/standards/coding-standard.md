@@ -31,6 +31,7 @@
 - **Strict TS**: `any` is forbidden. Use `unknown` or explicit types.
 - **Validation**: Validate ALL runtime boundary payloads with Zod before
   executing business logic.
+- **No Mocked Data**: Production code MUST NOT contain hardcoded mock data or fake implementations unless strictly designated as a mocked adapter for testing. End-to-End operations must connect to real data layers.
 - **Dead Code**: Ensure zero unused files/exports (Knip).
 - **Agent Rule**: AI Agents MUST physically run `npx moon check --all` in
   terminal to verify compilation before task completion.

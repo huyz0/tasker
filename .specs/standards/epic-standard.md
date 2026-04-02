@@ -43,6 +43,7 @@ Implementation strategy overview (or links to design docs).
 ### 5. Definition of Done
 
 Checklist of required outcomes (testing, deployment, features).
+**Strict Rule:** Implementations MUST be fully working, end-to-end logic. Hardcoded mocked responses or fake data layers are strictly forbidden.
 
 ### 6. Task Breakdown
 

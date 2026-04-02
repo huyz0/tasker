@@ -1,6 +1,6 @@
 tasks:
   test:
-    command: 'bun run vitest run'
+    command: 'bun run test'
     inputs:
       - 'src/**/*'
       - '**/*.test.ts'

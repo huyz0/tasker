@@ -15,6 +15,7 @@ Create a detailed, standardized Epic in `.epics/` aligning with `.specs/standard
 - ALWAYS use `AskUserQuestion` tool for inquiries.
 - DO NOT list questions simultaneously. Ask them sequentially 1 through 4.
 - DO NOT leave short answers as-is. Expand user input into professional markdown.
+- MUST explicitly specify in the Definition of Done that implementation MUST BE fully end-to-end and working (e.g. real database logic, no mocked endpoints).
 - DO NOT deviate from `.specs/standards/epic-standard.md`.
 - DO NOT output conversational filler ("I'll guide", "Great!", "Let's do this").
 - ALWAYS initialize the YAML `designs`, `design_reviews`, and `reviews` blocks correctly. If a specific phase component is completely irrelevant (e.g., `ux` for a pure backend migration), explicitly set it to `n/a` instead of `pending` across all applicable sections.

@@ -20,6 +20,6 @@ Provide an interactive, guided review of implemented code vs the project's codin
 # Instructions
 1. **Target:** Ask for the Epic ID to review code for. Wait for answer.
 2. **Review Focus:** Ask the developer what files or modules they refactored or created that they want extra eyes on. Wait for answer.
-3. **Analyze:** Read `.specs/standards/coding-standard.md` alongside the Vercel React Best Practices located at `.agents/skills/code-review/references/REACT-BEST-PRACTICES.md` and `.agents/skills/code-review/references/COMPOSITION-PATTERNS.md` using `view_file`. Review the code based on the developer's highlighted areas, enforcing strict composition over boolean antipatterns.
+3. **Analyze:** Read `.specs/standards/coding-standard.md` alongside the Vercel React Best Practices located at `.agents/skills/code-review/references/REACT-BEST-PRACTICES.md` and `.agents/skills/code-review/references/COMPOSITION-PATTERNS.md` using `view_file`. Review the code based on the developer's highlighted areas, enforcing strict composition over boolean antipatterns. You MUST explicitly verify that the code implements REAL business logic rather than returning hardcoded mock data, and reject it if it relies on mocks.
 4. **Determine Version:** Check `.epics/EPIC-<id>/reviews/` for existing `CODE-REVIEW-v*.md` files. Increment version.
 5. **Report:** Generate the review document at the configured `work-ledger.yml` path and update `EPIC.md` `reviews.code` status. Ask if they want you to help apply the suggestions.
