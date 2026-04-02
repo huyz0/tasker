@@ -4,5 +4,6 @@ export default defineConfig({
   schema: "./src/db/schema.sqlite.ts",
   out: "./drizzle-sqlite",
   dialect: "sqlite",
-  dbCredentials: { url: ".sqlite" }
+  dbCredentials: { url: ".data/local.sqlite" },
+  tablesFilter: ["!search_index*"]
 });

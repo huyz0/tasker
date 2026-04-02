@@ -1,13 +1,20 @@
 import { expect, test, describe, beforeAll } from "bun:test";
-import { setupDatabase } from "../../db/db";
+import { setupIntegrationTest } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq } from "drizzle-orm";
+import { createProjectsHandler, createProjectTemplatesHandler } from "./projects.handler";
 
-describe("Projects Service End-to-End Logic", () => {
+describe("Projects Handler Integration Logic", () => {
   let db: any;
+  let mockNc: any;
+  let pHandler: any;
+  let ptHandler: any;
+
   beforeAll(async () => {
-     process.env.STANDALONE = "true";
-     db = await setupDatabase("sqlite");
+     const setup = await setupIntegrationTest();
+     db = setup.db;
+     mockNc = setup.nc;
+     pHandler = createProjectsHandler(db, mockNc);
+     ptHandler = createProjectTemplatesHandler(db, mockNc);
      
      // Quick setup
      try {
@@ -27,31 +34,37 @@ describe("Projects Service End-to-End Logic", () => {
      }
   });
 
-  test("can insert a template and then a project", async () => {
-     const templateId = "pt-test-" + Date.now();
-     await db.insert(schemaSqlite.projectTemplates).values({
-        id: templateId,
-        orgId: "org-test",
-        name: "Test Template",
-        createdAt: new Date()
+  test("can insert a template and then a project via handlers", async () => {
+     const tResp = await ptHandler.createTemplate({
+         orgId: "org-test",
+         name: "Test Template",
+         description: "A test pt"
+     });
+     
+     expect(tResp.template.id).toBeDefined();
+     expect(tResp.template.name).toBe("Test Template");
+
+     const pResp = await pHandler.createProject({
+         orgId: "org-test",
+         templateId: tResp.template.id,
+         name: "Test Project",
+         ownerId: "user-test"
      });
 
-     const res = await db.select().from(schemaSqlite.projectTemplates).where(eq(schemaSqlite.projectTemplates.id, templateId));
-     expect(res.length).toBe(1);
-     expect(res[0].name).toBe("Test Template");
+     expect(pResp.project.id).toBeDefined();
+     expect(pResp.project.name).toBe("Test Project");
+     expect(mockNc.publishedMessages.map((m: any) => m.subject)).toContain("domain.project.created");
 
-     const projectId = "p-test-" + Date.now();
-     await db.insert(schemaSqlite.projects).values({
-        id: projectId,
-        orgId: "org-test",
-        templateId: templateId,
-        name: "Test Project",
-        ownerId: "user-test",
-        createdAt: new Date()
-     });
+     // Fetch project
+     const fetchProj = await pHandler.getProject({ id: pResp.project.id });
+     expect(fetchProj.project.name).toBe("Test Project");
 
-     const projRes = await db.select().from(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, projectId));
-     expect(projRes.length).toBe(1);
-     expect(projRes[0].name).toBe("Test Project");
+     // Fetch template
+     const fetchTpl = await ptHandler.getTemplate({ id: tResp.template.id });
+     expect(fetchTpl.template.name).toBe("Test Template");
+
+     // Test 404 throws
+     expect(pHandler.getProject({ id: "invalid-id" })).rejects.toThrow("not found");
+     expect(ptHandler.getTemplate({ id: "invalid-id" })).rejects.toThrow("not found");
   });
 });

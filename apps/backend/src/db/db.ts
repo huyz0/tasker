@@ -5,9 +5,9 @@ import mysql from "mysql2/promise";
 import * as schemaMysql from "./schema.mysql";
 import * as schemaSqlite from "./schema.sqlite";
 
-export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql") {
+export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlitePath: string = ".data/local.sqlite") {
   if (driver === "sqlite") {
-    const sqlite = new Database(".sqlite");
+    const sqlite = new Database(sqlitePath);
     
     // Automatic Migration & FTS5 Proof Of Concept Initialization
     sqlite.query(`

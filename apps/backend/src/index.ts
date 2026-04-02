@@ -1,25 +1,37 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
 import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
-import { healthHandler } from "./modules/health/health.handler";
-import { authHandler } from "./modules/auth/auth.handler";
-import { orgsHandler } from "./modules/orgs/orgs.handler";
-import { projectTemplatesHandler, projectsHandler } from "./modules/projects/projects.handler";
-import { tasksHandler } from "./modules/tasks/tasks.handler";
+import { createHealthHandler } from "./modules/health/health.handler";
+import { createAuthHandler } from "./modules/auth/auth.handler";
+import { createOrgsHandler } from "./modules/orgs/orgs.handler";
+import { createProjectTemplatesHandler, createProjectsHandler } from "./modules/projects/projects.handler";
+import { createTasksHandler } from "./modules/tasks/tasks.handler";
+import { setupDatabase } from "./db/db";
+import { connect as natsConnect } from "nats";
 
 // Bypassing network stack with local function execution logic
 export const localInProcessTransportRouter = (req: any) => {
    return { status: 200, message: "in-process override active" };
 };
 
+const isStandalone = process.env.STANDALONE === "true";
+const db = await setupDatabase(isStandalone ? "sqlite" : "mysql");
+
+let nc: any = null;
+try {
+  nc = await natsConnect({ servers: process.env.NATS_URL || "nats://localhost:4222" });
+} catch (e) {
+  // handled
+}
+
 const handler = connectNodeAdapter({
   routes: (router) => {
-    router.service(HealthService, healthHandler);
-    router.service(TaskTypeService, tasksHandler);
-    router.service(AuthService, authHandler);
-    router.service(OrgService, orgsHandler);
-    router.service(ProjectTemplateService, projectTemplatesHandler);
-    router.service(ProjectService, projectsHandler);
+    router.service(HealthService, createHealthHandler(db));
+    router.service(TaskTypeService, createTasksHandler(db, nc));
+    router.service(AuthService, createAuthHandler(db));
+    router.service(OrgService, createOrgsHandler(db, nc));
+    router.service(ProjectTemplateService, createProjectTemplatesHandler(db, nc));
+    router.service(ProjectService, createProjectsHandler(db, nc));
   },
 });
 

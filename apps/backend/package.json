@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "bunx drizzle-kit push --config=drizzle.sqlite.config.ts && bun test",
+    "test": "mkdir -p .data && bunx drizzle-kit push --force --config=drizzle.sqlite.config.ts && bun test",
     "build:standalone": "bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts"
   },
   "devDependencies": {
