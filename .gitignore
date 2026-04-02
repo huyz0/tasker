@@ -54,3 +54,7 @@ tsp-output/
 # moon
 .moon/cache
 .moon/docker
+
+# GitNexus
+.gitnexus
+.gitnexus-watch.pid
