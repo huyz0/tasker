@@ -246,3 +246,85 @@ service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
 }
+
+message Folder {
+  string id = 1;
+  string projectId = 2;
+  string parentId = 3;
+  string name = 4;
+}
+
+message Artifact {
+  string id = 1;
+  string folderId = 2;
+  string name = 3;
+  string description = 4;
+  string content = 5;
+}
+
+message TaskArtifactLink {
+  string id = 1;
+  string taskId = 2;
+  string artifactId = 3;
+}
+
+message CreateFolderRequest {
+  string projectId = 1;
+  string parentId = 2;
+  string name = 3;
+}
+
+message CreateFolderResponse {
+  Folder folder = 1;
+}
+
+message CreateArtifactRequest {
+  string folderId = 1;
+  string name = 2;
+  string description = 3;
+  string content = 4;
+}
+
+message CreateArtifactResponse {
+  Artifact artifact = 1;
+}
+
+message LinkTaskArtifactRequest {
+  string taskId = 1;
+  string artifactId = 2;
+}
+
+message LinkTaskArtifactResponse {
+  TaskArtifactLink link = 1;
+}
+
+service ArtifactService {
+  rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
+  rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
+  rpc LinkTaskArtifact(LinkTaskArtifactRequest) returns (LinkTaskArtifactResponse);
+}
+
+message Comment {
+  string id = 1;
+  string entityId = 2;
+  string entityType = 3;
+  string userId = 4;
+  string agentId = 5;
+  string content = 6;
+}
+
+message CreateCommentRequest {
+  string entityId = 1;
+  string entityType = 2;
+  string userId = 3;
+  string agentId = 4;
+  string content = 5;
+}
+
+message CreateCommentResponse {
+  Comment comment = 1;
+}
+
+service CommentService {
+  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+}

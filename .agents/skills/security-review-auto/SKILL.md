@@ -16,6 +16,7 @@ Provide an autonomous static analysis and architectural security review of newly
 - Invoke the **standards-inject-auto** skill to explicitly load security standards.
 - ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.security`. Find the highest existing version [N].
 - ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
+- **Strict Approval Threshold:** A review may ONLY be `approved` if ALL findings are `Low` severity (trivial). If ANY finding is `Medium`, `High`, or `Critical`, the review MUST be `rejected`. There are no exceptions — do not approve with non-trivial findings noted as "acceptable" or "non-blocking".
 - ALWAYS update `EPIC.md` YAML frontmatter `reviews.security` to `approved` or `rejected`.
 
 # Instructions

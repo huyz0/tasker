@@ -111,3 +111,36 @@ export const taskReviewers = mysqlTable("task_reviewers", {
   userId: varchar("user_id", { length: 256 }).notNull().references(() => users.id),
 });
 
+
+export const folders = mysqlTable("folders", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  projectId: varchar("project_id", { length: 256 }).notNull().references(() => projects.id),
+  parentId: varchar("parent_id", { length: 256 }),
+  name: varchar("name", { length: 256 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const artifacts = mysqlTable("artifacts", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  folderId: varchar("folder_id", { length: 256 }).notNull().references(() => folders.id),
+  name: varchar("name", { length: 256 }).notNull(),
+  description: varchar("description", { length: 1024 }),
+  content: varchar("content", { length: 8192 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const taskArtifactLinks = mysqlTable("task_artifact_links", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
+  artifactId: varchar("artifact_id", { length: 256 }).notNull().references(() => artifacts.id),
+});
+
+export const comments = mysqlTable("comments", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  entityId: varchar("entity_id", { length: 256 }).notNull(),
+  entityType: mysqlEnum("entity_type", ['task', 'artifact']).notNull(),
+  userId: varchar("user_id", { length: 256 }).references(() => users.id),
+  agentId: varchar("agent_id", { length: 256 }).references(() => agents.id),
+  content: varchar("content", { length: 4096 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

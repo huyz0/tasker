@@ -111,3 +111,36 @@ export const taskReviewers = sqliteTable("task_reviewers", {
   userId: text("user_id").notNull().references(() => users.id),
 });
 
+
+export const folders = sqliteTable("folders", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id),
+  parentId: text("parent_id"),
+  name: text("name").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const artifacts = sqliteTable("artifacts", {
+  id: text("id").primaryKey(),
+  folderId: text("folder_id").notNull().references(() => folders.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  content: text("content"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const taskArtifactLinks = sqliteTable("task_artifact_links", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => tasks.id),
+  artifactId: text("artifact_id").notNull().references(() => artifacts.id),
+});
+
+export const comments = sqliteTable("comments", {
+  id: text("id").primaryKey(),
+  entityId: text("entity_id").notNull(),
+  entityType: text("entity_type").notNull(),
+  userId: text("user_id").references(() => users.id),
+  agentId: text("agent_id").references(() => agents.id),
+  content: text("content").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});

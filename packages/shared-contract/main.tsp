@@ -266,3 +266,85 @@ interface TaskService {
   createTask(request: CreateTaskRequest): CreateTaskResponse;
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
 }
+
+// ==== Artifacts ====
+
+model Folder {
+  @field(1) id: string;
+  @field(2) projectId: string;
+  @field(3) parentId: string;
+  @field(4) name: string;
+}
+
+model Artifact {
+  @field(1) id: string;
+  @field(2) folderId: string;
+  @field(3) name: string;
+  @field(4) description: string;
+  @field(5) content: string;
+}
+
+model TaskArtifactLink {
+  @field(1) id: string;
+  @field(2) taskId: string;
+  @field(3) artifactId: string;
+}
+
+model CreateFolderRequest {
+  @field(1) projectId: string;
+  @field(2) parentId: string;
+  @field(3) name: string;
+}
+model CreateFolderResponse {
+  @field(1) folder: Folder;
+}
+
+model CreateArtifactRequest {
+  @field(1) folderId: string;
+  @field(2) name: string;
+  @field(3) description: string;
+  @field(4) content: string;
+}
+model CreateArtifactResponse {
+  @field(1) artifact: Artifact;
+}
+
+model LinkTaskArtifactRequest {
+  @field(1) taskId: string;
+  @field(2) artifactId: string;
+}
+model LinkTaskArtifactResponse {
+  @field(1) link: TaskArtifactLink;
+}
+
+interface ArtifactService {
+  createFolder(request: CreateFolderRequest): CreateFolderResponse;
+  createArtifact(request: CreateArtifactRequest): CreateArtifactResponse;
+  linkTaskArtifact(request: LinkTaskArtifactRequest): LinkTaskArtifactResponse;
+}
+
+// ==== Comments ====
+
+model Comment {
+  @field(1) id: string;
+  @field(2) entityId: string;
+  @field(3) entityType: string;
+  @field(4) userId: string;
+  @field(5) agentId: string;
+  @field(6) content: string;
+}
+
+model CreateCommentRequest {
+  @field(1) entityId: string;
+  @field(2) entityType: string;
+  @field(3) userId: string; // Optional
+  @field(4) agentId: string; // Optional
+  @field(5) content: string;
+}
+model CreateCommentResponse {
+  @field(1) comment: Comment;
+}
+
+interface CommentService {
+  createComment(request: CreateCommentRequest): CreateCommentResponse;
+}

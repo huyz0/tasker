@@ -16,6 +16,7 @@ Autonomously evaluate the written source code within an epic's branch or scope a
 - Invoke the **standards-inject-auto** skill to dynamically select and load relevant project standards.
 - ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.code`. Find the next highest version number [N].
 - ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
+- **Strict Approval Threshold:** A review may ONLY be `approved` if ALL findings are `Low` severity (trivial). If ANY finding is `Medium`, `High`, or `Critical`, the review MUST be `rejected`. There are no exceptions — do not approve with non-trivial findings noted as "acceptable" or "non-blocking".
 - ALWAYS update `EPIC.md` YAML frontmatter `reviews.code` to `approved` or `rejected`.
 
 # Instructions
