@@ -41,8 +41,14 @@ Because AI agents and humans interact fundamentally differently, the CLI must pr
   - **Schema Introspection**: The CLI acts as its own documentation. Agents can run `cli schema [cmd]` to introspect exactly what is accepted at runtime without costing token limits.
   - **Context Window Discipline**: Support for strict field masks (`--fields`) and NDJSON pagination (`--page-all`) ensures AI agents do not blow their LLM context window limits reading large data dumps.
   - **Input Hardening against Hallucinations**: Zero-trust defense-in-depth on agent inputs enforcing strict sanitization specifically against adversarial edge-cases (e.g., double-url-encoding, rejected path traversals `../../.ssh`, hallucinated query parameters embedded in resource IDs).
-  - **Safety Rails (Dry-Run)**: Support for a `--dry-run` flag is strictly enforced, allowing agents to safely validate mutation requests before committing actual actions.
   - **Multi-Surface Accessibility**: Rather than just `stdio`, the CLI is simultaneously exposed via the **Model Context Protocol (MCP)** using JSON-RPC, or as a plugin/extension.
+
+### Hierarchical Configuration Strategy
+To support both zero-dependency portable executables and highly scalable cloud-native deployments, the application employs a rigid hierarchical configuration loader natively validated by Zod schemas at runtime:
+- **Cloud-Native / Production**: Fully relies on `process.env` (e.g., K8s ConfigMaps/Secrets) as the primary source of truth, providing 12-factor app compliance.
+- **Portable Executable / Local**: Seamlessly supports `.env` files dynamically loaded by Bun from the CWD next to the binary, allowing zero-friction user configuration without managing system environments.
+- **Runtime Validation**: The application "Fails Fast" strictly if parsing the Zod config schema fails, providing clear and precise error documentation to end users.
+
 
 ## Deployment View
 - **Packaging & Portability**: The architecture leverages `bun build --compile` natively with `bun:sqlite` to package the frontend and backend into a single, highly portable, easy-to-run executable with zero external database dependencies. In this standalone mode, frontend-to-backend network overhead is eliminated; communication is routed via lightweight, in-process function calls that still rigorously align with the defined Connect-RPC API contracts.

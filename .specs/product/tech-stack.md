@@ -18,6 +18,7 @@
 - **Protocol**: gRPC over HTTPS (via Connect-RPC for Streaming). For single-bundle, local execution, this dynamically bypasses the network stack to use lightweight, zero-latency **in-process function calls**, whilst strictly honoring the exact same TypeSpec/Connect-RPC message contracts.
 - **Messaging**: NATS for Scalable Pub/Sub
 - **Authentication**: OAuth2.1 (Google Auth)
+- **Configuration**: Zod runtime schema validation over `.env` / `process.env` files for unified Cloud/Portable environments.
 
 ## CLI (Command Line Interface)
 - **Architecture**: Dual-Surface (Human DX vs Agent DX)
