@@ -19,6 +19,18 @@ interface HealthService {
   ping(request: PingRequest): PingResponse;
 }
 
+// ==== Common Pagination Models ====
+model PageRequest {
+  @field(1) limit?: int32;
+  @field(2) cursor?: string;
+  @field(3) filter?: string;
+  @field(4) sort?: string;
+}
+
+model PageResponse {
+  @field(1) nextCursor?: string;
+}
+
 // ==== IAM Models ====
 
 model User {
@@ -47,9 +59,12 @@ interface AuthService {
   getIdentity(request: GetIdentityRequest): GetIdentityResponse;
 }
 
-model ListOrgsRequest {}
+model ListOrgsRequest {
+  @field(1) page?: PageRequest;
+}
 model ListOrgsResponse {
   @field(1) organizations: Organization[];
+  @field(2) page?: PageResponse;
 }
 
 model SeedOrgRequest {
@@ -181,9 +196,20 @@ model CreateProjectResponse {
   @field(1) project: Project;
 }
 
+model ListProjectsRequest {
+  @field(1) orgId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListProjectsResponse {
+  @field(1) projects: Project[];
+  @field(2) page?: PageResponse;
+}
+
 interface ProjectService {
   getProject(request: GetProjectRequest): GetProjectResponse;
   createProject(request: CreateProjectRequest): CreateProjectResponse;
+  listProjects(request: ListProjectsRequest): ListProjectsResponse;
 }
 
 // ==== Agent Models ====
@@ -262,9 +288,20 @@ model AssignTaskResponse {
   @field(1) success: boolean;
 }
 
+model ListTasksRequest {
+  @field(1) projectId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListTasksResponse {
+  @field(1) tasks: Task[];
+  @field(2) page?: PageResponse;
+}
+
 interface TaskService {
   createTask(request: CreateTaskRequest): CreateTaskResponse;
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
+  listTasks(request: ListTasksRequest): ListTasksResponse;
 }
 
 // ==== Artifacts ====
@@ -317,10 +354,32 @@ model LinkTaskArtifactResponse {
   @field(1) link: TaskArtifactLink;
 }
 
+model ListArtifactsRequest {
+  @field(1) folderId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListArtifactsResponse {
+  @field(1) artifacts: Artifact[];
+  @field(2) page?: PageResponse;
+}
+
+model ListFoldersRequest {
+  @field(1) projectId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListFoldersResponse {
+  @field(1) folders: Folder[];
+  @field(2) page?: PageResponse;
+}
+
 interface ArtifactService {
   createFolder(request: CreateFolderRequest): CreateFolderResponse;
   createArtifact(request: CreateArtifactRequest): CreateArtifactResponse;
   linkTaskArtifact(request: LinkTaskArtifactRequest): LinkTaskArtifactResponse;
+  listArtifacts(request: ListArtifactsRequest): ListArtifactsResponse;
+  listFolders(request: ListFoldersRequest): ListFoldersResponse;
 }
 
 // ==== Comments ====
@@ -345,6 +404,18 @@ model CreateCommentResponse {
   @field(1) comment: Comment;
 }
 
+model ListCommentsRequest {
+  @field(1) entityId: string;
+  @field(2) entityType: string;
+  @field(3) page?: PageRequest;
+}
+
+model ListCommentsResponse {
+  @field(1) comments: Comment[];
+  @field(2) page?: PageResponse;
+}
+
 interface CommentService {
   createComment(request: CreateCommentRequest): CreateCommentResponse;
+  listComments(request: ListCommentsRequest): ListCommentsResponse;
 }

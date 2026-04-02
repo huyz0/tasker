@@ -1,6 +1,8 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
+import { eq, and } from "drizzle-orm";
+import { decodeCursor, encodeCursor, buildCursorPaginationWhere, buildPaginationOrderBy } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
 
@@ -92,6 +94,60 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       await insertRecord(db, links, payload, isStandalone, false);
       return { link: payload };
+    },
+    async listFolders(req: any) {
+      if (!req.projectId) throw new Error("projectId is required");
+      const page = req.page || {};
+      const limit = Math.min(page.limit || 50, 100);
+      const cursorData = decodeCursor(page.cursor);
+
+      const flds = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
+      let query = db.select().from(flds).where(eq((flds as any).projectId, req.projectId)).limit(limit) as any;
+
+      query = query.orderBy(...buildPaginationOrderBy(flds.createdAt as any, flds.id as any));
+      const whereClause = buildCursorPaginationWhere(cursorData, flds.createdAt as any, flds.id as any);
+      if (whereClause) {
+        query = db.select().from(flds).where(and(eq((flds as any).projectId, req.projectId), whereClause)).limit(limit).orderBy(...buildPaginationOrderBy(flds.createdAt as any, flds.id as any)) as any;
+      }
+
+      const result = await query;
+      const lastItem = result[result.length - 1];
+      const nextCursor = lastItem && result.length === limit ? encodeCursor((lastItem.createdAt instanceof Date ? lastItem.createdAt : new Date(lastItem.createdAt)).getTime(), lastItem.id) : undefined;
+
+      return {
+        folders: result.map((f: any) => ({
+          ...f,
+          createdAt: f.createdAt instanceof Date ? f.createdAt.toISOString() : f.createdAt,
+        })),
+        page: { nextCursor },
+      };
+    },
+    async listArtifacts(req: any) {
+      if (!req.folderId) throw new Error("folderId is required");
+      const page = req.page || {};
+      const limit = Math.min(page.limit || 50, 100);
+      const cursorData = decodeCursor(page.cursor);
+
+      const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+      let query = db.select().from(arts).where(eq((arts as any).folderId, req.folderId)).limit(limit) as any;
+
+      query = query.orderBy(...buildPaginationOrderBy(arts.createdAt as any, arts.id as any));
+      const whereClause = buildCursorPaginationWhere(cursorData, arts.createdAt as any, arts.id as any);
+      if (whereClause) {
+        query = db.select().from(arts).where(and(eq((arts as any).folderId, req.folderId), whereClause)).limit(limit).orderBy(...buildPaginationOrderBy(arts.createdAt as any, arts.id as any)) as any;
+      }
+
+      const result = await query;
+      const lastItem = result[result.length - 1];
+      const nextCursor = lastItem && result.length === limit ? encodeCursor((lastItem.createdAt instanceof Date ? lastItem.createdAt : new Date(lastItem.createdAt)).getTime(), lastItem.id) : undefined;
+
+      return {
+        artifacts: result.map((a: any) => ({
+          ...a,
+          createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : a.createdAt,
+        })),
+        page: { nextCursor },
+      };
     },
   };
 };

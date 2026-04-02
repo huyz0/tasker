@@ -17,6 +17,7 @@ Provide an autonomous review of the UX designs and user flows generated for an e
 - ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.ux`. Find the highest existing version [N].
 - ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
 - ALWAYS update `EPIC.md` YAML frontmatter `reviews.ux` to `approved` or `rejected`.
+- ALWAYS verify that mockup images are properly localized in the project and embedded using relative paths in the markdown. Reject if any image points to an absolute agent/artifact path.
 
 # Instructions
 1. **Receive Target:** Accept epic ID from user.

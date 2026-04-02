@@ -20,7 +20,8 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
 - DO NOT leave tasks incomplete. If blocked, document the blocker and move to the next task.
 - ALWAYS update the epic's `status` frontmatter to `in-progress` when starting and `done` when all tasks are complete.
 - ALWAYS check each task off (`- [x]`) in the EPIC.md as it is completed.
-- ALWAYS run relevant linting, type-checking, and tests after implementation.
+# Subagent Configuration
+- **Task Execution**: Spawn subagents using a **Standard Coding Model** tier optimized for code generation.
 
 # Instructions
 1. **Receive Target:** Accept the epic identifier from the user (e.g., `EPIC-0002` or full path). If ambiguous, list available epics from `.epics/` and ask user to confirm.
@@ -61,8 +62,12 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
    - Commit the corrected EPIC.md state before moving to implementation.
 7. **Update Status:**
    - Set epic frontmatter `status: in-progress`.
-8. **Execute Task Breakdown:**
-   - Process `not-started` and `partially-done` tasks. Where tasks are completely independent (e.g., disjoint backend vs frontend tasks), spawn concurrent sub-agents to implement them in parallel. Otherwise, process them sequentially to avoid merge conflicts.
+8. **Execute Task Breakdown**:
+   - Process `not-started` and `partially-done` tasks using the **Standard Coding Model**.
+   - **Path Isolation Protocol for Parallelism**: Before dispatching, isolate tasks into execution groups based on the actual file paths they mutate.
+     - If tasks target entirely disjoint paths (e.g., Task A modifies `apps/gui/` and Task B modifies `apps/backend/src/`), spawn sub-agents to execute them IN PARALLEL.
+     - Ensure the Orchestrator awaits all parallel branches before executing dependent tasks.
+     - If tasks cannot be strictly path-isolated, process them SEQUENTIALLY to prevent merge conflicts.
    - Skip tasks already reconciled as `fully-done`.
    - For each task:
      a. Plan the implementation approach (for `partially-done`, plan only the remaining work).

@@ -1,6 +1,7 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
+import { decodeCursor, encodeCursor, buildCursorPaginationWhere, buildPaginationOrderBy } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
 
@@ -35,14 +36,30 @@ const insertRecord = async (
 export const createOrgsHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
-    async listOrgs(req: unknown) {
+    async listOrgs(req: any) {
+      const page = req.page || {};
+      const limit = Math.min(page.limit || 50, 100);
+      const cursorData = decodeCursor(page.cursor);
+
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
-      const result = await db.select().from(orgs);
+      let query = db.select().from(orgs).limit(limit) as any;
+      query = query.orderBy(...buildPaginationOrderBy(orgs.createdAt as any, orgs.id as any));
+
+      const whereClause = buildCursorPaginationWhere(cursorData, orgs.createdAt as any, orgs.id as any);
+      if (whereClause) {
+        query = query.where(whereClause);
+      }
+
+      const result = await query;
+      const lastItem = result[result.length - 1];
+      const nextCursor = lastItem && result.length === limit ? encodeCursor((lastItem.createdAt instanceof Date ? lastItem.createdAt : new Date(lastItem.createdAt)).getTime(), lastItem.id) : undefined;
+
       return {
         organizations: result.map((o: any) => ({
           ...o,
           createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : o.createdAt,
         })),
+        page: { nextCursor },
       };
     },
     async seedOrg(req: unknown) {

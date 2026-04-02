@@ -17,6 +17,8 @@ Given an epic, autonomously produce UI mockup images and UX flow diagrams coveri
 - DO NOT skip reading UI/UX and frontend standards before designing.
 - DO NOT produce vague wireframes. Mockups MUST be high-fidelity with realistic content, proper typography, and color palette from the design system.
 - DO NOT use placeholder images. Use the `generate_image` tool for every mockup.
+- ALWAYS transfer generated mockup images from the agent's temporary artifact folder to the project repository folder (`.epics/EPIC-<id>/designs/mockups/`) using terminal commands.
+- MUST NOT reference absolute agent artifact paths in your markdown files. Use only relative project paths.
 - DO NOT generate a single monolithic mockup. Produce one image per screen/view.
 - ALWAYS follow accessibility standards (WCAG 2.1 AA) in mockup designs.
 - ALWAYS incorporate AI agent trust and transparency best practices (e.g., expose AI thought logs, provide clear error-handling/manual overrides, close feedback loops).
@@ -57,11 +59,11 @@ Given an epic, autonomously produce UI mockup images and UX flow diagrams coveri
      - Proper visual hierarchy, spacing, and typography.
      - Realistic sample data (not "Lorem ipsum" — use domain-relevant content).
      - Responsive layout consideration (design for desktop primary, note mobile adaptations).
-   - Save each mockup image to `.epics/EPIC-<id>/designs/mockups/`.
+   - The `generate_image` tool outputs to a temporary directory. You MUST copy these files into `.epics/EPIC-<id>/designs/mockups/` using a terminal command.
    - Naming: `<NN>-<kebab-case-screen-name>.webp` (e.g., `01-login-page.webp`).
 8. **Compose Design Document:**
    - Create `.epics/EPIC-<id>/designs/UX-DESIGN.md` following the Output Format below.
-   - Embed all mockup images and Mermaid diagrams inline.
+   - Embed all mockup images and Mermaid diagrams inline. Ensure image links use relative paths pointing to the copied files in `./mockups/`, NOT temporary artifact paths.
    - Include interaction notes, accessibility callouts, and component mapping.
 9. **Confirmation:**
    - Output the design package path and a summary of screens/flows produced.

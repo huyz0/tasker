@@ -1,7 +1,8 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { decodeCursor, encodeCursor, buildCursorPaginationWhere, buildPaginationOrderBy } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
 
@@ -104,10 +105,37 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         description: parsed.description,
       };
 
-      await db.insert(tasks).values(payload);
+      await insertRecord(db, tasks, payload, isStandalone, true);
 
       if (nc) nc.publish("domain.task.created", Buffer.from(JSON.stringify(payload)));
       return { task: payload };
+    },
+    async listTasks(req: any) {
+      if (!req.projectId) throw new Error("projectId is required");
+      const page = req.page || {};
+      const limit = Math.min(page.limit || 50, 100);
+      const cursorData = decodeCursor(page.cursor);
+
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      let query = db.select().from(tasks).where(eq((tasks as any).projectId, req.projectId)).limit(limit) as any;
+
+      query = query.orderBy(...buildPaginationOrderBy(tasks.createdAt as any, tasks.id as any));
+      const whereClause = buildCursorPaginationWhere(cursorData, tasks.createdAt as any, tasks.id as any);
+      if (whereClause) {
+        query = db.select().from(tasks).where(and(eq((tasks as any).projectId, req.projectId), whereClause)).limit(limit).orderBy(...buildPaginationOrderBy(tasks.createdAt as any, tasks.id as any)) as any;
+      }
+
+      const result = await query;
+      const lastItem = result[result.length - 1];
+      const nextCursor = lastItem && result.length === limit ? encodeCursor((lastItem.createdAt instanceof Date ? lastItem.createdAt : new Date(lastItem.createdAt)).getTime(), lastItem.id) : undefined;
+
+      return {
+        tasks: result.map((t: any) => ({
+          ...t,
+          createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
+        })),
+        page: { nextCursor },
+      };
     },
     async assignTask(req: unknown) {
       const parsed = AssignTaskSchema.parse(req);

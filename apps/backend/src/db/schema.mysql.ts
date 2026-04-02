@@ -96,6 +96,7 @@ export const tasks = mysqlTable("tasks", {
   title: varchar("title", { length: 512 }).notNull(),
   status: varchar("status", { length: 256 }).notNull(),
   description: varchar("description", { length: 4096 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const taskAssignments = mysqlTable("task_assignments", {

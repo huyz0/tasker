@@ -21,6 +21,10 @@ Dispatch autonomous sub-agent advisors to independently discover, propose, and s
 - ALWAYS use the scoring scale and weights from `references/scoring-rubric.md`.
 - ALWAYS maximize parallelism — dispatch all 8 advisors simultaneously in each round.
 
+# Subagent Configuration
+- **Advisors (Round 1 & 2)**: Use a **Fast / Efficient Model** tier for high-speed parallel execution.
+- **Moderator (Merge & Synthesis)**: Use an **Advanced Reasoning Model** tier to synthesize and resolve conflicts.
+
 # Instructions
 
 ## Phase 1: Precondition Check
@@ -31,7 +35,7 @@ Dispatch autonomous sub-agent advisors to independently discover, propose, and s
 
 ## Phase 2: Round 1 — Parallel Proposal (All 8 Advisors)
 
-4. **Dispatch all 8 advisor sub-agents IN PARALLEL.** Each sub-agent runs independently with its own fresh context window. The orchestrator provides ONLY the following in each sub-agent's prompt:
+4. **Dispatch all 8 advisor sub-agents IN PARALLEL.** Use the **Fast / Efficient Model** tier. Each sub-agent runs independently with its own fresh context window. The orchestrator provides ONLY the following in each sub-agent's prompt:
 
    **Sub-agent prompt template (Round 1):**
    ```
@@ -65,7 +69,7 @@ Dispatch autonomous sub-agent advisors to independently discover, propose, and s
 
 ## Phase 3: Round 1.5 — Moderator Merge
 
-6. **Dispatch a Moderator sub-agent** with all 8 Round 1 assessments as input:
+6. **Dispatch a Moderator sub-agent** using the **Advanced Reasoning Model** tier, with all 8 Round 1 assessments as input:
 
    **Moderator prompt (Phase A — Merge):**
    ```
@@ -88,7 +92,7 @@ Dispatch autonomous sub-agent advisors to independently discover, propose, and s
 
 ## Phase 4: Round 2 — Parallel Final Scoring (All 8 Advisors)
 
-8. **Dispatch all 8 advisor sub-agents IN PARALLEL again.** This time, each sub-agent receives the merged candidate list and MUST score ALL candidates on it (not just the ones it originally proposed).
+8. **Dispatch all 8 advisor sub-agents IN PARALLEL again.** Use the **Fast / Efficient Model** tier. This time, each sub-agent receives the merged candidate list and MUST score ALL candidates on it (not just the ones it originally proposed).
 
    **Sub-agent prompt template (Round 2):**
    ```
@@ -115,7 +119,7 @@ Dispatch autonomous sub-agent advisors to independently discover, propose, and s
 
 ## Phase 5: Final Synthesis — Moderator
 
-10. **Dispatch a Moderator sub-agent** with all 8 Round 2 final assessments:
+10. **Dispatch a Moderator sub-agent** using the **Advanced Reasoning Model** tier, with all 8 Round 2 final assessments:
 
     **Moderator prompt (Phase B — Synthesis):**
     ```

@@ -96,6 +96,7 @@ export const tasks = sqliteTable("tasks", {
   title: text("title").notNull(),
   status: text("status").notNull(),
   description: text("description"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
 export const taskAssignments = sqliteTable("task_assignments", {

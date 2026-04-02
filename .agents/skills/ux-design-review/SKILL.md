@@ -16,6 +16,7 @@ Provide an interactive, guided review of the proposed UX designs and user flows,
 - ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.ux`. Find the highest existing version [N].
 - ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
 - ALWAYS update `EPIC.md` YAML frontmatter `reviews.ux` to `approved` or `rejected`.
+- ALWAYS verify that mockup images are embedded with relative project paths and the files exist locally in the project repository, NOT in temporary agent/artifact directories. Reject if files are not fully localized.
 
 # Instructions
 1. **Target:** Ask for the Epic ID to review designs for. Wait for answer.
