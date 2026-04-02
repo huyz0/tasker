@@ -40,7 +40,7 @@ const SENTINEL = resolve(SKILL_DIR, 'node_modules', '.install-done');
 if (!existsSync(SENTINEL)) {
   process.stderr.write(C.yellow('First run: installing dependencies into skill directory…\n'));
   execSync(
-    `npm install --prefix "${SKILL_DIR}" --no-package-lock --no-audit --no-fund`,
+    `bun install --cwd "${SKILL_DIR}"`,
     { stdio: 'inherit', cwd: SKILL_DIR }
   );
   execSync(`touch "${SENTINEL}"`);

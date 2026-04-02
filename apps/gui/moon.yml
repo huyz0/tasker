@@ -6,26 +6,26 @@ dependsOn:
 
 tasks:
   lint:
-    command: 'npm run lint'
+    command: 'bun run lint'
     inputs:
       - 'src/**/*'
       - 'package.json'
       - 'eslint.config.js'
 
   typecheck:
-    command: 'npx tsc --noEmit'
+    command: 'bunx tsc --noEmit'
     inputs:
       - 'src/**/*'
       - 'tsconfig.json'
 
 
   build:
-    command: 'npm run build'
+    command: 'bun run build'
     inputs:
       - 'src/**/*'
       - 'index.html'
       - 'vite.config.*'
       - 'package.json'
-      - 'package-lock.json'
+      - 'bun.lockb'
     outputs:
       - 'dist'

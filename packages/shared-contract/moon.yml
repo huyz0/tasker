@@ -3,12 +3,12 @@ language: system
 
 tasks:
   format:
-    command: 'npx tsp format --check "**/*.tsp"'
+    command: 'bunx tsp format --check "**/*.tsp"'
     inputs:
       - '**/*.tsp'
 
   compile:
-    script: 'npx tsp compile main.tsp && npx buf generate'
+    script: 'bunx tsp compile main.tsp && bunx buf generate'
     inputs:
       - '**/*.tsp'
       - 'package.json'

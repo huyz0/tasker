@@ -36,7 +36,7 @@ process.on('exit', () => {
 
 console.log('Starting initial GitNexus analysis...');
 
-const runner = process.versions.bun ? 'bunx' : 'npx';
+const runner = 'bunx';
 const analyzeArgs = process.versions.bun ? ['--bun', 'gitnexus', 'analyze'] : ['--yes', 'gitnexus', 'analyze'];
 
 const analyze = spawn(runner, analyzeArgs, { stdio: 'inherit', shell: true });

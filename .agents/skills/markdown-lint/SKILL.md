@@ -19,7 +19,7 @@ Run the bundled Node.js linting script against one or more Markdown files and su
 - ALWAYS exit with a non-zero status code when any error is found so CI/CD pipelines fail correctly.
 
 # Context
-The script at `.agents/skills/markdown-lint/scripts/lint-markdown.mjs` auto-installs its own dependencies (`markdownlint-cli2`, `@a24z/mermaid-parser`, `glob`) on first run via `npm install --no-save`. No manual setup is required.
+The script at `.agents/skills/markdown-lint/scripts/lint-markdown.mjs` auto-installs its own dependencies (`markdownlint-cli2`, `@a24z/mermaid-parser`, `glob`) on first run via `bun install`. No manual setup is required.
 
 Exit codes from the script:
 - `0` – all checks passed

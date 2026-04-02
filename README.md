@@ -66,8 +66,8 @@ This project utilizes [Moonrepo](https://moonrepo.dev/) as its polyglot build sy
 You must install the Moon CLI globally. This will also install `proto`.
 
 ```bash
-# Using npm
-npm install -g @moonrepo/cli
+# Using bun
+bun install -g @moonrepo/cli
 
 # OR using the installation script (Mac/Linux)
 curl -fsSL https://moonrepo.dev/install/moon.sh | bash
