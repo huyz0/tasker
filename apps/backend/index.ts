@@ -59,35 +59,116 @@ const handler = connectNodeAdapter({
 
     router.service(TaskTypeService, {
       async getTaskType(req: any) {
+        const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+        const result = await (db as any)
+          .select()
+          .from(types)
+          .where(eq((types as any).id, req.id))
+          .limit(1);
+
+        if (!result || result.length === 0) {
+          throw new Error("unauthenticated or not found");
+        }
+
+        const taskType = result[0];
+        
+        // Fetch statuses
+        const statusesSchema = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
+        const statuses = await (db as any)
+          .select()
+          .from(statusesSchema)
+          .where(eq((statusesSchema as any).taskTypeId, req.id));
+
+        // Fetch transitions
+        const transitionsSchema = isStandalone ? schemaSqlite.taskStatusTransitions : schemaMysql.taskStatusTransitions;
+        const transitions = await (db as any)
+          .select()
+          .from(transitionsSchema)
+          .where(eq((transitionsSchema as any).taskTypeId, req.id));
+
         return {
-          taskType: { id: req.id, orgId: "org", projectId: "proj", name: "Type", createdAt: "now" },
-          statuses: [],
-          transitions: []
+          taskType: { ...taskType, createdAt: taskType.createdAt instanceof Date ? taskType.createdAt.toISOString() : taskType.createdAt },
+          statuses: statuses,
+          transitions: transitions
         };
       },
       async createTaskType(req: any) {
-        return {
-          taskType: { id: "new-id", orgId: req.orgId, projectId: req.projectId, name: req.name, createdAt: "now" }
+        const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+        const newId = "tt-" + Date.now().toString();
+        const payload = {
+          id: newId,
+          orgId: req.orgId,
+          projectId: req.projectId || null,
+          name: req.name
         };
+
+        if (isStandalone) {
+          await (db as any).insert(types).values({ ...payload, createdAt: new Date() });
+        } else {
+          await (db as any).insert(types).values(payload); // mysql will handle defaultNow
+        }
+
+        const taskTypeResp = { ...payload, createdAt: new Date().toISOString() };
+
+        if (nc) {
+          nc.publish("domain.task_type.created", Buffer.from(JSON.stringify(payload)));
+        }
+
+        return { taskType: taskTypeResp };
       }
     });
 
     router.service(AuthService, {
       async getIdentity(req: any) {
-        return {
-          user: { id: "user-1", email: "seed@tasker", name: "Seed Admin", avatarUrl: "", createdAt: Date.now().toString() }
-        };
+        const usersTable = isStandalone ? schemaSqlite.users : schemaMysql.users;
+        const result = await (db as any).select().from(usersTable).limit(1);
+        if (!result || result.length === 0) {
+           return { user: { id: "user-1", email: "seed@tasker", name: "Seed Admin", avatarUrl: "", createdAt: new Date().toISOString() } };
+        }
+        const u = result[0];
+        return { user: { ...u, createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : u.createdAt } };
       }
     });
 
     router.service(OrgService, {
       async listOrgs(req: any) {
-        return { organizations: [] };
+        const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+        const result = await (db as any).select().from(orgs);
+        return { organizations: result.map((o: any) => ({ ...o, createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : o.createdAt })) };
       },
       async seedOrg(req: any) {
-        return { organization: { id: "org-1", name: req.name, slug: req.slug, role: "admin" } };
+        const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+        const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
+        
+        const newOrgId = "o-" + Date.now().toString();
+        const orgPayload = { id: newOrgId, name: req.name, slug: req.slug };
+        
+        if (isStandalone) {
+             await (db as any).insert(orgs).values({ ...orgPayload, createdAt: new Date() });
+             await (db as any).insert(members).values({ orgId: newOrgId, userId: "user-1", role: "admin", joinedAt: new Date() });
+        } else {
+             await (db as any).insert(orgs).values(orgPayload);
+             await (db as any).insert(members).values({ orgId: newOrgId, userId: "user-1", role: "admin" });
+        }
+
+        if (nc) {
+           nc.publish("domain.org.created", Buffer.from(JSON.stringify(orgPayload)));
+        }
+        return { organization: { ...orgPayload, role: "admin" } };
       },
       async inviteUser(req: any) {
+        const invs = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
+        const payload = {
+           id: "i-" + Date.now().toString(),
+           orgId: req.orgId,
+           email: req.email,
+           invitedBy: "user-1"
+        };
+        if (isStandalone) {
+           await (db as any).insert(invs).values({ ...payload, createdAt: new Date() });
+        } else {
+           await (db as any).insert(invs).values(payload);
+        }
         return { success: true };
       }
     });

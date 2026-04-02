@@ -22,7 +22,7 @@ Provide an autonomous, objective review of an epic's architectural output ensuri
 # Instructions
 1. **Receive Target:** Accept epic ID from user.
 2. **Load Context:** Read the Epic, `ARCHITECTURE.md` (if it exists), and `.specs/product/architecture.md`.
-3. **Analyze:** Check the generated `ARCHITECTURE.md` and ADRs for violations of Domain-Driven Design constraints, CQRS patterns, NATS usage, or DB schemas. Ensure it aligns with `.specs/product/architecture.md`.
+3. **Analyze:** Check the generated `ARCHITECTURE.md` and ADRs for violations of project architectural constraints. Ensure it strictly aligns with `.specs/product/architecture.md`.
 4. **Output Report:** Generate the review document at the configured `work-ledger.yml` path. The architectural violations and findings MUST be provided in a deterministic YAML block directly within the Markdown file, formatted EXACTLY as follows:
 
 ```yaml
