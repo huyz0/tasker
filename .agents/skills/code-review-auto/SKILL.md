@@ -13,7 +13,7 @@ Autonomously evaluate the written source code within an epic's branch or scope a
 - MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
 - ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - DO NOT ask questions. Run completely autonomously.
-- ALWAYS read `.specs/standards/coding-standard.md`.
+- Invoke the **standards-inject-auto** skill to dynamically select and load relevant project standards.
 - ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.code`. Find the next highest version number [N].
 - ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
 - ALWAYS update `EPIC.md` YAML frontmatter `reviews.code` to `approved` or `rejected`.
@@ -25,7 +25,7 @@ Autonomously evaluate the written source code within an epic's branch or scope a
    - **Completeness Check:** Explicitly check if the implementation fulfills EVERY single task in the Epic's Task Breakdown and ALL criteria in the "Definition of Done". If anything is missed, you MUST reject the review.
    - **Real Implementation Check:** Explicitly verify that the code implements REAL business logic and database operations. If the implementation uses hardcoded mock data or bypasses the database for core operations, you MUST reject the review.
    - Check for correct module boundaries, adherence to the React design composition patterns (avoiding boolean props), cyclomatic complexity, unhandled edge cases, and hardcoded values. 
-   - You MUST physically run the validation commands in the terminal before approving. Refer to project rules and standards to ensure build, test green, ci can run in local and met test coverage target. Verify the CI pipelines pass locally (e.g., using `.agents/skills/local-ci-run/SKILL.md` or equivalent project standards).
+   - You MUST physically run `.githooks/pre-commit` in the terminal before approving. This triggers the deterministic `moon check --all` pipeline (which enforces linting, test coverage, and builds) and ensures the implementation is genuinely CI-ready. Do not manually run `npm` scripts instead.
    - **Workflow Consistency:** If the epic modifies `.githooks/pre-commit` or `.specs/standards/git-workflow-standard.md`, you MUST explicitly verify that the shell commands in the hook perfectly match the documented required checks.
 4. **Determine Version:** Check `.epics/EPIC-<id>/reviews/` for existing `CODE-REVIEW-v*.md` files. Increment version (e.g., `-v1`, `-v2`).
 5. **Output Report:** Generate the review document at the configured `work-ledger.yml` path. The core review findings MUST be provided in a deterministic YAML block directly within the Markdown file, formatted EXACTLY as follows:

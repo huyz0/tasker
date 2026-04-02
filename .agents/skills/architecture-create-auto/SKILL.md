@@ -14,7 +14,7 @@ Given an epic, autonomously evaluate its technical complexity, map its requireme
 - ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - DO NOT ask the user any questions. All context MUST be gathered autonomously.
 - DO NOT generate designs for out-of-scope items.
-- DO NOT skip reading product architecture (`.specs/product/architecture.md`) and technical standards.
+- Invoke the **product-inject-auto** skill to load architecture constraints and **standards-inject-auto** for technical standards.
 - DO NOT invent new major infrastructure choices unless the epic explicitly demands it (always prefer existing tools in `tech-stack.md`).
 - ALWAYS output files into `.epics/EPIC-<id>/architecture/`.
 - ALWAYS document ADRs using the standard context/decision/consequence format.
@@ -25,9 +25,8 @@ Given an epic, autonomously evaluate its technical complexity, map its requireme
 2. **Load Epic:**
    - Read the target `EPIC.md` fully to extract In Scope features, dependencies, and Definition of Done.
 3. **Load Architectural Context:**
-   - Read `.specs/product/architecture.md` to understand system constraints (DDD, CQRS).
-   - Read `.specs/product/tech-stack.md`.
-   - Read applicable backend and architecture standards from `.specs/standards/`.
+   - Invoke the **product-inject-auto** skill to load core architecture and technical stack constraints.
+   - Invoke the **standards-inject-auto** skill to dynamically select and load relevant project standards.
 4. **Identify Key Decisions (ADRs):**
    - Determine if the epic requires new technical choices (e.g., new data models, api contracts, external integrations).
    - For each significant choice, prepare an Architecture Decision Record (ADR).

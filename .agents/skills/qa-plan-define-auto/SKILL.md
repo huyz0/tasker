@@ -24,8 +24,7 @@ Given an epic identifier, autonomously parse the epic's requirements, determine 
 1. **Receive Target:** Accept the epic identifier (e.g., `EPIC-0002` or full path).
 2. **Load Context:**
    - Read the target `EPIC.md` fully to extract In Scope features, Out of Scope limits, and Definition of Done.
-   - Read `.specs/standards/test-plan-standard.md` to ensure correct formatting and constraints.
-   - Read `.specs/standards/testing-standard.md` (if it exists) for platform-specific testing strategies (e.g., Vitest vs Playwright).
+   - Invoke the **standards-inject-auto** skill to dynamically select and load relevant project testing standards.
 3. **Plan Scope & Strategy:**
    - Determine what needs purely Unit Tests vs broad E2E Automation based on the tech-stack and architecture.
    - Identify how test data should be seeded or mocked for this epic.

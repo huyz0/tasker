@@ -14,17 +14,17 @@ Provide an autonomous review of implemented tests for an epic, guaranteeing all 
 - ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - DO NOT ask questions. Run completely autonomously.
 - ALWAYS read `.test-plans/TEST-PLAN-<id>-<title>/TEST-PLAN.md`.
-- ALWAYS read testing standards.
+- Invoke the **standards-inject-auto** skill to dynamically select and load testing project standards.
 - ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.qa_implement`. Find the highest existing version [N].
 - ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
 - ALWAYS update `EPIC.md` YAML frontmatter `reviews.qa_implement` to `approved` or `rejected`.
 
 # Instructions
 1. **Receive Target:** Accept epic ID from user.
-2. **Load Context:** Read the epic's `TEST-PLAN.md` and `.specs/standards/testing-standard.md`.
+2. **Load Context:** Read the epic's `TEST-PLAN.md` and rely on the injected testing standards.
 3. **Analyze Codebase:** Search the codebase for integration, unit, and E2E test files matching the implementation. 
    - **Completeness Check:** You MUST verify that the tests cover ALL test cases specified in the `TEST-PLAN.md` and fulfill every item in the Epic's Definition of Done and Task Breakdown. If any required test case or implementation detail is missing, you MUST reject the review.
-   - Check if the `Given/When/Then` cases are actually executed. You MUST physically run the test suite in the terminal to verify that the tests genuinely pass and generate coverage, rather than just statically reading the code. Refer to project rules and standards to ensure build, test green, ci can run in local and met test coverage target.
+   - Check if the `Given/When/Then` cases are actually executed. You MUST physically run `.githooks/pre-commit` in the terminal to verify the tests pass, coverage is met, and the pipeline succeeds locally. Do not rely on static analysis alone.
 4. **Output Report:** Generate the review document at the configured `work-ledger.yml` path. The test case coverage and code-quality findings MUST be provided in a deterministic YAML block directly within the Markdown file, formatted EXACTLY as follows:
 
 ```yaml

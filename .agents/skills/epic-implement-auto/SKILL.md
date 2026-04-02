@@ -37,14 +37,14 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
 5. **Load Context:**
    - Read `.specs/product/architecture.md` — understand bounded contexts, patterns.
    - Read `.specs/product/tech-stack.md` — understand available tools/frameworks.
-   - Read `.specs/standards/index.yml` — identify applicable standards.
-   - Read each applicable standard file for implementation rules.
-   - Read dependency epics referenced in the epic's Dependencies section.
+   - Read `.specs/standards/index.yml`. Using the descriptions, strictly select and read ONLY the standard `.md` files that apply to the current implementation domain (e.g., skip frontend standards if this is a backend-only epic). Do not load all standards blindly.
+   - For dependency epics in the referenced section: Execute a targeted search against `.epics/*/EPIC.md` to extract ONLY their frontmatter `status` and exported contracts/schemas (e.g., `main.tsp`, DB schema). DO NOT fully read dependency `EPIC.md` test plans and historical breakdowns unless debugging an active blocker.
    - Verify dependency epics have `status: done` or `in-progress`. Flag blockers.
-5. **Reconcile Task State Against Codebase:**
+6. **Reconcile Task State Against Codebase:**
    - Before implementing anything, audit the current codebase against EVERY task in the Task Breakdown.
+   - Instead of blindly reading full handler files and UI code natively, prioritize precise tools: grep via `grep_search` or examine AST structures/interfaces (`schema.ts`, `main.tsp`). Only fetch full file contents (`view_file`) if the implementation dictates mutational changes.
    - For each task (whether checked `- [x]` or unchecked `- [ ]`):
-     a. Scan relevant directories, files, configs, and tests to determine actual implementation state.
+     a. Scan relevant directories, files, configs, and tests using targeted queries to determine actual implementation state.
      b. Classify as: `fully-done`, `partially-done`, or `not-started`.
    - **Fix stale checkboxes:**
      - If a task is marked `- [ ]` but the codebase shows it is `fully-done` → update to `- [x]`.
@@ -59,9 +59,9 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
        Corrections made: [list of checkbox changes]
      ```
    - Commit the corrected EPIC.md state before moving to implementation.
-6. **Update Status:**
+7. **Update Status:**
    - Set epic frontmatter `status: in-progress`.
-7. **Execute Task Breakdown:**
+8. **Execute Task Breakdown:**
    - Process `not-started` and `partially-done` tasks. Where tasks are completely independent (e.g., disjoint backend vs frontend tasks), spawn concurrent sub-agents to implement them in parallel. Otherwise, process them sequentially to avoid merge conflicts.
    - Skip tasks already reconciled as `fully-done`.
    - For each task:
@@ -71,19 +71,18 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
      d. Run linting and type-checking.
      e. Write or update tests per testing-standard.
      f. Mark task as complete (`- [x]`) in the EPIC.md. Remove any `<!-- partial -->` notes.
-8. **Verification (Loop Check / Fix):**
+9. **Verification (Loop Check / Fix):**
    - Read the Epic's "Definition of Done".
    - Read the relevant `TEST-PLAN.md` for this epic.
    - Verify every task in the Task Breakdown is actually implemented fully in code.
    - Verify all test cases from the `TEST-PLAN.md` are completely covered by executable tests and actually pass.
-   - You MUST run the full lint, type-check, and test suite physically in the terminal. Refer to project rules and standards to ensure build, test green, ci can run in local and met test coverage target. Do not assume code works without running it.
+   - You MUST execute `.githooks/pre-commit` physically in the terminal. This guarantees that `moon check --all` runs the full lint, build, type-check, and test suite to meet coverage targets deterministically. Do not assume code works and do not run granular `npm` scripts.
    - **Workflow Consistency:** If you modified `.githooks/pre-commit` or `.specs/standards/git-workflow-standard.md`, strictly verify that the documented required checks perfectly match the executable shell script.
-   - After local verification, you MUST execute the local CI workflow (e.g. `.agents/skills/local-ci-run/SKILL.md`) or equivalent to verify CI pipelines pass locally.
-   - **Loop Check**: If ANY of the above checks fail (missing DoD items, incomplete task breakdown tasks, missing test cases, or failing CI commands), DO NOT proceed to finalization. You MUST loop back to Step 7 (Execute Task Breakdown) to write the missing code/tests, fix the discrepancies, and then run this Verification step again. Loop continuously until the implementation is 100% complete and verified. 
-9. **Finalize:**
+   - **Loop Check**: If ANY of the above checks fail (missing DoD items, incomplete task breakdown tasks, missing test cases, or failing CI commands), DO NOT proceed to finalization. You MUST loop back to Step 8 (Execute Task Breakdown) to write the missing code/tests, fix the discrepancies, and then run this Verification step again. Loop continuously until the implementation is 100% complete and verified. 
+10. **Finalize:**
    - ONLY if all tasks are implemented, DoD criteria are met, and CI passes → set `status: done`.
    - If any tasks remain hopelessly blocked → keep `status: in-progress` and document blockers.
-10. **Summary:**
+11. **Summary:**
    - Output a completion summary listing: completed tasks, test results, any blockers, and next steps.
 
 # Output Format

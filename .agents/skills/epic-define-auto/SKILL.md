@@ -25,18 +25,13 @@ Given a topic or feature name, autonomously research the codebase and product do
 # Instructions
 1. **Receive Topic:** Accept the epic topic/feature name from the user's message. This is the ONLY user input required.
 2. **Gather Product Context:**
-   - Read `.specs/product/mission.md` — extract target users, problem, solution.
-   - Read `.specs/product/roadmap.md` — identify which phase the topic belongs to.
-   - Read `.specs/product/architecture.md` — extract relevant components, patterns, and NFRs.
-   - Read `.specs/product/tech-stack.md` — identify relevant technologies.
-3. **Survey Existing Epics:**
-   - Scan `.epics/` directory for all existing `EPIC.md` files.
-   - Read each to understand already-covered scope and identify dependencies.
+   - Invoke the **product-inject-auto** skill to autonomously parse the overarching product constraints and technical stack.
+3. **Survey Existing Epics (Lazy Load):**
+   - Execute a targeted structural search (e.g., using `grep_search`) against `.epics/*/EPIC.md` to extract ONLY their frontmatter data or titles.
+   - DO NOT fully read historical `EPIC.md` files blindly. Read detailed scope ONLY if you detect potential feature duplication or blocker dependencies.
    - Note any epic IDs referenced as dependencies for the new epic.
 4. **Scan Relevant Standards:**
-   - Read `.specs/standards/index.yml`.
-   - Identify 2–5 standards relevant to the topic.
-   - Read those standards to inform the technical approach and definition of done.
+   - Invoke the **standards-inject-auto** skill to rigorously select and read the exact subset of `.specs/standards/` applicable to this feature.
 5. **Scan Codebase (if applicable):**
    - If the topic relates to existing code, scan relevant directories to understand current state.
    - Identify what exists vs what needs to be built.

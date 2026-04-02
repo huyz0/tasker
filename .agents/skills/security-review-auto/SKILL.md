@@ -13,14 +13,14 @@ Provide an autonomous static analysis and architectural security review of newly
 - MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
 - ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
 - DO NOT ask questions. Run completely autonomously.
-- ALWAYS read `.specs/standards/security-standard.md`.
+- Invoke the **standards-inject-auto** skill to explicitly load security standards.
 - ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.security`. Find the highest existing version [N].
 - ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
 - ALWAYS update `EPIC.md` YAML frontmatter `reviews.security` to `approved` or `rejected`.
 
 # Instructions
 1. **Receive Target:** Accept epic ID from user.
-2. **Load Context:** Read the Epic scope and `.specs/standards/security-standard.md`.
+2. **Load Context:** Read the Epic scope and rely on the injected security standards.
 3. **Analyze Codebase:** Scan the bounded contexts modified by the epic. 
    - **Completeness Check:** Verify that the implementation genuinely fulfills the epic's "Definition of Done" and Task Breakdown from a security feature completeness perspective (e.g. if an auth flow is specified, it MUST literally exist). Reject if missing.
    - Look for input sanitization (Zod), unhedged DB queries, missing authentication/authorization checks, and improper secrets handling.

@@ -29,10 +29,8 @@ Given an epic, autonomously produce UI mockup images and UX flow diagrams coveri
    - Extract: title, In Scope features, Task Breakdown, Technical Approach.
    - If epic has no user-facing features → stop and output: `This epic has no UI surface. UX design not applicable.`
 3. **Load Design Context:**
-   - Read `.specs/standards/ui-ux-standard.md` — extract design tokens, accessibility rules, responsive requirements.
-   - Read `.specs/standards/frontend-standard.md` — extract component architecture patterns.
-   - Read `.specs/product/architecture.md` — understand which components the UI interacts with.
-   - Read `.specs/product/mission.md` — understand target users.
+   - Invoke the **product-inject-auto** skill to autonomously parse the overarching product constraints and target users.
+   - Invoke the **standards-inject-auto** skill to rigorously select and read the exact subset of `.specs/standards/` applicable to UX/frontend design.
    - **MUST Read Local References**: Read `.agents/skills/ux-design-auto/references/ACCESSIBILITY.md`, `.agents/skills/ux-design-auto/references/MOTION-SPEC.md`, and `.agents/skills/ux-design-auto/references/RESPONSIVE-DESIGN.md` using your `view_file` tool to apply community best-practices to your designs.
 4. **Survey Existing Designs:**
    - Check if `.epics/EPIC-<id>/designs/` already exists.
