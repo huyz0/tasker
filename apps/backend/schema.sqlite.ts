@@ -58,3 +58,20 @@ export const invitations = sqliteTable("invitations", {
   invitedBy: text("invited_by").notNull().references(() => users.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+export const projectTemplates = sqliteTable("project_templates", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const projects = sqliteTable("projects", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  templateId: text("template_id").notNull().references(() => projectTemplates.id),
+  name: text("name").notNull(),
+  ownerId: text("owner_id").notNull().references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});

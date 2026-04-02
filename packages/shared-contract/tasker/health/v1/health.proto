@@ -111,3 +111,65 @@ service TaskTypeService {
   rpc GetTaskType(GetTaskTypeRequest) returns (GetTaskTypeResponse);
   rpc CreateTaskType(CreateTaskTypeRequest) returns (CreateTaskTypeResponse);
 }
+
+message ProjectTemplate {
+  string id = 1;
+  string orgId = 2;
+  string name = 3;
+  string description = 4;
+}
+
+message Project {
+  string id = 1;
+  string orgId = 2;
+  string templateId = 3;
+  string name = 4;
+  string ownerId = 5;
+}
+
+message GetProjectTemplateRequest {
+  string id = 1;
+}
+
+message GetProjectTemplateResponse {
+  ProjectTemplate template = 1;
+}
+
+message CreateProjectTemplateRequest {
+  string orgId = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message CreateProjectTemplateResponse {
+  ProjectTemplate template = 1;
+}
+
+service ProjectTemplateService {
+  rpc GetTemplate(GetProjectTemplateRequest) returns (GetProjectTemplateResponse);
+  rpc CreateTemplate(CreateProjectTemplateRequest) returns (CreateProjectTemplateResponse);
+}
+
+message GetProjectRequest {
+  string id = 1;
+}
+
+message GetProjectResponse {
+  Project project = 1;
+}
+
+message CreateProjectRequest {
+  string orgId = 1;
+  string templateId = 2;
+  string name = 3;
+  string ownerId = 4;
+}
+
+message CreateProjectResponse {
+  Project project = 1;
+}
+
+service ProjectService {
+  rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
+  rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+}

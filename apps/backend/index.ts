@@ -1,5 +1,5 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
-import { HealthService, TaskTypeService, AuthService, OrgService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import * as http from "node:http";
 import fs from "node:fs";
 import { setupDatabase } from "./db";
@@ -73,6 +73,32 @@ const handler = connectNodeAdapter({
       },
       async inviteUser(req: any) {
         return { success: true };
+      }
+    });
+
+    router.service(ProjectTemplateService, {
+      async getTemplate(req: any) {
+        return {
+          template: { id: req.id, orgId: "org-1", name: "Default Template", description: "Default project template" }
+        };
+      },
+      async createTemplate(req: any) {
+        return {
+          template: { id: "pt-" + Date.now().toString(), orgId: req.orgId, name: req.name, description: req.description }
+        };
+      }
+    });
+
+    router.service(ProjectService, {
+      async getProject(req: any) {
+        return {
+          project: { id: req.id, orgId: "org-1", templateId: "pt-1", name: "My Project", ownerId: "user-1" }
+        };
+      },
+      async createProject(req: any) {
+        return {
+          project: { id: "p-" + Date.now().toString(), orgId: req.orgId, templateId: req.templateId, name: req.name, ownerId: req.ownerId }
+        };
       }
     });
   },

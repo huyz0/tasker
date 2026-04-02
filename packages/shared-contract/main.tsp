@@ -123,3 +123,65 @@ interface TaskTypeService {
   getTaskType(request: GetTaskTypeRequest): GetTaskTypeResponse;
   createTaskType(request: CreateTaskTypeRequest): CreateTaskTypeResponse;
 }
+
+// ==== Project Models ====
+
+model ProjectTemplate {
+  @field(1) id: string;
+  @field(2) orgId: string;
+  @field(3) name: string;
+  @field(4) description: string;
+}
+
+model Project {
+  @field(1) id: string;
+  @field(2) orgId: string;
+  @field(3) templateId: string;
+  @field(4) name: string;
+  @field(5) ownerId: string;
+}
+
+// ==== Project Services ====
+
+model GetProjectTemplateRequest {
+  @field(1) id: string;
+}
+model GetProjectTemplateResponse {
+  @field(1) template: ProjectTemplate;
+}
+model CreateProjectTemplateRequest {
+  @field(1) orgId: string;
+  @field(2) name: string;
+  @field(3) description: string;
+}
+model CreateProjectTemplateResponse {
+  @field(1) template: ProjectTemplate;
+}
+
+interface ProjectTemplateService {
+  getTemplate(request: GetProjectTemplateRequest): GetProjectTemplateResponse;
+  createTemplate(
+    request: CreateProjectTemplateRequest,
+  ): CreateProjectTemplateResponse;
+}
+
+model GetProjectRequest {
+  @field(1) id: string;
+}
+model GetProjectResponse {
+  @field(1) project: Project;
+}
+model CreateProjectRequest {
+  @field(1) orgId: string;
+  @field(2) templateId: string;
+  @field(3) name: string;
+  @field(4) ownerId: string;
+}
+model CreateProjectResponse {
+  @field(1) project: Project;
+}
+
+interface ProjectService {
+  getProject(request: GetProjectRequest): GetProjectResponse;
+  createProject(request: CreateProjectRequest): CreateProjectResponse;
+}

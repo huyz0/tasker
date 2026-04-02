@@ -29,6 +29,10 @@ const (
 	OrgServiceName = "tasker.health.v1.OrgService"
 	// TaskTypeServiceName is the fully-qualified name of the TaskTypeService service.
 	TaskTypeServiceName = "tasker.health.v1.TaskTypeService"
+	// ProjectTemplateServiceName is the fully-qualified name of the ProjectTemplateService service.
+	ProjectTemplateServiceName = "tasker.health.v1.ProjectTemplateService"
+	// ProjectServiceName is the fully-qualified name of the ProjectService service.
+	ProjectServiceName = "tasker.health.v1.ProjectService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -55,21 +59,39 @@ const (
 	// TaskTypeServiceCreateTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
 	// CreateTaskType RPC.
 	TaskTypeServiceCreateTaskTypeProcedure = "/tasker.health.v1.TaskTypeService/CreateTaskType"
+	// ProjectTemplateServiceGetTemplateProcedure is the fully-qualified name of the
+	// ProjectTemplateService's GetTemplate RPC.
+	ProjectTemplateServiceGetTemplateProcedure = "/tasker.health.v1.ProjectTemplateService/GetTemplate"
+	// ProjectTemplateServiceCreateTemplateProcedure is the fully-qualified name of the
+	// ProjectTemplateService's CreateTemplate RPC.
+	ProjectTemplateServiceCreateTemplateProcedure = "/tasker.health.v1.ProjectTemplateService/CreateTemplate"
+	// ProjectServiceGetProjectProcedure is the fully-qualified name of the ProjectService's GetProject
+	// RPC.
+	ProjectServiceGetProjectProcedure = "/tasker.health.v1.ProjectService/GetProject"
+	// ProjectServiceCreateProjectProcedure is the fully-qualified name of the ProjectService's
+	// CreateProject RPC.
+	ProjectServiceCreateProjectProcedure = "/tasker.health.v1.ProjectService/CreateProject"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	healthServiceServiceDescriptor                = v1.File_tasker_health_v1_health_proto.Services().ByName("HealthService")
-	healthServicePingMethodDescriptor             = healthServiceServiceDescriptor.Methods().ByName("Ping")
-	authServiceServiceDescriptor                  = v1.File_tasker_health_v1_health_proto.Services().ByName("AuthService")
-	authServiceGetIdentityMethodDescriptor        = authServiceServiceDescriptor.Methods().ByName("GetIdentity")
-	orgServiceServiceDescriptor                   = v1.File_tasker_health_v1_health_proto.Services().ByName("OrgService")
-	orgServiceListOrgsMethodDescriptor            = orgServiceServiceDescriptor.Methods().ByName("ListOrgs")
-	orgServiceSeedOrgMethodDescriptor             = orgServiceServiceDescriptor.Methods().ByName("SeedOrg")
-	orgServiceInviteUserMethodDescriptor          = orgServiceServiceDescriptor.Methods().ByName("InviteUser")
-	taskTypeServiceServiceDescriptor              = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskTypeService")
-	taskTypeServiceGetTaskTypeMethodDescriptor    = taskTypeServiceServiceDescriptor.Methods().ByName("GetTaskType")
-	taskTypeServiceCreateTaskTypeMethodDescriptor = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskType")
+	healthServiceServiceDescriptor                       = v1.File_tasker_health_v1_health_proto.Services().ByName("HealthService")
+	healthServicePingMethodDescriptor                    = healthServiceServiceDescriptor.Methods().ByName("Ping")
+	authServiceServiceDescriptor                         = v1.File_tasker_health_v1_health_proto.Services().ByName("AuthService")
+	authServiceGetIdentityMethodDescriptor               = authServiceServiceDescriptor.Methods().ByName("GetIdentity")
+	orgServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("OrgService")
+	orgServiceListOrgsMethodDescriptor                   = orgServiceServiceDescriptor.Methods().ByName("ListOrgs")
+	orgServiceSeedOrgMethodDescriptor                    = orgServiceServiceDescriptor.Methods().ByName("SeedOrg")
+	orgServiceInviteUserMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("InviteUser")
+	taskTypeServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskTypeService")
+	taskTypeServiceGetTaskTypeMethodDescriptor           = taskTypeServiceServiceDescriptor.Methods().ByName("GetTaskType")
+	taskTypeServiceCreateTaskTypeMethodDescriptor        = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskType")
+	projectTemplateServiceServiceDescriptor              = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectTemplateService")
+	projectTemplateServiceGetTemplateMethodDescriptor    = projectTemplateServiceServiceDescriptor.Methods().ByName("GetTemplate")
+	projectTemplateServiceCreateTemplateMethodDescriptor = projectTemplateServiceServiceDescriptor.Methods().ByName("CreateTemplate")
+	projectServiceServiceDescriptor                      = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectService")
+	projectServiceGetProjectMethodDescriptor             = projectServiceServiceDescriptor.Methods().ByName("GetProject")
+	projectServiceCreateProjectMethodDescriptor          = projectServiceServiceDescriptor.Methods().ByName("CreateProject")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -420,4 +442,193 @@ func (UnimplementedTaskTypeServiceHandler) GetTaskType(context.Context, *connect
 
 func (UnimplementedTaskTypeServiceHandler) CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.CreateTaskType is not implemented"))
+}
+
+// ProjectTemplateServiceClient is a client for the tasker.health.v1.ProjectTemplateService service.
+type ProjectTemplateServiceClient interface {
+	GetTemplate(context.Context, *connect.Request[v1.GetProjectTemplateRequest]) (*connect.Response[v1.GetProjectTemplateResponse], error)
+	CreateTemplate(context.Context, *connect.Request[v1.CreateProjectTemplateRequest]) (*connect.Response[v1.CreateProjectTemplateResponse], error)
+}
+
+// NewProjectTemplateServiceClient constructs a client for the
+// tasker.health.v1.ProjectTemplateService service. By default, it uses the Connect protocol with
+// the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To use
+// the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewProjectTemplateServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ProjectTemplateServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &projectTemplateServiceClient{
+		getTemplate: connect.NewClient[v1.GetProjectTemplateRequest, v1.GetProjectTemplateResponse](
+			httpClient,
+			baseURL+ProjectTemplateServiceGetTemplateProcedure,
+			connect.WithSchema(projectTemplateServiceGetTemplateMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		createTemplate: connect.NewClient[v1.CreateProjectTemplateRequest, v1.CreateProjectTemplateResponse](
+			httpClient,
+			baseURL+ProjectTemplateServiceCreateTemplateProcedure,
+			connect.WithSchema(projectTemplateServiceCreateTemplateMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// projectTemplateServiceClient implements ProjectTemplateServiceClient.
+type projectTemplateServiceClient struct {
+	getTemplate    *connect.Client[v1.GetProjectTemplateRequest, v1.GetProjectTemplateResponse]
+	createTemplate *connect.Client[v1.CreateProjectTemplateRequest, v1.CreateProjectTemplateResponse]
+}
+
+// GetTemplate calls tasker.health.v1.ProjectTemplateService.GetTemplate.
+func (c *projectTemplateServiceClient) GetTemplate(ctx context.Context, req *connect.Request[v1.GetProjectTemplateRequest]) (*connect.Response[v1.GetProjectTemplateResponse], error) {
+	return c.getTemplate.CallUnary(ctx, req)
+}
+
+// CreateTemplate calls tasker.health.v1.ProjectTemplateService.CreateTemplate.
+func (c *projectTemplateServiceClient) CreateTemplate(ctx context.Context, req *connect.Request[v1.CreateProjectTemplateRequest]) (*connect.Response[v1.CreateProjectTemplateResponse], error) {
+	return c.createTemplate.CallUnary(ctx, req)
+}
+
+// ProjectTemplateServiceHandler is an implementation of the tasker.health.v1.ProjectTemplateService
+// service.
+type ProjectTemplateServiceHandler interface {
+	GetTemplate(context.Context, *connect.Request[v1.GetProjectTemplateRequest]) (*connect.Response[v1.GetProjectTemplateResponse], error)
+	CreateTemplate(context.Context, *connect.Request[v1.CreateProjectTemplateRequest]) (*connect.Response[v1.CreateProjectTemplateResponse], error)
+}
+
+// NewProjectTemplateServiceHandler builds an HTTP handler from the service implementation. It
+// returns the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewProjectTemplateServiceHandler(svc ProjectTemplateServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	projectTemplateServiceGetTemplateHandler := connect.NewUnaryHandler(
+		ProjectTemplateServiceGetTemplateProcedure,
+		svc.GetTemplate,
+		connect.WithSchema(projectTemplateServiceGetTemplateMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	projectTemplateServiceCreateTemplateHandler := connect.NewUnaryHandler(
+		ProjectTemplateServiceCreateTemplateProcedure,
+		svc.CreateTemplate,
+		connect.WithSchema(projectTemplateServiceCreateTemplateMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.ProjectTemplateService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ProjectTemplateServiceGetTemplateProcedure:
+			projectTemplateServiceGetTemplateHandler.ServeHTTP(w, r)
+		case ProjectTemplateServiceCreateTemplateProcedure:
+			projectTemplateServiceCreateTemplateHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedProjectTemplateServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedProjectTemplateServiceHandler struct{}
+
+func (UnimplementedProjectTemplateServiceHandler) GetTemplate(context.Context, *connect.Request[v1.GetProjectTemplateRequest]) (*connect.Response[v1.GetProjectTemplateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectTemplateService.GetTemplate is not implemented"))
+}
+
+func (UnimplementedProjectTemplateServiceHandler) CreateTemplate(context.Context, *connect.Request[v1.CreateProjectTemplateRequest]) (*connect.Response[v1.CreateProjectTemplateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectTemplateService.CreateTemplate is not implemented"))
+}
+
+// ProjectServiceClient is a client for the tasker.health.v1.ProjectService service.
+type ProjectServiceClient interface {
+	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
+	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
+}
+
+// NewProjectServiceClient constructs a client for the tasker.health.v1.ProjectService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ProjectServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &projectServiceClient{
+		getProject: connect.NewClient[v1.GetProjectRequest, v1.GetProjectResponse](
+			httpClient,
+			baseURL+ProjectServiceGetProjectProcedure,
+			connect.WithSchema(projectServiceGetProjectMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		createProject: connect.NewClient[v1.CreateProjectRequest, v1.CreateProjectResponse](
+			httpClient,
+			baseURL+ProjectServiceCreateProjectProcedure,
+			connect.WithSchema(projectServiceCreateProjectMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// projectServiceClient implements ProjectServiceClient.
+type projectServiceClient struct {
+	getProject    *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
+	createProject *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
+}
+
+// GetProject calls tasker.health.v1.ProjectService.GetProject.
+func (c *projectServiceClient) GetProject(ctx context.Context, req *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error) {
+	return c.getProject.CallUnary(ctx, req)
+}
+
+// CreateProject calls tasker.health.v1.ProjectService.CreateProject.
+func (c *projectServiceClient) CreateProject(ctx context.Context, req *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error) {
+	return c.createProject.CallUnary(ctx, req)
+}
+
+// ProjectServiceHandler is an implementation of the tasker.health.v1.ProjectService service.
+type ProjectServiceHandler interface {
+	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
+	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
+}
+
+// NewProjectServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	projectServiceGetProjectHandler := connect.NewUnaryHandler(
+		ProjectServiceGetProjectProcedure,
+		svc.GetProject,
+		connect.WithSchema(projectServiceGetProjectMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	projectServiceCreateProjectHandler := connect.NewUnaryHandler(
+		ProjectServiceCreateProjectProcedure,
+		svc.CreateProject,
+		connect.WithSchema(projectServiceCreateProjectMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.ProjectService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ProjectServiceGetProjectProcedure:
+			projectServiceGetProjectHandler.ServeHTTP(w, r)
+		case ProjectServiceCreateProjectProcedure:
+			projectServiceCreateProjectHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedProjectServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedProjectServiceHandler struct{}
+
+func (UnimplementedProjectServiceHandler) GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.GetProject is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.CreateProject is not implemented"))
 }

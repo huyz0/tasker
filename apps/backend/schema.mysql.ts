@@ -58,3 +58,20 @@ export const invitations = mysqlTable("invitations", {
   invitedBy: varchar("invited_by", { length: 256 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const projectTemplates = mysqlTable("project_templates", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  name: varchar("name", { length: 256 }).notNull(),
+  description: varchar("description", { length: 1024 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const projects = mysqlTable("projects", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  templateId: varchar("template_id", { length: 256 }).notNull().references(() => projectTemplates.id),
+  name: varchar("name", { length: 256 }).notNull(),
+  ownerId: varchar("owner_id", { length: 256 }).notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
