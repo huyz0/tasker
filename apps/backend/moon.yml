@@ -5,12 +5,10 @@ tasks:
       - 'src/**/*'
       - '**/*.test.ts'
   build:
-    command: 'bun build ./index.ts --target bun --outdir dist'
+    command: 'bun build ./src/index.ts --target bun --outdir dist'
   build-standalone:
     command: 'bun run build:standalone'
     inputs:
-      - 'index.ts'
-      - 'db.ts'
-      - 'schema*.ts'
+      - 'src/**/*'
     outputs:
-      - 'tasker-standalone'
+      - 'dist/tasker-standalone'

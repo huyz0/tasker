@@ -1,6 +1,6 @@
 import { expect, test, describe } from "bun:test";
-import { setupDatabase } from "../db";
-import * as schemaSqlite from "../schema.sqlite";
+import { setupDatabase } from "../../db/db";
+import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 
 describe("TaskTypes Service End-to-End Logic", () => {

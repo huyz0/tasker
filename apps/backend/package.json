@@ -1,11 +1,11 @@
 {
   "name": "backend",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
   "scripts": {
     "test": "bunx drizzle-kit push --config=drizzle.sqlite.config.ts && bun test",
-    "build:standalone": "bun build --compile --minify --sourcemap --outfile tasker-standalone index.ts"
+    "build:standalone": "bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.3.11",

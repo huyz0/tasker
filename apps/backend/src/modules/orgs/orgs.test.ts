@@ -1,6 +1,6 @@
 import { expect, test, describe } from "bun:test";
-import { setupDatabase } from "../db";
-import * as schemaSqlite from "../schema.sqlite";
+import { setupDatabase } from "../../db/db";
+import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 // We ideally test against the router, but simply verifying DB operations works for the CQRS pattern context.
