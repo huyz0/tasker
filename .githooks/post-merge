@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+# Auto-reindex GitNexus when merging external code
+if command -v gitnexus >/dev/null 2>&1; then
+    CMD="gitnexus analyze"
+elif command -v bunx >/dev/null 2>&1; then
+    CMD="bunx gitnexus analyze"
+elif command -v npx >/dev/null 2>&1; then
+    CMD="npx --yes gitnexus analyze"
+else
+    exit 0
+fi
+
+echo "=> Re-analyzing GitNexus vectors..."
+$CMD >/dev/null 2>&1 &

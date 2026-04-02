@@ -4,6 +4,7 @@
 projects:
   - "packages/*"
   - "apps/*"
+  - "."
 
 # Configures the version control system (VCS). Also known as
 # source code management (SCM).

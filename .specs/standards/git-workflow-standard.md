@@ -34,6 +34,7 @@
 ## 5. Pre-Commit Verification
 
 - **Local Validation**: Execute `moon check --all` to run cached linting,
-  testing, formatting, and building pipelines concurrently across the monorepo.
-- **Action**: Never commit logic that fails local CI. Resolve errors before
-  staging.
+  testing, formatting, building pipelines, AND GitHub Actions checks 
+  (using `gh act`) concurrently across the monorepo.
+- **Action**: Never commit logic that fails local checking. Resolve all errors
+  before staging.
