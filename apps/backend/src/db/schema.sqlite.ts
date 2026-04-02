@@ -75,3 +75,39 @@ export const projects = sqliteTable("projects", {
   ownerId: text("owner_id").notNull().references(() => users.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+export const agentRoles = sqliteTable("agent_roles", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  systemPrompt: text("system_prompt").notNull(),
+  capabilities: text("capabilities").notNull(),
+});
+
+export const agents = sqliteTable("agents", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  agentRoleId: text("agent_role_id").notNull().references(() => agentRoles.id),
+  name: text("name").notNull(),
+});
+
+export const tasks = sqliteTable("tasks", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id),
+  title: text("title").notNull(),
+  status: text("status").notNull(),
+  description: text("description"),
+});
+
+export const taskAssignments = sqliteTable("task_assignments", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => tasks.id),
+  agentId: text("agent_id").references(() => agents.id),
+  userId: text("user_id").references(() => users.id),
+});
+
+export const taskReviewers = sqliteTable("task_reviewers", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => tasks.id),
+  userId: text("user_id").notNull().references(() => users.id),
+});
+

@@ -173,3 +173,76 @@ service ProjectService {
   rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
 }
+
+message AgentRole {
+  string id = 1;
+  string name = 2;
+  string system_prompt = 3;
+  string capabilities = 4;
+}
+
+message Agent {
+  string id = 1;
+  string org_id = 2;
+  string agent_role_id = 3;
+  string name = 4;
+}
+
+message CreateAgentRoleRequest {
+  string name = 1;
+  string system_prompt = 2;
+  string capabilities = 3;
+}
+
+message CreateAgentRoleResponse {
+  AgentRole role = 1;
+}
+
+message CreateAgentRequest {
+  string org_id = 1;
+  string agent_role_id = 2;
+  string name = 3;
+}
+
+message CreateAgentResponse {
+  Agent agent = 1;
+}
+
+service AgentService {
+  rpc CreateAgentRole(CreateAgentRoleRequest) returns (CreateAgentRoleResponse);
+  rpc CreateAgent(CreateAgentRequest) returns (CreateAgentResponse);
+}
+
+message Task {
+  string id = 1;
+  string project_id = 2;
+  string title = 3;
+  string status = 4;
+  string description = 5;
+}
+
+message CreateTaskRequest {
+  string project_id = 1;
+  string title = 2;
+  string status = 3;
+  string description = 4;
+}
+
+message CreateTaskResponse {
+  Task task = 1;
+}
+
+message AssignTaskRequest {
+  string task_id = 1;
+  string agent_id = 2;
+  string user_id = 3;
+}
+
+message AssignTaskResponse {
+  bool success = 1;
+}
+
+service TaskService {
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+  rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
+}

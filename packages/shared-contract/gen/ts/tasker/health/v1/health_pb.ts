@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file tasker/health/v1/health.proto.
  */
 export const file_tasker_health_v1_health: GenFile = /*@__PURE__*/
-  fileDesc("Ch10YXNrZXIvaGVhbHRoL3YxL2hlYWx0aC5wcm90bxIQdGFza2VyLmhlYWx0aC52MSINCgtQaW5nUmVxdWVzdCIxCgxQaW5nUmVzcG9uc2USDwoHbWVzc2FnZRgBIAEoCRIQCghkYlN0YXR1cxgCIAEoCSJVCgRVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEgwKBG5hbWUYAyABKAkSEQoJYXZhdGFyVXJsGAQgASgJEhEKCWNyZWF0ZWRBdBgFIAEoCSJECgxPcmdhbml6YXRpb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRzbHVnGAMgASgJEgwKBHJvbGUYBCABKAkiFAoSR2V0SWRlbnRpdHlSZXF1ZXN0IjsKE0dldElkZW50aXR5UmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnRhc2tlci5oZWFsdGgudjEuVXNlciIRCg9MaXN0T3Jnc1JlcXVlc3QiSQoQTGlzdE9yZ3NSZXNwb25zZRI1Cg1vcmdhbml6YXRpb25zGAEgAygLMh4udGFza2VyLmhlYWx0aC52MS5Pcmdhbml6YXRpb24iLAoOU2VlZE9yZ1JlcXVlc3QSDAoEbmFtZRgBIAEoCRIMCgRzbHVnGAIgASgJIkcKD1NlZWRPcmdSZXNwb25zZRI0Cgxvcmdhbml6YXRpb24YASABKAsyHi50YXNrZXIuaGVhbHRoLnYxLk9yZ2FuaXphdGlvbiIxChFJbnZpdGVVc2VyUmVxdWVzdBINCgVvcmdJZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIlChJJbnZpdGVVc2VyUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCCJZCghUYXNrVHlwZRIKCgJpZBgBIAEoCRINCgVvcmdJZBgCIAEoCRIRCglwcm9qZWN0SWQYAyABKAkSDAoEbmFtZRgEIAEoCRIRCgljcmVhdGVkQXQYBSABKAkiOgoKVGFza1N0YXR1cxIKCgJpZBgBIAEoCRISCgp0YXNrVHlwZUlkGAIgASgJEgwKBG5hbWUYAyABKAkiYAoUVGFza1N0YXR1c1RyYW5zaXRpb24SCgoCaWQYASABKAkSEgoKdGFza1R5cGVJZBgCIAEoCRIUCgxmcm9tU3RhdHVzSWQYAyABKAkSEgoKdG9TdGF0dXNJZBgEIAEoCSIgChJHZXRUYXNrVHlwZVJlcXVlc3QSCgoCaWQYASABKAkisAEKE0dldFRhc2tUeXBlUmVzcG9uc2USLAoIdGFza1R5cGUYASABKAsyGi50YXNrZXIuaGVhbHRoLnYxLlRhc2tUeXBlEi4KCHN0YXR1c2VzGAIgAygLMhwudGFza2VyLmhlYWx0aC52MS5UYXNrU3RhdHVzEjsKC3RyYW5zaXRpb25zGAMgAygLMiYudGFza2VyLmhlYWx0aC52MS5UYXNrU3RhdHVzVHJhbnNpdGlvbiJHChVDcmVhdGVUYXNrVHlwZVJlcXVlc3QSDQoFb3JnSWQYASABKAkSEQoJcHJvamVjdElkGAIgASgJEgwKBG5hbWUYAyABKAkiRgoWQ3JlYXRlVGFza1R5cGVSZXNwb25zZRIsCgh0YXNrVHlwZRgBIAEoCzIaLnRhc2tlci5oZWFsdGgudjEuVGFza1R5cGUiTwoPUHJvamVjdFRlbXBsYXRlEgoKAmlkGAEgASgJEg0KBW9yZ0lkGAIgASgJEgwKBG5hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkiVwoHUHJvamVjdBIKCgJpZBgBIAEoCRINCgVvcmdJZBgCIAEoCRISCgp0ZW1wbGF0ZUlkGAMgASgJEgwKBG5hbWUYBCABKAkSDwoHb3duZXJJZBgFIAEoCSInChlHZXRQcm9qZWN0VGVtcGxhdGVSZXF1ZXN0EgoKAmlkGAEgASgJIlEKGkdldFByb2plY3RUZW1wbGF0ZVJlc3BvbnNlEjMKCHRlbXBsYXRlGAEgASgLMiEudGFza2VyLmhlYWx0aC52MS5Qcm9qZWN0VGVtcGxhdGUiUAocQ3JlYXRlUHJvamVjdFRlbXBsYXRlUmVxdWVzdBINCgVvcmdJZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJIlQKHUNyZWF0ZVByb2plY3RUZW1wbGF0ZVJlc3BvbnNlEjMKCHRlbXBsYXRlGAEgASgLMiEudGFza2VyLmhlYWx0aC52MS5Qcm9qZWN0VGVtcGxhdGUiHwoRR2V0UHJvamVjdFJlcXVlc3QSCgoCaWQYASABKAkiQAoSR2V0UHJvamVjdFJlc3BvbnNlEioKB3Byb2plY3QYASABKAsyGS50YXNrZXIuaGVhbHRoLnYxLlByb2plY3QiWAoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSDQoFb3JnSWQYASABKAkSEgoKdGVtcGxhdGVJZBgCIAEoCRIMCgRuYW1lGAMgASgJEg8KB293bmVySWQYBCABKAkiQwoVQ3JlYXRlUHJvamVjdFJlc3BvbnNlEioKB3Byb2plY3QYASABKAsyGS50YXNrZXIuaGVhbHRoLnYxLlByb2plY3QyVgoNSGVhbHRoU2VydmljZRJFCgRQaW5nEh0udGFza2VyLmhlYWx0aC52MS5QaW5nUmVxdWVzdBoeLnRhc2tlci5oZWFsdGgudjEuUGluZ1Jlc3BvbnNlMmkKC0F1dGhTZXJ2aWNlEloKC0dldElkZW50aXR5EiQudGFza2VyLmhlYWx0aC52MS5HZXRJZGVudGl0eVJlcXVlc3QaJS50YXNrZXIuaGVhbHRoLnYxLkdldElkZW50aXR5UmVzcG9uc2UyiAIKCk9yZ1NlcnZpY2USUQoITGlzdE9yZ3MSIS50YXNrZXIuaGVhbHRoLnYxLkxpc3RPcmdzUmVxdWVzdBoiLnRhc2tlci5oZWFsdGgudjEuTGlzdE9yZ3NSZXNwb25zZRJOCgdTZWVkT3JnEiAudGFza2VyLmhlYWx0aC52MS5TZWVkT3JnUmVxdWVzdBohLnRhc2tlci5oZWFsdGgudjEuU2VlZE9yZ1Jlc3BvbnNlElcKCkludml0ZVVzZXISIy50YXNrZXIuaGVhbHRoLnYxLkludml0ZVVzZXJSZXF1ZXN0GiQudGFza2VyLmhlYWx0aC52MS5JbnZpdGVVc2VyUmVzcG9uc2Uy0gEKD1Rhc2tUeXBlU2VydmljZRJaCgtHZXRUYXNrVHlwZRIkLnRhc2tlci5oZWFsdGgudjEuR2V0VGFza1R5cGVSZXF1ZXN0GiUudGFza2VyLmhlYWx0aC52MS5HZXRUYXNrVHlwZVJlc3BvbnNlEmMKDkNyZWF0ZVRhc2tUeXBlEicudGFza2VyLmhlYWx0aC52MS5DcmVhdGVUYXNrVHlwZVJlcXVlc3QaKC50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVRhc2tUeXBlUmVzcG9uc2Uy9QEKFlByb2plY3RUZW1wbGF0ZVNlcnZpY2USaAoLR2V0VGVtcGxhdGUSKy50YXNrZXIuaGVhbHRoLnYxLkdldFByb2plY3RUZW1wbGF0ZVJlcXVlc3QaLC50YXNrZXIuaGVhbHRoLnYxLkdldFByb2plY3RUZW1wbGF0ZVJlc3BvbnNlEnEKDkNyZWF0ZVRlbXBsYXRlEi4udGFza2VyLmhlYWx0aC52MS5DcmVhdGVQcm9qZWN0VGVtcGxhdGVSZXF1ZXN0Gi8udGFza2VyLmhlYWx0aC52MS5DcmVhdGVQcm9qZWN0VGVtcGxhdGVSZXNwb25zZTLLAQoOUHJvamVjdFNlcnZpY2USVwoKR2V0UHJvamVjdBIjLnRhc2tlci5oZWFsdGgudjEuR2V0UHJvamVjdFJlcXVlc3QaJC50YXNrZXIuaGVhbHRoLnYxLkdldFByb2plY3RSZXNwb25zZRJgCg1DcmVhdGVQcm9qZWN0EiYudGFza2VyLmhlYWx0aC52MS5DcmVhdGVQcm9qZWN0UmVxdWVzdBonLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlUHJvamVjdFJlc3BvbnNlQjdaNWdpdGh1Yi5jb20vaHV5ejAvdGFza2VyL2FwcHMvY2xpL2dlbi90YXNrZXIvaGVhbHRoL3YxYgZwcm90bzM");
+  fileDesc("Ch10YXNrZXIvaGVhbHRoL3YxL2hlYWx0aC5wcm90bxIQdGFza2VyLmhlYWx0aC52MSINCgtQaW5nUmVxdWVzdCIxCgxQaW5nUmVzcG9uc2USDwoHbWVzc2FnZRgBIAEoCRIQCghkYlN0YXR1cxgCIAEoCSJVCgRVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEgwKBG5hbWUYAyABKAkSEQoJYXZhdGFyVXJsGAQgASgJEhEKCWNyZWF0ZWRBdBgFIAEoCSJECgxPcmdhbml6YXRpb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRzbHVnGAMgASgJEgwKBHJvbGUYBCABKAkiFAoSR2V0SWRlbnRpdHlSZXF1ZXN0IjsKE0dldElkZW50aXR5UmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnRhc2tlci5oZWFsdGgudjEuVXNlciIRCg9MaXN0T3Jnc1JlcXVlc3QiSQoQTGlzdE9yZ3NSZXNwb25zZRI1Cg1vcmdhbml6YXRpb25zGAEgAygLMh4udGFza2VyLmhlYWx0aC52MS5Pcmdhbml6YXRpb24iLAoOU2VlZE9yZ1JlcXVlc3QSDAoEbmFtZRgBIAEoCRIMCgRzbHVnGAIgASgJIkcKD1NlZWRPcmdSZXNwb25zZRI0Cgxvcmdhbml6YXRpb24YASABKAsyHi50YXNrZXIuaGVhbHRoLnYxLk9yZ2FuaXphdGlvbiIxChFJbnZpdGVVc2VyUmVxdWVzdBINCgVvcmdJZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIlChJJbnZpdGVVc2VyUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCCJZCghUYXNrVHlwZRIKCgJpZBgBIAEoCRINCgVvcmdJZBgCIAEoCRIRCglwcm9qZWN0SWQYAyABKAkSDAoEbmFtZRgEIAEoCRIRCgljcmVhdGVkQXQYBSABKAkiOgoKVGFza1N0YXR1cxIKCgJpZBgBIAEoCRISCgp0YXNrVHlwZUlkGAIgASgJEgwKBG5hbWUYAyABKAkiYAoUVGFza1N0YXR1c1RyYW5zaXRpb24SCgoCaWQYASABKAkSEgoKdGFza1R5cGVJZBgCIAEoCRIUCgxmcm9tU3RhdHVzSWQYAyABKAkSEgoKdG9TdGF0dXNJZBgEIAEoCSIgChJHZXRUYXNrVHlwZVJlcXVlc3QSCgoCaWQYASABKAkisAEKE0dldFRhc2tUeXBlUmVzcG9uc2USLAoIdGFza1R5cGUYASABKAsyGi50YXNrZXIuaGVhbHRoLnYxLlRhc2tUeXBlEi4KCHN0YXR1c2VzGAIgAygLMhwudGFza2VyLmhlYWx0aC52MS5UYXNrU3RhdHVzEjsKC3RyYW5zaXRpb25zGAMgAygLMiYudGFza2VyLmhlYWx0aC52MS5UYXNrU3RhdHVzVHJhbnNpdGlvbiJHChVDcmVhdGVUYXNrVHlwZVJlcXVlc3QSDQoFb3JnSWQYASABKAkSEQoJcHJvamVjdElkGAIgASgJEgwKBG5hbWUYAyABKAkiRgoWQ3JlYXRlVGFza1R5cGVSZXNwb25zZRIsCgh0YXNrVHlwZRgBIAEoCzIaLnRhc2tlci5oZWFsdGgudjEuVGFza1R5cGUiTwoPUHJvamVjdFRlbXBsYXRlEgoKAmlkGAEgASgJEg0KBW9yZ0lkGAIgASgJEgwKBG5hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkiVwoHUHJvamVjdBIKCgJpZBgBIAEoCRINCgVvcmdJZBgCIAEoCRISCgp0ZW1wbGF0ZUlkGAMgASgJEgwKBG5hbWUYBCABKAkSDwoHb3duZXJJZBgFIAEoCSInChlHZXRQcm9qZWN0VGVtcGxhdGVSZXF1ZXN0EgoKAmlkGAEgASgJIlEKGkdldFByb2plY3RUZW1wbGF0ZVJlc3BvbnNlEjMKCHRlbXBsYXRlGAEgASgLMiEudGFza2VyLmhlYWx0aC52MS5Qcm9qZWN0VGVtcGxhdGUiUAocQ3JlYXRlUHJvamVjdFRlbXBsYXRlUmVxdWVzdBINCgVvcmdJZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJIlQKHUNyZWF0ZVByb2plY3RUZW1wbGF0ZVJlc3BvbnNlEjMKCHRlbXBsYXRlGAEgASgLMiEudGFza2VyLmhlYWx0aC52MS5Qcm9qZWN0VGVtcGxhdGUiHwoRR2V0UHJvamVjdFJlcXVlc3QSCgoCaWQYASABKAkiQAoSR2V0UHJvamVjdFJlc3BvbnNlEioKB3Byb2plY3QYASABKAsyGS50YXNrZXIuaGVhbHRoLnYxLlByb2plY3QiWAoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSDQoFb3JnSWQYASABKAkSEgoKdGVtcGxhdGVJZBgCIAEoCRIMCgRuYW1lGAMgASgJEg8KB293bmVySWQYBCABKAkiQwoVQ3JlYXRlUHJvamVjdFJlc3BvbnNlEioKB3Byb2plY3QYASABKAsyGS50YXNrZXIuaGVhbHRoLnYxLlByb2plY3QiUgoJQWdlbnRSb2xlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSFQoNc3lzdGVtX3Byb21wdBgDIAEoCRIUCgxjYXBhYmlsaXRpZXMYBCABKAkiSAoFQWdlbnQSCgoCaWQYASABKAkSDgoGb3JnX2lkGAIgASgJEhUKDWFnZW50X3JvbGVfaWQYAyABKAkSDAoEbmFtZRgEIAEoCSJTChZDcmVhdGVBZ2VudFJvbGVSZXF1ZXN0EgwKBG5hbWUYASABKAkSFQoNc3lzdGVtX3Byb21wdBgCIAEoCRIUCgxjYXBhYmlsaXRpZXMYAyABKAkiRAoXQ3JlYXRlQWdlbnRSb2xlUmVzcG9uc2USKQoEcm9sZRgBIAEoCzIbLnRhc2tlci5oZWFsdGgudjEuQWdlbnRSb2xlIkkKEkNyZWF0ZUFnZW50UmVxdWVzdBIOCgZvcmdfaWQYASABKAkSFQoNYWdlbnRfcm9sZV9pZBgCIAEoCRIMCgRuYW1lGAMgASgJIj0KE0NyZWF0ZUFnZW50UmVzcG9uc2USJgoFYWdlbnQYASABKAsyFy50YXNrZXIuaGVhbHRoLnYxLkFnZW50IloKBFRhc2sSCgoCaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIOCgZzdGF0dXMYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkiWwoRQ3JlYXRlVGFza1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkiOgoSQ3JlYXRlVGFza1Jlc3BvbnNlEiQKBHRhc2sYASABKAsyFi50YXNrZXIuaGVhbHRoLnYxLlRhc2siRwoRQXNzaWduVGFza1JlcXVlc3QSDwoHdGFza19pZBgBIAEoCRIQCghhZ2VudF9pZBgCIAEoCRIPCgd1c2VyX2lkGAMgASgJIiUKEkFzc2lnblRhc2tSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIMlYKDUhlYWx0aFNlcnZpY2USRQoEUGluZxIdLnRhc2tlci5oZWFsdGgudjEuUGluZ1JlcXVlc3QaHi50YXNrZXIuaGVhbHRoLnYxLlBpbmdSZXNwb25zZTJpCgtBdXRoU2VydmljZRJaCgtHZXRJZGVudGl0eRIkLnRhc2tlci5oZWFsdGgudjEuR2V0SWRlbnRpdHlSZXF1ZXN0GiUudGFza2VyLmhlYWx0aC52MS5HZXRJZGVudGl0eVJlc3BvbnNlMogCCgpPcmdTZXJ2aWNlElEKCExpc3RPcmdzEiEudGFza2VyLmhlYWx0aC52MS5MaXN0T3Jnc1JlcXVlc3QaIi50YXNrZXIuaGVhbHRoLnYxLkxpc3RPcmdzUmVzcG9uc2USTgoHU2VlZE9yZxIgLnRhc2tlci5oZWFsdGgudjEuU2VlZE9yZ1JlcXVlc3QaIS50YXNrZXIuaGVhbHRoLnYxLlNlZWRPcmdSZXNwb25zZRJXCgpJbnZpdGVVc2VyEiMudGFza2VyLmhlYWx0aC52MS5JbnZpdGVVc2VyUmVxdWVzdBokLnRhc2tlci5oZWFsdGgudjEuSW52aXRlVXNlclJlc3BvbnNlMtIBCg9UYXNrVHlwZVNlcnZpY2USWgoLR2V0VGFza1R5cGUSJC50YXNrZXIuaGVhbHRoLnYxLkdldFRhc2tUeXBlUmVxdWVzdBolLnRhc2tlci5oZWFsdGgudjEuR2V0VGFza1R5cGVSZXNwb25zZRJjCg5DcmVhdGVUYXNrVHlwZRInLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlVGFza1R5cGVSZXF1ZXN0GigudGFza2VyLmhlYWx0aC52MS5DcmVhdGVUYXNrVHlwZVJlc3BvbnNlMvUBChZQcm9qZWN0VGVtcGxhdGVTZXJ2aWNlEmgKC0dldFRlbXBsYXRlEisudGFza2VyLmhlYWx0aC52MS5HZXRQcm9qZWN0VGVtcGxhdGVSZXF1ZXN0GiwudGFza2VyLmhlYWx0aC52MS5HZXRQcm9qZWN0VGVtcGxhdGVSZXNwb25zZRJxCg5DcmVhdGVUZW1wbGF0ZRIuLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlUHJvamVjdFRlbXBsYXRlUmVxdWVzdBovLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlUHJvamVjdFRlbXBsYXRlUmVzcG9uc2UyywEKDlByb2plY3RTZXJ2aWNlElcKCkdldFByb2plY3QSIy50YXNrZXIuaGVhbHRoLnYxLkdldFByb2plY3RSZXF1ZXN0GiQudGFza2VyLmhlYWx0aC52MS5HZXRQcm9qZWN0UmVzcG9uc2USYAoNQ3JlYXRlUHJvamVjdBImLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlUHJvamVjdFJlcXVlc3QaJy50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVByb2plY3RSZXNwb25zZTLSAQoMQWdlbnRTZXJ2aWNlEmYKD0NyZWF0ZUFnZW50Um9sZRIoLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlQWdlbnRSb2xlUmVxdWVzdBopLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlQWdlbnRSb2xlUmVzcG9uc2USWgoLQ3JlYXRlQWdlbnQSJC50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZUFnZW50UmVxdWVzdBolLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlQWdlbnRSZXNwb25zZTK/AQoLVGFza1NlcnZpY2USVwoKQ3JlYXRlVGFzaxIjLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlVGFza1JlcXVlc3QaJC50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVRhc2tSZXNwb25zZRJXCgpBc3NpZ25UYXNrEiMudGFza2VyLmhlYWx0aC52MS5Bc3NpZ25UYXNrUmVxdWVzdBokLnRhc2tlci5oZWFsdGgudjEuQXNzaWduVGFza1Jlc3BvbnNlQjdaNWdpdGh1Yi5jb20vaHV5ejAvdGFza2VyL2FwcHMvY2xpL2dlbi90YXNrZXIvaGVhbHRoL3YxYgZwcm90bzM");
 
 /**
  * @generated from message tasker.health.v1.PingRequest
@@ -669,6 +669,288 @@ export const CreateProjectResponseSchema: GenMessage<CreateProjectResponse> = /*
   messageDesc(file_tasker_health_v1_health, 28);
 
 /**
+ * @generated from message tasker.health.v1.AgentRole
+ */
+export type AgentRole = Message<"tasker.health.v1.AgentRole"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string system_prompt = 3;
+   */
+  systemPrompt: string;
+
+  /**
+   * @generated from field: string capabilities = 4;
+   */
+  capabilities: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.AgentRole.
+ * Use `create(AgentRoleSchema)` to create a new message.
+ */
+export const AgentRoleSchema: GenMessage<AgentRole> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 29);
+
+/**
+ * @generated from message tasker.health.v1.Agent
+ */
+export type Agent = Message<"tasker.health.v1.Agent"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string org_id = 2;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string agent_role_id = 3;
+   */
+  agentRoleId: string;
+
+  /**
+   * @generated from field: string name = 4;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.Agent.
+ * Use `create(AgentSchema)` to create a new message.
+ */
+export const AgentSchema: GenMessage<Agent> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 30);
+
+/**
+ * @generated from message tasker.health.v1.CreateAgentRoleRequest
+ */
+export type CreateAgentRoleRequest = Message<"tasker.health.v1.CreateAgentRoleRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string system_prompt = 2;
+   */
+  systemPrompt: string;
+
+  /**
+   * @generated from field: string capabilities = 3;
+   */
+  capabilities: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.CreateAgentRoleRequest.
+ * Use `create(CreateAgentRoleRequestSchema)` to create a new message.
+ */
+export const CreateAgentRoleRequestSchema: GenMessage<CreateAgentRoleRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 31);
+
+/**
+ * @generated from message tasker.health.v1.CreateAgentRoleResponse
+ */
+export type CreateAgentRoleResponse = Message<"tasker.health.v1.CreateAgentRoleResponse"> & {
+  /**
+   * @generated from field: tasker.health.v1.AgentRole role = 1;
+   */
+  role?: AgentRole;
+};
+
+/**
+ * Describes the message tasker.health.v1.CreateAgentRoleResponse.
+ * Use `create(CreateAgentRoleResponseSchema)` to create a new message.
+ */
+export const CreateAgentRoleResponseSchema: GenMessage<CreateAgentRoleResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 32);
+
+/**
+ * @generated from message tasker.health.v1.CreateAgentRequest
+ */
+export type CreateAgentRequest = Message<"tasker.health.v1.CreateAgentRequest"> & {
+  /**
+   * @generated from field: string org_id = 1;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string agent_role_id = 2;
+   */
+  agentRoleId: string;
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.CreateAgentRequest.
+ * Use `create(CreateAgentRequestSchema)` to create a new message.
+ */
+export const CreateAgentRequestSchema: GenMessage<CreateAgentRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 33);
+
+/**
+ * @generated from message tasker.health.v1.CreateAgentResponse
+ */
+export type CreateAgentResponse = Message<"tasker.health.v1.CreateAgentResponse"> & {
+  /**
+   * @generated from field: tasker.health.v1.Agent agent = 1;
+   */
+  agent?: Agent;
+};
+
+/**
+ * Describes the message tasker.health.v1.CreateAgentResponse.
+ * Use `create(CreateAgentResponseSchema)` to create a new message.
+ */
+export const CreateAgentResponseSchema: GenMessage<CreateAgentResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 34);
+
+/**
+ * @generated from message tasker.health.v1.Task
+ */
+export type Task = Message<"tasker.health.v1.Task"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string project_id = 2;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string status = 4;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string description = 5;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.Task.
+ * Use `create(TaskSchema)` to create a new message.
+ */
+export const TaskSchema: GenMessage<Task> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 35);
+
+/**
+ * @generated from message tasker.health.v1.CreateTaskRequest
+ */
+export type CreateTaskRequest = Message<"tasker.health.v1.CreateTaskRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string status = 3;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string description = 4;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.CreateTaskRequest.
+ * Use `create(CreateTaskRequestSchema)` to create a new message.
+ */
+export const CreateTaskRequestSchema: GenMessage<CreateTaskRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 36);
+
+/**
+ * @generated from message tasker.health.v1.CreateTaskResponse
+ */
+export type CreateTaskResponse = Message<"tasker.health.v1.CreateTaskResponse"> & {
+  /**
+   * @generated from field: tasker.health.v1.Task task = 1;
+   */
+  task?: Task;
+};
+
+/**
+ * Describes the message tasker.health.v1.CreateTaskResponse.
+ * Use `create(CreateTaskResponseSchema)` to create a new message.
+ */
+export const CreateTaskResponseSchema: GenMessage<CreateTaskResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 37);
+
+/**
+ * @generated from message tasker.health.v1.AssignTaskRequest
+ */
+export type AssignTaskRequest = Message<"tasker.health.v1.AssignTaskRequest"> & {
+  /**
+   * @generated from field: string task_id = 1;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: string agent_id = 2;
+   */
+  agentId: string;
+
+  /**
+   * @generated from field: string user_id = 3;
+   */
+  userId: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.AssignTaskRequest.
+ * Use `create(AssignTaskRequestSchema)` to create a new message.
+ */
+export const AssignTaskRequestSchema: GenMessage<AssignTaskRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 38);
+
+/**
+ * @generated from message tasker.health.v1.AssignTaskResponse
+ */
+export type AssignTaskResponse = Message<"tasker.health.v1.AssignTaskResponse"> & {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success: boolean;
+};
+
+/**
+ * Describes the message tasker.health.v1.AssignTaskResponse.
+ * Use `create(AssignTaskResponseSchema)` to create a new message.
+ */
+export const AssignTaskResponseSchema: GenMessage<AssignTaskResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 39);
+
+/**
  * @generated from service tasker.health.v1.HealthService
  */
 export const HealthService: GenService<{
@@ -797,4 +1079,50 @@ export const ProjectService: GenService<{
   },
 }> = /*@__PURE__*/
   serviceDesc(file_tasker_health_v1_health, 5);
+
+/**
+ * @generated from service tasker.health.v1.AgentService
+ */
+export const AgentService: GenService<{
+  /**
+   * @generated from rpc tasker.health.v1.AgentService.CreateAgentRole
+   */
+  createAgentRole: {
+    methodKind: "unary";
+    input: typeof CreateAgentRoleRequestSchema;
+    output: typeof CreateAgentRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc tasker.health.v1.AgentService.CreateAgent
+   */
+  createAgent: {
+    methodKind: "unary";
+    input: typeof CreateAgentRequestSchema;
+    output: typeof CreateAgentResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_tasker_health_v1_health, 6);
+
+/**
+ * @generated from service tasker.health.v1.TaskService
+ */
+export const TaskService: GenService<{
+  /**
+   * @generated from rpc tasker.health.v1.TaskService.CreateTask
+   */
+  createTask: {
+    methodKind: "unary";
+    input: typeof CreateTaskRequestSchema;
+    output: typeof CreateTaskResponseSchema;
+  },
+  /**
+   * @generated from rpc tasker.health.v1.TaskService.AssignTask
+   */
+  assignTask: {
+    methodKind: "unary";
+    input: typeof AssignTaskRequestSchema;
+    output: typeof AssignTaskResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_tasker_health_v1_health, 7);
 

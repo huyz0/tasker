@@ -47,3 +47,38 @@ export const createTasksHandler = (db: any, nc: any = null) => {
     }
   };
 };
+
+export const createTaskManagementHandler = (db: any, nc: any = null) => {
+  const isStandalone = process.env.STANDALONE === "true";
+  return {
+    async createTask(req: any) {
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const newId = "tsk-" + Date.now().toString();
+      const payload = {
+        id: newId,
+        projectId: req.projectId,
+        title: req.title,
+        status: req.status || "todo",
+        description: req.description || ""
+      };
+
+      await db.insert(tasks).values(payload);
+
+      if (nc) nc.publish("domain.task.created", Buffer.from(JSON.stringify(payload)));
+      return { task: payload };
+    },
+    async assignTask(req: any) {
+      const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+      const newId = "ta-" + Date.now().toString();
+      const payload = {
+        id: newId,
+        taskId: req.taskId,
+        agentId: req.agentId || null,
+        userId: req.userId || null,
+      };
+
+      await db.insert(assignments).values(payload);
+      return { success: true };
+    }
+  };
+};

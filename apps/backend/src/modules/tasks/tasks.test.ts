@@ -42,4 +42,64 @@ describe("Tasks Handler Integration Tests", () => {
     expect(getRes.taskType.id).toBe(createResp.taskType.id);
     expect(getRes.taskType.name).toBe("Integration Test Task");
   });
+
+  test("createTaskManagementHandler can create/assign tasks", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    
+    const orgId = "org-taskman-" + Date.now().toString();
+    const userId = "user-taskman-" + Date.now().toString();
+    const templateId = "tmpl-taskman-" + Date.now().toString();
+    const projectId = "proj-taskman-" + Date.now().toString();
+
+    try {
+        await db.insert(schemaSqlite.users).values({
+          id: userId,
+          email: "taskman@test.com",
+          createdAt: new Date(),
+        });
+        await db.insert(schemaSqlite.organizations).values({
+          id: orgId,
+          name: "Test Org TaskMan",
+          slug: "test-org-taskman-" + Date.now().toString(),
+          createdAt: new Date(),
+        });
+        await db.insert(schemaSqlite.projectTemplates).values({
+          id: templateId,
+          orgId: orgId,
+          name: "Test Temp",
+          createdAt: new Date(),
+        });
+        await db.insert(schemaSqlite.projects).values({
+          id: projectId,
+          orgId: orgId,
+          templateId: templateId,
+          ownerId: userId,
+          name: "Test Proj",
+          createdAt: new Date(),
+        });
+    } catch {}
+
+    const { createTaskManagementHandler } = require("./tasks.handler");
+    const handler = createTaskManagementHandler(db, nc);
+
+    const taskResp = await handler.createTask({
+      projectId: projectId,
+      title: "New Test Task",
+      status: "todo",
+      description: "testing",
+    });
+    
+    expect(taskResp.task).toBeDefined();
+    expect(taskResp.task.title).toBe("New Test Task");
+
+    const subjects = nc.publishedMessages.map((m: any) => m.subject);
+    expect(subjects).toContain("domain.task.created");
+
+    const assignResp = await handler.assignTask({
+      taskId: taskResp.task.id,
+      userId: userId,
+    });
+    
+    expect(assignResp.success).toBe(true);
+  });
 });

@@ -1,11 +1,12 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
 import { createOrgsHandler } from "./modules/orgs/orgs.handler";
 import { createProjectTemplatesHandler, createProjectsHandler } from "./modules/projects/projects.handler";
-import { createTasksHandler } from "./modules/tasks/tasks.handler";
+import { createTasksHandler, createTaskManagementHandler } from "./modules/tasks/tasks.handler";
+import { createAgentsHandler } from "./modules/agents/agents.handler";
 import { setupDatabase } from "./db/db";
 import { connect as natsConnect } from "nats";
 
@@ -26,12 +27,14 @@ try {
 
 const handler = connectNodeAdapter({
   routes: (router) => {
-    router.service(HealthService, createHealthHandler(db));
-    router.service(TaskTypeService, createTasksHandler(db, nc));
-    router.service(AuthService, createAuthHandler(db));
-    router.service(OrgService, createOrgsHandler(db, nc));
-    router.service(ProjectTemplateService, createProjectTemplatesHandler(db, nc));
-    router.service(ProjectService, createProjectsHandler(db, nc));
+    router.service(HealthService as any, createHealthHandler(db));
+    router.service(TaskTypeService as any, createTasksHandler(db, nc));
+    router.service(AuthService as any, createAuthHandler(db));
+    router.service(OrgService as any, createOrgsHandler(db, nc));
+    router.service(ProjectTemplateService as any, createProjectTemplatesHandler(db, nc));
+    router.service(ProjectService as any, createProjectsHandler(db, nc));
+    router.service(TaskService as any, createTaskManagementHandler(db, nc));
+    router.service(AgentService as any, createAgentsHandler(db, nc));
   },
 });
 

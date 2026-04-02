@@ -33,6 +33,10 @@ const (
 	ProjectTemplateServiceName = "tasker.health.v1.ProjectTemplateService"
 	// ProjectServiceName is the fully-qualified name of the ProjectService service.
 	ProjectServiceName = "tasker.health.v1.ProjectService"
+	// AgentServiceName is the fully-qualified name of the AgentService service.
+	AgentServiceName = "tasker.health.v1.AgentService"
+	// TaskServiceName is the fully-qualified name of the TaskService service.
+	TaskServiceName = "tasker.health.v1.TaskService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -71,6 +75,16 @@ const (
 	// ProjectServiceCreateProjectProcedure is the fully-qualified name of the ProjectService's
 	// CreateProject RPC.
 	ProjectServiceCreateProjectProcedure = "/tasker.health.v1.ProjectService/CreateProject"
+	// AgentServiceCreateAgentRoleProcedure is the fully-qualified name of the AgentService's
+	// CreateAgentRole RPC.
+	AgentServiceCreateAgentRoleProcedure = "/tasker.health.v1.AgentService/CreateAgentRole"
+	// AgentServiceCreateAgentProcedure is the fully-qualified name of the AgentService's CreateAgent
+	// RPC.
+	AgentServiceCreateAgentProcedure = "/tasker.health.v1.AgentService/CreateAgent"
+	// TaskServiceCreateTaskProcedure is the fully-qualified name of the TaskService's CreateTask RPC.
+	TaskServiceCreateTaskProcedure = "/tasker.health.v1.TaskService/CreateTask"
+	// TaskServiceAssignTaskProcedure is the fully-qualified name of the TaskService's AssignTask RPC.
+	TaskServiceAssignTaskProcedure = "/tasker.health.v1.TaskService/AssignTask"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -92,6 +106,12 @@ var (
 	projectServiceServiceDescriptor                      = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectService")
 	projectServiceGetProjectMethodDescriptor             = projectServiceServiceDescriptor.Methods().ByName("GetProject")
 	projectServiceCreateProjectMethodDescriptor          = projectServiceServiceDescriptor.Methods().ByName("CreateProject")
+	agentServiceServiceDescriptor                        = v1.File_tasker_health_v1_health_proto.Services().ByName("AgentService")
+	agentServiceCreateAgentRoleMethodDescriptor          = agentServiceServiceDescriptor.Methods().ByName("CreateAgentRole")
+	agentServiceCreateAgentMethodDescriptor              = agentServiceServiceDescriptor.Methods().ByName("CreateAgent")
+	taskServiceServiceDescriptor                         = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskService")
+	taskServiceCreateTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("CreateTask")
+	taskServiceAssignTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -631,4 +651,192 @@ func (UnimplementedProjectServiceHandler) GetProject(context.Context, *connect.R
 
 func (UnimplementedProjectServiceHandler) CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.CreateProject is not implemented"))
+}
+
+// AgentServiceClient is a client for the tasker.health.v1.AgentService service.
+type AgentServiceClient interface {
+	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
+	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error)
+}
+
+// NewAgentServiceClient constructs a client for the tasker.health.v1.AgentService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AgentServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &agentServiceClient{
+		createAgentRole: connect.NewClient[v1.CreateAgentRoleRequest, v1.CreateAgentRoleResponse](
+			httpClient,
+			baseURL+AgentServiceCreateAgentRoleProcedure,
+			connect.WithSchema(agentServiceCreateAgentRoleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		createAgent: connect.NewClient[v1.CreateAgentRequest, v1.CreateAgentResponse](
+			httpClient,
+			baseURL+AgentServiceCreateAgentProcedure,
+			connect.WithSchema(agentServiceCreateAgentMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// agentServiceClient implements AgentServiceClient.
+type agentServiceClient struct {
+	createAgentRole *connect.Client[v1.CreateAgentRoleRequest, v1.CreateAgentRoleResponse]
+	createAgent     *connect.Client[v1.CreateAgentRequest, v1.CreateAgentResponse]
+}
+
+// CreateAgentRole calls tasker.health.v1.AgentService.CreateAgentRole.
+func (c *agentServiceClient) CreateAgentRole(ctx context.Context, req *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error) {
+	return c.createAgentRole.CallUnary(ctx, req)
+}
+
+// CreateAgent calls tasker.health.v1.AgentService.CreateAgent.
+func (c *agentServiceClient) CreateAgent(ctx context.Context, req *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error) {
+	return c.createAgent.CallUnary(ctx, req)
+}
+
+// AgentServiceHandler is an implementation of the tasker.health.v1.AgentService service.
+type AgentServiceHandler interface {
+	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
+	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error)
+}
+
+// NewAgentServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	agentServiceCreateAgentRoleHandler := connect.NewUnaryHandler(
+		AgentServiceCreateAgentRoleProcedure,
+		svc.CreateAgentRole,
+		connect.WithSchema(agentServiceCreateAgentRoleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	agentServiceCreateAgentHandler := connect.NewUnaryHandler(
+		AgentServiceCreateAgentProcedure,
+		svc.CreateAgent,
+		connect.WithSchema(agentServiceCreateAgentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.AgentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AgentServiceCreateAgentRoleProcedure:
+			agentServiceCreateAgentRoleHandler.ServeHTTP(w, r)
+		case AgentServiceCreateAgentProcedure:
+			agentServiceCreateAgentHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAgentServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAgentServiceHandler struct{}
+
+func (UnimplementedAgentServiceHandler) CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.CreateAgentRole is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.CreateAgent is not implemented"))
+}
+
+// TaskServiceClient is a client for the tasker.health.v1.TaskService service.
+type TaskServiceClient interface {
+	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
+	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
+}
+
+// NewTaskServiceClient constructs a client for the tasker.health.v1.TaskService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) TaskServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &taskServiceClient{
+		createTask: connect.NewClient[v1.CreateTaskRequest, v1.CreateTaskResponse](
+			httpClient,
+			baseURL+TaskServiceCreateTaskProcedure,
+			connect.WithSchema(taskServiceCreateTaskMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		assignTask: connect.NewClient[v1.AssignTaskRequest, v1.AssignTaskResponse](
+			httpClient,
+			baseURL+TaskServiceAssignTaskProcedure,
+			connect.WithSchema(taskServiceAssignTaskMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// taskServiceClient implements TaskServiceClient.
+type taskServiceClient struct {
+	createTask *connect.Client[v1.CreateTaskRequest, v1.CreateTaskResponse]
+	assignTask *connect.Client[v1.AssignTaskRequest, v1.AssignTaskResponse]
+}
+
+// CreateTask calls tasker.health.v1.TaskService.CreateTask.
+func (c *taskServiceClient) CreateTask(ctx context.Context, req *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error) {
+	return c.createTask.CallUnary(ctx, req)
+}
+
+// AssignTask calls tasker.health.v1.TaskService.AssignTask.
+func (c *taskServiceClient) AssignTask(ctx context.Context, req *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error) {
+	return c.assignTask.CallUnary(ctx, req)
+}
+
+// TaskServiceHandler is an implementation of the tasker.health.v1.TaskService service.
+type TaskServiceHandler interface {
+	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
+	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
+}
+
+// NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
+// on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	taskServiceCreateTaskHandler := connect.NewUnaryHandler(
+		TaskServiceCreateTaskProcedure,
+		svc.CreateTask,
+		connect.WithSchema(taskServiceCreateTaskMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceAssignTaskHandler := connect.NewUnaryHandler(
+		TaskServiceAssignTaskProcedure,
+		svc.AssignTask,
+		connect.WithSchema(taskServiceAssignTaskMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case TaskServiceCreateTaskProcedure:
+			taskServiceCreateTaskHandler.ServeHTTP(w, r)
+		case TaskServiceAssignTaskProcedure:
+			taskServiceAssignTaskHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedTaskServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedTaskServiceHandler struct{}
+
+func (UnimplementedTaskServiceHandler) CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.CreateTask is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.AssignTask is not implemented"))
 }

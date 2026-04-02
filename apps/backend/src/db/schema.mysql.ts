@@ -75,3 +75,39 @@ export const projects = mysqlTable("projects", {
   ownerId: varchar("owner_id", { length: 256 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const agentRoles = mysqlTable("agent_roles", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  systemPrompt: varchar("system_prompt", { length: 4096 }).notNull(),
+  capabilities: varchar("capabilities", { length: 2048 }).notNull(),
+});
+
+export const agents = mysqlTable("agents", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  agentRoleId: varchar("agent_role_id", { length: 256 }).notNull().references(() => agentRoles.id),
+  name: varchar("name", { length: 256 }).notNull(),
+});
+
+export const tasks = mysqlTable("tasks", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  projectId: varchar("project_id", { length: 256 }).notNull().references(() => projects.id),
+  title: varchar("title", { length: 512 }).notNull(),
+  status: varchar("status", { length: 256 }).notNull(),
+  description: varchar("description", { length: 4096 }),
+});
+
+export const taskAssignments = mysqlTable("task_assignments", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
+  agentId: varchar("agent_id", { length: 256 }).references(() => agents.id),
+  userId: varchar("user_id", { length: 256 }).references(() => users.id),
+});
+
+export const taskReviewers = mysqlTable("task_reviewers", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
+  userId: varchar("user_id", { length: 256 }).notNull().references(() => users.id),
+});
+
