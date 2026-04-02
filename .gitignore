@@ -58,3 +58,8 @@ tsp-output/
 # GitNexus
 .gitnexus
 .gitnexus-watch.pid
+
+# Coverage
+coverage/
+*.coverage
+*coverage*.out
