@@ -1,5 +1,5 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
-import { HealthService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import * as http from "node:http";
 import fs from "node:fs";
 import { setupDatabase } from "./db";
@@ -39,6 +39,41 @@ const handler = connectNodeAdapter({
           dbStatus: dbStatus,
         };
       },
+    });
+
+    router.service(TaskTypeService, {
+      async getTaskType(req: any) {
+        return {
+          taskType: { id: req.id, orgId: "org", projectId: "proj", name: "Type", createdAt: "now" },
+          statuses: [],
+          transitions: []
+        };
+      },
+      async createTaskType(req: any) {
+        return {
+          taskType: { id: "new-id", orgId: req.orgId, projectId: req.projectId, name: req.name, createdAt: "now" }
+        };
+      }
+    });
+
+    router.service(AuthService, {
+      async getIdentity(req: any) {
+        return {
+          user: { id: "user-1", email: "seed@tasker", name: "Seed Admin", avatarUrl: "", createdAt: Date.now().toString() }
+        };
+      }
+    });
+
+    router.service(OrgService, {
+      async listOrgs(req: any) {
+        return { organizations: [] };
+      },
+      async seedOrg(req: any) {
+        return { organization: { id: "org-1", name: req.name, slug: req.slug, role: "admin" } };
+      },
+      async inviteUser(req: any) {
+        return { success: true };
+      }
     });
   },
 });

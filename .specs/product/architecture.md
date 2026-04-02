@@ -10,7 +10,7 @@ Tasker operates as the foundational **Task Management System for AI Agents and H
 
 ## Component Design (Container View)
 
-- **Frontend (Web App)**: React SPA served with Server-Side Rendering (SSR) where necessary. Designed primarily for humans to interact, monitor, and provide feedback to agents in real-time.
+- **Frontend (Web App)**: React SPA served with Server-Side Rendering (SSR) where necessary. Designed primarily for humans to interact, monitor, and provide feedback to agents in real-time. Features interactive visual editors utilizing React Flow, offering dual support with textual language definitions for complex workflows and state machines.
 - **CLI & AI Agent Skills**: A suite of command-line tools and executable agent skills that interface directly with the API Gateway. These afford AI agents and advanced users scriptable, fast access to the system.
 - **API Gateway & Core Logic (Backend)**: Bun + gRPC. High-performance, low-latency command routing. Provides bi-directional streaming for fast synchronization with Agent systems.
 - **Event Bus**: NATS. The central nervous system of the architecture decoupling side-effects from primary logic, capable of scaling to 40K+ concurrent pub/sub connections.

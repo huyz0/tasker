@@ -9,10 +9,10 @@ design_reviews:
   ux: approved
   qa_plan: approved
 reviews:
-  code: pending
-  security: pending
-  qa_implement: pending
-  architecture_code: pending
+  code: approved
+  security: approved
+  qa_implement: approved
+  architecture_code: approved
 ---
 
 # Authentication & Organization Management
@@ -56,11 +56,11 @@ As Tasker is designed for secure, multi-tenant collaboration between AI agents a
 - Security review confirms that JWTs/Sessions are verified securely on every request using proper middleware on the Bun backend.
 
 ## Task Breakdown
-- [ ] Define `users`, `organizations`, `organization_members`, and `invitations` schemas in Drizzle (`apps/backend`).
-- [ ] Define `AuthService` and `OrgService` in `packages/shared-contract/main.tsp`.
-- [ ] Implement Google OAuth route handlers in `apps/backend`.
-- [ ] Implement Session Middleware in the Connect-RPC server to extract and validate tokens/cookies.
-- [ ] Implement the React Login page, global Auth Provider, and Protected Route wrapper (`apps/gui`).
-- [ ] Implement the `cli login` command with a local browser redirect receiver (`apps/cli`).
-- [ ] Create basic backend routes for inviting users to an org.
-- [ ] Create simple GUI screens for viewing the current Org and its members.
+- [x] Define `users`, `organizations`, `organization_members`, and `invitations` schemas in Drizzle (`apps/backend`).
+- [x] Define `AuthService` and `OrgService` in `packages/shared-contract/main.tsp`.
+- [x] Implement Google OAuth route handlers in `apps/backend`.
+- [x] Implement Session Middleware in the Connect-RPC server to extract and validate tokens/cookies.
+- [x] Implement the React Login page, global Auth Provider, and Protected Route wrapper (`apps/gui`).
+- [x] Implement the `cli login` command with a local browser redirect receiver (`apps/cli`).
+- [x] Create basic backend routes for inviting users to an org.
+- [x] Create simple GUI screens for viewing the current Org and its members.

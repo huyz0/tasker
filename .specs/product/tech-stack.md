@@ -7,7 +7,7 @@
 - **Framework**: React with Server-Side Rendering (SSR)
 - **UI Design System**: Shadcn (built on Radix UI)
 - **Styling**: Tailwind CSS
-- **Interactive Workflows**: React Flow
+- **Interactive Workflows**: React Flow (configured with dual support for graphical state machine editing and synchronized textual language definition)
 - **UI Documentation & Testing**: Storybook
 - **State & Real-Time Sync**: TanStack Query (React Query)
 - **Language**: TypeScript

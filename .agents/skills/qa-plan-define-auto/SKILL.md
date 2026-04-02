@@ -15,7 +15,7 @@ Given an epic identifier, autonomously parse the epic's requirements, determine 
 - DO NOT ask the user any questions. All context MUST be gathered autonomously.
 - DO NOT invent test cases for items explicitly "Out of Scope" in the epic.
 - DO NOT deviate from `.specs/standards/test-plan-standard.md`.
-- ALWAYS output files into the root `.test-plans/` directory (NOT `.epics/`).
+- ALWAYS output files into a subdirectory exactly formatted as .test-plans/TEST-PLAN-<4-digit-id>-<kebab-case-title>/. DO NOT use the epic's folder name format.
 - ALWAYS tag test cases clearly with `TC-XXX`.
 - ALWAYS align the test cases directly against the epic's "Definition of Done".
 - ALWAYS ensure every frontend UI flow has an E2E test case and every backend change has a Unit/Integration case.

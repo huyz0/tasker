@@ -71,15 +71,18 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
      d. Run linting and type-checking.
      e. Write or update tests per testing-standard.
      f. Mark task as complete (`- [x]`) in the EPIC.md. Remove any `<!-- partial -->` notes.
-8. **Verification:**
+8. **Verification (Loop Check / Fix):**
+   - Read the Epic's "Definition of Done".
+   - Read the relevant `TEST-PLAN.md` for this epic.
+   - Verify every task in the Task Breakdown is actually implemented fully in code.
+   - Verify all test cases from the `TEST-PLAN.md` are completely covered by executable tests and actually pass.
    - You MUST run the full lint, type-check, and test suite physically in the terminal (e.g., `npx moon check --all`). Do not assume code works without running it.
    - **Workflow Consistency:** If you modified `.githooks/pre-commit` or `.specs/standards/git-workflow-standard.md`, strictly verify that the documented required checks perfectly match the executable shell script.
    - After local verification, you MUST execute the `.agents/skills/local-ci-run/SKILL.md` workflow to verify GitHub workflows pass locally.
-   - Verify all Definition of Done criteria are met.
-   - Document any unresolved items.
+   - **Loop Check**: If ANY of the above checks fail (missing DoD items, incomplete task breakdown tasks, missing test cases, or failing CI commands), DO NOT proceed to finalization. You MUST loop back to Step 7 (Execute Task Breakdown) to write the missing code/tests, fix the discrepancies, and then run this Verification step again. Loop continuously until the implementation is 100% complete and verified. 
 9. **Finalize:**
-   - If all tasks and DoD criteria are met → set `status: done`.
-   - If any tasks remain blocked → keep `status: in-progress` and document blockers.
+   - ONLY if all tasks are implemented, DoD criteria are met, and CI passes → set `status: done`.
+   - If any tasks remain hopelessly blocked → keep `status: in-progress` and document blockers.
 10. **Summary:**
    - Output a completion summary listing: completed tasks, test results, any blockers, and next steps.
 

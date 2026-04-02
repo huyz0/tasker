@@ -17,6 +17,7 @@ Create a structured Test Plan in `.test-plans/` aligned with `.specs/standards/t
 - DO NOT accept sparse test cases without expanding them into Given/When/Then format.
 - DO NOT output conversational filler.
 - DO NOT deviate from `.specs/standards/test-plan-standard.md`.
+- ALWAYS format the output subdirectory exactly as .test-plans/TEST-PLAN-<4-digit-id>-<kebab-case-title>/. DO NOT use the epic's folder name format.
 
 # Instructions
 1. **Context:** Ask for title and the Epic ID or feature being validated. Wait for answer.

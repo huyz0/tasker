@@ -23,6 +23,12 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// HealthServiceName is the fully-qualified name of the HealthService service.
 	HealthServiceName = "tasker.health.v1.HealthService"
+	// AuthServiceName is the fully-qualified name of the AuthService service.
+	AuthServiceName = "tasker.health.v1.AuthService"
+	// OrgServiceName is the fully-qualified name of the OrgService service.
+	OrgServiceName = "tasker.health.v1.OrgService"
+	// TaskTypeServiceName is the fully-qualified name of the TaskTypeService service.
+	TaskTypeServiceName = "tasker.health.v1.TaskTypeService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -35,12 +41,35 @@ const (
 const (
 	// HealthServicePingProcedure is the fully-qualified name of the HealthService's Ping RPC.
 	HealthServicePingProcedure = "/tasker.health.v1.HealthService/Ping"
+	// AuthServiceGetIdentityProcedure is the fully-qualified name of the AuthService's GetIdentity RPC.
+	AuthServiceGetIdentityProcedure = "/tasker.health.v1.AuthService/GetIdentity"
+	// OrgServiceListOrgsProcedure is the fully-qualified name of the OrgService's ListOrgs RPC.
+	OrgServiceListOrgsProcedure = "/tasker.health.v1.OrgService/ListOrgs"
+	// OrgServiceSeedOrgProcedure is the fully-qualified name of the OrgService's SeedOrg RPC.
+	OrgServiceSeedOrgProcedure = "/tasker.health.v1.OrgService/SeedOrg"
+	// OrgServiceInviteUserProcedure is the fully-qualified name of the OrgService's InviteUser RPC.
+	OrgServiceInviteUserProcedure = "/tasker.health.v1.OrgService/InviteUser"
+	// TaskTypeServiceGetTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
+	// GetTaskType RPC.
+	TaskTypeServiceGetTaskTypeProcedure = "/tasker.health.v1.TaskTypeService/GetTaskType"
+	// TaskTypeServiceCreateTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
+	// CreateTaskType RPC.
+	TaskTypeServiceCreateTaskTypeProcedure = "/tasker.health.v1.TaskTypeService/CreateTaskType"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	healthServiceServiceDescriptor    = v1.File_tasker_health_v1_health_proto.Services().ByName("HealthService")
-	healthServicePingMethodDescriptor = healthServiceServiceDescriptor.Methods().ByName("Ping")
+	healthServiceServiceDescriptor                = v1.File_tasker_health_v1_health_proto.Services().ByName("HealthService")
+	healthServicePingMethodDescriptor             = healthServiceServiceDescriptor.Methods().ByName("Ping")
+	authServiceServiceDescriptor                  = v1.File_tasker_health_v1_health_proto.Services().ByName("AuthService")
+	authServiceGetIdentityMethodDescriptor        = authServiceServiceDescriptor.Methods().ByName("GetIdentity")
+	orgServiceServiceDescriptor                   = v1.File_tasker_health_v1_health_proto.Services().ByName("OrgService")
+	orgServiceListOrgsMethodDescriptor            = orgServiceServiceDescriptor.Methods().ByName("ListOrgs")
+	orgServiceSeedOrgMethodDescriptor             = orgServiceServiceDescriptor.Methods().ByName("SeedOrg")
+	orgServiceInviteUserMethodDescriptor          = orgServiceServiceDescriptor.Methods().ByName("InviteUser")
+	taskTypeServiceServiceDescriptor              = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskTypeService")
+	taskTypeServiceGetTaskTypeMethodDescriptor    = taskTypeServiceServiceDescriptor.Methods().ByName("GetTaskType")
+	taskTypeServiceCreateTaskTypeMethodDescriptor = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskType")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -109,4 +138,286 @@ type UnimplementedHealthServiceHandler struct{}
 
 func (UnimplementedHealthServiceHandler) Ping(context.Context, *connect.Request[v1.PingRequest]) (*connect.Response[v1.PingResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.HealthService.Ping is not implemented"))
+}
+
+// AuthServiceClient is a client for the tasker.health.v1.AuthService service.
+type AuthServiceClient interface {
+	GetIdentity(context.Context, *connect.Request[v1.GetIdentityRequest]) (*connect.Response[v1.GetIdentityResponse], error)
+}
+
+// NewAuthServiceClient constructs a client for the tasker.health.v1.AuthService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AuthServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &authServiceClient{
+		getIdentity: connect.NewClient[v1.GetIdentityRequest, v1.GetIdentityResponse](
+			httpClient,
+			baseURL+AuthServiceGetIdentityProcedure,
+			connect.WithSchema(authServiceGetIdentityMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// authServiceClient implements AuthServiceClient.
+type authServiceClient struct {
+	getIdentity *connect.Client[v1.GetIdentityRequest, v1.GetIdentityResponse]
+}
+
+// GetIdentity calls tasker.health.v1.AuthService.GetIdentity.
+func (c *authServiceClient) GetIdentity(ctx context.Context, req *connect.Request[v1.GetIdentityRequest]) (*connect.Response[v1.GetIdentityResponse], error) {
+	return c.getIdentity.CallUnary(ctx, req)
+}
+
+// AuthServiceHandler is an implementation of the tasker.health.v1.AuthService service.
+type AuthServiceHandler interface {
+	GetIdentity(context.Context, *connect.Request[v1.GetIdentityRequest]) (*connect.Response[v1.GetIdentityResponse], error)
+}
+
+// NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
+// on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	authServiceGetIdentityHandler := connect.NewUnaryHandler(
+		AuthServiceGetIdentityProcedure,
+		svc.GetIdentity,
+		connect.WithSchema(authServiceGetIdentityMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AuthServiceGetIdentityProcedure:
+			authServiceGetIdentityHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAuthServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAuthServiceHandler struct{}
+
+func (UnimplementedAuthServiceHandler) GetIdentity(context.Context, *connect.Request[v1.GetIdentityRequest]) (*connect.Response[v1.GetIdentityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AuthService.GetIdentity is not implemented"))
+}
+
+// OrgServiceClient is a client for the tasker.health.v1.OrgService service.
+type OrgServiceClient interface {
+	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
+	SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error)
+	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
+}
+
+// NewOrgServiceClient constructs a client for the tasker.health.v1.OrgService service. By default,
+// it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and
+// sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC()
+// or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) OrgServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &orgServiceClient{
+		listOrgs: connect.NewClient[v1.ListOrgsRequest, v1.ListOrgsResponse](
+			httpClient,
+			baseURL+OrgServiceListOrgsProcedure,
+			connect.WithSchema(orgServiceListOrgsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		seedOrg: connect.NewClient[v1.SeedOrgRequest, v1.SeedOrgResponse](
+			httpClient,
+			baseURL+OrgServiceSeedOrgProcedure,
+			connect.WithSchema(orgServiceSeedOrgMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		inviteUser: connect.NewClient[v1.InviteUserRequest, v1.InviteUserResponse](
+			httpClient,
+			baseURL+OrgServiceInviteUserProcedure,
+			connect.WithSchema(orgServiceInviteUserMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// orgServiceClient implements OrgServiceClient.
+type orgServiceClient struct {
+	listOrgs   *connect.Client[v1.ListOrgsRequest, v1.ListOrgsResponse]
+	seedOrg    *connect.Client[v1.SeedOrgRequest, v1.SeedOrgResponse]
+	inviteUser *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
+}
+
+// ListOrgs calls tasker.health.v1.OrgService.ListOrgs.
+func (c *orgServiceClient) ListOrgs(ctx context.Context, req *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error) {
+	return c.listOrgs.CallUnary(ctx, req)
+}
+
+// SeedOrg calls tasker.health.v1.OrgService.SeedOrg.
+func (c *orgServiceClient) SeedOrg(ctx context.Context, req *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error) {
+	return c.seedOrg.CallUnary(ctx, req)
+}
+
+// InviteUser calls tasker.health.v1.OrgService.InviteUser.
+func (c *orgServiceClient) InviteUser(ctx context.Context, req *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {
+	return c.inviteUser.CallUnary(ctx, req)
+}
+
+// OrgServiceHandler is an implementation of the tasker.health.v1.OrgService service.
+type OrgServiceHandler interface {
+	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
+	SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error)
+	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
+}
+
+// NewOrgServiceHandler builds an HTTP handler from the service implementation. It returns the path
+// on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	orgServiceListOrgsHandler := connect.NewUnaryHandler(
+		OrgServiceListOrgsProcedure,
+		svc.ListOrgs,
+		connect.WithSchema(orgServiceListOrgsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceSeedOrgHandler := connect.NewUnaryHandler(
+		OrgServiceSeedOrgProcedure,
+		svc.SeedOrg,
+		connect.WithSchema(orgServiceSeedOrgMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceInviteUserHandler := connect.NewUnaryHandler(
+		OrgServiceInviteUserProcedure,
+		svc.InviteUser,
+		connect.WithSchema(orgServiceInviteUserMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.OrgService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case OrgServiceListOrgsProcedure:
+			orgServiceListOrgsHandler.ServeHTTP(w, r)
+		case OrgServiceSeedOrgProcedure:
+			orgServiceSeedOrgHandler.ServeHTTP(w, r)
+		case OrgServiceInviteUserProcedure:
+			orgServiceInviteUserHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedOrgServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedOrgServiceHandler struct{}
+
+func (UnimplementedOrgServiceHandler) ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.ListOrgs is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.SeedOrg is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.InviteUser is not implemented"))
+}
+
+// TaskTypeServiceClient is a client for the tasker.health.v1.TaskTypeService service.
+type TaskTypeServiceClient interface {
+	GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error)
+	CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error)
+}
+
+// NewTaskTypeServiceClient constructs a client for the tasker.health.v1.TaskTypeService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewTaskTypeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) TaskTypeServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &taskTypeServiceClient{
+		getTaskType: connect.NewClient[v1.GetTaskTypeRequest, v1.GetTaskTypeResponse](
+			httpClient,
+			baseURL+TaskTypeServiceGetTaskTypeProcedure,
+			connect.WithSchema(taskTypeServiceGetTaskTypeMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		createTaskType: connect.NewClient[v1.CreateTaskTypeRequest, v1.CreateTaskTypeResponse](
+			httpClient,
+			baseURL+TaskTypeServiceCreateTaskTypeProcedure,
+			connect.WithSchema(taskTypeServiceCreateTaskTypeMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// taskTypeServiceClient implements TaskTypeServiceClient.
+type taskTypeServiceClient struct {
+	getTaskType    *connect.Client[v1.GetTaskTypeRequest, v1.GetTaskTypeResponse]
+	createTaskType *connect.Client[v1.CreateTaskTypeRequest, v1.CreateTaskTypeResponse]
+}
+
+// GetTaskType calls tasker.health.v1.TaskTypeService.GetTaskType.
+func (c *taskTypeServiceClient) GetTaskType(ctx context.Context, req *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error) {
+	return c.getTaskType.CallUnary(ctx, req)
+}
+
+// CreateTaskType calls tasker.health.v1.TaskTypeService.CreateTaskType.
+func (c *taskTypeServiceClient) CreateTaskType(ctx context.Context, req *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error) {
+	return c.createTaskType.CallUnary(ctx, req)
+}
+
+// TaskTypeServiceHandler is an implementation of the tasker.health.v1.TaskTypeService service.
+type TaskTypeServiceHandler interface {
+	GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error)
+	CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error)
+}
+
+// NewTaskTypeServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewTaskTypeServiceHandler(svc TaskTypeServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	taskTypeServiceGetTaskTypeHandler := connect.NewUnaryHandler(
+		TaskTypeServiceGetTaskTypeProcedure,
+		svc.GetTaskType,
+		connect.WithSchema(taskTypeServiceGetTaskTypeMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskTypeServiceCreateTaskTypeHandler := connect.NewUnaryHandler(
+		TaskTypeServiceCreateTaskTypeProcedure,
+		svc.CreateTaskType,
+		connect.WithSchema(taskTypeServiceCreateTaskTypeMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.TaskTypeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case TaskTypeServiceGetTaskTypeProcedure:
+			taskTypeServiceGetTaskTypeHandler.ServeHTTP(w, r)
+		case TaskTypeServiceCreateTaskTypeProcedure:
+			taskTypeServiceCreateTaskTypeHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedTaskTypeServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedTaskTypeServiceHandler struct{}
+
+func (UnimplementedTaskTypeServiceHandler) GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.GetTaskType is not implemented"))
+}
+
+func (UnimplementedTaskTypeServiceHandler) CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.CreateTaskType is not implemented"))
 }

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file tasker/health/v1/health.proto.
  */
 export const file_tasker_health_v1_health: GenFile = /*@__PURE__*/
-  fileDesc("Ch10YXNrZXIvaGVhbHRoL3YxL2hlYWx0aC5wcm90bxIQdGFza2VyLmhlYWx0aC52MSINCgtQaW5nUmVxdWVzdCIxCgxQaW5nUmVzcG9uc2USDwoHbWVzc2FnZRgBIAEoCRIQCghkYlN0YXR1cxgCIAEoCTJWCg1IZWFsdGhTZXJ2aWNlEkUKBFBpbmcSHS50YXNrZXIuaGVhbHRoLnYxLlBpbmdSZXF1ZXN0Gh4udGFza2VyLmhlYWx0aC52MS5QaW5nUmVzcG9uc2VCN1o1Z2l0aHViLmNvbS9odXl6MC90YXNrZXIvYXBwcy9jbGkvZ2VuL3Rhc2tlci9oZWFsdGgvdjFiBnByb3RvMw");
+  fileDesc("Ch10YXNrZXIvaGVhbHRoL3YxL2hlYWx0aC5wcm90bxIQdGFza2VyLmhlYWx0aC52MSINCgtQaW5nUmVxdWVzdCIxCgxQaW5nUmVzcG9uc2USDwoHbWVzc2FnZRgBIAEoCRIQCghkYlN0YXR1cxgCIAEoCSJVCgRVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEgwKBG5hbWUYAyABKAkSEQoJYXZhdGFyVXJsGAQgASgJEhEKCWNyZWF0ZWRBdBgFIAEoCSJECgxPcmdhbml6YXRpb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRzbHVnGAMgASgJEgwKBHJvbGUYBCABKAkiFAoSR2V0SWRlbnRpdHlSZXF1ZXN0IjsKE0dldElkZW50aXR5UmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnRhc2tlci5oZWFsdGgudjEuVXNlciIRCg9MaXN0T3Jnc1JlcXVlc3QiSQoQTGlzdE9yZ3NSZXNwb25zZRI1Cg1vcmdhbml6YXRpb25zGAEgAygLMh4udGFza2VyLmhlYWx0aC52MS5Pcmdhbml6YXRpb24iLAoOU2VlZE9yZ1JlcXVlc3QSDAoEbmFtZRgBIAEoCRIMCgRzbHVnGAIgASgJIkcKD1NlZWRPcmdSZXNwb25zZRI0Cgxvcmdhbml6YXRpb24YASABKAsyHi50YXNrZXIuaGVhbHRoLnYxLk9yZ2FuaXphdGlvbiIxChFJbnZpdGVVc2VyUmVxdWVzdBINCgVvcmdJZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIlChJJbnZpdGVVc2VyUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCCJZCghUYXNrVHlwZRIKCgJpZBgBIAEoCRINCgVvcmdJZBgCIAEoCRIRCglwcm9qZWN0SWQYAyABKAkSDAoEbmFtZRgEIAEoCRIRCgljcmVhdGVkQXQYBSABKAkiOgoKVGFza1N0YXR1cxIKCgJpZBgBIAEoCRISCgp0YXNrVHlwZUlkGAIgASgJEgwKBG5hbWUYAyABKAkiYAoUVGFza1N0YXR1c1RyYW5zaXRpb24SCgoCaWQYASABKAkSEgoKdGFza1R5cGVJZBgCIAEoCRIUCgxmcm9tU3RhdHVzSWQYAyABKAkSEgoKdG9TdGF0dXNJZBgEIAEoCSIgChJHZXRUYXNrVHlwZVJlcXVlc3QSCgoCaWQYASABKAkisAEKE0dldFRhc2tUeXBlUmVzcG9uc2USLAoIdGFza1R5cGUYASABKAsyGi50YXNrZXIuaGVhbHRoLnYxLlRhc2tUeXBlEi4KCHN0YXR1c2VzGAIgAygLMhwudGFza2VyLmhlYWx0aC52MS5UYXNrU3RhdHVzEjsKC3RyYW5zaXRpb25zGAMgAygLMiYudGFza2VyLmhlYWx0aC52MS5UYXNrU3RhdHVzVHJhbnNpdGlvbiJHChVDcmVhdGVUYXNrVHlwZVJlcXVlc3QSDQoFb3JnSWQYASABKAkSEQoJcHJvamVjdElkGAIgASgJEgwKBG5hbWUYAyABKAkiRgoWQ3JlYXRlVGFza1R5cGVSZXNwb25zZRIsCgh0YXNrVHlwZRgBIAEoCzIaLnRhc2tlci5oZWFsdGgudjEuVGFza1R5cGUyVgoNSGVhbHRoU2VydmljZRJFCgRQaW5nEh0udGFza2VyLmhlYWx0aC52MS5QaW5nUmVxdWVzdBoeLnRhc2tlci5oZWFsdGgudjEuUGluZ1Jlc3BvbnNlMmkKC0F1dGhTZXJ2aWNlEloKC0dldElkZW50aXR5EiQudGFza2VyLmhlYWx0aC52MS5HZXRJZGVudGl0eVJlcXVlc3QaJS50YXNrZXIuaGVhbHRoLnYxLkdldElkZW50aXR5UmVzcG9uc2UyiAIKCk9yZ1NlcnZpY2USUQoITGlzdE9yZ3MSIS50YXNrZXIuaGVhbHRoLnYxLkxpc3RPcmdzUmVxdWVzdBoiLnRhc2tlci5oZWFsdGgudjEuTGlzdE9yZ3NSZXNwb25zZRJOCgdTZWVkT3JnEiAudGFza2VyLmhlYWx0aC52MS5TZWVkT3JnUmVxdWVzdBohLnRhc2tlci5oZWFsdGgudjEuU2VlZE9yZ1Jlc3BvbnNlElcKCkludml0ZVVzZXISIy50YXNrZXIuaGVhbHRoLnYxLkludml0ZVVzZXJSZXF1ZXN0GiQudGFza2VyLmhlYWx0aC52MS5JbnZpdGVVc2VyUmVzcG9uc2Uy0gEKD1Rhc2tUeXBlU2VydmljZRJaCgtHZXRUYXNrVHlwZRIkLnRhc2tlci5oZWFsdGgudjEuR2V0VGFza1R5cGVSZXF1ZXN0GiUudGFza2VyLmhlYWx0aC52MS5HZXRUYXNrVHlwZVJlc3BvbnNlEmMKDkNyZWF0ZVRhc2tUeXBlEicudGFza2VyLmhlYWx0aC52MS5DcmVhdGVUYXNrVHlwZVJlcXVlc3QaKC50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVRhc2tUeXBlUmVzcG9uc2VCN1o1Z2l0aHViLmNvbS9odXl6MC90YXNrZXIvYXBwcy9jbGkvZ2VuL3Rhc2tlci9oZWFsdGgvdjFiBnByb3RvMw");
 
 /**
  * @generated from message tasker.health.v1.PingRequest
@@ -48,6 +48,397 @@ export const PingResponseSchema: GenMessage<PingResponse> = /*@__PURE__*/
   messageDesc(file_tasker_health_v1_health, 1);
 
 /**
+ * @generated from message tasker.health.v1.User
+ */
+export type User = Message<"tasker.health.v1.User"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string avatarUrl = 4;
+   */
+  avatarUrl: string;
+
+  /**
+   * @generated from field: string createdAt = 5;
+   */
+  createdAt: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.User.
+ * Use `create(UserSchema)` to create a new message.
+ */
+export const UserSchema: GenMessage<User> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 2);
+
+/**
+ * @generated from message tasker.health.v1.Organization
+ */
+export type Organization = Message<"tasker.health.v1.Organization"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string slug = 3;
+   */
+  slug: string;
+
+  /**
+   * @generated from field: string role = 4;
+   */
+  role: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.Organization.
+ * Use `create(OrganizationSchema)` to create a new message.
+ */
+export const OrganizationSchema: GenMessage<Organization> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 3);
+
+/**
+ * @generated from message tasker.health.v1.GetIdentityRequest
+ */
+export type GetIdentityRequest = Message<"tasker.health.v1.GetIdentityRequest"> & {
+};
+
+/**
+ * Describes the message tasker.health.v1.GetIdentityRequest.
+ * Use `create(GetIdentityRequestSchema)` to create a new message.
+ */
+export const GetIdentityRequestSchema: GenMessage<GetIdentityRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 4);
+
+/**
+ * @generated from message tasker.health.v1.GetIdentityResponse
+ */
+export type GetIdentityResponse = Message<"tasker.health.v1.GetIdentityResponse"> & {
+  /**
+   * @generated from field: tasker.health.v1.User user = 1;
+   */
+  user?: User;
+};
+
+/**
+ * Describes the message tasker.health.v1.GetIdentityResponse.
+ * Use `create(GetIdentityResponseSchema)` to create a new message.
+ */
+export const GetIdentityResponseSchema: GenMessage<GetIdentityResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 5);
+
+/**
+ * @generated from message tasker.health.v1.ListOrgsRequest
+ */
+export type ListOrgsRequest = Message<"tasker.health.v1.ListOrgsRequest"> & {
+};
+
+/**
+ * Describes the message tasker.health.v1.ListOrgsRequest.
+ * Use `create(ListOrgsRequestSchema)` to create a new message.
+ */
+export const ListOrgsRequestSchema: GenMessage<ListOrgsRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 6);
+
+/**
+ * @generated from message tasker.health.v1.ListOrgsResponse
+ */
+export type ListOrgsResponse = Message<"tasker.health.v1.ListOrgsResponse"> & {
+  /**
+   * @generated from field: repeated tasker.health.v1.Organization organizations = 1;
+   */
+  organizations: Organization[];
+};
+
+/**
+ * Describes the message tasker.health.v1.ListOrgsResponse.
+ * Use `create(ListOrgsResponseSchema)` to create a new message.
+ */
+export const ListOrgsResponseSchema: GenMessage<ListOrgsResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 7);
+
+/**
+ * @generated from message tasker.health.v1.SeedOrgRequest
+ */
+export type SeedOrgRequest = Message<"tasker.health.v1.SeedOrgRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string slug = 2;
+   */
+  slug: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.SeedOrgRequest.
+ * Use `create(SeedOrgRequestSchema)` to create a new message.
+ */
+export const SeedOrgRequestSchema: GenMessage<SeedOrgRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 8);
+
+/**
+ * @generated from message tasker.health.v1.SeedOrgResponse
+ */
+export type SeedOrgResponse = Message<"tasker.health.v1.SeedOrgResponse"> & {
+  /**
+   * @generated from field: tasker.health.v1.Organization organization = 1;
+   */
+  organization?: Organization;
+};
+
+/**
+ * Describes the message tasker.health.v1.SeedOrgResponse.
+ * Use `create(SeedOrgResponseSchema)` to create a new message.
+ */
+export const SeedOrgResponseSchema: GenMessage<SeedOrgResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 9);
+
+/**
+ * @generated from message tasker.health.v1.InviteUserRequest
+ */
+export type InviteUserRequest = Message<"tasker.health.v1.InviteUserRequest"> & {
+  /**
+   * @generated from field: string orgId = 1;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.InviteUserRequest.
+ * Use `create(InviteUserRequestSchema)` to create a new message.
+ */
+export const InviteUserRequestSchema: GenMessage<InviteUserRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 10);
+
+/**
+ * @generated from message tasker.health.v1.InviteUserResponse
+ */
+export type InviteUserResponse = Message<"tasker.health.v1.InviteUserResponse"> & {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success: boolean;
+};
+
+/**
+ * Describes the message tasker.health.v1.InviteUserResponse.
+ * Use `create(InviteUserResponseSchema)` to create a new message.
+ */
+export const InviteUserResponseSchema: GenMessage<InviteUserResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 11);
+
+/**
+ * @generated from message tasker.health.v1.TaskType
+ */
+export type TaskType = Message<"tasker.health.v1.TaskType"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string orgId = 2;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string projectId = 3;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string name = 4;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string createdAt = 5;
+   */
+  createdAt: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.TaskType.
+ * Use `create(TaskTypeSchema)` to create a new message.
+ */
+export const TaskTypeSchema: GenMessage<TaskType> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 12);
+
+/**
+ * @generated from message tasker.health.v1.TaskStatus
+ */
+export type TaskStatus = Message<"tasker.health.v1.TaskStatus"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string taskTypeId = 2;
+   */
+  taskTypeId: string;
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.TaskStatus.
+ * Use `create(TaskStatusSchema)` to create a new message.
+ */
+export const TaskStatusSchema: GenMessage<TaskStatus> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 13);
+
+/**
+ * @generated from message tasker.health.v1.TaskStatusTransition
+ */
+export type TaskStatusTransition = Message<"tasker.health.v1.TaskStatusTransition"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string taskTypeId = 2;
+   */
+  taskTypeId: string;
+
+  /**
+   * @generated from field: string fromStatusId = 3;
+   */
+  fromStatusId: string;
+
+  /**
+   * @generated from field: string toStatusId = 4;
+   */
+  toStatusId: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.TaskStatusTransition.
+ * Use `create(TaskStatusTransitionSchema)` to create a new message.
+ */
+export const TaskStatusTransitionSchema: GenMessage<TaskStatusTransition> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 14);
+
+/**
+ * @generated from message tasker.health.v1.GetTaskTypeRequest
+ */
+export type GetTaskTypeRequest = Message<"tasker.health.v1.GetTaskTypeRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.GetTaskTypeRequest.
+ * Use `create(GetTaskTypeRequestSchema)` to create a new message.
+ */
+export const GetTaskTypeRequestSchema: GenMessage<GetTaskTypeRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 15);
+
+/**
+ * @generated from message tasker.health.v1.GetTaskTypeResponse
+ */
+export type GetTaskTypeResponse = Message<"tasker.health.v1.GetTaskTypeResponse"> & {
+  /**
+   * @generated from field: tasker.health.v1.TaskType taskType = 1;
+   */
+  taskType?: TaskType;
+
+  /**
+   * @generated from field: repeated tasker.health.v1.TaskStatus statuses = 2;
+   */
+  statuses: TaskStatus[];
+
+  /**
+   * @generated from field: repeated tasker.health.v1.TaskStatusTransition transitions = 3;
+   */
+  transitions: TaskStatusTransition[];
+};
+
+/**
+ * Describes the message tasker.health.v1.GetTaskTypeResponse.
+ * Use `create(GetTaskTypeResponseSchema)` to create a new message.
+ */
+export const GetTaskTypeResponseSchema: GenMessage<GetTaskTypeResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 16);
+
+/**
+ * @generated from message tasker.health.v1.CreateTaskTypeRequest
+ */
+export type CreateTaskTypeRequest = Message<"tasker.health.v1.CreateTaskTypeRequest"> & {
+  /**
+   * @generated from field: string orgId = 1;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string projectId = 2;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.CreateTaskTypeRequest.
+ * Use `create(CreateTaskTypeRequestSchema)` to create a new message.
+ */
+export const CreateTaskTypeRequestSchema: GenMessage<CreateTaskTypeRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 17);
+
+/**
+ * @generated from message tasker.health.v1.CreateTaskTypeResponse
+ */
+export type CreateTaskTypeResponse = Message<"tasker.health.v1.CreateTaskTypeResponse"> & {
+  /**
+   * @generated from field: tasker.health.v1.TaskType taskType = 1;
+   */
+  taskType?: TaskType;
+};
+
+/**
+ * Describes the message tasker.health.v1.CreateTaskTypeResponse.
+ * Use `create(CreateTaskTypeResponseSchema)` to create a new message.
+ */
+export const CreateTaskTypeResponseSchema: GenMessage<CreateTaskTypeResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 18);
+
+/**
  * @generated from service tasker.health.v1.HealthService
  */
 export const HealthService: GenService<{
@@ -61,4 +452,73 @@ export const HealthService: GenService<{
   },
 }> = /*@__PURE__*/
   serviceDesc(file_tasker_health_v1_health, 0);
+
+/**
+ * @generated from service tasker.health.v1.AuthService
+ */
+export const AuthService: GenService<{
+  /**
+   * @generated from rpc tasker.health.v1.AuthService.GetIdentity
+   */
+  getIdentity: {
+    methodKind: "unary";
+    input: typeof GetIdentityRequestSchema;
+    output: typeof GetIdentityResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_tasker_health_v1_health, 1);
+
+/**
+ * @generated from service tasker.health.v1.OrgService
+ */
+export const OrgService: GenService<{
+  /**
+   * @generated from rpc tasker.health.v1.OrgService.ListOrgs
+   */
+  listOrgs: {
+    methodKind: "unary";
+    input: typeof ListOrgsRequestSchema;
+    output: typeof ListOrgsResponseSchema;
+  },
+  /**
+   * @generated from rpc tasker.health.v1.OrgService.SeedOrg
+   */
+  seedOrg: {
+    methodKind: "unary";
+    input: typeof SeedOrgRequestSchema;
+    output: typeof SeedOrgResponseSchema;
+  },
+  /**
+   * @generated from rpc tasker.health.v1.OrgService.InviteUser
+   */
+  inviteUser: {
+    methodKind: "unary";
+    input: typeof InviteUserRequestSchema;
+    output: typeof InviteUserResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_tasker_health_v1_health, 2);
+
+/**
+ * @generated from service tasker.health.v1.TaskTypeService
+ */
+export const TaskTypeService: GenService<{
+  /**
+   * @generated from rpc tasker.health.v1.TaskTypeService.GetTaskType
+   */
+  getTaskType: {
+    methodKind: "unary";
+    input: typeof GetTaskTypeRequestSchema;
+    output: typeof GetTaskTypeResponseSchema;
+  },
+  /**
+   * @generated from rpc tasker.health.v1.TaskTypeService.CreateTaskType
+   */
+  createTaskType: {
+    methodKind: "unary";
+    input: typeof CreateTaskTypeRequestSchema;
+    output: typeof CreateTaskTypeResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_tasker_health_v1_health, 3);
 

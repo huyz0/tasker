@@ -14,3 +14,100 @@ message PingResponse {
 service HealthService {
   rpc Ping(PingRequest) returns (PingResponse);
 }
+
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string avatarUrl = 4;
+  string createdAt = 5;
+}
+
+message Organization {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  string role = 4;
+}
+
+message GetIdentityRequest {}
+message GetIdentityResponse {
+  User user = 1;
+}
+
+service AuthService {
+  rpc GetIdentity(GetIdentityRequest) returns (GetIdentityResponse);
+}
+
+message ListOrgsRequest {}
+message ListOrgsResponse {
+  repeated Organization organizations = 1;
+}
+
+message SeedOrgRequest {
+  string name = 1;
+  string slug = 2;
+}
+message SeedOrgResponse {
+  Organization organization = 1;
+}
+
+message InviteUserRequest {
+  string orgId = 1;
+  string email = 2;
+}
+message InviteUserResponse {
+  bool success = 1;
+}
+
+service OrgService {
+  rpc ListOrgs(ListOrgsRequest) returns (ListOrgsResponse);
+  rpc SeedOrg(SeedOrgRequest) returns (SeedOrgResponse);
+  rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
+}
+
+message TaskType {
+  string id = 1;
+  string orgId = 2;
+  string projectId = 3;
+  string name = 4;
+  string createdAt = 5;
+}
+
+message TaskStatus {
+  string id = 1;
+  string taskTypeId = 2;
+  string name = 3;
+}
+
+message TaskStatusTransition {
+  string id = 1;
+  string taskTypeId = 2;
+  string fromStatusId = 3;
+  string toStatusId = 4;
+}
+
+message GetTaskTypeRequest {
+  string id = 1;
+}
+
+message GetTaskTypeResponse {
+  TaskType taskType = 1;
+  repeated TaskStatus statuses = 2;
+  repeated TaskStatusTransition transitions = 3;
+}
+
+message CreateTaskTypeRequest {
+  string orgId = 1;
+  string projectId = 2;
+  string name = 3;
+}
+
+message CreateTaskTypeResponse {
+  TaskType taskType = 1;
+}
+
+service TaskTypeService {
+  rpc GetTaskType(GetTaskTypeRequest) returns (GetTaskTypeResponse);
+  rpc CreateTaskType(CreateTaskTypeRequest) returns (CreateTaskTypeResponse);
+}

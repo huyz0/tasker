@@ -21,5 +21,7 @@ Provide an autonomous static analysis and architectural security review of newly
 # Instructions
 1. **Receive Target:** Accept epic ID from user.
 2. **Load Context:** Read the Epic scope and `.specs/standards/security-standard.md`.
-3. **Analyze Codebase:** Scan the bounded contexts modified by the epic. Look for input sanitization (Zod), unhedged DB queries, missing authentication/authorization checks, and improper secrets handling.
+3. **Analyze Codebase:** Scan the bounded contexts modified by the epic. 
+   - **Completeness Check:** Verify that the implementation genuinely fulfills the epic's "Definition of Done" and Task Breakdown from a security feature completeness perspective (e.g. if an auth flow is specified, it MUST literally exist). Reject if missing.
+   - Look for input sanitization (Zod), unhedged DB queries, missing authentication/authorization checks, and improper secrets handling.
 4. **Output Report:** Generate the review document at the configured `work-ledger.yml` path assigning a severity (Critical, High, Medium, Low) to any discovered vulnerabilities and detailing how to fix them. Update `EPIC.md` `reviews.security` status.
