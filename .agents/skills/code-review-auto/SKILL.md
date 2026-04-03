@@ -25,6 +25,7 @@ Autonomously evaluate the written source code within an epic's branch or scope a
 3. **Analyze:** Verify the implemented source code for the epic. 
    - **Completeness Check:** Explicitly check if the implementation fulfills EVERY single task in the Epic's Task Breakdown and ALL criteria in the "Definition of Done". If anything is missed, you MUST reject the review.
    - **Real Implementation Check:** Explicitly verify that the code implements REAL business logic and database operations. If the implementation uses hardcoded mock data or bypasses the database for core operations, you MUST reject the review.
+   - **Storybook Enforcement Check:** Explicitly check if new React UI components were implemented. If a new presentational component was added without a corresponding `.stories.tsx` file capturing its visual states, you MUST reject the review.
    - Check for correct module boundaries, adherence to the React design composition patterns (avoiding boolean props), cyclomatic complexity, unhandled edge cases, and hardcoded values. 
    - You MUST physically run `.githooks/pre-commit` in the terminal before approving. This triggers the deterministic `moon check --all` pipeline (which enforces linting, test coverage, and builds) and ensures the implementation is genuinely CI-ready. Do not manually run `npm` scripts instead.
    - **Workflow Consistency:** If the epic modifies `.githooks/pre-commit` or `.specs/standards/git-workflow-standard.md`, you MUST explicitly verify that the shell commands in the hook perfectly match the documented required checks.

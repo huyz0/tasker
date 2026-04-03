@@ -7,8 +7,9 @@
 - **Action**: Strictly use Tailwind CSS classes mapped to tokens
   (`text-primary`, `bg-background`). Prefer cohesive, bold palettes over timid
   AI defaults.
+- **Reference**: MUST strictly follow the explicit token mappings defined in `.specs/design/design-system.md`.
 - **Components**: Rely purely on standard UI primitive libraries (**Shadcn
-  UI**).
+  UI**). Place generic components in `apps/gui/src/components/ui/` and standard layouts in `apps/gui/src/components/layout/`. Macro layouts MUST align with `.specs/design/layout-manifest.md`.
 
 ## 2. Accessibility (a11y)
 

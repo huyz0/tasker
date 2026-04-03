@@ -33,7 +33,7 @@ Given an epic, autonomously produce UI mockup images and UX flow diagrams coveri
 3. **Load Design Context:**
    - Invoke the **product-inject-auto** skill to autonomously parse the overarching product constraints and target users.
    - Invoke the **standards-inject-auto** skill to rigorously select and read the exact subset of `.specs/standards/` applicable to UX/frontend design.
-   - **MUST Read Local References**: Read `.agents/skills/ux-design-auto/references/ACCESSIBILITY.md`, `.agents/skills/ux-design-auto/references/MOTION-SPEC.md`, and `.agents/skills/ux-design-auto/references/RESPONSIVE-DESIGN.md` using your `view_file` tool to apply community best-practices to your designs.
+   - **MUST Read Local References**: Read `.specs/design/design-system.md`, `.specs/design/layout-manifest.md`, `.agents/skills/ux-design-auto/references/ACCESSIBILITY.md`, `.agents/skills/ux-design-auto/references/MOTION-SPEC.md`, and `.agents/skills/ux-design-auto/references/RESPONSIVE-DESIGN.md` using your `view_file` tool to apply community and project best-practices to your designs.
 4. **Survey Existing Designs:**
    - Check if `.epics/EPIC-<id>/designs/` already exists.
    - If it does, read existing `UX-DESIGN.md` to understand prior work and avoid duplicating.
@@ -99,7 +99,7 @@ created_at: YYYY-MM-DD
 ### 1. <Screen Name>
 - **Purpose:** [What the user accomplishes]
 - **Key Elements:** [Inputs, buttons, data displays]
-- **States:** Default | Loading | Empty | Error | Success
+- **States & Storybook:** [List exact states to capture in Storybook: Default, Loading, Empty, Error, Success]
 - **Accessibility Notes:** [Specific a11y considerations]
 - **Component Mapping:** [Shadcn/custom components to use]
 - **Mockup:**

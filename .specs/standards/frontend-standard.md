@@ -10,7 +10,7 @@
   (`<Button variant="destructive">`) instead of excessive boolean props for UI
   customization.
 - **Storybook**: Document all reusable UI primitives in Storybook alongside test
-  files.
+  files. Launch the visual playground locally by running `npm run storybook` from within `apps/gui`.
 
 ## 2. State Management Rules
 

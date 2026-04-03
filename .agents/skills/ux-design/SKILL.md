@@ -21,7 +21,7 @@ Interactively gather visual constraints and preferences to generate high-fidelit
 
 # Instructions
 1. **Target:** Ask for the Epic ID or specific screen to design. Wait for answer.
-2. **Context:** You MUST use `view_file` to read `.agents/skills/ux-design-auto/references/ACCESSIBILITY.md` and `.specs/standards/ui-ux-standard.md` for guidelines before drafting.
+2. **Context:** You MUST use `view_file` to read `.specs/design/design-system.md`, `.specs/design/layout-manifest.md`, `.agents/skills/ux-design-auto/references/ACCESSIBILITY.md`, and `.specs/standards/ui-ux-standard.md` for guidelines before drafting.
 3. **Flow:** Ask the user what the primary happy path looks like, what actions the user takes, and how any AI-driven elements handle transparency and explicit feedback. Wait for answer.
 3. **Visuals:** Ask if there are specific layout requirements or references to existing screens. Wait for answer.
 4. **Draft:** Generate mockup images, copy them into the project repository at `.epics/EPIC-<id>/designs/mockups/`, and outline the flow in `.epics/EPIC-<id>/designs/UX-DESIGN.md` using relative paths.

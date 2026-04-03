@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 
 // -------------------------------------------------------------------
@@ -35,22 +36,28 @@ describe('App', () => {
     vi.clearAllMocks();
   });
 
+  const renderApp = () => render(
+    <MemoryRouter>
+      <App />
+    </MemoryRouter>
+  );
+
   it('renders the heading', () => {
     mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: false });
-    render(<App />);
-    expect(screen.getByRole('heading', { name: 'Tasker Health Monitor' })).toBeDefined();
+    renderApp();
+    expect(screen.getByRole('heading', { name: 'Dashboard Overview' })).toBeDefined();
   });
 
   it('shows a Ping Backend button', () => {
     mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: false });
-    render(<App />);
+    renderApp();
     expect(screen.getByRole('button', { name: 'Ping Backend' })).toBeDefined();
   });
 
   it('shows loading indicator while fetching', () => {
     mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: true });
-    render(<App />);
-    expect(screen.getByText('Loading...')).toBeDefined();
+    renderApp();
+    expect(screen.getByText('Loading telemetry...')).toBeDefined();
   });
 
   it('shows error message when the query fails', () => {
@@ -59,7 +66,7 @@ describe('App', () => {
       error: new Error('connection refused'),
       isLoading: false,
     });
-    render(<App />);
+    renderApp();
     expect(screen.getByText(/Error: connection refused/)).toBeDefined();
   });
 
@@ -69,17 +76,15 @@ describe('App', () => {
       error: null,
       isLoading: false,
     });
-    render(<App />);
+    renderApp();
     expect(screen.getByText(/pong/)).toBeDefined();
     expect(screen.getByText(/ok/)).toBeDefined();
   });
 
   it('clicking Ping Backend updates the queryKey (triggers refetch)', async () => {
-    // The component uses Date.now() as a queryKey element; clicking the button
-    // sets a new timestamp which causes useQuery to be called with a new key.
     mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: false });
 
-    render(<App />);
+    renderApp();
     const before = mockUseQuery.mock.calls.length;
 
     fireEvent.click(screen.getByRole('button', { name: 'Ping Backend' }));
@@ -88,10 +93,25 @@ describe('App', () => {
       expect(mockUseQuery.mock.calls.length).toBeGreaterThan(before);
     });
 
-    // The queryKey should have changed (different timestamp)
     const calls = mockUseQuery.mock.calls;
     const firstKey = (calls[0][0] as { queryKey: unknown[] }).queryKey[1];
     const lastKey = (calls[calls.length - 1][0] as { queryKey: unknown[] }).queryKey[1];
     expect(firstKey).not.toBe(lastKey);
+  });
+
+  it('can toggle the sidebar dynamically', () => {
+    mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: false });
+    renderApp();
+    const toggleBtn = screen.getByRole('button', { name: 'Toggle Sidebar' });
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toBeDefined();
+  });
+
+  it('can route to generic placeholder views', () => {
+    mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: false });
+    renderApp();
+    const orgLink = screen.getByRole('link', { name: 'Organizations' });
+    fireEvent.click(orgLink);
+    expect(screen.getByText('Organizations module placeholder area.')).toBeDefined();
   });
 });

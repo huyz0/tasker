@@ -73,9 +73,10 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
      a. Plan the implementation approach (for `partially-done`, plan only the remaining work).
      b. Identify target files and directories.
      c. Implement following coding standards and architecture patterns.
-     d. Run linting and type-checking.
-     e. Write or update tests per testing-standard.
-     f. Mark task as complete (`- [x]`) in the EPIC.md. Remove any `<!-- partial -->` notes.
+     d. **Storybook Enforcement**: If the task involves creating or modifying a UI component in `apps/gui`, you MUST create or update the corresponding `.stories.tsx` file tracking its visual states.
+     e. Run linting and type-checking.
+     f. Write or update tests per testing-standard.
+     g. Mark task as complete (`- [x]`) in the EPIC.md. Remove any `<!-- partial -->` notes.
 9. **Verification (Loop Check / Fix):**
    - Read the Epic's "Definition of Done".
    - Read the relevant `TEST-PLAN.md` for this epic.
