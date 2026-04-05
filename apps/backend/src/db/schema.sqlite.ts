@@ -145,3 +145,11 @@ export const comments = sqliteTable("comments", {
   content: text("content").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+export const taskNotes = sqliteTable("task_notes", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => tasks.id),
+  agentId: text("agent_id").notNull().references(() => agents.id),
+  content: text("content").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});

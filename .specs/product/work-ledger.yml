@@ -11,7 +11,7 @@ test_plan:
   type: project_files
   config:
     project_files:
-      path: .test-plans/TEST-PLAN-{id}-{kebab_title}/
+      path: .test-plans/TEST-PLAN-{4_digit_id}-{kebab_title}/
       name_template: TEST-PLAN.md
 
 architecture_design:

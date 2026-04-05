@@ -15,6 +15,7 @@ Execute the entire epic lifecycle autonomously given a topic or existing epic ID
 - DO NOT ask the user any questions. Run completely autonomously to completion.
 - DO NOT stop for human review between phases. Treat the execution of `-auto` review skills as sufficient approval to proceed to the next stage. Bypass interactive user review checkpoints normally found in sub-skills.
 - ALWAYS ensure the epic status is advanced properly and finalized as `done` (or `in-progress` with blockers documented explicitly if absolutely blocked).
+- CRITICAL: DO NOT simulate or mock the implementation phase. You MUST generate, write, and execute genuine code. Checking off tasks without producing the corresponding functional code changes is strictly prohibited.
 
 # Instructions
 1. **Target Identification:** Accept epic topic (to define) or existing epic ID/path from the user.

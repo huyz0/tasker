@@ -1,11 +1,12 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
 import { createOrgsHandler } from "./modules/orgs/orgs.handler";
 import { createProjectTemplatesHandler, createProjectsHandler } from "./modules/projects/projects.handler";
 import { createTasksHandler, createTaskManagementHandler } from "./modules/tasks/tasks.handler";
+import { createTaskNotesHandler } from "./modules/tasks/task_notes.handler";
 import { createAgentsHandler } from "./modules/agents/agents.handler";
 import { createArtifactsHandler } from "./modules/artifacts/artifacts.handler";
 import { createCommentsHandler } from "./modules/comments/comments.handler";
@@ -39,6 +40,7 @@ const handler = connectNodeAdapter({
     router.service(AgentService as any, createAgentsHandler(db, nc));
     router.service(ArtifactService as any, createArtifactsHandler(db, nc));
     router.service(CommentService as any, createCommentsHandler(db, nc));
+    router.service(TaskNoteService as any, createTaskNotesHandler(db, nc));
   },
 });
 

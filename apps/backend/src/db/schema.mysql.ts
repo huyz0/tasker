@@ -145,3 +145,11 @@ export const comments = mysqlTable("comments", {
   content: varchar("content", { length: 4096 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const taskNotes = mysqlTable("task_notes", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
+  agentId: varchar("agent_id", { length: 256 }).notNull().references(() => agents.id),
+  content: varchar("content", { length: 8192 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

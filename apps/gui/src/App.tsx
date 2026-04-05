@@ -6,6 +6,8 @@ import { HealthService } from "shared-contract/gen/ts/tasker/health/v1/health_pb
 import { Route, Routes } from 'react-router-dom';
 import { useLayoutStore, type LayoutState } from './store/layout';
 import { AppShell } from './components/layout/AppShell';
+import { CommentSection } from './components/ui/CommentSection';
+import { MarkdownRenderer } from './components/ui/MarkdownRenderer';
 
 const transport = createConnectTransport({
   baseUrl: "http://localhost:8080",
@@ -43,6 +45,23 @@ function DashboardPlaceholder() {
     }
   });
 
+  const [comments, setComments] = useState<{id: string, author: string, content: string, createdAt: string, isAgent: boolean}[]>([]);
+
+  const handleAddComment = async (content: string) => {
+    // Simulate network delay
+    await new Promise((r) => setTimeout(r, 200));
+    setComments(prev => [
+      ...prev,
+      {
+        id: `cmt-${Date.now()}`,
+        author: 'Human User',
+        content,
+        createdAt: new Date().toISOString(),
+        isAgent: false
+      }
+    ]);
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -69,6 +88,33 @@ function DashboardPlaceholder() {
             <p><span className="text-muted-foreground">DB Status:</span> {data.dbStatus}</p>
           </div>
         )}
+      </div>
+
+      <div className="border rounded-lg bg-card text-card-foreground shadow-sm p-6 max-h-[600px] overflow-y-auto">
+        <h2 className="text-xl font-medium mb-4">Task Discussion (Epic Verification)</h2>
+        <div className="mb-4 p-4 rounded bg-muted/50">
+          <h3 className="font-semibold text-sm mb-2">Original Task Description</h3>
+          <MarkdownRenderer content={"This is the **root** task describing the feature. It demonstrates inline `code` and parsing."} />
+        </div>
+        <CommentSection
+          comments={comments}
+          onAddComment={handleAddComment}
+          isLoading={false}
+        />
+        {/* Helper button to inject an AI comment for E2E testing */}
+        <button 
+          data-testid="inject-ai-note"
+          className="mt-4 px-3 py-1 text-xs bg-primary/20 text-primary rounded"
+          onClick={() => setComments(prev => [...prev, {
+            id: `cmt-ai-${Date.now()}`,
+            author: 'Agent Alpha',
+            content: 'Agent reasoning injected.',
+            isAgent: true,
+            createdAt: new Date().toISOString()
+          }])}
+        >
+          Simulate Agent Note
+        </button>
       </div>
     </div>
   );

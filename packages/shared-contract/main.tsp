@@ -419,3 +419,37 @@ interface CommentService {
   createComment(request: CreateCommentRequest): CreateCommentResponse;
   listComments(request: ListCommentsRequest): ListCommentsResponse;
 }
+
+// ==== Task Notes ====
+
+model TaskNote {
+  @field(1) id: string;
+  @field(2) taskId: string;
+  @field(3) agentId: string;
+  @field(4) content: string;
+}
+
+model CreateTaskNoteRequest {
+  @field(1) taskId: string;
+  @field(2) agentId: string;
+  @field(3) content: string;
+}
+
+model CreateTaskNoteResponse {
+  @field(1) taskNote: TaskNote;
+}
+
+model ListTaskNotesRequest {
+  @field(1) taskId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListTaskNotesResponse {
+  @field(1) taskNotes: TaskNote[];
+  @field(2) page?: PageResponse;
+}
+
+interface TaskNoteService {
+  createTaskNote(request: CreateTaskNoteRequest): CreateTaskNoteResponse;
+  listTaskNotes(request: ListTaskNotesRequest): ListTaskNotesResponse;
+}

@@ -325,6 +325,47 @@ message CreateCommentResponse {
   Comment comment = 1;
 }
 
+message ListCommentsRequest {
+  string entityId = 1;
+  string entityType = 2;
+}
+
+message ListCommentsResponse {
+  repeated Comment comments = 1;
+}
+
 service CommentService {
   rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
 }
+
+message TaskNote {
+  string id = 1;
+  string taskId = 2;
+  string agentId = 3;
+  string content = 4;
+}
+
+message CreateTaskNoteRequest {
+  string taskId = 1;
+  string agentId = 2;
+  string content = 3;
+}
+
+message CreateTaskNoteResponse {
+  TaskNote taskNote = 1;
+}
+
+message ListTaskNotesRequest {
+  string taskId = 1;
+}
+
+message ListTaskNotesResponse {
+  repeated TaskNote taskNotes = 1;
+}
+
+service TaskNoteService {
+  rpc CreateTaskNote(CreateTaskNoteRequest) returns (CreateTaskNoteResponse);
+  rpc ListTaskNotes(ListTaskNotesRequest) returns (ListTaskNotesResponse);
+}
+

@@ -20,6 +20,7 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
 - DO NOT leave tasks incomplete. If blocked, document the blocker and move to the next task.
 - ALWAYS update the epic's `status` frontmatter to `in-progress` when starting and `done` when all tasks are complete.
 - ALWAYS check each task off (`- [x]`) in the EPIC.md as it is completed.
+- CRITICAL: DO NOT simulate the implementation. You MUST write complete, functional code for every task before marking it as done. Simply updating markdown checkboxes without touching application source code is a failure condition.
 # Subagent Configuration
 - **Task Execution**: Spawn subagents using a **Standard Coding Model** tier optimized for code generation.
 
@@ -74,8 +75,8 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
      b. Identify target files and directories.
      c. Implement following coding standards and architecture patterns.
      d. **Storybook Enforcement**: If the task involves creating or modifying a UI component in `apps/gui`, you MUST create or update the corresponding `.stories.tsx` file tracking its visual states.
-     e. Run linting and type-checking.
-     f. Write or update tests per testing-standard.
+     e. **Test-Driven Development (TDD) STRICT REQUIREMENT**: You MUST strictly follow the generated `TEST-PLAN.md` and project standard testing conventions. You MUST write failing tests first, before writing the application code logic to satisfy them. 
+     f. Run linting and type-checking.
      g. Mark task as complete (`- [x]`) in the EPIC.md. Remove any `<!-- partial -->` notes.
 9. **Verification (Loop Check / Fix):**
    - Read the Epic's "Definition of Done".
