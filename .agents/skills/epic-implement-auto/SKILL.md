@@ -21,6 +21,7 @@ Given a reviewed and approved epic, autonomously implement all tasks in its Task
 - ALWAYS update the epic's `status` frontmatter to `in-progress` when starting and `done` when all tasks are complete.
 - ALWAYS check each task off (`- [x]`) in the EPIC.md as it is completed.
 - CRITICAL: DO NOT simulate the implementation. You MUST write complete, functional code for every task before marking it as done. Simply updating markdown checkboxes without touching application source code is a failure condition.
+- EXPLICT TEST & STORYBOOK REQUIREMENT: You MUST NOT mark any task as done or epic as completed unless you have physically created the corresponding `*.test.tsx`, `*.spec.ts`, and `*.stories.tsx` files. You MUST verify tests and storybook passes using explicitly executed terminal commands.
 # Subagent Configuration
 - **Task Execution**: Spawn subagents using a **Standard Coding Model** tier optimized for code generation.
 

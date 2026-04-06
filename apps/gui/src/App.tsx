@@ -8,6 +8,11 @@ import { useLayoutStore, type LayoutState } from './store/layout';
 import { AppShell } from './components/layout/AppShell';
 import { CommentSection } from './components/ui/CommentSection';
 import { MarkdownRenderer } from './components/ui/MarkdownRenderer';
+import { OrganizationsDashboard } from './features/Organizations';
+import { ProjectsWizard } from './features/Projects';
+import { TasksWorkbench } from './features/Tasks';
+import { AgentsDashboard } from './features/Agents';
+import { ArtifactsBrowser } from './features/Artifacts';
 
 const transport = createConnectTransport({
   baseUrl: "http://localhost:8080",
@@ -125,11 +130,11 @@ function App() {
     <AppShell>
       <Routes>
         <Route path="/" element={<DashboardPlaceholder />} />
-        <Route path="/organizations" element={<GenericPlaceholder title="Organizations" description="Manage hierarchical organizational structure and teams." />} />
-        <Route path="/projects" element={<GenericPlaceholder title="Projects" description="Manage derived project templates and ownership." />} />
-        <Route path="/tasks" element={<GenericPlaceholder title="Tasks" description="Detailed task workbench for humans and autonomous agents." />} />
-        <Route path="/agents" element={<GenericPlaceholder title="AI Agents" description="Manage agent roles, memory partitions, and running instances." />} />
-        <Route path="/artifacts" element={<GenericPlaceholder title="Artifacts" description="Project evidence, text files, logs, and generated assets." />} />
+        <Route path="/organizations" element={<OrganizationsDashboard />} />
+        <Route path="/projects" element={<ProjectsWizard />} />
+        <Route path="/tasks" element={<TasksWorkbench />} />
+        <Route path="/agents" element={<AgentsDashboard />} />
+        <Route path="/artifacts" element={<ArtifactsBrowser />} />
         <Route path="/settings" element={<GenericPlaceholder title="Settings" description="Global application preferences." />} />
       </Routes>
     </AppShell>
