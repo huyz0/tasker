@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +18,7 @@ var orgsListCmd = &cobra.Command{
 		sort, _ := cmd.Flags().GetString("sort")
 		filter, _ := cmd.Flags().GetString("filter")
 
-		fmt.Printf("Fetching orgs: limit=%d, cursor=%s, sort=%s, filter=%s\n", limit, cursor, sort, filter)
+		cmd.Printf("Fetching orgs: limit=%d, cursor=%s, sort=%s, filter=%s\n", limit, cursor, sort, filter)
 		// TODO: Call the actual Connect-RPC OrgService.ListOrgs method here
 	},
 }

@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/spf13/cobra"
 )
 
@@ -17,13 +15,13 @@ var artifactsListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		projectID, _ := cmd.Flags().GetString("project")
 		isJson, _ := cmd.Flags().GetBool("json")
-		
+
 		if isJson {
-			fmt.Printf(`[{"file": "env-vars.md", "type": "file", "project": "%s"}]%s`, projectID, "\n")
+			cmd.Printf(`[{"file": "env-vars.md", "type": "file", "project": "%s"}]%s`, projectID, "\n")
 		} else {
-			fmt.Printf("Artifacts in project '%s':\n", projectID)
-			fmt.Println(" - env-vars.md")
-			fmt.Println(" - (dir) deployments/")
+			cmd.Printf("Artifacts in project '%s':\n", projectID)
+			cmd.Println(" - env-vars.md")
+			cmd.Println(" - (dir) deployments/")
 		}
 	},
 }
@@ -35,10 +33,10 @@ var artifactsReadCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
-			fmt.Printf(`{"path": "%s", "content": "# Markdown Content\nGenerated via CLI"}%s`, args[0], "\n")
+			cmd.Printf(`{"path": "%s", "content": "# Markdown Content\nGenerated via CLI"}%s`, args[0], "\n")
 		} else {
-			fmt.Printf("# Content from file: %s\n", args[0])
-			fmt.Println("Generated via CLI placeholder logic")
+			cmd.Printf("# Content from file: %s\n", args[0])
+			cmd.Println("Generated via CLI placeholder logic")
 		}
 	},
 }
@@ -47,6 +45,6 @@ func init() {
 	rootCmd.AddCommand(artifactsCmd)
 	artifactsCmd.AddCommand(artifactsListCmd)
 	artifactsCmd.AddCommand(artifactsReadCmd)
-	
+
 	artifactsListCmd.Flags().String("project", "", "Project ID to list artifacts for")
 }

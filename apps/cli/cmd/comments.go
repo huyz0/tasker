@@ -3,8 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"net/http"
+	"os"
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
@@ -29,7 +29,7 @@ var commentAddCmd = &cobra.Command{
 	Short: "Add a new comment",
 	Run: func(cmd *cobra.Command, args []string) {
 		client := v1connect.NewCommentServiceClient(http.DefaultClient, "http://localhost:8080")
-		
+
 		req := connect.NewRequest(&healthv1.CreateCommentRequest{
 			EntityId:   entityId,
 			EntityType: entityType,
@@ -42,7 +42,7 @@ var commentAddCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Printf("Comment added successfully! ID: %s\n", res.Msg.Comment.Id)
+		cmd.Printf("Comment added successfully! ID: %s\n", res.Msg.Comment.Id)
 	},
 }
 
@@ -51,7 +51,7 @@ var commentListCmd = &cobra.Command{
 	Short: "List comments for an entity",
 	Run: func(cmd *cobra.Command, args []string) {
 		client := v1connect.NewCommentServiceClient(http.DefaultClient, "http://localhost:8080")
-		
+
 		req := connect.NewRequest(&healthv1.ListCommentsRequest{
 			EntityId:   entityId,
 			EntityType: entityType,
@@ -64,13 +64,13 @@ var commentListCmd = &cobra.Command{
 		}
 
 		if len(res.Msg.Comments) == 0 {
-			fmt.Println("No comments found.")
+			cmd.Println("No comments found.")
 			return
 		}
 
-		fmt.Printf("Comments for %s (%s):\n", entityId, entityType)
+		cmd.Printf("Comments for %s (%s):\n", entityId, entityType)
 		for _, c := range res.Msg.Comments {
-			fmt.Printf("- [%s] %s\n", c.Id, c.Content)
+			cmd.Printf("- [%s] %s\n", c.Id, c.Content)
 		}
 	},
 }

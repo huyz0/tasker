@@ -5,17 +5,20 @@ import mysql from "mysql2/promise";
 import * as schemaMysql from "./schema.mysql";
 import * as schemaSqlite from "./schema.sqlite";
 
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+
 export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlitePath: string = ".data/local.sqlite") {
   if (driver === "sqlite") {
     const sqlite = new Database(sqlitePath);
     
     // Automatic Migration & FTS5 Proof Of Concept Initialization
     sqlite.query(`
-      CREATE TABLE IF NOT EXISTS schema_migrations_test (id TEXT PRIMARY KEY);
       CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(title, body, content="");
     `).run();
     
-    return drizzleSqlite(sqlite, { schema: schemaSqlite });
+    const db = drizzleSqlite(sqlite, { schema: schemaSqlite });
+    migrate(db, { migrationsFolder: "./drizzle-sqlite" });
+    return db;
   }
 
   const connection = await mysql.createConnection({

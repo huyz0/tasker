@@ -4,11 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "mkdir -p .data && bunx drizzle-kit push --force --config=drizzle.sqlite.config.ts && bun test",
+    "test": "rm -rf .data && mkdir -p .data && bun test",
     "build:standalone": "bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.11",
+    "@types/bun": "^1.3.12",
     "better-sqlite3": "^12.8.0",
     "drizzle-kit": "^0.31.10"
   },
@@ -20,10 +20,10 @@
     "@connectrpc/connect-node": "^2.1.1",
     "drizzle-orm": "^0.45.2",
     "elysia": "^1.4.28",
-    "mysql2": "^3.20.0",
+    "mysql2": "^3.22.0",
     "nats": "^2.29.3",
     "shared-contract": "file:../../packages/shared-contract",
-    "vitest": "^4.1.2",
+    "vitest": "^4.1.4",
     "zod": "^4.3.6"
   }
 }

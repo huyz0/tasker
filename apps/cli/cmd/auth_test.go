@@ -51,4 +51,3 @@ func TestAuthRegisteredUnderRoot(t *testing.T) {
 		t.Error("expected 'auth' to be registered under root command")
 	}
 }
-

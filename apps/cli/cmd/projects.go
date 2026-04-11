@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/spf13/cobra"
 )
 
@@ -22,11 +21,11 @@ var projectsListCmd = &cobra.Command{
 				{"id": "proj_2", "name": "Marketing Launch"},
 			}
 			jsonString, _ := json.Marshal(data)
-			fmt.Println(string(jsonString))
+			cmd.Println(string(jsonString))
 		} else {
-			fmt.Println("Projects:")
-			fmt.Println("- proj_1: Software Development Alpha")
-			fmt.Println("- proj_2: Marketing Launch")
+			cmd.Println("Projects:")
+			cmd.Println("- proj_1: Software Development Alpha")
+			cmd.Println("- proj_2: Marketing Launch")
 		}
 	},
 }
@@ -38,9 +37,9 @@ var projectsGetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
-			fmt.Printf(`{"id": "%s", "name": "Project Metadata"}%s`, args[0], "\n")
+			cmd.Printf(`{"id": "%s", "name": "Project Metadata"}%s`, args[0], "\n")
 		} else {
-			fmt.Printf("Project Details for ID: %s\n", args[0])
+			cmd.Printf("Project Details for ID: %s\n", args[0])
 		}
 	},
 }
@@ -53,13 +52,13 @@ var projectsCreateCmd = &cobra.Command{
 		title, _ := cmd.Flags().GetString("title")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if title == "" || template == "" {
-			fmt.Println("Error: --template and --title flags are required.")
+			cmd.Println("Error: --template and --title flags are required.")
 			return
 		}
 		if isJson {
-			fmt.Printf(`{"status": "created", "project_title": "%s", "template": "%s"}%s`, title, template, "\n")
+			cmd.Printf(`{"status": "created", "project_title": "%s", "template": "%s"}%s`, title, template, "\n")
 		} else {
-			fmt.Printf("Successfully created project '%s' from template '%s'\n", title, template)
+			cmd.Printf("Successfully created project '%s' from template '%s'\n", title, template)
 		}
 	},
 }
@@ -69,7 +68,7 @@ func init() {
 	projectsCmd.AddCommand(projectsListCmd)
 	projectsCmd.AddCommand(projectsGetCmd)
 	projectsCmd.AddCommand(projectsCreateCmd)
-	
+
 	projectsCreateCmd.Flags().String("template", "", "Project template to inherit from")
 	projectsCreateCmd.Flags().String("title", "", "Descriptive title for the new project")
 }

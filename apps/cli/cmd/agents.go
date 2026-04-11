@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/spf13/cobra"
 )
 
@@ -17,10 +15,10 @@ var agentsListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
-			fmt.Println(`[{"id": "agent_alpha", "role": "Researcher", "status": "idle"}]`)
+			cmd.Println(`[{"id": "agent_alpha", "role": "Researcher", "status": "idle"}]`)
 		} else {
-			fmt.Println("Available Agents:")
-			fmt.Println(" - agent_alpha [Role: Researcher] (Idle)")
+			cmd.Println("Available Agents:")
+			cmd.Println(" - agent_alpha [Role: Researcher] (Idle)")
 		}
 	},
 }
@@ -32,13 +30,13 @@ var agentsCreateCmd = &cobra.Command{
 		role, _ := cmd.Flags().GetString("role")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if role == "" {
-			fmt.Println("Error: --role is required.")
+			cmd.Println("Error: --role is required.")
 			return
 		}
 		if isJson {
-			fmt.Printf(`{"status": "created", "agent_id": "new_agent_123", "role": "%s"}%s`, role, "\n")
+			cmd.Printf(`{"status": "created", "agent_id": "new_agent_123", "role": "%s"}%s`, role, "\n")
 		} else {
-			fmt.Printf("Spawned new agent with role %s\n", role)
+			cmd.Printf("Spawned new agent with role %s\n", role)
 		}
 	},
 }
@@ -47,6 +45,6 @@ func init() {
 	rootCmd.AddCommand(agentsCmd)
 	agentsCmd.AddCommand(agentsListCmd)
 	agentsCmd.AddCommand(agentsCreateCmd)
-	
+
 	agentsCreateCmd.Flags().String("role", "", "The designated role persona")
 }

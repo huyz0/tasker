@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/spf13/cobra"
 )
 
@@ -22,11 +21,11 @@ var tasksListCmd = &cobra.Command{
 				{"id": "task_2", "status": "in_progress", "title": "Setup metrics"},
 			}
 			jsonString, _ := json.Marshal(data)
-			fmt.Println(string(jsonString))
+			cmd.Println(string(jsonString))
 		} else {
-			fmt.Println("Tasks Workbench:")
-			fmt.Println("- task_1 [TODO]: Implement auth")
-			fmt.Println("- task_2 [IN PROGRESS]: Setup metrics")
+			cmd.Println("Tasks Workbench:")
+			cmd.Println("- task_1 [TODO]: Implement auth")
+			cmd.Println("- task_2 [IN PROGRESS]: Setup metrics")
 		}
 	},
 }
@@ -38,9 +37,9 @@ var tasksCreateCmd = &cobra.Command{
 		title, _ := cmd.Flags().GetString("title")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
-			fmt.Printf(`{"status": "created", "task": "%s"}%s`, title, "\n")
+			cmd.Printf(`{"status": "created", "task": "%s"}%s`, title, "\n")
 		} else {
-			fmt.Printf("Task created: %s\n", title)
+			cmd.Printf("Task created: %s\n", title)
 		}
 	},
 }
@@ -53,9 +52,9 @@ var tasksAssignCmd = &cobra.Command{
 		assignee, _ := cmd.Flags().GetString("assignee")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
-			fmt.Printf(`{"status": "assigned", "task_id": "%s", "assignee": "%s"}%s`, args[0], assignee, "\n")
+			cmd.Printf(`{"status": "assigned", "task_id": "%s", "assignee": "%s"}%s`, args[0], assignee, "\n")
 		} else {
-			fmt.Printf("Task %s assigned to %s\n", args[0], assignee)
+			cmd.Printf("Task %s assigned to %s\n", args[0], assignee)
 		}
 	},
 }

@@ -112,6 +112,6 @@ describe('App', () => {
     renderApp();
     const orgLink = screen.getByRole('link', { name: 'Organizations' });
     fireEvent.click(orgLink);
-    expect(screen.getByText('Organizations module placeholder area.')).toBeDefined();
+    expect(screen.getByText('Organizations & Settings')).toBeInTheDocument();
   });
 });

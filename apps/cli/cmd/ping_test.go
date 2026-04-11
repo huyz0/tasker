@@ -14,8 +14,6 @@ import (
 	"github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 )
 
-
-
 func TestPingCommandMetadata(t *testing.T) {
 	if pingCmd.Use != "ping" {
 		t.Errorf("expected pingCmd.Use 'ping', got %q", pingCmd.Use)
@@ -94,7 +92,6 @@ func TestRunPingError(t *testing.T) {
 		t.Errorf("expected error to contain 'ping failed', got: %q", err.Error())
 	}
 }
-
 
 // -------------------------------------------------------------------
 // Fake Connect handler

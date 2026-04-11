@@ -18,7 +18,7 @@ export class MockNatsPublishSpy {
 export const setupIntegrationTest = async () => {
   process.env.STANDALONE = "true";
   
-  const rawDb = await setupDatabase("sqlite");
+  const rawDb = await setupDatabase("sqlite", ":memory:");
   const db = rawDb as any;
   const nc = new MockNatsPublishSpy();
 
