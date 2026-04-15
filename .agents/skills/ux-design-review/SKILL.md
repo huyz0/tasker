@@ -1,6 +1,6 @@
 ---
 name: ux-design-review
-description: Interactively reviews generated UX designs and mockups against project standards based on Q&A.
+description: Interactively reviews generated UX designs and mockups against project standards based on Q&A. Use when interactively reviewing UX layouts and flow diagrams.
 ---
 
 # Role

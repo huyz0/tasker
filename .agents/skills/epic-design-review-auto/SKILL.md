@@ -1,6 +1,6 @@
 ---
 name: epic-design-review-auto
-description: Autonomously reviews the architecture, UX, and test plan artifacts for completeness and consistency.
+description: Autonomously reviews the architecture, UX, and test plan artifacts for completeness and consistency. Use when autonomously validating all design artifacts for alignment.
 ---
 
 # Role

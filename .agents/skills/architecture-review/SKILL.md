@@ -1,6 +1,6 @@
 ---
 name: architecture-review
-description: Interactively reviews an implementation against architecture guidelines, outputting findings based on developer Q&A.
+description: Interactively reviews an implementation against architecture guidelines, outputting findings based on developer Q&A. Use when interactively reviewing architecture plans and ADRs.
 ---
 
 # Role

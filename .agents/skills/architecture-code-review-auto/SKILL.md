@@ -1,6 +1,6 @@
 ---
 name: architecture-code-review-auto
-description: Autonomously reviews an epic's implementation code to ensure it matches the approved ARCHITECTURE.md and ADRs.
+description: Autonomously reviews an epic's implementation code to ensure it matches the approved ARCHITECTURE.md and ADRs. Use when autonomously validating code against architecture decisions.
 ---
 
 # Role

@@ -1,6 +1,6 @@
 ---
 name: epic-design-review
-description: Interactively reviews the architecture, UX, and test plan artifacts for consensus.
+description: Interactively reviews the architecture, UX, and test plan artifacts for consensus. Use when interactively validating the complete suite of a drafted epic's design.
 ---
 
 # Role

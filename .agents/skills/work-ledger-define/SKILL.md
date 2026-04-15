@@ -1,6 +1,6 @@
 ---
 name: work-ledger-define
-description: Interactively defines the work-ledger.yml to specify if artifacts are tracked in git or externally.
+description: Interactively defines the work-ledger.yml to specify if artifacts are tracked in git or externally. Use when interactively setting up tracking ledgers for work items.
 ---
 
 # Role

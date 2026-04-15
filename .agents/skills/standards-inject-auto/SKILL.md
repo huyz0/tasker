@@ -1,6 +1,6 @@
 ---
 name: standards-inject-auto
-description: Autonomously parses and selectively injects relevant standard policies based on the domain of the current task. Use to dynamically load project standards without overloading the context window blindly.
+description: Autonomously parses and selectively injects relevant standard policies based on the domain of the current task. Use when dynamically load project standards without overloading the context window blindly. Use when automatically bringing relevant standard policies into context.
 ---
 
 # Role

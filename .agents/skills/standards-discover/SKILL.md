@@ -1,6 +1,6 @@
 ---
 name: standards-discover
-description: Analyzes the codebase to extract tribal knowledge into documented standards.
+description: Analyzes the codebase to extract tribal knowledge into documented standards. Use when extracting and establishing new project standards from existing code.
 ---
 
 # Role

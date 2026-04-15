@@ -1,6 +1,6 @@
 ---
 name: local-ci-run
-description: Checking for gh cli and act plugin, handle user installation prompt, and automatically run act on relevant pipelines locally to test changes gracefully. Keeps token efficiency high by using encapsulated scripts.
+description: Checking for gh cli and act plugin, handle user installation prompt, and automatically run act on relevant pipelines locally to test changes gracefully. Keeps token efficiency high by using encapsulated scripts. Use when executing GitHub Action workflows locally for validation.
 ---
 
 # Role

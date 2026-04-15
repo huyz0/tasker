@@ -1,6 +1,6 @@
 ---
 name: architecture-review-auto
-description: Autonomously reviews an epic's architecture plan (ARCHITECTURE.md and ADRs) against the project's architecture standards and technical stack, generating an Architecture Design Review Report.
+description: Autonomously reviews an epic's architecture plan (ARCHITECTURE.md and ADRs) against the project's architecture standards and technical stack, generating an Architecture Design Review Report. Use when autonomously checking architectural plans against standards.
 ---
 
 # Role

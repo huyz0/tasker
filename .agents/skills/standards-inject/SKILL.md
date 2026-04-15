@@ -1,6 +1,6 @@
 ---
 name: standards-inject
-description: Injects context.
+description: Injects context. Use when dynamically injecting project standards into the context.
 ---
 
 # Role

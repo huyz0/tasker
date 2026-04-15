@@ -1,6 +1,6 @@
 ---
 name: epic-implement-review-auto
-description: Orchestrates the post-implementation automated reviews (QA, Security, Architecture-Code Check).
+description: Orchestrates the post-implementation automated reviews (QA, Security, Architecture-Code Check). Use when autonomously performing all post-implementation reviews (QA, Security, Architecture).
 ---
 
 # Role

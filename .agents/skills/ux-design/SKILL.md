@@ -1,6 +1,6 @@
 ---
 name: ux-design
-description: Interactively defines UX flows and mockups via user Q&A.
+description: Interactively defines UX flows and mockups via user Q&A. Use when interactively defining UX mockups and design flows.
 ---
 
 # Role

@@ -1,6 +1,6 @@
 ---
 name: qa-plan-define-auto
-description: Autonomously maps out and generates a comprehensive test plan for a given Epic, deriving all context and test cases directly from the Epic's scope and acceptance criteria.
+description: Autonomously maps out and generates a comprehensive test plan for a given Epic, deriving all context and test cases directly from the Epic's scope and acceptance criteria. Use when autonomously generating test cases and test plans from an epic.
 ---
 
 # Role

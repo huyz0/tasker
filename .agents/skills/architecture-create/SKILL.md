@@ -1,6 +1,6 @@
 ---
 name: architecture-create
-description: Interactively drafts Architecture Decision Records (ADRs) and architectural design documents during a guided design phase.
+description: Interactively drafts Architecture Decision Records (ADRs) and architectural design documents during a guided design phase. Use when interactively drafting ADRs and architecture documents for a new epic.
 ---
 
 # Role

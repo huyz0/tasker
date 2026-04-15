@@ -1,6 +1,6 @@
 ---
 name: qa-implement-review
-description: Interactively reviews test coverage and quality.
+description: Interactively reviews test coverage and quality. Use when examining an epic's test coverage and quality interactively.
 ---
 
 # Role

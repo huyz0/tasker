@@ -1,6 +1,6 @@
 ---
 name: ux-design-review-auto
-description: Autonomously reviews generated UX designs and mockups against project standards and epic constraints.
+description: Autonomously reviews generated UX designs and mockups against project standards and epic constraints. Use when autonomously reviewing generated UX assets against standards.
 ---
 
 # Role

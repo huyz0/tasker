@@ -1,6 +1,6 @@
 ---
 name: qa-plan-review-auto
-description: Autonomously reviews an epic's TEST-PLAN.md to ensure all edge cases, positive flows, and requirements are fully covered.
+description: Autonomously reviews an epic's TEST-PLAN.md to ensure all edge cases, positive flows, and requirements are fully covered. Use when autonomously reviewing a draft test plan for comprehensive coverage.
 ---
 
 # Role

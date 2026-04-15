@@ -1,6 +1,6 @@
 ---
 name: security-review-auto
-description: Autonomously reviews an epic's code implementation against the security-standard.md, checking for vulnerabilities, auth gaps, and data exposure.
+description: Autonomously reviews an epic's code implementation against the security-standard.md, checking for vulnerabilities, auth gaps, and data exposure. Use when autonomously auditing an epic's codebase for security issues.
 ---
 
 # Role

@@ -1,6 +1,6 @@
 ---
 name: security-review
-description: Interactively audits code for security vulnerabilities.
+description: Interactively audits code for security vulnerabilities. Use when interactively auditing implemented code for security vulnerabilities.
 ---
 
 # Role

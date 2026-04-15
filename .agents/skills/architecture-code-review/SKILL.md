@@ -1,6 +1,6 @@
 ---
 name: architecture-code-review
-description: Interactively reviews an epic's implementation code against ARCHITECTURE.md based on developer Q&A.
+description: Interactively reviews an epic's implementation code against ARCHITECTURE.md based on developer Q&A. Use when interactively reviewing implementation code for architectural compliance.
 ---
 
 # Role

@@ -1,6 +1,6 @@
 ---
 name: epic-design-auto
-description: Orchestrates the execution of all core automation design steps (architecture, UX, and test planning) for a newly defined epic.
+description: Orchestrates the execution of all core automation design steps (architecture, UX, and test planning) for a newly defined epic. Use when autonomously orchestrating all design disciplines for a defined epic.
 ---
 
 # Role

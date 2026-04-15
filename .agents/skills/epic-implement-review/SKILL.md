@@ -1,6 +1,6 @@
 ---
 name: epic-implement-review
-description: Interactively orchestrates the post-implementation reviews (QA, Security, Architecture-Code Check) via Q&A.
+description: Interactively orchestrates the post-implementation reviews (QA, Security, Architecture-Code Check) via Q&A. Use when interactively performing post-implementation checks and reviews.
 ---
 
 # Role

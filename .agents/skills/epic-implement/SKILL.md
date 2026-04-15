@@ -1,6 +1,6 @@
 ---
 name: epic-implement
-description: Interactively executes a planned epic, waiting for developer confirmations and PR feedback throughout built steps.
+description: Interactively executes a planned epic, waiting for developer confirmations and PR feedback throughout built steps. Use when interactively executing a planned epic and gathering feedback.
 ---
 
 # Role

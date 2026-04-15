@@ -1,6 +1,6 @@
 ---
 name: epic-end-to-end-auto
-description: Autonomously carries an epic from definition to completion without user intervention. Orchestrates define, design, implement, and review phases sequentially, finalizing by marking the epic to done.
+description: Autonomously carries an epic from definition to completion without user intervention. Orchestrates define, design, implement, and review phases sequentially, finalizing by marking the epic to done. Use when autonomously driving an epic completely from definition through implementation to done.
 ---
 
 # Role

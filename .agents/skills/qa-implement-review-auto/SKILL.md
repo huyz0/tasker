@@ -1,6 +1,6 @@
 ---
 name: qa-implement-review-auto
-description: Autonomously reviews an epic's code against its TEST-PLAN.md and project QA standards to verify actual test coverage and quality.
+description: Autonomously reviews an epic's code against its TEST-PLAN.md and project QA standards to verify actual test coverage and quality. Use when autonomously verifying an epic's implementation against its test plan.
 ---
 
 # Role

@@ -1,6 +1,6 @@
 ---
 name: qa-plan-review
-description: Interactively reviews an epic's drafted TEST-PLAN.md to discuss test scenarios and coverage.
+description: Interactively reviews an epic's drafted TEST-PLAN.md to discuss test scenarios and coverage. Use when interactively reviewing proposed test scenarios and edge cases.
 ---
 
 # Role

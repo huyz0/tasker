@@ -1,6 +1,6 @@
 ---
 name: epic-design
-description: Interactively orchestrates the core design steps (architecture, UX, and test planning) for an epic via developer Q&A.
+description: Interactively orchestrates the core design steps (architecture, UX, and test planning) for an epic via developer Q&A. Use when interactively steering the core design steps for an epic.
 ---
 
 # Role
