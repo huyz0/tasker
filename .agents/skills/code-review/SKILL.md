@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Interactively reviews an epic's implemented source code based on developer Q&A to identify bugs and quality issues.
+description: Interactively reviews epic's implemented source code via developer Q&A to identify bugs and quality issues. Use when you need a guided, interactive code review with a human, or when the user explicitly requests an interactive review (`/code-review`). For autonomous reviews, use `code-review-auto`.
 ---
 
 # Role
@@ -10,16 +10,17 @@ Principal Software Engineer / Code Reviewer.
 Provide an interactive, guided review of implemented code vs the project's coding standards.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
-- ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
-- ALWAYS use `AskUserQuestion`.
-- ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.code`. Find the next highest version number [N].
-- ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
-- ALWAYS update `EPIC.md` YAML frontmatter `reviews.code` to `approved` or `rejected`.
+- If reviewing an Epic, MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- If reviewing an Epic, ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths.
+- If reviewing an Epic, ALWAYS resolve review path using `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.code` in the `work-ledger.yml`. Find next version [N].
+- If reviewing an Epic, ALWAYS include YAML frontmatter in review artifact: `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
+- If reviewing an Epic, ALWAYS update `EPIC.md` YAML frontmatter `reviews.code` to `approved` or `rejected`.
+- If NO Epic context is provided (ad-hoc review), DO NOT generate review files or upate tracking files. Output findings directly as a chat message.
+- ALWAYS use `AskUserQuestion` for interaction.
 
 # Instructions
-1. **Target:** Ask for the Epic ID to review code for. Wait for answer.
-2. **Review Focus:** Ask the developer what files or modules they refactored or created that they want extra eyes on. Wait for answer.
-3. **Analyze:** Read `.specs/standards/coding-standard.md`. You MUST use `view_file` to read the structural routing at `.agents/skills/code-review-auto/references/INDEX.md`. From the index, ALWAYS load the Universal `agentic-quality.md` principles AND the `architecture-and-code-smells.md` principles (the latter covers code duplication / DRY violations and must be checked on every review). Then, based on what the developer highlighted (e.g., if they asked to focus on security, performance, or logic), dynamically load those specific Universal Principles via `view_file` before loading the necessary tech-stack references (React vs Backend TypeScript). Do NOT load everything—use progressive disclosure to preserve token limits. Review the code enforcing these boundaries. You MUST explicitly verify that the code implements REAL business logic rather than returning hardcoded mock data, and reject it if it relies on mocks.
-4. **Determine Version:** Check `.epics/EPIC-<id>/reviews/` for existing `CODE-REVIEW-v*.md` files. Increment version.
-5. **Report:** Generate the review document at the configured `work-ledger.yml` path and update `EPIC.md` `reviews.code` status. Ask if they want you to help apply the suggestions.
+1. **Target**: Ask for the Epic ID to review code for, or if this is an ad-hoc review for specific files/branches. Wait for answer.
+2. **Review Focus**: Ask developer which files/modules they want extra eyes on. Wait for answer.
+3. **Analyze**: Read `.specs/standards/coding-standard.md`. Load structural routing `.agents/skills/code-review-auto/references/INDEX.md`. ALWAYS load Universal `agentic-quality.md` AND `architecture-and-code-smells.md`. Dynamically load specific Universal Principles based on developer focus (e.g. security, performance) to preserve tokens. Reject code relying on returning hardcoded mock data instead of real business logic.
+4. **Determine Version**: If Epic context, check `.epics/EPIC-<id>/reviews/` for existing `CODE-REVIEW-v*.md`. Increment version.
+5. **Report**: If Epic context, generate review document at configured path and update `EPIC.md` `reviews.code`. If ad-hoc, output review findings directly to the chat. Ask if they want help applying suggestions.

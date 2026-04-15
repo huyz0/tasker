@@ -1,43 +1,45 @@
 ---
 name: code-review-auto
-description: Autonomously reviews an epic's implemented source code for bugs, quality, and coding standard adherence.
+description: Autonomously reviews an epic's implemented source code for bugs, quality, and coding standard adherence. Use when you need a completely autonomous machine pass without human interaction, or when the user invokes `/code-review-auto`. For interactive reviews, use `code-review`.
 ---
 
 # Role
 Principal Software Engineer / Code Reviewer.
 
 # Goal
-Autonomously evaluate the written source code within an epic's branch or scope against standard practices, identifying logic errors, code smells, or deviations from `.specs/standards/coding-standard.md`.
+Autonomously evaluate written source code within an epic's branch or ad-hoc context against standard practices.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
-- ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
-- DO NOT ask questions. Run completely autonomously.
-- Invoke the **standards-inject-auto** skill to dynamically select and load relevant project standards.
-- ALWAYS resolve the review output path and filename format using `.specs/product/work-ledger.yml` `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.code`. Find the next highest version number [N].
-- ALWAYS include a YAML frontmatter in the review artifact with `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
-- **Strict Approval Threshold:** A review may ONLY be `approved` if ALL findings are `Low` severity (trivial). If ANY finding is `Medium`, `High`, or `Critical`, the review MUST be `rejected`. There are no exceptions — do not approve with non-trivial findings noted as "acceptable" or "non-blocking".
-- ALWAYS update `EPIC.md` YAML frontmatter `reviews.code` to `approved` or `rejected`.
+- If reviewing an Epic, MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- If reviewing an Epic, ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths.
+- If reviewing an Epic, ALWAYS resolve review path using `reviews.config.project_files.path` and `reviews.config.project_files.name_templates.code` in `work-ledger.yml`. Find next version [N].
+- If reviewing an Epic, ALWAYS include YAML frontmatter in review artifact: `timestamp: [ISO 8601]` and `decision: [approved|rejected]`.
+- If reviewing an Epic, STRICT APPROVAL applies: Only `approved` if ALL findings are `Low` severity. If ANY `Medium/High/Critical`, `rejected`. No exceptions.
+- If reviewing an Epic, ALWAYS update `EPIC.md` YAML frontmatter `reviews.code` to `approved` or `rejected`.
+- If NO Epic context is provided (ad-hoc review), DO NOT generate review files or update tracking files. Output findings directly as a chat message.
+- DO NOT ask questions. Run autonomously.
+- Invoke `standards-inject-auto` skill to dynamically select/load project standards.
 
 # Instructions
-1. **Receive Target:** Accept epic ID from user.
-2. **Load Context:** Read the Epic's scope and the `coding-standard.md`. You MUST use `view_file` to read the structural routing at `.agents/skills/code-review-auto/references/INDEX.md`. ALWAYS read the Universal `agentic-quality.md` AND `architecture-and-code-smells.md` (the latter covers code duplication / DRY violations and must be checked on every review). Then, based on the specific type of code changes (e.g., complexity level, security sensitivity), sequentially read *only* the relevant Universal Principles and tech-stack references (React or Backend TypeScript) listed in the indices. Use progressive disclosure to enforce token efficiency and narrow the review scope rather than loading every standard file.
-3. **Analyze:** Verify the implemented source code for the epic. 
-   - **Completeness Check:** Explicitly check if the implementation fulfills EVERY single task in the Epic's Task Breakdown and ALL criteria in the "Definition of Done". If anything is missed, you MUST reject the review.
-   - **Real Implementation Check:** Explicitly verify that the code implements REAL business logic and database operations. If the implementation uses hardcoded mock data or bypasses the database for core operations, you MUST reject the review.
-   - **Storybook Enforcement Check:** Explicitly check if new React UI components were implemented. If a new presentational component was added without a corresponding `.stories.tsx` file capturing its visual states, you MUST reject the review.
-   - Check for correct module boundaries, adherence to the React design composition patterns (avoiding boolean props), cyclomatic complexity, unhandled edge cases, and hardcoded values. 
-   - You MUST physically run `.githooks/pre-commit` in the terminal before approving. This triggers the deterministic `moon check --all` pipeline (which enforces linting, test coverage, and builds) and ensures the implementation is genuinely CI-ready. Do not manually run `npm` scripts instead.
-   - **Workflow Consistency:** If the epic modifies `.githooks/pre-commit` or `.specs/standards/git-workflow-standard.md`, you MUST explicitly verify that the shell commands in the hook perfectly match the documented required checks.
-4. **Determine Version:** Check `.epics/EPIC-<id>/reviews/` for existing `CODE-REVIEW-v*.md` files. Increment version (e.g., `-v1`, `-v2`).
-5. **Output Report:** Generate the review document at the configured `work-ledger.yml` path. The core review findings MUST be provided in a deterministic YAML block directly within the Markdown file, formatted EXACTLY as follows:
+1. **Target**: Accept epic ID or ad-hoc files branch from user.
+2. **Load Context**: Read Epic's scope (if applicable) and `coding-standard.md`. Load structural routing `.agents/skills/code-review-auto/references/INDEX.md`. ALWAYS read Universal `agentic-quality.md` AND `architecture-and-code-smells.md`. Sequentially read ONLY relevant Universal Principles and tech-stack references based on change complexity. Use progressive disclosure.
+3. **Analyze**: Verify code.
+   - **Completeness**: If Epic context, check if implementation fulfills EVERY task in Task Breakdown and ALL "Definition of Done". Missed = Reject.
+   - **Real Implementation**: Verify real business logic and DB operations used. Hardcoded mocks or DB bypass = Reject.
+   - **Storybook**: Verify new React UI components have `.stories.tsx`. Missing = Reject.
+   - Check module boundaries, cyclomatic complexity, edge cases, hardcoded values.
+   - You MUST run `.githooks/pre-commit` in terminal before approving to ensure CI-ready via deterministic `moon check --all`.
+   - If modifying `.githooks/pre-commit` or `.specs/standards/git-workflow-standard.md`, explicitly verify shell commands match required checks.
+4. **Determine Version**: If Epic context, check `.epics/EPIC-<id>/reviews/` for existing `CODE-REVIEW-v*.md`. Increment version.
+5. **Output Report**: If Epic context, generate review document at configured path. Findings MUST be provided in deterministic YAML directly within Markdown:
 
 ```yaml
 findings:
   - file: "path/to/file.ts"
     line: 42
     severity: "High" # or Critical, Medium, Low
-    comment: "Detailed explanation of the issue."
+    comment: "Detailed explanation"
 ```
 
-Do not use Markdown tables for the findings. Update `EPIC.md` `reviews.code` status.
+Do not use Markdown tables for findings. Update `EPIC.md` `reviews.code` status.
+If ad-hoc review, output the YAML findings directly to chat.
