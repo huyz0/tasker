@@ -107,4 +107,19 @@ describe("Comments Handler", () => {
     expect(published).not.toBeNull();
     expect(published!.subject).toBe("domain.comment.created");
   });
+
+  // --- listComments ---
+
+  it("should list comments for an entity", async () => {
+    const eId = "tsk-list-" + Date.now();
+    await handler.createComment({ entityId: eId, entityType: "task", content: "C1" });
+    await handler.createComment({ entityId: eId, entityType: "task", content: "C2" });
+    const res = await handler.listComments({ entityId: eId, entityType: "task" });
+    expect(res.comments).toHaveLength(2);
+    expect(res.comments.map((c: any) => c.content)).toContain("C1");
+  });
+
+  it("should reject listComments with missing entityId", async () => {
+    expect(handler.listComments({ entityType: "task" })).rejects.toThrow();
+  });
 });

@@ -135,4 +135,35 @@ describe("Artifacts Handler", () => {
     await h.createArtifact({ folderId: folder.folder.id, name: "A" });
     expect(published!.subject).toBe("domain.artifact.created");
   });
+
+  // --- listFolders ---
+
+  it("should list folders for a project", async () => {
+    const pId = "proj-list-" + Date.now();
+    await handler.createFolder({ projectId: pId, name: "Folder 1" });
+    await handler.createFolder({ projectId: pId, name: "Folder 2" });
+    const res = await handler.listFolders({ projectId: pId });
+    expect(res.folders).toHaveLength(2);
+    expect(res.folders.map((f: any) => f.name)).toContain("Folder 1");
+  });
+
+  it("should reject listFolders with missing projectId", async () => {
+    expect(handler.listFolders({})).rejects.toThrow();
+  });
+
+  // --- listArtifacts ---
+
+  it("should list artifacts for a folder", async () => {
+    const fld = await handler.createFolder({ projectId: "pro", name: "Fld" });
+    const fId = fld.folder.id;
+    await handler.createArtifact({ folderId: fId, name: "Art 1" });
+    await handler.createArtifact({ folderId: fId, name: "Art 2" });
+    const res = await handler.listArtifacts({ folderId: fId });
+    expect(res.artifacts).toHaveLength(2);
+    expect(res.artifacts.map((a: any) => a.name)).toContain("Art 1");
+  });
+
+  it("should reject listArtifacts with missing folderId", async () => {
+    expect(handler.listArtifacts({})).rejects.toThrow();
+  });
 });

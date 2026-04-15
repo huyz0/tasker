@@ -66,5 +66,12 @@ describe("Projects Handler Integration Logic", () => {
      // Test 404 throws
      expect(pHandler.getProject({ id: "invalid-id" })).rejects.toThrow("not found");
      expect(ptHandler.getTemplate({ id: "invalid-id" })).rejects.toThrow("not found");
+
+     // Test listProjects
+     const listRes = await pHandler.listProjects({ orgId: "org-test" });
+     expect(listRes.projects.length).toBeGreaterThan(0);
+     expect(listRes.projects.some((p: any) => p.name === "Test Project")).toBe(true);
+
+     expect(pHandler.listProjects({})).rejects.toThrow();
   });
 });

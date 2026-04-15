@@ -78,4 +78,19 @@ describe("Task Notes Handler", () => {
     expect(published).not.toBeNull();
     expect(published!.subject).toBe("domain.tasknote.created");
   });
+
+  // --- listTaskNotes ---
+
+  it("should list task notes for a task", async () => {
+    const tId = "tsk-list-" + Date.now();
+    await handler.createTaskNote({ taskId: tId, agentId: "a1", content: "N1" });
+    await handler.createTaskNote({ taskId: tId, agentId: "a2", content: "N2" });
+    const res = await handler.listTaskNotes({ taskId: tId });
+    expect(res.taskNotes).toHaveLength(2);
+    expect(res.taskNotes.map((n: any) => n.content)).toContain("N1");
+  });
+
+  it("should reject listTaskNotes with missing taskId", async () => {
+    expect(handler.listTaskNotes({})).rejects.toThrow();
+  });
 });

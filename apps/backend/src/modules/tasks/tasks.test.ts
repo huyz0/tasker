@@ -101,5 +101,11 @@ describe("Tasks Handler Integration Tests", () => {
     });
     
     expect(assignResp.success).toBe(true);
+
+    const listResp = await handler.listTasks({ projectId: projectId });
+    expect(listResp.tasks.length).toBeGreaterThan(0);
+    expect(listResp.tasks.some((t: any) => t.title === "New Test Task")).toBe(true);
+
+    expect(handler.listTasks({})).rejects.toThrow();
   });
 });

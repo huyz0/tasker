@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "test": "rm -rf .data && mkdir -p .data && bun test",
+    "test:coverage": "rm -rf .data && mkdir -p .data && bun test --coverage",
     "build:standalone": "bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts"
   },
   "devDependencies": {
