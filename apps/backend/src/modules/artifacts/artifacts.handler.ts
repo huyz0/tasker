@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and } from "drizzle-orm";
-import { decodeCursor, encodeCursor, buildCursorPaginationWhere, buildPaginationOrderBy } from "../../db/query-builder";
+import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
 
@@ -23,22 +23,6 @@ const LinkTaskArtifactSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   artifactId: z.string().min(1, "artifactId is required"),
 });
-
-// --- Dual-mode Insert Helper ---
-
-const insertRecord = async (
-  db: any,
-  table: any,
-  payload: Record<string, unknown>,
-  isStandalone: boolean,
-  withTimestamp = true
-) => {
-  if (isStandalone && withTimestamp) {
-    await db.insert(table).values({ ...payload, createdAt: new Date() });
-  } else {
-    await db.insert(table).values(payload);
-  }
-};
 
 // --- Handler Factory ---
 
@@ -97,25 +81,11 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
     async listFolders(req: any) {
       if (!req.projectId) throw new Error("projectId is required");
-      const page = req.page || {};
-      const limit = Math.min(page.limit || 50, 100);
-      const cursorData = decodeCursor(page.cursor);
-
       const flds = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
-      let query = db.select().from(flds).where(eq((flds as any).projectId, req.projectId)).limit(limit) as any;
-
-      query = query.orderBy(...buildPaginationOrderBy(flds.createdAt as any, flds.id as any));
-      const whereClause = buildCursorPaginationWhere(cursorData, flds.createdAt as any, flds.id as any);
-      if (whereClause) {
-        query = db.select().from(flds).where(and(eq((flds as any).projectId, req.projectId), whereClause)).limit(limit).orderBy(...buildPaginationOrderBy(flds.createdAt as any, flds.id as any)) as any;
-      }
-
-      const result = await query;
-      const lastItem = result[result.length - 1];
-      const nextCursor = lastItem && result.length === limit ? encodeCursor((lastItem.createdAt instanceof Date ? lastItem.createdAt : new Date(lastItem.createdAt)).getTime(), lastItem.id) : undefined;
+      const { items, nextCursor } = await executePaginatedQuery(db, flds, eq((flds as any).projectId, req.projectId), req.page);
 
       return {
-        folders: result.map((f: any) => ({
+        folders: items.map((f: any) => ({
           ...f,
           createdAt: f.createdAt instanceof Date ? f.createdAt.toISOString() : f.createdAt,
         })),
@@ -124,25 +94,11 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
     async listArtifacts(req: any) {
       if (!req.folderId) throw new Error("folderId is required");
-      const page = req.page || {};
-      const limit = Math.min(page.limit || 50, 100);
-      const cursorData = decodeCursor(page.cursor);
-
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
-      let query = db.select().from(arts).where(eq((arts as any).folderId, req.folderId)).limit(limit) as any;
-
-      query = query.orderBy(...buildPaginationOrderBy(arts.createdAt as any, arts.id as any));
-      const whereClause = buildCursorPaginationWhere(cursorData, arts.createdAt as any, arts.id as any);
-      if (whereClause) {
-        query = db.select().from(arts).where(and(eq((arts as any).folderId, req.folderId), whereClause)).limit(limit).orderBy(...buildPaginationOrderBy(arts.createdAt as any, arts.id as any)) as any;
-      }
-
-      const result = await query;
-      const lastItem = result[result.length - 1];
-      const nextCursor = lastItem && result.length === limit ? encodeCursor((lastItem.createdAt instanceof Date ? lastItem.createdAt : new Date(lastItem.createdAt)).getTime(), lastItem.id) : undefined;
+      const { items, nextCursor } = await executePaginatedQuery(db, arts, eq((arts as any).folderId, req.folderId), req.page);
 
       return {
-        artifacts: result.map((a: any) => ({
+        artifacts: items.map((a: any) => ({
           ...a,
           createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : a.createdAt,
         })),

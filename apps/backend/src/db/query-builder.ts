@@ -54,3 +54,48 @@ export function buildPaginationOrderBy(
 ) {
   return [desc(createdAtCol), desc(idCol)];
 }
+
+export async function insertRecord(
+  db: any,
+  table: any,
+  payload: Record<string, unknown>,
+  isStandalone: boolean,
+  withTimestamp: boolean | string = true
+) {
+  if (isStandalone && withTimestamp) {
+    const field = typeof withTimestamp === 'string' ? withTimestamp : 'createdAt';
+    await db.insert(table).values({ ...payload, [field]: new Date() });
+  } else {
+    await db.insert(table).values(payload);
+  }
+}
+
+export async function executePaginatedQuery(
+  db: any,
+  table: any,
+  baseCondition: SQL | undefined,
+  pageOpts: any
+) {
+  const limit = Math.min(pageOpts?.limit || 50, 100);
+  const cursorData = decodeCursor(pageOpts?.cursor);
+
+  let query = db.select().from(table);
+  if (baseCondition) {
+    query = query.where(baseCondition);
+  }
+  query = query.limit(limit) as any;
+
+  query = query.orderBy(...buildPaginationOrderBy(table.createdAt, table.id));
+  const whereClause = buildCursorPaginationWhere(cursorData, table.createdAt, table.id);
+  
+  if (whereClause) {
+    const finalWhere = baseCondition ? and(baseCondition, whereClause) : whereClause;
+    query = db.select().from(table).where(finalWhere).limit(limit).orderBy(...buildPaginationOrderBy(table.createdAt, table.id)) as any;
+  }
+
+  const result = await query;
+  const lastItem = result[result.length - 1];
+  const nextCursor = lastItem && result.length === limit ? encodeCursor((lastItem.createdAt instanceof Date ? lastItem.createdAt : new Date(lastItem.createdAt)).getTime(), lastItem.id) : undefined;
+  
+  return { items: result, nextCursor };
+}

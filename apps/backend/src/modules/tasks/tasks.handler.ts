@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and } from "drizzle-orm";
-import { decodeCursor, encodeCursor, buildCursorPaginationWhere, buildPaginationOrderBy } from "../../db/query-builder";
+import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
 
@@ -28,22 +28,6 @@ const AssignTaskSchema = z.object({
   agentId: z.string().nullable().optional(),
   userId: z.string().nullable().optional(),
 });
-
-// --- Dual-mode Insert Helper ---
-
-const insertRecord = async (
-  db: any,
-  table: any,
-  payload: Record<string, unknown>,
-  isStandalone: boolean,
-  withTimestamp = true
-) => {
-  if (isStandalone && withTimestamp) {
-    await db.insert(table).values({ ...payload, createdAt: new Date() });
-  } else {
-    await db.insert(table).values(payload);
-  }
-};
 
 // --- Handler Factories ---
 
@@ -112,25 +96,11 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     },
     async listTasks(req: any) {
       if (!req.projectId) throw new Error("projectId is required");
-      const page = req.page || {};
-      const limit = Math.min(page.limit || 50, 100);
-      const cursorData = decodeCursor(page.cursor);
-
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-      let query = db.select().from(tasks).where(eq((tasks as any).projectId, req.projectId)).limit(limit) as any;
-
-      query = query.orderBy(...buildPaginationOrderBy(tasks.createdAt as any, tasks.id as any));
-      const whereClause = buildCursorPaginationWhere(cursorData, tasks.createdAt as any, tasks.id as any);
-      if (whereClause) {
-        query = db.select().from(tasks).where(and(eq((tasks as any).projectId, req.projectId), whereClause)).limit(limit).orderBy(...buildPaginationOrderBy(tasks.createdAt as any, tasks.id as any)) as any;
-      }
-
-      const result = await query;
-      const lastItem = result[result.length - 1];
-      const nextCursor = lastItem && result.length === limit ? encodeCursor((lastItem.createdAt instanceof Date ? lastItem.createdAt : new Date(lastItem.createdAt)).getTime(), lastItem.id) : undefined;
+      const { items, nextCursor } = await executePaginatedQuery(db, tasks, eq((tasks as any).projectId, req.projectId), req.page);
 
       return {
-        tasks: result.map((t: any) => ({
+        tasks: items.map((t: any) => ({
           ...t,
           createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
         })),

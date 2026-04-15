@@ -56,7 +56,7 @@ export const authRoutes = new Elysia()
         throw new Error('Failed to exchange code for token');
       }
 
-      const tokens = await tokenResponse.json();
+      const tokens = (await tokenResponse.json()) as any;
       
       const profileResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: { Authorization: `Bearer ${tokens.access_token}` },
@@ -66,7 +66,7 @@ export const authRoutes = new Elysia()
         throw new Error('Failed to fetch user profile');
       }
       
-      const profile = await profileResponse.json();
+      const profile = (await profileResponse.json()) as any;
 
       return new Response('', {
         status: 302,
