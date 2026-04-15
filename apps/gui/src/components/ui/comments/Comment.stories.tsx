@@ -1,16 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { CommentSection } from './CommentSection';
+import { Comment } from './index';
 
 const meta = {
-  title: 'UI/CommentSection',
-  component: CommentSection,
+  title: 'UI/Comment',
+  component: Comment.Provider,
   parameters: {
     layout: 'padded',
   },
-  argTypes: {
-    onAddComment: { action: 'added comment' },
-  },
-} satisfies Meta<typeof CommentSection>;
+  args: {
+    onAddComment: async (content: string) => {
+      console.log('Added comment:', content);
+    }
+  }
+} satisfies Meta<typeof Comment.Provider>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -33,25 +35,21 @@ const mockComments = [
 ];
 
 export const Empty: Story = {
-  args: {
-    comments: [],
-    isLoading: false,
-    onAddComment: async () => {},
-  },
+  args: { children: <></> },
+  render: (args) => (
+    <Comment.Provider {...args} initialComments={[]}>
+      <Comment.List />
+      <Comment.Composer />
+    </Comment.Provider>
+  )
 };
 
 export const Populated: Story = {
-  args: {
-    comments: mockComments,
-    isLoading: false,
-    onAddComment: async () => {},
-  },
-};
-
-export const LoadingState: Story = {
-  args: {
-    comments: mockComments,
-    isLoading: true,
-    onAddComment: async () => {},
-  },
+  args: { children: <></> },
+  render: (args) => (
+    <Comment.Provider {...args} initialComments={mockComments}>
+      <Comment.List />
+      <Comment.Composer />
+    </Comment.Provider>
+  )
 };

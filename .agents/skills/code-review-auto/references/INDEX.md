@@ -12,14 +12,14 @@ Based on the review focus (or automatically based on the complexity of the diff)
 
 ## 2. Tech-Stack Specific References
 
-### Frontend (React / Next.js)
-If the modified code involves UI components, frontend hooks, or React rendering:
-- Use `view_file` to read `.agents/skills/code-review-auto/references/react/INDEX.md`.
+### Frontend
+If the under review code involves UI components, frontend hooks, or React rendering:
+- Use `view_file` to read `.agents/skills/code-review-auto/references/frontend/INDEX.md`.
 
 ### Backend (TypeScript / Node.js / Drizzle ORM)
-If the modified code involves API services, routing, database ORM logic, or server-side background processors:
+If the under review code involves API services, routing, database ORM logic, or server-side background processors:
 - Use `view_file` to read `.agents/skills/code-review-auto/references/backend-typescript/INDEX.md`.
 
 ### Backend (Golang)
-If the modified code involves Go services, goroutines, or backend Go logic:
+If the under review code involves Go services, goroutines, or backend Go logic:
 - Use `view_file` to read `.agents/skills/code-review-auto/references/golang/INDEX.md`.

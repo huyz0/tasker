@@ -1,9 +1,8 @@
-
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { expect, test, describe, vi } from 'vitest';
-import { CommentSection } from './CommentSection';
+import { Comment } from './index';
 
-describe('CommentSection', () => {
+describe('Comment Compound Component', () => {
   const mockComments = [
     {
       id: 'cmt-1',
@@ -23,7 +22,12 @@ describe('CommentSection', () => {
 
   test('Scenario 1: Creates a comment through the GUI', async () => {
     const handleAddComment = vi.fn().mockResolvedValue(undefined);
-    render(<CommentSection comments={[]} isLoading={false} onAddComment={handleAddComment} />);
+    render(
+      <Comment.Provider onAddComment={handleAddComment}>
+        <Comment.List />
+        <Comment.Composer />
+      </Comment.Provider>
+    );
     
     // Write new comment
     const textarea = screen.getByPlaceholderText('Add your comment... (Markdown supported)');
@@ -31,13 +35,19 @@ describe('CommentSection', () => {
     
     // Submit comment
     const button = screen.getByRole('button', { name: /post/i });
-    fireEvent.click(button);
+    await act(async () => {
+      fireEvent.click(button);
+    });
     
     expect(handleAddComment).toHaveBeenCalledWith('This is a **bold** comment');
   });
 
   test('Scenario 2: Agent Appends Reasoning with Distinct Styling', () => {
-    render(<CommentSection comments={mockComments} isLoading={false} onAddComment={vi.fn()} />);
+    render(
+      <Comment.Provider initialComments={mockComments} onAddComment={vi.fn()}>
+        <Comment.List />
+      </Comment.Provider>
+    );
     
     // Find standard user comment
     const humanComment = screen.getByText('Human User').closest('div.p-4');
