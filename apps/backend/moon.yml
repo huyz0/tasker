@@ -12,3 +12,8 @@ tasks:
       - 'src/**/*'
     outputs:
       - 'dist/tasker-standalone'
+  lint:
+    command: 'bun run lint'
+    inputs:
+      - 'src/**/*'
+      - 'package.json'

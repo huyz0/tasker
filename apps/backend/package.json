@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "lint": "oxlint .",
     "test": "rm -rf .data && mkdir -p .data && bun test",
     "test:coverage": "rm -rf .data && mkdir -p .data && bun test --coverage",
     "build:standalone": "bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts"
@@ -11,7 +12,8 @@
   "devDependencies": {
     "@types/bun": "^1.3.12",
     "better-sqlite3": "^12.8.0",
-    "drizzle-kit": "^0.31.10"
+    "drizzle-kit": "^0.31.10",
+    "oxlint": "^1.61.0"
   },
   "peerDependencies": {
     "typescript": "^6.0.2"
