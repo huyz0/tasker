@@ -23,7 +23,7 @@ Identify completed epics (`status: done`), summarize their outcomes into a dense
    - Primary goals achieved
    - Architectural decisions made (if any)
    - Covered roadmap items
-3. **Update Ledger:** Append the summary as a compressed YAML or Markdown block into `.archive/EPICS-HISTORY.md`. Create the file if it doesn't exist.
+3. **Update Ledger:** Append the summary as a compressed YAML or Markdown block into `.archive/EPICS-HISTORY.md`. Create the file if it doesn't exist. After appending, ensure the file is sorted numerically by Epic ID to maintain a chronological history.
 4. **Relocate Files:** 
    - Ensure `.archive/epics/` and `.archive/test-plans/` directories exist.
    - Move `.epics/EPIC-<id>-<title>` to `.archive/epics/EPIC-<id>-<title>`.
