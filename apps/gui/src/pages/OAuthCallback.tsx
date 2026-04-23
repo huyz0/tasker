@@ -57,7 +57,7 @@ export function OAuthCallback() {
         remoteName: state.remoteName,
         oauthCode: code,
       });
-    } catch (e) {
+    } catch {
       setError("Invalid state parameter.");
     }
   }, []);

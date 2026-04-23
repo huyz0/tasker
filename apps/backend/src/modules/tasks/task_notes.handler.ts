@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 
 // --- Zod Request Schema ---

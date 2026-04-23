@@ -18,7 +18,7 @@ Ensure all code implementations and bug fixes are driven and proven by automated
 - DO NOT consider a task complete unless all tests pass.
 
 # Instructions
-1. **Analyze Request:** Determine if the task involves new logic, modification, or a bug fix. If pure configuration/static content, TDD may not apply.
+1. **Analyze Request:** Determine if the task involves new logic, modification, or a bug fix. If pure configuration/static content, TDD may not apply. Automatically invoke `standards-inject` to load `testing-standard.md`.
 2. **Write Failing Test (RED):** Write a test for the desired behavior or reproducing the bug. Run it to confirm it fails.
 3. **Implement (GREEN):** Write the minimal implementation code to make the test pass.
 4. **Refactor:** Clean up the code (remove duplication, improve naming) without changing behavior.
@@ -28,4 +28,4 @@ Ensure all code implementations and bug fixes are driven and proven by automated
 # Output Format
 - Failing test confirmation (Red)
 - Passing test confirmation (Green)
-- Output of test runner (e.g., `npm test`)
+- Output of test runner (e.g., `bun test`)

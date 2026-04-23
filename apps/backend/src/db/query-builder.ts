@@ -25,7 +25,7 @@ export function decodeCursor(cursor?: string): CursorData | null {
     if (typeof data.createdAt === "number" && typeof data.id === "string") {
       return data;
     }
-  } catch (error) {
+  } catch {
     // Ignore invalid cursors
   }
   return null;

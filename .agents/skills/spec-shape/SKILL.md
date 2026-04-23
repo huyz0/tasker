@@ -37,10 +37,9 @@ Ask: "Similar code in this codebase to reference? (files, folders, features, or 
 If provided → read and analyze to inform the plan.
 
 ## Step 4: Product Context
-Check `.specs/product/` for `mission.md`, `roadmap.md`, `tech-stack.md`, `architecture.md`.
+Invoke `product-inject` (targets: all) to load `mission.md`, `roadmap.md`, `tech-stack.md`, and `architecture.md`.
 
-If exists → summarize relevant points, ask user to confirm alignment.
-If missing → skip.
+Summarize relevant points and ask user to confirm alignment via `AskUserQuestion`.
 
 ## Step 5: Surface Standards
 Read `.specs/standards/index.yml`. Match relevant standards to the feature.

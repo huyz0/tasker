@@ -1,29 +1,39 @@
 ---
 name: epic-implement
-description: Interactively executes a planned epic, waiting for developer confirmations and PR feedback throughout built steps. Use when interactively executing a planned epic and gathering feedback.
+description: Executes a planned epic task breakdown. Use when implementing a defined epic.
 ---
 
 # Role
 Senior Developer.
 
+# Execution Mode
+- **Interactive**: Prompt `AskUserQuestion` before moving to next task. Never check off without confirmation.
+- **Autonomous (`-auto`)**: Auto-invoke `standards-inject` (target: max 2 relevant standards). Implement tasks, run tests, pass local CI, mark `[x]` automatically.
+
 # Goal
-Implement an epic interactively, checking with the user between major tasks.
+Implement an epic according to its `EPIC.md` Task Breakdown, Architecture, and UI Designs.
 
 # Constraints
 - MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
 - ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
-- ALWAYS use `AskUserQuestion` before moving to the next task in the epic breakdown.
-- NEVER check off (`- [x]`) a task without user confirmation.
+- In Autonomous Mode, NEVER ask questions. In Interactive Mode, ALWAYS ask before proceeding.
+- ALWAYS invoke `caveman` skill for interactive text responses to minimize tokens.
+- TEST & STORYBOOK ENFORCEMENT: MUST NOT check off tasks (`- [x]`) unless test files (`*.test.tsx`, `*.spec.ts`) and Storybooks (`*.stories.tsx`) are written and passing.
 
 # Instructions
-1. **Target:** Ask for the Epic ID to implement.
-2. **Verify State:** Read `EPIC.md` to ensure it's reviewed. Check for `reviews:` that are `rejected`.
+1. **Target:** 
+   - Interactive: Ask for the Epic ID to implement.
+   - Autonomous: Accept the Epic ID.
+2. **Verify State:** Read `EPIC.md` to ensure it's reviewed (`design_reviews` are `approved`). Check for `reviews:` that are `rejected`.
 3. **Rejection Recovery Check:**
-   - If any review specifies `rejected`, tell the user: "This epic has rejected reviews. Let's address the feedback in the latest review trace `-v[N].md` instead of normal implementation." Proceed to read it and implement feedback interactively.
-4. **Step-by-Step:**
-   a. Look at the first unchecked task.
-   b. Ask user: "Ready to implement: [Task]? Do you have any specific file path constraints?"
-   c. Perform the code changes.
-   d. Ask user: "Are you satisfied with the result? Can I mark this task checking as [x]?"
-   e. Repeat until the epic is done.
-5. **Completion:** Suggest the user run `/epic-implement-review` when the epic is completely finished.
+   - If any post-implementation review specifies `rejected`, we are in recovery mode. Read the latest review trace `-v[N].md` and address the feedback.
+   - Interactive: Tell the user you are in recovery mode and implement interactively.
+   - Autonomous: Automatically address the feedback.
+4. **Step-by-Step Implementation:**
+   - Look at the first unchecked task.
+   - Interactive: Ask user: "Ready to implement: [Task]? Do you have any specific file path constraints?"
+   - Perform the code changes.
+   - Interactive: Ask user: "Are you satisfied with the result? Can I mark this task checking as [x]?"
+   - Autonomous: Verify tests pass, then automatically mark as `[x]`.
+   - Repeat until the epic is done.
+5. **Completion:** Suggest the user run `/epic-implement-review` (or `/epic-implement-review-auto`) when the epic is finished.

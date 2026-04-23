@@ -1,4 +1,4 @@
-import { setupDatabase } from "../../db/db";
+
 
 export const createHealthHandler = (db: any) => {
   return {

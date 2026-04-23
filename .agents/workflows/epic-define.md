@@ -4,4 +4,4 @@ description: Define Epic
 
 # Define Epic
 **Delegate**: `.agents/skills/epic-define/SKILL.md`
-**Action**: Read and execute standard instructions exactly.
+**Action**: Read and execute standard instructions exactly in INTERACTIVE mode. Use AskUserQuestion.

@@ -1,10 +1,14 @@
 ---
 name: epic-define
-description: Creates a detailed Epic definition in .epics/ via guided Q&A. Use when the user wants to define a new project epic or large feature scope.
+description: Creates a detailed Epic definition. Use when shaping a new feature or technical initiative.
 ---
 
 # Role
 Technical Project Manager & Agile Planner.
+
+# Execution Mode
+- **Interactive**: Prompt `AskUserQuestion` for scope, exclusions, DoD.
+- **Autonomous (`-auto`)**: Auto-derive context from topic. Invoke `product-inject` (targets: all), `standards-inject` (target: epic-standard).
 
 # Goal
 Create a detailed, standardized Epic in `.epics/` aligning with `.specs/standards/epic-standard.md`.
@@ -12,29 +16,33 @@ Create a detailed, standardized Epic in `.epics/` aligning with `.specs/standard
 # Constraints
 - MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
 - ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
-- ALWAYS use `AskUserQuestion` tool for inquiries.
-- DO NOT list questions simultaneously. Ask them sequentially 1 through 4.
-- DO NOT leave short answers as-is. Expand user input into professional markdown.
-- MUST explicitly specify in the Definition of Done that implementation MUST BE fully end-to-end and working (e.g. real database logic, no mocked endpoints).
+- In Autonomous Mode, NEVER ask questions. In Interactive Mode, ALWAYS ask sequentially (DO NOT list all).
+- ALWAYS invoke `caveman` skill for interactive text responses to minimize tokens.
+- MUST explicitly specify in DoD that implementation MUST BE fully end-to-end working.
 - DO NOT deviate from `.specs/standards/epic-standard.md`.
-- DO NOT output conversational filler ("I'll guide", "Great!", "Let's do this").
-- ALWAYS initialize the YAML `designs`, `design_reviews`, and `reviews` blocks correctly. If a specific phase component is completely irrelevant (e.g., `ux` for a pure backend migration), explicitly set it to `n/a` instead of `pending` across all applicable sections.
+- ALWAYS initialize `designs`, `design_reviews`, `reviews` YAML blocks. Set to `n/a` if completely irrelevant.
 
 # Instructions
-1. **Title & Objective:** Ask for title and primary business goal/problem solved. Wait for answer.
-2. **Scope Definition:** Ask for MUST-HAVE features (In Scope) and EXPLICIT EXCLUSIONS (Out of Scope). Wait for answer.
-3. **Dependencies:** Ask for blockers, prerequisites, or related systems (or "None"). Wait for answer.
-4. **Completion:** Ask for Definition of Done (completion criteria) and immediate trackable sub-tasks. Wait for answer.
+1. **Target:**
+   - Interactive: Ask for title and primary business goal/problem solved. Wait for answer.
+   - Autonomous: Accept the topic/goal from the user/context.
+2. **Scope Definition:**
+   - Interactive: Ask for MUST-HAVE features (In Scope) and EXPLICIT EXCLUSIONS (Out of Scope). Wait for answer.
+   - Autonomous: Derive In-Scope and Out-of-Scope automatically based on project context.
+3. **Dependencies:**
+   - Interactive: Ask for blockers, prerequisites, or related systems. Wait for answer.
+   - Autonomous: Identify dependencies automatically.
+4. **Completion:**
+   - Interactive: Ask for Definition of Done (completion criteria) and immediate trackable sub-tasks. Wait for answer.
+   - Autonomous: Generate a comprehensive Definition of Done and sub-tasks.
 5. **ID Allocation:**
-   - Scan `.epics/` directory.
-   - Next ID = `max(Existing IDs) + 1` or `0001` if empty.
+   - Scan `.epics/` directory. Next ID = `max(Existing IDs) + 1` or `0001` if empty.
 6. **File Generation:**
    - Target dir: `.epics/EPIC-<4-digit-id>-<kebab-case-title>/`
    - File: `EPIC.md`
    - Use current date for `created_at`.
    - Expand answers professionally.
-7. **Confirmation:**
-   - Display success block with generated file path.
+7. **Confirmation:** Display success block with generated file path.
 
 # Output Format
 ## EPIC.md Template
@@ -54,7 +62,7 @@ reviews:
   security: pending
   qa_implement: pending
   architecture_code: pending
-created_at: [Insert Current Date YYYY-MM-DD]
+created_at: [YYYY-MM-DD]
 ---
 
 # [Clean Epic Title]
@@ -81,7 +89,3 @@ created_at: [Insert Current Date YYYY-MM-DD]
 ## Task Breakdown
 [Checklist of tasks derived from input or `- [ ] task`]
 ```
-
-## Success Context
-`✓ Epic [ID] created successfully: .epics/EPIC-[id]-[kebab-case-title]/EPIC.md`
-`Next step: Run /epic-design`

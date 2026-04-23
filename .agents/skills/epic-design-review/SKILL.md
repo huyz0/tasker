@@ -1,24 +1,34 @@
 ---
 name: epic-design-review
-description: Interactively reviews the architecture, UX, and test plan artifacts for consensus. Use when interactively validating the complete suite of a drafted epic's design.
+description: Performs design reviews against project standards. Use when an epic's designs need validation.
 ---
 
 # Role
-Engineering Director.
+Engineering Manager & Core Design Reviewer.
+
+# Execution Mode
+- **Interactive**: Prompt `AskUserQuestion` to discuss specific design decisions before analyzing.
+- **Autonomous (`-auto`)**: Strictly evaluate designs against standards. Auto-invoke `product-inject` (targets: architecture, tech-stack) and `standards-inject`.
 
 # Goal
-Interactively guide the review of the Architecture, UX designs, and Test plans using their respective review skills.
+Perform a comprehensive review of the Architecture, UX Mockups, and QA Test Plan artifacts generated during the design phase.
 
 # Constraints
 - MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
 - ALWAYS read `.specs/product/work-ledger.yml` to determine artifact storage paths and tracking methods.
-- ALWAYS use `AskUserQuestion`.
+- ALWAYS update `EPIC.md` YAML frontmatter `design_reviews.*` fields to `approved` or `rejected`. If a review type is `n/a` in `designs`, its review must also be `n/a`.
+- ALWAYS invoke `caveman` skill for interactive text responses to minimize tokens.
 
 # Instructions
-1. **Target:** Ask for the Epic ID to begin the design review phase. Wait for answer.
-2. **Artifact Applicability:** State which design artifacts (Architecture, UX, QA Plan) were successfully generated and advise on which reviews are applicable.
-3. **Architecture Review:** If applicable, ask if they want to run the Architecture Review. If yes, execute `.agents/skills/architecture-review/SKILL.md`.
-4. **UX Design Review:** If applicable, ask if they want to run the UX Design Review. If yes, execute `.agents/skills/ux-design-review/SKILL.md`.
-5. **QA Plan Review:** If applicable, ask if they want to run the QA Plan Review. If yes, execute `.agents/skills/qa-plan-review/SKILL.md`.
-6. **Cross-Artifact Check:** For the artifacts that do exist, review them alongside the developer, asking if any missing API states or missing test scenarios jump out at them. Wait for answer.
-6. **Completion:** Output findings to `DESIGN-REVIEW.md` and suggest `/epic-implement`.
+1. **Target Identification:**
+   - Interactive: Ask for the Epic ID. Wait for answer. Ask which design reviews they want to run.
+   - Autonomous: Accept the provided Epic ID.
+2. **Load Context:** Read the Epic's scope. Invoke `product-inject` (targets: architecture, tech-stack) and `standards-inject` (targets: ui-ux-standard, api-standard, test-plan-standard).
+3. **Comprehensive Review (Single Pass):**
+   - **Architecture Review**: Evaluate `ARCHITECTURE.md` and ADRs for scalability, security, and standard compliance.
+   - **UX Design Review**: Evaluate mockups and Mermaid flows against `ux-design-standard.md`.
+   - **QA Plan Review**: Evaluate `TEST-PLAN.md` for comprehensive edge cases and Given/When/Then formatting.
+4. **Output Reports:**
+   - Generate combined or separate review documents at the configured `work-ledger.yml` paths based on the `name_templates` for `architecture_review`, `ux_review`, and `qa_plan_review`.
+   - Update `EPIC.md` `design_reviews.*` status.
+   - Output a combined health summary of the generated review documents. If all are approved, suggest proceeding to `/epic-implement`.

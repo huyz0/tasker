@@ -12,7 +12,7 @@ describe("Organizations Handler Integration Logic", () => {
     const userId = "user-1";
     try {
         await db.insert(schemaSqlite.users).values({ id: userId, email: "z" + Date.now().toString() + "@foo.com", name: "Z", createdAt: new Date() });
-    } catch (e) {}
+    } catch {}
 
     const req = { name: "Test Org Z", slug: "test-org-z" + Date.now().toString() };
     const res = await handler.seedOrg(req);

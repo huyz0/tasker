@@ -15,7 +15,7 @@ import { setupDatabase } from "./db/db";
 import { connect as natsConnect } from "nats";
 
 // Bypassing network stack with local function execution logic
-export const localInProcessTransportRouter = (req: any) => {
+export const localInProcessTransportRouter = (_req: any) => {
    return { status: 200, message: "in-process override active" };
 };
 
@@ -25,7 +25,7 @@ const db = await setupDatabase(isStandalone ? "sqlite" : "mysql");
 let nc: any = null;
 try {
   nc = await natsConnect({ servers: process.env.NATS_URL || "nats://localhost:4222" });
-} catch (e) {
+} catch {
   // handled
 }
 

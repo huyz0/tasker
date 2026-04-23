@@ -29,7 +29,7 @@ describe("Projects Handler Integration Logic", () => {
          email: "test@example.com",
          createdAt: new Date()
        });
-     } catch (e) {
+     } catch {
         // May already exist
      }
   });
