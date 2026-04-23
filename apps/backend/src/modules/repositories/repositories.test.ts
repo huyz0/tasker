@@ -1,4 +1,4 @@
-import { expect, test, describe, beforeAll } from "bun:test";
+import { expect, test, describe, beforeAll, mock, afterAll } from "bun:test";
 import { setupIntegrationTest } from "../../test/setup";
 import { createRepositoriesHandler } from "./repositories.handler";
 import { createProjectsHandler } from "../projects/projects.handler";
@@ -10,12 +10,28 @@ describe("Repositories Handler >", () => {
   let repHandler: any;
   let pHandler: any;
 
+  let originalFetch: typeof globalThis.fetch;
+
   beforeAll(async () => {
     process.env.APP_ENCRYPTION_SECRET = "00000000000000000000000000000000";
     const setup = await setupIntegrationTest();
     db = setup.db;
     repHandler = createRepositoriesHandler(db, setup.nc);
     pHandler = createProjectsHandler(db, setup.nc);
+    
+    originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        const body = JSON.parse(options?.body as string);
+        return new Response(JSON.stringify({ access_token: "mock_token_" + body.code }), { status: 200 });
+      }
+      return originalFetch(url, options);
+    }) as unknown as typeof fetch;
+  });
+
+  afterAll(() => {
+    globalThis.fetch = originalFetch;
+    mock.restore();
   });
 
   test("should successfully add a repository link and encrypt its token", async () => {

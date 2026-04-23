@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { RepositoryService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
@@ -14,33 +14,15 @@ interface RepositoryIntegrationConfigProps {
 }
 
 export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegrationConfigProps) {
-  const queryClient = useQueryClient();
+
   const [provider, setProvider] = useState('github');
   const [remoteName, setRemoteName] = useState('');
-  const [oauthCode, setOauthCode] = useState('');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['repositoryLinks', projectId],
     queryFn: async () => {
       const resp = await repositoryClient.listRepositoryLinks({ projectId });
       return resp.links;
-    }
-  });
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      const resp = await repositoryClient.addRepositoryLink({
-        projectId,
-        provider,
-        remoteName,
-        oauthCode,
-      });
-      return resp.link;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['repositoryLinks', projectId] });
-      setRemoteName('');
-      setOauthCode('');
     }
   });
 
@@ -91,19 +73,17 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
           />
         </div>
         <div className="flex gap-2">
-          <input 
-            type="text" 
-            placeholder="OAuth Code (Mock)" 
-            value={oauthCode}
-            onChange={e => setOauthCode(e.target.value)}
-            className="border p-2 rounded text-sm flex-1 bg-background"
-          />
           <button 
-            disabled={mutation.isPending || !remoteName || !oauthCode}
-            onClick={() => mutation.mutate()}
-            className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded hover:bg-primary/90 disabled:opacity-50"
+            disabled={!remoteName}
+            onClick={() => {
+              const state = btoa(JSON.stringify({ projectId, provider, remoteName }));
+              const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || "MOCK_CLIENT_ID";
+              const redirectUri = window.location.origin + "/oauth/callback";
+              window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=repo`;
+            }}
+            className="px-4 py-2 flex-1 bg-[#2b3137] text-white text-sm font-medium rounded hover:bg-[#2b3137]/90 disabled:opacity-50 transition-colors"
           >
-            {mutation.isPending ? 'Linking...' : 'Link'}
+            Connect {provider === 'github' ? 'GitHub' : provider}
           </button>
         </div>
       </div>

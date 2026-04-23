@@ -77,12 +77,18 @@ const (
 	// ProjectTemplateServiceCreateTemplateProcedure is the fully-qualified name of the
 	// ProjectTemplateService's CreateTemplate RPC.
 	ProjectTemplateServiceCreateTemplateProcedure = "/tasker.health.v1.ProjectTemplateService/CreateTemplate"
+	// ProjectTemplateServiceListTemplatesProcedure is the fully-qualified name of the
+	// ProjectTemplateService's ListTemplates RPC.
+	ProjectTemplateServiceListTemplatesProcedure = "/tasker.health.v1.ProjectTemplateService/ListTemplates"
 	// ProjectServiceGetProjectProcedure is the fully-qualified name of the ProjectService's GetProject
 	// RPC.
 	ProjectServiceGetProjectProcedure = "/tasker.health.v1.ProjectService/GetProject"
 	// ProjectServiceCreateProjectProcedure is the fully-qualified name of the ProjectService's
 	// CreateProject RPC.
 	ProjectServiceCreateProjectProcedure = "/tasker.health.v1.ProjectService/CreateProject"
+	// ProjectServiceListProjectsProcedure is the fully-qualified name of the ProjectService's
+	// ListProjects RPC.
+	ProjectServiceListProjectsProcedure = "/tasker.health.v1.ProjectService/ListProjects"
 	// AgentServiceCreateAgentRoleProcedure is the fully-qualified name of the AgentService's
 	// CreateAgentRole RPC.
 	AgentServiceCreateAgentRoleProcedure = "/tasker.health.v1.AgentService/CreateAgentRole"
@@ -102,6 +108,12 @@ const (
 	// ArtifactServiceLinkTaskArtifactProcedure is the fully-qualified name of the ArtifactService's
 	// LinkTaskArtifact RPC.
 	ArtifactServiceLinkTaskArtifactProcedure = "/tasker.health.v1.ArtifactService/LinkTaskArtifact"
+	// ArtifactServiceListArtifactsProcedure is the fully-qualified name of the ArtifactService's
+	// ListArtifacts RPC.
+	ArtifactServiceListArtifactsProcedure = "/tasker.health.v1.ArtifactService/ListArtifacts"
+	// ArtifactServiceListFoldersProcedure is the fully-qualified name of the ArtifactService's
+	// ListFolders RPC.
+	ArtifactServiceListFoldersProcedure = "/tasker.health.v1.ArtifactService/ListFolders"
 	// CommentServiceCreateCommentProcedure is the fully-qualified name of the CommentService's
 	// CreateComment RPC.
 	CommentServiceCreateCommentProcedure = "/tasker.health.v1.CommentService/CreateComment"
@@ -141,9 +153,11 @@ var (
 	projectTemplateServiceServiceDescriptor              = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectTemplateService")
 	projectTemplateServiceGetTemplateMethodDescriptor    = projectTemplateServiceServiceDescriptor.Methods().ByName("GetTemplate")
 	projectTemplateServiceCreateTemplateMethodDescriptor = projectTemplateServiceServiceDescriptor.Methods().ByName("CreateTemplate")
+	projectTemplateServiceListTemplatesMethodDescriptor  = projectTemplateServiceServiceDescriptor.Methods().ByName("ListTemplates")
 	projectServiceServiceDescriptor                      = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectService")
 	projectServiceGetProjectMethodDescriptor             = projectServiceServiceDescriptor.Methods().ByName("GetProject")
 	projectServiceCreateProjectMethodDescriptor          = projectServiceServiceDescriptor.Methods().ByName("CreateProject")
+	projectServiceListProjectsMethodDescriptor           = projectServiceServiceDescriptor.Methods().ByName("ListProjects")
 	agentServiceServiceDescriptor                        = v1.File_tasker_health_v1_health_proto.Services().ByName("AgentService")
 	agentServiceCreateAgentRoleMethodDescriptor          = agentServiceServiceDescriptor.Methods().ByName("CreateAgentRole")
 	agentServiceCreateAgentMethodDescriptor              = agentServiceServiceDescriptor.Methods().ByName("CreateAgent")
@@ -154,6 +168,8 @@ var (
 	artifactServiceCreateFolderMethodDescriptor          = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
 	artifactServiceCreateArtifactMethodDescriptor        = artifactServiceServiceDescriptor.Methods().ByName("CreateArtifact")
 	artifactServiceLinkTaskArtifactMethodDescriptor      = artifactServiceServiceDescriptor.Methods().ByName("LinkTaskArtifact")
+	artifactServiceListArtifactsMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("ListArtifacts")
+	artifactServiceListFoldersMethodDescriptor           = artifactServiceServiceDescriptor.Methods().ByName("ListFolders")
 	commentServiceServiceDescriptor                      = v1.File_tasker_health_v1_health_proto.Services().ByName("CommentService")
 	commentServiceCreateCommentMethodDescriptor          = commentServiceServiceDescriptor.Methods().ByName("CreateComment")
 	commentServiceListCommentsMethodDescriptor           = commentServiceServiceDescriptor.Methods().ByName("ListComments")
@@ -520,6 +536,7 @@ func (UnimplementedTaskTypeServiceHandler) CreateTaskType(context.Context, *conn
 type ProjectTemplateServiceClient interface {
 	GetTemplate(context.Context, *connect.Request[v1.GetProjectTemplateRequest]) (*connect.Response[v1.GetProjectTemplateResponse], error)
 	CreateTemplate(context.Context, *connect.Request[v1.CreateProjectTemplateRequest]) (*connect.Response[v1.CreateProjectTemplateResponse], error)
+	ListTemplates(context.Context, *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error)
 }
 
 // NewProjectTemplateServiceClient constructs a client for the
@@ -544,6 +561,12 @@ func NewProjectTemplateServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(projectTemplateServiceCreateTemplateMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listTemplates: connect.NewClient[v1.ListProjectTemplatesRequest, v1.ListProjectTemplatesResponse](
+			httpClient,
+			baseURL+ProjectTemplateServiceListTemplatesProcedure,
+			connect.WithSchema(projectTemplateServiceListTemplatesMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -551,6 +574,7 @@ func NewProjectTemplateServiceClient(httpClient connect.HTTPClient, baseURL stri
 type projectTemplateServiceClient struct {
 	getTemplate    *connect.Client[v1.GetProjectTemplateRequest, v1.GetProjectTemplateResponse]
 	createTemplate *connect.Client[v1.CreateProjectTemplateRequest, v1.CreateProjectTemplateResponse]
+	listTemplates  *connect.Client[v1.ListProjectTemplatesRequest, v1.ListProjectTemplatesResponse]
 }
 
 // GetTemplate calls tasker.health.v1.ProjectTemplateService.GetTemplate.
@@ -563,11 +587,17 @@ func (c *projectTemplateServiceClient) CreateTemplate(ctx context.Context, req *
 	return c.createTemplate.CallUnary(ctx, req)
 }
 
+// ListTemplates calls tasker.health.v1.ProjectTemplateService.ListTemplates.
+func (c *projectTemplateServiceClient) ListTemplates(ctx context.Context, req *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error) {
+	return c.listTemplates.CallUnary(ctx, req)
+}
+
 // ProjectTemplateServiceHandler is an implementation of the tasker.health.v1.ProjectTemplateService
 // service.
 type ProjectTemplateServiceHandler interface {
 	GetTemplate(context.Context, *connect.Request[v1.GetProjectTemplateRequest]) (*connect.Response[v1.GetProjectTemplateResponse], error)
 	CreateTemplate(context.Context, *connect.Request[v1.CreateProjectTemplateRequest]) (*connect.Response[v1.CreateProjectTemplateResponse], error)
+	ListTemplates(context.Context, *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error)
 }
 
 // NewProjectTemplateServiceHandler builds an HTTP handler from the service implementation. It
@@ -588,12 +618,20 @@ func NewProjectTemplateServiceHandler(svc ProjectTemplateServiceHandler, opts ..
 		connect.WithSchema(projectTemplateServiceCreateTemplateMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectTemplateServiceListTemplatesHandler := connect.NewUnaryHandler(
+		ProjectTemplateServiceListTemplatesProcedure,
+		svc.ListTemplates,
+		connect.WithSchema(projectTemplateServiceListTemplatesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.ProjectTemplateService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProjectTemplateServiceGetTemplateProcedure:
 			projectTemplateServiceGetTemplateHandler.ServeHTTP(w, r)
 		case ProjectTemplateServiceCreateTemplateProcedure:
 			projectTemplateServiceCreateTemplateHandler.ServeHTTP(w, r)
+		case ProjectTemplateServiceListTemplatesProcedure:
+			projectTemplateServiceListTemplatesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -611,10 +649,15 @@ func (UnimplementedProjectTemplateServiceHandler) CreateTemplate(context.Context
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectTemplateService.CreateTemplate is not implemented"))
 }
 
+func (UnimplementedProjectTemplateServiceHandler) ListTemplates(context.Context, *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectTemplateService.ListTemplates is not implemented"))
+}
+
 // ProjectServiceClient is a client for the tasker.health.v1.ProjectService service.
 type ProjectServiceClient interface {
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
+	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 }
 
 // NewProjectServiceClient constructs a client for the tasker.health.v1.ProjectService service. By
@@ -639,6 +682,12 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(projectServiceCreateProjectMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listProjects: connect.NewClient[v1.ListProjectsRequest, v1.ListProjectsResponse](
+			httpClient,
+			baseURL+ProjectServiceListProjectsProcedure,
+			connect.WithSchema(projectServiceListProjectsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -646,6 +695,7 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type projectServiceClient struct {
 	getProject    *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
 	createProject *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
+	listProjects  *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
 }
 
 // GetProject calls tasker.health.v1.ProjectService.GetProject.
@@ -658,10 +708,16 @@ func (c *projectServiceClient) CreateProject(ctx context.Context, req *connect.R
 	return c.createProject.CallUnary(ctx, req)
 }
 
+// ListProjects calls tasker.health.v1.ProjectService.ListProjects.
+func (c *projectServiceClient) ListProjects(ctx context.Context, req *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error) {
+	return c.listProjects.CallUnary(ctx, req)
+}
+
 // ProjectServiceHandler is an implementation of the tasker.health.v1.ProjectService service.
 type ProjectServiceHandler interface {
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
+	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 }
 
 // NewProjectServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -682,12 +738,20 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		connect.WithSchema(projectServiceCreateProjectMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectServiceListProjectsHandler := connect.NewUnaryHandler(
+		ProjectServiceListProjectsProcedure,
+		svc.ListProjects,
+		connect.WithSchema(projectServiceListProjectsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.ProjectService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProjectServiceGetProjectProcedure:
 			projectServiceGetProjectHandler.ServeHTTP(w, r)
 		case ProjectServiceCreateProjectProcedure:
 			projectServiceCreateProjectHandler.ServeHTTP(w, r)
+		case ProjectServiceListProjectsProcedure:
+			projectServiceListProjectsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -703,6 +767,10 @@ func (UnimplementedProjectServiceHandler) GetProject(context.Context, *connect.R
 
 func (UnimplementedProjectServiceHandler) CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.CreateProject is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.ListProjects is not implemented"))
 }
 
 // AgentServiceClient is a client for the tasker.health.v1.AgentService service.
@@ -898,6 +966,8 @@ type ArtifactServiceClient interface {
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error)
 	CreateArtifact(context.Context, *connect.Request[v1.CreateArtifactRequest]) (*connect.Response[v1.CreateArtifactResponse], error)
 	LinkTaskArtifact(context.Context, *connect.Request[v1.LinkTaskArtifactRequest]) (*connect.Response[v1.LinkTaskArtifactResponse], error)
+	ListArtifacts(context.Context, *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error)
+	ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error)
 }
 
 // NewArtifactServiceClient constructs a client for the tasker.health.v1.ArtifactService service. By
@@ -928,6 +998,18 @@ func NewArtifactServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(artifactServiceLinkTaskArtifactMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listArtifacts: connect.NewClient[v1.ListArtifactsRequest, v1.ListArtifactsResponse](
+			httpClient,
+			baseURL+ArtifactServiceListArtifactsProcedure,
+			connect.WithSchema(artifactServiceListArtifactsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listFolders: connect.NewClient[v1.ListFoldersRequest, v1.ListFoldersResponse](
+			httpClient,
+			baseURL+ArtifactServiceListFoldersProcedure,
+			connect.WithSchema(artifactServiceListFoldersMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -936,6 +1018,8 @@ type artifactServiceClient struct {
 	createFolder     *connect.Client[v1.CreateFolderRequest, v1.CreateFolderResponse]
 	createArtifact   *connect.Client[v1.CreateArtifactRequest, v1.CreateArtifactResponse]
 	linkTaskArtifact *connect.Client[v1.LinkTaskArtifactRequest, v1.LinkTaskArtifactResponse]
+	listArtifacts    *connect.Client[v1.ListArtifactsRequest, v1.ListArtifactsResponse]
+	listFolders      *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
 }
 
 // CreateFolder calls tasker.health.v1.ArtifactService.CreateFolder.
@@ -953,11 +1037,23 @@ func (c *artifactServiceClient) LinkTaskArtifact(ctx context.Context, req *conne
 	return c.linkTaskArtifact.CallUnary(ctx, req)
 }
 
+// ListArtifacts calls tasker.health.v1.ArtifactService.ListArtifacts.
+func (c *artifactServiceClient) ListArtifacts(ctx context.Context, req *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error) {
+	return c.listArtifacts.CallUnary(ctx, req)
+}
+
+// ListFolders calls tasker.health.v1.ArtifactService.ListFolders.
+func (c *artifactServiceClient) ListFolders(ctx context.Context, req *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error) {
+	return c.listFolders.CallUnary(ctx, req)
+}
+
 // ArtifactServiceHandler is an implementation of the tasker.health.v1.ArtifactService service.
 type ArtifactServiceHandler interface {
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error)
 	CreateArtifact(context.Context, *connect.Request[v1.CreateArtifactRequest]) (*connect.Response[v1.CreateArtifactResponse], error)
 	LinkTaskArtifact(context.Context, *connect.Request[v1.LinkTaskArtifactRequest]) (*connect.Response[v1.LinkTaskArtifactResponse], error)
+	ListArtifacts(context.Context, *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error)
+	ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error)
 }
 
 // NewArtifactServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -984,6 +1080,18 @@ func NewArtifactServiceHandler(svc ArtifactServiceHandler, opts ...connect.Handl
 		connect.WithSchema(artifactServiceLinkTaskArtifactMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	artifactServiceListArtifactsHandler := connect.NewUnaryHandler(
+		ArtifactServiceListArtifactsProcedure,
+		svc.ListArtifacts,
+		connect.WithSchema(artifactServiceListArtifactsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	artifactServiceListFoldersHandler := connect.NewUnaryHandler(
+		ArtifactServiceListFoldersProcedure,
+		svc.ListFolders,
+		connect.WithSchema(artifactServiceListFoldersMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.ArtifactService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ArtifactServiceCreateFolderProcedure:
@@ -992,6 +1100,10 @@ func NewArtifactServiceHandler(svc ArtifactServiceHandler, opts ...connect.Handl
 			artifactServiceCreateArtifactHandler.ServeHTTP(w, r)
 		case ArtifactServiceLinkTaskArtifactProcedure:
 			artifactServiceLinkTaskArtifactHandler.ServeHTTP(w, r)
+		case ArtifactServiceListArtifactsProcedure:
+			artifactServiceListArtifactsHandler.ServeHTTP(w, r)
+		case ArtifactServiceListFoldersProcedure:
+			artifactServiceListFoldersHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1011,6 +1123,14 @@ func (UnimplementedArtifactServiceHandler) CreateArtifact(context.Context, *conn
 
 func (UnimplementedArtifactServiceHandler) LinkTaskArtifact(context.Context, *connect.Request[v1.LinkTaskArtifactRequest]) (*connect.Response[v1.LinkTaskArtifactResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.LinkTaskArtifact is not implemented"))
+}
+
+func (UnimplementedArtifactServiceHandler) ListArtifacts(context.Context, *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.ListArtifacts is not implemented"))
+}
+
+func (UnimplementedArtifactServiceHandler) ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.ListFolders is not implemented"))
 }
 
 // CommentServiceClient is a client for the tasker.health.v1.CommentService service.

@@ -41,9 +41,35 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const parsed = AddRepositoryLinkSchema.parse(req);
       const links = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       
-      // EXCHANGING OAUTH CODE WOULD GO HERE (mocked for MVP scaffolding)
-      // e.g. const token = await githubClient.exchange(parsed.oauthCode);
-      const tokenToStore = `mock_token_${parsed.oauthCode}`; 
+      let tokenToStore = "";
+      if (parsed.provider === "github") {
+        const response = await fetch("https://github.com/login/oauth/access_token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            client_id: process.env.GITHUB_CLIENT_ID || "",
+            client_secret: process.env.GITHUB_CLIENT_SECRET || "",
+            code: parsed.oauthCode
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to exchange GitHub token`);
+        }
+
+        const data = await response.json() as any;
+        if (data.error) {
+          throw new Error(`GitHub OAuth error: ${data.error_description || data.error}`);
+        }
+        
+        tokenToStore = data.access_token;
+      } else {
+        // Fallback for other providers that aren't implemented yet
+        tokenToStore = `mock_token_${parsed.oauthCode}`;
+      }
       const accessTokenEncrypted = encryptToken(tokenToStore);
 
       const newId = `replink-${crypto.randomUUID()}`;

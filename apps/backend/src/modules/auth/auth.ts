@@ -29,15 +29,7 @@ export const authRoutes = new Elysia()
       return new Response('No code provided', { status: 400 });
     }
 
-    if (process.env.NODE_ENV === 'test') {
-      return new Response('', {
-        status: 302,
-        headers: {
-          'location': '/',
-          'set-cookie': 'MOCK_JWT_OR_SESSION_TOKEN; HttpOnly; Path=/'
-        }
-      });
-    }
+
 
     try {
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {

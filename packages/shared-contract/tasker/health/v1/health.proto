@@ -145,9 +145,18 @@ message CreateProjectTemplateResponse {
   ProjectTemplate template = 1;
 }
 
+message ListProjectTemplatesRequest {
+  string orgId = 1;
+}
+
+message ListProjectTemplatesResponse {
+  repeated ProjectTemplate templates = 1;
+}
+
 service ProjectTemplateService {
   rpc GetTemplate(GetProjectTemplateRequest) returns (GetProjectTemplateResponse);
   rpc CreateTemplate(CreateProjectTemplateRequest) returns (CreateProjectTemplateResponse);
+  rpc ListTemplates(ListProjectTemplatesRequest) returns (ListProjectTemplatesResponse);
 }
 
 message GetProjectRequest {
@@ -169,9 +178,18 @@ message CreateProjectResponse {
   Project project = 1;
 }
 
+message ListProjectsRequest {
+  string orgId = 1;
+}
+
+message ListProjectsResponse {
+  repeated Project projects = 1;
+}
+
 service ProjectService {
   rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
 }
 
 message AgentRole {
@@ -298,10 +316,28 @@ message LinkTaskArtifactResponse {
   TaskArtifactLink link = 1;
 }
 
+message ListArtifactsRequest {
+  string folderId = 1;
+}
+
+message ListArtifactsResponse {
+  repeated Artifact artifacts = 1;
+}
+
+message ListFoldersRequest {
+  string projectId = 1;
+}
+
+message ListFoldersResponse {
+  repeated Folder folders = 1;
+}
+
 service ArtifactService {
   rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
   rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
   rpc LinkTaskArtifact(LinkTaskArtifactRequest) returns (LinkTaskArtifactResponse);
+  rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse);
+  rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse);
 }
 
 message Comment {

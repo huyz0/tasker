@@ -98,5 +98,18 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       if (nc) nc.publish("domain.project_template.created", Buffer.from(JSON.stringify(payload)));
       return { template: payload };
     },
+    async listTemplates(req: any) {
+      if (!req.orgId) throw new Error("orgId is required");
+      const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
+      const { items, nextCursor } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, req.orgId), req.page);
+
+      return {
+        templates: items.map((t: any) => ({
+          ...t,
+          createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
+        })),
+        page: { nextCursor },
+      };
+    },
   };
 };

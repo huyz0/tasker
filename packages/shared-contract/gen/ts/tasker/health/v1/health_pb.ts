@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file tasker/health/v1/health.proto.
  */
 export const file_tasker_health_v1_health: GenFile = /*@__PURE__*/
-  fileDesc("Ch10YXNrZXIvaGVhbHRoL3YxL2hlYWx0aC5wcm90bxIQdGFza2VyLmhlYWx0aC52MSINCgtQaW5nUmVxdWVzdCIxCgxQaW5nUmVzcG9uc2USDwoHbWVzc2FnZRgBIAEoCRIQCghkYlN0YXR1cxgCIAEoCSJVCgRVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEgwKBG5hbWUYAyABKAkSEQoJYXZhdGFyVXJsGAQgASgJEhEKCWNyZWF0ZWRBdBgFIAEoCSJECgxPcmdhbml6YXRpb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRzbHVnGAMgASgJEgwKBHJvbGUYBCABKAkiFAoSR2V0SWRlbnRpdHlSZXF1ZXN0IjsKE0dldElkZW50aXR5UmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnRhc2tlci5oZWFsdGgudjEuVXNlciIRCg9MaXN0T3Jnc1JlcXVlc3QiSQoQTGlzdE9yZ3NSZXNwb25zZRI1Cg1vcmdhbml6YXRpb25zGAEgAygLMh4udGFza2VyLmhlYWx0aC52MS5Pcmdhbml6YXRpb24iLAoOU2VlZE9yZ1JlcXVlc3QSDAoEbmFtZRgBIAEoCRIMCgRzbHVnGAIgASgJIkcKD1NlZWRPcmdSZXNwb25zZRI0Cgxvcmdhbml6YXRpb24YASABKAsyHi50YXNrZXIuaGVhbHRoLnYxLk9yZ2FuaXphdGlvbiIxChFJbnZpdGVVc2VyUmVxdWVzdBINCgVvcmdJZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIlChJJbnZpdGVVc2VyUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCCJZCghUYXNrVHlwZRIKCgJpZBgBIAEoCRINCgVvcmdJZBgCIAEoCRIRCglwcm9qZWN0SWQYAyABKAkSDAoEbmFtZRgEIAEoCRIRCgljcmVhdGVkQXQYBSABKAkiOgoKVGFza1N0YXR1cxIKCgJpZBgBIAEoCRISCgp0YXNrVHlwZUlkGAIgASgJEgwKBG5hbWUYAyABKAkiYAoUVGFza1N0YXR1c1RyYW5zaXRpb24SCgoCaWQYASABKAkSEgoKdGFza1R5cGVJZBgCIAEoCRIUCgxmcm9tU3RhdHVzSWQYAyABKAkSEgoKdG9TdGF0dXNJZBgEIAEoCSIgChJHZXRUYXNrVHlwZVJlcXVlc3QSCgoCaWQYASABKAkisAEKE0dldFRhc2tUeXBlUmVzcG9uc2USLAoIdGFza1R5cGUYASABKAsyGi50YXNrZXIuaGVhbHRoLnYxLlRhc2tUeXBlEi4KCHN0YXR1c2VzGAIgAygLMhwudGFza2VyLmhlYWx0aC52MS5UYXNrU3RhdHVzEjsKC3RyYW5zaXRpb25zGAMgAygLMiYudGFza2VyLmhlYWx0aC52MS5UYXNrU3RhdHVzVHJhbnNpdGlvbiJHChVDcmVhdGVUYXNrVHlwZVJlcXVlc3QSDQoFb3JnSWQYASABKAkSEQoJcHJvamVjdElkGAIgASgJEgwKBG5hbWUYAyABKAkiRgoWQ3JlYXRlVGFza1R5cGVSZXNwb25zZRIsCgh0YXNrVHlwZRgBIAEoCzIaLnRhc2tlci5oZWFsdGgudjEuVGFza1R5cGUiTwoPUHJvamVjdFRlbXBsYXRlEgoKAmlkGAEgASgJEg0KBW9yZ0lkGAIgASgJEgwKBG5hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkiVwoHUHJvamVjdBIKCgJpZBgBIAEoCRINCgVvcmdJZBgCIAEoCRISCgp0ZW1wbGF0ZUlkGAMgASgJEgwKBG5hbWUYBCABKAkSDwoHb3duZXJJZBgFIAEoCSInChlHZXRQcm9qZWN0VGVtcGxhdGVSZXF1ZXN0EgoKAmlkGAEgASgJIlEKGkdldFByb2plY3RUZW1wbGF0ZVJlc3BvbnNlEjMKCHRlbXBsYXRlGAEgASgLMiEudGFza2VyLmhlYWx0aC52MS5Qcm9qZWN0VGVtcGxhdGUiUAocQ3JlYXRlUHJvamVjdFRlbXBsYXRlUmVxdWVzdBINCgVvcmdJZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJIlQKHUNyZWF0ZVByb2plY3RUZW1wbGF0ZVJlc3BvbnNlEjMKCHRlbXBsYXRlGAEgASgLMiEudGFza2VyLmhlYWx0aC52MS5Qcm9qZWN0VGVtcGxhdGUiHwoRR2V0UHJvamVjdFJlcXVlc3QSCgoCaWQYASABKAkiQAoSR2V0UHJvamVjdFJlc3BvbnNlEioKB3Byb2plY3QYASABKAsyGS50YXNrZXIuaGVhbHRoLnYxLlByb2plY3QiWAoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSDQoFb3JnSWQYASABKAkSEgoKdGVtcGxhdGVJZBgCIAEoCRIMCgRuYW1lGAMgASgJEg8KB293bmVySWQYBCABKAkiQwoVQ3JlYXRlUHJvamVjdFJlc3BvbnNlEioKB3Byb2plY3QYASABKAsyGS50YXNrZXIuaGVhbHRoLnYxLlByb2plY3QiUgoJQWdlbnRSb2xlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSFQoNc3lzdGVtX3Byb21wdBgDIAEoCRIUCgxjYXBhYmlsaXRpZXMYBCABKAkiSAoFQWdlbnQSCgoCaWQYASABKAkSDgoGb3JnX2lkGAIgASgJEhUKDWFnZW50X3JvbGVfaWQYAyABKAkSDAoEbmFtZRgEIAEoCSJTChZDcmVhdGVBZ2VudFJvbGVSZXF1ZXN0EgwKBG5hbWUYASABKAkSFQoNc3lzdGVtX3Byb21wdBgCIAEoCRIUCgxjYXBhYmlsaXRpZXMYAyABKAkiRAoXQ3JlYXRlQWdlbnRSb2xlUmVzcG9uc2USKQoEcm9sZRgBIAEoCzIbLnRhc2tlci5oZWFsdGgudjEuQWdlbnRSb2xlIkkKEkNyZWF0ZUFnZW50UmVxdWVzdBIOCgZvcmdfaWQYASABKAkSFQoNYWdlbnRfcm9sZV9pZBgCIAEoCRIMCgRuYW1lGAMgASgJIj0KE0NyZWF0ZUFnZW50UmVzcG9uc2USJgoFYWdlbnQYASABKAsyFy50YXNrZXIuaGVhbHRoLnYxLkFnZW50IloKBFRhc2sSCgoCaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIOCgZzdGF0dXMYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkiWwoRQ3JlYXRlVGFza1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIOCgZzdGF0dXMYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkiOgoSQ3JlYXRlVGFza1Jlc3BvbnNlEiQKBHRhc2sYASABKAsyFi50YXNrZXIuaGVhbHRoLnYxLlRhc2siRwoRQXNzaWduVGFza1JlcXVlc3QSDwoHdGFza19pZBgBIAEoCRIQCghhZ2VudF9pZBgCIAEoCRIPCgd1c2VyX2lkGAMgASgJIiUKEkFzc2lnblRhc2tSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIIkcKBkZvbGRlchIKCgJpZBgBIAEoCRIRCglwcm9qZWN0SWQYAiABKAkSEAoIcGFyZW50SWQYAyABKAkSDAoEbmFtZRgEIAEoCSJcCghBcnRpZmFjdBIKCgJpZBgBIAEoCRIQCghmb2xkZXJJZBgCIAEoCRIMCgRuYW1lGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEg8KB2NvbnRlbnQYBSABKAkiQgoQVGFza0FydGlmYWN0TGluaxIKCgJpZBgBIAEoCRIOCgZ0YXNrSWQYAiABKAkSEgoKYXJ0aWZhY3RJZBgDIAEoCSJIChNDcmVhdGVGb2xkZXJSZXF1ZXN0EhEKCXByb2plY3RJZBgBIAEoCRIQCghwYXJlbnRJZBgCIAEoCRIMCgRuYW1lGAMgASgJIkAKFENyZWF0ZUZvbGRlclJlc3BvbnNlEigKBmZvbGRlchgBIAEoCzIYLnRhc2tlci5oZWFsdGgudjEuRm9sZGVyIl0KFUNyZWF0ZUFydGlmYWN0UmVxdWVzdBIQCghmb2xkZXJJZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg8KB2NvbnRlbnQYBCABKAkiRgoWQ3JlYXRlQXJ0aWZhY3RSZXNwb25zZRIsCghhcnRpZmFjdBgBIAEoCzIaLnRhc2tlci5oZWFsdGgudjEuQXJ0aWZhY3QiPQoXTGlua1Rhc2tBcnRpZmFjdFJlcXVlc3QSDgoGdGFza0lkGAEgASgJEhIKCmFydGlmYWN0SWQYAiABKAkiTAoYTGlua1Rhc2tBcnRpZmFjdFJlc3BvbnNlEjAKBGxpbmsYASABKAsyIi50YXNrZXIuaGVhbHRoLnYxLlRhc2tBcnRpZmFjdExpbmsibQoHQ29tbWVudBIKCgJpZBgBIAEoCRIQCghlbnRpdHlJZBgCIAEoCRISCgplbnRpdHlUeXBlGAMgASgJEg4KBnVzZXJJZBgEIAEoCRIPCgdhZ2VudElkGAUgASgJEg8KB2NvbnRlbnQYBiABKAkibgoUQ3JlYXRlQ29tbWVudFJlcXVlc3QSEAoIZW50aXR5SWQYASABKAkSEgoKZW50aXR5VHlwZRgCIAEoCRIOCgZ1c2VySWQYAyABKAkSDwoHYWdlbnRJZBgEIAEoCRIPCgdjb250ZW50GAUgASgJIkMKFUNyZWF0ZUNvbW1lbnRSZXNwb25zZRIqCgdjb21tZW50GAEgASgLMhkudGFza2VyLmhlYWx0aC52MS5Db21tZW50IjsKE0xpc3RDb21tZW50c1JlcXVlc3QSEAoIZW50aXR5SWQYASABKAkSEgoKZW50aXR5VHlwZRgCIAEoCSJDChRMaXN0Q29tbWVudHNSZXNwb25zZRIrCghjb21tZW50cxgBIAMoCzIZLnRhc2tlci5oZWFsdGgudjEuQ29tbWVudCJICghUYXNrTm90ZRIKCgJpZBgBIAEoCRIOCgZ0YXNrSWQYAiABKAkSDwoHYWdlbnRJZBgDIAEoCRIPCgdjb250ZW50GAQgASgJIkkKFUNyZWF0ZVRhc2tOb3RlUmVxdWVzdBIOCgZ0YXNrSWQYASABKAkSDwoHYWdlbnRJZBgCIAEoCRIPCgdjb250ZW50GAMgASgJIkYKFkNyZWF0ZVRhc2tOb3RlUmVzcG9uc2USLAoIdGFza05vdGUYASABKAsyGi50YXNrZXIuaGVhbHRoLnYxLlRhc2tOb3RlIiYKFExpc3RUYXNrTm90ZXNSZXF1ZXN0Eg4KBnRhc2tJZBgBIAEoCSJGChVMaXN0VGFza05vdGVzUmVzcG9uc2USLQoJdGFza05vdGVzGAEgAygLMhoudGFza2VyLmhlYWx0aC52MS5UYXNrTm90ZSJrCg5SZXBvc2l0b3J5TGluaxIKCgJpZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEhAKCHByb3ZpZGVyGAMgASgJEhMKC3JlbW90ZV9uYW1lGAQgASgJEhIKCmNyZWF0ZWRfYXQYBSABKAkiogEKEVJlbW90ZVB1bGxSZXF1ZXN0EgoKAmlkGAEgASgJEhoKEnJlcG9zaXRvcnlfbGlua19pZBgCIAEoCRIPCgd0YXNrX2lkGAMgASgJEhQKDHJlbW90ZV9wcl9pZBgEIAEoCRINCgV0aXRsZRgFIAEoCRIOCgZzdGF0dXMYBiABKAkSCwoDdXJsGAcgASgJEhIKCnVwZGF0ZWRfYXQYCCABKAkiaQoYQWRkUmVwb3NpdG9yeUxpbmtSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSEAoIcHJvdmlkZXIYAiABKAkSEwoLcmVtb3RlX25hbWUYAyABKAkSEgoKb2F1dGhfY29kZRgEIAEoCSJLChlBZGRSZXBvc2l0b3J5TGlua1Jlc3BvbnNlEi4KBGxpbmsYASABKAsyIC50YXNrZXIuaGVhbHRoLnYxLlJlcG9zaXRvcnlMaW5rIjAKGkxpc3RSZXBvc2l0b3J5TGlua3NSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkiTgobTGlzdFJlcG9zaXRvcnlMaW5rc1Jlc3BvbnNlEi8KBWxpbmtzGAEgAygLMiAudGFza2VyLmhlYWx0aC52MS5SZXBvc2l0b3J5TGluayItChdTeW5jUHVsbFJlcXVlc3RzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIisKGFN5bmNQdWxsUmVxdWVzdHNSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIMlYKDUhlYWx0aFNlcnZpY2USRQoEUGluZxIdLnRhc2tlci5oZWFsdGgudjEuUGluZ1JlcXVlc3QaHi50YXNrZXIuaGVhbHRoLnYxLlBpbmdSZXNwb25zZTJpCgtBdXRoU2VydmljZRJaCgtHZXRJZGVudGl0eRIkLnRhc2tlci5oZWFsdGgudjEuR2V0SWRlbnRpdHlSZXF1ZXN0GiUudGFza2VyLmhlYWx0aC52MS5HZXRJZGVudGl0eVJlc3BvbnNlMogCCgpPcmdTZXJ2aWNlElEKCExpc3RPcmdzEiEudGFza2VyLmhlYWx0aC52MS5MaXN0T3Jnc1JlcXVlc3QaIi50YXNrZXIuaGVhbHRoLnYxLkxpc3RPcmdzUmVzcG9uc2USTgoHU2VlZE9yZxIgLnRhc2tlci5oZWFsdGgudjEuU2VlZE9yZ1JlcXVlc3QaIS50YXNrZXIuaGVhbHRoLnYxLlNlZWRPcmdSZXNwb25zZRJXCgpJbnZpdGVVc2VyEiMudGFza2VyLmhlYWx0aC52MS5JbnZpdGVVc2VyUmVxdWVzdBokLnRhc2tlci5oZWFsdGgudjEuSW52aXRlVXNlclJlc3BvbnNlMtIBCg9UYXNrVHlwZVNlcnZpY2USWgoLR2V0VGFza1R5cGUSJC50YXNrZXIuaGVhbHRoLnYxLkdldFRhc2tUeXBlUmVxdWVzdBolLnRhc2tlci5oZWFsdGgudjEuR2V0VGFza1R5cGVSZXNwb25zZRJjCg5DcmVhdGVUYXNrVHlwZRInLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlVGFza1R5cGVSZXF1ZXN0GigudGFza2VyLmhlYWx0aC52MS5DcmVhdGVUYXNrVHlwZVJlc3BvbnNlMvUBChZQcm9qZWN0VGVtcGxhdGVTZXJ2aWNlEmgKC0dldFRlbXBsYXRlEisudGFza2VyLmhlYWx0aC52MS5HZXRQcm9qZWN0VGVtcGxhdGVSZXF1ZXN0GiwudGFza2VyLmhlYWx0aC52MS5HZXRQcm9qZWN0VGVtcGxhdGVSZXNwb25zZRJxCg5DcmVhdGVUZW1wbGF0ZRIuLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlUHJvamVjdFRlbXBsYXRlUmVxdWVzdBovLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlUHJvamVjdFRlbXBsYXRlUmVzcG9uc2UyywEKDlByb2plY3RTZXJ2aWNlElcKCkdldFByb2plY3QSIy50YXNrZXIuaGVhbHRoLnYxLkdldFByb2plY3RSZXF1ZXN0GiQudGFza2VyLmhlYWx0aC52MS5HZXRQcm9qZWN0UmVzcG9uc2USYAoNQ3JlYXRlUHJvamVjdBImLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlUHJvamVjdFJlcXVlc3QaJy50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVByb2plY3RSZXNwb25zZTLSAQoMQWdlbnRTZXJ2aWNlEmYKD0NyZWF0ZUFnZW50Um9sZRIoLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlQWdlbnRSb2xlUmVxdWVzdBopLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlQWdlbnRSb2xlUmVzcG9uc2USWgoLQ3JlYXRlQWdlbnQSJC50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZUFnZW50UmVxdWVzdBolLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlQWdlbnRSZXNwb25zZTK/AQoLVGFza1NlcnZpY2USVwoKQ3JlYXRlVGFzaxIjLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlVGFza1JlcXVlc3QaJC50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVRhc2tSZXNwb25zZRJXCgpBc3NpZ25UYXNrEiMudGFza2VyLmhlYWx0aC52MS5Bc3NpZ25UYXNrUmVxdWVzdBokLnRhc2tlci5oZWFsdGgudjEuQXNzaWduVGFza1Jlc3BvbnNlMsACCg9BcnRpZmFjdFNlcnZpY2USXQoMQ3JlYXRlRm9sZGVyEiUudGFza2VyLmhlYWx0aC52MS5DcmVhdGVGb2xkZXJSZXF1ZXN0GiYudGFza2VyLmhlYWx0aC52MS5DcmVhdGVGb2xkZXJSZXNwb25zZRJjCg5DcmVhdGVBcnRpZmFjdBInLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlQXJ0aWZhY3RSZXF1ZXN0GigudGFza2VyLmhlYWx0aC52MS5DcmVhdGVBcnRpZmFjdFJlc3BvbnNlEmkKEExpbmtUYXNrQXJ0aWZhY3QSKS50YXNrZXIuaGVhbHRoLnYxLkxpbmtUYXNrQXJ0aWZhY3RSZXF1ZXN0GioudGFza2VyLmhlYWx0aC52MS5MaW5rVGFza0FydGlmYWN0UmVzcG9uc2Uy0QEKDkNvbW1lbnRTZXJ2aWNlEmAKDUNyZWF0ZUNvbW1lbnQSJi50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZUNvbW1lbnRSZXF1ZXN0GicudGFza2VyLmhlYWx0aC52MS5DcmVhdGVDb21tZW50UmVzcG9uc2USXQoMTGlzdENvbW1lbnRzEiUudGFza2VyLmhlYWx0aC52MS5MaXN0Q29tbWVudHNSZXF1ZXN0GiYudGFza2VyLmhlYWx0aC52MS5MaXN0Q29tbWVudHNSZXNwb25zZTLYAQoPVGFza05vdGVTZXJ2aWNlEmMKDkNyZWF0ZVRhc2tOb3RlEicudGFza2VyLmhlYWx0aC52MS5DcmVhdGVUYXNrTm90ZVJlcXVlc3QaKC50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVRhc2tOb3RlUmVzcG9uc2USYAoNTGlzdFRhc2tOb3RlcxImLnRhc2tlci5oZWFsdGgudjEuTGlzdFRhc2tOb3Rlc1JlcXVlc3QaJy50YXNrZXIuaGVhbHRoLnYxLkxpc3RUYXNrTm90ZXNSZXNwb25zZTLgAgoRUmVwb3NpdG9yeVNlcnZpY2USbAoRQWRkUmVwb3NpdG9yeUxpbmsSKi50YXNrZXIuaGVhbHRoLnYxLkFkZFJlcG9zaXRvcnlMaW5rUmVxdWVzdBorLnRhc2tlci5oZWFsdGgudjEuQWRkUmVwb3NpdG9yeUxpbmtSZXNwb25zZRJyChNMaXN0UmVwb3NpdG9yeUxpbmtzEiwudGFza2VyLmhlYWx0aC52MS5MaXN0UmVwb3NpdG9yeUxpbmtzUmVxdWVzdBotLnRhc2tlci5oZWFsdGgudjEuTGlzdFJlcG9zaXRvcnlMaW5rc1Jlc3BvbnNlEmkKEFN5bmNQdWxsUmVxdWVzdHMSKS50YXNrZXIuaGVhbHRoLnYxLlN5bmNQdWxsUmVxdWVzdHNSZXF1ZXN0GioudGFza2VyLmhlYWx0aC52MS5TeW5jUHVsbFJlcXVlc3RzUmVzcG9uc2VCN1o1Z2l0aHViLmNvbS9odXl6MC90YXNrZXIvYXBwcy9jbGkvZ2VuL3Rhc2tlci9oZWFsdGgvdjFiBnByb3RvMw");
+  fileDesc("Ch10YXNrZXIvaGVhbHRoL3YxL2hlYWx0aC5wcm90bxIQdGFza2VyLmhlYWx0aC52MSINCgtQaW5nUmVxdWVzdCIxCgxQaW5nUmVzcG9uc2USDwoHbWVzc2FnZRgBIAEoCRIQCghkYlN0YXR1cxgCIAEoCSJVCgRVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEgwKBG5hbWUYAyABKAkSEQoJYXZhdGFyVXJsGAQgASgJEhEKCWNyZWF0ZWRBdBgFIAEoCSJECgxPcmdhbml6YXRpb24SCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRzbHVnGAMgASgJEgwKBHJvbGUYBCABKAkiFAoSR2V0SWRlbnRpdHlSZXF1ZXN0IjsKE0dldElkZW50aXR5UmVzcG9uc2USJAoEdXNlchgBIAEoCzIWLnRhc2tlci5oZWFsdGgudjEuVXNlciIRCg9MaXN0T3Jnc1JlcXVlc3QiSQoQTGlzdE9yZ3NSZXNwb25zZRI1Cg1vcmdhbml6YXRpb25zGAEgAygLMh4udGFza2VyLmhlYWx0aC52MS5Pcmdhbml6YXRpb24iLAoOU2VlZE9yZ1JlcXVlc3QSDAoEbmFtZRgBIAEoCRIMCgRzbHVnGAIgASgJIkcKD1NlZWRPcmdSZXNwb25zZRI0Cgxvcmdhbml6YXRpb24YASABKAsyHi50YXNrZXIuaGVhbHRoLnYxLk9yZ2FuaXphdGlvbiIxChFJbnZpdGVVc2VyUmVxdWVzdBINCgVvcmdJZBgBIAEoCRINCgVlbWFpbBgCIAEoCSIlChJJbnZpdGVVc2VyUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCCJZCghUYXNrVHlwZRIKCgJpZBgBIAEoCRINCgVvcmdJZBgCIAEoCRIRCglwcm9qZWN0SWQYAyABKAkSDAoEbmFtZRgEIAEoCRIRCgljcmVhdGVkQXQYBSABKAkiOgoKVGFza1N0YXR1cxIKCgJpZBgBIAEoCRISCgp0YXNrVHlwZUlkGAIgASgJEgwKBG5hbWUYAyABKAkiYAoUVGFza1N0YXR1c1RyYW5zaXRpb24SCgoCaWQYASABKAkSEgoKdGFza1R5cGVJZBgCIAEoCRIUCgxmcm9tU3RhdHVzSWQYAyABKAkSEgoKdG9TdGF0dXNJZBgEIAEoCSIgChJHZXRUYXNrVHlwZVJlcXVlc3QSCgoCaWQYASABKAkisAEKE0dldFRhc2tUeXBlUmVzcG9uc2USLAoIdGFza1R5cGUYASABKAsyGi50YXNrZXIuaGVhbHRoLnYxLlRhc2tUeXBlEi4KCHN0YXR1c2VzGAIgAygLMhwudGFza2VyLmhlYWx0aC52MS5UYXNrU3RhdHVzEjsKC3RyYW5zaXRpb25zGAMgAygLMiYudGFza2VyLmhlYWx0aC52MS5UYXNrU3RhdHVzVHJhbnNpdGlvbiJHChVDcmVhdGVUYXNrVHlwZVJlcXVlc3QSDQoFb3JnSWQYASABKAkSEQoJcHJvamVjdElkGAIgASgJEgwKBG5hbWUYAyABKAkiRgoWQ3JlYXRlVGFza1R5cGVSZXNwb25zZRIsCgh0YXNrVHlwZRgBIAEoCzIaLnRhc2tlci5oZWFsdGgudjEuVGFza1R5cGUiTwoPUHJvamVjdFRlbXBsYXRlEgoKAmlkGAEgASgJEg0KBW9yZ0lkGAIgASgJEgwKBG5hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkiVwoHUHJvamVjdBIKCgJpZBgBIAEoCRINCgVvcmdJZBgCIAEoCRISCgp0ZW1wbGF0ZUlkGAMgASgJEgwKBG5hbWUYBCABKAkSDwoHb3duZXJJZBgFIAEoCSInChlHZXRQcm9qZWN0VGVtcGxhdGVSZXF1ZXN0EgoKAmlkGAEgASgJIlEKGkdldFByb2plY3RUZW1wbGF0ZVJlc3BvbnNlEjMKCHRlbXBsYXRlGAEgASgLMiEudGFza2VyLmhlYWx0aC52MS5Qcm9qZWN0VGVtcGxhdGUiUAocQ3JlYXRlUHJvamVjdFRlbXBsYXRlUmVxdWVzdBINCgVvcmdJZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJIlQKHUNyZWF0ZVByb2plY3RUZW1wbGF0ZVJlc3BvbnNlEjMKCHRlbXBsYXRlGAEgASgLMiEudGFza2VyLmhlYWx0aC52MS5Qcm9qZWN0VGVtcGxhdGUiLAobTGlzdFByb2plY3RUZW1wbGF0ZXNSZXF1ZXN0Eg0KBW9yZ0lkGAEgASgJIlQKHExpc3RQcm9qZWN0VGVtcGxhdGVzUmVzcG9uc2USNAoJdGVtcGxhdGVzGAEgAygLMiEudGFza2VyLmhlYWx0aC52MS5Qcm9qZWN0VGVtcGxhdGUiHwoRR2V0UHJvamVjdFJlcXVlc3QSCgoCaWQYASABKAkiQAoSR2V0UHJvamVjdFJlc3BvbnNlEioKB3Byb2plY3QYASABKAsyGS50YXNrZXIuaGVhbHRoLnYxLlByb2plY3QiWAoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSDQoFb3JnSWQYASABKAkSEgoKdGVtcGxhdGVJZBgCIAEoCRIMCgRuYW1lGAMgASgJEg8KB293bmVySWQYBCABKAkiQwoVQ3JlYXRlUHJvamVjdFJlc3BvbnNlEioKB3Byb2plY3QYASABKAsyGS50YXNrZXIuaGVhbHRoLnYxLlByb2plY3QiJAoTTGlzdFByb2plY3RzUmVxdWVzdBINCgVvcmdJZBgBIAEoCSJDChRMaXN0UHJvamVjdHNSZXNwb25zZRIrCghwcm9qZWN0cxgBIAMoCzIZLnRhc2tlci5oZWFsdGgudjEuUHJvamVjdCJSCglBZ2VudFJvbGUSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIVCg1zeXN0ZW1fcHJvbXB0GAMgASgJEhQKDGNhcGFiaWxpdGllcxgEIAEoCSJICgVBZ2VudBIKCgJpZBgBIAEoCRIOCgZvcmdfaWQYAiABKAkSFQoNYWdlbnRfcm9sZV9pZBgDIAEoCRIMCgRuYW1lGAQgASgJIlMKFkNyZWF0ZUFnZW50Um9sZVJlcXVlc3QSDAoEbmFtZRgBIAEoCRIVCg1zeXN0ZW1fcHJvbXB0GAIgASgJEhQKDGNhcGFiaWxpdGllcxgDIAEoCSJEChdDcmVhdGVBZ2VudFJvbGVSZXNwb25zZRIpCgRyb2xlGAEgASgLMhsudGFza2VyLmhlYWx0aC52MS5BZ2VudFJvbGUiSQoSQ3JlYXRlQWdlbnRSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRIVCg1hZ2VudF9yb2xlX2lkGAIgASgJEgwKBG5hbWUYAyABKAkiPQoTQ3JlYXRlQWdlbnRSZXNwb25zZRImCgVhZ2VudBgBIAEoCzIXLnRhc2tlci5oZWFsdGgudjEuQWdlbnQiWgoEVGFzaxIKCgJpZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEg0KBXRpdGxlGAMgASgJEg4KBnN0YXR1cxgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCSJbChFDcmVhdGVUYXNrUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEg4KBnN0YXR1cxgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCSI6ChJDcmVhdGVUYXNrUmVzcG9uc2USJAoEdGFzaxgBIAEoCzIWLnRhc2tlci5oZWFsdGgudjEuVGFzayJHChFBc3NpZ25UYXNrUmVxdWVzdBIPCgd0YXNrX2lkGAEgASgJEhAKCGFnZW50X2lkGAIgASgJEg8KB3VzZXJfaWQYAyABKAkiJQoSQXNzaWduVGFza1Jlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgiRwoGRm9sZGVyEgoKAmlkGAEgASgJEhEKCXByb2plY3RJZBgCIAEoCRIQCghwYXJlbnRJZBgDIAEoCRIMCgRuYW1lGAQgASgJIlwKCEFydGlmYWN0EgoKAmlkGAEgASgJEhAKCGZvbGRlcklkGAIgASgJEgwKBG5hbWUYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSDwoHY29udGVudBgFIAEoCSJCChBUYXNrQXJ0aWZhY3RMaW5rEgoKAmlkGAEgASgJEg4KBnRhc2tJZBgCIAEoCRISCgphcnRpZmFjdElkGAMgASgJIkgKE0NyZWF0ZUZvbGRlclJlcXVlc3QSEQoJcHJvamVjdElkGAEgASgJEhAKCHBhcmVudElkGAIgASgJEgwKBG5hbWUYAyABKAkiQAoUQ3JlYXRlRm9sZGVyUmVzcG9uc2USKAoGZm9sZGVyGAEgASgLMhgudGFza2VyLmhlYWx0aC52MS5Gb2xkZXIiXQoVQ3JlYXRlQXJ0aWZhY3RSZXF1ZXN0EhAKCGZvbGRlcklkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDwoHY29udGVudBgEIAEoCSJGChZDcmVhdGVBcnRpZmFjdFJlc3BvbnNlEiwKCGFydGlmYWN0GAEgASgLMhoudGFza2VyLmhlYWx0aC52MS5BcnRpZmFjdCI9ChdMaW5rVGFza0FydGlmYWN0UmVxdWVzdBIOCgZ0YXNrSWQYASABKAkSEgoKYXJ0aWZhY3RJZBgCIAEoCSJMChhMaW5rVGFza0FydGlmYWN0UmVzcG9uc2USMAoEbGluaxgBIAEoCzIiLnRhc2tlci5oZWFsdGgudjEuVGFza0FydGlmYWN0TGluayIoChRMaXN0QXJ0aWZhY3RzUmVxdWVzdBIQCghmb2xkZXJJZBgBIAEoCSJGChVMaXN0QXJ0aWZhY3RzUmVzcG9uc2USLQoJYXJ0aWZhY3RzGAEgAygLMhoudGFza2VyLmhlYWx0aC52MS5BcnRpZmFjdCInChJMaXN0Rm9sZGVyc1JlcXVlc3QSEQoJcHJvamVjdElkGAEgASgJIkAKE0xpc3RGb2xkZXJzUmVzcG9uc2USKQoHZm9sZGVycxgBIAMoCzIYLnRhc2tlci5oZWFsdGgudjEuRm9sZGVyIm0KB0NvbW1lbnQSCgoCaWQYASABKAkSEAoIZW50aXR5SWQYAiABKAkSEgoKZW50aXR5VHlwZRgDIAEoCRIOCgZ1c2VySWQYBCABKAkSDwoHYWdlbnRJZBgFIAEoCRIPCgdjb250ZW50GAYgASgJIm4KFENyZWF0ZUNvbW1lbnRSZXF1ZXN0EhAKCGVudGl0eUlkGAEgASgJEhIKCmVudGl0eVR5cGUYAiABKAkSDgoGdXNlcklkGAMgASgJEg8KB2FnZW50SWQYBCABKAkSDwoHY29udGVudBgFIAEoCSJDChVDcmVhdGVDb21tZW50UmVzcG9uc2USKgoHY29tbWVudBgBIAEoCzIZLnRhc2tlci5oZWFsdGgudjEuQ29tbWVudCI7ChNMaXN0Q29tbWVudHNSZXF1ZXN0EhAKCGVudGl0eUlkGAEgASgJEhIKCmVudGl0eVR5cGUYAiABKAkiQwoUTGlzdENvbW1lbnRzUmVzcG9uc2USKwoIY29tbWVudHMYASADKAsyGS50YXNrZXIuaGVhbHRoLnYxLkNvbW1lbnQiSAoIVGFza05vdGUSCgoCaWQYASABKAkSDgoGdGFza0lkGAIgASgJEg8KB2FnZW50SWQYAyABKAkSDwoHY29udGVudBgEIAEoCSJJChVDcmVhdGVUYXNrTm90ZVJlcXVlc3QSDgoGdGFza0lkGAEgASgJEg8KB2FnZW50SWQYAiABKAkSDwoHY29udGVudBgDIAEoCSJGChZDcmVhdGVUYXNrTm90ZVJlc3BvbnNlEiwKCHRhc2tOb3RlGAEgASgLMhoudGFza2VyLmhlYWx0aC52MS5UYXNrTm90ZSImChRMaXN0VGFza05vdGVzUmVxdWVzdBIOCgZ0YXNrSWQYASABKAkiRgoVTGlzdFRhc2tOb3Rlc1Jlc3BvbnNlEi0KCXRhc2tOb3RlcxgBIAMoCzIaLnRhc2tlci5oZWFsdGgudjEuVGFza05vdGUiawoOUmVwb3NpdG9yeUxpbmsSCgoCaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRIQCghwcm92aWRlchgDIAEoCRITCgtyZW1vdGVfbmFtZRgEIAEoCRISCgpjcmVhdGVkX2F0GAUgASgJIqIBChFSZW1vdGVQdWxsUmVxdWVzdBIKCgJpZBgBIAEoCRIaChJyZXBvc2l0b3J5X2xpbmtfaWQYAiABKAkSDwoHdGFza19pZBgDIAEoCRIUCgxyZW1vdGVfcHJfaWQYBCABKAkSDQoFdGl0bGUYBSABKAkSDgoGc3RhdHVzGAYgASgJEgsKA3VybBgHIAEoCRISCgp1cGRhdGVkX2F0GAggASgJImkKGEFkZFJlcG9zaXRvcnlMaW5rUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhAKCHByb3ZpZGVyGAIgASgJEhMKC3JlbW90ZV9uYW1lGAMgASgJEhIKCm9hdXRoX2NvZGUYBCABKAkiSwoZQWRkUmVwb3NpdG9yeUxpbmtSZXNwb25zZRIuCgRsaW5rGAEgASgLMiAudGFza2VyLmhlYWx0aC52MS5SZXBvc2l0b3J5TGluayIwChpMaXN0UmVwb3NpdG9yeUxpbmtzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIk4KG0xpc3RSZXBvc2l0b3J5TGlua3NSZXNwb25zZRIvCgVsaW5rcxgBIAMoCzIgLnRhc2tlci5oZWFsdGgudjEuUmVwb3NpdG9yeUxpbmsiLQoXU3luY1B1bGxSZXF1ZXN0c1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSIrChhTeW5jUHVsbFJlcXVlc3RzUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCDJWCg1IZWFsdGhTZXJ2aWNlEkUKBFBpbmcSHS50YXNrZXIuaGVhbHRoLnYxLlBpbmdSZXF1ZXN0Gh4udGFza2VyLmhlYWx0aC52MS5QaW5nUmVzcG9uc2UyaQoLQXV0aFNlcnZpY2USWgoLR2V0SWRlbnRpdHkSJC50YXNrZXIuaGVhbHRoLnYxLkdldElkZW50aXR5UmVxdWVzdBolLnRhc2tlci5oZWFsdGgudjEuR2V0SWRlbnRpdHlSZXNwb25zZTKIAgoKT3JnU2VydmljZRJRCghMaXN0T3JncxIhLnRhc2tlci5oZWFsdGgudjEuTGlzdE9yZ3NSZXF1ZXN0GiIudGFza2VyLmhlYWx0aC52MS5MaXN0T3Jnc1Jlc3BvbnNlEk4KB1NlZWRPcmcSIC50YXNrZXIuaGVhbHRoLnYxLlNlZWRPcmdSZXF1ZXN0GiEudGFza2VyLmhlYWx0aC52MS5TZWVkT3JnUmVzcG9uc2USVwoKSW52aXRlVXNlchIjLnRhc2tlci5oZWFsdGgudjEuSW52aXRlVXNlclJlcXVlc3QaJC50YXNrZXIuaGVhbHRoLnYxLkludml0ZVVzZXJSZXNwb25zZTLSAQoPVGFza1R5cGVTZXJ2aWNlEloKC0dldFRhc2tUeXBlEiQudGFza2VyLmhlYWx0aC52MS5HZXRUYXNrVHlwZVJlcXVlc3QaJS50YXNrZXIuaGVhbHRoLnYxLkdldFRhc2tUeXBlUmVzcG9uc2USYwoOQ3JlYXRlVGFza1R5cGUSJy50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVRhc2tUeXBlUmVxdWVzdBooLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlVGFza1R5cGVSZXNwb25zZTLlAgoWUHJvamVjdFRlbXBsYXRlU2VydmljZRJoCgtHZXRUZW1wbGF0ZRIrLnRhc2tlci5oZWFsdGgudjEuR2V0UHJvamVjdFRlbXBsYXRlUmVxdWVzdBosLnRhc2tlci5oZWFsdGgudjEuR2V0UHJvamVjdFRlbXBsYXRlUmVzcG9uc2UScQoOQ3JlYXRlVGVtcGxhdGUSLi50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVByb2plY3RUZW1wbGF0ZVJlcXVlc3QaLy50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVByb2plY3RUZW1wbGF0ZVJlc3BvbnNlEm4KDUxpc3RUZW1wbGF0ZXMSLS50YXNrZXIuaGVhbHRoLnYxLkxpc3RQcm9qZWN0VGVtcGxhdGVzUmVxdWVzdBouLnRhc2tlci5oZWFsdGgudjEuTGlzdFByb2plY3RUZW1wbGF0ZXNSZXNwb25zZTKqAgoOUHJvamVjdFNlcnZpY2USVwoKR2V0UHJvamVjdBIjLnRhc2tlci5oZWFsdGgudjEuR2V0UHJvamVjdFJlcXVlc3QaJC50YXNrZXIuaGVhbHRoLnYxLkdldFByb2plY3RSZXNwb25zZRJgCg1DcmVhdGVQcm9qZWN0EiYudGFza2VyLmhlYWx0aC52MS5DcmVhdGVQcm9qZWN0UmVxdWVzdBonLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlUHJvamVjdFJlc3BvbnNlEl0KDExpc3RQcm9qZWN0cxIlLnRhc2tlci5oZWFsdGgudjEuTGlzdFByb2plY3RzUmVxdWVzdBomLnRhc2tlci5oZWFsdGgudjEuTGlzdFByb2plY3RzUmVzcG9uc2Uy0gEKDEFnZW50U2VydmljZRJmCg9DcmVhdGVBZ2VudFJvbGUSKC50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZUFnZW50Um9sZVJlcXVlc3QaKS50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZUFnZW50Um9sZVJlc3BvbnNlEloKC0NyZWF0ZUFnZW50EiQudGFza2VyLmhlYWx0aC52MS5DcmVhdGVBZ2VudFJlcXVlc3QaJS50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZUFnZW50UmVzcG9uc2UyvwEKC1Rhc2tTZXJ2aWNlElcKCkNyZWF0ZVRhc2sSIy50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVRhc2tSZXF1ZXN0GiQudGFza2VyLmhlYWx0aC52MS5DcmVhdGVUYXNrUmVzcG9uc2USVwoKQXNzaWduVGFzaxIjLnRhc2tlci5oZWFsdGgudjEuQXNzaWduVGFza1JlcXVlc3QaJC50YXNrZXIuaGVhbHRoLnYxLkFzc2lnblRhc2tSZXNwb25zZTL+AwoPQXJ0aWZhY3RTZXJ2aWNlEl0KDENyZWF0ZUZvbGRlchIlLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlRm9sZGVyUmVxdWVzdBomLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlRm9sZGVyUmVzcG9uc2USYwoOQ3JlYXRlQXJ0aWZhY3QSJy50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZUFydGlmYWN0UmVxdWVzdBooLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlQXJ0aWZhY3RSZXNwb25zZRJpChBMaW5rVGFza0FydGlmYWN0EikudGFza2VyLmhlYWx0aC52MS5MaW5rVGFza0FydGlmYWN0UmVxdWVzdBoqLnRhc2tlci5oZWFsdGgudjEuTGlua1Rhc2tBcnRpZmFjdFJlc3BvbnNlEmAKDUxpc3RBcnRpZmFjdHMSJi50YXNrZXIuaGVhbHRoLnYxLkxpc3RBcnRpZmFjdHNSZXF1ZXN0GicudGFza2VyLmhlYWx0aC52MS5MaXN0QXJ0aWZhY3RzUmVzcG9uc2USWgoLTGlzdEZvbGRlcnMSJC50YXNrZXIuaGVhbHRoLnYxLkxpc3RGb2xkZXJzUmVxdWVzdBolLnRhc2tlci5oZWFsdGgudjEuTGlzdEZvbGRlcnNSZXNwb25zZTLRAQoOQ29tbWVudFNlcnZpY2USYAoNQ3JlYXRlQ29tbWVudBImLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlQ29tbWVudFJlcXVlc3QaJy50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZUNvbW1lbnRSZXNwb25zZRJdCgxMaXN0Q29tbWVudHMSJS50YXNrZXIuaGVhbHRoLnYxLkxpc3RDb21tZW50c1JlcXVlc3QaJi50YXNrZXIuaGVhbHRoLnYxLkxpc3RDb21tZW50c1Jlc3BvbnNlMtgBCg9UYXNrTm90ZVNlcnZpY2USYwoOQ3JlYXRlVGFza05vdGUSJy50YXNrZXIuaGVhbHRoLnYxLkNyZWF0ZVRhc2tOb3RlUmVxdWVzdBooLnRhc2tlci5oZWFsdGgudjEuQ3JlYXRlVGFza05vdGVSZXNwb25zZRJgCg1MaXN0VGFza05vdGVzEiYudGFza2VyLmhlYWx0aC52MS5MaXN0VGFza05vdGVzUmVxdWVzdBonLnRhc2tlci5oZWFsdGgudjEuTGlzdFRhc2tOb3Rlc1Jlc3BvbnNlMuACChFSZXBvc2l0b3J5U2VydmljZRJsChFBZGRSZXBvc2l0b3J5TGluaxIqLnRhc2tlci5oZWFsdGgudjEuQWRkUmVwb3NpdG9yeUxpbmtSZXF1ZXN0GisudGFza2VyLmhlYWx0aC52MS5BZGRSZXBvc2l0b3J5TGlua1Jlc3BvbnNlEnIKE0xpc3RSZXBvc2l0b3J5TGlua3MSLC50YXNrZXIuaGVhbHRoLnYxLkxpc3RSZXBvc2l0b3J5TGlua3NSZXF1ZXN0Gi0udGFza2VyLmhlYWx0aC52MS5MaXN0UmVwb3NpdG9yeUxpbmtzUmVzcG9uc2USaQoQU3luY1B1bGxSZXF1ZXN0cxIpLnRhc2tlci5oZWFsdGgudjEuU3luY1B1bGxSZXF1ZXN0c1JlcXVlc3QaKi50YXNrZXIuaGVhbHRoLnYxLlN5bmNQdWxsUmVxdWVzdHNSZXNwb25zZUI3WjVnaXRodWIuY29tL2h1eXowL3Rhc2tlci9hcHBzL2NsaS9nZW4vdGFza2VyL2hlYWx0aC92MWIGcHJvdG8z");
 
 /**
  * @generated from message tasker.health.v1.PingRequest
@@ -586,6 +586,40 @@ export const CreateProjectTemplateResponseSchema: GenMessage<CreateProjectTempla
   messageDesc(file_tasker_health_v1_health, 24);
 
 /**
+ * @generated from message tasker.health.v1.ListProjectTemplatesRequest
+ */
+export type ListProjectTemplatesRequest = Message<"tasker.health.v1.ListProjectTemplatesRequest"> & {
+  /**
+   * @generated from field: string orgId = 1;
+   */
+  orgId: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.ListProjectTemplatesRequest.
+ * Use `create(ListProjectTemplatesRequestSchema)` to create a new message.
+ */
+export const ListProjectTemplatesRequestSchema: GenMessage<ListProjectTemplatesRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 25);
+
+/**
+ * @generated from message tasker.health.v1.ListProjectTemplatesResponse
+ */
+export type ListProjectTemplatesResponse = Message<"tasker.health.v1.ListProjectTemplatesResponse"> & {
+  /**
+   * @generated from field: repeated tasker.health.v1.ProjectTemplate templates = 1;
+   */
+  templates: ProjectTemplate[];
+};
+
+/**
+ * Describes the message tasker.health.v1.ListProjectTemplatesResponse.
+ * Use `create(ListProjectTemplatesResponseSchema)` to create a new message.
+ */
+export const ListProjectTemplatesResponseSchema: GenMessage<ListProjectTemplatesResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 26);
+
+/**
  * @generated from message tasker.health.v1.GetProjectRequest
  */
 export type GetProjectRequest = Message<"tasker.health.v1.GetProjectRequest"> & {
@@ -600,7 +634,7 @@ export type GetProjectRequest = Message<"tasker.health.v1.GetProjectRequest"> & 
  * Use `create(GetProjectRequestSchema)` to create a new message.
  */
 export const GetProjectRequestSchema: GenMessage<GetProjectRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 25);
+  messageDesc(file_tasker_health_v1_health, 27);
 
 /**
  * @generated from message tasker.health.v1.GetProjectResponse
@@ -617,7 +651,7 @@ export type GetProjectResponse = Message<"tasker.health.v1.GetProjectResponse"> 
  * Use `create(GetProjectResponseSchema)` to create a new message.
  */
 export const GetProjectResponseSchema: GenMessage<GetProjectResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 26);
+  messageDesc(file_tasker_health_v1_health, 28);
 
 /**
  * @generated from message tasker.health.v1.CreateProjectRequest
@@ -649,7 +683,7 @@ export type CreateProjectRequest = Message<"tasker.health.v1.CreateProjectReques
  * Use `create(CreateProjectRequestSchema)` to create a new message.
  */
 export const CreateProjectRequestSchema: GenMessage<CreateProjectRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 27);
+  messageDesc(file_tasker_health_v1_health, 29);
 
 /**
  * @generated from message tasker.health.v1.CreateProjectResponse
@@ -666,7 +700,41 @@ export type CreateProjectResponse = Message<"tasker.health.v1.CreateProjectRespo
  * Use `create(CreateProjectResponseSchema)` to create a new message.
  */
 export const CreateProjectResponseSchema: GenMessage<CreateProjectResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 28);
+  messageDesc(file_tasker_health_v1_health, 30);
+
+/**
+ * @generated from message tasker.health.v1.ListProjectsRequest
+ */
+export type ListProjectsRequest = Message<"tasker.health.v1.ListProjectsRequest"> & {
+  /**
+   * @generated from field: string orgId = 1;
+   */
+  orgId: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.ListProjectsRequest.
+ * Use `create(ListProjectsRequestSchema)` to create a new message.
+ */
+export const ListProjectsRequestSchema: GenMessage<ListProjectsRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 31);
+
+/**
+ * @generated from message tasker.health.v1.ListProjectsResponse
+ */
+export type ListProjectsResponse = Message<"tasker.health.v1.ListProjectsResponse"> & {
+  /**
+   * @generated from field: repeated tasker.health.v1.Project projects = 1;
+   */
+  projects: Project[];
+};
+
+/**
+ * Describes the message tasker.health.v1.ListProjectsResponse.
+ * Use `create(ListProjectsResponseSchema)` to create a new message.
+ */
+export const ListProjectsResponseSchema: GenMessage<ListProjectsResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 32);
 
 /**
  * @generated from message tasker.health.v1.AgentRole
@@ -698,7 +766,7 @@ export type AgentRole = Message<"tasker.health.v1.AgentRole"> & {
  * Use `create(AgentRoleSchema)` to create a new message.
  */
 export const AgentRoleSchema: GenMessage<AgentRole> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 29);
+  messageDesc(file_tasker_health_v1_health, 33);
 
 /**
  * @generated from message tasker.health.v1.Agent
@@ -730,7 +798,7 @@ export type Agent = Message<"tasker.health.v1.Agent"> & {
  * Use `create(AgentSchema)` to create a new message.
  */
 export const AgentSchema: GenMessage<Agent> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 30);
+  messageDesc(file_tasker_health_v1_health, 34);
 
 /**
  * @generated from message tasker.health.v1.CreateAgentRoleRequest
@@ -757,7 +825,7 @@ export type CreateAgentRoleRequest = Message<"tasker.health.v1.CreateAgentRoleRe
  * Use `create(CreateAgentRoleRequestSchema)` to create a new message.
  */
 export const CreateAgentRoleRequestSchema: GenMessage<CreateAgentRoleRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 31);
+  messageDesc(file_tasker_health_v1_health, 35);
 
 /**
  * @generated from message tasker.health.v1.CreateAgentRoleResponse
@@ -774,7 +842,7 @@ export type CreateAgentRoleResponse = Message<"tasker.health.v1.CreateAgentRoleR
  * Use `create(CreateAgentRoleResponseSchema)` to create a new message.
  */
 export const CreateAgentRoleResponseSchema: GenMessage<CreateAgentRoleResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 32);
+  messageDesc(file_tasker_health_v1_health, 36);
 
 /**
  * @generated from message tasker.health.v1.CreateAgentRequest
@@ -801,7 +869,7 @@ export type CreateAgentRequest = Message<"tasker.health.v1.CreateAgentRequest"> 
  * Use `create(CreateAgentRequestSchema)` to create a new message.
  */
 export const CreateAgentRequestSchema: GenMessage<CreateAgentRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 33);
+  messageDesc(file_tasker_health_v1_health, 37);
 
 /**
  * @generated from message tasker.health.v1.CreateAgentResponse
@@ -818,7 +886,7 @@ export type CreateAgentResponse = Message<"tasker.health.v1.CreateAgentResponse"
  * Use `create(CreateAgentResponseSchema)` to create a new message.
  */
 export const CreateAgentResponseSchema: GenMessage<CreateAgentResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 34);
+  messageDesc(file_tasker_health_v1_health, 38);
 
 /**
  * @generated from message tasker.health.v1.Task
@@ -855,7 +923,7 @@ export type Task = Message<"tasker.health.v1.Task"> & {
  * Use `create(TaskSchema)` to create a new message.
  */
 export const TaskSchema: GenMessage<Task> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 35);
+  messageDesc(file_tasker_health_v1_health, 39);
 
 /**
  * @generated from message tasker.health.v1.CreateTaskRequest
@@ -887,7 +955,7 @@ export type CreateTaskRequest = Message<"tasker.health.v1.CreateTaskRequest"> & 
  * Use `create(CreateTaskRequestSchema)` to create a new message.
  */
 export const CreateTaskRequestSchema: GenMessage<CreateTaskRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 36);
+  messageDesc(file_tasker_health_v1_health, 40);
 
 /**
  * @generated from message tasker.health.v1.CreateTaskResponse
@@ -904,7 +972,7 @@ export type CreateTaskResponse = Message<"tasker.health.v1.CreateTaskResponse"> 
  * Use `create(CreateTaskResponseSchema)` to create a new message.
  */
 export const CreateTaskResponseSchema: GenMessage<CreateTaskResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 37);
+  messageDesc(file_tasker_health_v1_health, 41);
 
 /**
  * @generated from message tasker.health.v1.AssignTaskRequest
@@ -931,7 +999,7 @@ export type AssignTaskRequest = Message<"tasker.health.v1.AssignTaskRequest"> & 
  * Use `create(AssignTaskRequestSchema)` to create a new message.
  */
 export const AssignTaskRequestSchema: GenMessage<AssignTaskRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 38);
+  messageDesc(file_tasker_health_v1_health, 42);
 
 /**
  * @generated from message tasker.health.v1.AssignTaskResponse
@@ -948,7 +1016,7 @@ export type AssignTaskResponse = Message<"tasker.health.v1.AssignTaskResponse"> 
  * Use `create(AssignTaskResponseSchema)` to create a new message.
  */
 export const AssignTaskResponseSchema: GenMessage<AssignTaskResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 39);
+  messageDesc(file_tasker_health_v1_health, 43);
 
 /**
  * @generated from message tasker.health.v1.Folder
@@ -980,7 +1048,7 @@ export type Folder = Message<"tasker.health.v1.Folder"> & {
  * Use `create(FolderSchema)` to create a new message.
  */
 export const FolderSchema: GenMessage<Folder> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 40);
+  messageDesc(file_tasker_health_v1_health, 44);
 
 /**
  * @generated from message tasker.health.v1.Artifact
@@ -1017,7 +1085,7 @@ export type Artifact = Message<"tasker.health.v1.Artifact"> & {
  * Use `create(ArtifactSchema)` to create a new message.
  */
 export const ArtifactSchema: GenMessage<Artifact> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 41);
+  messageDesc(file_tasker_health_v1_health, 45);
 
 /**
  * @generated from message tasker.health.v1.TaskArtifactLink
@@ -1044,7 +1112,7 @@ export type TaskArtifactLink = Message<"tasker.health.v1.TaskArtifactLink"> & {
  * Use `create(TaskArtifactLinkSchema)` to create a new message.
  */
 export const TaskArtifactLinkSchema: GenMessage<TaskArtifactLink> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 42);
+  messageDesc(file_tasker_health_v1_health, 46);
 
 /**
  * @generated from message tasker.health.v1.CreateFolderRequest
@@ -1071,7 +1139,7 @@ export type CreateFolderRequest = Message<"tasker.health.v1.CreateFolderRequest"
  * Use `create(CreateFolderRequestSchema)` to create a new message.
  */
 export const CreateFolderRequestSchema: GenMessage<CreateFolderRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 43);
+  messageDesc(file_tasker_health_v1_health, 47);
 
 /**
  * @generated from message tasker.health.v1.CreateFolderResponse
@@ -1088,7 +1156,7 @@ export type CreateFolderResponse = Message<"tasker.health.v1.CreateFolderRespons
  * Use `create(CreateFolderResponseSchema)` to create a new message.
  */
 export const CreateFolderResponseSchema: GenMessage<CreateFolderResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 44);
+  messageDesc(file_tasker_health_v1_health, 48);
 
 /**
  * @generated from message tasker.health.v1.CreateArtifactRequest
@@ -1120,7 +1188,7 @@ export type CreateArtifactRequest = Message<"tasker.health.v1.CreateArtifactRequ
  * Use `create(CreateArtifactRequestSchema)` to create a new message.
  */
 export const CreateArtifactRequestSchema: GenMessage<CreateArtifactRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 45);
+  messageDesc(file_tasker_health_v1_health, 49);
 
 /**
  * @generated from message tasker.health.v1.CreateArtifactResponse
@@ -1137,7 +1205,7 @@ export type CreateArtifactResponse = Message<"tasker.health.v1.CreateArtifactRes
  * Use `create(CreateArtifactResponseSchema)` to create a new message.
  */
 export const CreateArtifactResponseSchema: GenMessage<CreateArtifactResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 46);
+  messageDesc(file_tasker_health_v1_health, 50);
 
 /**
  * @generated from message tasker.health.v1.LinkTaskArtifactRequest
@@ -1159,7 +1227,7 @@ export type LinkTaskArtifactRequest = Message<"tasker.health.v1.LinkTaskArtifact
  * Use `create(LinkTaskArtifactRequestSchema)` to create a new message.
  */
 export const LinkTaskArtifactRequestSchema: GenMessage<LinkTaskArtifactRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 47);
+  messageDesc(file_tasker_health_v1_health, 51);
 
 /**
  * @generated from message tasker.health.v1.LinkTaskArtifactResponse
@@ -1176,7 +1244,75 @@ export type LinkTaskArtifactResponse = Message<"tasker.health.v1.LinkTaskArtifac
  * Use `create(LinkTaskArtifactResponseSchema)` to create a new message.
  */
 export const LinkTaskArtifactResponseSchema: GenMessage<LinkTaskArtifactResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 48);
+  messageDesc(file_tasker_health_v1_health, 52);
+
+/**
+ * @generated from message tasker.health.v1.ListArtifactsRequest
+ */
+export type ListArtifactsRequest = Message<"tasker.health.v1.ListArtifactsRequest"> & {
+  /**
+   * @generated from field: string folderId = 1;
+   */
+  folderId: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.ListArtifactsRequest.
+ * Use `create(ListArtifactsRequestSchema)` to create a new message.
+ */
+export const ListArtifactsRequestSchema: GenMessage<ListArtifactsRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 53);
+
+/**
+ * @generated from message tasker.health.v1.ListArtifactsResponse
+ */
+export type ListArtifactsResponse = Message<"tasker.health.v1.ListArtifactsResponse"> & {
+  /**
+   * @generated from field: repeated tasker.health.v1.Artifact artifacts = 1;
+   */
+  artifacts: Artifact[];
+};
+
+/**
+ * Describes the message tasker.health.v1.ListArtifactsResponse.
+ * Use `create(ListArtifactsResponseSchema)` to create a new message.
+ */
+export const ListArtifactsResponseSchema: GenMessage<ListArtifactsResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 54);
+
+/**
+ * @generated from message tasker.health.v1.ListFoldersRequest
+ */
+export type ListFoldersRequest = Message<"tasker.health.v1.ListFoldersRequest"> & {
+  /**
+   * @generated from field: string projectId = 1;
+   */
+  projectId: string;
+};
+
+/**
+ * Describes the message tasker.health.v1.ListFoldersRequest.
+ * Use `create(ListFoldersRequestSchema)` to create a new message.
+ */
+export const ListFoldersRequestSchema: GenMessage<ListFoldersRequest> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 55);
+
+/**
+ * @generated from message tasker.health.v1.ListFoldersResponse
+ */
+export type ListFoldersResponse = Message<"tasker.health.v1.ListFoldersResponse"> & {
+  /**
+   * @generated from field: repeated tasker.health.v1.Folder folders = 1;
+   */
+  folders: Folder[];
+};
+
+/**
+ * Describes the message tasker.health.v1.ListFoldersResponse.
+ * Use `create(ListFoldersResponseSchema)` to create a new message.
+ */
+export const ListFoldersResponseSchema: GenMessage<ListFoldersResponse> = /*@__PURE__*/
+  messageDesc(file_tasker_health_v1_health, 56);
 
 /**
  * @generated from message tasker.health.v1.Comment
@@ -1218,7 +1354,7 @@ export type Comment = Message<"tasker.health.v1.Comment"> & {
  * Use `create(CommentSchema)` to create a new message.
  */
 export const CommentSchema: GenMessage<Comment> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 49);
+  messageDesc(file_tasker_health_v1_health, 57);
 
 /**
  * @generated from message tasker.health.v1.CreateCommentRequest
@@ -1255,7 +1391,7 @@ export type CreateCommentRequest = Message<"tasker.health.v1.CreateCommentReques
  * Use `create(CreateCommentRequestSchema)` to create a new message.
  */
 export const CreateCommentRequestSchema: GenMessage<CreateCommentRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 50);
+  messageDesc(file_tasker_health_v1_health, 58);
 
 /**
  * @generated from message tasker.health.v1.CreateCommentResponse
@@ -1272,7 +1408,7 @@ export type CreateCommentResponse = Message<"tasker.health.v1.CreateCommentRespo
  * Use `create(CreateCommentResponseSchema)` to create a new message.
  */
 export const CreateCommentResponseSchema: GenMessage<CreateCommentResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 51);
+  messageDesc(file_tasker_health_v1_health, 59);
 
 /**
  * @generated from message tasker.health.v1.ListCommentsRequest
@@ -1294,7 +1430,7 @@ export type ListCommentsRequest = Message<"tasker.health.v1.ListCommentsRequest"
  * Use `create(ListCommentsRequestSchema)` to create a new message.
  */
 export const ListCommentsRequestSchema: GenMessage<ListCommentsRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 52);
+  messageDesc(file_tasker_health_v1_health, 60);
 
 /**
  * @generated from message tasker.health.v1.ListCommentsResponse
@@ -1311,7 +1447,7 @@ export type ListCommentsResponse = Message<"tasker.health.v1.ListCommentsRespons
  * Use `create(ListCommentsResponseSchema)` to create a new message.
  */
 export const ListCommentsResponseSchema: GenMessage<ListCommentsResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 53);
+  messageDesc(file_tasker_health_v1_health, 61);
 
 /**
  * @generated from message tasker.health.v1.TaskNote
@@ -1343,7 +1479,7 @@ export type TaskNote = Message<"tasker.health.v1.TaskNote"> & {
  * Use `create(TaskNoteSchema)` to create a new message.
  */
 export const TaskNoteSchema: GenMessage<TaskNote> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 54);
+  messageDesc(file_tasker_health_v1_health, 62);
 
 /**
  * @generated from message tasker.health.v1.CreateTaskNoteRequest
@@ -1370,7 +1506,7 @@ export type CreateTaskNoteRequest = Message<"tasker.health.v1.CreateTaskNoteRequ
  * Use `create(CreateTaskNoteRequestSchema)` to create a new message.
  */
 export const CreateTaskNoteRequestSchema: GenMessage<CreateTaskNoteRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 55);
+  messageDesc(file_tasker_health_v1_health, 63);
 
 /**
  * @generated from message tasker.health.v1.CreateTaskNoteResponse
@@ -1387,7 +1523,7 @@ export type CreateTaskNoteResponse = Message<"tasker.health.v1.CreateTaskNoteRes
  * Use `create(CreateTaskNoteResponseSchema)` to create a new message.
  */
 export const CreateTaskNoteResponseSchema: GenMessage<CreateTaskNoteResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 56);
+  messageDesc(file_tasker_health_v1_health, 64);
 
 /**
  * @generated from message tasker.health.v1.ListTaskNotesRequest
@@ -1404,7 +1540,7 @@ export type ListTaskNotesRequest = Message<"tasker.health.v1.ListTaskNotesReques
  * Use `create(ListTaskNotesRequestSchema)` to create a new message.
  */
 export const ListTaskNotesRequestSchema: GenMessage<ListTaskNotesRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 57);
+  messageDesc(file_tasker_health_v1_health, 65);
 
 /**
  * @generated from message tasker.health.v1.ListTaskNotesResponse
@@ -1421,7 +1557,7 @@ export type ListTaskNotesResponse = Message<"tasker.health.v1.ListTaskNotesRespo
  * Use `create(ListTaskNotesResponseSchema)` to create a new message.
  */
 export const ListTaskNotesResponseSchema: GenMessage<ListTaskNotesResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 58);
+  messageDesc(file_tasker_health_v1_health, 66);
 
 /**
  * @generated from message tasker.health.v1.RepositoryLink
@@ -1458,7 +1594,7 @@ export type RepositoryLink = Message<"tasker.health.v1.RepositoryLink"> & {
  * Use `create(RepositoryLinkSchema)` to create a new message.
  */
 export const RepositoryLinkSchema: GenMessage<RepositoryLink> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 59);
+  messageDesc(file_tasker_health_v1_health, 67);
 
 /**
  * @generated from message tasker.health.v1.RemotePullRequest
@@ -1510,7 +1646,7 @@ export type RemotePullRequest = Message<"tasker.health.v1.RemotePullRequest"> & 
  * Use `create(RemotePullRequestSchema)` to create a new message.
  */
 export const RemotePullRequestSchema: GenMessage<RemotePullRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 60);
+  messageDesc(file_tasker_health_v1_health, 68);
 
 /**
  * @generated from message tasker.health.v1.AddRepositoryLinkRequest
@@ -1542,7 +1678,7 @@ export type AddRepositoryLinkRequest = Message<"tasker.health.v1.AddRepositoryLi
  * Use `create(AddRepositoryLinkRequestSchema)` to create a new message.
  */
 export const AddRepositoryLinkRequestSchema: GenMessage<AddRepositoryLinkRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 61);
+  messageDesc(file_tasker_health_v1_health, 69);
 
 /**
  * @generated from message tasker.health.v1.AddRepositoryLinkResponse
@@ -1559,7 +1695,7 @@ export type AddRepositoryLinkResponse = Message<"tasker.health.v1.AddRepositoryL
  * Use `create(AddRepositoryLinkResponseSchema)` to create a new message.
  */
 export const AddRepositoryLinkResponseSchema: GenMessage<AddRepositoryLinkResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 62);
+  messageDesc(file_tasker_health_v1_health, 70);
 
 /**
  * @generated from message tasker.health.v1.ListRepositoryLinksRequest
@@ -1576,7 +1712,7 @@ export type ListRepositoryLinksRequest = Message<"tasker.health.v1.ListRepositor
  * Use `create(ListRepositoryLinksRequestSchema)` to create a new message.
  */
 export const ListRepositoryLinksRequestSchema: GenMessage<ListRepositoryLinksRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 63);
+  messageDesc(file_tasker_health_v1_health, 71);
 
 /**
  * @generated from message tasker.health.v1.ListRepositoryLinksResponse
@@ -1593,7 +1729,7 @@ export type ListRepositoryLinksResponse = Message<"tasker.health.v1.ListReposito
  * Use `create(ListRepositoryLinksResponseSchema)` to create a new message.
  */
 export const ListRepositoryLinksResponseSchema: GenMessage<ListRepositoryLinksResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 64);
+  messageDesc(file_tasker_health_v1_health, 72);
 
 /**
  * @generated from message tasker.health.v1.SyncPullRequestsRequest
@@ -1610,7 +1746,7 @@ export type SyncPullRequestsRequest = Message<"tasker.health.v1.SyncPullRequests
  * Use `create(SyncPullRequestsRequestSchema)` to create a new message.
  */
 export const SyncPullRequestsRequestSchema: GenMessage<SyncPullRequestsRequest> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 65);
+  messageDesc(file_tasker_health_v1_health, 73);
 
 /**
  * @generated from message tasker.health.v1.SyncPullRequestsResponse
@@ -1627,7 +1763,7 @@ export type SyncPullRequestsResponse = Message<"tasker.health.v1.SyncPullRequest
  * Use `create(SyncPullRequestsResponseSchema)` to create a new message.
  */
 export const SyncPullRequestsResponseSchema: GenMessage<SyncPullRequestsResponse> = /*@__PURE__*/
-  messageDesc(file_tasker_health_v1_health, 66);
+  messageDesc(file_tasker_health_v1_health, 74);
 
 /**
  * @generated from service tasker.health.v1.HealthService
@@ -1733,6 +1869,14 @@ export const ProjectTemplateService: GenService<{
     input: typeof CreateProjectTemplateRequestSchema;
     output: typeof CreateProjectTemplateResponseSchema;
   },
+  /**
+   * @generated from rpc tasker.health.v1.ProjectTemplateService.ListTemplates
+   */
+  listTemplates: {
+    methodKind: "unary";
+    input: typeof ListProjectTemplatesRequestSchema;
+    output: typeof ListProjectTemplatesResponseSchema;
+  },
 }> = /*@__PURE__*/
   serviceDesc(file_tasker_health_v1_health, 4);
 
@@ -1755,6 +1899,14 @@ export const ProjectService: GenService<{
     methodKind: "unary";
     input: typeof CreateProjectRequestSchema;
     output: typeof CreateProjectResponseSchema;
+  },
+  /**
+   * @generated from rpc tasker.health.v1.ProjectService.ListProjects
+   */
+  listProjects: {
+    methodKind: "unary";
+    input: typeof ListProjectsRequestSchema;
+    output: typeof ListProjectsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_tasker_health_v1_health, 5);
@@ -1832,6 +1984,22 @@ export const ArtifactService: GenService<{
     methodKind: "unary";
     input: typeof LinkTaskArtifactRequestSchema;
     output: typeof LinkTaskArtifactResponseSchema;
+  },
+  /**
+   * @generated from rpc tasker.health.v1.ArtifactService.ListArtifacts
+   */
+  listArtifacts: {
+    methodKind: "unary";
+    input: typeof ListArtifactsRequestSchema;
+    output: typeof ListArtifactsResponseSchema;
+  },
+  /**
+   * @generated from rpc tasker.health.v1.ArtifactService.ListFolders
+   */
+  listFolders: {
+    methodKind: "unary";
+    input: typeof ListFoldersRequestSchema;
+    output: typeof ListFoldersResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_tasker_health_v1_health, 8);

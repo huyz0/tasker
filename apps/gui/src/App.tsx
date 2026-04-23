@@ -7,6 +7,7 @@ import { AgentsDashboard } from './features/Agents';
 import { ArtifactsBrowser } from './features/Artifacts';
 import { DashboardPlaceholder } from './pages/Dashboard';
 import { GenericPlaceholder } from './components/ui/GenericPlaceholder';
+import { OAuthCallback } from './pages/OAuthCallback';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/agents" element={<AgentsDashboard />} />
         <Route path="/artifacts" element={<ArtifactsBrowser />} />
         <Route path="/settings" element={<GenericPlaceholder title="Settings" description="Global application preferences." />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
       </Routes>
     </AppShell>
   );

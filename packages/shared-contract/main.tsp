@@ -173,11 +173,24 @@ model CreateProjectTemplateResponse {
   @field(1) template: ProjectTemplate;
 }
 
+model ListProjectTemplatesRequest {
+  @field(1) orgId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListProjectTemplatesResponse {
+  @field(1) templates: ProjectTemplate[];
+  @field(2) page?: PageResponse;
+}
+
 interface ProjectTemplateService {
   getTemplate(request: GetProjectTemplateRequest): GetProjectTemplateResponse;
   createTemplate(
     request: CreateProjectTemplateRequest,
   ): CreateProjectTemplateResponse;
+  listTemplates(
+    request: ListProjectTemplatesRequest,
+  ): ListProjectTemplatesResponse;
 }
 
 model GetProjectRequest {
