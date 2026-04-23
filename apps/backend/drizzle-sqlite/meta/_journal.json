@@ -8,6 +8,13 @@
       "when": 1775866918648,
       "tag": "0000_mushy_kulan_gath",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1776929496665,
+      "tag": "0001_redundant_silvermane",
+      "breakpoints": true
     }
   ]
 }

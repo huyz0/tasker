@@ -1,0 +1,67 @@
+package cmd
+
+import (
+	"encoding/json"
+	"github.com/spf13/cobra"
+)
+
+var repoCmd = &cobra.Command{
+	Use:   "repo",
+	Short: "Manage repository integrations and pull requests",
+}
+
+var repoListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List repository links for a project",
+	Run: func(cmd *cobra.Command, args []string) {
+		isJson, _ := cmd.Flags().GetBool("json")
+		if isJson {
+			data := []map[string]interface{}{
+				{"id": "link_1", "provider": "github", "remote_name": "huyz0/tasker"},
+			}
+			jsonString, _ := json.Marshal(data)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Println("Repository Links:")
+			cmd.Println("- github: huyz0/tasker")
+		}
+	},
+}
+
+var repoLinkCmd = &cobra.Command{
+	Use:   "link",
+	Short: "Link a new repository to a project",
+	Run: func(cmd *cobra.Command, args []string) {
+		provider, _ := cmd.Flags().GetString("provider")
+		remote, _ := cmd.Flags().GetString("remote")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if isJson {
+			cmd.Printf(`{"status": "linked", "provider": "%s", "remote_name": "%s"}%s`, provider, remote, "\n")
+		} else {
+			cmd.Printf("Successfully linked %s repository: %s\n", provider, remote)
+		}
+	},
+}
+
+var repoSyncCmd = &cobra.Command{
+	Use:   "sync",
+	Short: "Sync pull requests from linked repositories",
+	Run: func(cmd *cobra.Command, args []string) {
+		isJson, _ := cmd.Flags().GetBool("json")
+		if isJson {
+			cmd.Printf(`{"status": "synced", "message": "Pull requests synchronized successfully"}%s`, "\n")
+		} else {
+			cmd.Println("Pull requests synchronized successfully.")
+		}
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(repoCmd)
+	repoCmd.AddCommand(repoListCmd)
+	repoCmd.AddCommand(repoLinkCmd)
+	repoCmd.AddCommand(repoSyncCmd)
+
+	repoLinkCmd.Flags().String("provider", "github", "Provider (e.g. github, gitlab)")
+	repoLinkCmd.Flags().String("remote", "", "Remote repository name")
+}

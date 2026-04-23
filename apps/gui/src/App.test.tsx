@@ -7,9 +7,13 @@ import App from './App';
 // Mock @tanstack/react-query so we control what useQuery returns.
 // -------------------------------------------------------------------
 const mockUseQuery = vi.fn();
+const mockUseMutation = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
+const mockUseQueryClient = vi.fn(() => ({ invalidateQueries: vi.fn() }));
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (opts: unknown) => mockUseQuery(opts),
+  useMutation: () => mockUseMutation(),
+  useQueryClient: () => mockUseQueryClient(),
 }));
 
 // -------------------------------------------------------------------
@@ -21,11 +25,12 @@ vi.mock('@connectrpc/connect-web', () => ({
 }));
 
 vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn(() => ({ ping: vi.fn() })),
+  createClient: vi.fn(() => ({ ping: vi.fn(), listRepositoryLinks: vi.fn(), syncPullRequests: vi.fn() })),
 }));
 
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   HealthService: {},
+  RepositoryService: {},
 }));
 
 // -------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useLayoutStore } from '../../store/layout';
+import { RepositoryIntegrationConfig } from '../../components/ui/repositories/RepositoryIntegrationConfig';
 
 export function ProjectsWizard() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
@@ -36,6 +37,11 @@ export function ProjectsWizard() {
              <button className="w-full px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors">Use Template</button>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8">
+         <h2 className="text-xl font-medium mb-4">Project Integrations (Mock Project-1)</h2>
+         <RepositoryIntegrationConfig projectId="project-1" />
       </div>
     </div>
   );

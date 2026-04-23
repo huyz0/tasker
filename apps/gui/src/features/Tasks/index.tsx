@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
+import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
 
 export function TasksWorkbench() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
@@ -37,6 +38,12 @@ export function TasksWorkbench() {
                       <div className="text-xs text-muted-foreground mb-1">Project Phoenix</div>
                       <h4 className="font-medium text-sm leading-tight mb-2">Implement Feature {task}</h4>
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-3">This is a description for the task that needs to be implemented. It could span multiple lines.</p>
+                      
+                      {/* Pull Requests list inline */}
+                      <div className="flex gap-2 mb-3">
+                         <PullRequestBadge pr={{ remotePrId: `#${100+task}`, title: `Fix issue in feature ${task}`, status: task % 2 === 0 ? 'merged' : 'open', url: '#' }} />
+                      </div>
+
                       <div className="flex items-center justify-between mt-auto">
                         <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">U</div>
                         <span className="text-[10px] text-muted-foreground border px-1.5 py-0.5 rounded">High Priority</span>

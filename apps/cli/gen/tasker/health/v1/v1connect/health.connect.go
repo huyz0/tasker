@@ -43,6 +43,8 @@ const (
 	CommentServiceName = "tasker.health.v1.CommentService"
 	// TaskNoteServiceName is the fully-qualified name of the TaskNoteService service.
 	TaskNoteServiceName = "tasker.health.v1.TaskNoteService"
+	// RepositoryServiceName is the fully-qualified name of the RepositoryService service.
+	RepositoryServiceName = "tasker.health.v1.RepositoryService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -112,6 +114,15 @@ const (
 	// TaskNoteServiceListTaskNotesProcedure is the fully-qualified name of the TaskNoteService's
 	// ListTaskNotes RPC.
 	TaskNoteServiceListTaskNotesProcedure = "/tasker.health.v1.TaskNoteService/ListTaskNotes"
+	// RepositoryServiceAddRepositoryLinkProcedure is the fully-qualified name of the
+	// RepositoryService's AddRepositoryLink RPC.
+	RepositoryServiceAddRepositoryLinkProcedure = "/tasker.health.v1.RepositoryService/AddRepositoryLink"
+	// RepositoryServiceListRepositoryLinksProcedure is the fully-qualified name of the
+	// RepositoryService's ListRepositoryLinks RPC.
+	RepositoryServiceListRepositoryLinksProcedure = "/tasker.health.v1.RepositoryService/ListRepositoryLinks"
+	// RepositoryServiceSyncPullRequestsProcedure is the fully-qualified name of the RepositoryService's
+	// SyncPullRequests RPC.
+	RepositoryServiceSyncPullRequestsProcedure = "/tasker.health.v1.RepositoryService/SyncPullRequests"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -149,6 +160,10 @@ var (
 	taskNoteServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskNoteService")
 	taskNoteServiceCreateTaskNoteMethodDescriptor        = taskNoteServiceServiceDescriptor.Methods().ByName("CreateTaskNote")
 	taskNoteServiceListTaskNotesMethodDescriptor         = taskNoteServiceServiceDescriptor.Methods().ByName("ListTaskNotes")
+	repositoryServiceServiceDescriptor                   = v1.File_tasker_health_v1_health_proto.Services().ByName("RepositoryService")
+	repositoryServiceAddRepositoryLinkMethodDescriptor   = repositoryServiceServiceDescriptor.Methods().ByName("AddRepositoryLink")
+	repositoryServiceListRepositoryLinksMethodDescriptor = repositoryServiceServiceDescriptor.Methods().ByName("ListRepositoryLinks")
+	repositoryServiceSyncPullRequestsMethodDescriptor    = repositoryServiceServiceDescriptor.Methods().ByName("SyncPullRequests")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -1184,4 +1199,124 @@ func (UnimplementedTaskNoteServiceHandler) CreateTaskNote(context.Context, *conn
 
 func (UnimplementedTaskNoteServiceHandler) ListTaskNotes(context.Context, *connect.Request[v1.ListTaskNotesRequest]) (*connect.Response[v1.ListTaskNotesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskNoteService.ListTaskNotes is not implemented"))
+}
+
+// RepositoryServiceClient is a client for the tasker.health.v1.RepositoryService service.
+type RepositoryServiceClient interface {
+	AddRepositoryLink(context.Context, *connect.Request[v1.AddRepositoryLinkRequest]) (*connect.Response[v1.AddRepositoryLinkResponse], error)
+	ListRepositoryLinks(context.Context, *connect.Request[v1.ListRepositoryLinksRequest]) (*connect.Response[v1.ListRepositoryLinksResponse], error)
+	SyncPullRequests(context.Context, *connect.Request[v1.SyncPullRequestsRequest]) (*connect.Response[v1.SyncPullRequestsResponse], error)
+}
+
+// NewRepositoryServiceClient constructs a client for the tasker.health.v1.RepositoryService
+// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
+// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
+// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewRepositoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RepositoryServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &repositoryServiceClient{
+		addRepositoryLink: connect.NewClient[v1.AddRepositoryLinkRequest, v1.AddRepositoryLinkResponse](
+			httpClient,
+			baseURL+RepositoryServiceAddRepositoryLinkProcedure,
+			connect.WithSchema(repositoryServiceAddRepositoryLinkMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listRepositoryLinks: connect.NewClient[v1.ListRepositoryLinksRequest, v1.ListRepositoryLinksResponse](
+			httpClient,
+			baseURL+RepositoryServiceListRepositoryLinksProcedure,
+			connect.WithSchema(repositoryServiceListRepositoryLinksMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		syncPullRequests: connect.NewClient[v1.SyncPullRequestsRequest, v1.SyncPullRequestsResponse](
+			httpClient,
+			baseURL+RepositoryServiceSyncPullRequestsProcedure,
+			connect.WithSchema(repositoryServiceSyncPullRequestsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// repositoryServiceClient implements RepositoryServiceClient.
+type repositoryServiceClient struct {
+	addRepositoryLink   *connect.Client[v1.AddRepositoryLinkRequest, v1.AddRepositoryLinkResponse]
+	listRepositoryLinks *connect.Client[v1.ListRepositoryLinksRequest, v1.ListRepositoryLinksResponse]
+	syncPullRequests    *connect.Client[v1.SyncPullRequestsRequest, v1.SyncPullRequestsResponse]
+}
+
+// AddRepositoryLink calls tasker.health.v1.RepositoryService.AddRepositoryLink.
+func (c *repositoryServiceClient) AddRepositoryLink(ctx context.Context, req *connect.Request[v1.AddRepositoryLinkRequest]) (*connect.Response[v1.AddRepositoryLinkResponse], error) {
+	return c.addRepositoryLink.CallUnary(ctx, req)
+}
+
+// ListRepositoryLinks calls tasker.health.v1.RepositoryService.ListRepositoryLinks.
+func (c *repositoryServiceClient) ListRepositoryLinks(ctx context.Context, req *connect.Request[v1.ListRepositoryLinksRequest]) (*connect.Response[v1.ListRepositoryLinksResponse], error) {
+	return c.listRepositoryLinks.CallUnary(ctx, req)
+}
+
+// SyncPullRequests calls tasker.health.v1.RepositoryService.SyncPullRequests.
+func (c *repositoryServiceClient) SyncPullRequests(ctx context.Context, req *connect.Request[v1.SyncPullRequestsRequest]) (*connect.Response[v1.SyncPullRequestsResponse], error) {
+	return c.syncPullRequests.CallUnary(ctx, req)
+}
+
+// RepositoryServiceHandler is an implementation of the tasker.health.v1.RepositoryService service.
+type RepositoryServiceHandler interface {
+	AddRepositoryLink(context.Context, *connect.Request[v1.AddRepositoryLinkRequest]) (*connect.Response[v1.AddRepositoryLinkResponse], error)
+	ListRepositoryLinks(context.Context, *connect.Request[v1.ListRepositoryLinksRequest]) (*connect.Response[v1.ListRepositoryLinksResponse], error)
+	SyncPullRequests(context.Context, *connect.Request[v1.SyncPullRequestsRequest]) (*connect.Response[v1.SyncPullRequestsResponse], error)
+}
+
+// NewRepositoryServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewRepositoryServiceHandler(svc RepositoryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	repositoryServiceAddRepositoryLinkHandler := connect.NewUnaryHandler(
+		RepositoryServiceAddRepositoryLinkProcedure,
+		svc.AddRepositoryLink,
+		connect.WithSchema(repositoryServiceAddRepositoryLinkMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	repositoryServiceListRepositoryLinksHandler := connect.NewUnaryHandler(
+		RepositoryServiceListRepositoryLinksProcedure,
+		svc.ListRepositoryLinks,
+		connect.WithSchema(repositoryServiceListRepositoryLinksMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	repositoryServiceSyncPullRequestsHandler := connect.NewUnaryHandler(
+		RepositoryServiceSyncPullRequestsProcedure,
+		svc.SyncPullRequests,
+		connect.WithSchema(repositoryServiceSyncPullRequestsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.RepositoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case RepositoryServiceAddRepositoryLinkProcedure:
+			repositoryServiceAddRepositoryLinkHandler.ServeHTTP(w, r)
+		case RepositoryServiceListRepositoryLinksProcedure:
+			repositoryServiceListRepositoryLinksHandler.ServeHTTP(w, r)
+		case RepositoryServiceSyncPullRequestsProcedure:
+			repositoryServiceSyncPullRequestsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedRepositoryServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedRepositoryServiceHandler struct{}
+
+func (UnimplementedRepositoryServiceHandler) AddRepositoryLink(context.Context, *connect.Request[v1.AddRepositoryLinkRequest]) (*connect.Response[v1.AddRepositoryLinkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RepositoryService.AddRepositoryLink is not implemented"))
+}
+
+func (UnimplementedRepositoryServiceHandler) ListRepositoryLinks(context.Context, *connect.Request[v1.ListRepositoryLinksRequest]) (*connect.Response[v1.ListRepositoryLinksResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RepositoryService.ListRepositoryLinks is not implemented"))
+}
+
+func (UnimplementedRepositoryServiceHandler) SyncPullRequests(context.Context, *connect.Request[v1.SyncPullRequestsRequest]) (*connect.Response[v1.SyncPullRequestsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RepositoryService.SyncPullRequests is not implemented"))
 }

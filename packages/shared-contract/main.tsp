@@ -453,3 +453,60 @@ interface TaskNoteService {
   createTaskNote(request: CreateTaskNoteRequest): CreateTaskNoteResponse;
   listTaskNotes(request: ListTaskNotesRequest): ListTaskNotesResponse;
 }
+
+// ==== Repositories ====
+
+model RepositoryLink {
+  @field(1) id: string;
+  @field(2) projectId: string;
+  @field(3) provider: string; // 'github' | 'bitbucket'
+  @field(4) remoteName: string;
+  @field(5) createdAt: string;
+}
+
+model RemotePullRequest {
+  @field(1) id: string;
+  @field(2) repositoryLinkId: string;
+  @field(3) taskId: string;
+  @field(4) remotePrId: string;
+  @field(5) title: string;
+  @field(6) status: string;
+  @field(7) url: string;
+  @field(8) updatedAt: string;
+}
+
+model AddRepositoryLinkRequest {
+  @field(1) projectId: string;
+  @field(2) provider: string;
+  @field(3) remoteName: string;
+  @field(4) oauthCode: string; // Will be exchanged for access token
+}
+model AddRepositoryLinkResponse {
+  @field(1) link: RepositoryLink;
+}
+
+model ListRepositoryLinksRequest {
+  @field(1) projectId: string;
+  @field(2) page?: PageRequest;
+}
+model ListRepositoryLinksResponse {
+  @field(1) links: RepositoryLink[];
+  @field(2) page?: PageResponse;
+}
+
+model SyncPullRequestsRequest {
+  @field(1) projectId: string;
+}
+model SyncPullRequestsResponse {
+  @field(1) success: boolean;
+}
+
+interface RepositoryService {
+  addRepositoryLink(
+    request: AddRepositoryLinkRequest,
+  ): AddRepositoryLinkResponse;
+  listRepositoryLinks(
+    request: ListRepositoryLinksRequest,
+  ): ListRepositoryLinksResponse;
+  syncPullRequests(request: SyncPullRequestsRequest): SyncPullRequestsResponse;
+}

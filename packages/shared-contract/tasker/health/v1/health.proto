@@ -369,3 +369,54 @@ service TaskNoteService {
   rpc ListTaskNotes(ListTaskNotesRequest) returns (ListTaskNotesResponse);
 }
 
+message RepositoryLink {
+  string id = 1;
+  string project_id = 2;
+  string provider = 3;
+  string remote_name = 4;
+  string created_at = 5;
+}
+
+message RemotePullRequest {
+  string id = 1;
+  string repository_link_id = 2;
+  string task_id = 3;
+  string remote_pr_id = 4;
+  string title = 5;
+  string status = 6;
+  string url = 7;
+  string updated_at = 8;
+}
+
+message AddRepositoryLinkRequest {
+  string project_id = 1;
+  string provider = 2;
+  string remote_name = 3;
+  string oauth_code = 4;
+}
+
+message AddRepositoryLinkResponse {
+  RepositoryLink link = 1;
+}
+
+message ListRepositoryLinksRequest {
+  string project_id = 1;
+}
+
+message ListRepositoryLinksResponse {
+  repeated RepositoryLink links = 1;
+}
+
+message SyncPullRequestsRequest {
+  string project_id = 1;
+}
+
+message SyncPullRequestsResponse {
+  bool success = 1;
+}
+
+service RepositoryService {
+  rpc AddRepositoryLink(AddRepositoryLinkRequest) returns (AddRepositoryLinkResponse);
+  rpc ListRepositoryLinks(ListRepositoryLinksRequest) returns (ListRepositoryLinksResponse);
+  rpc SyncPullRequests(SyncPullRequestsRequest) returns (SyncPullRequestsResponse);
+}
