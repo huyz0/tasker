@@ -106,4 +106,44 @@ describe("Repositories Handler >", () => {
     expect(listResp.links.length).toBe(1);
     expect(listResp.links[0].accessTokenEncrypted).toBeUndefined(); // Crucial security feature
   });
+
+  test("should synchronize pull requests from provider", async () => {
+    // 1. Setup
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P3", ownerId: "usr-2" })).project.id;
+    
+    // Mock the fetch for this specific test
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/pulls")) {
+        return new Response(JSON.stringify([
+          { number: 1, title: "PR 1 TSK-123", state: "open", draft: false, html_url: "http://github/1" },
+          { number: 2, title: "PR 2", state: "closed", merged_at: "2023-01-01", html_url: "http://github/2" }
+        ]), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "github",
+      remoteName: "foo/bar",
+      oauthCode: "fake-code",
+    });
+
+    await repHandler.syncPullRequests({ projectId: pId });
+
+    // Verify
+    const prs = await db.select().from(schemaSqlite.remotePullRequests);
+    expect(prs.length).toBeGreaterThanOrEqual(2);
+    
+    const pr1 = prs.find((p: any) => p.title === "PR 1 TSK-123");
+    expect(pr1).toBeDefined();
+    expect(pr1.status).toBe("open");
+    
+    const pr2 = prs.find((p: any) => p.title === "PR 2");
+    expect(pr2).toBeDefined();
+    expect(pr2.status).toBe("merged");
+  });
 });

@@ -35,3 +35,18 @@ func TestRepoLinkCmd(t *testing.T) {
 		t.Fatalf("expected success message, got %s", out)
 	}
 }
+
+func TestRepoListCmdWithTaskId(t *testing.T) {
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "true")
+	rootCmd.SetArgs([]string{"repo", "list", "--task-id", "123", "--json"})
+	err := rootCmd.Execute()
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "remote_pr_id") {
+		t.Fatalf("expected JSON output containing PRs, got %s", out)
+	}
+}

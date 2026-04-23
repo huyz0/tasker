@@ -17,6 +17,25 @@ function encryptToken(token: string): string {
     return `${iv.toString('hex')}:${authTag}:${encrypted}`;
 }
 
+function decryptToken(encryptedString: string): string {
+    const parts = encryptedString.split(':');
+    if (parts.length !== 3) throw new Error("Invalid encrypted token format");
+    const ivHex = parts[0];
+    const authTagHex = parts[1];
+    const encryptedHex = parts[2];
+    
+    if (!ivHex || !authTagHex || !encryptedHex) throw new Error("Missing encrypted components");
+    
+    const iv = Buffer.from(ivHex, 'hex');
+    const authTag = Buffer.from(authTagHex, 'hex');
+    
+    const decipher = crypto.createDecipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, 'utf8'), iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+}
+
 const AddRepositoryLinkSchema = z.object({
   projectId: z.string().min(1),
   provider: z.string().min(1),
@@ -114,7 +133,52 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     
     async syncPullRequests(req: unknown) {
       const parsed = SyncPullRequestsSchema.parse(req);
-      // Background logic would trigger a worker or external integration service here
+      const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
+      const prsTable = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
+      
+      const links = await db.select().from(linksTable).where(eq((linksTable as any).projectId, parsed.projectId));
+      
+      for (const link of links) {
+        if (link.provider === "github") {
+          try {
+            const token = decryptToken(link.accessTokenEncrypted);
+            const response = await fetch(`https://api.github.com/repos/${link.remoteName}/pulls?state=all&per_page=50`, {
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "Tasker-Agent"
+              }
+            });
+            if (response.ok) {
+              const prs = await response.json() as any[];
+              for (const pr of prs) {
+                const existing = await db.select().from(prsTable).where(eq((prsTable as any).remotePrId, String(pr.number)));
+                const prStatus = pr.merged_at ? 'merged' : (pr.state === 'closed' ? 'closed' : (pr.draft ? 'draft' : 'open'));
+                
+                if (existing.length === 0) {
+                  await insertRecord(db, prsTable, {
+                    id: `pr-${crypto.randomUUID()}`,
+                    repositoryLinkId: link.id,
+                    remotePrId: String(pr.number),
+                    title: pr.title,
+                    status: prStatus,
+                    url: pr.html_url
+                  }, isStandalone, 'updatedAt');
+                } else {
+                  await db.update(prsTable).set({
+                    title: pr.title,
+                    status: prStatus,
+                    updatedAt: isStandalone ? new Date() : undefined // MySQL usually has auto-update, but fallback
+                  }).where(eq((prsTable as any).id, existing[0].id));
+                }
+              }
+            }
+          } catch (e) {
+             console.error("Failed to sync repo", link.remoteName, e);
+          }
+        }
+      }
+      
       if (nc) nc.publish("domain.repository.sync_requested", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
       
       return { success: true };

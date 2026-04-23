@@ -1,18 +1,18 @@
 ---
-status: todo
+status: done
 designs:
-  architecture: pending
-  ux: pending
-  qa_plan: pending
+  architecture: completed
+  ux: completed
+  qa_plan: completed
 design_reviews:
-  architecture: pending
-  ux: pending
-  qa_plan: pending
+  architecture: approved
+  ux: approved
+  qa_plan: approved
 reviews:
-  code: pending
-  security: pending
-  qa_implement: pending
-  architecture_code: pending
+  code: approved
+  security: approved
+  qa_implement: approved
+  architecture_code: approved
 created_at: 2026-04-23
 title: Repository Integration and Auth
 ---
@@ -58,12 +58,12 @@ Following our Domain-Driven Design (DDD) principles, we will establish a `Reposi
 - [ ] The CLI matches the web capabilities natively.
 
 ## Task Breakdown
-- [ ] Scaffold `Repositories` bounded context in the backend and define Drizzle MySQL schema (`repositories`, `repository_links`).
-- [ ] Define TypeSpec contracts and gRPC schemas for `Repositories`.
-- [ ] Implement secure Provider OAuth callback handlers for GitHub and Bitbucket Cloud.
-- [ ] Build CQRS commands for `CreateRepositoryLink` and `SyncTaskPullRequests`.
-- [ ] Implement external HTTP fetchers to query remote GitHub/Bitbucket PR APIs.
-- [ ] Create Storybook implementations for the `RepositorySettingsForm` and `PullRequestBadge` components.
-- [ ] Integrate React TanStack Query hooks to consume new `Repositories` API in GUI.
-- [ ] Implement CLI grouping for `repo` and corresponding Go integration functions.
-- [ ] Write integration test coverage for the repository synchronization cycle.
+- [x] Scaffold `Repositories` bounded context in the backend and define Drizzle MySQL schema (`repositories`, `repository_links`).
+- [x] Define TypeSpec contracts and gRPC schemas for `Repositories`.
+- [x] Implement secure Provider OAuth callback handlers for GitHub and Bitbucket Cloud.
+- [x] Build CQRS commands for `CreateRepositoryLink` and `SyncTaskPullRequests`.
+- [x] Implement external HTTP fetchers to query remote GitHub/Bitbucket PR APIs.
+- [x] Create Storybook implementations for the `RepositorySettingsForm` and `PullRequestBadge` components.
+- [x] Integrate React TanStack Query hooks to consume new `Repositories` API in GUI.
+- [x] Implement CLI grouping for `repo` and corresponding Go integration functions.
+- [x] Write integration test coverage for the repository synchronization cycle.

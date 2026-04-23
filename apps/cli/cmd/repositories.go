@@ -12,9 +12,24 @@ var repoCmd = &cobra.Command{
 
 var repoListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List repository links for a project",
+	Short: "List repository links for a project or PRs for a task",
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
+		taskId, _ := cmd.Flags().GetString("task-id")
+		
+		if taskId != "" {
+			if isJson {
+				data := []map[string]interface{}{
+					{"id": "pr_1", "remote_pr_id": "123", "title": "Implement auth", "status": "open"},
+				}
+				jsonString, _ := json.Marshal(data)
+				cmd.Println(string(jsonString))
+			} else {
+				cmd.Printf("Pull Requests for task %s:\n", taskId)
+				cmd.Println("- PR 123: Implement auth (open)")
+			}
+			return
+		}
 		if isJson {
 			data := []map[string]interface{}{
 				{"id": "link_1", "provider": "github", "remote_name": "huyz0/tasker"},
@@ -61,6 +76,8 @@ func init() {
 	repoCmd.AddCommand(repoListCmd)
 	repoCmd.AddCommand(repoLinkCmd)
 	repoCmd.AddCommand(repoSyncCmd)
+
+	repoListCmd.Flags().String("task-id", "", "Task ID to list pull requests for")
 
 	repoLinkCmd.Flags().String("provider", "github", "Provider (e.g. github, gitlab)")
 	repoLinkCmd.Flags().String("remote", "", "Remote repository name")

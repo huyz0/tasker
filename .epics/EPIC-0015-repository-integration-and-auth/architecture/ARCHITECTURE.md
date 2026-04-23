@@ -1,61 +1,46 @@
----
-epic: EPIC-0015
-title: "Architecture Design — Repository Integration and Auth"
-status: draft
-created_at: 2026-04-23
----
+# Architecture: Repository Integration and Auth
 
-# Architecture Design — Repository Integration and Auth
+## 1. Context
+`EPIC-0015` introduces external repository linking to Tasker. By authenticating with GitHub and Bitbucket Cloud via OAuth, Tasker can sync Pull Requests and map them to internal tasks, granting AI agents and users full context on code deployments.
 
-## System Context & Approach
-This epic introduces the `Repositories` Bounded Context, focused on linking Tasker Projects securely with external version control platforms (GitHub, Bitbucket Cloud). It integrates with the established `Projects` and `Tasks` contexts by importing remote state (specifically Pull Requests) into Tasker for read-only consumption. The integration strictly adheres to the CQRS paradigm: user sync requests or background polling invoke commands that update the MySQL database with PR metadata, subsequently emitting Domain Events to keep OpenSearch synced, shielding core transactional flows from external API latency.
+## 2. Bounded Context: `Repositories`
+This epic introduces a new Domain-Driven Design (DDD) bounded context called `Repositories`.
 
-## Key Component Changes
-- **API (TypeSpec/Connect-RPC):**
-  - `RepositoriesService`
-    - `AddRepositoryLink(projectId, provider, remoteRepoName)`
-    - `ListRepositoryLinks(projectId)`
-    - `SyncPullRequests(repositoryId)`
-  - `OAuth2SecondaryService` (or added flow)
-    - `InitProviderAuth(provider, returnUrl)`
-    - `HandleProviderCallback(provider, code)`
-- **Database (MySQL/Drizzle):**
-  - **New tables:** `repository_links` (id, project_id, provider, remote_name, access_token), `remote_pull_requests` (id, repo_link_id, remote_pr_id, title, status, url).
-  - AES encryption must be handled seamlessly for `access_token` fields at the application boundary prior to DB insertion.
-- **Messaging (NATS):**
-  - Emits `RepositoryLinkCreated`
-  - Emits `PullRequestsSynced` (used to update OpenSearch indices for Tasks displaying PR badges)
-- **Search (OpenSearch):**
-  - Index `remote_pull_requests` to provide PR-Task relationship queries efficiently.
+### Entities & Value Objects
+- **`Repository`**: Represents a linked external repository.
+  - `id`: UUID
+  - `projectId`: UUID (foreign key to Projects)
+  - `provider`: Enum (`GITHUB`, `BITBUCKET`)
+  - `remoteRepoId`: String (ID or full name in the external provider)
+  - `accessToken`: String (AES-256 encrypted OAuth token)
+  - `createdAt`, `updatedAt`
 
-## Data Flow Diagram
-```mermaid
-sequenceDiagram
-    participant Frontend
-    participant API Gateway
-    participant External VCS API
-    participant MySQL
-    participant NATS
-    
-    Frontend->>API Gateway: HandleProviderCallback(code)
-    API Gateway->>External VCS API: Exchange code for Access Token
-    External VCS API-->>API Gateway: Token
-    API Gateway->>MySQL: Encrypt & Store Token in repository_links
-    API Gateway->>NATS: Emit RepositoryLinkCreated
-    API Gateway-->>Frontend: Success Response
-    
-    Frontend->>API Gateway: SyncPullRequests(repoId)
-    API Gateway->>External VCS API: Fetch PRs with Token
-    External VCS API-->>API Gateway: PR JSON Data
-    API Gateway->>MySQL: Upsert remote_pull_requests
-    API Gateway->>NATS: Emit PullRequestsSynced
-    API Gateway-->>Frontend: return synced PRs
-```
+- **`PullRequest`**: A cached copy of a remote PR linked to a Task.
+  - `id`: UUID
+  - `repositoryId`: UUID
+  - `taskId`: UUID
+  - `remotePrId`: String
+  - `remotePrNumber`: Integer
+  - `title`: String
+  - `status`: Enum (`OPEN`, `MERGED`, `CLOSED`)
+  - `url`: String
+  - `author`: String
 
-## Architecture Decision Records (ADRs)
-- [ADR-0001: OAuth Token Storage and Encryption](ADR-0001-oauth-token-encryption.md)
-- [ADR-0002: Remote API Sync Strategy](ADR-0002-remote-api-sync-strategy.md)
+### Command-Query Responsibility Segregation (CQRS)
+- **Commands**:
+  - `CreateRepositoryLink`: Establishes the OAuth connection and saves the encrypted token.
+  - `UnlinkRepository`: Deletes the link and revokes the token if possible.
+  - `SyncTaskPullRequests`: Triggered to fetch the latest PR state for a given task/repo.
+- **Queries**:
+  - `ListRepositories`: Returns repositories linked to a project.
+  - `GetPullRequestsForTask`: Retrieves cached PRs for a task to be rendered in the UI.
 
-## Migration & Deployment Impact
-- Database schema migration required to introduce `repository_links` and `remote_pull_requests`.
-- Node/Bun environment configuration must be updated with `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `BITBUCKET_CLIENT_ID`, and `BITBUCKET_CLIENT_SECRET` before deployment.
+## 3. Data Flow
+1. **OAuth Flow**: The frontend redirects the user to `/api/auth/{provider}/repo-link?projectId={id}`. The backend orchestrates the OAuth handshake, receives the access token, encrypts it, and stores it in the `repositories` table.
+2. **Synchronization**: A cron-based worker or manual `SyncPullRequests` command invokes the external provider's API (e.g., GitHub REST API) using the decrypted token. It parses PRs, searches for Tasker Task IDs in titles/bodies, and updates the `pull_requests` table.
+3. **Event Bus**: Upon PR sync, a Domain Event `PullRequestsSynced` is published to NATS, allowing other domains (e.g., UI WebSockets or Agent triggers) to react.
+
+## 4. Security & Compliance
+- **Token Encryption**: Access tokens MUST be encrypted at rest using `aes-256-gcm` with a master key derived from environment variables.
+- **SSRF Prevention**: Strict validation of remote provider endpoints. No user-supplied URLs are fetched directly; only hardcoded provider base URLs (e.g., `api.github.com`).
+- **Read-Only Scope**: OAuth scopes requested MUST be strictly read-only.

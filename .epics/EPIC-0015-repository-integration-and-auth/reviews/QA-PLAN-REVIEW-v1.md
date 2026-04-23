@@ -1,13 +1,14 @@
----
-timestamp: 2026-04-23T07:12:00Z
-decision: approved
----
+# QA Test Plan Review: EPIC-0015
 
-# QA Plan Review v1
+## Decision Review
+- **Formatting**: Strictly adheres to the `test-plan-standard.md` template structure (Given/When/Then).
+- **Test Coverage**: 
+  - `TC-001`: OAuth logic.
+  - `TC-002`: Token encryption verification.
+  - `TC-003`: Cache invalidation logic.
+  - `TC-004`: SSRF malicious input rejection.
+  - `TC-005`: CLI validation.
+- All core risk vectors outlined in the Architecture doc are covered by dedicated test cases.
 
-## Evaluation
-- **Completeness**: Evaluates all major points of failure, including successful integrations, backend rejection handling, and stale token degradations.
-- **Coverage Constraints**: Complies strictly with the TDD logic standard. Mentioning explicit `Vitest` unit checks for the Database token decryption layer, mapping perfectly to the risk factors identified in ADR-0001.
-
-## Decision
-**Approved.** The required Playwright UI and Vitest coverage parameters form a robust testing envelope covering both E2E verification and backend cryptographic sanity checks.
+## Outcome
+**APPROVED**
