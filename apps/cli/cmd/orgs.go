@@ -1,7 +1,12 @@
 package cmd
 
 import (
+	"context"
+	"net/http"
 	"github.com/spf13/cobra"
+	"connectrpc.com/connect"
+	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
+	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 )
 
 var orgsCmd = &cobra.Command{
@@ -13,13 +18,21 @@ var orgsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List organizations with pagination",
 	Run: func(cmd *cobra.Command, args []string) {
-		limit, _ := cmd.Flags().GetInt32("limit")
-		cursor, _ := cmd.Flags().GetString("cursor")
-		sort, _ := cmd.Flags().GetString("sort")
-		filter, _ := cmd.Flags().GetString("filter")
+		client := healthv1connect.NewOrgServiceClient(
+			http.DefaultClient,
+			"http://localhost:8080",
+		)
 
-		cmd.Printf("Fetching orgs: limit=%d, cursor=%s, sort=%s, filter=%s\n", limit, cursor, sort, filter)
-		// TODO: Call the actual Connect-RPC OrgService.ListOrgs method here
+		req := connect.NewRequest(&healthv1.ListOrgsRequest{})
+		res, err := client.ListOrgs(context.Background(), req)
+		if err != nil {
+			cmd.PrintErrf("Failed to list orgs: %v\n", err)
+			return
+		}
+
+		for _, org := range res.Msg.Organizations {
+			cmd.Printf("- %s (Slug: %s)\n", org.Name, org.Slug)
+		}
 	},
 }
 

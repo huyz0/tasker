@@ -1,18 +1,40 @@
 import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from "@connectrpc/connect";
+import { createConnectTransport } from "@connectrpc/connect-web";
+import { TaskService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
+
+const transport = createConnectTransport({
+  baseUrl: "http://localhost:8080",
+});
+const taskClient = createClient(TaskService, transport);
 
 export function TasksWorkbench() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
+  const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   useEffect(() => setActivePageTitle('Tasks Workbench'), [setActivePageTitle]);
 
-  const [expandedTask, setExpandedTask] = useState<number | null>(null);
+  const [expandedTask, setExpandedTask] = useState<any | null>(null);
+
+  const { data: tasksData, isLoading } = useQuery({
+    queryKey: ['tasks', activeProjectId],
+    queryFn: async () => {
+      const resp = await taskClient.listTasks({ projectId: activeProjectId });
+      return resp.tasks;
+    }
+  });
 
   const columns = [
-    { title: 'Todo', count: 3, items: [1, 2, 3] },
-    { title: 'In Progress', count: 2, items: [4, 5] },
-    { title: 'Done', count: 7, items: [6, 7] }
-  ];
+    { id: 'todo', display: 'Todo' },
+    { id: 'in-progress', display: 'In Progress' },
+    { id: 'done', display: 'Done' }
+  ].map(col => {
+    const items = tasksData?.filter(t => (t.status || 'todo') === col.id) || [];
+    return { ...col, items, count: items.length };
+  });
 
   return (
     <div className="flex h-full gap-6">
@@ -26,22 +48,24 @@ export function TasksWorkbench() {
         </div>
         
         <div className="flex gap-4 overflow-x-auto pb-4 h-full">
-          {columns.map(col => (
-             <div key={col.title} className="w-80 flex-shrink-0 flex flex-col bg-muted/30 rounded-lg p-3">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground w-full text-center py-10">Loading tasks...</p>
+          ) : columns.map(col => (
+             <div key={col.id} className="w-80 flex-shrink-0 flex flex-col bg-muted/30 rounded-lg p-3">
                <div className="flex items-center justify-between mb-3 font-medium text-sm">
-                 <span className="flex items-center gap-2">{col.title} <span className="text-xs bg-muted text-muted-foreground px-2 rounded-full">{col.count}</span></span>
+                 <span className="flex items-center gap-2">{col.display} <span className="text-xs bg-muted text-muted-foreground px-2 rounded-full">{col.count}</span></span>
                  <button className="text-muted-foreground hover:text-foreground">+</button>
                </div>
                <div className="flex flex-col gap-3 flex-1 overflow-y-auto">
                  {col.items.map(task => (
-                   <div key={task} onClick={() => setExpandedTask(task)} className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-pointer transition-colors">
-                      <div className="text-xs text-muted-foreground mb-1">Project Phoenix</div>
-                      <h4 className="font-medium text-sm leading-tight mb-2">Implement Feature {task}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">This is a description for the task that needs to be implemented. It could span multiple lines.</p>
+                   <div key={task.id} onClick={() => setExpandedTask(task)} className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-pointer transition-colors">
+                      <div className="text-xs text-muted-foreground mb-1">Project {activeProjectId}</div>
+                      <h4 className="font-medium text-sm leading-tight mb-2">{task.title}</h4>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{task.description || 'No description provided.'}</p>
                       
-                      {/* Pull Requests list inline */}
+                      {/* Pull Requests list inline (mocked for now until integrated) */}
                       <div className="flex gap-2 mb-3">
-                         <PullRequestBadge pr={{ remotePrId: `#${100+task}`, title: `Fix issue in feature ${task}`, status: task % 2 === 0 ? 'merged' : 'open', url: '#' }} />
+                         <PullRequestBadge pr={{ remotePrId: `#101`, title: `Fix issue in feature`, status: 'open', url: '#' }} />
                       </div>
 
                       <div className="flex items-center justify-between mt-auto">
@@ -65,20 +89,18 @@ export function TasksWorkbench() {
              <button onClick={() => setExpandedTask(null)} className="text-muted-foreground hover:text-foreground">✕</button>
            </div>
            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-             <div className="text-sm text-primary font-medium mb-1">#{expandedTask}</div>
-             <h3 className="text-xl font-bold mb-4">Implement Feature {expandedTask}</h3>
+             <div className="text-sm text-primary font-medium mb-1">ID: {expandedTask.id}</div>
+             <h3 className="text-xl font-bold mb-4">{expandedTask.title}</h3>
              <div className="space-y-3 text-sm text-muted-foreground mb-6">
-                <div className="flex justify-between"><span className="w-24">Status:</span> <span className="text-foreground">In Progress</span></div>
-                <div className="flex justify-between"><span className="w-24">Assignee:</span> <span className="text-foreground">Agent Alpha</span></div>
-                <div className="flex justify-between"><span className="w-24">Due:</span> <span className="text-foreground">Nov 3</span></div>
+                <div className="flex justify-between"><span className="w-24">Status:</span> <span className="text-foreground">{expandedTask.status || 'todo'}</span></div>
+                <div className="flex justify-between"><span className="w-24">Assignee:</span> <span className="text-foreground">Unassigned</span></div>
              </div>
              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <p><strong>Objective</strong>: Complete the implementation of the specified feature to ensure full compliance with the business logic.</p>
-                <ul>
-                  <li>Review flow</li>
-                  <li>Implement UI</li>
-                  <li>Write tests</li>
-                </ul>
+                {expandedTask.description ? (
+                  <MarkdownRenderer content={expandedTask.description} />
+                ) : (
+                  <p className="text-muted-foreground italic">No description provided.</p>
+                )}
              </div>
            </div>
         </div>

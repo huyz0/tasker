@@ -52,5 +52,14 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       if (nc) nc.publish("domain.agent.created", Buffer.from(JSON.stringify(payload)));
       return { agent: payload };
     },
+    async listAgents(req: any) {
+      if (!req.orgId) throw new Error("orgId is required");
+      const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+      // Drizzle eq helper is already in scope if we imported it, let's import it if needed.
+      // Wait, eq is not imported in this file. I need to add the import or just use db.select.
+      const { eq } = require("drizzle-orm");
+      const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).orgId, req.orgId));
+      return { agents: result };
+    },
   };
 };

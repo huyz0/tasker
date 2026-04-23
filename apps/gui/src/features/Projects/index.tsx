@@ -12,27 +12,27 @@ const transport = createConnectTransport({
 const projectClient = createClient(ProjectService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
 
-// HARDCODED orgId and ownerId for MVP
-const MOCK_ORG_ID = "org-1";
-const MOCK_OWNER_ID = "usr-1";
-
 export function ProjectsWizard() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
+  const activeOrgId = useLayoutStore((s) => s.activeOrgId);
+  // Using a mock owner ID for now as user sessions are handled securely server-side.
+  const activeOwnerId = "usr-1"; 
+
   const queryClient = useQueryClient();
   useEffect(() => setActivePageTitle('Projects'), [setActivePageTitle]);
 
   const { data: templatesData, isLoading: isLoadingTemplates } = useQuery({
-    queryKey: ['templates', MOCK_ORG_ID],
+    queryKey: ['templates', activeOrgId],
     queryFn: async () => {
-      const resp = await templateClient.listTemplates({ orgId: MOCK_ORG_ID });
+      const resp = await templateClient.listTemplates({ orgId: activeOrgId });
       return resp.templates;
     }
   });
 
   const { data: projectsData, isLoading: isLoadingProjects } = useQuery({
-    queryKey: ['projects', MOCK_ORG_ID],
+    queryKey: ['projects', activeOrgId],
     queryFn: async () => {
-      const resp = await projectClient.listProjects({ orgId: MOCK_ORG_ID });
+      const resp = await projectClient.listProjects({ orgId: activeOrgId });
       return resp.projects;
     }
   });
@@ -43,15 +43,15 @@ export function ProjectsWizard() {
       const template = templatesData?.find(t => t.id === templateId);
       const name = `${template?.name || 'New'} Project - ${Math.random().toString(36).substring(7)}`;
       const resp = await projectClient.createProject({
-        orgId: MOCK_ORG_ID,
+        orgId: activeOrgId,
         templateId,
         name,
-        ownerId: MOCK_OWNER_ID
+        ownerId: activeOwnerId
       });
       return resp.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', MOCK_ORG_ID] });
+      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
     }
   });
 

@@ -11,11 +11,9 @@ const transport = createConnectTransport({
 });
 const artifactClient = createClient(ArtifactService, transport);
 
-// HARDCODED project ID for MVP
-const MOCK_PROJECT_ID = "p-mock-1";
-
 export function ArtifactsBrowser() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
+  const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   useEffect(() => setActivePageTitle('Artifacts'), [setActivePageTitle]);
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -23,9 +21,9 @@ export function ArtifactsBrowser() {
 
   // Fetch all folders for the project
   const { data: foldersData, isLoading: isLoadingFolders } = useQuery({
-    queryKey: ['folders', MOCK_PROJECT_ID],
+    queryKey: ['folders', activeProjectId],
     queryFn: async () => {
-      const resp = await artifactClient.listFolders({ projectId: MOCK_PROJECT_ID });
+      const resp = await artifactClient.listFolders({ projectId: activeProjectId });
       return resp.folders;
     }
   });

@@ -229,6 +229,15 @@ message CreateAgentResponse {
 service AgentService {
   rpc CreateAgentRole(CreateAgentRoleRequest) returns (CreateAgentRoleResponse);
   rpc CreateAgent(CreateAgentRequest) returns (CreateAgentResponse);
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+}
+
+message ListAgentsRequest {
+  string org_id = 1;
+}
+
+message ListAgentsResponse {
+  repeated Agent agents = 1;
 }
 
 message Task {
@@ -260,9 +269,30 @@ message AssignTaskResponse {
   bool success = 1;
 }
 
+message PageRequest {
+  int32 limit = 1;
+  string cursor = 2;
+}
+
+message PageResponse {
+  string next_cursor = 1;
+  int32 total_count = 2;
+}
+
+message ListTasksRequest {
+  string project_id = 1;
+  PageRequest page = 2;
+}
+
+message ListTasksResponse {
+  repeated Task tasks = 1;
+  PageResponse page = 2;
+}
+
 service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
 }
 
 message Folder {
