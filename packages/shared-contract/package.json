@@ -9,15 +9,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
-  "dependencies": {
-    "@bufbuild/protobuf": "^2.11.0",
-    "@connectrpc/connect": "^2.1.1",
-    "@typespec/compiler": "^1.11.0"
-  },
-  "devDependencies": {
-    "@bufbuild/buf": "^1.67.0",
-    "@bufbuild/protoc-gen-es": "^2.11.0",
-    "@typespec/protobuf": "^0.80.0"
-  }
+  "type": "module"
 }
