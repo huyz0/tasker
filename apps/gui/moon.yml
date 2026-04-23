@@ -10,7 +10,6 @@ tasks:
     inputs:
       - 'src/**/*'
       - 'package.json'
-      - 'eslint.config.js'
 
   typecheck:
     command: 'bunx tsc --noEmit'
