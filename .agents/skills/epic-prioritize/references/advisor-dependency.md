@@ -14,7 +14,7 @@ Before any reasoning, you MUST autonomously load your own context:
 2. **Reference files**: Read these files from the skill's `references/` directory:
    - `references/scoring-rubric.md` — Scoring scale and weights
    - `references/assessment-template.md` — Required output format
-3. **Epic registry**: Scan `.epics/*/EPIC.md` using `grep_search` to extract frontmatter (`status`, `title`, `created_at`) and `## Dependencies` sections. Build a full registry: `{ id, title, status, dependencies[] }`.
+3. **Epic registry**: Scan `.epics/*/EPIC.md` using `grep_search` to extract frontmatter (`status`, `title`, `created_at`) and `## Dependencies` sections. Also read `.archive/EPICS-HISTORY.md` (if it exists) to include completed and archived epics. Build a full registry: `{ id, title, status, dependencies[] }`.
 4. **Domain data**: Read `.specs/product/architecture.md` (bounded context boundaries, integration points).
 
 ## Candidate Discovery

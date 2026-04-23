@@ -15,7 +15,7 @@ Before any reasoning, you MUST autonomously load your own context:
 3. **Reference files**: Read these files from the skill's `references/` directory:
    - `references/scoring-rubric.md` — Scoring scale and weights
    - `references/assessment-template.md` — Required output format
-4. **Epic registry**: Scan `.epics/*/EPIC.md` using `grep_search` to extract frontmatter (`status`, `title`).
+4. **Epic registry**: Scan `.epics/*/EPIC.md` using `grep_search` to extract frontmatter (`status`, `title`). Also read `.archive/EPICS-HISTORY.md` (if it exists).
 5. **Test infrastructure survey**:
    - Scan for `*.test.ts` and `*.test.tsx` files per module to measure test density.
    - Read `vitest.config.ts` and coverage configuration if available.

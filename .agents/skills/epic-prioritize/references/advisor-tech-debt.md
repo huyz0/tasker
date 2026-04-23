@@ -15,7 +15,7 @@ Before any reasoning, you MUST autonomously load your own context:
 3. **Reference files**: Read these files from the skill's `references/` directory:
    - `references/scoring-rubric.md` — Scoring scale and weights
    - `references/assessment-template.md` — Required output format
-4. **Epic registry**: Scan `.epics/*/EPIC.md` using `grep_search` to extract frontmatter (`status`, `title`). Also scan for review findings in `.epics/*/reviews/`.
+4. **Epic registry**: Scan `.epics/*/EPIC.md` using `grep_search` to extract frontmatter (`status`, `title`). Also read `.archive/EPICS-HISTORY.md` (if it exists). Also scan for review findings in `.epics/*/reviews/` and `.archive/epics/*/reviews/`.
 5. **Codebase survey**: List `apps/backend/src/modules/` to identify bounded contexts. Look for code smells: large files (>400 lines), inconsistent patterns, missing validation layers.
 
 ## Candidate Discovery

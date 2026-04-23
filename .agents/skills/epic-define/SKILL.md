@@ -36,7 +36,7 @@ Create a detailed, standardized Epic in `.epics/` aligning with `.specs/standard
    - Interactive: Ask for Definition of Done (completion criteria) and immediate trackable sub-tasks. Wait for answer.
    - Autonomous: Generate a comprehensive Definition of Done and sub-tasks.
 5. **ID Allocation:**
-   - Scan `.epics/` directory. Next ID = `max(Existing IDs) + 1` or `0001` if empty.
+   - Scan `.epics/` and `.archive/epics/` directories. Next ID = `max(Existing IDs) + 1` or `0001` if empty.
 6. **File Generation:**
    - Target dir: `.epics/EPIC-<4-digit-id>-<kebab-case-title>/`
    - File: `EPIC.md`
