@@ -153,3 +153,23 @@ export const taskNotes = mysqlTable("task_notes", {
   content: varchar("content", { length: 8192 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const repositoryLinks = mysqlTable("repository_links", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  projectId: varchar("project_id", { length: 256 }).notNull().references(() => projects.id),
+  provider: mysqlEnum("provider", ['github', 'bitbucket']).notNull(),
+  remoteName: varchar("remote_name", { length: 256 }).notNull(),
+  accessTokenEncrypted: varchar("access_token_encrypted", { length: 2048 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const remotePullRequests = mysqlTable("remote_pull_requests", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  repositoryLinkId: varchar("repository_link_id", { length: 256 }).notNull().references(() => repositoryLinks.id),
+  taskId: varchar("task_id", { length: 256 }).references(() => tasks.id),
+  remotePrId: varchar("remote_pr_id", { length: 256 }).notNull(),
+  title: varchar("title", { length: 512 }).notNull(),
+  status: mysqlEnum("status", ['open', 'closed', 'merged', 'draft']).notNull(),
+  url: varchar("url", { length: 1024 }).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

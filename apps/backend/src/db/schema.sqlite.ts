@@ -153,3 +153,23 @@ export const taskNotes = sqliteTable("task_notes", {
   content: text("content").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+export const repositoryLinks = sqliteTable("repository_links", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id),
+  provider: text("provider").notNull(), // 'github' | 'bitbucket'
+  remoteName: text("remote_name").notNull(),
+  accessTokenEncrypted: text("access_token_encrypted").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const remotePullRequests = sqliteTable("remote_pull_requests", {
+  id: text("id").primaryKey(),
+  repositoryLinkId: text("repository_link_id").notNull().references(() => repositoryLinks.id),
+  taskId: text("task_id").references(() => tasks.id),
+  remotePrId: text("remote_pr_id").notNull(),
+  title: text("title").notNull(),
+  status: text("status").notNull(), // 'open' | 'closed' | 'merged' | 'draft'
+  url: text("url").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
