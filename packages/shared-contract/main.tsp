@@ -523,3 +523,26 @@ interface RepositoryService {
   ): ListRepositoryLinksResponse;
   syncPullRequests(request: SyncPullRequestsRequest): SyncPullRequestsResponse;
 }
+
+// ==== Search ====
+
+model SearchResult {
+  @field(1) id: string;
+  @field(2) type: string; // "task" | "artifact"
+  @field(3) title: string;
+  @field(4) snippet: string;
+}
+
+model UniversalSearchRequest {
+  @field(1) query: string;
+  @field(2) page?: PageRequest;
+}
+
+model UniversalSearchResponse {
+  @field(1) results: SearchResult[];
+  @field(2) page?: PageResponse;
+}
+
+interface SearchService {
+  universalSearch(request: UniversalSearchRequest): UniversalSearchResponse;
+}

@@ -1,6 +1,6 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, RepositoryService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, RepositoryService, SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
 import { createOrgsHandler } from "./modules/orgs/orgs.handler";
@@ -11,6 +11,7 @@ import { createAgentsHandler } from "./modules/agents/agents.handler";
 import { createArtifactsHandler } from "./modules/artifacts/artifacts.handler";
 import { createCommentsHandler } from "./modules/comments/comments.handler";
 import { createRepositoriesHandler } from "./modules/repositories/repositories.handler";
+import createSearchHandler from "./modules/search/search.handler";
 import { setupDatabase } from "./db/db";
 import { connect as natsConnect } from "nats";
 
@@ -43,6 +44,7 @@ const handler = connectNodeAdapter({
     router.service(CommentService as any, createCommentsHandler(db, nc));
     router.service(TaskNoteService as any, createTaskNotesHandler(db, nc));
     router.service(RepositoryService as any, createRepositoriesHandler(db, nc));
+    createSearchHandler(router, db);
   },
 });
 

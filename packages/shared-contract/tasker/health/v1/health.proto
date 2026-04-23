@@ -456,3 +456,22 @@ service RepositoryService {
   rpc ListRepositoryLinks(ListRepositoryLinksRequest) returns (ListRepositoryLinksResponse);
   rpc SyncPullRequests(SyncPullRequestsRequest) returns (SyncPullRequestsResponse);
 }
+
+message SearchResult {
+  string id = 1;
+  string type = 2; // "task" | "artifact"
+  string title = 3;
+  string snippet = 4;
+}
+
+message UniversalSearchRequest {
+  string query = 1;
+}
+
+message UniversalSearchResponse {
+  repeated SearchResult results = 1;
+}
+
+service SearchService {
+  rpc UniversalSearch(UniversalSearchRequest) returns (UniversalSearchResponse);
+}

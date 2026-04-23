@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
+import { GlobalSearch } from './GlobalSearch';
 
 const NAVIGATION_ITEMS = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -39,7 +40,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Tasker
           </div>
         </div>
-        <UserCircle className="h-6 w-6 text-muted-foreground" />
+        <div className="flex items-center gap-2">
+          <GlobalSearch />
+          <UserCircle className="h-6 w-6 text-muted-foreground" />
+        </div>
       </header>
 
       {/* Sidebar Navigation */}
@@ -49,6 +53,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-primary" />
               Tasker
+            </div>
+            <div className="hidden md:flex flex-1 justify-end ml-4">
+               <GlobalSearch />
             </div>
           </div>
           <nav className="flex-1 space-y-1 p-4">

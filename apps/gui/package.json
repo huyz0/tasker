@@ -16,6 +16,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "shared-contract": "workspace:*"
+    "shared-contract": "workspace:*",
+    "use-debounce": "^10.1.1"
   }
 }

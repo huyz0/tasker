@@ -45,6 +45,8 @@ const (
 	TaskNoteServiceName = "tasker.health.v1.TaskNoteService"
 	// RepositoryServiceName is the fully-qualified name of the RepositoryService service.
 	RepositoryServiceName = "tasker.health.v1.RepositoryService"
+	// SearchServiceName is the fully-qualified name of the SearchService service.
+	SearchServiceName = "tasker.health.v1.SearchService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -135,6 +137,9 @@ const (
 	// RepositoryServiceSyncPullRequestsProcedure is the fully-qualified name of the RepositoryService's
 	// SyncPullRequests RPC.
 	RepositoryServiceSyncPullRequestsProcedure = "/tasker.health.v1.RepositoryService/SyncPullRequests"
+	// SearchServiceUniversalSearchProcedure is the fully-qualified name of the SearchService's
+	// UniversalSearch RPC.
+	SearchServiceUniversalSearchProcedure = "/tasker.health.v1.SearchService/UniversalSearch"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -180,6 +185,8 @@ var (
 	repositoryServiceAddRepositoryLinkMethodDescriptor   = repositoryServiceServiceDescriptor.Methods().ByName("AddRepositoryLink")
 	repositoryServiceListRepositoryLinksMethodDescriptor = repositoryServiceServiceDescriptor.Methods().ByName("ListRepositoryLinks")
 	repositoryServiceSyncPullRequestsMethodDescriptor    = repositoryServiceServiceDescriptor.Methods().ByName("SyncPullRequests")
+	searchServiceServiceDescriptor                       = v1.File_tasker_health_v1_health_proto.Services().ByName("SearchService")
+	searchServiceUniversalSearchMethodDescriptor         = searchServiceServiceDescriptor.Methods().ByName("UniversalSearch")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -1439,4 +1446,72 @@ func (UnimplementedRepositoryServiceHandler) ListRepositoryLinks(context.Context
 
 func (UnimplementedRepositoryServiceHandler) SyncPullRequests(context.Context, *connect.Request[v1.SyncPullRequestsRequest]) (*connect.Response[v1.SyncPullRequestsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RepositoryService.SyncPullRequests is not implemented"))
+}
+
+// SearchServiceClient is a client for the tasker.health.v1.SearchService service.
+type SearchServiceClient interface {
+	UniversalSearch(context.Context, *connect.Request[v1.UniversalSearchRequest]) (*connect.Response[v1.UniversalSearchResponse], error)
+}
+
+// NewSearchServiceClient constructs a client for the tasker.health.v1.SearchService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewSearchServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SearchServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &searchServiceClient{
+		universalSearch: connect.NewClient[v1.UniversalSearchRequest, v1.UniversalSearchResponse](
+			httpClient,
+			baseURL+SearchServiceUniversalSearchProcedure,
+			connect.WithSchema(searchServiceUniversalSearchMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// searchServiceClient implements SearchServiceClient.
+type searchServiceClient struct {
+	universalSearch *connect.Client[v1.UniversalSearchRequest, v1.UniversalSearchResponse]
+}
+
+// UniversalSearch calls tasker.health.v1.SearchService.UniversalSearch.
+func (c *searchServiceClient) UniversalSearch(ctx context.Context, req *connect.Request[v1.UniversalSearchRequest]) (*connect.Response[v1.UniversalSearchResponse], error) {
+	return c.universalSearch.CallUnary(ctx, req)
+}
+
+// SearchServiceHandler is an implementation of the tasker.health.v1.SearchService service.
+type SearchServiceHandler interface {
+	UniversalSearch(context.Context, *connect.Request[v1.UniversalSearchRequest]) (*connect.Response[v1.UniversalSearchResponse], error)
+}
+
+// NewSearchServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewSearchServiceHandler(svc SearchServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	searchServiceUniversalSearchHandler := connect.NewUnaryHandler(
+		SearchServiceUniversalSearchProcedure,
+		svc.UniversalSearch,
+		connect.WithSchema(searchServiceUniversalSearchMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.SearchService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case SearchServiceUniversalSearchProcedure:
+			searchServiceUniversalSearchHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedSearchServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedSearchServiceHandler struct{}
+
+func (UnimplementedSearchServiceHandler) UniversalSearch(context.Context, *connect.Request[v1.UniversalSearchRequest]) (*connect.Response[v1.UniversalSearchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.SearchService.UniversalSearch is not implemented"))
 }
