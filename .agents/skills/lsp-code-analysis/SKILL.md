@@ -1,32 +1,29 @@
 ---
 name: lsp-code-analysis
-description: Compiler-accurate code intelligence via LSP. Navigate definitions, references, outlines, docs, and symbols. Use for exploring unfamiliar codebases, impact analysis, and dependency tracing.
+description: Compiler-accurate code intelligence via LSP. Use for exploring unfamiliar codebases, impact analysis, and dependency tracing in TS/Go. MANDATORY: You MUST prefer this skill over builtin grep_search or view_file for logic tracing.
 ---
 
-# LSP Code Analysis
+# Role
+LSP Analyst.
 
-## Setup & Execution
-- **Install**: `npm install -g @huyz0/lsp-cli` -> `lsp install <typescript|python|go|...>`
-- **Behavior**: Auto-starts servers. Outputs JSON by default.
-- **Global Flags**: `--output markdown` (human readable), `--dry-run`, `--json '{...}'` (direct payload).
+# Goal
+Execute symbol-aware code navigation via CLI to avoid token bloat.
 
-## Commands
-Prefer over `read`/`grep` for all code understanding tasks.
-- `lsp outline <file> [--all]` -> File symbol tree. **Run this first on unfamiliar files.**
-- `lsp definition <file> --scope <scope> [--mode definition|declaration|type_definition]` -> Go to definition.
-- `lsp reference <file> --scope <scope> [--mode implementations] [pagination]` -> Find usages.
-- `lsp doc <file> --scope <scope>` -> Type signatures and docs.
-- `lsp symbol <file> --scope <scope>` -> Get symbol source code (avoids loading whole files).
-- `lsp search "<query>" [--kinds class|function|...] [pagination]` -> Workspace-wide search.
-- `lsp locate <file> --scope <scope> [--find "<pattern>"]` -> Verify scope resolution.
-- `lsp schema [command]` -> Fetch JSON schema for inputs.
-- `lsp server list` -> Running servers.
+# Constraints
+- DO NOT use `npm` or `npx`. ALWAYS use `bunx @huyz0/lsp-cli`.
+- DO NOT output JSON. ALWAYS use `--output markdown`.
+- DO NOT use `grep_search` or `view_file` for logic tracing in TS/Go. ALWAYS use LSP.
+- DO NOT use LSP for `.tsp`, `.yml`, `.md`, config files. ALWAYS use `grep_search` or `view_file`.
+- DO NOT view huge files directly. ALWAYS use `lsp outline` first.
 
-## Locators & Pagination
-- `--scope`: `42` (line), `10,20` (lines 10-20), `10,0` (line 10 to EOF), `Class`, `Class.method`.
-- `--find`: String pattern search inside scope. Use `<|>` to indicate exact cursor pos.
-- **Pagination** flags (for `reference` / `search`): `--max-items 20 --start-index 0 --pagination-id <id>`
+# Instructions
+1. Run via `run_command` tool.
+2. Install servers if needed: `bunx @huyz0/lsp-cli install typescript go`.
+3. Unfamiliar file? Get tree: `bunx @huyz0/lsp-cli outline <file> --output markdown`.
+4. Trace usage? Find refs: `bunx @huyz0/lsp-cli reference <file> --scope <scope> --output markdown`.
+5. Find declaration? Go def: `bunx @huyz0/lsp-cli definition <file> --scope <scope> --output markdown`.
+6. Extract code? Get symbol: `bunx @huyz0/lsp-cli symbol <file> --scope <scope> --output markdown`.
+7. Global search? Search kinds: `bunx @huyz0/lsp-cli search "<query>" --output markdown`.
 
-## Critical Rule
-- **ALWAYS** use `lsp` commands for code navigation.
-- **ONLY** use `grep` or `read` for literal strings or comments.
+# Output Format
+Markdown snippets.
