@@ -4,6 +4,11 @@ tasks:
     inputs:
       - 'src/**/*'
       - '**/*.test.ts'
+  test-integration:
+    command: 'bun run test:integration'
+    inputs:
+      - 'src/**/*'
+      - '**/*.integration.test.ts'
   build:
     command: 'bun build ./src/index.ts --target bun --outdir dist'
   build-standalone:
