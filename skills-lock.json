@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "lsp-code-analysis": {
+      "source": "huyz0/lsp-cli",
+      "ref": "main",
+      "sourceType": "github",
+      "computedHash": "c8efffbd2194fe3973c9302f68e7e283db8b4a499742c605cd717aef3f1c7782"
+    }
+  }
+}

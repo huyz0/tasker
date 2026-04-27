@@ -1,0 +1,14 @@
+{
+  "name": "@lsp-cli/skill",
+  "version": "0.1.0",
+  "description": "Agent skill for LSP-powered code intelligence. Installs to .agents/skills/lsp-code-analysis/",
+  "bin": {
+    "skills-install": "./scripts/install.sh"
+  },
+  "scripts": {
+    "install-skill": "bash ./scripts/install.sh"
+  },
+  "files": ["SKILL.md", "scripts/"],
+  "keywords": ["lsp", "agent-skill", "code-intelligence"],
+  "license": "MIT"
+}
