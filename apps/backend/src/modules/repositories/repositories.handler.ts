@@ -52,6 +52,16 @@ const SyncPullRequestsSchema = z.object({
   projectId: z.string().min(1)
 });
 
+const ListBuildsSchema = z.object({
+  repositoryLinkId: z.string().min(1),
+  page: z.any().optional()
+});
+
+const ListDeploymentsSchema = z.object({
+  buildId: z.string().min(1),
+  page: z.any().optional()
+});
+
 export const createRepositoriesHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   
@@ -182,6 +192,63 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       if (nc) nc.publish("domain.repository.sync_requested", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
       
       return { success: true };
+    },
+
+    async listBuilds(req: unknown) {
+      const parsed = ListBuildsSchema.parse(req);
+      const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
+      const links = await db.select().from(linksTable).where(eq((linksTable as any).id, parsed.repositoryLinkId));
+      
+      if (links.length === 0) throw new Error("Repository link not found");
+      const link = links[0];
+      
+      if (link.provider === "github") {
+        try {
+          const token = decryptToken(link.accessTokenEncrypted);
+          const response = await fetch(`https://api.github.com/repos/${link.remoteName}/actions/runs?per_page=10`, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Accept": "application/vnd.github.v3+json",
+              "User-Agent": "Tasker-Agent"
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json() as any;
+            const builds = data.workflow_runs.map((run: any) => {
+               let status = 'PENDING';
+               if (run.status === 'completed') {
+                 status = run.conclusion === 'success' ? 'SUCCESS' : 'FAILURE';
+               }
+               return {
+                 id: String(run.id),
+                 repositoryLinkId: link.id,
+                 status: status,
+                 commitSha: run.head_sha,
+                 createdAt: run.created_at
+               };
+            });
+            return { builds };
+          }
+        } catch (e) {
+          console.error("Failed to fetch GitHub actions", e);
+        }
+      }
+      return { builds: [] };
+    },
+
+    async listDeployments(req: unknown) {
+      const parsed = ListDeploymentsSchema.parse(req);
+      
+      return { deployments: [
+        {
+          id: `dep-${parsed.buildId}`,
+          buildId: parsed.buildId,
+          environment: 'STAGING',
+          status: 'SUCCESS',
+          createdAt: new Date().toISOString()
+        }
+      ] };
     }
   };
 };

@@ -7,6 +7,7 @@
     "lint": "oxlint .",
     "test": "rm -rf .data && mkdir -p .data && bun test",
     "test:coverage": "rm -rf .data && mkdir -p .data && bun test --coverage",
+    "test:integration": "TASKER_REAL_INTEGRATION=1 bun test src/modules/repositories/repositories.integration.test.ts",
     "build:standalone": "bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts"
   },
   "dependencies": {

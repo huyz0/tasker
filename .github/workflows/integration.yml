@@ -1,0 +1,42 @@
+name: Real Integration Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'apps/backend/src/modules/repositories/**'
+      - '.github/workflows/integration.yml'
+
+jobs:
+  integration:
+    name: GitHub Integration Tests
+    runs-on: ubuntu-latest
+    
+    # We only run this if the secrets are available (typically not available to forks)
+    env:
+      HAS_TOKEN: ${{ secrets.INTEGRATION_TEST_TOKEN != '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Install dependencies
+        run: bun install
+        
+      - name: Run Integration Tests
+        if: env.HAS_TOKEN == 'true'
+        env:
+          TASKER_REAL_INTEGRATION: "1"
+          GITHUB_TEST_TOKEN: ${{ secrets.INTEGRATION_TEST_TOKEN }}
+          GITHUB_TEST_REPO: "huyz0/tasker-test-sandbox"
+        run: |
+          cd apps/backend
+          bun run test:integration
+          
+      - name: Skip Notification
+        if: env.HAS_TOKEN == 'false'
+        run: echo "Skipping integration tests because INTEGRATION_TEST_TOKEN is missing (expected for PRs from forks)."

@@ -514,6 +514,42 @@ model SyncPullRequestsResponse {
   @field(1) success: boolean;
 }
 
+model Build {
+  @field(1) id: string;
+  @field(2) repositoryLinkId: string;
+  @field(3) status: string;
+  @field(4) commitSha: string;
+  @field(5) createdAt: string;
+}
+
+model Deployment {
+  @field(1) id: string;
+  @field(2) buildId: string;
+  @field(3) environment: string;
+  @field(4) status: string;
+  @field(5) createdAt: string;
+}
+
+model ListBuildsRequest {
+  @field(1) repositoryLinkId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListBuildsResponse {
+  @field(1) builds: Build[];
+  @field(2) page?: PageResponse;
+}
+
+model ListDeploymentsRequest {
+  @field(1) buildId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListDeploymentsResponse {
+  @field(1) deployments: Deployment[];
+  @field(2) page?: PageResponse;
+}
+
 interface RepositoryService {
   addRepositoryLink(
     request: AddRepositoryLinkRequest,
@@ -522,6 +558,8 @@ interface RepositoryService {
     request: ListRepositoryLinksRequest,
   ): ListRepositoryLinksResponse;
   syncPullRequests(request: SyncPullRequestsRequest): SyncPullRequestsResponse;
+  listBuilds(request: ListBuildsRequest): ListBuildsResponse;
+  listDeployments(request: ListDeploymentsRequest): ListDeploymentsResponse;
 }
 
 // ==== Search ====
