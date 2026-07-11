@@ -1,5 +1,6 @@
 import { createConnectTransport } from "@connectrpc/connect-web";
 import type { Interceptor } from "@connectrpc/connect";
+import { reportError } from "./errorReporter";
 
 const BACKEND_URL = "http://localhost:8080";
 
@@ -12,7 +13,12 @@ const requestLoggingInterceptor: Interceptor = (next) => async (req) => {
   try {
     return await next(req);
   } catch (err) {
-    console.error(`[rpc] ${service}.${method} failed (request-id: ${requestId}):`, err);
+    reportError({
+      message: `rpc failed: ${service}.${method}`,
+      err,
+      severity: "error",
+      context: { requestId, service, method },
+    });
     throw err;
   }
 };

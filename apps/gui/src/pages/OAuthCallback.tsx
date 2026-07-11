@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../lib/connectTransport";
+import { reportError } from "../lib/errorReporter";
 import { RepositoryService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 
 const repositoryClient = createClient(RepositoryService, transport);
@@ -55,7 +56,7 @@ export function OAuthCallback() {
         oauthCode: code,
       });
     } catch (e) {
-      console.error('[OAuthCallback] Failed to parse state parameter:', e);
+      reportError({ message: 'Failed to parse OAuth state parameter', err: e, severity: 'error' });
       setError("Invalid state parameter.");
     }
   }, []);

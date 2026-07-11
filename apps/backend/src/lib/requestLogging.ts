@@ -1,5 +1,6 @@
 import { createContextKey, type Interceptor } from '@connectrpc/connect';
 import { logger } from './logger';
+import { reportError } from './errorReporter';
 
 export const requestIdKey = createContextKey<string>('');
 
@@ -19,7 +20,12 @@ export const requestLoggingInterceptor: Interceptor = (next) => async (req) => {
     }
     return res;
   } catch (err) {
-    logger.error({ requestId, service, method, durationMs: Date.now() - start, err }, 'rpc.error');
+    reportError({
+      message: 'rpc.error',
+      err,
+      severity: 'error',
+      context: { requestId, service, method, durationMs: Date.now() - start },
+    });
     throw err;
   }
 };

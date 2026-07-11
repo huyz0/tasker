@@ -19,6 +19,7 @@ import { setupDatabase } from "./db/db";
 import { connect as natsConnect } from "nats";
 import { logger } from "./lib/logger";
 import { requestLoggingInterceptor } from "./lib/requestLogging";
+import { reportError } from "./lib/errorReporter";
 
 // Bypassing network stack with local function execution logic
 export const localInProcessTransportRouter = (_req: any) => {
@@ -29,11 +30,11 @@ const isStandalone = process.env.STANDALONE === "true";
 const db = await setupDatabase(isStandalone ? "sqlite" : "mysql");
 
 process.on("uncaughtException", (err) => {
-  logger.fatal({ err }, "uncaughtException");
+  reportError({ message: "uncaughtException", err, severity: "fatal" });
   process.exit(1);
 });
 process.on("unhandledRejection", (reason) => {
-  logger.error({ err: reason }, "unhandledRejection");
+  reportError({ message: "unhandledRejection", err: reason, severity: "error" });
 });
 
 let nc: any = null;

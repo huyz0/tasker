@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportError } from '../lib/errorReporter';
 
 interface Props {
   children: ReactNode;
@@ -16,7 +17,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[ErrorBoundary] Unhandled render error:', error, info.componentStack);
+    reportError({
+      message: 'unhandled render error',
+      err: error,
+      severity: 'fatal',
+      context: { componentStack: info.componentStack },
+    });
   }
 
   render() {
