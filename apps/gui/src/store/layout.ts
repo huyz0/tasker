@@ -15,8 +15,8 @@ export interface LayoutState {
 export const useLayoutStore = create<LayoutState>((set) => ({
   sidebarOpen: false,
   activePageTitle: 'Dashboard Overview',
-  activeOrgId: 'org-1', // Default mock until multi-tenant switcher implemented
-  activeProjectId: 'p-mock-1', // Default mock until project switcher implemented
+  activeOrgId: '',
+  activeProjectId: '',
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (isOpen) => set({ sidebarOpen: isOpen }),
   setActivePageTitle: (title) => set({ activePageTitle: title }),

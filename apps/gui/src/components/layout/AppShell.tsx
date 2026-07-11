@@ -12,6 +12,7 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { GlobalSearch } from './GlobalSearch';
+import { OrgProjectSwitcher } from './OrgProjectSwitcher';
 
 const NAVIGATION_ITEMS = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -58,6 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                <GlobalSearch />
             </div>
           </div>
+          <OrgProjectSwitcher />
           <nav className="flex-1 space-y-1 p-4">
             {NAVIGATION_ITEMS.map((item) => {
               const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
