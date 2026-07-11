@@ -21,6 +21,14 @@ var tasksListCmd = &cobra.Command{
 	Short: "List tasks within a project",
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
+		projectID, _ := cmd.Flags().GetString("project")
+		if projectID == "" {
+			projectID = backend.DefaultProjectID()
+		}
+		if projectID == "" {
+			cmd.Println("Error: --project is required (or set TASKER_PROJECT_ID).")
+			return
+		}
 
 		client := healthv1connect.NewTaskServiceClient(
 			http.DefaultClient,
@@ -29,7 +37,7 @@ var tasksListCmd = &cobra.Command{
 		)
 
 		req := connect.NewRequest(&healthv1.ListTasksRequest{
-			ProjectId: "prj-1", // Using a hardcoded mock project ID until CLI context management is built
+			ProjectId: projectID,
 		})
 
 		res, err := client.ListTasks(context.Background(), req)
@@ -52,29 +60,71 @@ var tasksListCmd = &cobra.Command{
 
 var tasksCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a new task (mock - not yet wired to the backend)",
+	Short: "Create a new task in a project",
 	Run: func(cmd *cobra.Command, args []string) {
 		title, _ := cmd.Flags().GetString("title")
+		status, _ := cmd.Flags().GetString("status")
+		description, _ := cmd.Flags().GetString("description")
+		projectID, _ := cmd.Flags().GetString("project")
 		isJson, _ := cmd.Flags().GetBool("json")
+		if projectID == "" {
+			projectID = backend.DefaultProjectID()
+		}
+		if title == "" || projectID == "" {
+			cmd.Println("Error: --project and --title flags are required.")
+			return
+		}
+
+		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.CreateTask(context.Background(), connect.NewRequest(&healthv1.CreateTaskRequest{
+			ProjectId:   projectID,
+			Title:       title,
+			Status:      status,
+			Description: description,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to create task: %v\n", err)
+			return
+		}
+
 		if isJson {
-			cmd.Printf(`{"status": "created", "task": "%s", "mock": true}%s`, title, "\n")
+			jsonString, _ := json.Marshal(res.Msg.Task)
+			cmd.Println(string(jsonString))
 		} else {
-			cmd.Printf("[mock - not yet wired to the backend] Task created: %s\n", title)
+			cmd.Printf("Task created: %s (id: %s)\n", res.Msg.Task.Title, res.Msg.Task.Id)
 		}
 	},
 }
 
 var tasksAssignCmd = &cobra.Command{
 	Use:   "assign [task_id]",
-	Short: "Assign a task to an agent or user (mock - not yet wired to the backend)",
+	Short: "Assign a task to an agent or user",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		assignee, _ := cmd.Flags().GetString("assignee")
+		agentID, _ := cmd.Flags().GetString("agent")
+		userID, _ := cmd.Flags().GetString("user")
 		isJson, _ := cmd.Flags().GetBool("json")
+		if agentID == "" && userID == "" {
+			cmd.Println("Error: one of --agent or --user is required.")
+			return
+		}
+
+		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.AssignTask(context.Background(), connect.NewRequest(&healthv1.AssignTaskRequest{
+			TaskId:  args[0],
+			AgentId: agentID,
+			UserId:  userID,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to assign task: %v\n", err)
+			return
+		}
+
 		if isJson {
-			cmd.Printf(`{"status": "assigned", "task_id": "%s", "assignee": "%s", "mock": true}%s`, args[0], assignee, "\n")
+			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "task_id": args[0]})
+			cmd.Println(string(jsonString))
 		} else {
-			cmd.Printf("[mock - not yet wired to the backend] Task %s assigned to %s\n", args[0], assignee)
+			cmd.Printf("Task %s assigned\n", args[0])
 		}
 	},
 }
@@ -220,6 +270,11 @@ func init() {
 	tasksCmd.AddCommand(tasksPurgeCmd)
 
 	tasksCreateCmd.Flags().String("title", "", "The title of the task")
-	tasksAssignCmd.Flags().String("assignee", "", "The ID or name to assign")
+	tasksCreateCmd.Flags().String("status", "", "Initial status")
+	tasksCreateCmd.Flags().String("description", "", "Task description")
+	tasksCreateCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
+	tasksAssignCmd.Flags().String("agent", "", "Agent ID to assign")
+	tasksAssignCmd.Flags().String("user", "", "User ID to assign")
 	tasksUpdateStatusCmd.Flags().String("status", "", "The new status (todo, in-progress, done)")
+	tasksListCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 }

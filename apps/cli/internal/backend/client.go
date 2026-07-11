@@ -23,6 +23,18 @@ func URL() string {
 	return "http://localhost:8080"
 }
 
+// DefaultOrgID returns the fallback organization id for commands that accept
+// an --org flag, sourced from TASKER_ORG_ID when the flag is left empty.
+func DefaultOrgID() string {
+	return os.Getenv("TASKER_ORG_ID")
+}
+
+// DefaultProjectID returns the fallback project id for commands that accept
+// a --project flag, sourced from TASKER_PROJECT_ID when the flag is left empty.
+func DefaultProjectID() string {
+	return os.Getenv("TASKER_PROJECT_ID")
+}
+
 // Logger is the CLI's structured (JSON) logger.
 var Logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
 

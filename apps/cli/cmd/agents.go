@@ -3,6 +3,7 @@ package cmd
 import (
 	"connectrpc.com/connect"
 	"context"
+	"encoding/json"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -12,37 +13,74 @@ import (
 
 var agentsCmd = &cobra.Command{
 	Use:   "agents",
-	Short: "Manage AI agent roles and instances (mock - not yet wired to the backend)",
+	Short: "Manage AI agent instances",
 }
 
 var agentsListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List active agents and roles (mock)",
+	Short: "List active agents in an organization",
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
+		orgID, _ := cmd.Flags().GetString("org")
+		if orgID == "" {
+			orgID = backend.DefaultOrgID()
+		}
+		if orgID == "" {
+			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
+			return
+		}
+
+		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.ListAgents(context.Background(), connect.NewRequest(&healthv1.ListAgentsRequest{OrgId: orgID}))
+		if err != nil {
+			cmd.PrintErrf("Failed to list agents: %v\n", err)
+			return
+		}
+
 		if isJson {
-			cmd.Println(`[{"id": "agent_alpha", "role": "Researcher", "status": "idle", "mock": true}]`)
+			jsonString, _ := json.Marshal(res.Msg.Agents)
+			cmd.Println(string(jsonString))
 		} else {
-			cmd.Println("Available Agents: [mock data - not yet wired to the backend]")
-			cmd.Println(" - agent_alpha [Role: Researcher] (Idle)")
+			cmd.Println("Available Agents:")
+			for _, a := range res.Msg.Agents {
+				cmd.Printf(" - %s [Role: %s] (%s)\n", a.Name, a.AgentRoleId, a.Id)
+			}
 		}
 	},
 }
 
 var agentsCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a new agent instance with specific persona (mock)",
+	Short: "Create a new agent instance with specific role",
 	Run: func(cmd *cobra.Command, args []string) {
 		role, _ := cmd.Flags().GetString("role")
+		name, _ := cmd.Flags().GetString("name")
+		orgID, _ := cmd.Flags().GetString("org")
 		isJson, _ := cmd.Flags().GetBool("json")
-		if role == "" {
-			cmd.Println("Error: --role is required.")
+		if orgID == "" {
+			orgID = backend.DefaultOrgID()
+		}
+		if role == "" || orgID == "" {
+			cmd.Println("Error: --org and --role are required.")
 			return
 		}
+
+		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.CreateAgent(context.Background(), connect.NewRequest(&healthv1.CreateAgentRequest{
+			OrgId:       orgID,
+			AgentRoleId: role,
+			Name:        name,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to create agent: %v\n", err)
+			return
+		}
+
 		if isJson {
-			cmd.Printf(`{"status": "created", "agent_id": "new_agent_123", "role": "%s", "mock": true}%s`, role, "\n")
+			jsonString, _ := json.Marshal(res.Msg.Agent)
+			cmd.Println(string(jsonString))
 		} else {
-			cmd.Printf("[mock - not yet wired to the backend] Spawned new agent with role %s\n", role)
+			cmd.Printf("Spawned new agent '%s' (id: %s) with role %s\n", res.Msg.Agent.Name, res.Msg.Agent.Id, res.Msg.Agent.AgentRoleId)
 		}
 	},
 }
@@ -100,5 +138,8 @@ func init() {
 	agentsCmd.AddCommand(agentsRestoreCmd)
 	agentsCmd.AddCommand(agentsPurgeCmd)
 
-	agentsCreateCmd.Flags().String("role", "", "The designated role persona")
+	agentsCreateCmd.Flags().String("role", "", "The agent role ID persona")
+	agentsCreateCmd.Flags().String("name", "", "Display name for the agent instance")
+	agentsCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	agentsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 }

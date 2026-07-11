@@ -3,6 +3,7 @@ package cmd
 import (
 	"connectrpc.com/connect"
 	"context"
+	"encoding/json"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -12,37 +13,162 @@ import (
 
 var artifactsCmd = &cobra.Command{
 	Use:   "artifacts",
-	Short: "Manage project evidence, text files, and generated assets (mock - not yet wired to the backend)",
+	Short: "Manage project evidence, text files, and generated assets",
 }
 
 var artifactsListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List nested artifacts and folders (mock)",
+	Short: "List folders (--project) or artifacts within a folder (--folder)",
 	Run: func(cmd *cobra.Command, args []string) {
 		projectID, _ := cmd.Flags().GetString("project")
+		folderID, _ := cmd.Flags().GetString("folder")
 		isJson, _ := cmd.Flags().GetBool("json")
+		if projectID == "" {
+			projectID = backend.DefaultProjectID()
+		}
 
+		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+
+		if folderID != "" {
+			res, err := client.ListArtifacts(context.Background(), connect.NewRequest(&healthv1.ListArtifactsRequest{FolderId: folderID}))
+			if err != nil {
+				cmd.PrintErrf("Failed to list artifacts: %v\n", err)
+				return
+			}
+			if isJson {
+				jsonString, _ := json.Marshal(res.Msg.Artifacts)
+				cmd.Println(string(jsonString))
+			} else {
+				cmd.Printf("Artifacts in folder '%s':\n", folderID)
+				for _, a := range res.Msg.Artifacts {
+					cmd.Printf(" - %s (id: %s)\n", a.Name, a.Id)
+				}
+			}
+			return
+		}
+
+		if projectID == "" {
+			cmd.Println("Error: --project or --folder is required (or set TASKER_PROJECT_ID).")
+			return
+		}
+		res, err := client.ListFolders(context.Background(), connect.NewRequest(&healthv1.ListFoldersRequest{ProjectId: projectID}))
+		if err != nil {
+			cmd.PrintErrf("Failed to list folders: %v\n", err)
+			return
+		}
 		if isJson {
-			cmd.Printf(`[{"file": "env-vars.md", "type": "file", "project": "%s", "mock": true}]%s`, projectID, "\n")
+			jsonString, _ := json.Marshal(res.Msg.Folders)
+			cmd.Println(string(jsonString))
 		} else {
-			cmd.Printf("Artifacts in project '%s': [mock data - not yet wired to the backend]\n", projectID)
-			cmd.Println(" - env-vars.md")
-			cmd.Println(" - (dir) deployments/")
+			cmd.Printf("Folders in project '%s':\n", projectID)
+			for _, f := range res.Msg.Folders {
+				cmd.Printf(" - (dir) %s/ (id: %s)\n", f.Name, f.Id)
+			}
 		}
 	},
 }
 
 var artifactsReadCmd = &cobra.Command{
-	Use:   "read [path]",
-	Short: "Read file artifact content (mock)",
+	Use:   "read [artifact_id]",
+	Short: "Read artifact content",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		folderID, _ := cmd.Flags().GetString("folder")
 		isJson, _ := cmd.Flags().GetBool("json")
+		if folderID == "" {
+			cmd.Println("Error: --folder is required (the folder containing the artifact).")
+			return
+		}
+
+		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.ListArtifacts(context.Background(), connect.NewRequest(&healthv1.ListArtifactsRequest{FolderId: folderID}))
+		if err != nil {
+			cmd.PrintErrf("Failed to read artifact: %v\n", err)
+			return
+		}
+
+		for _, a := range res.Msg.Artifacts {
+			if a.Id == args[0] {
+				if isJson {
+					jsonString, _ := json.Marshal(a)
+					cmd.Println(string(jsonString))
+				} else {
+					cmd.Printf("# %s\n%s\n", a.Name, a.Content)
+				}
+				return
+			}
+		}
+		cmd.PrintErrf("Artifact %s not found in folder %s\n", args[0], folderID)
+	},
+}
+
+var artifactsCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Create a new artifact in a folder",
+	Run: func(cmd *cobra.Command, args []string) {
+		folderID, _ := cmd.Flags().GetString("folder")
+		name, _ := cmd.Flags().GetString("name")
+		description, _ := cmd.Flags().GetString("description")
+		content, _ := cmd.Flags().GetString("content")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if folderID == "" || name == "" {
+			cmd.Println("Error: --folder and --name are required.")
+			return
+		}
+
+		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.CreateArtifact(context.Background(), connect.NewRequest(&healthv1.CreateArtifactRequest{
+			FolderId:    folderID,
+			Name:        name,
+			Description: description,
+			Content:     content,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to create artifact: %v\n", err)
+			return
+		}
+
 		if isJson {
-			cmd.Printf(`{"path": "%s", "content": "# Markdown Content\nGenerated via CLI", "mock": true}%s`, args[0], "\n")
+			jsonString, _ := json.Marshal(res.Msg.Artifact)
+			cmd.Println(string(jsonString))
 		} else {
-			cmd.Printf("# Content from file: %s\n", args[0])
-			cmd.Println("[mock content - not yet wired to the backend]")
+			cmd.Printf("Artifact created: %s (id: %s)\n", res.Msg.Artifact.Name, res.Msg.Artifact.Id)
+		}
+	},
+}
+
+var foldersCreateCmd = &cobra.Command{
+	Use:   "create-folder",
+	Short: "Create a new folder in a project",
+	Run: func(cmd *cobra.Command, args []string) {
+		projectID, _ := cmd.Flags().GetString("project")
+		parentID, _ := cmd.Flags().GetString("parent")
+		name, _ := cmd.Flags().GetString("name")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if projectID == "" {
+			projectID = backend.DefaultProjectID()
+		}
+		if projectID == "" || name == "" {
+			cmd.Println("Error: --project and --name are required.")
+			return
+		}
+
+		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.CreateFolder(context.Background(), connect.NewRequest(&healthv1.CreateFolderRequest{
+			ProjectId: projectID,
+			ParentId:  parentID,
+			Name:      name,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to create folder: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Folder)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Folder created: %s (id: %s)\n", res.Msg.Folder.Name, res.Msg.Folder.Id)
 		}
 	},
 }
@@ -141,12 +267,23 @@ func init() {
 	rootCmd.AddCommand(artifactsCmd)
 	artifactsCmd.AddCommand(artifactsListCmd)
 	artifactsCmd.AddCommand(artifactsReadCmd)
+	artifactsCmd.AddCommand(artifactsCreateCmd)
 	artifactsCmd.AddCommand(artifactsDeleteCmd)
 	artifactsCmd.AddCommand(artifactsRestoreCmd)
 	artifactsCmd.AddCommand(artifactsPurgeCmd)
+	artifactsCmd.AddCommand(foldersCreateCmd)
 	artifactsCmd.AddCommand(foldersDeleteCmd)
 	artifactsCmd.AddCommand(foldersRestoreCmd)
 	artifactsCmd.AddCommand(foldersPurgeCmd)
 
-	artifactsListCmd.Flags().String("project", "", "Project ID to list artifacts for")
+	artifactsListCmd.Flags().String("project", "", "Project ID to list folders for (or set TASKER_PROJECT_ID)")
+	artifactsListCmd.Flags().String("folder", "", "Folder ID to list artifacts within")
+	artifactsReadCmd.Flags().String("folder", "", "Folder ID containing the artifact")
+	artifactsCreateCmd.Flags().String("folder", "", "Folder ID to create the artifact in")
+	artifactsCreateCmd.Flags().String("name", "", "Artifact name")
+	artifactsCreateCmd.Flags().String("description", "", "Artifact description")
+	artifactsCreateCmd.Flags().String("content", "", "Artifact text content")
+	foldersCreateCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
+	foldersCreateCmd.Flags().String("parent", "", "Parent folder ID (optional, for nesting)")
+	foldersCreateCmd.Flags().String("name", "", "Folder name")
 }

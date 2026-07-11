@@ -13,58 +13,99 @@ import (
 
 var projectsCmd = &cobra.Command{
 	Use:   "projects",
-	Short: "Manage derived project templates and ownership (mock - not yet wired to the backend)",
+	Short: "Manage projects derived from templates",
 }
 
 var projectsListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all projects (mock)",
+	Short: "List all projects in an organization",
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
+		orgID, _ := cmd.Flags().GetString("org")
+		if orgID == "" {
+			orgID = backend.DefaultOrgID()
+		}
+		if orgID == "" {
+			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
+			return
+		}
+
+		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.ListProjects(context.Background(), connect.NewRequest(&healthv1.ListProjectsRequest{OrgId: orgID}))
+		if err != nil {
+			cmd.PrintErrf("Failed to list projects: %v\n", err)
+			return
+		}
+
 		if isJson {
-			data := []map[string]interface{}{
-				{"id": "proj_1", "name": "Software Development Alpha", "mock": true},
-				{"id": "proj_2", "name": "Marketing Launch", "mock": true},
-			}
-			jsonString, _ := json.Marshal(data)
+			jsonString, _ := json.Marshal(res.Msg.Projects)
 			cmd.Println(string(jsonString))
 		} else {
-			cmd.Println("Projects: [mock data - not yet wired to the backend]")
-			cmd.Println("- proj_1: Software Development Alpha")
-			cmd.Println("- proj_2: Marketing Launch")
+			cmd.Println("Projects:")
+			for _, p := range res.Msg.Projects {
+				cmd.Printf("- %s: %s\n", p.Id, p.Name)
+			}
 		}
 	},
 }
 
 var projectsGetCmd = &cobra.Command{
 	Use:   "get [id]",
-	Short: "Get a specific project (mock)",
+	Short: "Get a specific project",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
+
+		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.GetProject(context.Background(), connect.NewRequest(&healthv1.GetProjectRequest{Id: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to get project: %v\n", err)
+			return
+		}
+
 		if isJson {
-			cmd.Printf(`{"id": "%s", "name": "Project Metadata", "mock": true}%s`, args[0], "\n")
+			jsonString, _ := json.Marshal(res.Msg.Project)
+			cmd.Println(string(jsonString))
 		} else {
-			cmd.Printf("[mock - not yet wired to the backend] Project Details for ID: %s\n", args[0])
+			cmd.Printf("Project %s: %s (org: %s, owner: %s)\n", res.Msg.Project.Id, res.Msg.Project.Name, res.Msg.Project.OrgId, res.Msg.Project.OwnerId)
 		}
 	},
 }
 
 var projectsCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Instantiate a new project from a template (mock)",
+	Short: "Instantiate a new project from a template",
 	Run: func(cmd *cobra.Command, args []string) {
 		template, _ := cmd.Flags().GetString("template")
 		title, _ := cmd.Flags().GetString("title")
+		orgID, _ := cmd.Flags().GetString("org")
+		owner, _ := cmd.Flags().GetString("owner")
 		isJson, _ := cmd.Flags().GetBool("json")
-		if title == "" || template == "" {
-			cmd.Println("Error: --template and --title flags are required.")
+		if orgID == "" {
+			orgID = backend.DefaultOrgID()
+		}
+		if title == "" || template == "" || orgID == "" {
+			cmd.Println("Error: --org, --template and --title flags are required.")
 			return
 		}
+
+		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.CreateProject(context.Background(), connect.NewRequest(&healthv1.CreateProjectRequest{
+			OrgId:      orgID,
+			TemplateId: template,
+			Name:       title,
+			OwnerId:    owner,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to create project: %v\n", err)
+			return
+		}
+
 		if isJson {
-			cmd.Printf(`{"status": "created", "project_title": "%s", "template": "%s", "mock": true}%s`, title, template, "\n")
+			jsonString, _ := json.Marshal(res.Msg.Project)
+			cmd.Println(string(jsonString))
 		} else {
-			cmd.Printf("[mock - not yet wired to the backend] Successfully created project '%s' from template '%s'\n", title, template)
+			cmd.Printf("Successfully created project '%s' (id: %s) from template '%s'\n", res.Msg.Project.Name, res.Msg.Project.Id, template)
 		}
 	},
 }
@@ -125,4 +166,7 @@ func init() {
 
 	projectsCreateCmd.Flags().String("template", "", "Project template to inherit from")
 	projectsCreateCmd.Flags().String("title", "", "Descriptive title for the new project")
+	projectsCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	projectsCreateCmd.Flags().String("owner", "", "User ID of the project owner")
+	projectsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 }
