@@ -17,6 +17,7 @@ export function OrganizationsDashboard() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const setActiveOrgId = useLayoutStore((s) => s.setActiveOrgId);
   const [newOrgName, setNewOrgName] = useState('');
+  const [newOrgParentId, setNewOrgParentId] = useState('');
   const [showNewOrgForm, setShowNewOrgForm] = useState(false);
   const queryClient = useQueryClient();
 
@@ -50,17 +51,25 @@ export function OrganizationsDashboard() {
   }, [orgsData, activeOrgId, setActiveOrgId]);
 
   const createOrgMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const resp = await orgClient.seedOrg({ name, slug: slugify(name) });
+    mutationFn: async (variables: { name: string; parentOrgId?: string }) => {
+      const resp = await orgClient.seedOrg({ name: variables.name, slug: slugify(variables.name), parentOrgId: variables.parentOrgId });
       return resp.organization;
     },
     onSuccess: (org) => {
       queryClient.invalidateQueries({ queryKey: ['orgs'] });
       if (org) setActiveOrgId(org.id);
       setNewOrgName('');
+      setNewOrgParentId('');
       setShowNewOrgForm(false);
     },
   });
+
+  const rootOrgs = orgsData?.filter((o) => !o.parentOrgId) ?? [];
+  const childOrgsByParent = new Map<string, typeof rootOrgs>();
+  for (const org of orgsData ?? []) {
+    if (!org.parentOrgId) continue;
+    childOrgsByParent.set(org.parentOrgId, [...(childOrgsByParent.get(org.parentOrgId) ?? []), org]);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,7 +99,7 @@ export function OrganizationsDashboard() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (newOrgName.trim()) createOrgMutation.mutate(newOrgName.trim());
+                if (newOrgName.trim()) createOrgMutation.mutate({ name: newOrgName.trim(), parentOrgId: newOrgParentId || undefined });
               }}
               className="flex gap-2 mb-4"
             >
@@ -101,6 +110,17 @@ export function OrganizationsDashboard() {
                 placeholder="Organization name"
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
               />
+              <select
+                aria-label="Parent organization"
+                value={newOrgParentId}
+                onChange={(e) => setNewOrgParentId(e.target.value)}
+                className="rounded-md border bg-background px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option value="">No parent (root org)</option>
+                {rootOrgs.map((org) => (
+                  <option key={org.id} value={org.id}>Under {org.name}</option>
+                ))}
+              </select>
               <button
                 type="submit"
                 disabled={!newOrgName.trim() || createOrgMutation.isPending}
@@ -121,13 +141,24 @@ export function OrganizationsDashboard() {
              {isLoading ? (
                <div className="p-3 text-sm text-center text-muted-foreground">Loading organizations...</div>
              ) : orgsData && orgsData.length > 0 ? (
-               orgsData.map(org => (
-                 <div key={org.id} onClick={() => setActiveOrgId(org.id)} className={`p-3 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 ${activeOrgId === org.id ? 'bg-primary/5' : ''}`}>
-                   <span className="min-w-[200px] flex items-center gap-2">
-                     <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold">{org.name.charAt(0).toUpperCase()}</span>
-                     {org.name} {activeOrgId === org.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
-                   </span>
-                   <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{org.slug}</span>
+               rootOrgs.map(org => (
+                 <div key={org.id}>
+                   <div onClick={() => setActiveOrgId(org.id)} className={`p-3 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 ${activeOrgId === org.id ? 'bg-primary/5' : ''}`}>
+                     <span className="min-w-[200px] flex items-center gap-2">
+                       <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold">{org.name.charAt(0).toUpperCase()}</span>
+                       {org.name} {activeOrgId === org.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
+                     </span>
+                     <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{org.slug}</span>
+                   </div>
+                   {(childOrgsByParent.get(org.id) ?? []).map((child) => (
+                     <div key={child.id} onClick={() => setActiveOrgId(child.id)} className={`p-3 pl-10 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 border-t ${activeOrgId === child.id ? 'bg-primary/5' : ''}`}>
+                       <span className="min-w-[200px] flex items-center gap-2">
+                         <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold">{child.name.charAt(0).toUpperCase()}</span>
+                         {child.name} {activeOrgId === child.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
+                       </span>
+                       <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{child.slug}</span>
+                     </div>
+                   ))}
                  </div>
                ))
              ) : (

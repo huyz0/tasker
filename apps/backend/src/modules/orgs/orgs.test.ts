@@ -61,4 +61,46 @@ describe("Organizations Handler Integration Logic", () => {
     const res = await handler.inviteUser({ orgId: org.organization.id, email: "a@b.com" }, makeAuthContext(adminId));
     expect(res.success).toBe(true);
   });
+
+  test("seedOrg supports creating a child org under a parent, with depth-1 and admin enforcement", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+
+    const adminId = "user-parent-admin";
+    const memberId = "user-parent-member";
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}-${Date.now()}@foo.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}-${Date.now()}@foo.com`, createdAt: new Date() });
+
+    const parent = await handler.seedOrg({ name: "Parent", slug: "parent-" + Date.now() }, makeAuthContext(adminId));
+    expect(parent.organization.parentOrgId).toBeFalsy();
+
+    const child = await handler.seedOrg({
+      name: "Child",
+      slug: "child-" + Date.now(),
+      parentOrgId: parent.organization.id,
+    }, makeAuthContext(adminId));
+    expect(child.organization.parentOrgId).toBe(parent.organization.id);
+
+    // A non-admin member of the parent cannot attach a new child org under it.
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: parent.organization.id, userId: memberId, role: "member", joinedAt: new Date() });
+    await expect(handler.seedOrg({
+      name: "Another Child",
+      slug: "another-child-" + Date.now(),
+      parentOrgId: parent.organization.id,
+    }, makeAuthContext(memberId))).rejects.toThrow();
+
+    // A grandchild (nesting under an org that already has a parent) is rejected.
+    await expect(handler.seedOrg({
+      name: "Grandchild",
+      slug: "grandchild-" + Date.now(),
+      parentOrgId: child.organization.id,
+    }, makeAuthContext(adminId))).rejects.toThrow();
+
+    // A parentOrgId that doesn't exist is rejected.
+    await expect(handler.seedOrg({
+      name: "Orphan",
+      slug: "orphan-" + Date.now(),
+      parentOrgId: "org-does-not-exist",
+    }, makeAuthContext(adminId))).rejects.toThrow();
+  });
 });

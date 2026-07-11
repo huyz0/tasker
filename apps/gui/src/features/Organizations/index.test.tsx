@@ -101,6 +101,35 @@ describe('OrganizationsDashboard', () => {
     await waitFor(() => expect(screen.getByText(/Failed to create organization/)).toBeDefined());
   });
 
+  it('creates a child org under a selected parent and renders it nested', async () => {
+    mockListOrgs.mockResolvedValue({
+      organizations: [{ id: 'org-root', name: 'Root Co', slug: 'root-co' }],
+    });
+    mockSeedOrg.mockResolvedValue({ organization: { id: 'org-child', name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'New Organization' }));
+    fireEvent.change(screen.getByPlaceholderText('Organization name'), { target: { value: 'Child Co' } });
+    fireEvent.change(screen.getByLabelText('Parent organization'), { target: { value: 'org-root' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => expect(mockSeedOrg).toHaveBeenCalledWith({ name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' }));
+  });
+
+  it('renders child orgs nested beneath their parent', async () => {
+    mockListOrgs.mockResolvedValue({
+      organizations: [
+        { id: 'org-root', name: 'Root Co', slug: 'root-co' },
+        { id: 'org-child', name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' },
+      ],
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
+    expect(screen.getByText('Child Co')).toBeDefined();
+  });
+
   it('loads the next page of organizations when Load More is clicked', async () => {
     mockActiveOrgId = 'org-1';
     mockListOrgs

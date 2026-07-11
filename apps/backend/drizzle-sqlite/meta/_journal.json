@@ -15,6 +15,13 @@
       "when": 1776929496665,
       "tag": "0001_redundant_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783765069200,
+      "tag": "0002_normal_nightcrawler",
+      "breakpoints": true
     }
   ]
 }

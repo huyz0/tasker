@@ -1,4 +1,4 @@
-import { text, sqliteTable, primaryKey, integer } from "drizzle-orm/sqlite-core";
+import { text, sqliteTable, primaryKey, integer, index, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 
 export const testSchema = sqliteTable("schema_migrations_test", {
   id: text("id").primaryKey(),
@@ -16,7 +16,12 @@ export const organizations = sqliteTable("organizations", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  parentOrgId: text("parent_org_id").references((): AnySQLiteColumn => organizations.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    parentOrgIdx: index("organizations_parent_org_id_idx").on(table.parentOrgId),
+  }
 });
 
 export const organizationMembers = sqliteTable("organization_members", {

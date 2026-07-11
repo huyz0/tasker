@@ -1,15 +1,17 @@
 import { z } from "zod/v4";
-import { inArray } from "drizzle-orm";
+import { inArray, eq } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import { requireUserId, assertOrgAdmin } from "../../lib/authz";
+import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
 
 const SeedOrgSchema = z.object({
   name: z.string().min(1, "name is required").max(256),
   slug: z.string().min(1, "slug is required").max(256),
+  parentOrgId: z.string().nullable().optional(),
 });
 
 const InviteUserSchema = z.object({
@@ -49,8 +51,19 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
 
+      if (parsed.parentOrgId) {
+        const parentRows = await db.select().from(orgs).where(eq((orgs as any).id, parsed.parentOrgId)).limit(1);
+        if (!parentRows || parentRows.length === 0) {
+          throw new ConnectError("parent organization not found", Code.NotFound);
+        }
+        if (parentRows[0].parentOrgId) {
+          throw new ConnectError("nested sub-organizations are not supported yet", Code.InvalidArgument);
+        }
+        await assertOrgAdmin(db, userId, parsed.parentOrgId);
+      }
+
       const newOrgId = `o-${crypto.randomUUID()}`;
-      const orgPayload = { id: newOrgId, name: parsed.name, slug: parsed.slug };
+      const orgPayload = { id: newOrgId, name: parsed.name, slug: parsed.slug, parentOrgId: parsed.parentOrgId || null };
 
       await insertRecord(db, orgs, orgPayload, isStandalone);
       const memberPayload = { orgId: newOrgId, userId, role: "admin" };

@@ -31,6 +31,7 @@ message Organization {
   string name = 2;
   string slug = 3;
   string role = 4;
+  string parentOrgId = 5;
 }
 
 message GetIdentityRequest {}
@@ -53,6 +54,7 @@ message ListOrgsResponse {
 message SeedOrgRequest {
   string name = 1;
   string slug = 2;
+  string parentOrgId = 3;
 }
 message SeedOrgResponse {
   Organization organization = 1;

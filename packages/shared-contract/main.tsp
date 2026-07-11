@@ -49,6 +49,7 @@ model Organization {
   @field(2) name: string;
   @field(3) slug: string;
   @field(4) role: string; // The user's role in this org
+  @field(5) parentOrgId?: string;
 }
 
 // ==== IAM Services ====
@@ -73,6 +74,7 @@ model ListOrgsResponse {
 model SeedOrgRequest {
   @field(1) name: string;
   @field(2) slug: string;
+  @field(3) parentOrgId?: string;
 }
 model SeedOrgResponse {
   @field(1) organization: Organization;
