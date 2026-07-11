@@ -9,11 +9,13 @@ import App from './App';
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 const mockUseQueryClient = vi.fn(() => ({ invalidateQueries: vi.fn() }));
+const mockUseInfiniteQuery = vi.fn(() => ({ data: undefined, isLoading: false, isFetchingNextPage: false, fetchNextPage: vi.fn() }));
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (opts: unknown) => mockUseQuery(opts),
   useMutation: () => mockUseMutation(),
   useQueryClient: () => mockUseQueryClient(),
+  useInfiniteQuery: () => mockUseInfiniteQuery(),
 }));
 
 // -------------------------------------------------------------------

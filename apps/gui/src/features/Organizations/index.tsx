@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { OrgService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { PaginationControls } from '../../components/PaginationControls';
 
 const orgClient = createClient(OrgService, transport);
 
@@ -21,13 +22,22 @@ export function OrganizationsDashboard() {
 
   useEffect(() => setActivePageTitle('Organizations & Settings'), [setActivePageTitle]);
 
-  const { data: orgsData, isLoading } = useQuery({
-    queryKey: ['orgs'],
-    queryFn: async () => {
-      const resp = await orgClient.listOrgs({});
-      return resp.organizations;
-    }
+  const {
+    data: orgsPages,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['orgs', 'paginated'],
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
+      return orgClient.listOrgs({ page: { cursor: pageParam } });
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
   });
+
+  const orgsData = orgsPages?.pages.flatMap((page) => page.organizations);
+  const nextCursor = orgsPages?.pages.at(-1)?.page?.nextCursor;
 
   // The active org is only ever a real default before the user's actual orgs
   // have loaded. Once we know what they really have, make sure the selection
@@ -124,6 +134,13 @@ export function OrganizationsDashboard() {
                <div className="p-3 text-sm text-center text-muted-foreground">No organizations found.</div>
              )}
           </div>
+          {orgsData && orgsData.length > 0 && (
+            <PaginationControls
+              nextCursor={nextCursor}
+              isLoading={isFetchingNextPage}
+              onNextPage={() => fetchNextPage()}
+            />
+          )}
         </div>
       </div>
     </div>

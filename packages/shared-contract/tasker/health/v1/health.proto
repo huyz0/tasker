@@ -42,9 +42,12 @@ service AuthService {
   rpc GetIdentity(GetIdentityRequest) returns (GetIdentityResponse);
 }
 
-message ListOrgsRequest {}
+message ListOrgsRequest {
+  PageRequest page = 1;
+}
 message ListOrgsResponse {
   repeated Organization organizations = 1;
+  PageResponse page = 2;
 }
 
 message SeedOrgRequest {
@@ -363,18 +366,22 @@ message LinkTaskArtifactResponse {
 
 message ListArtifactsRequest {
   string folderId = 1;
+  PageRequest page = 2;
 }
 
 message ListArtifactsResponse {
   repeated Artifact artifacts = 1;
+  PageResponse page = 2;
 }
 
 message ListFoldersRequest {
   string projectId = 1;
+  PageRequest page = 2;
 }
 
 message ListFoldersResponse {
   repeated Folder folders = 1;
+  PageResponse page = 2;
 }
 
 service ArtifactService {

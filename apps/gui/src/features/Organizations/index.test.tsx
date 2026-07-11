@@ -100,4 +100,19 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Failed to create organization/)).toBeDefined());
   });
+
+  it('loads the next page of organizations when Load More is clicked', async () => {
+    mockActiveOrgId = 'org-1';
+    mockListOrgs
+      .mockResolvedValueOnce({ organizations: [{ id: 'org-1', name: 'Page One Org', slug: 'page-one' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ organizations: [{ id: 'org-2', name: 'Page Two Org', slug: 'page-two' }], page: {} });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Page One Org')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Load More' }));
+
+    await waitFor(() => expect(screen.getByText('Page Two Org')).toBeDefined());
+    expect(mockListOrgs).toHaveBeenCalledWith({ page: { cursor: 'cursor-2' } });
+    await waitFor(() => expect(screen.getByText('No more items to load')).toBeDefined());
+  });
 });
