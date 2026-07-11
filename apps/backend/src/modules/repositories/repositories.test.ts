@@ -146,4 +146,51 @@ describe("Repositories Handler >", () => {
     expect(pr2).toBeDefined();
     expect(pr2.status).toBe("merged");
   });
+
+  test("syncPullRequests reports failure when the provider call fails", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P4", ownerId: "usr-2" })).project.id;
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/pulls")) {
+        return new Response("Service unavailable", { status: 503 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "github",
+      remoteName: "foo/broken",
+      oauthCode: "fake-code",
+    });
+
+    const result = await repHandler.syncPullRequests({ projectId: pId });
+    expect(result.success).toBe(false);
+  });
+
+  test("listBuilds throws instead of silently returning an empty list on provider failure", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P5", ownerId: "usr-2" })).project.id;
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/actions/runs")) {
+        return new Response("Service unavailable", { status: 503 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const link = (await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "github",
+      remoteName: "foo/broken-builds",
+      oauthCode: "fake-code",
+    })).link;
+
+    await expect(repHandler.listBuilds({ repositoryLinkId: link.id })).rejects.toThrow(/GitHub API returned 503/);
+  });
 });

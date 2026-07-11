@@ -26,11 +26,19 @@ export const localInProcessTransportRouter = (_req: any) => {
 const isStandalone = process.env.STANDALONE === "true";
 const db = await setupDatabase(isStandalone ? "sqlite" : "mysql");
 
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err);
+  process.exit(1);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
+});
+
 let nc: any = null;
 try {
   nc = await natsConnect({ servers: process.env.NATS_URL || "nats://localhost:4222" });
-} catch {
-  // handled
+} catch (e) {
+  console.error(`[nats] Failed to connect to ${process.env.NATS_URL || "nats://localhost:4222"}:`, e);
 }
 
 const sessionInterceptor: Interceptor = (next) => async (req) => {

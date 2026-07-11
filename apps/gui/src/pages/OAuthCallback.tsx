@@ -57,7 +57,8 @@ export function OAuthCallback() {
         remoteName: state.remoteName,
         oauthCode: code,
       });
-    } catch {
+    } catch (e) {
+      console.error('[OAuthCallback] Failed to parse state parameter:', e);
       setError("Invalid state parameter.");
     }
   }, []);

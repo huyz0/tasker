@@ -147,7 +147,8 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const prsTable = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
       
       const links = await db.select().from(linksTable).where(eq((linksTable as any).projectId, parsed.projectId));
-      
+      const failures: string[] = [];
+
       for (const link of links) {
         if (link.provider === "github") {
           try {
@@ -159,39 +160,43 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
                 "User-Agent": "Tasker-Agent"
               }
             });
-            if (response.ok) {
-              const prs = await response.json() as any[];
-              for (const pr of prs) {
-                const existing = await db.select().from(prsTable).where(eq((prsTable as any).remotePrId, String(pr.number)));
-                const prStatus = pr.merged_at ? 'merged' : (pr.state === 'closed' ? 'closed' : (pr.draft ? 'draft' : 'open'));
-                
-                if (existing.length === 0) {
-                  await insertRecord(db, prsTable, {
-                    id: `pr-${crypto.randomUUID()}`,
-                    repositoryLinkId: link.id,
-                    remotePrId: String(pr.number),
-                    title: pr.title,
-                    status: prStatus,
-                    url: pr.html_url
-                  }, isStandalone, 'updatedAt');
-                } else {
-                  await db.update(prsTable).set({
-                    title: pr.title,
-                    status: prStatus,
-                    updatedAt: isStandalone ? new Date() : undefined // MySQL usually has auto-update, but fallback
-                  }).where(eq((prsTable as any).id, existing[0].id));
-                }
+            if (!response.ok) {
+              failures.push(link.remoteName);
+              console.error(`[syncPullRequests] GitHub API returned ${response.status} for ${link.remoteName}`);
+              continue;
+            }
+            const prs = await response.json() as any[];
+            for (const pr of prs) {
+              const existing = await db.select().from(prsTable).where(eq((prsTable as any).remotePrId, String(pr.number)));
+              const prStatus = pr.merged_at ? 'merged' : (pr.state === 'closed' ? 'closed' : (pr.draft ? 'draft' : 'open'));
+
+              if (existing.length === 0) {
+                await insertRecord(db, prsTable, {
+                  id: `pr-${crypto.randomUUID()}`,
+                  repositoryLinkId: link.id,
+                  remotePrId: String(pr.number),
+                  title: pr.title,
+                  status: prStatus,
+                  url: pr.html_url
+                }, isStandalone, 'updatedAt');
+              } else {
+                await db.update(prsTable).set({
+                  title: pr.title,
+                  status: prStatus,
+                  updatedAt: isStandalone ? new Date() : undefined // MySQL usually has auto-update, but fallback
+                }).where(eq((prsTable as any).id, existing[0].id));
               }
             }
           } catch (e) {
-             console.error("Failed to sync repo", link.remoteName, e);
+             failures.push(link.remoteName);
+             console.error(`[syncPullRequests] Failed to sync ${link.remoteName}:`, e);
           }
         }
       }
-      
+
       if (nc) nc.publish("domain.repository.sync_requested", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
-      
-      return { success: true };
+
+      return { success: failures.length === 0 };
     },
 
     async listBuilds(req: unknown) {
@@ -203,36 +208,41 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const link = links[0];
       
       if (link.provider === "github") {
+        let response: Response;
         try {
           const token = decryptToken(link.accessTokenEncrypted);
-          const response = await fetch(`https://api.github.com/repos/${link.remoteName}/actions/runs?per_page=10`, {
+          response = await fetch(`https://api.github.com/repos/${link.remoteName}/actions/runs?per_page=10`, {
             headers: {
               "Authorization": `Bearer ${token}`,
               "Accept": "application/vnd.github.v3+json",
               "User-Agent": "Tasker-Agent"
             }
           });
-          
-          if (response.ok) {
-            const data = await response.json() as any;
-            const builds = data.workflow_runs.map((run: any) => {
-               let status = 'PENDING';
-               if (run.status === 'completed') {
-                 status = run.conclusion === 'success' ? 'SUCCESS' : 'FAILURE';
-               }
-               return {
-                 id: String(run.id),
-                 repositoryLinkId: link.id,
-                 status: status,
-                 commitSha: run.head_sha,
-                 createdAt: run.created_at
-               };
-            });
-            return { builds };
-          }
         } catch (e) {
-          console.error("Failed to fetch GitHub actions", e);
+          console.error(`[listBuilds] Failed to reach GitHub for ${link.remoteName}:`, e);
+          throw new Error(`Failed to fetch builds for ${link.remoteName}: ${(e as Error).message}`);
         }
+
+        if (!response.ok) {
+          console.error(`[listBuilds] GitHub API returned ${response.status} for ${link.remoteName}`);
+          throw new Error(`GitHub API returned ${response.status} while fetching builds for ${link.remoteName}`);
+        }
+
+        const data = await response.json() as any;
+        const builds = data.workflow_runs.map((run: any) => {
+           let status = 'PENDING';
+           if (run.status === 'completed') {
+             status = run.conclusion === 'success' ? 'SUCCESS' : 'FAILURE';
+           }
+           return {
+             id: String(run.id),
+             repositoryLinkId: link.id,
+             status: status,
+             commitSha: run.head_sha,
+             createdAt: run.created_at
+           };
+        });
+        return { builds };
       }
       return { builds: [] };
     },
