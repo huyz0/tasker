@@ -51,6 +51,7 @@ model Organization {
   @field(4) role: string; // The user's role in this org
   @field(5) parentOrgId?: string;
   @field(6) deletedAt?: string;
+  @field(7) binRetentionDays?: int32;
 }
 
 // ==== IAM Services ====
@@ -96,11 +97,30 @@ model RestoreOrgResponse {
   @field(1) success: boolean;
 }
 
+model PurgeOrgRequest {
+  @field(1) orgId: string;
+}
+model PurgeOrgResponse {
+  @field(1) success: boolean;
+}
+
+model SetOrgRetentionDaysRequest {
+  @field(1) orgId: string;
+  @field(2) binRetentionDays: int32;
+}
+model SetOrgRetentionDaysResponse {
+  @field(1) success: boolean;
+}
+
 interface OrgService {
   listOrgs(request: ListOrgsRequest): ListOrgsResponse;
   seedOrg(request: SeedOrgRequest): SeedOrgResponse;
   archiveOrg(request: ArchiveOrgRequest): ArchiveOrgResponse;
   restoreOrg(request: RestoreOrgRequest): RestoreOrgResponse;
+  purgeOrg(request: PurgeOrgRequest): PurgeOrgResponse;
+  setOrgRetentionDays(
+    request: SetOrgRetentionDaysRequest,
+  ): SetOrgRetentionDaysResponse;
 
   inviteUser(request: InviteUserRequest): InviteUserResponse;
 }
@@ -258,12 +278,20 @@ model RestoreProjectResponse {
   @field(1) success: boolean;
 }
 
+model PurgeProjectRequest {
+  @field(1) projectId: string;
+}
+model PurgeProjectResponse {
+  @field(1) success: boolean;
+}
+
 interface ProjectService {
   getProject(request: GetProjectRequest): GetProjectResponse;
   createProject(request: CreateProjectRequest): CreateProjectResponse;
   listProjects(request: ListProjectsRequest): ListProjectsResponse;
   archiveProject(request: ArchiveProjectRequest): ArchiveProjectResponse;
   restoreProject(request: RestoreProjectRequest): RestoreProjectResponse;
+  purgeProject(request: PurgeProjectRequest): PurgeProjectResponse;
 }
 
 // ==== Agent Models ====
@@ -330,12 +358,20 @@ model RestoreAgentResponse {
   @field(1) success: boolean;
 }
 
+model PurgeAgentRequest {
+  @field(1) agentId: string;
+}
+model PurgeAgentResponse {
+  @field(1) success: boolean;
+}
+
 interface AgentService {
   createAgentRole(request: CreateAgentRoleRequest): CreateAgentRoleResponse;
   createAgent(request: CreateAgentRequest): CreateAgentResponse;
   listAgents(request: ListAgentsRequest): ListAgentsResponse;
   archiveAgent(request: ArchiveAgentRequest): ArchiveAgentResponse;
   restoreAgent(request: RestoreAgentRequest): RestoreAgentResponse;
+  purgeAgent(request: PurgeAgentRequest): PurgeAgentResponse;
 }
 
 // ==== Task Models ====
@@ -528,6 +564,20 @@ model RestoreFolderResponse {
   @field(1) success: boolean;
 }
 
+model PurgeArtifactRequest {
+  @field(1) artifactId: string;
+}
+model PurgeArtifactResponse {
+  @field(1) success: boolean;
+}
+
+model PurgeFolderRequest {
+  @field(1) folderId: string;
+}
+model PurgeFolderResponse {
+  @field(1) success: boolean;
+}
+
 interface ArtifactService {
   createFolder(request: CreateFolderRequest): CreateFolderResponse;
   createArtifact(request: CreateArtifactRequest): CreateArtifactResponse;
@@ -538,6 +588,8 @@ interface ArtifactService {
   restoreArtifact(request: RestoreArtifactRequest): RestoreArtifactResponse;
   archiveFolder(request: ArchiveFolderRequest): ArchiveFolderResponse;
   restoreFolder(request: RestoreFolderRequest): RestoreFolderResponse;
+  purgeArtifact(request: PurgeArtifactRequest): PurgeArtifactResponse;
+  purgeFolder(request: PurgeFolderRequest): PurgeFolderResponse;
 }
 
 // ==== Comments ====

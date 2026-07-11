@@ -42,6 +42,14 @@ const RestoreFolderSchema = z.object({
   folderId: z.string().min(1, "folderId is required"),
 });
 
+const PurgeArtifactSchema = z.object({
+  artifactId: z.string().min(1, "artifactId is required"),
+});
+
+const PurgeFolderSchema = z.object({
+  folderId: z.string().min(1, "folderId is required"),
+});
+
 // --- Handler Factory ---
 
 export const createArtifactsHandler = (db: any, nc: any = null) => {
@@ -204,6 +212,57 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       await restoreById(db, folders, parsed.folderId);
 
       if (nc) nc.publish("domain.folder.restored", Buffer.from(JSON.stringify({ folderId: parsed.folderId })));
+      return { success: true };
+    },
+    async purgeArtifact(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = PurgeArtifactSchema.parse(req);
+      const orgId = await getArtifactOrgId(db, parsed.artifactId);
+      await assertOrgMember(db, userId, orgId);
+
+      const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+      const existing = await db.select().from(arts).where(eq((arts as any).id, parsed.artifactId)).limit(1);
+      if (!existing[0]?.deletedAt) {
+        throw new ConnectError("artifact must be archived before it can be purged", Code.FailedPrecondition);
+      }
+
+      const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
+      const remainingLinks = await db.select().from(links).where(eq((links as any).artifactId, parsed.artifactId));
+      if (remainingLinks.length > 0) {
+        throw new ConnectError("artifact is still linked to tasks - unlink it first", Code.FailedPrecondition);
+      }
+
+      const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
+      await db.delete(comments).where(and(eq((comments as any).entityId, parsed.artifactId), eq((comments as any).entityType, "artifact")));
+      await db.delete(arts).where(eq((arts as any).id, parsed.artifactId));
+
+      if (nc) nc.publish("domain.artifact.purged", Buffer.from(JSON.stringify({ artifactId: parsed.artifactId })));
+      return { success: true };
+    },
+    async purgeFolder(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = PurgeFolderSchema.parse(req);
+      const orgId = await getFolderOrgId(db, parsed.folderId);
+      await assertOrgMember(db, userId, orgId);
+
+      const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
+      const existing = await db.select().from(folders).where(eq((folders as any).id, parsed.folderId)).limit(1);
+      if (!existing[0]?.deletedAt) {
+        throw new ConnectError("folder must be archived before it can be purged", Code.FailedPrecondition);
+      }
+
+      const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+      const [remainingChildFolders, remainingArtifacts] = await Promise.all([
+        db.select().from(folders).where(eq((folders as any).parentId, parsed.folderId)),
+        db.select().from(arts).where(eq((arts as any).folderId, parsed.folderId)),
+      ]);
+      if (remainingChildFolders.length > 0 || remainingArtifacts.length > 0) {
+        throw new ConnectError("folder still has sub-folders or artifacts - archive or remove them first", Code.FailedPrecondition);
+      }
+
+      await db.delete(folders).where(eq((folders as any).id, parsed.folderId));
+
+      if (nc) nc.publish("domain.folder.purged", Buffer.from(JSON.stringify({ folderId: parsed.folderId })));
       return { success: true };
     },
   };

@@ -1,4 +1,4 @@
-import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
+import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, int, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const testSchema = mysqlTable("schema_migrations_test", {
   id: varchar("id", { length: 256 }).primaryKey(),
@@ -19,6 +19,7 @@ export const organizations = mysqlTable("organizations", {
   parentOrgId: varchar("parent_org_id", { length: 256 }).references((): AnyMySqlColumn => organizations.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
+  binRetentionDays: int("bin_retention_days"),
 }, (table) => {
   return {
     parentOrgIdx: index("organizations_parent_org_id_idx").on(table.parentOrgId),

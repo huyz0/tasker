@@ -1,4 +1,5 @@
 import { expect, test, describe } from "bun:test";
+import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createOrgsHandler } from "./orgs.handler";
@@ -134,5 +135,61 @@ describe("Organizations Handler Integration Logic", () => {
 
     expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.org.archived");
     expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.org.restored");
+  });
+
+  test("purgeOrg requires the org be archived and empty, admin-only", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+
+    const adminId = "user-purge-org-admin-" + Date.now();
+    const memberId = "user-purge-org-member-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@foo.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@foo.com`, createdAt: new Date() });
+
+    const org = await handler.seedOrg({ name: "Purge Me", slug: "purge-me-" + Date.now() }, makeAuthContext(adminId));
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: org.organization.id, userId: memberId, role: "member", joinedAt: new Date() });
+
+    // Cannot purge a live (non-archived) org.
+    await expect(handler.purgeOrg({ orgId: org.organization.id }, makeAuthContext(adminId))).rejects.toThrow();
+
+    await handler.archiveOrg({ orgId: org.organization.id }, makeAuthContext(adminId));
+
+    // Not empty: a project still exists under it.
+    const templateId = "tmpl-purge-org-" + Date.now();
+    const projectId = "proj-purge-org-" + Date.now();
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId: org.organization.id, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId: org.organization.id, templateId, ownerId: adminId, name: "P", createdAt: new Date() });
+    await expect(handler.purgeOrg({ orgId: org.organization.id }, makeAuthContext(adminId))).rejects.toThrow();
+    await db.delete(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, projectId));
+
+    await expect(handler.purgeOrg({ orgId: org.organization.id }, makeAuthContext(memberId))).rejects.toThrow();
+
+    await handler.purgeOrg({ orgId: org.organization.id }, makeAuthContext(adminId));
+
+    const afterPurge = await db.select().from(schemaSqlite.organizations).where(eq(schemaSqlite.organizations.id, org.organization.id));
+    expect(afterPurge.length).toBe(0);
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.org.purged");
+  });
+
+  test("setOrgRetentionDays updates the org's bin retention, admin-only", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+
+    const adminId = "user-retention-admin-" + Date.now();
+    const memberId = "user-retention-member-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@foo.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@foo.com`, createdAt: new Date() });
+
+    const org = await handler.seedOrg({ name: "Retention Org", slug: "retention-org-" + Date.now() }, makeAuthContext(adminId));
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: org.organization.id, userId: memberId, role: "member", joinedAt: new Date() });
+
+    await expect(handler.setOrgRetentionDays({ orgId: org.organization.id, binRetentionDays: 7 }, makeAuthContext(memberId))).rejects.toThrow();
+    await expect(handler.setOrgRetentionDays({ orgId: org.organization.id, binRetentionDays: 0 }, makeAuthContext(adminId))).rejects.toThrow();
+
+    const res = await handler.setOrgRetentionDays({ orgId: org.organization.id, binRetentionDays: 7 }, makeAuthContext(adminId));
+    expect(res.success).toBe(true);
+
+    const rows = await db.select().from(schemaSqlite.organizations).where(eq(schemaSqlite.organizations.id, org.organization.id));
+    expect(rows[0].binRetentionDays).toBe(7);
   });
 });

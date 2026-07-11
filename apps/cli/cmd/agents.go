@@ -77,12 +77,28 @@ var agentsRestoreCmd = &cobra.Command{
 	},
 }
 
+var agentsPurgeCmd = &cobra.Command{
+	Use:   "purge [agent_id]",
+	Short: "Permanently delete an already-binned, unassigned agent",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.PurgeAgent(context.Background(), connect.NewRequest(&healthv1.PurgeAgentRequest{AgentId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to purge agent: %v\n", err)
+			return
+		}
+		cmd.Printf("Agent %s permanently deleted\n", args[0])
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(agentsCmd)
 	agentsCmd.AddCommand(agentsListCmd)
 	agentsCmd.AddCommand(agentsCreateCmd)
 	agentsCmd.AddCommand(agentsDeleteCmd)
 	agentsCmd.AddCommand(agentsRestoreCmd)
+	agentsCmd.AddCommand(agentsPurgeCmd)
 
 	agentsCreateCmd.Flags().String("role", "", "The designated role persona")
 }

@@ -3,16 +3,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OrganizationsDashboard } from './index';
 
-const { mockListOrgs, mockSeedOrg } = vi.hoisted(() => ({
+const { mockListOrgs, mockSeedOrg, mockArchiveOrg, mockSetOrgRetentionDays } = vi.hoisted(() => ({
   mockListOrgs: vi.fn(),
   mockSeedOrg: vi.fn(),
+  mockArchiveOrg: vi.fn(),
+  mockSetOrgRetentionDays: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
   createConnectTransport: vi.fn(() => ({})),
 }));
 vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn(() => ({ listOrgs: mockListOrgs, seedOrg: mockSeedOrg })),
+  createClient: vi.fn(() => ({ listOrgs: mockListOrgs, seedOrg: mockSeedOrg, archiveOrg: mockArchiveOrg, setOrgRetentionDays: mockSetOrgRetentionDays })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ OrgService: {} }));
 
@@ -40,6 +42,8 @@ describe('OrganizationsDashboard', () => {
     mockActiveOrgId = 'org-1';
     mockListOrgs.mockReset();
     mockSeedOrg.mockReset();
+    mockArchiveOrg.mockReset();
+    mockSetOrgRetentionDays.mockReset();
     mockSetActiveOrgId.mockReset();
   });
 
@@ -143,5 +147,33 @@ describe('OrganizationsDashboard', () => {
     await waitFor(() => expect(screen.getByText('Page Two Org')).toBeDefined());
     expect(mockListOrgs).toHaveBeenCalledWith({ page: { cursor: 'cursor-2' } });
     await waitFor(() => expect(screen.getByText('No more items to load')).toBeDefined());
+  });
+
+  it('shows and saves bin retention for the active org', async () => {
+    mockActiveOrgId = 'org-1';
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Active Org', slug: 'active-org', binRetentionDays: 45 }] });
+    mockSetOrgRetentionDays.mockResolvedValue({ success: true });
+
+    renderPage();
+
+    const input = await screen.findByDisplayValue('45');
+    fireEvent.change(input, { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockSetOrgRetentionDays).toHaveBeenCalledWith({ orgId: 'org-1', binRetentionDays: 10 }));
+  });
+
+  it('shows an error message when updating retention fails', async () => {
+    mockActiveOrgId = 'org-1';
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Active Org', slug: 'active-org' }] });
+    mockSetOrgRetentionDays.mockRejectedValue(new Error('not an admin'));
+
+    renderPage();
+
+    const input = await screen.findByDisplayValue('30');
+    fireEvent.change(input, { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.getByText(/Failed to update retention/)).toBeDefined());
   });
 });

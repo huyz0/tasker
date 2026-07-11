@@ -37,6 +37,10 @@ const RestoreProjectSchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
 });
 
+const PurgeProjectSchema = z.object({
+  projectId: z.string().min(1, "projectId is required"),
+});
+
 // --- Handler Factories ---
 
 export const createProjectsHandler = (db: any, nc: any = null) => {
@@ -121,6 +125,35 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       await restoreById(db, ps, parsed.projectId);
 
       if (nc) nc.publish("domain.project.restored", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
+      return { success: true };
+    },
+    async purgeProject(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = PurgeProjectSchema.parse(req);
+      const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
+      const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
+      if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
+      await assertOrgAdmin(db, userId, result[0].orgId);
+      if (!result[0].deletedAt) {
+        throw new ConnectError("project must be archived before it can be purged", Code.FailedPrecondition);
+      }
+
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
+      const repositoryLinks = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
+
+      const [remainingTasks, remainingFolders, remainingRepoLinks] = await Promise.all([
+        db.select().from(tasks).where(eq((tasks as any).projectId, parsed.projectId)),
+        db.select().from(folders).where(eq((folders as any).projectId, parsed.projectId)),
+        db.select().from(repositoryLinks).where(eq((repositoryLinks as any).projectId, parsed.projectId)),
+      ]);
+      if (remainingTasks.length > 0 || remainingFolders.length > 0 || remainingRepoLinks.length > 0) {
+        throw new ConnectError("project still has tasks, folders, or repository links - archive or remove them first", Code.FailedPrecondition);
+      }
+
+      await db.delete(ps).where(eq((ps as any).id, parsed.projectId));
+
+      if (nc) nc.publish("domain.project.purged", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
       return { success: true };
     },
   };

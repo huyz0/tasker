@@ -69,6 +69,11 @@ const (
 	OrgServiceArchiveOrgProcedure = "/tasker.health.v1.OrgService/ArchiveOrg"
 	// OrgServiceRestoreOrgProcedure is the fully-qualified name of the OrgService's RestoreOrg RPC.
 	OrgServiceRestoreOrgProcedure = "/tasker.health.v1.OrgService/RestoreOrg"
+	// OrgServicePurgeOrgProcedure is the fully-qualified name of the OrgService's PurgeOrg RPC.
+	OrgServicePurgeOrgProcedure = "/tasker.health.v1.OrgService/PurgeOrg"
+	// OrgServiceSetOrgRetentionDaysProcedure is the fully-qualified name of the OrgService's
+	// SetOrgRetentionDays RPC.
+	OrgServiceSetOrgRetentionDaysProcedure = "/tasker.health.v1.OrgService/SetOrgRetentionDays"
 	// OrgServiceInviteUserProcedure is the fully-qualified name of the OrgService's InviteUser RPC.
 	OrgServiceInviteUserProcedure = "/tasker.health.v1.OrgService/InviteUser"
 	// TaskTypeServiceGetTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
@@ -101,6 +106,9 @@ const (
 	// ProjectServiceRestoreProjectProcedure is the fully-qualified name of the ProjectService's
 	// RestoreProject RPC.
 	ProjectServiceRestoreProjectProcedure = "/tasker.health.v1.ProjectService/RestoreProject"
+	// ProjectServicePurgeProjectProcedure is the fully-qualified name of the ProjectService's
+	// PurgeProject RPC.
+	ProjectServicePurgeProjectProcedure = "/tasker.health.v1.ProjectService/PurgeProject"
 	// AgentServiceCreateAgentRoleProcedure is the fully-qualified name of the AgentService's
 	// CreateAgentRole RPC.
 	AgentServiceCreateAgentRoleProcedure = "/tasker.health.v1.AgentService/CreateAgentRole"
@@ -115,6 +123,8 @@ const (
 	// AgentServiceRestoreAgentProcedure is the fully-qualified name of the AgentService's RestoreAgent
 	// RPC.
 	AgentServiceRestoreAgentProcedure = "/tasker.health.v1.AgentService/RestoreAgent"
+	// AgentServicePurgeAgentProcedure is the fully-qualified name of the AgentService's PurgeAgent RPC.
+	AgentServicePurgeAgentProcedure = "/tasker.health.v1.AgentService/PurgeAgent"
 	// TaskServiceCreateTaskProcedure is the fully-qualified name of the TaskService's CreateTask RPC.
 	TaskServiceCreateTaskProcedure = "/tasker.health.v1.TaskService/CreateTask"
 	// TaskServiceAssignTaskProcedure is the fully-qualified name of the TaskService's AssignTask RPC.
@@ -157,6 +167,12 @@ const (
 	// ArtifactServiceRestoreFolderProcedure is the fully-qualified name of the ArtifactService's
 	// RestoreFolder RPC.
 	ArtifactServiceRestoreFolderProcedure = "/tasker.health.v1.ArtifactService/RestoreFolder"
+	// ArtifactServicePurgeArtifactProcedure is the fully-qualified name of the ArtifactService's
+	// PurgeArtifact RPC.
+	ArtifactServicePurgeArtifactProcedure = "/tasker.health.v1.ArtifactService/PurgeArtifact"
+	// ArtifactServicePurgeFolderProcedure is the fully-qualified name of the ArtifactService's
+	// PurgeFolder RPC.
+	ArtifactServicePurgeFolderProcedure = "/tasker.health.v1.ArtifactService/PurgeFolder"
 	// CommentServiceCreateCommentProcedure is the fully-qualified name of the CommentService's
 	// CreateComment RPC.
 	CommentServiceCreateCommentProcedure = "/tasker.health.v1.CommentService/CreateComment"
@@ -194,6 +210,8 @@ var (
 	orgServiceSeedOrgMethodDescriptor                    = orgServiceServiceDescriptor.Methods().ByName("SeedOrg")
 	orgServiceArchiveOrgMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("ArchiveOrg")
 	orgServiceRestoreOrgMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("RestoreOrg")
+	orgServicePurgeOrgMethodDescriptor                   = orgServiceServiceDescriptor.Methods().ByName("PurgeOrg")
+	orgServiceSetOrgRetentionDaysMethodDescriptor        = orgServiceServiceDescriptor.Methods().ByName("SetOrgRetentionDays")
 	orgServiceInviteUserMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("InviteUser")
 	taskTypeServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskTypeService")
 	taskTypeServiceGetTaskTypeMethodDescriptor           = taskTypeServiceServiceDescriptor.Methods().ByName("GetTaskType")
@@ -208,12 +226,14 @@ var (
 	projectServiceListProjectsMethodDescriptor           = projectServiceServiceDescriptor.Methods().ByName("ListProjects")
 	projectServiceArchiveProjectMethodDescriptor         = projectServiceServiceDescriptor.Methods().ByName("ArchiveProject")
 	projectServiceRestoreProjectMethodDescriptor         = projectServiceServiceDescriptor.Methods().ByName("RestoreProject")
+	projectServicePurgeProjectMethodDescriptor           = projectServiceServiceDescriptor.Methods().ByName("PurgeProject")
 	agentServiceServiceDescriptor                        = v1.File_tasker_health_v1_health_proto.Services().ByName("AgentService")
 	agentServiceCreateAgentRoleMethodDescriptor          = agentServiceServiceDescriptor.Methods().ByName("CreateAgentRole")
 	agentServiceCreateAgentMethodDescriptor              = agentServiceServiceDescriptor.Methods().ByName("CreateAgent")
 	agentServiceListAgentsMethodDescriptor               = agentServiceServiceDescriptor.Methods().ByName("ListAgents")
 	agentServiceArchiveAgentMethodDescriptor             = agentServiceServiceDescriptor.Methods().ByName("ArchiveAgent")
 	agentServiceRestoreAgentMethodDescriptor             = agentServiceServiceDescriptor.Methods().ByName("RestoreAgent")
+	agentServicePurgeAgentMethodDescriptor               = agentServiceServiceDescriptor.Methods().ByName("PurgeAgent")
 	taskServiceServiceDescriptor                         = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskService")
 	taskServiceCreateTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("CreateTask")
 	taskServiceAssignTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
@@ -232,6 +252,8 @@ var (
 	artifactServiceRestoreArtifactMethodDescriptor       = artifactServiceServiceDescriptor.Methods().ByName("RestoreArtifact")
 	artifactServiceArchiveFolderMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("ArchiveFolder")
 	artifactServiceRestoreFolderMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("RestoreFolder")
+	artifactServicePurgeArtifactMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("PurgeArtifact")
+	artifactServicePurgeFolderMethodDescriptor           = artifactServiceServiceDescriptor.Methods().ByName("PurgeFolder")
 	commentServiceServiceDescriptor                      = v1.File_tasker_health_v1_health_proto.Services().ByName("CommentService")
 	commentServiceCreateCommentMethodDescriptor          = commentServiceServiceDescriptor.Methods().ByName("CreateComment")
 	commentServiceListCommentsMethodDescriptor           = commentServiceServiceDescriptor.Methods().ByName("ListComments")
@@ -388,6 +410,8 @@ type OrgServiceClient interface {
 	SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error)
 	ArchiveOrg(context.Context, *connect.Request[v1.ArchiveOrgRequest]) (*connect.Response[v1.ArchiveOrgResponse], error)
 	RestoreOrg(context.Context, *connect.Request[v1.RestoreOrgRequest]) (*connect.Response[v1.RestoreOrgResponse], error)
+	PurgeOrg(context.Context, *connect.Request[v1.PurgeOrgRequest]) (*connect.Response[v1.PurgeOrgResponse], error)
+	SetOrgRetentionDays(context.Context, *connect.Request[v1.SetOrgRetentionDaysRequest]) (*connect.Response[v1.SetOrgRetentionDaysResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 }
 
@@ -425,6 +449,18 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(orgServiceRestoreOrgMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		purgeOrg: connect.NewClient[v1.PurgeOrgRequest, v1.PurgeOrgResponse](
+			httpClient,
+			baseURL+OrgServicePurgeOrgProcedure,
+			connect.WithSchema(orgServicePurgeOrgMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		setOrgRetentionDays: connect.NewClient[v1.SetOrgRetentionDaysRequest, v1.SetOrgRetentionDaysResponse](
+			httpClient,
+			baseURL+OrgServiceSetOrgRetentionDaysProcedure,
+			connect.WithSchema(orgServiceSetOrgRetentionDaysMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		inviteUser: connect.NewClient[v1.InviteUserRequest, v1.InviteUserResponse](
 			httpClient,
 			baseURL+OrgServiceInviteUserProcedure,
@@ -436,11 +472,13 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 
 // orgServiceClient implements OrgServiceClient.
 type orgServiceClient struct {
-	listOrgs   *connect.Client[v1.ListOrgsRequest, v1.ListOrgsResponse]
-	seedOrg    *connect.Client[v1.SeedOrgRequest, v1.SeedOrgResponse]
-	archiveOrg *connect.Client[v1.ArchiveOrgRequest, v1.ArchiveOrgResponse]
-	restoreOrg *connect.Client[v1.RestoreOrgRequest, v1.RestoreOrgResponse]
-	inviteUser *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
+	listOrgs            *connect.Client[v1.ListOrgsRequest, v1.ListOrgsResponse]
+	seedOrg             *connect.Client[v1.SeedOrgRequest, v1.SeedOrgResponse]
+	archiveOrg          *connect.Client[v1.ArchiveOrgRequest, v1.ArchiveOrgResponse]
+	restoreOrg          *connect.Client[v1.RestoreOrgRequest, v1.RestoreOrgResponse]
+	purgeOrg            *connect.Client[v1.PurgeOrgRequest, v1.PurgeOrgResponse]
+	setOrgRetentionDays *connect.Client[v1.SetOrgRetentionDaysRequest, v1.SetOrgRetentionDaysResponse]
+	inviteUser          *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
 }
 
 // ListOrgs calls tasker.health.v1.OrgService.ListOrgs.
@@ -463,6 +501,16 @@ func (c *orgServiceClient) RestoreOrg(ctx context.Context, req *connect.Request[
 	return c.restoreOrg.CallUnary(ctx, req)
 }
 
+// PurgeOrg calls tasker.health.v1.OrgService.PurgeOrg.
+func (c *orgServiceClient) PurgeOrg(ctx context.Context, req *connect.Request[v1.PurgeOrgRequest]) (*connect.Response[v1.PurgeOrgResponse], error) {
+	return c.purgeOrg.CallUnary(ctx, req)
+}
+
+// SetOrgRetentionDays calls tasker.health.v1.OrgService.SetOrgRetentionDays.
+func (c *orgServiceClient) SetOrgRetentionDays(ctx context.Context, req *connect.Request[v1.SetOrgRetentionDaysRequest]) (*connect.Response[v1.SetOrgRetentionDaysResponse], error) {
+	return c.setOrgRetentionDays.CallUnary(ctx, req)
+}
+
 // InviteUser calls tasker.health.v1.OrgService.InviteUser.
 func (c *orgServiceClient) InviteUser(ctx context.Context, req *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {
 	return c.inviteUser.CallUnary(ctx, req)
@@ -474,6 +522,8 @@ type OrgServiceHandler interface {
 	SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error)
 	ArchiveOrg(context.Context, *connect.Request[v1.ArchiveOrgRequest]) (*connect.Response[v1.ArchiveOrgResponse], error)
 	RestoreOrg(context.Context, *connect.Request[v1.RestoreOrgRequest]) (*connect.Response[v1.RestoreOrgResponse], error)
+	PurgeOrg(context.Context, *connect.Request[v1.PurgeOrgRequest]) (*connect.Response[v1.PurgeOrgResponse], error)
+	SetOrgRetentionDays(context.Context, *connect.Request[v1.SetOrgRetentionDaysRequest]) (*connect.Response[v1.SetOrgRetentionDaysResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 }
 
@@ -507,6 +557,18 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(orgServiceRestoreOrgMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	orgServicePurgeOrgHandler := connect.NewUnaryHandler(
+		OrgServicePurgeOrgProcedure,
+		svc.PurgeOrg,
+		connect.WithSchema(orgServicePurgeOrgMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceSetOrgRetentionDaysHandler := connect.NewUnaryHandler(
+		OrgServiceSetOrgRetentionDaysProcedure,
+		svc.SetOrgRetentionDays,
+		connect.WithSchema(orgServiceSetOrgRetentionDaysMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	orgServiceInviteUserHandler := connect.NewUnaryHandler(
 		OrgServiceInviteUserProcedure,
 		svc.InviteUser,
@@ -523,6 +585,10 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 			orgServiceArchiveOrgHandler.ServeHTTP(w, r)
 		case OrgServiceRestoreOrgProcedure:
 			orgServiceRestoreOrgHandler.ServeHTTP(w, r)
+		case OrgServicePurgeOrgProcedure:
+			orgServicePurgeOrgHandler.ServeHTTP(w, r)
+		case OrgServiceSetOrgRetentionDaysProcedure:
+			orgServiceSetOrgRetentionDaysHandler.ServeHTTP(w, r)
 		case OrgServiceInviteUserProcedure:
 			orgServiceInviteUserHandler.ServeHTTP(w, r)
 		default:
@@ -548,6 +614,14 @@ func (UnimplementedOrgServiceHandler) ArchiveOrg(context.Context, *connect.Reque
 
 func (UnimplementedOrgServiceHandler) RestoreOrg(context.Context, *connect.Request[v1.RestoreOrgRequest]) (*connect.Response[v1.RestoreOrgResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.RestoreOrg is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) PurgeOrg(context.Context, *connect.Request[v1.PurgeOrgRequest]) (*connect.Response[v1.PurgeOrgResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.PurgeOrg is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) SetOrgRetentionDays(context.Context, *connect.Request[v1.SetOrgRetentionDaysRequest]) (*connect.Response[v1.SetOrgRetentionDaysResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.SetOrgRetentionDays is not implemented"))
 }
 
 func (UnimplementedOrgServiceHandler) InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {
@@ -776,6 +850,7 @@ type ProjectServiceClient interface {
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	ArchiveProject(context.Context, *connect.Request[v1.ArchiveProjectRequest]) (*connect.Response[v1.ArchiveProjectResponse], error)
 	RestoreProject(context.Context, *connect.Request[v1.RestoreProjectRequest]) (*connect.Response[v1.RestoreProjectResponse], error)
+	PurgeProject(context.Context, *connect.Request[v1.PurgeProjectRequest]) (*connect.Response[v1.PurgeProjectResponse], error)
 }
 
 // NewProjectServiceClient constructs a client for the tasker.health.v1.ProjectService service. By
@@ -818,6 +893,12 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(projectServiceRestoreProjectMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		purgeProject: connect.NewClient[v1.PurgeProjectRequest, v1.PurgeProjectResponse](
+			httpClient,
+			baseURL+ProjectServicePurgeProjectProcedure,
+			connect.WithSchema(projectServicePurgeProjectMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -828,6 +909,7 @@ type projectServiceClient struct {
 	listProjects   *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
 	archiveProject *connect.Client[v1.ArchiveProjectRequest, v1.ArchiveProjectResponse]
 	restoreProject *connect.Client[v1.RestoreProjectRequest, v1.RestoreProjectResponse]
+	purgeProject   *connect.Client[v1.PurgeProjectRequest, v1.PurgeProjectResponse]
 }
 
 // GetProject calls tasker.health.v1.ProjectService.GetProject.
@@ -855,6 +937,11 @@ func (c *projectServiceClient) RestoreProject(ctx context.Context, req *connect.
 	return c.restoreProject.CallUnary(ctx, req)
 }
 
+// PurgeProject calls tasker.health.v1.ProjectService.PurgeProject.
+func (c *projectServiceClient) PurgeProject(ctx context.Context, req *connect.Request[v1.PurgeProjectRequest]) (*connect.Response[v1.PurgeProjectResponse], error) {
+	return c.purgeProject.CallUnary(ctx, req)
+}
+
 // ProjectServiceHandler is an implementation of the tasker.health.v1.ProjectService service.
 type ProjectServiceHandler interface {
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
@@ -862,6 +949,7 @@ type ProjectServiceHandler interface {
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	ArchiveProject(context.Context, *connect.Request[v1.ArchiveProjectRequest]) (*connect.Response[v1.ArchiveProjectResponse], error)
 	RestoreProject(context.Context, *connect.Request[v1.RestoreProjectRequest]) (*connect.Response[v1.RestoreProjectResponse], error)
+	PurgeProject(context.Context, *connect.Request[v1.PurgeProjectRequest]) (*connect.Response[v1.PurgeProjectResponse], error)
 }
 
 // NewProjectServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -900,6 +988,12 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		connect.WithSchema(projectServiceRestoreProjectMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectServicePurgeProjectHandler := connect.NewUnaryHandler(
+		ProjectServicePurgeProjectProcedure,
+		svc.PurgeProject,
+		connect.WithSchema(projectServicePurgeProjectMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.ProjectService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProjectServiceGetProjectProcedure:
@@ -912,6 +1006,8 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 			projectServiceArchiveProjectHandler.ServeHTTP(w, r)
 		case ProjectServiceRestoreProjectProcedure:
 			projectServiceRestoreProjectHandler.ServeHTTP(w, r)
+		case ProjectServicePurgeProjectProcedure:
+			projectServicePurgeProjectHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -941,6 +1037,10 @@ func (UnimplementedProjectServiceHandler) RestoreProject(context.Context, *conne
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.RestoreProject is not implemented"))
 }
 
+func (UnimplementedProjectServiceHandler) PurgeProject(context.Context, *connect.Request[v1.PurgeProjectRequest]) (*connect.Response[v1.PurgeProjectResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.PurgeProject is not implemented"))
+}
+
 // AgentServiceClient is a client for the tasker.health.v1.AgentService service.
 type AgentServiceClient interface {
 	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
@@ -948,6 +1048,7 @@ type AgentServiceClient interface {
 	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error)
 	ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error)
 	RestoreAgent(context.Context, *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error)
+	PurgeAgent(context.Context, *connect.Request[v1.PurgeAgentRequest]) (*connect.Response[v1.PurgeAgentResponse], error)
 }
 
 // NewAgentServiceClient constructs a client for the tasker.health.v1.AgentService service. By
@@ -990,6 +1091,12 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(agentServiceRestoreAgentMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		purgeAgent: connect.NewClient[v1.PurgeAgentRequest, v1.PurgeAgentResponse](
+			httpClient,
+			baseURL+AgentServicePurgeAgentProcedure,
+			connect.WithSchema(agentServicePurgeAgentMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1000,6 +1107,7 @@ type agentServiceClient struct {
 	listAgents      *connect.Client[v1.ListAgentsRequest, v1.ListAgentsResponse]
 	archiveAgent    *connect.Client[v1.ArchiveAgentRequest, v1.ArchiveAgentResponse]
 	restoreAgent    *connect.Client[v1.RestoreAgentRequest, v1.RestoreAgentResponse]
+	purgeAgent      *connect.Client[v1.PurgeAgentRequest, v1.PurgeAgentResponse]
 }
 
 // CreateAgentRole calls tasker.health.v1.AgentService.CreateAgentRole.
@@ -1027,6 +1135,11 @@ func (c *agentServiceClient) RestoreAgent(ctx context.Context, req *connect.Requ
 	return c.restoreAgent.CallUnary(ctx, req)
 }
 
+// PurgeAgent calls tasker.health.v1.AgentService.PurgeAgent.
+func (c *agentServiceClient) PurgeAgent(ctx context.Context, req *connect.Request[v1.PurgeAgentRequest]) (*connect.Response[v1.PurgeAgentResponse], error) {
+	return c.purgeAgent.CallUnary(ctx, req)
+}
+
 // AgentServiceHandler is an implementation of the tasker.health.v1.AgentService service.
 type AgentServiceHandler interface {
 	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
@@ -1034,6 +1147,7 @@ type AgentServiceHandler interface {
 	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error)
 	ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error)
 	RestoreAgent(context.Context, *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error)
+	PurgeAgent(context.Context, *connect.Request[v1.PurgeAgentRequest]) (*connect.Response[v1.PurgeAgentResponse], error)
 }
 
 // NewAgentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1072,6 +1186,12 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(agentServiceRestoreAgentMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	agentServicePurgeAgentHandler := connect.NewUnaryHandler(
+		AgentServicePurgeAgentProcedure,
+		svc.PurgeAgent,
+		connect.WithSchema(agentServicePurgeAgentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.AgentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AgentServiceCreateAgentRoleProcedure:
@@ -1084,6 +1204,8 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 			agentServiceArchiveAgentHandler.ServeHTTP(w, r)
 		case AgentServiceRestoreAgentProcedure:
 			agentServiceRestoreAgentHandler.ServeHTTP(w, r)
+		case AgentServicePurgeAgentProcedure:
+			agentServicePurgeAgentHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1111,6 +1233,10 @@ func (UnimplementedAgentServiceHandler) ArchiveAgent(context.Context, *connect.R
 
 func (UnimplementedAgentServiceHandler) RestoreAgent(context.Context, *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.RestoreAgent is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) PurgeAgent(context.Context, *connect.Request[v1.PurgeAgentRequest]) (*connect.Response[v1.PurgeAgentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.PurgeAgent is not implemented"))
 }
 
 // TaskServiceClient is a client for the tasker.health.v1.TaskService service.
@@ -1348,6 +1474,8 @@ type ArtifactServiceClient interface {
 	RestoreArtifact(context.Context, *connect.Request[v1.RestoreArtifactRequest]) (*connect.Response[v1.RestoreArtifactResponse], error)
 	ArchiveFolder(context.Context, *connect.Request[v1.ArchiveFolderRequest]) (*connect.Response[v1.ArchiveFolderResponse], error)
 	RestoreFolder(context.Context, *connect.Request[v1.RestoreFolderRequest]) (*connect.Response[v1.RestoreFolderResponse], error)
+	PurgeArtifact(context.Context, *connect.Request[v1.PurgeArtifactRequest]) (*connect.Response[v1.PurgeArtifactResponse], error)
+	PurgeFolder(context.Context, *connect.Request[v1.PurgeFolderRequest]) (*connect.Response[v1.PurgeFolderResponse], error)
 }
 
 // NewArtifactServiceClient constructs a client for the tasker.health.v1.ArtifactService service. By
@@ -1414,6 +1542,18 @@ func NewArtifactServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(artifactServiceRestoreFolderMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		purgeArtifact: connect.NewClient[v1.PurgeArtifactRequest, v1.PurgeArtifactResponse](
+			httpClient,
+			baseURL+ArtifactServicePurgeArtifactProcedure,
+			connect.WithSchema(artifactServicePurgeArtifactMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		purgeFolder: connect.NewClient[v1.PurgeFolderRequest, v1.PurgeFolderResponse](
+			httpClient,
+			baseURL+ArtifactServicePurgeFolderProcedure,
+			connect.WithSchema(artifactServicePurgeFolderMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1428,6 +1568,8 @@ type artifactServiceClient struct {
 	restoreArtifact  *connect.Client[v1.RestoreArtifactRequest, v1.RestoreArtifactResponse]
 	archiveFolder    *connect.Client[v1.ArchiveFolderRequest, v1.ArchiveFolderResponse]
 	restoreFolder    *connect.Client[v1.RestoreFolderRequest, v1.RestoreFolderResponse]
+	purgeArtifact    *connect.Client[v1.PurgeArtifactRequest, v1.PurgeArtifactResponse]
+	purgeFolder      *connect.Client[v1.PurgeFolderRequest, v1.PurgeFolderResponse]
 }
 
 // CreateFolder calls tasker.health.v1.ArtifactService.CreateFolder.
@@ -1475,6 +1617,16 @@ func (c *artifactServiceClient) RestoreFolder(ctx context.Context, req *connect.
 	return c.restoreFolder.CallUnary(ctx, req)
 }
 
+// PurgeArtifact calls tasker.health.v1.ArtifactService.PurgeArtifact.
+func (c *artifactServiceClient) PurgeArtifact(ctx context.Context, req *connect.Request[v1.PurgeArtifactRequest]) (*connect.Response[v1.PurgeArtifactResponse], error) {
+	return c.purgeArtifact.CallUnary(ctx, req)
+}
+
+// PurgeFolder calls tasker.health.v1.ArtifactService.PurgeFolder.
+func (c *artifactServiceClient) PurgeFolder(ctx context.Context, req *connect.Request[v1.PurgeFolderRequest]) (*connect.Response[v1.PurgeFolderResponse], error) {
+	return c.purgeFolder.CallUnary(ctx, req)
+}
+
 // ArtifactServiceHandler is an implementation of the tasker.health.v1.ArtifactService service.
 type ArtifactServiceHandler interface {
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error)
@@ -1486,6 +1638,8 @@ type ArtifactServiceHandler interface {
 	RestoreArtifact(context.Context, *connect.Request[v1.RestoreArtifactRequest]) (*connect.Response[v1.RestoreArtifactResponse], error)
 	ArchiveFolder(context.Context, *connect.Request[v1.ArchiveFolderRequest]) (*connect.Response[v1.ArchiveFolderResponse], error)
 	RestoreFolder(context.Context, *connect.Request[v1.RestoreFolderRequest]) (*connect.Response[v1.RestoreFolderResponse], error)
+	PurgeArtifact(context.Context, *connect.Request[v1.PurgeArtifactRequest]) (*connect.Response[v1.PurgeArtifactResponse], error)
+	PurgeFolder(context.Context, *connect.Request[v1.PurgeFolderRequest]) (*connect.Response[v1.PurgeFolderResponse], error)
 }
 
 // NewArtifactServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1548,6 +1702,18 @@ func NewArtifactServiceHandler(svc ArtifactServiceHandler, opts ...connect.Handl
 		connect.WithSchema(artifactServiceRestoreFolderMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	artifactServicePurgeArtifactHandler := connect.NewUnaryHandler(
+		ArtifactServicePurgeArtifactProcedure,
+		svc.PurgeArtifact,
+		connect.WithSchema(artifactServicePurgeArtifactMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	artifactServicePurgeFolderHandler := connect.NewUnaryHandler(
+		ArtifactServicePurgeFolderProcedure,
+		svc.PurgeFolder,
+		connect.WithSchema(artifactServicePurgeFolderMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.ArtifactService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ArtifactServiceCreateFolderProcedure:
@@ -1568,6 +1734,10 @@ func NewArtifactServiceHandler(svc ArtifactServiceHandler, opts ...connect.Handl
 			artifactServiceArchiveFolderHandler.ServeHTTP(w, r)
 		case ArtifactServiceRestoreFolderProcedure:
 			artifactServiceRestoreFolderHandler.ServeHTTP(w, r)
+		case ArtifactServicePurgeArtifactProcedure:
+			artifactServicePurgeArtifactHandler.ServeHTTP(w, r)
+		case ArtifactServicePurgeFolderProcedure:
+			artifactServicePurgeFolderHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1611,6 +1781,14 @@ func (UnimplementedArtifactServiceHandler) ArchiveFolder(context.Context, *conne
 
 func (UnimplementedArtifactServiceHandler) RestoreFolder(context.Context, *connect.Request[v1.RestoreFolderRequest]) (*connect.Response[v1.RestoreFolderResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.RestoreFolder is not implemented"))
+}
+
+func (UnimplementedArtifactServiceHandler) PurgeArtifact(context.Context, *connect.Request[v1.PurgeArtifactRequest]) (*connect.Response[v1.PurgeArtifactResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.PurgeArtifact is not implemented"))
+}
+
+func (UnimplementedArtifactServiceHandler) PurgeFolder(context.Context, *connect.Request[v1.PurgeFolderRequest]) (*connect.Response[v1.PurgeFolderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.PurgeFolder is not implemented"))
 }
 
 // CommentServiceClient is a client for the tasker.health.v1.CommentService service.

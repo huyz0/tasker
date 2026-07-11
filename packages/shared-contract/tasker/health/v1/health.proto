@@ -33,6 +33,7 @@ message Organization {
   string role = 4;
   string parentOrgId = 5;
   string deletedAt = 6;
+  int32 binRetentionDays = 7;
 }
 
 message GetIdentityRequest {}
@@ -67,6 +68,21 @@ message RestoreOrgResponse {
   bool success = 1;
 }
 
+message PurgeOrgRequest {
+  string orgId = 1;
+}
+message PurgeOrgResponse {
+  bool success = 1;
+}
+
+message SetOrgRetentionDaysRequest {
+  string orgId = 1;
+  int32 binRetentionDays = 2;
+}
+message SetOrgRetentionDaysResponse {
+  bool success = 1;
+}
+
 message SeedOrgRequest {
   string name = 1;
   string slug = 2;
@@ -89,6 +105,8 @@ service OrgService {
   rpc SeedOrg(SeedOrgRequest) returns (SeedOrgResponse);
   rpc ArchiveOrg(ArchiveOrgRequest) returns (ArchiveOrgResponse);
   rpc RestoreOrg(RestoreOrgRequest) returns (RestoreOrgResponse);
+  rpc PurgeOrg(PurgeOrgRequest) returns (PurgeOrgResponse);
+  rpc SetOrgRetentionDays(SetOrgRetentionDaysRequest) returns (SetOrgRetentionDaysResponse);
   rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
 }
 
@@ -230,12 +248,20 @@ message RestoreProjectResponse {
   bool success = 1;
 }
 
+message PurgeProjectRequest {
+  string projectId = 1;
+}
+message PurgeProjectResponse {
+  bool success = 1;
+}
+
 service ProjectService {
   rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
   rpc ArchiveProject(ArchiveProjectRequest) returns (ArchiveProjectResponse);
   rpc RestoreProject(RestoreProjectRequest) returns (RestoreProjectResponse);
+  rpc PurgeProject(PurgeProjectRequest) returns (PurgeProjectResponse);
 }
 
 message AgentRole {
@@ -279,6 +305,7 @@ service AgentService {
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
   rpc ArchiveAgent(ArchiveAgentRequest) returns (ArchiveAgentResponse);
   rpc RestoreAgent(RestoreAgentRequest) returns (RestoreAgentResponse);
+  rpc PurgeAgent(PurgeAgentRequest) returns (PurgeAgentResponse);
 }
 
 message ListAgentsRequest {
@@ -301,6 +328,13 @@ message RestoreAgentRequest {
   string agentId = 1;
 }
 message RestoreAgentResponse {
+  bool success = 1;
+}
+
+message PurgeAgentRequest {
+  string agentId = 1;
+}
+message PurgeAgentResponse {
   bool success = 1;
 }
 
@@ -501,6 +535,20 @@ message RestoreFolderResponse {
   bool success = 1;
 }
 
+message PurgeArtifactRequest {
+  string artifactId = 1;
+}
+message PurgeArtifactResponse {
+  bool success = 1;
+}
+
+message PurgeFolderRequest {
+  string folderId = 1;
+}
+message PurgeFolderResponse {
+  bool success = 1;
+}
+
 service ArtifactService {
   rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
   rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
@@ -511,6 +559,8 @@ service ArtifactService {
   rpc RestoreArtifact(RestoreArtifactRequest) returns (RestoreArtifactResponse);
   rpc ArchiveFolder(ArchiveFolderRequest) returns (ArchiveFolderResponse);
   rpc RestoreFolder(RestoreFolderRequest) returns (RestoreFolderResponse);
+  rpc PurgeArtifact(PurgeArtifactRequest) returns (PurgeArtifactResponse);
+  rpc PurgeFolder(PurgeFolderRequest) returns (PurgeFolderResponse);
 }
 
 message Comment {

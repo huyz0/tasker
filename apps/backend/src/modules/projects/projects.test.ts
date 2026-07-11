@@ -1,4 +1,5 @@
 import { expect, test, describe, beforeAll } from "bun:test";
+import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createProjectsHandler, createProjectTemplatesHandler } from "./projects.handler";
@@ -149,5 +150,26 @@ describe("Projects Handler Integration Logic", () => {
     expect(mockNc.publishedMessages.map((m: any) => m.subject)).toContain("domain.project.restored");
 
     await expect(pHandler.archiveProject({ projectId: "project-does-not-exist" }, ctx)).rejects.toThrow();
+  });
+
+  test("purgeProject requires the project be archived and empty (no tasks/folders/repo links)", async () => {
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Purge Template" }, ctx);
+    const pResp = await pHandler.createProject({ orgId: "org-test", templateId: tResp.template.id, name: "Purge Me", ownerId: "user-test" }, ctx);
+
+    // Cannot purge a live project.
+    await expect(pHandler.purgeProject({ projectId: pResp.project.id }, ctx)).rejects.toThrow();
+
+    await pHandler.archiveProject({ projectId: pResp.project.id }, ctx);
+
+    const taskId = "tsk-purge-proj-" + Date.now();
+    await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId: pResp.project.id, title: "T", status: "todo", createdAt: new Date() });
+    await expect(pHandler.purgeProject({ projectId: pResp.project.id }, ctx)).rejects.toThrow();
+    await db.delete(schemaSqlite.tasks).where(eq(schemaSqlite.tasks.id, taskId));
+
+    await pHandler.purgeProject({ projectId: pResp.project.id }, ctx);
+
+    const afterPurge = await db.select().from(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, pResp.project.id));
+    expect(afterPurge.length).toBe(0);
+    expect(mockNc.publishedMessages.map((m: any) => m.subject)).toContain("domain.project.purged");
   });
 });

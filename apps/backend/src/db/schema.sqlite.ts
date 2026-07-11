@@ -19,6 +19,7 @@ export const organizations = sqliteTable("organizations", {
   parentOrgId: text("parent_org_id").references((): AnySQLiteColumn => organizations.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
+  binRetentionDays: integer("bin_retention_days"),
 }, (table) => {
   return {
     parentOrgIdx: index("organizations_parent_org_id_idx").on(table.parentOrgId),

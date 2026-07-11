@@ -20,6 +20,7 @@ import { connect as natsConnect } from "nats";
 import { logger } from "./lib/logger";
 import { requestLoggingInterceptor } from "./lib/requestLogging";
 import { reportError } from "./lib/errorReporter";
+import { runRetentionSweep } from "./lib/retentionSweep";
 
 // Bypassing network stack with local function execution logic
 export const localInProcessTransportRouter = (_req: any) => {
@@ -108,3 +109,8 @@ http.createServer(async (req, res) => {
 }).listen(8080, () => {
   logger.info({ port: 8080 }, "backend.listening");
 });
+
+const RETENTION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
+setInterval(() => {
+  runRetentionSweep(db).catch((err) => reportError({ message: "retention_sweep.failed", err, severity: "error" }));
+}, RETENTION_SWEEP_INTERVAL_MS);

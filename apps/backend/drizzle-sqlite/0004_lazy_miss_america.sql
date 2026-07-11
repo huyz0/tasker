@@ -1,0 +1,1 @@
+ALTER TABLE `organizations` ADD `bin_retention_days` integer;

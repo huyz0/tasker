@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createArtifactsHandler } from "./artifacts.handler";
@@ -283,5 +284,43 @@ describe("Artifacts Handler", () => {
     const artifact = await handler.createArtifact({ folderId: folder.folder.id, name: "Guarded Art" }, ctx);
     await expect(handler.archiveArtifact({ artifactId: artifact.artifact.id }, makeAuthContext("user-outsider"))).rejects.toThrow();
     await expect(handler.restoreArtifact({ artifactId: artifact.artifact.id }, makeAuthContext("user-outsider"))).rejects.toThrow();
+  });
+
+  // --- purge ---
+
+  it("should require an artifact be archived and unlinked before it can be purged", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Fld" }, ctx);
+    const artifact = await handler.createArtifact({ folderId: folder.folder.id, name: "Purgeable" }, ctx);
+
+    await expect(handler.purgeArtifact({ artifactId: artifact.artifact.id }, ctx)).rejects.toThrow();
+
+    await handler.archiveArtifact({ artifactId: artifact.artifact.id }, ctx);
+
+    const task = await db.insert(schemaSqlite.tasks).values({ id: "tsk-" + crypto.randomUUID(), projectId, title: "T", status: "todo", createdAt: new Date() }).returning();
+    await handler.linkTaskArtifact({ taskId: task[0].id, artifactId: artifact.artifact.id }, ctx);
+    await expect(handler.purgeArtifact({ artifactId: artifact.artifact.id }, ctx)).rejects.toThrow();
+
+    await db.delete(schemaSqlite.taskArtifactLinks).where(eq(schemaSqlite.taskArtifactLinks.artifactId, artifact.artifact.id));
+    await handler.purgeArtifact({ artifactId: artifact.artifact.id }, ctx);
+
+    const remaining = await db.select().from(schemaSqlite.artifacts).where(eq(schemaSqlite.artifacts.id, artifact.artifact.id));
+    expect(remaining.length).toBe(0);
+  });
+
+  it("should require a folder be archived and empty before it can be purged", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Fld" }, ctx);
+
+    await expect(handler.purgeFolder({ folderId: folder.folder.id }, ctx)).rejects.toThrow();
+
+    await handler.archiveFolder({ folderId: folder.folder.id }, ctx);
+
+    const artifact = await handler.createArtifact({ folderId: folder.folder.id, name: "Blocking Art" }, ctx);
+    await expect(handler.purgeFolder({ folderId: folder.folder.id }, ctx)).rejects.toThrow();
+
+    await db.delete(schemaSqlite.artifacts).where(eq(schemaSqlite.artifacts.id, artifact.artifact.id));
+    await handler.purgeFolder({ folderId: folder.folder.id }, ctx);
+
+    const remaining = await db.select().from(schemaSqlite.folders).where(eq(schemaSqlite.folders.id, folder.folder.id));
+    expect(remaining.length).toBe(0);
   });
 });

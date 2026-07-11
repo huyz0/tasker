@@ -1,4 +1,5 @@
 import { expect, test, describe } from "bun:test";
+import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createAgentsHandler } from "./agents.handler";
@@ -91,5 +92,41 @@ describe("Agents Handler Integration Tests", () => {
     await expect(handler.archiveAgent({ agentId: agentResp.agent.id }, outsiderCtx)).rejects.toThrow();
     await expect(handler.restoreAgent({ agentId: agentResp.agent.id }, outsiderCtx)).rejects.toThrow();
     await expect(handler.archiveAgent({ agentId: "agent-does-not-exist" }, ctx)).rejects.toThrow();
+  });
+
+  test("purgeAgent requires the agent be archived and unassigned", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-agent-purge-" + Date.now().toString();
+    const userId = "user-agent-purge-" + Date.now().toString();
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Purge Org", slug: "purge-org-agent-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
+    const ctx = makeAuthContext(userId);
+
+    const handler = createAgentsHandler(db, nc);
+    const roleResp = await handler.createAgentRole({ name: "Role", systemPrompt: "p", capabilities: "{}" }, ctx);
+    const agentResp = await handler.createAgent({ orgId, agentRoleId: roleResp.role.id, name: "Purgeable Agent" }, ctx);
+
+    await expect(handler.purgeAgent({ agentId: agentResp.agent.id }, ctx)).rejects.toThrow();
+
+    await handler.archiveAgent({ agentId: agentResp.agent.id }, ctx);
+
+    const templateId = "tmpl-agent-purge-" + Date.now();
+    const projectId = "proj-agent-purge-" + Date.now();
+    const taskId = "tsk-agent-purge-" + Date.now();
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "P", createdAt: new Date() });
+    await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: "T", status: "todo", createdAt: new Date() });
+    await db.insert(schemaSqlite.taskAssignments).values({ id: "ta-agent-purge-" + Date.now(), taskId, agentId: agentResp.agent.id });
+
+    await expect(handler.purgeAgent({ agentId: agentResp.agent.id }, ctx)).rejects.toThrow();
+
+    await db.delete(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.agentId, agentResp.agent.id));
+    await handler.purgeAgent({ agentId: agentResp.agent.id }, ctx);
+
+    const remaining = await db.select().from(schemaSqlite.agents).where(eq(schemaSqlite.agents.id, agentResp.agent.id));
+    expect(remaining.length).toBe(0);
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.agent.purged");
   });
 });

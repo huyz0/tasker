@@ -41,7 +41,23 @@ function OrganizationsBin() {
       queryClient.invalidateQueries({ queryKey: ['orgs'] });
     },
   });
-  return <BinList isLoading={isLoading} items={data} onRestore={(id) => restoreMutation.mutate(id)} isRestoring={restoreMutation.isPending} error={restoreMutation.error as Error | null} emptyMessage="No archived organizations." />;
+  const purgeMutation = useMutation({
+    mutationFn: async (orgId: string) => { await orgClient.purgeOrg({ orgId }); },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgs', 'bin'] }),
+  });
+  return (
+    <BinList
+      isLoading={isLoading}
+      items={data}
+      onRestore={(id) => restoreMutation.mutate(id)}
+      isRestoring={restoreMutation.isPending}
+      restoreError={restoreMutation.error as Error | null}
+      onPurge={(id) => purgeMutation.mutate(id)}
+      isPurging={purgeMutation.isPending}
+      purgeError={purgeMutation.error as Error | null}
+      emptyMessage="No archived organizations."
+    />
+  );
 }
 
 function ProjectsBin() {
@@ -59,7 +75,23 @@ function ProjectsBin() {
       queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
     },
   });
-  return <BinList isLoading={isLoading} items={data} onRestore={(id) => restoreMutation.mutate(id)} isRestoring={restoreMutation.isPending} error={restoreMutation.error as Error | null} emptyMessage="No archived projects in the active organization." />;
+  const purgeMutation = useMutation({
+    mutationFn: async (projectId: string) => { await projectClient.purgeProject({ projectId }); },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects', 'bin', activeOrgId] }),
+  });
+  return (
+    <BinList
+      isLoading={isLoading}
+      items={data}
+      onRestore={(id) => restoreMutation.mutate(id)}
+      isRestoring={restoreMutation.isPending}
+      restoreError={restoreMutation.error as Error | null}
+      onPurge={(id) => purgeMutation.mutate(id)}
+      isPurging={purgeMutation.isPending}
+      purgeError={purgeMutation.error as Error | null}
+      emptyMessage="No archived projects in the active organization."
+    />
+  );
 }
 
 function TasksBin() {
@@ -77,7 +109,24 @@ function TasksBin() {
       queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] });
     },
   });
-  return <BinList isLoading={isLoading} items={data} labelKey="title" onRestore={(id) => restoreMutation.mutate(id)} isRestoring={restoreMutation.isPending} error={restoreMutation.error as Error | null} emptyMessage="No archived tasks in the active project." />;
+  const purgeMutation = useMutation({
+    mutationFn: async (taskId: string) => { await taskClient.purgeTask({ taskId }); },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks', 'bin', activeProjectId] }),
+  });
+  return (
+    <BinList
+      isLoading={isLoading}
+      items={data}
+      labelKey="title"
+      onRestore={(id) => restoreMutation.mutate(id)}
+      isRestoring={restoreMutation.isPending}
+      restoreError={restoreMutation.error as Error | null}
+      onPurge={(id) => purgeMutation.mutate(id)}
+      isPurging={purgeMutation.isPending}
+      purgeError={purgeMutation.error as Error | null}
+      emptyMessage="No archived tasks in the active project."
+    />
+  );
 }
 
 function AgentsBin() {
@@ -95,7 +144,23 @@ function AgentsBin() {
       queryClient.invalidateQueries({ queryKey: ['agents', activeOrgId] });
     },
   });
-  return <BinList isLoading={isLoading} items={data} onRestore={(id) => restoreMutation.mutate(id)} isRestoring={restoreMutation.isPending} error={restoreMutation.error as Error | null} emptyMessage="No archived agents in the active organization." />;
+  const purgeMutation = useMutation({
+    mutationFn: async (agentId: string) => { await agentClient.purgeAgent({ agentId }); },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents', 'bin', activeOrgId] }),
+  });
+  return (
+    <BinList
+      isLoading={isLoading}
+      items={data}
+      onRestore={(id) => restoreMutation.mutate(id)}
+      isRestoring={restoreMutation.isPending}
+      restoreError={restoreMutation.error as Error | null}
+      onPurge={(id) => purgeMutation.mutate(id)}
+      isPurging={purgeMutation.isPending}
+      purgeError={purgeMutation.error as Error | null}
+      emptyMessage="No archived agents in the active organization."
+    />
+  );
 }
 
 function FoldersBin() {
@@ -113,7 +178,23 @@ function FoldersBin() {
       queryClient.invalidateQueries({ queryKey: ['folders', activeProjectId] });
     },
   });
-  return <BinList isLoading={isLoading} items={data} onRestore={(id) => restoreMutation.mutate(id)} isRestoring={restoreMutation.isPending} error={restoreMutation.error as Error | null} emptyMessage="No archived folders in the active project." />;
+  const purgeMutation = useMutation({
+    mutationFn: async (folderId: string) => { await artifactClient.purgeFolder({ folderId }); },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['folders', 'bin', activeProjectId] }),
+  });
+  return (
+    <BinList
+      isLoading={isLoading}
+      items={data}
+      onRestore={(id) => restoreMutation.mutate(id)}
+      isRestoring={restoreMutation.isPending}
+      restoreError={restoreMutation.error as Error | null}
+      onPurge={(id) => purgeMutation.mutate(id)}
+      isPurging={purgeMutation.isPending}
+      purgeError={purgeMutation.error as Error | null}
+      emptyMessage="No archived folders in the active project."
+    />
+  );
 }
 
 function ArtifactsBin() {
@@ -141,15 +222,34 @@ function ArtifactsBin() {
       queryClient.invalidateQueries({ queryKey: ['artifacts'] });
     },
   });
-  return <BinList isLoading={isLoading} items={data} onRestore={(id) => restoreMutation.mutate(id)} isRestoring={restoreMutation.isPending} error={restoreMutation.error as Error | null} emptyMessage="No archived artifacts in the active project." />;
+  const purgeMutation = useMutation({
+    mutationFn: async (artifactId: string) => { await artifactClient.purgeArtifact({ artifactId }); },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['artifacts', 'bin', activeProjectId] }),
+  });
+  return (
+    <BinList
+      isLoading={isLoading}
+      items={data}
+      onRestore={(id) => restoreMutation.mutate(id)}
+      isRestoring={restoreMutation.isPending}
+      restoreError={restoreMutation.error as Error | null}
+      onPurge={(id) => purgeMutation.mutate(id)}
+      isPurging={purgeMutation.isPending}
+      purgeError={purgeMutation.error as Error | null}
+      emptyMessage="No archived artifacts in the active project."
+    />
+  );
 }
 
-function BinList({ isLoading, items, onRestore, isRestoring, error, emptyMessage, labelKey = 'name' }: {
+function BinList({ isLoading, items, onRestore, isRestoring, restoreError, onPurge, isPurging, purgeError, emptyMessage, labelKey = 'name' }: {
   isLoading: boolean;
   items: any[] | undefined;
   onRestore: (id: string) => void;
   isRestoring: boolean;
-  error: Error | null;
+  restoreError: Error | null;
+  onPurge: (id: string) => void;
+  isPurging: boolean;
+  purgeError: Error | null;
   emptyMessage: string;
   labelKey?: string;
 }) {
@@ -161,8 +261,11 @@ function BinList({ isLoading, items, onRestore, isRestoring, error, emptyMessage
   }
   return (
     <div className="border rounded-md divide-y">
-      {error && (
-        <p className="text-sm text-destructive p-3">Failed to restore: {error.message}</p>
+      {restoreError && (
+        <p className="text-sm text-destructive p-3">Failed to restore: {restoreError.message}</p>
+      )}
+      {purgeError && (
+        <p className="text-sm text-destructive p-3">Failed to delete forever: {purgeError.message}</p>
       )}
       {items.map((item) => (
         <div key={item.id} className="p-3 text-sm flex justify-between items-center">
@@ -172,13 +275,26 @@ function BinList({ isLoading, items, onRestore, isRestoring, error, emptyMessage
               <span className="text-xs text-muted-foreground ml-2">Deleted {new Date(item.deletedAt).toLocaleString()}</span>
             )}
           </div>
-          <button
-            onClick={() => onRestore(item.id)}
-            disabled={isRestoring}
-            className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium disabled:opacity-50"
-          >
-            {isRestoring ? 'Restoring...' : 'Restore'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onRestore(item.id)}
+              disabled={isRestoring || isPurging}
+              className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium disabled:opacity-50"
+            >
+              {isRestoring ? 'Restoring...' : 'Restore'}
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm('Permanently delete this item? This cannot be undone.')) {
+                  onPurge(item.id);
+                }
+              }}
+              disabled={isRestoring || isPurging}
+              className="px-3 py-1 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-md text-xs font-medium disabled:opacity-50"
+            >
+              {isPurging ? 'Deleting...' : 'Delete Forever'}
+            </button>
+          </div>
         </div>
       ))}
     </div>
@@ -195,7 +311,9 @@ export function BinDashboard() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Bin</h1>
-        <p className="text-muted-foreground mt-1">Archived items can be restored here, or left to age out.</p>
+        <p className="text-muted-foreground mt-1">
+          Archived items can be restored here, or permanently deleted (only allowed once empty of any remaining contents). Anything left untouched is automatically purged after each organization's retention period.
+        </p>
       </div>
 
       <div className="border rounded-lg bg-card shadow-sm">

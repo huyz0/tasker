@@ -28,6 +28,10 @@ const RestoreAgentSchema = z.object({
   agentId: z.string().min(1, "agentId is required"),
 });
 
+const PurgeAgentSchema = z.object({
+  agentId: z.string().min(1, "agentId is required"),
+});
+
 // --- Handler Factory ---
 
 export const createAgentsHandler = (db: any, nc: any = null) => {
@@ -108,6 +112,34 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       await restoreById(db, agentsSchema, parsed.agentId);
 
       if (nc) nc.publish("domain.agent.restored", Buffer.from(JSON.stringify({ agentId: parsed.agentId })));
+      return { success: true };
+    },
+    async purgeAgent(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = PurgeAgentSchema.parse(req);
+      const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+      const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
+      if (!result || result.length === 0) throw new ConnectError("agent not found", Code.NotFound);
+      await assertOrgMember(db, userId, result[0].orgId);
+      if (!result[0].deletedAt) {
+        throw new ConnectError("agent must be archived before it can be purged", Code.FailedPrecondition);
+      }
+
+      const taskAssignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+      const taskNotes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
+      const [remainingAssignments, remainingNotes] = await Promise.all([
+        db.select().from(taskAssignments).where(eq((taskAssignments as any).agentId, parsed.agentId)),
+        db.select().from(taskNotes).where(eq((taskNotes as any).agentId, parsed.agentId)),
+      ]);
+      if (remainingAssignments.length > 0 || remainingNotes.length > 0) {
+        throw new ConnectError("agent still has task assignments or notes - remove them first", Code.FailedPrecondition);
+      }
+
+      const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
+      await db.update(comments).set({ agentId: null }).where(eq((comments as any).agentId, parsed.agentId));
+      await db.delete(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId));
+
+      if (nc) nc.publish("domain.agent.purged", Buffer.from(JSON.stringify({ agentId: parsed.agentId })));
       return { success: true };
     },
   };

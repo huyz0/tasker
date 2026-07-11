@@ -107,14 +107,46 @@ var foldersRestoreCmd = &cobra.Command{
 	},
 }
 
+var artifactsPurgeCmd = &cobra.Command{
+	Use:   "purge [artifact_id]",
+	Short: "Permanently delete an already-binned, unlinked artifact",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.PurgeArtifact(context.Background(), connect.NewRequest(&healthv1.PurgeArtifactRequest{ArtifactId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to purge artifact: %v\n", err)
+			return
+		}
+		cmd.Printf("Artifact %s permanently deleted\n", args[0])
+	},
+}
+
+var foldersPurgeCmd = &cobra.Command{
+	Use:   "purge-folder [folder_id]",
+	Short: "Permanently delete an already-binned, empty folder",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.PurgeFolder(context.Background(), connect.NewRequest(&healthv1.PurgeFolderRequest{FolderId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to purge folder: %v\n", err)
+			return
+		}
+		cmd.Printf("Folder %s permanently deleted\n", args[0])
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(artifactsCmd)
 	artifactsCmd.AddCommand(artifactsListCmd)
 	artifactsCmd.AddCommand(artifactsReadCmd)
 	artifactsCmd.AddCommand(artifactsDeleteCmd)
 	artifactsCmd.AddCommand(artifactsRestoreCmd)
+	artifactsCmd.AddCommand(artifactsPurgeCmd)
 	artifactsCmd.AddCommand(foldersDeleteCmd)
 	artifactsCmd.AddCommand(foldersRestoreCmd)
+	artifactsCmd.AddCommand(foldersPurgeCmd)
 
 	artifactsListCmd.Flags().String("project", "", "Project ID to list artifacts for")
 }

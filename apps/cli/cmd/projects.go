@@ -99,6 +99,21 @@ var projectsRestoreCmd = &cobra.Command{
 	},
 }
 
+var projectsPurgeCmd = &cobra.Command{
+	Use:   "purge [project_id]",
+	Short: "Permanently delete an already-binned, empty project (requires org admin)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.PurgeProject(context.Background(), connect.NewRequest(&healthv1.PurgeProjectRequest{ProjectId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to purge project: %v\n", err)
+			return
+		}
+		cmd.Printf("Project %s permanently deleted\n", args[0])
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(projectsCmd)
 	projectsCmd.AddCommand(projectsListCmd)
@@ -106,6 +121,7 @@ func init() {
 	projectsCmd.AddCommand(projectsCreateCmd)
 	projectsCmd.AddCommand(projectsDeleteCmd)
 	projectsCmd.AddCommand(projectsRestoreCmd)
+	projectsCmd.AddCommand(projectsPurgeCmd)
 
 	projectsCreateCmd.Flags().String("template", "", "Project template to inherit from")
 	projectsCreateCmd.Flags().String("title", "", "Descriptive title for the new project")

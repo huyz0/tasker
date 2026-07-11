@@ -78,6 +78,19 @@ export function OrganizationsDashboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgs'] }),
   });
 
+  const activeOrg = orgsData?.find((o) => o.id === activeOrgId);
+  const [retentionDaysInput, setRetentionDaysInput] = useState('');
+  useEffect(() => {
+    setRetentionDaysInput(String(activeOrg?.binRetentionDays || 30));
+  }, [activeOrg?.binRetentionDays]);
+
+  const setRetentionMutation = useMutation({
+    mutationFn: async (days: number) => {
+      await orgClient.setOrgRetentionDays({ orgId: activeOrgId, binRetentionDays: days });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgs'] }),
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -209,6 +222,42 @@ export function OrganizationsDashboard() {
               isLoading={isFetchingNextPage}
               onNextPage={() => fetchNextPage()}
             />
+          )}
+
+          {activeOrg && (
+            <div className="mt-6 pt-6 border-t">
+              <h3 className="font-medium mb-2">Bin Retention</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Archived items in "{activeOrg.name}" are permanently deleted this many days after being moved to the bin, unless restored first.
+              </p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const days = parseInt(retentionDaysInput, 10);
+                  if (days > 0) setRetentionMutation.mutate(days);
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  type="number"
+                  min={1}
+                  value={retentionDaysInput}
+                  onChange={(e) => setRetentionDaysInput(e.target.value)}
+                  className="w-24 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <span className="text-sm text-muted-foreground">days</span>
+                <button
+                  type="submit"
+                  disabled={setRetentionMutation.isPending}
+                  className="px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium disabled:opacity-50"
+                >
+                  {setRetentionMutation.isPending ? 'Saving...' : 'Save'}
+                </button>
+              </form>
+              {setRetentionMutation.isError && (
+                <p className="text-sm text-destructive mt-2">Failed to update retention: {(setRetentionMutation.error as Error).message}</p>
+              )}
+            </div>
           )}
         </div>
       </div>

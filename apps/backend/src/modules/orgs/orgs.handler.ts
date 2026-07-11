@@ -27,6 +27,15 @@ const RestoreOrgSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
 });
 
+const PurgeOrgSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+});
+
+const SetOrgRetentionDaysSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+  binRetentionDays: z.number().int().min(1, "binRetentionDays must be at least 1"),
+});
+
 // --- Handler Factory ---
 
 export const createOrgsHandler = (db: any, nc: any = null) => {
@@ -118,6 +127,50 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       await restoreById(db, orgs, parsed.orgId);
 
       if (nc) nc.publish("domain.org.restored", Buffer.from(JSON.stringify({ orgId: parsed.orgId })));
+      return { success: true };
+    },
+    async purgeOrg(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = PurgeOrgSchema.parse(req);
+      await assertOrgAdmin(db, userId, parsed.orgId);
+
+      const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+      const existing = await db.select().from(orgs).where(eq((orgs as any).id, parsed.orgId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("organization not found", Code.NotFound);
+      if (!existing[0].deletedAt) {
+        throw new ConnectError("organization must be archived before it can be purged", Code.FailedPrecondition);
+      }
+
+      const projects = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
+      const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+      const childOrgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+
+      const [remainingProjects, remainingAgents, remainingChildOrgs] = await Promise.all([
+        db.select().from(projects).where(eq((projects as any).orgId, parsed.orgId)),
+        db.select().from(agents).where(eq((agents as any).orgId, parsed.orgId)),
+        db.select().from(childOrgs).where(eq((childOrgs as any).parentOrgId, parsed.orgId)),
+      ]);
+      if (remainingProjects.length > 0 || remainingAgents.length > 0 || remainingChildOrgs.length > 0) {
+        throw new ConnectError("organization still has projects, agents, or sub-organizations - archive or move them first", Code.FailedPrecondition);
+      }
+
+      const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
+      const invitations = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
+      await db.delete(members).where(eq((members as any).orgId, parsed.orgId));
+      await db.delete(invitations).where(eq((invitations as any).orgId, parsed.orgId));
+      await db.delete(orgs).where(eq((orgs as any).id, parsed.orgId));
+
+      if (nc) nc.publish("domain.org.purged", Buffer.from(JSON.stringify({ orgId: parsed.orgId })));
+      return { success: true };
+    },
+    async setOrgRetentionDays(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = SetOrgRetentionDaysSchema.parse(req);
+      await assertOrgAdmin(db, userId, parsed.orgId);
+
+      const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+      await db.update(orgs).set({ binRetentionDays: parsed.binRetentionDays }).where(eq((orgs as any).id, parsed.orgId));
+
       return { success: true };
     },
   };
