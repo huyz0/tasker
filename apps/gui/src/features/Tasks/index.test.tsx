@@ -2,9 +2,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListTasks, mockUpdateTaskStatus, mockListComments } = vi.hoisted(() => ({
+const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockListComments } = vi.hoisted(() => ({
   mockListTasks: vi.fn(),
   mockUpdateTaskStatus: vi.fn(),
+  mockDeleteTask: vi.fn(),
   mockListComments: vi.fn(),
 }));
 
@@ -14,7 +15,7 @@ vi.mock('@connectrpc/connect-web', () => ({
 vi.mock('@connectrpc/connect', () => ({
   createClient: vi.fn((service: unknown) => {
     if (service === 'CommentService') return { listComments: mockListComments, createComment: vi.fn() };
-    return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus };
+    return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask };
   }),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
@@ -43,8 +44,10 @@ describe('TasksWorkbench', () => {
   beforeEach(() => {
     mockListTasks.mockReset();
     mockUpdateTaskStatus.mockReset();
+    mockDeleteTask.mockReset();
     mockListComments.mockReset();
     mockListComments.mockResolvedValue({ comments: [] });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('updates a task status via the detail panel dropdown', async () => {
@@ -75,5 +78,51 @@ describe('TasksWorkbench', () => {
     fireEvent.change(select, { target: { value: 'done' } });
 
     await waitFor(() => expect(screen.getByText(/Failed to update status/)).toBeDefined());
+  });
+
+  it('deletes a task after confirmation and closes the detail panel', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockDeleteTask.mockResolvedValue({ success: true });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    const deleteButton = await screen.findByRole('button', { name: 'Delete' });
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => expect(mockDeleteTask).toHaveBeenCalledWith({ taskId: 'task-1' }));
+    await waitFor(() => expect(screen.queryByText('Task Details')).toBeNull());
+  });
+
+  it('does not delete a task when the confirmation is dismissed', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    const deleteButton = await screen.findByRole('button', { name: 'Delete' });
+    fireEvent.click(deleteButton);
+
+    expect(mockDeleteTask).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when task deletion fails', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockDeleteTask.mockRejectedValue(new Error('not an admin'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    const deleteButton = await screen.findByRole('button', { name: 'Delete' });
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => expect(screen.getByText(/Failed to delete task/)).toBeDefined());
   });
 });

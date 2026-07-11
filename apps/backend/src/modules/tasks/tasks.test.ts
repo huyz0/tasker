@@ -1,4 +1,5 @@
 import { expect, test, describe } from "bun:test";
+import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createTasksHandler } from "./tasks.handler";
@@ -168,5 +169,74 @@ describe("Tasks Handler Integration Tests", () => {
     const outsiderCtx = makeAuthContext("user-outsider-status");
     await db.insert(schemaSqlite.users).values({ id: "user-outsider-status", email: "outsider-status@test.com", createdAt: new Date() });
     await expect(handler.updateTaskStatus({ taskId: taskResp.task.id, status: "done" }, outsiderCtx)).rejects.toThrow();
+  });
+
+  test("deleteTask cascades cleanup of dependent rows and requires org admin", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-delete-" + Date.now().toString();
+    const adminId = "user-delete-admin-" + Date.now().toString();
+    const memberId = "user-delete-member-" + Date.now().toString();
+    const templateId = "tmpl-delete-" + Date.now().toString();
+    const projectId = "proj-delete-" + Date.now().toString();
+    const folderId = "folder-delete-" + Date.now().toString();
+    const artifactId = "art-delete-" + Date.now().toString();
+    const repoLinkId = "repo-delete-" + Date.now().toString();
+
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Delete Org", slug: "delete-org-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: adminId, role: "admin", joinedAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: adminId, name: "P", createdAt: new Date() });
+    await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: "Folder", createdAt: new Date() });
+    await db.insert(schemaSqlite.artifacts).values({ id: artifactId, folderId, name: "Artifact", createdAt: new Date() });
+    await db.insert(schemaSqlite.repositoryLinks).values({ id: repoLinkId, projectId, provider: "github", remoteName: "org/repo", accessTokenEncrypted: "enc", createdAt: new Date() });
+    const agentRoleId = "role-delete-" + Date.now();
+    const agentId = "agent-delete-" + Date.now();
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
+
+    const { createTaskManagementHandler } = require("./tasks.handler");
+    const handler = createTaskManagementHandler(db, nc);
+
+    const taskResp = await handler.createTask({ projectId, title: "Delete Me", status: "todo", description: "" }, makeAuthContext(adminId));
+    const taskId = taskResp.task.id;
+
+    await db.insert(schemaSqlite.taskAssignments).values({ id: "ta-del-" + Date.now(), taskId, userId: memberId });
+    await db.insert(schemaSqlite.taskReviewers).values({ id: "tr-del-" + Date.now(), taskId, userId: memberId });
+    await db.insert(schemaSqlite.taskArtifactLinks).values({ id: "tal-del-" + Date.now(), taskId, artifactId });
+    await db.insert(schemaSqlite.taskNotes).values({ id: "tn-del-" + Date.now(), taskId, agentId, content: "note", createdAt: new Date() });
+    await db.insert(schemaSqlite.comments).values({ id: "cmt-del-" + Date.now(), entityId: taskId, entityType: "task", userId: memberId, content: "hi", createdAt: new Date() });
+    const prId = "pr-del-" + Date.now();
+    await db.insert(schemaSqlite.remotePullRequests).values({ id: prId, repositoryLinkId: repoLinkId, taskId, remotePrId: "1", title: "PR", status: "open", url: "http://x", updatedAt: new Date() });
+
+    // A non-admin member cannot delete the task.
+    await expect(handler.deleteTask({ taskId }, makeAuthContext(memberId))).rejects.toThrow();
+
+    await handler.deleteTask({ taskId }, makeAuthContext(adminId));
+
+    const remainingAssignments = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, taskId));
+    expect(remainingAssignments.length).toBe(0);
+
+    const remainingReviewers = await db.select().from(schemaSqlite.taskReviewers).where(eq(schemaSqlite.taskReviewers.taskId, taskId));
+    expect(remainingReviewers.length).toBe(0);
+
+    const remainingLinks = await db.select().from(schemaSqlite.taskArtifactLinks).where(eq(schemaSqlite.taskArtifactLinks.taskId, taskId));
+    expect(remainingLinks.length).toBe(0);
+
+    const remainingComments = await db.select().from(schemaSqlite.comments).where(eq(schemaSqlite.comments.entityId, taskId));
+    expect(remainingComments.length).toBe(0);
+
+    const remainingNotes = await db.select().from(schemaSqlite.taskNotes).where(eq(schemaSqlite.taskNotes.taskId, taskId));
+    expect(remainingNotes.length).toBe(0);
+
+    const remainingPrs = await db.select().from(schemaSqlite.remotePullRequests).where(eq(schemaSqlite.remotePullRequests.id, prId));
+    expect(remainingPrs.length).toBe(1);
+    expect(remainingPrs[0].taskId).toBeNull();
+
+    await expect(handler.updateTaskStatus({ taskId, status: "done" }, makeAuthContext(adminId))).rejects.toThrow();
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.task.deleted");
   });
 });

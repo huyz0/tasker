@@ -308,11 +308,20 @@ message UpdateTaskStatusResponse {
   Task task = 1;
 }
 
+message DeleteTaskRequest {
+  string taskId = 1;
+}
+
+message DeleteTaskResponse {
+  bool success = 1;
+}
+
 service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse);
+  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
 }
 
 message Folder {

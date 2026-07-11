@@ -1,9 +1,9 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, getProjectOrgId, getTaskOrgId } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgAdmin, getProjectOrgId, getTaskOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -36,6 +36,10 @@ const KNOWN_STATUSES = ["todo", "in-progress", "done"] as const;
 const UpdateTaskStatusSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   status: z.enum(KNOWN_STATUSES),
+});
+
+const DeleteTaskSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
 });
 
 // --- Handler Factories ---
@@ -183,6 +187,31 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       if (nc) nc.publish("domain.task.status_updated", Buffer.from(JSON.stringify(task)));
       return { task };
+    },
+    async deleteTask(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = DeleteTaskSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgAdmin(db, userId, orgId);
+
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+      const reviewers = isStandalone ? schemaSqlite.taskReviewers : schemaMysql.taskReviewers;
+      const artifactLinks = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
+      const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
+      const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
+      const pullRequests = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
+
+      await db.delete(assignments).where(eq((assignments as any).taskId, parsed.taskId));
+      await db.delete(reviewers).where(eq((reviewers as any).taskId, parsed.taskId));
+      await db.delete(artifactLinks).where(eq((artifactLinks as any).taskId, parsed.taskId));
+      await db.delete(notes).where(eq((notes as any).taskId, parsed.taskId));
+      await db.delete(comments).where(and(eq((comments as any).entityId, parsed.taskId), eq((comments as any).entityType, "task")));
+      await db.update(pullRequests).set({ taskId: null }).where(eq((pullRequests as any).taskId, parsed.taskId));
+      await db.delete(tasks).where(eq((tasks as any).id, parsed.taskId));
+
+      if (nc) nc.publish("domain.task.deleted", Buffer.from(JSON.stringify({ taskId: parsed.taskId })));
+      return { success: true };
     },
   };
 };

@@ -325,11 +325,20 @@ model UpdateTaskStatusResponse {
   @field(1) task: Task;
 }
 
+model DeleteTaskRequest {
+  @field(1) taskId: string;
+}
+
+model DeleteTaskResponse {
+  @field(1) success: boolean;
+}
+
 interface TaskService {
   createTask(request: CreateTaskRequest): CreateTaskResponse;
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
   listTasks(request: ListTasksRequest): ListTasksResponse;
   updateTaskStatus(request: UpdateTaskStatusRequest): UpdateTaskStatusResponse;
+  deleteTask(request: DeleteTaskRequest): DeleteTaskResponse;
 }
 
 // ==== Artifacts ====

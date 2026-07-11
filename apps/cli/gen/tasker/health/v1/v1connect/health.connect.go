@@ -108,6 +108,8 @@ const (
 	// TaskServiceUpdateTaskStatusProcedure is the fully-qualified name of the TaskService's
 	// UpdateTaskStatus RPC.
 	TaskServiceUpdateTaskStatusProcedure = "/tasker.health.v1.TaskService/UpdateTaskStatus"
+	// TaskServiceDeleteTaskProcedure is the fully-qualified name of the TaskService's DeleteTask RPC.
+	TaskServiceDeleteTaskProcedure = "/tasker.health.v1.TaskService/DeleteTask"
 	// ArtifactServiceCreateFolderProcedure is the fully-qualified name of the ArtifactService's
 	// CreateFolder RPC.
 	ArtifactServiceCreateFolderProcedure = "/tasker.health.v1.ArtifactService/CreateFolder"
@@ -179,6 +181,7 @@ var (
 	taskServiceAssignTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
 	taskServiceListTasksMethodDescriptor                 = taskServiceServiceDescriptor.Methods().ByName("ListTasks")
 	taskServiceUpdateTaskStatusMethodDescriptor          = taskServiceServiceDescriptor.Methods().ByName("UpdateTaskStatus")
+	taskServiceDeleteTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("DeleteTask")
 	artifactServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
 	artifactServiceCreateFolderMethodDescriptor          = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
 	artifactServiceCreateArtifactMethodDescriptor        = artifactServiceServiceDescriptor.Methods().ByName("CreateArtifact")
@@ -916,6 +919,7 @@ type TaskServiceClient interface {
 	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
 	UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error)
+	DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error)
 }
 
 // NewTaskServiceClient constructs a client for the tasker.health.v1.TaskService service. By
@@ -952,6 +956,12 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(taskServiceUpdateTaskStatusMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		deleteTask: connect.NewClient[v1.DeleteTaskRequest, v1.DeleteTaskResponse](
+			httpClient,
+			baseURL+TaskServiceDeleteTaskProcedure,
+			connect.WithSchema(taskServiceDeleteTaskMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -961,6 +971,7 @@ type taskServiceClient struct {
 	assignTask       *connect.Client[v1.AssignTaskRequest, v1.AssignTaskResponse]
 	listTasks        *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
 	updateTaskStatus *connect.Client[v1.UpdateTaskStatusRequest, v1.UpdateTaskStatusResponse]
+	deleteTask       *connect.Client[v1.DeleteTaskRequest, v1.DeleteTaskResponse]
 }
 
 // CreateTask calls tasker.health.v1.TaskService.CreateTask.
@@ -983,12 +994,18 @@ func (c *taskServiceClient) UpdateTaskStatus(ctx context.Context, req *connect.R
 	return c.updateTaskStatus.CallUnary(ctx, req)
 }
 
+// DeleteTask calls tasker.health.v1.TaskService.DeleteTask.
+func (c *taskServiceClient) DeleteTask(ctx context.Context, req *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error) {
+	return c.deleteTask.CallUnary(ctx, req)
+}
+
 // TaskServiceHandler is an implementation of the tasker.health.v1.TaskService service.
 type TaskServiceHandler interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
 	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
 	UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error)
+	DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error)
 }
 
 // NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1021,6 +1038,12 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(taskServiceUpdateTaskStatusMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskServiceDeleteTaskHandler := connect.NewUnaryHandler(
+		TaskServiceDeleteTaskProcedure,
+		svc.DeleteTask,
+		connect.WithSchema(taskServiceDeleteTaskMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskServiceCreateTaskProcedure:
@@ -1031,6 +1054,8 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceListTasksHandler.ServeHTTP(w, r)
 		case TaskServiceUpdateTaskStatusProcedure:
 			taskServiceUpdateTaskStatusHandler.ServeHTTP(w, r)
+		case TaskServiceDeleteTaskProcedure:
+			taskServiceDeleteTaskHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1054,6 +1079,10 @@ func (UnimplementedTaskServiceHandler) ListTasks(context.Context, *connect.Reque
 
 func (UnimplementedTaskServiceHandler) UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.UpdateTaskStatus is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.DeleteTask is not implemented"))
 }
 
 // ArtifactServiceClient is a client for the tasker.health.v1.ArtifactService service.

@@ -42,6 +42,16 @@ export function TasksWorkbench() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] }),
   });
 
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      await taskClient.deleteTask({ taskId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] });
+      setExpandedTaskId(null);
+    },
+  });
+
   const columns = STATUS_OPTIONS.map(col => {
     const items = tasksData?.filter(t => (t.status || 'todo') === col.id) || [];
     return { ...col, items, count: items.length };
@@ -97,8 +107,24 @@ export function TasksWorkbench() {
         <div className="w-80 flex-shrink-0 border-l bg-card flex flex-col pt-0 shadow-xl overflow-hidden animate-in slide-in-from-right-4">
            <div className="p-4 border-b flex justify-between items-center">
              <h2 className="font-semibold">Task Details</h2>
-             <button onClick={() => setExpandedTaskId(null)} className="text-muted-foreground hover:text-foreground">✕</button>
+             <div className="flex items-center gap-3">
+               <button
+                 onClick={() => {
+                   if (window.confirm(`Delete "${expandedTask.title}"? This cannot be undone.`)) {
+                     deleteTaskMutation.mutate(expandedTask.id);
+                   }
+                 }}
+                 disabled={deleteTaskMutation.isPending}
+                 className="text-destructive hover:text-destructive/80 text-sm font-medium disabled:opacity-50"
+               >
+                 {deleteTaskMutation.isPending ? 'Deleting...' : 'Delete'}
+               </button>
+               <button onClick={() => setExpandedTaskId(null)} className="text-muted-foreground hover:text-foreground">✕</button>
+             </div>
            </div>
+           {deleteTaskMutation.isError && (
+             <p className="text-sm text-destructive px-4 pt-2">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
+           )}
            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
              <div className="text-sm text-primary font-medium mb-1">ID: {expandedTask.id}</div>
              <h3 className="text-xl font-bold mb-4">{expandedTask.title}</h3>

@@ -113,12 +113,45 @@ var tasksUpdateStatusCmd = &cobra.Command{
 	},
 }
 
+var tasksDeleteCmd = &cobra.Command{
+	Use:   "delete [task_id]",
+	Short: "Delete a task and its dependent records (requires org admin)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		isJson, _ := cmd.Flags().GetBool("json")
+
+		client := healthv1connect.NewTaskServiceClient(
+			http.DefaultClient,
+			backend.URL(),
+			backend.ClientOptions()...,
+		)
+
+		req := connect.NewRequest(&healthv1.DeleteTaskRequest{
+			TaskId: args[0],
+		})
+
+		_, err := client.DeleteTask(context.Background(), req)
+		if err != nil {
+			cmd.PrintErrf("Failed to delete task: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "task_id": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Task %s deleted\n", args[0])
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(tasksCmd)
 	tasksCmd.AddCommand(tasksListCmd)
 	tasksCmd.AddCommand(tasksCreateCmd)
 	tasksCmd.AddCommand(tasksAssignCmd)
 	tasksCmd.AddCommand(tasksUpdateStatusCmd)
+	tasksCmd.AddCommand(tasksDeleteCmd)
 
 	tasksCreateCmd.Flags().String("title", "", "The title of the task")
 	tasksAssignCmd.Flags().String("assignee", "", "The ID or name to assign")
