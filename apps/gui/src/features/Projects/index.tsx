@@ -3,12 +3,9 @@ import { useLayoutStore } from '../../store/layout';
 import { RepositoryIntegrationConfig } from '../../components/ui/repositories/RepositoryIntegrationConfig';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
+import { transport } from "../../lib/connectTransport";
 import { ProjectService, ProjectTemplateService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 
-const transport = createConnectTransport({
-  baseUrl: "http://localhost:8080",
-});
 const projectClient = createClient(ProjectService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
 

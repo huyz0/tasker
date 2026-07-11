@@ -2,12 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
+import { transport } from "../lib/connectTransport";
 import { RepositoryService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 
-const transport = createConnectTransport({
-  baseUrl: "http://localhost:8080",
-});
 const repositoryClient = createClient(RepositoryService, transport);
 
 export function OAuthCallback() {

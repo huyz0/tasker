@@ -3,12 +3,9 @@ import { useLayoutStore } from '../../store/layout';
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
+import { transport } from "../../lib/connectTransport";
 import { ArtifactService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 
-const transport = createConnectTransport({
-  baseUrl: "http://localhost:8080",
-});
 const artifactClient = createClient(ArtifactService, transport);
 
 export function ArtifactsBrowser() {

@@ -3,13 +3,10 @@ import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
+import { transport } from "../../lib/connectTransport";
 import { TaskService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 
-const transport = createConnectTransport({
-  baseUrl: "http://localhost:8080",
-});
 const taskClient = createClient(TaskService, transport);
 
 export function TasksWorkbench() {

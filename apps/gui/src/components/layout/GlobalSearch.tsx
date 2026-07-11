@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
+import { transport } from "../../lib/connectTransport";
 import { SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Search, CheckSquare, FileBox, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
 
-const transport = createConnectTransport({
-  baseUrl: "http://localhost:8080",
-});
 const searchClient = createClient(SearchService, transport);
 
 export function GlobalSearch() {
