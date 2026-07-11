@@ -85,6 +85,39 @@ var agentsCreateCmd = &cobra.Command{
 	},
 }
 
+var agentsCreateRoleCmd = &cobra.Command{
+	Use:   "create-role",
+	Short: "Create a new agent role persona (system prompt, capabilities)",
+	Run: func(cmd *cobra.Command, args []string) {
+		name, _ := cmd.Flags().GetString("name")
+		systemPrompt, _ := cmd.Flags().GetString("system-prompt")
+		capabilities, _ := cmd.Flags().GetString("capabilities")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if name == "" {
+			cmd.Println("Error: --name is required.")
+			return
+		}
+
+		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.CreateAgentRole(context.Background(), connect.NewRequest(&healthv1.CreateAgentRoleRequest{
+			Name:         name,
+			SystemPrompt: systemPrompt,
+			Capabilities: capabilities,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to create agent role: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Role)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Agent role created: %s (id: %s)\n", res.Msg.Role.Name, res.Msg.Role.Id)
+		}
+	},
+}
+
 var agentsDeleteCmd = &cobra.Command{
 	Use:   "delete [agent_id]",
 	Short: "Move an agent to the bin",
@@ -134,6 +167,7 @@ func init() {
 	rootCmd.AddCommand(agentsCmd)
 	agentsCmd.AddCommand(agentsListCmd)
 	agentsCmd.AddCommand(agentsCreateCmd)
+	agentsCmd.AddCommand(agentsCreateRoleCmd)
 	agentsCmd.AddCommand(agentsDeleteCmd)
 	agentsCmd.AddCommand(agentsRestoreCmd)
 	agentsCmd.AddCommand(agentsPurgeCmd)
@@ -142,4 +176,7 @@ func init() {
 	agentsCreateCmd.Flags().String("name", "", "Display name for the agent instance")
 	agentsCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	agentsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	agentsCreateRoleCmd.Flags().String("name", "", "Role name")
+	agentsCreateRoleCmd.Flags().String("system-prompt", "", "System prompt for the role")
+	agentsCreateRoleCmd.Flags().String("capabilities", "", "Capabilities/skills description for the role")
 }
