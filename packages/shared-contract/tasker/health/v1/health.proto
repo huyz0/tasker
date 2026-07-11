@@ -183,10 +183,12 @@ message CreateProjectResponse {
 
 message ListProjectsRequest {
   string orgId = 1;
+  PageRequest page = 2;
 }
 
 message ListProjectsResponse {
   repeated Project projects = 1;
+  PageResponse page = 2;
 }
 
 service ProjectService {

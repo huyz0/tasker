@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { RepositoryIntegrationConfig } from '../../components/ui/repositories/RepositoryIntegrationConfig';
 import { useAuthSession } from '../../hooks/useAuthSession';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { ProjectService, ProjectTemplateService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { PaginationControls } from '../../components/PaginationControls';
 
 const projectClient = createClient(ProjectService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
@@ -27,13 +28,22 @@ export function ProjectsWizard() {
     }
   });
 
-  const { data: projectsData, isLoading: isLoadingProjects } = useQuery({
+  const {
+    data: projectsPages,
+    isLoading: isLoadingProjects,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
     queryKey: ['projects', activeOrgId],
-    queryFn: async () => {
-      const resp = await projectClient.listProjects({ orgId: activeOrgId });
-      return resp.projects;
-    }
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
+      return projectClient.listProjects({ orgId: activeOrgId, page: { cursor: pageParam } });
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
   });
+
+  const projectsData = projectsPages?.pages.flatMap((page) => page.projects);
+  const nextCursor = projectsPages?.pages.at(-1)?.page?.nextCursor;
 
   const createProjectMutation = useMutation({
     mutationFn: async (templateId: string) => {
@@ -115,6 +125,11 @@ export function ProjectsWizard() {
                 <RepositoryIntegrationConfig projectId={p.id} />
               </div>
             ))}
+            <PaginationControls
+              nextCursor={nextCursor}
+              isLoading={isFetchingNextPage}
+              onNextPage={() => fetchNextPage()}
+            />
           </div>
         ) : (
            <p className="text-sm text-muted-foreground">No projects found. Create one from a template above.</p>

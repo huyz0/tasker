@@ -103,4 +103,19 @@ describe('ProjectsWizard', () => {
 
     await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
   });
+
+  it('loads the next page of projects when Load More is clicked', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects
+      .mockResolvedValueOnce({ projects: [{ id: 'proj-1', name: 'Page One Project' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ projects: [{ id: 'proj-2', name: 'Page Two Project' }], page: {} });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Page One Project')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Load More' }));
+
+    await waitFor(() => expect(screen.getByText('Page Two Project')).toBeDefined());
+    expect(mockListProjects).toHaveBeenCalledWith({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
+    await waitFor(() => expect(screen.getByText('No more items to load')).toBeDefined());
+  });
 });
