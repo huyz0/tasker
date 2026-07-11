@@ -2,11 +2,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockListComments } = vi.hoisted(() => ({
+const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockListComments, mockListEntityLabels, mockListLabels } = vi.hoisted(() => ({
   mockListTasks: vi.fn(),
   mockUpdateTaskStatus: vi.fn(),
   mockDeleteTask: vi.fn(),
   mockListComments: vi.fn(),
+  mockListEntityLabels: vi.fn(),
+  mockListLabels: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -15,17 +17,26 @@ vi.mock('@connectrpc/connect-web', () => ({
 vi.mock('@connectrpc/connect', () => ({
   createClient: vi.fn((service: unknown) => {
     if (service === 'CommentService') return { listComments: mockListComments, createComment: vi.fn() };
+    if (service === 'LabelService') return {
+      listEntityLabels: mockListEntityLabels,
+      listLabels: mockListLabels,
+      attachLabel: vi.fn(),
+      detachLabel: vi.fn(),
+      createLabel: vi.fn(),
+    };
     return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask };
   }),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   TaskService: {},
   CommentService: 'CommentService',
+  LabelService: 'LabelService',
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
     setActivePageTitle: vi.fn(),
     activeProjectId: 'proj-1',
+    activeOrgId: 'org-1',
   })),
 }));
 
@@ -47,6 +58,10 @@ describe('TasksWorkbench', () => {
     mockDeleteTask.mockReset();
     mockListComments.mockReset();
     mockListComments.mockResolvedValue({ comments: [] });
+    mockListEntityLabels.mockReset();
+    mockListEntityLabels.mockResolvedValue({ labels: [] });
+    mockListLabels.mockReset();
+    mockListLabels.mockResolvedValue({ labels: [] });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 

@@ -42,6 +42,7 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   ArtifactService: {},
   CommentService: {},
   TaskNoteService: {},
+  LabelService: {},
   RepositoryService: {},
   SearchService: {},
 }));

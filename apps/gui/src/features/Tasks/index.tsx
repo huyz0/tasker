@@ -7,6 +7,7 @@ import { transport } from "../../lib/connectTransport";
 import { TaskService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
+import { Label } from '../../components/ui/labels';
 
 const taskClient = createClient(TaskService, transport);
 
@@ -19,6 +20,7 @@ const STATUS_OPTIONS = [
 export function TasksWorkbench() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Tasks Workbench'), [setActivePageTitle]);
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
@@ -153,6 +155,15 @@ export function TasksWorkbench() {
                 ) : (
                   <p className="text-muted-foreground italic">No description provided.</p>
                 )}
+             </div>
+             <div className="mt-6">
+               <h3 className="text-lg font-semibold tracking-tight mb-3">Labels</h3>
+               <Label.Provider entityId={expandedTask.id} entityType="task" orgId={activeOrgId}>
+                 <Label.Chips />
+                 <div className="mt-3">
+                   <Label.Picker />
+                 </div>
+               </Label.Provider>
              </div>
              <div className="mt-8">
                <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>

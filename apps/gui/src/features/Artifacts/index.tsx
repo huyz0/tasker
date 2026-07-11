@@ -5,12 +5,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { ArtifactService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { Label } from '../../components/ui/labels';
 
 const artifactClient = createClient(ArtifactService, transport);
 
 export function ArtifactsBrowser() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Artifacts'), [setActivePageTitle]);
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -138,12 +140,23 @@ export function ArtifactsBrowser() {
                  <span className="text-blue-500 font-bold text-xs">M</span> {selectedArtifact.name}
                </div>
             </div>
-            <div className="flex-1 p-6 overflow-y-auto custom-scrollbar prose prose-sm dark:prose-invert max-w-none">
-               {selectedArtifact.content ? (
-                 <MarkdownRenderer content={selectedArtifact.content} />
-               ) : (
-                 <p className="text-muted-foreground italic">This artifact has no content.</p>
-               )}
+            <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+               <div className="prose prose-sm dark:prose-invert max-w-none">
+                 {selectedArtifact.content ? (
+                   <MarkdownRenderer content={selectedArtifact.content} />
+                 ) : (
+                   <p className="text-muted-foreground italic">This artifact has no content.</p>
+                 )}
+               </div>
+               <div className="mt-6 not-prose">
+                 <h3 className="text-sm font-semibold tracking-tight mb-3">Labels</h3>
+                 <Label.Provider entityId={selectedArtifact.id} entityType="artifact" orgId={activeOrgId}>
+                   <Label.Chips />
+                   <div className="mt-3">
+                     <Label.Picker />
+                   </div>
+                 </Label.Provider>
+               </div>
             </div>
           </>
         ) : (
