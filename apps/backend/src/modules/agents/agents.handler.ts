@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import { eq } from "drizzle-orm";
+import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { requireUserId, assertOrgMember } from "../../lib/authz";
@@ -43,6 +44,12 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = CreateAgentSchema.parse(req);
       await assertOrgMember(db, userId, parsed.orgId);
+
+      const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
+      const roleRows = await db.select().from(roles).where(eq((roles as any).id, parsed.agentRoleId)).limit(1);
+      if (!roleRows || roleRows.length === 0) {
+        throw new ConnectError("agent role not found", Code.NotFound);
+      }
 
       const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const newId = `ag-${crypto.randomUUID()}`;

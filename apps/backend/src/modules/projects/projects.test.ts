@@ -91,4 +91,33 @@ describe("Projects Handler Integration Logic", () => {
      await expect(pHandler.createProject({ orgId: "org-test", templateId: "t-1", name: "X", ownerId: "user-outsider" }, outsiderCtx)).rejects.toThrow();
      await expect(pHandler.listProjects({}, makeAuthContext(null))).rejects.toThrow();
   });
+
+  test("rejects createProject with a nonexistent templateId", async () => {
+     await expect(pHandler.createProject({
+       orgId: "org-test", templateId: "template-does-not-exist", name: "X", ownerId: "user-test",
+     }, ctx)).rejects.toThrow();
+  });
+
+  test("rejects createProject when the template belongs to a different org", async () => {
+     const otherOrgId = "org-other-tpl-" + Date.now();
+     const otherUserId = "user-other-tpl-" + Date.now();
+     await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: "other-tpl-" + Date.now(), createdAt: new Date() });
+     await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+     await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+     const otherTpl = await ptHandler.createTemplate({ orgId: otherOrgId, name: "Other Tpl" }, makeAuthContext(otherUserId));
+
+     // The template genuinely exists, but belongs to a different org than the one being asked to create a project in.
+     await expect(pHandler.createProject({
+       orgId: "org-test", templateId: otherTpl.template.id, name: "X", ownerId: "user-test",
+     }, ctx)).rejects.toThrow();
+  });
+
+  test("can list templates for an org, scoped by membership", async () => {
+    await ptHandler.createTemplate({ orgId: "org-test", name: "Listable Template" }, ctx);
+    const res = await ptHandler.listTemplates({ orgId: "org-test" }, ctx);
+    expect(res.templates.some((t: any) => t.name === "Listable Template")).toBe(true);
+
+    await expect(ptHandler.listTemplates({}, ctx)).rejects.toThrow();
+    await expect(ptHandler.listTemplates({ orgId: "org-test" }, makeAuthContext("user-outsider"))).rejects.toThrow();
+  });
 });

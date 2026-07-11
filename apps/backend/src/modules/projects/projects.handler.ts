@@ -48,6 +48,15 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const parsed = CreateProjectSchema.parse(req);
       await assertOrgMember(db, userId, parsed.orgId);
 
+      const templates = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
+      const templateRows = await db.select().from(templates).where(eq((templates as any).id, parsed.templateId)).limit(1);
+      if (!templateRows || templateRows.length === 0) {
+        throw new ConnectError("template not found", Code.NotFound);
+      }
+      if (templateRows[0].orgId !== parsed.orgId) {
+        throw new ConnectError("template belongs to a different organization", Code.InvalidArgument);
+      }
+
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const newId = `p-${crypto.randomUUID()}`;
       const payload = {

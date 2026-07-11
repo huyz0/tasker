@@ -54,5 +54,7 @@ describe("Agents Handler Integration Tests", () => {
     await expect(handler.listAgents({ orgId }, outsiderCtx)).rejects.toThrow();
     await expect(handler.createAgent({ orgId, agentRoleId: roleResp.role.id, name: "X" }, outsiderCtx)).rejects.toThrow();
     await expect(handler.createAgentRole(createRoleReq, makeAuthContext(null))).rejects.toThrow();
+
+    await expect(handler.createAgent({ orgId, agentRoleId: "role-does-not-exist", name: "X" }, ctx)).rejects.toThrow();
   });
 });

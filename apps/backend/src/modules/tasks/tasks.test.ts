@@ -42,6 +42,19 @@ describe("Tasks Handler Integration Tests", () => {
     expect(getRes.taskType.name).toBe("Integration Test Task");
 
     await expect(handler.getTaskType({ id: createResp.taskType.id }, makeAuthContext("user-outsider"))).rejects.toThrow();
+
+    // A projectId that belongs to a different org than the one requested must be rejected.
+    const otherOrgId = "org-other-tt-" + Date.now();
+    const otherUserId = "user-other-tt-" + Date.now();
+    const otherTemplateId = "tmpl-other-tt-" + Date.now();
+    const otherProjectId = "proj-other-tt-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: "other-tt-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: otherTemplateId, orgId: otherOrgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: otherProjectId, orgId: otherOrgId, templateId: otherTemplateId, ownerId: otherUserId, name: "P", createdAt: new Date() });
+
+    await expect(handler.createTaskType({ orgId, projectId: otherProjectId, name: "Cross" }, ctx)).rejects.toThrow();
   });
 
   test("createTaskManagementHandler can create/assign tasks", async () => {
@@ -116,5 +129,10 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.listTasks({ projectId }, outsiderCtx)).rejects.toThrow();
     await expect(handler.createTask({ projectId, title: "X" }, outsiderCtx)).rejects.toThrow();
     await expect(handler.assignTask({ taskId: taskResp.task.id, userId: "user-outsider-taskman" }, outsiderCtx)).rejects.toThrow();
+
+    // A legitimate org member trying to assign the task to an agentId that doesn't exist, or to a
+    // user who isn't a member of this org, must be rejected too.
+    await expect(handler.assignTask({ taskId: taskResp.task.id, agentId: "agent-does-not-exist" }, ctx)).rejects.toThrow();
+    await expect(handler.assignTask({ taskId: taskResp.task.id, userId: "user-outsider-taskman" }, ctx)).rejects.toThrow();
   });
 });

@@ -61,6 +61,14 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = CreateTaskTypeSchema.parse(req);
       await assertOrgMember(db, userId, parsed.orgId);
+
+      if (parsed.projectId) {
+        const orgIdForProject = await getProjectOrgId(db, parsed.projectId);
+        if (orgIdForProject !== parsed.orgId) {
+          throw new ConnectError("project belongs to a different organization", Code.InvalidArgument);
+        }
+      }
+
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
       const newId = `tt-${crypto.randomUUID()}`;
       const payload = {
@@ -126,6 +134,21 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const parsed = AssignTaskSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgMember(db, userId, orgId);
+
+      if (parsed.agentId) {
+        const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+        const agentRows = await db.select().from(agents).where(eq((agents as any).id, parsed.agentId)).limit(1);
+        if (!agentRows || agentRows.length === 0) {
+          throw new ConnectError("agent not found", Code.NotFound);
+        }
+        if (agentRows[0].orgId !== orgId) {
+          throw new ConnectError("agent belongs to a different organization", Code.InvalidArgument);
+        }
+      }
+
+      if (parsed.userId) {
+        await assertOrgMember(db, parsed.userId, orgId);
+      }
 
       const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
       const newId = `ta-${crypto.randomUUID()}`;
