@@ -17,6 +17,8 @@ import { createRepositoriesHandler } from "./modules/repositories/repositories.h
 import createSearchHandler from "./modules/search/search.handler";
 import { setupDatabase } from "./db/db";
 import { connect as natsConnect } from "nats";
+import { logger } from "./lib/logger";
+import { requestLoggingInterceptor } from "./lib/requestLogging";
 
 // Bypassing network stack with local function execution logic
 export const localInProcessTransportRouter = (_req: any) => {
@@ -27,18 +29,18 @@ const isStandalone = process.env.STANDALONE === "true";
 const db = await setupDatabase(isStandalone ? "sqlite" : "mysql");
 
 process.on("uncaughtException", (err) => {
-  console.error("[uncaughtException]", err);
+  logger.fatal({ err }, "uncaughtException");
   process.exit(1);
 });
 process.on("unhandledRejection", (reason) => {
-  console.error("[unhandledRejection]", reason);
+  logger.error({ err: reason }, "unhandledRejection");
 });
 
 let nc: any = null;
 try {
   nc = await natsConnect({ servers: process.env.NATS_URL || "nats://localhost:4222" });
 } catch (e) {
-  console.error(`[nats] Failed to connect to ${process.env.NATS_URL || "nats://localhost:4222"}:`, e);
+  logger.error({ err: e, natsUrl: process.env.NATS_URL || "nats://localhost:4222" }, "nats.connect_failed");
 }
 
 const sessionInterceptor: Interceptor = (next) => async (req) => {
@@ -49,7 +51,7 @@ const sessionInterceptor: Interceptor = (next) => async (req) => {
 };
 
 const handler = connectNodeAdapter({
-  interceptors: [sessionInterceptor],
+  interceptors: [requestLoggingInterceptor, sessionInterceptor],
   routes: (router) => {
     router.service(HealthService as any, createHealthHandler(db));
     router.service(TaskTypeService as any, createTasksHandler(db, nc));
@@ -71,7 +73,8 @@ http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Connect-Protocol-Version");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Connect-Protocol-Version, X-Request-Id");
+  res.setHeader("Access-Control-Expose-Headers", "X-Request-Id");
 
   if (req.method === "OPTIONS") {
     res.writeHead(204);
@@ -97,5 +100,5 @@ http.createServer(async (req, res) => {
 
   handler(req, res);
 }).listen(8080, () => {
-  console.log("Tasker Backend is listening on http://localhost:8080");
+  logger.info({ port: 8080 }, "backend.listening");
 });

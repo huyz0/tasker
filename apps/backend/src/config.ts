@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logger } from './lib/logger';
 
 const configSchema = z.object({
   googleClientId: z.string().default(''),
@@ -23,7 +24,7 @@ const loadConfig = () => {
   const parsed = configSchema.safeParse(envConfig);
 
   if (!parsed.success) {
-    console.error('❌ Invalid backend configuration:', parsed.error.format());
+    logger.fatal({ errors: parsed.error.format() }, 'config.invalid');
     process.exit(1); // Fail fast
   }
 

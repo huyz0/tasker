@@ -1,6 +1,7 @@
 import { Elysia } from 'elysia';
 import { config } from '../../config';
 import { createSessionToken, parseSessionCookie, verifySessionToken } from './session';
+import { logger } from '../../lib/logger';
 
 export const authRoutes = new Elysia()
   .get('/api/auth/google/login', () => {
@@ -69,7 +70,7 @@ export const authRoutes = new Elysia()
         }
       });
     } catch (e: any) {
-      console.error('Google Auth Error:', e.message);
+      logger.error({ err: e }, 'auth.google_callback_failed');
       return new Response('Authentication failed due to server error', { status: 500 });
     }
   })

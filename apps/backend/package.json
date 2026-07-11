@@ -11,6 +11,7 @@
     "build:standalone": "bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts"
   },
   "dependencies": {
+    "pino": "^10.3.1",
     "shared-contract": "workspace:*"
   }
 }

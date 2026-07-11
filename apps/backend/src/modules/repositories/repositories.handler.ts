@@ -4,6 +4,7 @@ import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import crypto from "node:crypto";
+import { logger } from "../../lib/logger";
 
 const ALGORITHM = "aes-256-gcm";
 const ENCRYPTION_KEY = process.env.APP_ENCRYPTION_SECRET || "00000000000000000000000000000000"; // Fallback for dev only
@@ -162,7 +163,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
             });
             if (!response.ok) {
               failures.push(link.remoteName);
-              console.error(`[syncPullRequests] GitHub API returned ${response.status} for ${link.remoteName}`);
+              logger.error({ remoteName: link.remoteName, status: response.status }, "syncPullRequests.provider_error");
               continue;
             }
             const prs = await response.json() as any[];
@@ -189,7 +190,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
             }
           } catch (e) {
              failures.push(link.remoteName);
-             console.error(`[syncPullRequests] Failed to sync ${link.remoteName}:`, e);
+             logger.error({ remoteName: link.remoteName, err: e }, "syncPullRequests.failed");
           }
         }
       }
@@ -219,12 +220,12 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
             }
           });
         } catch (e) {
-          console.error(`[listBuilds] Failed to reach GitHub for ${link.remoteName}:`, e);
+          logger.error({ remoteName: link.remoteName, err: e }, "listBuilds.fetch_failed");
           throw new Error(`Failed to fetch builds for ${link.remoteName}: ${(e as Error).message}`);
         }
 
         if (!response.ok) {
-          console.error(`[listBuilds] GitHub API returned ${response.status} for ${link.remoteName}`);
+          logger.error({ remoteName: link.remoteName, status: response.status }, "listBuilds.provider_error");
           throw new Error(`GitHub API returned ${response.status} while fetching builds for ${link.remoteName}`);
         }
 
