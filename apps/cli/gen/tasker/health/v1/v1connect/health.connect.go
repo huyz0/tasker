@@ -105,6 +105,9 @@ const (
 	TaskServiceAssignTaskProcedure = "/tasker.health.v1.TaskService/AssignTask"
 	// TaskServiceListTasksProcedure is the fully-qualified name of the TaskService's ListTasks RPC.
 	TaskServiceListTasksProcedure = "/tasker.health.v1.TaskService/ListTasks"
+	// TaskServiceUpdateTaskStatusProcedure is the fully-qualified name of the TaskService's
+	// UpdateTaskStatus RPC.
+	TaskServiceUpdateTaskStatusProcedure = "/tasker.health.v1.TaskService/UpdateTaskStatus"
 	// ArtifactServiceCreateFolderProcedure is the fully-qualified name of the ArtifactService's
 	// CreateFolder RPC.
 	ArtifactServiceCreateFolderProcedure = "/tasker.health.v1.ArtifactService/CreateFolder"
@@ -175,6 +178,7 @@ var (
 	taskServiceCreateTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("CreateTask")
 	taskServiceAssignTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
 	taskServiceListTasksMethodDescriptor                 = taskServiceServiceDescriptor.Methods().ByName("ListTasks")
+	taskServiceUpdateTaskStatusMethodDescriptor          = taskServiceServiceDescriptor.Methods().ByName("UpdateTaskStatus")
 	artifactServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
 	artifactServiceCreateFolderMethodDescriptor          = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
 	artifactServiceCreateArtifactMethodDescriptor        = artifactServiceServiceDescriptor.Methods().ByName("CreateArtifact")
@@ -911,6 +915,7 @@ type TaskServiceClient interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
 	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
+	UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error)
 }
 
 // NewTaskServiceClient constructs a client for the tasker.health.v1.TaskService service. By
@@ -941,14 +946,21 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(taskServiceListTasksMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		updateTaskStatus: connect.NewClient[v1.UpdateTaskStatusRequest, v1.UpdateTaskStatusResponse](
+			httpClient,
+			baseURL+TaskServiceUpdateTaskStatusProcedure,
+			connect.WithSchema(taskServiceUpdateTaskStatusMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // taskServiceClient implements TaskServiceClient.
 type taskServiceClient struct {
-	createTask *connect.Client[v1.CreateTaskRequest, v1.CreateTaskResponse]
-	assignTask *connect.Client[v1.AssignTaskRequest, v1.AssignTaskResponse]
-	listTasks  *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
+	createTask       *connect.Client[v1.CreateTaskRequest, v1.CreateTaskResponse]
+	assignTask       *connect.Client[v1.AssignTaskRequest, v1.AssignTaskResponse]
+	listTasks        *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
+	updateTaskStatus *connect.Client[v1.UpdateTaskStatusRequest, v1.UpdateTaskStatusResponse]
 }
 
 // CreateTask calls tasker.health.v1.TaskService.CreateTask.
@@ -966,11 +978,17 @@ func (c *taskServiceClient) ListTasks(ctx context.Context, req *connect.Request[
 	return c.listTasks.CallUnary(ctx, req)
 }
 
+// UpdateTaskStatus calls tasker.health.v1.TaskService.UpdateTaskStatus.
+func (c *taskServiceClient) UpdateTaskStatus(ctx context.Context, req *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error) {
+	return c.updateTaskStatus.CallUnary(ctx, req)
+}
+
 // TaskServiceHandler is an implementation of the tasker.health.v1.TaskService service.
 type TaskServiceHandler interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
 	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
+	UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error)
 }
 
 // NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -997,6 +1015,12 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(taskServiceListTasksMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskServiceUpdateTaskStatusHandler := connect.NewUnaryHandler(
+		TaskServiceUpdateTaskStatusProcedure,
+		svc.UpdateTaskStatus,
+		connect.WithSchema(taskServiceUpdateTaskStatusMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskServiceCreateTaskProcedure:
@@ -1005,6 +1029,8 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceAssignTaskHandler.ServeHTTP(w, r)
 		case TaskServiceListTasksProcedure:
 			taskServiceListTasksHandler.ServeHTTP(w, r)
+		case TaskServiceUpdateTaskStatusProcedure:
+			taskServiceUpdateTaskStatusHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1024,6 +1050,10 @@ func (UnimplementedTaskServiceHandler) AssignTask(context.Context, *connect.Requ
 
 func (UnimplementedTaskServiceHandler) ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListTasks is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.UpdateTaskStatus is not implemented"))
 }
 
 // ArtifactServiceClient is a client for the tasker.health.v1.ArtifactService service.

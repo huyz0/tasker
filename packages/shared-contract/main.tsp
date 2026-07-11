@@ -314,10 +314,20 @@ model ListTasksResponse {
   @field(2) page?: PageResponse;
 }
 
+model UpdateTaskStatusRequest {
+  @field(1) taskId: string;
+  @field(2) status: string;
+}
+
+model UpdateTaskStatusResponse {
+  @field(1) task: Task;
+}
+
 interface TaskService {
   createTask(request: CreateTaskRequest): CreateTaskResponse;
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
   listTasks(request: ListTasksRequest): ListTasksResponse;
+  updateTaskStatus(request: UpdateTaskStatusRequest): UpdateTaskStatusResponse;
 }
 
 // ==== Artifacts ====

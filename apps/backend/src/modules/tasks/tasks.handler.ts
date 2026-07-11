@@ -31,6 +31,13 @@ const AssignTaskSchema = z.object({
   userId: z.string().nullable().optional(),
 });
 
+const KNOWN_STATUSES = ["todo", "in-progress", "done"] as const;
+
+const UpdateTaskStatusSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+  status: z.enum(KNOWN_STATUSES),
+});
+
 // --- Handler Factories ---
 
 export const createTasksHandler = (db: any, nc: any = null) => {
@@ -161,6 +168,21 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       await db.insert(assignments).values(payload);
       return { success: true };
+    },
+    async updateTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateTaskStatusSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgMember(db, userId, orgId);
+
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      await db.update(tasks).set({ status: parsed.status }).where(eq((tasks as any).id, parsed.taskId));
+
+      const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
+      const task = result[0];
+
+      if (nc) nc.publish("domain.task.status_updated", Buffer.from(JSON.stringify(task)));
+      return { task };
     },
   };
 };

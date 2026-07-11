@@ -292,10 +292,20 @@ message ListTasksResponse {
   PageResponse page = 2;
 }
 
+message UpdateTaskStatusRequest {
+  string taskId = 1;
+  string status = 2;
+}
+
+message UpdateTaskStatusResponse {
+  Task task = 1;
+}
+
 service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+  rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse);
 }
 
 message Folder {

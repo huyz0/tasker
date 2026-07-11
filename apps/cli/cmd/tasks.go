@@ -79,12 +79,48 @@ var tasksAssignCmd = &cobra.Command{
 	},
 }
 
+var tasksUpdateStatusCmd = &cobra.Command{
+	Use:   "update-status [task_id]",
+	Short: "Update a task's status",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		status, _ := cmd.Flags().GetString("status")
+		isJson, _ := cmd.Flags().GetBool("json")
+
+		client := healthv1connect.NewTaskServiceClient(
+			http.DefaultClient,
+			backend.URL(),
+			backend.ClientOptions()...,
+		)
+
+		req := connect.NewRequest(&healthv1.UpdateTaskStatusRequest{
+			TaskId: args[0],
+			Status: status,
+		})
+
+		res, err := client.UpdateTaskStatus(context.Background(), req)
+		if err != nil {
+			cmd.PrintErrf("Failed to update task status: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Task)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Task %s status updated to %s\n", res.Msg.Task.Id, res.Msg.Task.Status)
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(tasksCmd)
 	tasksCmd.AddCommand(tasksListCmd)
 	tasksCmd.AddCommand(tasksCreateCmd)
 	tasksCmd.AddCommand(tasksAssignCmd)
+	tasksCmd.AddCommand(tasksUpdateStatusCmd)
 
 	tasksCreateCmd.Flags().String("title", "", "The title of the task")
 	tasksAssignCmd.Flags().String("assignee", "", "The ID or name to assign")
+	tasksUpdateStatusCmd.Flags().String("status", "", "The new status (todo, in-progress, done)")
 }
