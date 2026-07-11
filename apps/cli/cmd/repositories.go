@@ -16,7 +16,7 @@ var repoListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		taskId, _ := cmd.Flags().GetString("task-id")
-		
+
 		if taskId != "" {
 			if isJson {
 				data := []map[string]interface{}{

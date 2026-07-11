@@ -11,6 +11,7 @@ import (
 
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	"github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
 )
 
 var (
@@ -28,7 +29,7 @@ var commentAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new comment",
 	Run: func(cmd *cobra.Command, args []string) {
-		client := v1connect.NewCommentServiceClient(http.DefaultClient, "http://localhost:8080")
+		client := v1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 
 		req := connect.NewRequest(&healthv1.CreateCommentRequest{
 			EntityId:   entityId,
@@ -50,7 +51,7 @@ var commentListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List comments for an entity",
 	Run: func(cmd *cobra.Command, args []string) {
-		client := v1connect.NewCommentServiceClient(http.DefaultClient, "http://localhost:8080")
+		client := v1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 
 		req := connect.NewRequest(&healthv1.ListCommentsRequest{
 			EntityId:   entityId,

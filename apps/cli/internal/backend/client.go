@@ -1,0 +1,59 @@
+// Package backend provides shared helpers for CLI commands that talk to the
+// Tasker backend: the base URL, a structured logger, and an interceptor that
+// stamps a request id on every outgoing RPC and logs failures with it, so a
+// CLI-side failure can be correlated with the matching backend log line.
+package backend
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"log/slog"
+	"os"
+
+	"connectrpc.com/connect"
+)
+
+// URL returns the backend base URL, overridable via TASKER_BACKEND_URL for
+// non-local environments.
+func URL() string {
+	if v := os.Getenv("TASKER_BACKEND_URL"); v != "" {
+		return v
+	}
+	return "http://localhost:8080"
+}
+
+// Logger is the CLI's structured (JSON) logger.
+var Logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
+
+func newRequestID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+// RequestIDInterceptor stamps an X-Request-Id header on every outgoing RPC
+// and logs failures with the id attached.
+func RequestIDInterceptor() connect.Interceptor {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			requestID := newRequestID()
+			req.Header().Set("X-Request-Id", requestID)
+
+			res, err := next(ctx, req)
+			if err != nil {
+				Logger.Error("rpc failed",
+					"requestId", requestID,
+					"procedure", req.Spec().Procedure,
+					"err", err,
+				)
+			}
+			return res, err
+		}
+	})
+}
+
+// ClientOptions returns the connect.ClientOption set every CLI client should use.
+func ClientOptions() []connect.ClientOption {
+	return []connect.ClientOption{connect.WithInterceptors(RequestIDInterceptor())}
+}

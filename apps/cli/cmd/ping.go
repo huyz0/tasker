@@ -12,6 +12,7 @@ import (
 
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	"github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
 )
 
 // PingClientFactory allows injecting a custom HTTP client and server URL for
@@ -20,7 +21,7 @@ import (
 type PingClientFactory func(httpClient *http.Client, serverURL string) v1connect.HealthServiceClient
 
 var defaultPingClientFactory PingClientFactory = func(httpClient *http.Client, serverURL string) v1connect.HealthServiceClient {
-	return v1connect.NewHealthServiceClient(httpClient, serverURL)
+	return v1connect.NewHealthServiceClient(httpClient, serverURL, backend.ClientOptions()...)
 }
 
 // runPing is the extracted, testable command logic. It writes output to w so
@@ -45,7 +46,7 @@ var pingCmd = &cobra.Command{
 	Use:   "ping",
 	Short: "Ping the backend health service",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := runPing(os.Stdout, defaultPingClientFactory, http.DefaultClient, "http://localhost:8080"); err != nil {
+		if err := runPing(os.Stdout, defaultPingClientFactory, http.DefaultClient, backend.URL()); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}

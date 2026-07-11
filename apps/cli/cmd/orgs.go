@@ -1,12 +1,13 @@
 package cmd
 
 import (
-	"context"
-	"net/http"
-	"github.com/spf13/cobra"
 	"connectrpc.com/connect"
+	"context"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
+	"github.com/spf13/cobra"
+	"net/http"
 )
 
 var orgsCmd = &cobra.Command{
@@ -20,7 +21,8 @@ var orgsListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client := healthv1connect.NewOrgServiceClient(
 			http.DefaultClient,
-			"http://localhost:8080",
+			backend.URL(),
+			backend.ClientOptions()...,
 		)
 
 		req := connect.NewRequest(&healthv1.ListOrgsRequest{})

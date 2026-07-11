@@ -1,13 +1,14 @@
 package cmd
 
 import (
+	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
-	"net/http"
-	"github.com/spf13/cobra"
-	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
+	"github.com/spf13/cobra"
+	"net/http"
 )
 
 var tasksCmd = &cobra.Command{
@@ -20,16 +21,17 @@ var tasksListCmd = &cobra.Command{
 	Short: "List tasks within a project",
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
-		
+
 		client := healthv1connect.NewTaskServiceClient(
 			http.DefaultClient,
-			"http://localhost:8080",
+			backend.URL(),
+			backend.ClientOptions()...,
 		)
 
 		req := connect.NewRequest(&healthv1.ListTasksRequest{
 			ProjectId: "prj-1", // Using a hardcoded mock project ID until CLI context management is built
 		})
-		
+
 		res, err := client.ListTasks(context.Background(), req)
 		if err != nil {
 			cmd.PrintErrf("Failed to list tasks: %v\n", err)
