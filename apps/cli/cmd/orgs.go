@@ -38,9 +38,41 @@ var orgsListCmd = &cobra.Command{
 	},
 }
 
+var orgsDeleteCmd = &cobra.Command{
+	Use:   "delete [org_id]",
+	Short: "Move an organization to the bin (requires org admin)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.ArchiveOrg(context.Background(), connect.NewRequest(&healthv1.ArchiveOrgRequest{OrgId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to delete organization: %v\n", err)
+			return
+		}
+		cmd.Printf("Organization %s moved to bin\n", args[0])
+	},
+}
+
+var orgsRestoreCmd = &cobra.Command{
+	Use:   "restore [org_id]",
+	Short: "Restore an organization from the bin (requires org admin)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.RestoreOrg(context.Background(), connect.NewRequest(&healthv1.RestoreOrgRequest{OrgId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to restore organization: %v\n", err)
+			return
+		}
+		cmd.Printf("Organization %s restored\n", args[0])
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(orgsCmd)
 	orgsCmd.AddCommand(orgsListCmd)
+	orgsCmd.AddCommand(orgsDeleteCmd)
+	orgsCmd.AddCommand(orgsRestoreCmd)
 
 	orgsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	orgsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")

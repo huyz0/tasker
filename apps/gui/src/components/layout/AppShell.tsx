@@ -1,13 +1,14 @@
-import { 
-  Building2, 
-  FolderKanban, 
-  CheckSquare, 
-  Bot, 
-  FileBox, 
-  LayoutDashboard, 
+import {
+  Building2,
+  FolderKanban,
+  CheckSquare,
+  Bot,
+  FileBox,
+  LayoutDashboard,
   Menu,
   Activity,
-  UserCircle
+  UserCircle,
+  Trash2
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
@@ -21,6 +22,7 @@ const NAVIGATION_ITEMS = [
   { name: 'Tasks', path: '/tasks', icon: CheckSquare },
   { name: 'AI Agents', path: '/agents', icon: Bot },
   { name: 'Artifacts', path: '/artifacts', icon: FileBox },
+  { name: 'Bin', path: '/bin', icon: Trash2 },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

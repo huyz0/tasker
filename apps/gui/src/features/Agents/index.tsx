@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLayoutStore } from '../../store/layout';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { AgentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
@@ -11,6 +11,7 @@ export function AgentsDashboard() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Agents Dashboard'), [setActivePageTitle]);
+  const queryClient = useQueryClient();
 
   const { data: agentsData, isLoading } = useQuery({
     queryKey: ['agents', activeOrgId],
@@ -18,6 +19,13 @@ export function AgentsDashboard() {
       const resp = await agentClient.listAgents({ orgId: activeOrgId });
       return resp.agents;
     }
+  });
+
+  const archiveAgentMutation = useMutation({
+    mutationFn: async (agentId: string) => {
+      await agentClient.archiveAgent({ agentId });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents', activeOrgId] }),
   });
 
   return (
@@ -50,6 +58,9 @@ export function AgentsDashboard() {
              <h2 className="text-xl font-medium">AI Agent Instances</h2>
              <button className="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded font-medium">Deploy Agent</button>
           </div>
+          {archiveAgentMutation.isError && (
+            <p className="text-sm text-destructive mb-2">Failed to delete agent: {(archiveAgentMutation.error as Error).message}</p>
+          )}
           <div className="border rounded-md divide-y">
             <div className="p-3 text-xs font-medium text-muted-foreground flex justify-between bg-muted/30">
               <span className="flex-1">Name</span>
@@ -67,6 +78,17 @@ export function AgentsDashboard() {
                   </span>
                   <span className="w-24 text-muted-foreground">{a.agentRoleId}</span>
                   <span className="w-24"><span className="text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider bg-green-500/10 text-green-500 border border-green-500/20">WORKING</span></span>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Move "${a.name}" to the bin? You can restore it later.`)) {
+                        archiveAgentMutation.mutate(a.id);
+                      }
+                    }}
+                    disabled={archiveAgentMutation.isPending}
+                    className="text-muted-foreground hover:text-destructive text-xs ml-3 disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
                 </div>
               ))
             ) : (

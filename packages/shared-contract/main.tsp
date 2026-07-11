@@ -50,6 +50,7 @@ model Organization {
   @field(3) slug: string;
   @field(4) role: string; // The user's role in this org
   @field(5) parentOrgId?: string;
+  @field(6) deletedAt?: string;
 }
 
 // ==== IAM Services ====
@@ -65,6 +66,7 @@ interface AuthService {
 
 model ListOrgsRequest {
   @field(1) page?: PageRequest;
+  @field(2) onlyDeleted?: boolean;
 }
 model ListOrgsResponse {
   @field(1) organizations: Organization[];
@@ -80,9 +82,25 @@ model SeedOrgResponse {
   @field(1) organization: Organization;
 }
 
+model ArchiveOrgRequest {
+  @field(1) orgId: string;
+}
+model ArchiveOrgResponse {
+  @field(1) success: boolean;
+}
+
+model RestoreOrgRequest {
+  @field(1) orgId: string;
+}
+model RestoreOrgResponse {
+  @field(1) success: boolean;
+}
+
 interface OrgService {
   listOrgs(request: ListOrgsRequest): ListOrgsResponse;
   seedOrg(request: SeedOrgRequest): SeedOrgResponse;
+  archiveOrg(request: ArchiveOrgRequest): ArchiveOrgResponse;
+  restoreOrg(request: RestoreOrgRequest): RestoreOrgResponse;
 
   inviteUser(request: InviteUserRequest): InviteUserResponse;
 }
@@ -159,6 +177,7 @@ model Project {
   @field(3) templateId: string;
   @field(4) name: string;
   @field(5) ownerId: string;
+  @field(6) deletedAt?: string;
 }
 
 // ==== Project Services ====
@@ -217,6 +236,7 @@ model CreateProjectResponse {
 model ListProjectsRequest {
   @field(1) orgId: string;
   @field(2) page?: PageRequest;
+  @field(3) onlyDeleted?: boolean;
 }
 
 model ListProjectsResponse {
@@ -224,10 +244,26 @@ model ListProjectsResponse {
   @field(2) page?: PageResponse;
 }
 
+model ArchiveProjectRequest {
+  @field(1) projectId: string;
+}
+model ArchiveProjectResponse {
+  @field(1) success: boolean;
+}
+
+model RestoreProjectRequest {
+  @field(1) projectId: string;
+}
+model RestoreProjectResponse {
+  @field(1) success: boolean;
+}
+
 interface ProjectService {
   getProject(request: GetProjectRequest): GetProjectResponse;
   createProject(request: CreateProjectRequest): CreateProjectResponse;
   listProjects(request: ListProjectsRequest): ListProjectsResponse;
+  archiveProject(request: ArchiveProjectRequest): ArchiveProjectResponse;
+  restoreProject(request: RestoreProjectRequest): RestoreProjectResponse;
 }
 
 // ==== Agent Models ====
@@ -244,6 +280,7 @@ model Agent {
   @field(2) orgId: string;
   @field(3) agentRoleId: string;
   @field(4) name: string;
+  @field(5) deletedAt?: string;
 }
 
 // ==== Agent Services ====
@@ -268,9 +305,37 @@ model CreateAgentResponse {
   @field(1) agent: Agent;
 }
 
+model ListAgentsRequest {
+  @field(1) orgId: string;
+  @field(2) onlyDeleted?: boolean;
+}
+
+model ListAgentsResponse {
+  @field(1) agents: Agent[];
+}
+
+model ArchiveAgentRequest {
+  @field(1) agentId: string;
+}
+
+model ArchiveAgentResponse {
+  @field(1) success: boolean;
+}
+
+model RestoreAgentRequest {
+  @field(1) agentId: string;
+}
+
+model RestoreAgentResponse {
+  @field(1) success: boolean;
+}
+
 interface AgentService {
   createAgentRole(request: CreateAgentRoleRequest): CreateAgentRoleResponse;
   createAgent(request: CreateAgentRequest): CreateAgentResponse;
+  listAgents(request: ListAgentsRequest): ListAgentsResponse;
+  archiveAgent(request: ArchiveAgentRequest): ArchiveAgentResponse;
+  restoreAgent(request: RestoreAgentRequest): RestoreAgentResponse;
 }
 
 // ==== Task Models ====
@@ -281,6 +346,7 @@ model Task {
   @field(3) title: string;
   @field(4) status: string;
   @field(5) description: string;
+  @field(6) deletedAt?: string;
 }
 
 // ==== Task Services ====
@@ -309,6 +375,7 @@ model AssignTaskResponse {
 model ListTasksRequest {
   @field(1) projectId: string;
   @field(2) page?: PageRequest;
+  @field(3) onlyDeleted?: boolean;
 }
 
 model ListTasksResponse {
@@ -333,12 +400,30 @@ model DeleteTaskResponse {
   @field(1) success: boolean;
 }
 
+model RestoreTaskRequest {
+  @field(1) taskId: string;
+}
+
+model RestoreTaskResponse {
+  @field(1) success: boolean;
+}
+
+model PurgeTaskRequest {
+  @field(1) taskId: string;
+}
+
+model PurgeTaskResponse {
+  @field(1) success: boolean;
+}
+
 interface TaskService {
   createTask(request: CreateTaskRequest): CreateTaskResponse;
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
   listTasks(request: ListTasksRequest): ListTasksResponse;
   updateTaskStatus(request: UpdateTaskStatusRequest): UpdateTaskStatusResponse;
   deleteTask(request: DeleteTaskRequest): DeleteTaskResponse;
+  restoreTask(request: RestoreTaskRequest): RestoreTaskResponse;
+  purgeTask(request: PurgeTaskRequest): PurgeTaskResponse;
 }
 
 // ==== Artifacts ====
@@ -348,6 +433,7 @@ model Folder {
   @field(2) projectId: string;
   @field(3) parentId: string;
   @field(4) name: string;
+  @field(5) deletedAt?: string;
 }
 
 model Artifact {
@@ -356,6 +442,7 @@ model Artifact {
   @field(3) name: string;
   @field(4) description: string;
   @field(5) content: string;
+  @field(6) deletedAt?: string;
 }
 
 model TaskArtifactLink {
@@ -394,6 +481,7 @@ model LinkTaskArtifactResponse {
 model ListArtifactsRequest {
   @field(1) folderId: string;
   @field(2) page?: PageRequest;
+  @field(3) onlyDeleted?: boolean;
 }
 
 model ListArtifactsResponse {
@@ -404,11 +492,40 @@ model ListArtifactsResponse {
 model ListFoldersRequest {
   @field(1) projectId: string;
   @field(2) page?: PageRequest;
+  @field(3) onlyDeleted?: boolean;
 }
 
 model ListFoldersResponse {
   @field(1) folders: Folder[];
   @field(2) page?: PageResponse;
+}
+
+model ArchiveArtifactRequest {
+  @field(1) artifactId: string;
+}
+model ArchiveArtifactResponse {
+  @field(1) success: boolean;
+}
+
+model RestoreArtifactRequest {
+  @field(1) artifactId: string;
+}
+model RestoreArtifactResponse {
+  @field(1) success: boolean;
+}
+
+model ArchiveFolderRequest {
+  @field(1) folderId: string;
+}
+model ArchiveFolderResponse {
+  @field(1) success: boolean;
+}
+
+model RestoreFolderRequest {
+  @field(1) folderId: string;
+}
+model RestoreFolderResponse {
+  @field(1) success: boolean;
 }
 
 interface ArtifactService {
@@ -417,6 +534,10 @@ interface ArtifactService {
   linkTaskArtifact(request: LinkTaskArtifactRequest): LinkTaskArtifactResponse;
   listArtifacts(request: ListArtifactsRequest): ListArtifactsResponse;
   listFolders(request: ListFoldersRequest): ListFoldersResponse;
+  archiveArtifact(request: ArchiveArtifactRequest): ArchiveArtifactResponse;
+  restoreArtifact(request: RestoreArtifactRequest): RestoreArtifactResponse;
+  archiveFolder(request: ArchiveFolderRequest): ArchiveFolderResponse;
+  restoreFolder(request: RestoreFolderRequest): RestoreFolderResponse;
 }
 
 // ==== Comments ====

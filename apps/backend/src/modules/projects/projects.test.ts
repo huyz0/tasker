@@ -120,4 +120,34 @@ describe("Projects Handler Integration Logic", () => {
     await expect(ptHandler.listTemplates({}, ctx)).rejects.toThrow();
     await expect(ptHandler.listTemplates({ orgId: "org-test" }, makeAuthContext("user-outsider"))).rejects.toThrow();
   });
+
+  test("archiveProject hides the project from listProjects and restoreProject brings it back, admin-only", async () => {
+    const memberId = "user-archive-member-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: "org-test", userId: memberId, role: "member", joinedAt: new Date() });
+
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Archive Template" }, ctx);
+    const pResp = await pHandler.createProject({ orgId: "org-test", templateId: tResp.template.id, name: "Archive Me", ownerId: "user-test" }, ctx);
+
+    await expect(pHandler.archiveProject({ projectId: pResp.project.id }, makeAuthContext(memberId))).rejects.toThrow();
+
+    await pHandler.archiveProject({ projectId: pResp.project.id }, ctx);
+
+    const activeList = await pHandler.listProjects({ orgId: "org-test" }, ctx);
+    expect(activeList.projects.some((p: any) => p.id === pResp.project.id)).toBe(false);
+
+    const binList = await pHandler.listProjects({ orgId: "org-test", onlyDeleted: true }, ctx);
+    expect(binList.projects.some((p: any) => p.id === pResp.project.id)).toBe(true);
+
+    await expect(pHandler.restoreProject({ projectId: pResp.project.id }, makeAuthContext(memberId))).rejects.toThrow();
+
+    await pHandler.restoreProject({ projectId: pResp.project.id }, ctx);
+    const restoredList = await pHandler.listProjects({ orgId: "org-test" }, ctx);
+    expect(restoredList.projects.some((p: any) => p.id === pResp.project.id)).toBe(true);
+
+    expect(mockNc.publishedMessages.map((m: any) => m.subject)).toContain("domain.project.archived");
+    expect(mockNc.publishedMessages.map((m: any) => m.subject)).toContain("domain.project.restored");
+
+    await expect(pHandler.archiveProject({ projectId: "project-does-not-exist" }, ctx)).rejects.toThrow();
+  });
 });

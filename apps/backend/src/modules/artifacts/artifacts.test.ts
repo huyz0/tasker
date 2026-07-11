@@ -238,4 +238,50 @@ describe("Artifacts Handler", () => {
   it("should reject listArtifacts with missing folderId", async () => {
     expect(handler.listArtifacts({}, ctx)).rejects.toThrow();
   });
+
+  // --- archive/restore ---
+
+  it("should archive and restore a folder, hiding/showing it in listFolders", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Archivable" }, ctx);
+
+    await handler.archiveFolder({ folderId: folder.folder.id }, ctx);
+    const afterArchive = await handler.listFolders({ projectId }, ctx);
+    expect(afterArchive.folders.some((f: any) => f.id === folder.folder.id)).toBe(false);
+
+    const binList = await handler.listFolders({ projectId, onlyDeleted: true }, ctx);
+    expect(binList.folders.some((f: any) => f.id === folder.folder.id)).toBe(true);
+
+    await handler.restoreFolder({ folderId: folder.folder.id }, ctx);
+    const afterRestore = await handler.listFolders({ projectId }, ctx);
+    expect(afterRestore.folders.some((f: any) => f.id === folder.folder.id)).toBe(true);
+  });
+
+  it("should reject archiveFolder/restoreFolder from a user outside the project's org", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Guarded" }, ctx);
+    await expect(handler.archiveFolder({ folderId: folder.folder.id }, makeAuthContext("user-outsider"))).rejects.toThrow();
+    await expect(handler.restoreFolder({ folderId: folder.folder.id }, makeAuthContext("user-outsider"))).rejects.toThrow();
+  });
+
+  it("should archive and restore an artifact, hiding/showing it in listArtifacts", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Fld" }, ctx);
+    const artifact = await handler.createArtifact({ folderId: folder.folder.id, name: "Archivable Art" }, ctx);
+
+    await handler.archiveArtifact({ artifactId: artifact.artifact.id }, ctx);
+    const afterArchive = await handler.listArtifacts({ folderId: folder.folder.id }, ctx);
+    expect(afterArchive.artifacts.some((a: any) => a.id === artifact.artifact.id)).toBe(false);
+
+    const binList = await handler.listArtifacts({ folderId: folder.folder.id, onlyDeleted: true }, ctx);
+    expect(binList.artifacts.some((a: any) => a.id === artifact.artifact.id)).toBe(true);
+
+    await handler.restoreArtifact({ artifactId: artifact.artifact.id }, ctx);
+    const afterRestore = await handler.listArtifacts({ folderId: folder.folder.id }, ctx);
+    expect(afterRestore.artifacts.some((a: any) => a.id === artifact.artifact.id)).toBe(true);
+  });
+
+  it("should reject archiveArtifact/restoreArtifact from a user outside the project's org", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Fld" }, ctx);
+    const artifact = await handler.createArtifact({ folderId: folder.folder.id, name: "Guarded Art" }, ctx);
+    await expect(handler.archiveArtifact({ artifactId: artifact.artifact.id }, makeAuthContext("user-outsider"))).rejects.toThrow();
+    await expect(handler.restoreArtifact({ artifactId: artifact.artifact.id }, makeAuthContext("user-outsider"))).rejects.toThrow();
+  });
 });

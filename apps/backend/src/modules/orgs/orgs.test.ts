@@ -103,4 +103,36 @@ describe("Organizations Handler Integration Logic", () => {
       parentOrgId: "org-does-not-exist",
     }, makeAuthContext(adminId))).rejects.toThrow();
   });
+
+  test("archiveOrg hides the org from listOrgs and restoreOrg brings it back, admin-only", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+
+    const adminId = "user-archive-admin-" + Date.now();
+    const memberId = "user-archive-member-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@foo.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@foo.com`, createdAt: new Date() });
+
+    const org = await handler.seedOrg({ name: "Archive Me", slug: "archive-me-" + Date.now() }, makeAuthContext(adminId));
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: org.organization.id, userId: memberId, role: "member", joinedAt: new Date() });
+
+    await expect(handler.archiveOrg({ orgId: org.organization.id }, makeAuthContext(memberId))).rejects.toThrow();
+
+    await handler.archiveOrg({ orgId: org.organization.id }, makeAuthContext(adminId));
+
+    const activeList = await handler.listOrgs({}, makeAuthContext(adminId));
+    expect(activeList.organizations.some((o: any) => o.id === org.organization.id)).toBe(false);
+
+    const binList = await handler.listOrgs({ onlyDeleted: true }, makeAuthContext(adminId));
+    expect(binList.organizations.some((o: any) => o.id === org.organization.id)).toBe(true);
+
+    await expect(handler.restoreOrg({ orgId: org.organization.id }, makeAuthContext(memberId))).rejects.toThrow();
+
+    await handler.restoreOrg({ orgId: org.organization.id }, makeAuthContext(adminId));
+    const restoredList = await handler.listOrgs({}, makeAuthContext(adminId));
+    expect(restoredList.organizations.some((o: any) => o.id === org.organization.id)).toBe(true);
+
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.org.archived");
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.org.restored");
+  });
 });

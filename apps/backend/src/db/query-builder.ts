@@ -1,4 +1,4 @@
-import { SQL, and, lt, or, eq, desc } from "drizzle-orm";
+import { SQL, and, lt, or, eq, desc, isNull } from "drizzle-orm";
 import { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
 export interface PaginationParams {
@@ -53,6 +53,18 @@ export function buildPaginationOrderBy(
   idCol: SQLiteColumn,
 ) {
   return [desc(createdAtCol), desc(idCol)];
+}
+
+export function notDeleted(table: any): SQL {
+  return isNull(table.deletedAt);
+}
+
+export async function softDeleteById(db: any, table: any, id: string): Promise<void> {
+  await db.update(table).set({ deletedAt: new Date() }).where(eq(table.id, id));
+}
+
+export async function restoreById(db: any, table: any, id: string): Promise<void> {
+  await db.update(table).set({ deletedAt: null }).where(eq(table.id, id));
 }
 
 export async function insertRecord(

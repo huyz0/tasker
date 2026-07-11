@@ -171,7 +171,7 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.updateTaskStatus({ taskId: taskResp.task.id, status: "done" }, outsiderCtx)).rejects.toThrow();
   });
 
-  test("deleteTask cascades cleanup of dependent rows and requires org admin", async () => {
+  test("deleteTask soft-deletes, hides from listTasks, and can be restored; requires org admin", async () => {
     const { db, nc } = await setupIntegrationTest();
 
     const orgId = "org-delete-" + Date.now().toString();
@@ -179,9 +179,6 @@ describe("Tasks Handler Integration Tests", () => {
     const memberId = "user-delete-member-" + Date.now().toString();
     const templateId = "tmpl-delete-" + Date.now().toString();
     const projectId = "proj-delete-" + Date.now().toString();
-    const folderId = "folder-delete-" + Date.now().toString();
-    const artifactId = "art-delete-" + Date.now().toString();
-    const repoLinkId = "repo-delete-" + Date.now().toString();
 
     await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@test.com`, createdAt: new Date() });
     await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
@@ -190,18 +187,66 @@ describe("Tasks Handler Integration Tests", () => {
     await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
     await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "T", createdAt: new Date() });
     await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: adminId, name: "P", createdAt: new Date() });
+
+    const { createTaskManagementHandler } = require("./tasks.handler");
+    const handler = createTaskManagementHandler(db, nc);
+
+    const taskResp = await handler.createTask({ projectId, title: "Delete Me", status: "todo", description: "" }, makeAuthContext(adminId));
+    const taskId = taskResp.task.id;
+
+    // A non-admin member cannot delete the task.
+    await expect(handler.deleteTask({ taskId }, makeAuthContext(memberId))).rejects.toThrow();
+
+    await handler.deleteTask({ taskId }, makeAuthContext(adminId));
+
+    const activeList = await handler.listTasks({ projectId }, makeAuthContext(adminId));
+    expect(activeList.tasks.some((t: any) => t.id === taskId)).toBe(false);
+
+    const binList = await handler.listTasks({ projectId, onlyDeleted: true }, makeAuthContext(adminId));
+    expect(binList.tasks.some((t: any) => t.id === taskId)).toBe(true);
+
+    // A non-admin member cannot restore either.
+    await expect(handler.restoreTask({ taskId }, makeAuthContext(memberId))).rejects.toThrow();
+
+    await handler.restoreTask({ taskId }, makeAuthContext(adminId));
+    const restoredList = await handler.listTasks({ projectId }, makeAuthContext(adminId));
+    expect(restoredList.tasks.some((t: any) => t.id === taskId)).toBe(true);
+
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.task.deleted");
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.task.restored");
+  });
+
+  test("purgeTask requires the task be archived first, cascades cleanup of dependent rows, and requires org admin", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-purge-" + Date.now().toString();
+    const adminId = "user-purge-admin-" + Date.now().toString();
+    const memberId = "user-purge-member-" + Date.now().toString();
+    const templateId = "tmpl-purge-" + Date.now().toString();
+    const projectId = "proj-purge-" + Date.now().toString();
+    const folderId = "folder-purge-" + Date.now().toString();
+    const artifactId = "art-purge-" + Date.now().toString();
+    const repoLinkId = "repo-purge-" + Date.now().toString();
+
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Purge Org", slug: "purge-org-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: adminId, role: "admin", joinedAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: adminId, name: "P", createdAt: new Date() });
     await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: "Folder", createdAt: new Date() });
     await db.insert(schemaSqlite.artifacts).values({ id: artifactId, folderId, name: "Artifact", createdAt: new Date() });
     await db.insert(schemaSqlite.repositoryLinks).values({ id: repoLinkId, projectId, provider: "github", remoteName: "org/repo", accessTokenEncrypted: "enc", createdAt: new Date() });
-    const agentRoleId = "role-delete-" + Date.now();
-    const agentId = "agent-delete-" + Date.now();
+    const agentRoleId = "role-purge-" + Date.now();
+    const agentId = "agent-purge-" + Date.now();
     await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "[]" });
     await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
 
     const { createTaskManagementHandler } = require("./tasks.handler");
     const handler = createTaskManagementHandler(db, nc);
 
-    const taskResp = await handler.createTask({ projectId, title: "Delete Me", status: "todo", description: "" }, makeAuthContext(adminId));
+    const taskResp = await handler.createTask({ projectId, title: "Purge Me", status: "todo", description: "" }, makeAuthContext(adminId));
     const taskId = taskResp.task.id;
 
     await db.insert(schemaSqlite.taskAssignments).values({ id: "ta-del-" + Date.now(), taskId, userId: memberId });
@@ -212,10 +257,15 @@ describe("Tasks Handler Integration Tests", () => {
     const prId = "pr-del-" + Date.now();
     await db.insert(schemaSqlite.remotePullRequests).values({ id: prId, repositoryLinkId: repoLinkId, taskId, remotePrId: "1", title: "PR", status: "open", url: "http://x", updatedAt: new Date() });
 
-    // A non-admin member cannot delete the task.
-    await expect(handler.deleteTask({ taskId }, makeAuthContext(memberId))).rejects.toThrow();
+    // Cannot purge a live (non-archived) task.
+    await expect(handler.purgeTask({ taskId }, makeAuthContext(adminId))).rejects.toThrow();
 
     await handler.deleteTask({ taskId }, makeAuthContext(adminId));
+
+    // A non-admin member cannot purge either.
+    await expect(handler.purgeTask({ taskId }, makeAuthContext(memberId))).rejects.toThrow();
+
+    await handler.purgeTask({ taskId }, makeAuthContext(adminId));
 
     const remainingAssignments = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, taskId));
     expect(remainingAssignments.length).toBe(0);
@@ -236,7 +286,8 @@ describe("Tasks Handler Integration Tests", () => {
     expect(remainingPrs.length).toBe(1);
     expect(remainingPrs[0].taskId).toBeNull();
 
-    await expect(handler.updateTaskStatus({ taskId, status: "done" }, makeAuthContext(adminId))).rejects.toThrow();
-    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.task.deleted");
+    // Restoring/purging again fails since the row no longer exists.
+    await expect(handler.restoreTask({ taskId }, makeAuthContext(adminId))).rejects.toThrow();
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.task.purged");
   });
 });

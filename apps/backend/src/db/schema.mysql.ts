@@ -18,6 +18,7 @@ export const organizations = mysqlTable("organizations", {
   slug: varchar("slug", { length: 256 }).notNull().unique(),
   parentOrgId: varchar("parent_org_id", { length: 256 }).references((): AnyMySqlColumn => organizations.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 }, (table) => {
   return {
     parentOrgIdx: index("organizations_parent_org_id_idx").on(table.parentOrgId),
@@ -79,6 +80,7 @@ export const projects = mysqlTable("projects", {
   name: varchar("name", { length: 256 }).notNull(),
   ownerId: varchar("owner_id", { length: 256 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const agentRoles = mysqlTable("agent_roles", {
@@ -93,6 +95,7 @@ export const agents = mysqlTable("agents", {
   orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
   agentRoleId: varchar("agent_role_id", { length: 256 }).notNull().references(() => agentRoles.id),
   name: varchar("name", { length: 256 }).notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const tasks = mysqlTable("tasks", {
@@ -102,6 +105,7 @@ export const tasks = mysqlTable("tasks", {
   status: varchar("status", { length: 256 }).notNull(),
   description: varchar("description", { length: 4096 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const taskAssignments = mysqlTable("task_assignments", {
@@ -124,6 +128,7 @@ export const folders = mysqlTable("folders", {
   parentId: varchar("parent_id", { length: 256 }),
   name: varchar("name", { length: 256 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const artifacts = mysqlTable("artifacts", {
@@ -133,6 +138,7 @@ export const artifacts = mysqlTable("artifacts", {
   description: varchar("description", { length: 1024 }),
   content: varchar("content", { length: 8192 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const taskArtifactLinks = mysqlTable("task_artifact_links", {

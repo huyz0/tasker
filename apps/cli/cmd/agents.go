@@ -1,7 +1,13 @@
 package cmd
 
 import (
+	"connectrpc.com/connect"
+	"context"
+	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
+	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
+	"net/http"
 )
 
 var agentsCmd = &cobra.Command{
@@ -41,10 +47,42 @@ var agentsCreateCmd = &cobra.Command{
 	},
 }
 
+var agentsDeleteCmd = &cobra.Command{
+	Use:   "delete [agent_id]",
+	Short: "Move an agent to the bin",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.ArchiveAgent(context.Background(), connect.NewRequest(&healthv1.ArchiveAgentRequest{AgentId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to delete agent: %v\n", err)
+			return
+		}
+		cmd.Printf("Agent %s moved to bin\n", args[0])
+	},
+}
+
+var agentsRestoreCmd = &cobra.Command{
+	Use:   "restore [agent_id]",
+	Short: "Restore an agent from the bin",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.RestoreAgent(context.Background(), connect.NewRequest(&healthv1.RestoreAgentRequest{AgentId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to restore agent: %v\n", err)
+			return
+		}
+		cmd.Printf("Agent %s restored\n", args[0])
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(agentsCmd)
 	agentsCmd.AddCommand(agentsListCmd)
 	agentsCmd.AddCommand(agentsCreateCmd)
+	agentsCmd.AddCommand(agentsDeleteCmd)
+	agentsCmd.AddCommand(agentsRestoreCmd)
 
 	agentsCreateCmd.Flags().String("role", "", "The designated role persona")
 }

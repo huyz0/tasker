@@ -71,6 +71,13 @@ export function OrganizationsDashboard() {
     childOrgsByParent.set(org.parentOrgId, [...(childOrgsByParent.get(org.parentOrgId) ?? []), org]);
   }
 
+  const archiveOrgMutation = useMutation({
+    mutationFn: async (orgId: string) => {
+      await orgClient.archiveOrg({ orgId });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgs'] }),
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -133,6 +140,9 @@ export function OrganizationsDashboard() {
           {createOrgMutation.isError && (
             <p className="text-sm text-destructive mb-4">Failed to create organization: {(createOrgMutation.error as Error).message}</p>
           )}
+          {archiveOrgMutation.isError && (
+            <p className="text-sm text-destructive mb-4">Failed to delete organization: {(archiveOrgMutation.error as Error).message}</p>
+          )}
           <div className="border rounded-md divide-y">
              <div className="p-3 text-sm flex justify-between items-center bg-muted/30">
                <span className="font-medium min-w-[200px]">Name</span>
@@ -148,7 +158,21 @@ export function OrganizationsDashboard() {
                        <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold">{org.name.charAt(0).toUpperCase()}</span>
                        {org.name} {activeOrgId === org.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
                      </span>
-                     <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{org.slug}</span>
+                     <span className="flex items-center gap-3">
+                       <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{org.slug}</span>
+                       <button
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           if (window.confirm(`Move "${org.name}" to the bin? You can restore it later.`)) {
+                             archiveOrgMutation.mutate(org.id);
+                           }
+                         }}
+                         disabled={archiveOrgMutation.isPending}
+                         className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                       >
+                         Delete
+                       </button>
+                     </span>
                    </div>
                    {(childOrgsByParent.get(org.id) ?? []).map((child) => (
                      <div key={child.id} onClick={() => setActiveOrgId(child.id)} className={`p-3 pl-10 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 border-t ${activeOrgId === child.id ? 'bg-primary/5' : ''}`}>
@@ -156,7 +180,21 @@ export function OrganizationsDashboard() {
                          <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold">{child.name.charAt(0).toUpperCase()}</span>
                          {child.name} {activeOrgId === child.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
                        </span>
-                       <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{child.slug}</span>
+                       <span className="flex items-center gap-3">
+                         <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{child.slug}</span>
+                         <button
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             if (window.confirm(`Move "${child.name}" to the bin? You can restore it later.`)) {
+                               archiveOrgMutation.mutate(child.id);
+                             }
+                           }}
+                           disabled={archiveOrgMutation.isPending}
+                           className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                         >
+                           Delete
+                         </button>
+                       </span>
                      </div>
                    ))}
                  </div>

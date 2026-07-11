@@ -110,14 +110,14 @@ export function TasksWorkbench() {
              <div className="flex items-center gap-3">
                <button
                  onClick={() => {
-                   if (window.confirm(`Delete "${expandedTask.title}"? This cannot be undone.`)) {
+                   if (window.confirm(`Move "${expandedTask.title}" to the bin? You can restore it later.`)) {
                      deleteTaskMutation.mutate(expandedTask.id);
                    }
                  }}
                  disabled={deleteTaskMutation.isPending}
                  className="text-destructive hover:text-destructive/80 text-sm font-medium disabled:opacity-50"
                >
-                 {deleteTaskMutation.isPending ? 'Deleting...' : 'Delete'}
+                 {deleteTaskMutation.isPending ? 'Moving to bin...' : 'Delete'}
                </button>
                <button onClick={() => setExpandedTaskId(null)} className="text-muted-foreground hover:text-foreground">✕</button>
              </div>

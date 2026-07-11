@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { ArtifactService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
@@ -15,6 +15,7 @@ export function ArtifactsBrowser() {
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedArtifact, setSelectedArtifact] = useState<any | null>(null);
+  const queryClient = useQueryClient();
 
   // Fetch all folders for the project
   const { data: foldersData, isLoading: isLoadingFolders } = useQuery({
@@ -36,6 +37,26 @@ export function ArtifactsBrowser() {
     enabled: !!selectedFolderId,
   });
 
+  const archiveFolderMutation = useMutation({
+    mutationFn: async (folderId: string) => {
+      await artifactClient.archiveFolder({ folderId });
+    },
+    onSuccess: (_data, folderId) => {
+      queryClient.invalidateQueries({ queryKey: ['folders', activeProjectId] });
+      if (selectedFolderId === folderId) setSelectedFolderId(null);
+    },
+  });
+
+  const archiveArtifactMutation = useMutation({
+    mutationFn: async (artifactId: string) => {
+      await artifactClient.archiveArtifact({ artifactId });
+    },
+    onSuccess: (_data, artifactId) => {
+      queryClient.invalidateQueries({ queryKey: ['artifacts', selectedFolderId] });
+      if (selectedArtifact?.id === artifactId) setSelectedArtifact(null);
+    },
+  });
+
   const rootFolders = foldersData?.filter(f => !f.parentId) || [];
 
   return (
@@ -54,24 +75,48 @@ export function ArtifactsBrowser() {
           
           {rootFolders.map(folder => (
             <div key={folder.id}>
-              <div 
+              <div
                 onClick={() => setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id)}
-                className={`px-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center gap-2 ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
+                className={`px-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center justify-between gap-2 group ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
               >
-                <span>{selectedFolderId === folder.id ? '📂' : '📁'}</span> {folder.name}
+                <span className="flex items-center gap-2"><span>{selectedFolderId === folder.id ? '📂' : '📁'}</span> {folder.name}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(`Move "${folder.name}" to the bin? You can restore it later.`)) {
+                      archiveFolderMutation.mutate(folder.id);
+                    }
+                  }}
+                  disabled={archiveFolderMutation.isPending}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                >
+                  ✕
+                </button>
               </div>
-              
+
               {/* Show artifacts if this folder is selected */}
               {selectedFolderId === folder.id && (
                 <div className="pl-6 mt-1 space-y-1">
                   {isLoadingArtifacts && <div className="text-xs text-muted-foreground px-2 py-1">Loading...</div>}
                   {artifactsData?.map(artifact => (
-                    <div 
+                    <div
                       key={artifact.id}
                       onClick={() => setSelectedArtifact(artifact)}
-                      className={`px-2 py-1 hover:bg-muted cursor-pointer flex items-center gap-2 rounded-sm text-xs ${selectedArtifact?.id === artifact.id ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}
+                      className={`px-2 py-1 hover:bg-muted cursor-pointer flex items-center justify-between gap-2 rounded-sm text-xs group ${selectedArtifact?.id === artifact.id ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}
                     >
-                      <span>📄</span> {artifact.name}
+                      <span className="flex items-center gap-2"><span>📄</span> {artifact.name}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Move "${artifact.name}" to the bin? You can restore it later.`)) {
+                            archiveArtifactMutation.mutate(artifact.id);
+                          }
+                        }}
+                        disabled={archiveArtifactMutation.isPending}
+                        className="opacity-0 group-hover:opacity-100 hover:text-destructive disabled:opacity-50"
+                      >
+                        ✕
+                      </button>
                     </div>
                   ))}
                   {!isLoadingArtifacts && artifactsData?.length === 0 && (

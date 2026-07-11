@@ -115,7 +115,7 @@ var tasksUpdateStatusCmd = &cobra.Command{
 
 var tasksDeleteCmd = &cobra.Command{
 	Use:   "delete [task_id]",
-	Short: "Delete a task and its dependent records (requires org admin)",
+	Short: "Move a task to the bin (soft delete; requires org admin)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
@@ -140,7 +140,71 @@ var tasksDeleteCmd = &cobra.Command{
 			jsonString, _ := json.Marshal(map[string]any{"success": true, "task_id": args[0]})
 			cmd.Println(string(jsonString))
 		} else {
-			cmd.Printf("Task %s deleted\n", args[0])
+			cmd.Printf("Task %s moved to bin\n", args[0])
+		}
+	},
+}
+
+var tasksRestoreCmd = &cobra.Command{
+	Use:   "restore [task_id]",
+	Short: "Restore a task from the bin (requires org admin)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		isJson, _ := cmd.Flags().GetBool("json")
+
+		client := healthv1connect.NewTaskServiceClient(
+			http.DefaultClient,
+			backend.URL(),
+			backend.ClientOptions()...,
+		)
+
+		req := connect.NewRequest(&healthv1.RestoreTaskRequest{
+			TaskId: args[0],
+		})
+
+		_, err := client.RestoreTask(context.Background(), req)
+		if err != nil {
+			cmd.PrintErrf("Failed to restore task: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "task_id": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Task %s restored\n", args[0])
+		}
+	},
+}
+
+var tasksPurgeCmd = &cobra.Command{
+	Use:   "purge [task_id]",
+	Short: "Permanently delete an already-binned task and its dependent records (requires org admin)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		isJson, _ := cmd.Flags().GetBool("json")
+
+		client := healthv1connect.NewTaskServiceClient(
+			http.DefaultClient,
+			backend.URL(),
+			backend.ClientOptions()...,
+		)
+
+		req := connect.NewRequest(&healthv1.PurgeTaskRequest{
+			TaskId: args[0],
+		})
+
+		_, err := client.PurgeTask(context.Background(), req)
+		if err != nil {
+			cmd.PrintErrf("Failed to purge task: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "task_id": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Task %s permanently deleted\n", args[0])
 		}
 	},
 }
@@ -152,6 +216,8 @@ func init() {
 	tasksCmd.AddCommand(tasksAssignCmd)
 	tasksCmd.AddCommand(tasksUpdateStatusCmd)
 	tasksCmd.AddCommand(tasksDeleteCmd)
+	tasksCmd.AddCommand(tasksRestoreCmd)
+	tasksCmd.AddCommand(tasksPurgeCmd)
 
 	tasksCreateCmd.Flags().String("title", "", "The title of the task")
 	tasksAssignCmd.Flags().String("assignee", "", "The ID or name to assign")

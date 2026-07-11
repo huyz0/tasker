@@ -65,6 +65,10 @@ const (
 	OrgServiceListOrgsProcedure = "/tasker.health.v1.OrgService/ListOrgs"
 	// OrgServiceSeedOrgProcedure is the fully-qualified name of the OrgService's SeedOrg RPC.
 	OrgServiceSeedOrgProcedure = "/tasker.health.v1.OrgService/SeedOrg"
+	// OrgServiceArchiveOrgProcedure is the fully-qualified name of the OrgService's ArchiveOrg RPC.
+	OrgServiceArchiveOrgProcedure = "/tasker.health.v1.OrgService/ArchiveOrg"
+	// OrgServiceRestoreOrgProcedure is the fully-qualified name of the OrgService's RestoreOrg RPC.
+	OrgServiceRestoreOrgProcedure = "/tasker.health.v1.OrgService/RestoreOrg"
 	// OrgServiceInviteUserProcedure is the fully-qualified name of the OrgService's InviteUser RPC.
 	OrgServiceInviteUserProcedure = "/tasker.health.v1.OrgService/InviteUser"
 	// TaskTypeServiceGetTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
@@ -91,6 +95,12 @@ const (
 	// ProjectServiceListProjectsProcedure is the fully-qualified name of the ProjectService's
 	// ListProjects RPC.
 	ProjectServiceListProjectsProcedure = "/tasker.health.v1.ProjectService/ListProjects"
+	// ProjectServiceArchiveProjectProcedure is the fully-qualified name of the ProjectService's
+	// ArchiveProject RPC.
+	ProjectServiceArchiveProjectProcedure = "/tasker.health.v1.ProjectService/ArchiveProject"
+	// ProjectServiceRestoreProjectProcedure is the fully-qualified name of the ProjectService's
+	// RestoreProject RPC.
+	ProjectServiceRestoreProjectProcedure = "/tasker.health.v1.ProjectService/RestoreProject"
 	// AgentServiceCreateAgentRoleProcedure is the fully-qualified name of the AgentService's
 	// CreateAgentRole RPC.
 	AgentServiceCreateAgentRoleProcedure = "/tasker.health.v1.AgentService/CreateAgentRole"
@@ -99,6 +109,12 @@ const (
 	AgentServiceCreateAgentProcedure = "/tasker.health.v1.AgentService/CreateAgent"
 	// AgentServiceListAgentsProcedure is the fully-qualified name of the AgentService's ListAgents RPC.
 	AgentServiceListAgentsProcedure = "/tasker.health.v1.AgentService/ListAgents"
+	// AgentServiceArchiveAgentProcedure is the fully-qualified name of the AgentService's ArchiveAgent
+	// RPC.
+	AgentServiceArchiveAgentProcedure = "/tasker.health.v1.AgentService/ArchiveAgent"
+	// AgentServiceRestoreAgentProcedure is the fully-qualified name of the AgentService's RestoreAgent
+	// RPC.
+	AgentServiceRestoreAgentProcedure = "/tasker.health.v1.AgentService/RestoreAgent"
 	// TaskServiceCreateTaskProcedure is the fully-qualified name of the TaskService's CreateTask RPC.
 	TaskServiceCreateTaskProcedure = "/tasker.health.v1.TaskService/CreateTask"
 	// TaskServiceAssignTaskProcedure is the fully-qualified name of the TaskService's AssignTask RPC.
@@ -110,6 +126,10 @@ const (
 	TaskServiceUpdateTaskStatusProcedure = "/tasker.health.v1.TaskService/UpdateTaskStatus"
 	// TaskServiceDeleteTaskProcedure is the fully-qualified name of the TaskService's DeleteTask RPC.
 	TaskServiceDeleteTaskProcedure = "/tasker.health.v1.TaskService/DeleteTask"
+	// TaskServiceRestoreTaskProcedure is the fully-qualified name of the TaskService's RestoreTask RPC.
+	TaskServiceRestoreTaskProcedure = "/tasker.health.v1.TaskService/RestoreTask"
+	// TaskServicePurgeTaskProcedure is the fully-qualified name of the TaskService's PurgeTask RPC.
+	TaskServicePurgeTaskProcedure = "/tasker.health.v1.TaskService/PurgeTask"
 	// ArtifactServiceCreateFolderProcedure is the fully-qualified name of the ArtifactService's
 	// CreateFolder RPC.
 	ArtifactServiceCreateFolderProcedure = "/tasker.health.v1.ArtifactService/CreateFolder"
@@ -125,6 +145,18 @@ const (
 	// ArtifactServiceListFoldersProcedure is the fully-qualified name of the ArtifactService's
 	// ListFolders RPC.
 	ArtifactServiceListFoldersProcedure = "/tasker.health.v1.ArtifactService/ListFolders"
+	// ArtifactServiceArchiveArtifactProcedure is the fully-qualified name of the ArtifactService's
+	// ArchiveArtifact RPC.
+	ArtifactServiceArchiveArtifactProcedure = "/tasker.health.v1.ArtifactService/ArchiveArtifact"
+	// ArtifactServiceRestoreArtifactProcedure is the fully-qualified name of the ArtifactService's
+	// RestoreArtifact RPC.
+	ArtifactServiceRestoreArtifactProcedure = "/tasker.health.v1.ArtifactService/RestoreArtifact"
+	// ArtifactServiceArchiveFolderProcedure is the fully-qualified name of the ArtifactService's
+	// ArchiveFolder RPC.
+	ArtifactServiceArchiveFolderProcedure = "/tasker.health.v1.ArtifactService/ArchiveFolder"
+	// ArtifactServiceRestoreFolderProcedure is the fully-qualified name of the ArtifactService's
+	// RestoreFolder RPC.
+	ArtifactServiceRestoreFolderProcedure = "/tasker.health.v1.ArtifactService/RestoreFolder"
 	// CommentServiceCreateCommentProcedure is the fully-qualified name of the CommentService's
 	// CreateComment RPC.
 	CommentServiceCreateCommentProcedure = "/tasker.health.v1.CommentService/CreateComment"
@@ -160,6 +192,8 @@ var (
 	orgServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("OrgService")
 	orgServiceListOrgsMethodDescriptor                   = orgServiceServiceDescriptor.Methods().ByName("ListOrgs")
 	orgServiceSeedOrgMethodDescriptor                    = orgServiceServiceDescriptor.Methods().ByName("SeedOrg")
+	orgServiceArchiveOrgMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("ArchiveOrg")
+	orgServiceRestoreOrgMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("RestoreOrg")
 	orgServiceInviteUserMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("InviteUser")
 	taskTypeServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskTypeService")
 	taskTypeServiceGetTaskTypeMethodDescriptor           = taskTypeServiceServiceDescriptor.Methods().ByName("GetTaskType")
@@ -172,22 +206,32 @@ var (
 	projectServiceGetProjectMethodDescriptor             = projectServiceServiceDescriptor.Methods().ByName("GetProject")
 	projectServiceCreateProjectMethodDescriptor          = projectServiceServiceDescriptor.Methods().ByName("CreateProject")
 	projectServiceListProjectsMethodDescriptor           = projectServiceServiceDescriptor.Methods().ByName("ListProjects")
+	projectServiceArchiveProjectMethodDescriptor         = projectServiceServiceDescriptor.Methods().ByName("ArchiveProject")
+	projectServiceRestoreProjectMethodDescriptor         = projectServiceServiceDescriptor.Methods().ByName("RestoreProject")
 	agentServiceServiceDescriptor                        = v1.File_tasker_health_v1_health_proto.Services().ByName("AgentService")
 	agentServiceCreateAgentRoleMethodDescriptor          = agentServiceServiceDescriptor.Methods().ByName("CreateAgentRole")
 	agentServiceCreateAgentMethodDescriptor              = agentServiceServiceDescriptor.Methods().ByName("CreateAgent")
 	agentServiceListAgentsMethodDescriptor               = agentServiceServiceDescriptor.Methods().ByName("ListAgents")
+	agentServiceArchiveAgentMethodDescriptor             = agentServiceServiceDescriptor.Methods().ByName("ArchiveAgent")
+	agentServiceRestoreAgentMethodDescriptor             = agentServiceServiceDescriptor.Methods().ByName("RestoreAgent")
 	taskServiceServiceDescriptor                         = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskService")
 	taskServiceCreateTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("CreateTask")
 	taskServiceAssignTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
 	taskServiceListTasksMethodDescriptor                 = taskServiceServiceDescriptor.Methods().ByName("ListTasks")
 	taskServiceUpdateTaskStatusMethodDescriptor          = taskServiceServiceDescriptor.Methods().ByName("UpdateTaskStatus")
 	taskServiceDeleteTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("DeleteTask")
+	taskServiceRestoreTaskMethodDescriptor               = taskServiceServiceDescriptor.Methods().ByName("RestoreTask")
+	taskServicePurgeTaskMethodDescriptor                 = taskServiceServiceDescriptor.Methods().ByName("PurgeTask")
 	artifactServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
 	artifactServiceCreateFolderMethodDescriptor          = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
 	artifactServiceCreateArtifactMethodDescriptor        = artifactServiceServiceDescriptor.Methods().ByName("CreateArtifact")
 	artifactServiceLinkTaskArtifactMethodDescriptor      = artifactServiceServiceDescriptor.Methods().ByName("LinkTaskArtifact")
 	artifactServiceListArtifactsMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("ListArtifacts")
 	artifactServiceListFoldersMethodDescriptor           = artifactServiceServiceDescriptor.Methods().ByName("ListFolders")
+	artifactServiceArchiveArtifactMethodDescriptor       = artifactServiceServiceDescriptor.Methods().ByName("ArchiveArtifact")
+	artifactServiceRestoreArtifactMethodDescriptor       = artifactServiceServiceDescriptor.Methods().ByName("RestoreArtifact")
+	artifactServiceArchiveFolderMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("ArchiveFolder")
+	artifactServiceRestoreFolderMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("RestoreFolder")
 	commentServiceServiceDescriptor                      = v1.File_tasker_health_v1_health_proto.Services().ByName("CommentService")
 	commentServiceCreateCommentMethodDescriptor          = commentServiceServiceDescriptor.Methods().ByName("CreateComment")
 	commentServiceListCommentsMethodDescriptor           = commentServiceServiceDescriptor.Methods().ByName("ListComments")
@@ -342,6 +386,8 @@ func (UnimplementedAuthServiceHandler) GetIdentity(context.Context, *connect.Req
 type OrgServiceClient interface {
 	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
 	SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error)
+	ArchiveOrg(context.Context, *connect.Request[v1.ArchiveOrgRequest]) (*connect.Response[v1.ArchiveOrgResponse], error)
+	RestoreOrg(context.Context, *connect.Request[v1.RestoreOrgRequest]) (*connect.Response[v1.RestoreOrgResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 }
 
@@ -367,6 +413,18 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(orgServiceSeedOrgMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		archiveOrg: connect.NewClient[v1.ArchiveOrgRequest, v1.ArchiveOrgResponse](
+			httpClient,
+			baseURL+OrgServiceArchiveOrgProcedure,
+			connect.WithSchema(orgServiceArchiveOrgMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		restoreOrg: connect.NewClient[v1.RestoreOrgRequest, v1.RestoreOrgResponse](
+			httpClient,
+			baseURL+OrgServiceRestoreOrgProcedure,
+			connect.WithSchema(orgServiceRestoreOrgMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		inviteUser: connect.NewClient[v1.InviteUserRequest, v1.InviteUserResponse](
 			httpClient,
 			baseURL+OrgServiceInviteUserProcedure,
@@ -380,6 +438,8 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 type orgServiceClient struct {
 	listOrgs   *connect.Client[v1.ListOrgsRequest, v1.ListOrgsResponse]
 	seedOrg    *connect.Client[v1.SeedOrgRequest, v1.SeedOrgResponse]
+	archiveOrg *connect.Client[v1.ArchiveOrgRequest, v1.ArchiveOrgResponse]
+	restoreOrg *connect.Client[v1.RestoreOrgRequest, v1.RestoreOrgResponse]
 	inviteUser *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
 }
 
@@ -393,6 +453,16 @@ func (c *orgServiceClient) SeedOrg(ctx context.Context, req *connect.Request[v1.
 	return c.seedOrg.CallUnary(ctx, req)
 }
 
+// ArchiveOrg calls tasker.health.v1.OrgService.ArchiveOrg.
+func (c *orgServiceClient) ArchiveOrg(ctx context.Context, req *connect.Request[v1.ArchiveOrgRequest]) (*connect.Response[v1.ArchiveOrgResponse], error) {
+	return c.archiveOrg.CallUnary(ctx, req)
+}
+
+// RestoreOrg calls tasker.health.v1.OrgService.RestoreOrg.
+func (c *orgServiceClient) RestoreOrg(ctx context.Context, req *connect.Request[v1.RestoreOrgRequest]) (*connect.Response[v1.RestoreOrgResponse], error) {
+	return c.restoreOrg.CallUnary(ctx, req)
+}
+
 // InviteUser calls tasker.health.v1.OrgService.InviteUser.
 func (c *orgServiceClient) InviteUser(ctx context.Context, req *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {
 	return c.inviteUser.CallUnary(ctx, req)
@@ -402,6 +472,8 @@ func (c *orgServiceClient) InviteUser(ctx context.Context, req *connect.Request[
 type OrgServiceHandler interface {
 	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
 	SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error)
+	ArchiveOrg(context.Context, *connect.Request[v1.ArchiveOrgRequest]) (*connect.Response[v1.ArchiveOrgResponse], error)
+	RestoreOrg(context.Context, *connect.Request[v1.RestoreOrgRequest]) (*connect.Response[v1.RestoreOrgResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 }
 
@@ -423,6 +495,18 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(orgServiceSeedOrgMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	orgServiceArchiveOrgHandler := connect.NewUnaryHandler(
+		OrgServiceArchiveOrgProcedure,
+		svc.ArchiveOrg,
+		connect.WithSchema(orgServiceArchiveOrgMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceRestoreOrgHandler := connect.NewUnaryHandler(
+		OrgServiceRestoreOrgProcedure,
+		svc.RestoreOrg,
+		connect.WithSchema(orgServiceRestoreOrgMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	orgServiceInviteUserHandler := connect.NewUnaryHandler(
 		OrgServiceInviteUserProcedure,
 		svc.InviteUser,
@@ -435,6 +519,10 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 			orgServiceListOrgsHandler.ServeHTTP(w, r)
 		case OrgServiceSeedOrgProcedure:
 			orgServiceSeedOrgHandler.ServeHTTP(w, r)
+		case OrgServiceArchiveOrgProcedure:
+			orgServiceArchiveOrgHandler.ServeHTTP(w, r)
+		case OrgServiceRestoreOrgProcedure:
+			orgServiceRestoreOrgHandler.ServeHTTP(w, r)
 		case OrgServiceInviteUserProcedure:
 			orgServiceInviteUserHandler.ServeHTTP(w, r)
 		default:
@@ -452,6 +540,14 @@ func (UnimplementedOrgServiceHandler) ListOrgs(context.Context, *connect.Request
 
 func (UnimplementedOrgServiceHandler) SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.SeedOrg is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) ArchiveOrg(context.Context, *connect.Request[v1.ArchiveOrgRequest]) (*connect.Response[v1.ArchiveOrgResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.ArchiveOrg is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) RestoreOrg(context.Context, *connect.Request[v1.RestoreOrgRequest]) (*connect.Response[v1.RestoreOrgResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.RestoreOrg is not implemented"))
 }
 
 func (UnimplementedOrgServiceHandler) InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {
@@ -678,6 +774,8 @@ type ProjectServiceClient interface {
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
+	ArchiveProject(context.Context, *connect.Request[v1.ArchiveProjectRequest]) (*connect.Response[v1.ArchiveProjectResponse], error)
+	RestoreProject(context.Context, *connect.Request[v1.RestoreProjectRequest]) (*connect.Response[v1.RestoreProjectResponse], error)
 }
 
 // NewProjectServiceClient constructs a client for the tasker.health.v1.ProjectService service. By
@@ -708,14 +806,28 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(projectServiceListProjectsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		archiveProject: connect.NewClient[v1.ArchiveProjectRequest, v1.ArchiveProjectResponse](
+			httpClient,
+			baseURL+ProjectServiceArchiveProjectProcedure,
+			connect.WithSchema(projectServiceArchiveProjectMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		restoreProject: connect.NewClient[v1.RestoreProjectRequest, v1.RestoreProjectResponse](
+			httpClient,
+			baseURL+ProjectServiceRestoreProjectProcedure,
+			connect.WithSchema(projectServiceRestoreProjectMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // projectServiceClient implements ProjectServiceClient.
 type projectServiceClient struct {
-	getProject    *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
-	createProject *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
-	listProjects  *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
+	getProject     *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
+	createProject  *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
+	listProjects   *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
+	archiveProject *connect.Client[v1.ArchiveProjectRequest, v1.ArchiveProjectResponse]
+	restoreProject *connect.Client[v1.RestoreProjectRequest, v1.RestoreProjectResponse]
 }
 
 // GetProject calls tasker.health.v1.ProjectService.GetProject.
@@ -733,11 +845,23 @@ func (c *projectServiceClient) ListProjects(ctx context.Context, req *connect.Re
 	return c.listProjects.CallUnary(ctx, req)
 }
 
+// ArchiveProject calls tasker.health.v1.ProjectService.ArchiveProject.
+func (c *projectServiceClient) ArchiveProject(ctx context.Context, req *connect.Request[v1.ArchiveProjectRequest]) (*connect.Response[v1.ArchiveProjectResponse], error) {
+	return c.archiveProject.CallUnary(ctx, req)
+}
+
+// RestoreProject calls tasker.health.v1.ProjectService.RestoreProject.
+func (c *projectServiceClient) RestoreProject(ctx context.Context, req *connect.Request[v1.RestoreProjectRequest]) (*connect.Response[v1.RestoreProjectResponse], error) {
+	return c.restoreProject.CallUnary(ctx, req)
+}
+
 // ProjectServiceHandler is an implementation of the tasker.health.v1.ProjectService service.
 type ProjectServiceHandler interface {
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
+	ArchiveProject(context.Context, *connect.Request[v1.ArchiveProjectRequest]) (*connect.Response[v1.ArchiveProjectResponse], error)
+	RestoreProject(context.Context, *connect.Request[v1.RestoreProjectRequest]) (*connect.Response[v1.RestoreProjectResponse], error)
 }
 
 // NewProjectServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -764,6 +888,18 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		connect.WithSchema(projectServiceListProjectsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectServiceArchiveProjectHandler := connect.NewUnaryHandler(
+		ProjectServiceArchiveProjectProcedure,
+		svc.ArchiveProject,
+		connect.WithSchema(projectServiceArchiveProjectMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	projectServiceRestoreProjectHandler := connect.NewUnaryHandler(
+		ProjectServiceRestoreProjectProcedure,
+		svc.RestoreProject,
+		connect.WithSchema(projectServiceRestoreProjectMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.ProjectService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProjectServiceGetProjectProcedure:
@@ -772,6 +908,10 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 			projectServiceCreateProjectHandler.ServeHTTP(w, r)
 		case ProjectServiceListProjectsProcedure:
 			projectServiceListProjectsHandler.ServeHTTP(w, r)
+		case ProjectServiceArchiveProjectProcedure:
+			projectServiceArchiveProjectHandler.ServeHTTP(w, r)
+		case ProjectServiceRestoreProjectProcedure:
+			projectServiceRestoreProjectHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -793,11 +933,21 @@ func (UnimplementedProjectServiceHandler) ListProjects(context.Context, *connect
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.ListProjects is not implemented"))
 }
 
+func (UnimplementedProjectServiceHandler) ArchiveProject(context.Context, *connect.Request[v1.ArchiveProjectRequest]) (*connect.Response[v1.ArchiveProjectResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.ArchiveProject is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) RestoreProject(context.Context, *connect.Request[v1.RestoreProjectRequest]) (*connect.Response[v1.RestoreProjectResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.RestoreProject is not implemented"))
+}
+
 // AgentServiceClient is a client for the tasker.health.v1.AgentService service.
 type AgentServiceClient interface {
 	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
 	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error)
 	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error)
+	ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error)
+	RestoreAgent(context.Context, *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error)
 }
 
 // NewAgentServiceClient constructs a client for the tasker.health.v1.AgentService service. By
@@ -828,6 +978,18 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(agentServiceListAgentsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		archiveAgent: connect.NewClient[v1.ArchiveAgentRequest, v1.ArchiveAgentResponse](
+			httpClient,
+			baseURL+AgentServiceArchiveAgentProcedure,
+			connect.WithSchema(agentServiceArchiveAgentMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		restoreAgent: connect.NewClient[v1.RestoreAgentRequest, v1.RestoreAgentResponse](
+			httpClient,
+			baseURL+AgentServiceRestoreAgentProcedure,
+			connect.WithSchema(agentServiceRestoreAgentMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -836,6 +998,8 @@ type agentServiceClient struct {
 	createAgentRole *connect.Client[v1.CreateAgentRoleRequest, v1.CreateAgentRoleResponse]
 	createAgent     *connect.Client[v1.CreateAgentRequest, v1.CreateAgentResponse]
 	listAgents      *connect.Client[v1.ListAgentsRequest, v1.ListAgentsResponse]
+	archiveAgent    *connect.Client[v1.ArchiveAgentRequest, v1.ArchiveAgentResponse]
+	restoreAgent    *connect.Client[v1.RestoreAgentRequest, v1.RestoreAgentResponse]
 }
 
 // CreateAgentRole calls tasker.health.v1.AgentService.CreateAgentRole.
@@ -853,11 +1017,23 @@ func (c *agentServiceClient) ListAgents(ctx context.Context, req *connect.Reques
 	return c.listAgents.CallUnary(ctx, req)
 }
 
+// ArchiveAgent calls tasker.health.v1.AgentService.ArchiveAgent.
+func (c *agentServiceClient) ArchiveAgent(ctx context.Context, req *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error) {
+	return c.archiveAgent.CallUnary(ctx, req)
+}
+
+// RestoreAgent calls tasker.health.v1.AgentService.RestoreAgent.
+func (c *agentServiceClient) RestoreAgent(ctx context.Context, req *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error) {
+	return c.restoreAgent.CallUnary(ctx, req)
+}
+
 // AgentServiceHandler is an implementation of the tasker.health.v1.AgentService service.
 type AgentServiceHandler interface {
 	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
 	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error)
 	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error)
+	ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error)
+	RestoreAgent(context.Context, *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error)
 }
 
 // NewAgentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -884,6 +1060,18 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(agentServiceListAgentsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	agentServiceArchiveAgentHandler := connect.NewUnaryHandler(
+		AgentServiceArchiveAgentProcedure,
+		svc.ArchiveAgent,
+		connect.WithSchema(agentServiceArchiveAgentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	agentServiceRestoreAgentHandler := connect.NewUnaryHandler(
+		AgentServiceRestoreAgentProcedure,
+		svc.RestoreAgent,
+		connect.WithSchema(agentServiceRestoreAgentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.AgentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AgentServiceCreateAgentRoleProcedure:
@@ -892,6 +1080,10 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 			agentServiceCreateAgentHandler.ServeHTTP(w, r)
 		case AgentServiceListAgentsProcedure:
 			agentServiceListAgentsHandler.ServeHTTP(w, r)
+		case AgentServiceArchiveAgentProcedure:
+			agentServiceArchiveAgentHandler.ServeHTTP(w, r)
+		case AgentServiceRestoreAgentProcedure:
+			agentServiceRestoreAgentHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -913,6 +1105,14 @@ func (UnimplementedAgentServiceHandler) ListAgents(context.Context, *connect.Req
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.ListAgents is not implemented"))
 }
 
+func (UnimplementedAgentServiceHandler) ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.ArchiveAgent is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) RestoreAgent(context.Context, *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.RestoreAgent is not implemented"))
+}
+
 // TaskServiceClient is a client for the tasker.health.v1.TaskService service.
 type TaskServiceClient interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
@@ -920,6 +1120,8 @@ type TaskServiceClient interface {
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
 	UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error)
 	DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error)
+	RestoreTask(context.Context, *connect.Request[v1.RestoreTaskRequest]) (*connect.Response[v1.RestoreTaskResponse], error)
+	PurgeTask(context.Context, *connect.Request[v1.PurgeTaskRequest]) (*connect.Response[v1.PurgeTaskResponse], error)
 }
 
 // NewTaskServiceClient constructs a client for the tasker.health.v1.TaskService service. By
@@ -962,6 +1164,18 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(taskServiceDeleteTaskMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		restoreTask: connect.NewClient[v1.RestoreTaskRequest, v1.RestoreTaskResponse](
+			httpClient,
+			baseURL+TaskServiceRestoreTaskProcedure,
+			connect.WithSchema(taskServiceRestoreTaskMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		purgeTask: connect.NewClient[v1.PurgeTaskRequest, v1.PurgeTaskResponse](
+			httpClient,
+			baseURL+TaskServicePurgeTaskProcedure,
+			connect.WithSchema(taskServicePurgeTaskMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -972,6 +1186,8 @@ type taskServiceClient struct {
 	listTasks        *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
 	updateTaskStatus *connect.Client[v1.UpdateTaskStatusRequest, v1.UpdateTaskStatusResponse]
 	deleteTask       *connect.Client[v1.DeleteTaskRequest, v1.DeleteTaskResponse]
+	restoreTask      *connect.Client[v1.RestoreTaskRequest, v1.RestoreTaskResponse]
+	purgeTask        *connect.Client[v1.PurgeTaskRequest, v1.PurgeTaskResponse]
 }
 
 // CreateTask calls tasker.health.v1.TaskService.CreateTask.
@@ -999,6 +1215,16 @@ func (c *taskServiceClient) DeleteTask(ctx context.Context, req *connect.Request
 	return c.deleteTask.CallUnary(ctx, req)
 }
 
+// RestoreTask calls tasker.health.v1.TaskService.RestoreTask.
+func (c *taskServiceClient) RestoreTask(ctx context.Context, req *connect.Request[v1.RestoreTaskRequest]) (*connect.Response[v1.RestoreTaskResponse], error) {
+	return c.restoreTask.CallUnary(ctx, req)
+}
+
+// PurgeTask calls tasker.health.v1.TaskService.PurgeTask.
+func (c *taskServiceClient) PurgeTask(ctx context.Context, req *connect.Request[v1.PurgeTaskRequest]) (*connect.Response[v1.PurgeTaskResponse], error) {
+	return c.purgeTask.CallUnary(ctx, req)
+}
+
 // TaskServiceHandler is an implementation of the tasker.health.v1.TaskService service.
 type TaskServiceHandler interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
@@ -1006,6 +1232,8 @@ type TaskServiceHandler interface {
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
 	UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error)
 	DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error)
+	RestoreTask(context.Context, *connect.Request[v1.RestoreTaskRequest]) (*connect.Response[v1.RestoreTaskResponse], error)
+	PurgeTask(context.Context, *connect.Request[v1.PurgeTaskRequest]) (*connect.Response[v1.PurgeTaskResponse], error)
 }
 
 // NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1044,6 +1272,18 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(taskServiceDeleteTaskMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskServiceRestoreTaskHandler := connect.NewUnaryHandler(
+		TaskServiceRestoreTaskProcedure,
+		svc.RestoreTask,
+		connect.WithSchema(taskServiceRestoreTaskMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServicePurgeTaskHandler := connect.NewUnaryHandler(
+		TaskServicePurgeTaskProcedure,
+		svc.PurgeTask,
+		connect.WithSchema(taskServicePurgeTaskMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskServiceCreateTaskProcedure:
@@ -1056,6 +1296,10 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceUpdateTaskStatusHandler.ServeHTTP(w, r)
 		case TaskServiceDeleteTaskProcedure:
 			taskServiceDeleteTaskHandler.ServeHTTP(w, r)
+		case TaskServiceRestoreTaskProcedure:
+			taskServiceRestoreTaskHandler.ServeHTTP(w, r)
+		case TaskServicePurgeTaskProcedure:
+			taskServicePurgeTaskHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1085,6 +1329,14 @@ func (UnimplementedTaskServiceHandler) DeleteTask(context.Context, *connect.Requ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.DeleteTask is not implemented"))
 }
 
+func (UnimplementedTaskServiceHandler) RestoreTask(context.Context, *connect.Request[v1.RestoreTaskRequest]) (*connect.Response[v1.RestoreTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.RestoreTask is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) PurgeTask(context.Context, *connect.Request[v1.PurgeTaskRequest]) (*connect.Response[v1.PurgeTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.PurgeTask is not implemented"))
+}
+
 // ArtifactServiceClient is a client for the tasker.health.v1.ArtifactService service.
 type ArtifactServiceClient interface {
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error)
@@ -1092,6 +1344,10 @@ type ArtifactServiceClient interface {
 	LinkTaskArtifact(context.Context, *connect.Request[v1.LinkTaskArtifactRequest]) (*connect.Response[v1.LinkTaskArtifactResponse], error)
 	ListArtifacts(context.Context, *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error)
 	ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error)
+	ArchiveArtifact(context.Context, *connect.Request[v1.ArchiveArtifactRequest]) (*connect.Response[v1.ArchiveArtifactResponse], error)
+	RestoreArtifact(context.Context, *connect.Request[v1.RestoreArtifactRequest]) (*connect.Response[v1.RestoreArtifactResponse], error)
+	ArchiveFolder(context.Context, *connect.Request[v1.ArchiveFolderRequest]) (*connect.Response[v1.ArchiveFolderResponse], error)
+	RestoreFolder(context.Context, *connect.Request[v1.RestoreFolderRequest]) (*connect.Response[v1.RestoreFolderResponse], error)
 }
 
 // NewArtifactServiceClient constructs a client for the tasker.health.v1.ArtifactService service. By
@@ -1134,6 +1390,30 @@ func NewArtifactServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(artifactServiceListFoldersMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		archiveArtifact: connect.NewClient[v1.ArchiveArtifactRequest, v1.ArchiveArtifactResponse](
+			httpClient,
+			baseURL+ArtifactServiceArchiveArtifactProcedure,
+			connect.WithSchema(artifactServiceArchiveArtifactMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		restoreArtifact: connect.NewClient[v1.RestoreArtifactRequest, v1.RestoreArtifactResponse](
+			httpClient,
+			baseURL+ArtifactServiceRestoreArtifactProcedure,
+			connect.WithSchema(artifactServiceRestoreArtifactMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		archiveFolder: connect.NewClient[v1.ArchiveFolderRequest, v1.ArchiveFolderResponse](
+			httpClient,
+			baseURL+ArtifactServiceArchiveFolderProcedure,
+			connect.WithSchema(artifactServiceArchiveFolderMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		restoreFolder: connect.NewClient[v1.RestoreFolderRequest, v1.RestoreFolderResponse](
+			httpClient,
+			baseURL+ArtifactServiceRestoreFolderProcedure,
+			connect.WithSchema(artifactServiceRestoreFolderMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1144,6 +1424,10 @@ type artifactServiceClient struct {
 	linkTaskArtifact *connect.Client[v1.LinkTaskArtifactRequest, v1.LinkTaskArtifactResponse]
 	listArtifacts    *connect.Client[v1.ListArtifactsRequest, v1.ListArtifactsResponse]
 	listFolders      *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
+	archiveArtifact  *connect.Client[v1.ArchiveArtifactRequest, v1.ArchiveArtifactResponse]
+	restoreArtifact  *connect.Client[v1.RestoreArtifactRequest, v1.RestoreArtifactResponse]
+	archiveFolder    *connect.Client[v1.ArchiveFolderRequest, v1.ArchiveFolderResponse]
+	restoreFolder    *connect.Client[v1.RestoreFolderRequest, v1.RestoreFolderResponse]
 }
 
 // CreateFolder calls tasker.health.v1.ArtifactService.CreateFolder.
@@ -1171,6 +1455,26 @@ func (c *artifactServiceClient) ListFolders(ctx context.Context, req *connect.Re
 	return c.listFolders.CallUnary(ctx, req)
 }
 
+// ArchiveArtifact calls tasker.health.v1.ArtifactService.ArchiveArtifact.
+func (c *artifactServiceClient) ArchiveArtifact(ctx context.Context, req *connect.Request[v1.ArchiveArtifactRequest]) (*connect.Response[v1.ArchiveArtifactResponse], error) {
+	return c.archiveArtifact.CallUnary(ctx, req)
+}
+
+// RestoreArtifact calls tasker.health.v1.ArtifactService.RestoreArtifact.
+func (c *artifactServiceClient) RestoreArtifact(ctx context.Context, req *connect.Request[v1.RestoreArtifactRequest]) (*connect.Response[v1.RestoreArtifactResponse], error) {
+	return c.restoreArtifact.CallUnary(ctx, req)
+}
+
+// ArchiveFolder calls tasker.health.v1.ArtifactService.ArchiveFolder.
+func (c *artifactServiceClient) ArchiveFolder(ctx context.Context, req *connect.Request[v1.ArchiveFolderRequest]) (*connect.Response[v1.ArchiveFolderResponse], error) {
+	return c.archiveFolder.CallUnary(ctx, req)
+}
+
+// RestoreFolder calls tasker.health.v1.ArtifactService.RestoreFolder.
+func (c *artifactServiceClient) RestoreFolder(ctx context.Context, req *connect.Request[v1.RestoreFolderRequest]) (*connect.Response[v1.RestoreFolderResponse], error) {
+	return c.restoreFolder.CallUnary(ctx, req)
+}
+
 // ArtifactServiceHandler is an implementation of the tasker.health.v1.ArtifactService service.
 type ArtifactServiceHandler interface {
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error)
@@ -1178,6 +1482,10 @@ type ArtifactServiceHandler interface {
 	LinkTaskArtifact(context.Context, *connect.Request[v1.LinkTaskArtifactRequest]) (*connect.Response[v1.LinkTaskArtifactResponse], error)
 	ListArtifacts(context.Context, *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error)
 	ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error)
+	ArchiveArtifact(context.Context, *connect.Request[v1.ArchiveArtifactRequest]) (*connect.Response[v1.ArchiveArtifactResponse], error)
+	RestoreArtifact(context.Context, *connect.Request[v1.RestoreArtifactRequest]) (*connect.Response[v1.RestoreArtifactResponse], error)
+	ArchiveFolder(context.Context, *connect.Request[v1.ArchiveFolderRequest]) (*connect.Response[v1.ArchiveFolderResponse], error)
+	RestoreFolder(context.Context, *connect.Request[v1.RestoreFolderRequest]) (*connect.Response[v1.RestoreFolderResponse], error)
 }
 
 // NewArtifactServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1216,6 +1524,30 @@ func NewArtifactServiceHandler(svc ArtifactServiceHandler, opts ...connect.Handl
 		connect.WithSchema(artifactServiceListFoldersMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	artifactServiceArchiveArtifactHandler := connect.NewUnaryHandler(
+		ArtifactServiceArchiveArtifactProcedure,
+		svc.ArchiveArtifact,
+		connect.WithSchema(artifactServiceArchiveArtifactMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	artifactServiceRestoreArtifactHandler := connect.NewUnaryHandler(
+		ArtifactServiceRestoreArtifactProcedure,
+		svc.RestoreArtifact,
+		connect.WithSchema(artifactServiceRestoreArtifactMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	artifactServiceArchiveFolderHandler := connect.NewUnaryHandler(
+		ArtifactServiceArchiveFolderProcedure,
+		svc.ArchiveFolder,
+		connect.WithSchema(artifactServiceArchiveFolderMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	artifactServiceRestoreFolderHandler := connect.NewUnaryHandler(
+		ArtifactServiceRestoreFolderProcedure,
+		svc.RestoreFolder,
+		connect.WithSchema(artifactServiceRestoreFolderMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.ArtifactService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ArtifactServiceCreateFolderProcedure:
@@ -1228,6 +1560,14 @@ func NewArtifactServiceHandler(svc ArtifactServiceHandler, opts ...connect.Handl
 			artifactServiceListArtifactsHandler.ServeHTTP(w, r)
 		case ArtifactServiceListFoldersProcedure:
 			artifactServiceListFoldersHandler.ServeHTTP(w, r)
+		case ArtifactServiceArchiveArtifactProcedure:
+			artifactServiceArchiveArtifactHandler.ServeHTTP(w, r)
+		case ArtifactServiceRestoreArtifactProcedure:
+			artifactServiceRestoreArtifactHandler.ServeHTTP(w, r)
+		case ArtifactServiceArchiveFolderProcedure:
+			artifactServiceArchiveFolderHandler.ServeHTTP(w, r)
+		case ArtifactServiceRestoreFolderProcedure:
+			artifactServiceRestoreFolderHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1255,6 +1595,22 @@ func (UnimplementedArtifactServiceHandler) ListArtifacts(context.Context, *conne
 
 func (UnimplementedArtifactServiceHandler) ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.ListFolders is not implemented"))
+}
+
+func (UnimplementedArtifactServiceHandler) ArchiveArtifact(context.Context, *connect.Request[v1.ArchiveArtifactRequest]) (*connect.Response[v1.ArchiveArtifactResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.ArchiveArtifact is not implemented"))
+}
+
+func (UnimplementedArtifactServiceHandler) RestoreArtifact(context.Context, *connect.Request[v1.RestoreArtifactRequest]) (*connect.Response[v1.RestoreArtifactResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.RestoreArtifact is not implemented"))
+}
+
+func (UnimplementedArtifactServiceHandler) ArchiveFolder(context.Context, *connect.Request[v1.ArchiveFolderRequest]) (*connect.Response[v1.ArchiveFolderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.ArchiveFolder is not implemented"))
+}
+
+func (UnimplementedArtifactServiceHandler) RestoreFolder(context.Context, *connect.Request[v1.RestoreFolderRequest]) (*connect.Response[v1.RestoreFolderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.RestoreFolder is not implemented"))
 }
 
 // CommentServiceClient is a client for the tasker.health.v1.CommentService service.

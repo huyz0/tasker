@@ -1,8 +1,8 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and } from "drizzle-orm";
-import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
+import { eq, and, not } from "drizzle-orm";
+import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUserId, assertOrgMember, assertOrgAdmin, getProjectOrgId, getTaskOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -39,6 +39,14 @@ const UpdateTaskStatusSchema = z.object({
 });
 
 const DeleteTaskSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+});
+
+const RestoreTaskSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+});
+
+const PurgeTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
 });
 
@@ -130,7 +138,8 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, orgId);
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-      const { items, nextCursor } = await executePaginatedQuery(db, tasks, eq((tasks as any).projectId, req.projectId), req.page);
+      const deletedFilter = req.onlyDeleted ? not(notDeleted(tasks)) : notDeleted(tasks);
+      const { items, nextCursor } = await executePaginatedQuery(db, tasks, and(eq((tasks as any).projectId, req.projectId), deletedFilter), req.page);
 
       return {
         tasks: items.map((t: any) => ({
@@ -195,6 +204,35 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       await assertOrgAdmin(db, userId, orgId);
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      await softDeleteById(db, tasks, parsed.taskId);
+
+      if (nc) nc.publish("domain.task.deleted", Buffer.from(JSON.stringify({ taskId: parsed.taskId })));
+      return { success: true };
+    },
+    async restoreTask(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = RestoreTaskSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgAdmin(db, userId, orgId);
+
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      await restoreById(db, tasks, parsed.taskId);
+
+      if (nc) nc.publish("domain.task.restored", Buffer.from(JSON.stringify({ taskId: parsed.taskId })));
+      return { success: true };
+    },
+    async purgeTask(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = PurgeTaskSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgAdmin(db, userId, orgId);
+
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const existing = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
+      if (!existing[0]?.deletedAt) {
+        throw new ConnectError("task must be archived before it can be purged", Code.FailedPrecondition);
+      }
+
       const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
       const reviewers = isStandalone ? schemaSqlite.taskReviewers : schemaMysql.taskReviewers;
       const artifactLinks = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
@@ -210,7 +248,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       await db.update(pullRequests).set({ taskId: null }).where(eq((pullRequests as any).taskId, parsed.taskId));
       await db.delete(tasks).where(eq((tasks as any).id, parsed.taskId));
 
-      if (nc) nc.publish("domain.task.deleted", Buffer.from(JSON.stringify({ taskId: parsed.taskId })));
+      if (nc) nc.publish("domain.task.purged", Buffer.from(JSON.stringify({ taskId: parsed.taskId })));
       return { success: true };
     },
   };

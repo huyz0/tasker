@@ -1,8 +1,8 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq } from "drizzle-orm";
-import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
+import { eq, and, not } from "drizzle-orm";
+import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUserId, assertOrgMember, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -24,6 +24,22 @@ const CreateArtifactSchema = z.object({
 const LinkTaskArtifactSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   artifactId: z.string().min(1, "artifactId is required"),
+});
+
+const ArchiveArtifactSchema = z.object({
+  artifactId: z.string().min(1, "artifactId is required"),
+});
+
+const RestoreArtifactSchema = z.object({
+  artifactId: z.string().min(1, "artifactId is required"),
+});
+
+const ArchiveFolderSchema = z.object({
+  folderId: z.string().min(1, "folderId is required"),
+});
+
+const RestoreFolderSchema = z.object({
+  folderId: z.string().min(1, "folderId is required"),
 });
 
 // --- Handler Factory ---
@@ -113,7 +129,8 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, orgId);
 
       const flds = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
-      const { items, nextCursor } = await executePaginatedQuery(db, flds, eq((flds as any).projectId, req.projectId), req.page);
+      const deletedFolderFilter = req.onlyDeleted ? not(notDeleted(flds)) : notDeleted(flds);
+      const { items, nextCursor } = await executePaginatedQuery(db, flds, and(eq((flds as any).projectId, req.projectId), deletedFolderFilter), req.page);
 
       return {
         folders: items.map((f: any) => ({
@@ -130,7 +147,8 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, orgId);
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
-      const { items, nextCursor } = await executePaginatedQuery(db, arts, eq((arts as any).folderId, req.folderId), req.page);
+      const deletedArtifactFilter = req.onlyDeleted ? not(notDeleted(arts)) : notDeleted(arts);
+      const { items, nextCursor } = await executePaginatedQuery(db, arts, and(eq((arts as any).folderId, req.folderId), deletedArtifactFilter), req.page);
 
       return {
         artifacts: items.map((a: any) => ({
@@ -139,6 +157,54 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         })),
         page: { nextCursor },
       };
+    },
+    async archiveArtifact(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ArchiveArtifactSchema.parse(req);
+      const orgId = await getArtifactOrgId(db, parsed.artifactId);
+      await assertOrgMember(db, userId, orgId);
+
+      const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+      await softDeleteById(db, arts, parsed.artifactId);
+
+      if (nc) nc.publish("domain.artifact.archived", Buffer.from(JSON.stringify({ artifactId: parsed.artifactId })));
+      return { success: true };
+    },
+    async restoreArtifact(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = RestoreArtifactSchema.parse(req);
+      const orgId = await getArtifactOrgId(db, parsed.artifactId);
+      await assertOrgMember(db, userId, orgId);
+
+      const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+      await restoreById(db, arts, parsed.artifactId);
+
+      if (nc) nc.publish("domain.artifact.restored", Buffer.from(JSON.stringify({ artifactId: parsed.artifactId })));
+      return { success: true };
+    },
+    async archiveFolder(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ArchiveFolderSchema.parse(req);
+      const orgId = await getFolderOrgId(db, parsed.folderId);
+      await assertOrgMember(db, userId, orgId);
+
+      const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
+      await softDeleteById(db, folders, parsed.folderId);
+
+      if (nc) nc.publish("domain.folder.archived", Buffer.from(JSON.stringify({ folderId: parsed.folderId })));
+      return { success: true };
+    },
+    async restoreFolder(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = RestoreFolderSchema.parse(req);
+      const orgId = await getFolderOrgId(db, parsed.folderId);
+      await assertOrgMember(db, userId, orgId);
+
+      const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
+      await restoreById(db, folders, parsed.folderId);
+
+      if (nc) nc.publish("domain.folder.restored", Buffer.from(JSON.stringify({ folderId: parsed.folderId })));
+      return { success: true };
     },
   };
 };

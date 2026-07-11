@@ -18,6 +18,7 @@ export const organizations = sqliteTable("organizations", {
   slug: text("slug").notNull().unique(),
   parentOrgId: text("parent_org_id").references((): AnySQLiteColumn => organizations.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 }, (table) => {
   return {
     parentOrgIdx: index("organizations_parent_org_id_idx").on(table.parentOrgId),
@@ -79,6 +80,7 @@ export const projects = sqliteTable("projects", {
   name: text("name").notNull(),
   ownerId: text("owner_id").notNull().references(() => users.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 export const agentRoles = sqliteTable("agent_roles", {
@@ -93,6 +95,7 @@ export const agents = sqliteTable("agents", {
   orgId: text("org_id").notNull().references(() => organizations.id),
   agentRoleId: text("agent_role_id").notNull().references(() => agentRoles.id),
   name: text("name").notNull(),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 export const tasks = sqliteTable("tasks", {
@@ -102,6 +105,7 @@ export const tasks = sqliteTable("tasks", {
   status: text("status").notNull(),
   description: text("description"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 export const taskAssignments = sqliteTable("task_assignments", {
@@ -124,6 +128,7 @@ export const folders = sqliteTable("folders", {
   parentId: text("parent_id"),
   name: text("name").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 export const artifacts = sqliteTable("artifacts", {
@@ -133,6 +138,7 @@ export const artifacts = sqliteTable("artifacts", {
   description: text("description"),
   content: text("content"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 export const taskArtifactLinks = sqliteTable("task_artifact_links", {

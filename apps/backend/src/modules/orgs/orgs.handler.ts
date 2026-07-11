@@ -1,8 +1,8 @@
 import { z } from "zod/v4";
-import { inArray, eq } from "drizzle-orm";
+import { inArray, eq, and, not } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
+import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUserId, assertOrgAdmin } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -17,6 +17,14 @@ const SeedOrgSchema = z.object({
 const InviteUserSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   email: z.string().email("valid email is required"),
+});
+
+const ArchiveOrgSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+});
+
+const RestoreOrgSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
 });
 
 // --- Handler Factory ---
@@ -35,7 +43,8 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         return { organizations: [], page: {} };
       }
 
-      const { items, nextCursor } = await executePaginatedQuery(db, orgs, inArray(orgs.id, memberOrgIds), req.page);
+      const deletedFilter = req.onlyDeleted ? not(notDeleted(orgs)) : notDeleted(orgs);
+      const { items, nextCursor } = await executePaginatedQuery(db, orgs, and(inArray(orgs.id, memberOrgIds), deletedFilter), req.page);
 
       return {
         organizations: items.map((o: any) => ({
@@ -87,6 +96,28 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         invitedBy: userId,
       };
       await insertRecord(db, invs, payload, isStandalone);
+      return { success: true };
+    },
+    async archiveOrg(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ArchiveOrgSchema.parse(req);
+      await assertOrgAdmin(db, userId, parsed.orgId);
+
+      const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+      await softDeleteById(db, orgs, parsed.orgId);
+
+      if (nc) nc.publish("domain.org.archived", Buffer.from(JSON.stringify({ orgId: parsed.orgId })));
+      return { success: true };
+    },
+    async restoreOrg(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = RestoreOrgSchema.parse(req);
+      await assertOrgAdmin(db, userId, parsed.orgId);
+
+      const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+      await restoreById(db, orgs, parsed.orgId);
+
+      if (nc) nc.publish("domain.org.restored", Buffer.from(JSON.stringify({ orgId: parsed.orgId })));
       return { success: true };
     },
   };

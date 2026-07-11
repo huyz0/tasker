@@ -1,9 +1,9 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq } from "drizzle-orm";
-import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUserId, assertOrgMember } from "../../lib/authz";
+import { eq, and, not } from "drizzle-orm";
+import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
+import { requireUserId, assertOrgMember, assertOrgAdmin } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -27,6 +27,14 @@ const CreateTemplateSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   name: z.string().min(1, "name is required").max(256),
   description: z.string().max(1024).optional().default(""),
+});
+
+const ArchiveProjectSchema = z.object({
+  projectId: z.string().min(1, "projectId is required"),
+});
+
+const RestoreProjectSchema = z.object({
+  projectId: z.string().min(1, "projectId is required"),
 });
 
 // --- Handler Factories ---
@@ -78,7 +86,8 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, req.orgId);
 
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
-      const { items, nextCursor } = await executePaginatedQuery(db, ps, eq((ps as any).orgId, req.orgId), req.page);
+      const deletedFilter = req.onlyDeleted ? not(notDeleted(ps)) : notDeleted(ps);
+      const { items, nextCursor } = await executePaginatedQuery(db, ps, and(eq((ps as any).orgId, req.orgId), deletedFilter), req.page);
 
       return {
         projects: items.map((p: any) => ({
@@ -87,6 +96,32 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
         })),
         page: { nextCursor },
       };
+    },
+    async archiveProject(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ArchiveProjectSchema.parse(req);
+      const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
+      const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
+      if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
+      await assertOrgAdmin(db, userId, result[0].orgId);
+
+      await softDeleteById(db, ps, parsed.projectId);
+
+      if (nc) nc.publish("domain.project.archived", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
+      return { success: true };
+    },
+    async restoreProject(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = RestoreProjectSchema.parse(req);
+      const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
+      const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
+      if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
+      await assertOrgAdmin(db, userId, result[0].orgId);
+
+      await restoreById(db, ps, parsed.projectId);
+
+      if (nc) nc.publish("domain.project.restored", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
+      return { success: true };
     },
   };
 };

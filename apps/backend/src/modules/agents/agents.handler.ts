@@ -1,9 +1,10 @@
 import { z } from "zod/v4";
-import { eq } from "drizzle-orm";
+import { eq, and, not } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { requireUserId, assertOrgMember } from "../../lib/authz";
+import { notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
 
@@ -17,6 +18,14 @@ const CreateAgentSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   agentRoleId: z.string().min(1, "agentRoleId is required"),
   name: z.string().min(1, "name is required").max(256),
+});
+
+const ArchiveAgentSchema = z.object({
+  agentId: z.string().min(1, "agentId is required"),
+});
+
+const RestoreAgentSchema = z.object({
+  agentId: z.string().min(1, "agentId is required"),
 });
 
 // --- Handler Factory ---
@@ -71,8 +80,35 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, req.orgId);
 
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
-      const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).orgId, req.orgId));
+      const deletedFilter = req.onlyDeleted ? not(notDeleted(agentsSchema)) : notDeleted(agentsSchema);
+      const result = await db.select().from(agentsSchema).where(and(eq((agentsSchema as any).orgId, req.orgId), deletedFilter));
       return { agents: result };
+    },
+    async archiveAgent(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ArchiveAgentSchema.parse(req);
+      const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+      const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
+      if (!result || result.length === 0) throw new ConnectError("agent not found", Code.NotFound);
+      await assertOrgMember(db, userId, result[0].orgId);
+
+      await softDeleteById(db, agentsSchema, parsed.agentId);
+
+      if (nc) nc.publish("domain.agent.archived", Buffer.from(JSON.stringify({ agentId: parsed.agentId })));
+      return { success: true };
+    },
+    async restoreAgent(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = RestoreAgentSchema.parse(req);
+      const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+      const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
+      if (!result || result.length === 0) throw new ConnectError("agent not found", Code.NotFound);
+      await assertOrgMember(db, userId, result[0].orgId);
+
+      await restoreById(db, agentsSchema, parsed.agentId);
+
+      if (nc) nc.publish("domain.agent.restored", Buffer.from(JSON.stringify({ agentId: parsed.agentId })));
+      return { success: true };
     },
   };
 };

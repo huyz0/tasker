@@ -1,8 +1,14 @@
 package cmd
 
 import (
+	"connectrpc.com/connect"
+	"context"
 	"encoding/json"
+	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
+	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
+	"net/http"
 )
 
 var projectsCmd = &cobra.Command{
@@ -63,11 +69,43 @@ var projectsCreateCmd = &cobra.Command{
 	},
 }
 
+var projectsDeleteCmd = &cobra.Command{
+	Use:   "delete [project_id]",
+	Short: "Move a project to the bin (requires org admin)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.ArchiveProject(context.Background(), connect.NewRequest(&healthv1.ArchiveProjectRequest{ProjectId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to delete project: %v\n", err)
+			return
+		}
+		cmd.Printf("Project %s moved to bin\n", args[0])
+	},
+}
+
+var projectsRestoreCmd = &cobra.Command{
+	Use:   "restore [project_id]",
+	Short: "Restore a project from the bin (requires org admin)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.RestoreProject(context.Background(), connect.NewRequest(&healthv1.RestoreProjectRequest{ProjectId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to restore project: %v\n", err)
+			return
+		}
+		cmd.Printf("Project %s restored\n", args[0])
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(projectsCmd)
 	projectsCmd.AddCommand(projectsListCmd)
 	projectsCmd.AddCommand(projectsGetCmd)
 	projectsCmd.AddCommand(projectsCreateCmd)
+	projectsCmd.AddCommand(projectsDeleteCmd)
+	projectsCmd.AddCommand(projectsRestoreCmd)
 
 	projectsCreateCmd.Flags().String("template", "", "Project template to inherit from")
 	projectsCreateCmd.Flags().String("title", "", "Descriptive title for the new project")

@@ -62,6 +62,13 @@ export function ProjectsWizard() {
     }
   });
 
+  const archiveProjectMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      await projectClient.archiveProject({ projectId });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] }),
+  });
+
   return (
     <div className="flex flex-col gap-8 pb-12">
       <div>
@@ -121,10 +128,24 @@ export function ProjectsWizard() {
                     <h3 className="font-semibold text-lg">{p.name}</h3>
                     <p className="text-xs text-muted-foreground mt-1">ID: {p.id}</p>
                   </div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Move "${p.name}" to the bin? You can restore it later.`)) {
+                        archiveProjectMutation.mutate(p.id);
+                      }
+                    }}
+                    disabled={archiveProjectMutation.isPending}
+                    className="text-muted-foreground hover:text-destructive text-sm disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
                 </div>
                 <RepositoryIntegrationConfig projectId={p.id} />
               </div>
             ))}
+            {archiveProjectMutation.isError && (
+              <p className="text-sm text-destructive">Failed to delete project: {(archiveProjectMutation.error as Error).message}</p>
+            )}
             <PaginationControls
               nextCursor={nextCursor}
               isLoading={isFetchingNextPage}

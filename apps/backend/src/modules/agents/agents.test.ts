@@ -57,4 +57,39 @@ describe("Agents Handler Integration Tests", () => {
 
     await expect(handler.createAgent({ orgId, agentRoleId: "role-does-not-exist", name: "X" }, ctx)).rejects.toThrow();
   });
+
+  test("archiveAgent hides the agent from listAgents and restoreAgent brings it back", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-agent-archive-" + Date.now().toString();
+    const userId = "user-agent-archive-" + Date.now().toString();
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Archive Org", slug: "archive-org-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
+    const ctx = makeAuthContext(userId);
+
+    const handler = createAgentsHandler(db, nc);
+    const roleResp = await handler.createAgentRole({ name: "Role", systemPrompt: "p", capabilities: "{}" }, ctx);
+    const agentResp = await handler.createAgent({ orgId, agentRoleId: roleResp.role.id, name: "Archivable Agent" }, ctx);
+
+    await handler.archiveAgent({ agentId: agentResp.agent.id }, ctx);
+    const afterArchive = await handler.listAgents({ orgId }, ctx);
+    expect(afterArchive.agents.some((a: any) => a.id === agentResp.agent.id)).toBe(false);
+
+    const binList = await handler.listAgents({ orgId, onlyDeleted: true }, ctx);
+    expect(binList.agents.some((a: any) => a.id === agentResp.agent.id)).toBe(true);
+
+    await handler.restoreAgent({ agentId: agentResp.agent.id }, ctx);
+    const afterRestore = await handler.listAgents({ orgId }, ctx);
+    expect(afterRestore.agents.some((a: any) => a.id === agentResp.agent.id)).toBe(true);
+
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.agent.archived");
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.agent.restored");
+
+    const outsiderCtx = makeAuthContext("user-outsider-agent-archive");
+    await db.insert(schemaSqlite.users).values({ id: "user-outsider-agent-archive", email: "outsider-aa@test.com", createdAt: new Date() });
+    await expect(handler.archiveAgent({ agentId: agentResp.agent.id }, outsiderCtx)).rejects.toThrow();
+    await expect(handler.restoreAgent({ agentId: agentResp.agent.id }, outsiderCtx)).rejects.toThrow();
+    await expect(handler.archiveAgent({ agentId: "agent-does-not-exist" }, ctx)).rejects.toThrow();
+  });
 });

@@ -32,6 +32,7 @@ message Organization {
   string slug = 3;
   string role = 4;
   string parentOrgId = 5;
+  string deletedAt = 6;
 }
 
 message GetIdentityRequest {}
@@ -45,10 +46,25 @@ service AuthService {
 
 message ListOrgsRequest {
   PageRequest page = 1;
+  bool onlyDeleted = 2;
 }
 message ListOrgsResponse {
   repeated Organization organizations = 1;
   PageResponse page = 2;
+}
+
+message ArchiveOrgRequest {
+  string orgId = 1;
+}
+message ArchiveOrgResponse {
+  bool success = 1;
+}
+
+message RestoreOrgRequest {
+  string orgId = 1;
+}
+message RestoreOrgResponse {
+  bool success = 1;
 }
 
 message SeedOrgRequest {
@@ -71,6 +87,8 @@ message InviteUserResponse {
 service OrgService {
   rpc ListOrgs(ListOrgsRequest) returns (ListOrgsResponse);
   rpc SeedOrg(SeedOrgRequest) returns (SeedOrgResponse);
+  rpc ArchiveOrg(ArchiveOrgRequest) returns (ArchiveOrgResponse);
+  rpc RestoreOrg(RestoreOrgRequest) returns (RestoreOrgResponse);
   rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
 }
 
@@ -133,6 +151,7 @@ message Project {
   string templateId = 3;
   string name = 4;
   string ownerId = 5;
+  string deletedAt = 6;
 }
 
 message GetProjectTemplateRequest {
@@ -189,6 +208,7 @@ message CreateProjectResponse {
 message ListProjectsRequest {
   string orgId = 1;
   PageRequest page = 2;
+  bool onlyDeleted = 3;
 }
 
 message ListProjectsResponse {
@@ -196,10 +216,26 @@ message ListProjectsResponse {
   PageResponse page = 2;
 }
 
+message ArchiveProjectRequest {
+  string projectId = 1;
+}
+message ArchiveProjectResponse {
+  bool success = 1;
+}
+
+message RestoreProjectRequest {
+  string projectId = 1;
+}
+message RestoreProjectResponse {
+  bool success = 1;
+}
+
 service ProjectService {
   rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  rpc ArchiveProject(ArchiveProjectRequest) returns (ArchiveProjectResponse);
+  rpc RestoreProject(RestoreProjectRequest) returns (RestoreProjectResponse);
 }
 
 message AgentRole {
@@ -214,6 +250,7 @@ message Agent {
   string org_id = 2;
   string agent_role_id = 3;
   string name = 4;
+  string deletedAt = 5;
 }
 
 message CreateAgentRoleRequest {
@@ -240,14 +277,31 @@ service AgentService {
   rpc CreateAgentRole(CreateAgentRoleRequest) returns (CreateAgentRoleResponse);
   rpc CreateAgent(CreateAgentRequest) returns (CreateAgentResponse);
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+  rpc ArchiveAgent(ArchiveAgentRequest) returns (ArchiveAgentResponse);
+  rpc RestoreAgent(RestoreAgentRequest) returns (RestoreAgentResponse);
 }
 
 message ListAgentsRequest {
   string org_id = 1;
+  bool onlyDeleted = 2;
 }
 
 message ListAgentsResponse {
   repeated Agent agents = 1;
+}
+
+message ArchiveAgentRequest {
+  string agentId = 1;
+}
+message ArchiveAgentResponse {
+  bool success = 1;
+}
+
+message RestoreAgentRequest {
+  string agentId = 1;
+}
+message RestoreAgentResponse {
+  bool success = 1;
 }
 
 message Task {
@@ -256,6 +310,7 @@ message Task {
   string title = 3;
   string status = 4;
   string description = 5;
+  string deletedAt = 6;
 }
 
 message CreateTaskRequest {
@@ -292,6 +347,7 @@ message PageResponse {
 message ListTasksRequest {
   string project_id = 1;
   PageRequest page = 2;
+  bool onlyDeleted = 3;
 }
 
 message ListTasksResponse {
@@ -316,12 +372,30 @@ message DeleteTaskResponse {
   bool success = 1;
 }
 
+message RestoreTaskRequest {
+  string taskId = 1;
+}
+
+message RestoreTaskResponse {
+  bool success = 1;
+}
+
+message PurgeTaskRequest {
+  string taskId = 1;
+}
+
+message PurgeTaskResponse {
+  bool success = 1;
+}
+
 service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse);
   rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
+  rpc RestoreTask(RestoreTaskRequest) returns (RestoreTaskResponse);
+  rpc PurgeTask(PurgeTaskRequest) returns (PurgeTaskResponse);
 }
 
 message Folder {
@@ -329,6 +403,7 @@ message Folder {
   string projectId = 2;
   string parentId = 3;
   string name = 4;
+  string deletedAt = 5;
 }
 
 message Artifact {
@@ -337,6 +412,7 @@ message Artifact {
   string name = 3;
   string description = 4;
   string content = 5;
+  string deletedAt = 6;
 }
 
 message TaskArtifactLink {
@@ -378,6 +454,7 @@ message LinkTaskArtifactResponse {
 message ListArtifactsRequest {
   string folderId = 1;
   PageRequest page = 2;
+  bool onlyDeleted = 3;
 }
 
 message ListArtifactsResponse {
@@ -388,11 +465,40 @@ message ListArtifactsResponse {
 message ListFoldersRequest {
   string projectId = 1;
   PageRequest page = 2;
+  bool onlyDeleted = 3;
 }
 
 message ListFoldersResponse {
   repeated Folder folders = 1;
   PageResponse page = 2;
+}
+
+message ArchiveArtifactRequest {
+  string artifactId = 1;
+}
+message ArchiveArtifactResponse {
+  bool success = 1;
+}
+
+message RestoreArtifactRequest {
+  string artifactId = 1;
+}
+message RestoreArtifactResponse {
+  bool success = 1;
+}
+
+message ArchiveFolderRequest {
+  string folderId = 1;
+}
+message ArchiveFolderResponse {
+  bool success = 1;
+}
+
+message RestoreFolderRequest {
+  string folderId = 1;
+}
+message RestoreFolderResponse {
+  bool success = 1;
 }
 
 service ArtifactService {
@@ -401,6 +507,10 @@ service ArtifactService {
   rpc LinkTaskArtifact(LinkTaskArtifactRequest) returns (LinkTaskArtifactResponse);
   rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse);
   rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse);
+  rpc ArchiveArtifact(ArchiveArtifactRequest) returns (ArchiveArtifactResponse);
+  rpc RestoreArtifact(RestoreArtifactRequest) returns (RestoreArtifactResponse);
+  rpc ArchiveFolder(ArchiveFolderRequest) returns (ArchiveFolderResponse);
+  rpc RestoreFolder(RestoreFolderRequest) returns (RestoreFolderResponse);
 }
 
 message Comment {
