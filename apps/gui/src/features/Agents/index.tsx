@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
@@ -13,6 +13,10 @@ export function AgentsDashboard() {
   useEffect(() => setActivePageTitle('Agents Dashboard'), [setActivePageTitle]);
   const queryClient = useQueryClient();
 
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [newAgentName, setNewAgentName] = useState('');
+  const [newAgentRoleId, setNewAgentRoleId] = useState('');
+
   const { data: agentsData, isLoading } = useQuery({
     queryKey: ['agents', activeOrgId],
     queryFn: async () => {
@@ -21,11 +25,33 @@ export function AgentsDashboard() {
     }
   });
 
+  const { data: rolesData } = useQuery({
+    queryKey: ['agentRoles'],
+    queryFn: async () => {
+      const resp = await agentClient.listAgentRoles({});
+      return resp.roles;
+    }
+  });
+
+  const roleNameById = new Map((rolesData ?? []).map((r) => [r.id, r.name]));
+
   const archiveAgentMutation = useMutation({
     mutationFn: async (agentId: string) => {
       await agentClient.archiveAgent({ agentId });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents', activeOrgId] }),
+  });
+
+  const createAgentMutation = useMutation({
+    mutationFn: async () => {
+      await agentClient.createAgent({ orgId: activeOrgId, agentRoleId: newAgentRoleId, name: newAgentName });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agents', activeOrgId] });
+      setIsDeploying(false);
+      setNewAgentName('');
+      setNewAgentRoleId('');
+    },
   });
 
   return (
@@ -56,8 +82,49 @@ export function AgentsDashboard() {
         <div className="border rounded-lg bg-card p-6 shadow-sm">
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-xl font-medium">AI Agent Instances</h2>
-             <button className="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded font-medium">Deploy Agent</button>
+             <button
+               onClick={() => setIsDeploying((v) => !v)}
+               className="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded font-medium"
+             >
+               {isDeploying ? 'Cancel' : 'Deploy Agent'}
+             </button>
           </div>
+          {isDeploying && (
+            <form
+              onSubmit={(e) => { e.preventDefault(); createAgentMutation.mutate(); }}
+              className="mb-4 p-3 border rounded-md flex flex-col gap-2 bg-muted/20"
+            >
+              <input
+                type="text"
+                value={newAgentName}
+                onChange={(e) => setNewAgentName(e.target.value)}
+                placeholder="Agent name"
+                required
+                className="text-sm bg-transparent border rounded-md px-2 py-1"
+              />
+              <select
+                value={newAgentRoleId}
+                onChange={(e) => setNewAgentRoleId(e.target.value)}
+                required
+                className="text-sm bg-transparent border rounded-md px-2 py-1"
+              >
+                <option value="">Select a role...</option>
+                {(rolesData ?? []).map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+              {createAgentMutation.isError && (
+                <p className="text-xs text-destructive">Failed to deploy agent: {(createAgentMutation.error as Error).message}</p>
+              )}
+              <button
+                type="submit"
+                disabled={createAgentMutation.isPending || !newAgentName.trim() || !newAgentRoleId}
+                className="self-end px-3 py-1 bg-primary text-primary-foreground text-xs rounded font-medium disabled:opacity-50"
+              >
+                {createAgentMutation.isPending ? 'Deploying...' : 'Deploy'}
+              </button>
+            </form>
+          )}
           {archiveAgentMutation.isError && (
             <p className="text-sm text-destructive mb-2">Failed to delete agent: {(archiveAgentMutation.error as Error).message}</p>
           )}
@@ -76,7 +143,7 @@ export function AgentsDashboard() {
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                     {a.name}
                   </span>
-                  <span className="w-24 text-muted-foreground">{a.agentRoleId}</span>
+                  <span className="w-24 text-muted-foreground">{roleNameById.get(a.agentRoleId) ?? a.agentRoleId}</span>
                   <span className="w-24"><span className="text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider bg-green-500/10 text-green-500 border border-green-500/20">WORKING</span></span>
                   <button
                     onClick={() => {

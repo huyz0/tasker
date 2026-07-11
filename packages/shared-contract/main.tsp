@@ -323,6 +323,11 @@ model CreateAgentRoleResponse {
   @field(1) role: AgentRole;
 }
 
+model ListAgentRolesRequest {}
+model ListAgentRolesResponse {
+  @field(1) roles: AgentRole[];
+}
+
 model CreateAgentRequest {
   @field(1) orgId: string;
   @field(2) agentRoleId: string;
@@ -367,6 +372,7 @@ model PurgeAgentResponse {
 
 interface AgentService {
   createAgentRole(request: CreateAgentRoleRequest): CreateAgentRoleResponse;
+  listAgentRoles(request: ListAgentRolesRequest): ListAgentRolesResponse;
   createAgent(request: CreateAgentRequest): CreateAgentResponse;
   listAgents(request: ListAgentsRequest): ListAgentsResponse;
   archiveAgent(request: ArchiveAgentRequest): ArchiveAgentResponse;

@@ -85,6 +85,31 @@ var agentsCreateCmd = &cobra.Command{
 	},
 }
 
+var agentsListRolesCmd = &cobra.Command{
+	Use:   "list-roles",
+	Short: "List all agent role personas",
+	Run: func(cmd *cobra.Command, args []string) {
+		isJson, _ := cmd.Flags().GetBool("json")
+
+		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.ListAgentRoles(context.Background(), connect.NewRequest(&healthv1.ListAgentRolesRequest{}))
+		if err != nil {
+			cmd.PrintErrf("Failed to list agent roles: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Roles)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Println("Agent Roles:")
+			for _, r := range res.Msg.Roles {
+				cmd.Printf(" - %s (id: %s)\n", r.Name, r.Id)
+			}
+		}
+	},
+}
+
 var agentsCreateRoleCmd = &cobra.Command{
 	Use:   "create-role",
 	Short: "Create a new agent role persona (system prompt, capabilities)",
@@ -168,6 +193,7 @@ func init() {
 	agentsCmd.AddCommand(agentsListCmd)
 	agentsCmd.AddCommand(agentsCreateCmd)
 	agentsCmd.AddCommand(agentsCreateRoleCmd)
+	agentsCmd.AddCommand(agentsListRolesCmd)
 	agentsCmd.AddCommand(agentsDeleteCmd)
 	agentsCmd.AddCommand(agentsRestoreCmd)
 	agentsCmd.AddCommand(agentsPurgeCmd)

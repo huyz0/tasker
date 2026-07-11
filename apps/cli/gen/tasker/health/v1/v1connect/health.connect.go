@@ -114,6 +114,9 @@ const (
 	// AgentServiceCreateAgentRoleProcedure is the fully-qualified name of the AgentService's
 	// CreateAgentRole RPC.
 	AgentServiceCreateAgentRoleProcedure = "/tasker.health.v1.AgentService/CreateAgentRole"
+	// AgentServiceListAgentRolesProcedure is the fully-qualified name of the AgentService's
+	// ListAgentRoles RPC.
+	AgentServiceListAgentRolesProcedure = "/tasker.health.v1.AgentService/ListAgentRoles"
 	// AgentServiceCreateAgentProcedure is the fully-qualified name of the AgentService's CreateAgent
 	// RPC.
 	AgentServiceCreateAgentProcedure = "/tasker.health.v1.AgentService/CreateAgent"
@@ -245,6 +248,7 @@ var (
 	projectServicePurgeProjectMethodDescriptor           = projectServiceServiceDescriptor.Methods().ByName("PurgeProject")
 	agentServiceServiceDescriptor                        = v1.File_tasker_health_v1_health_proto.Services().ByName("AgentService")
 	agentServiceCreateAgentRoleMethodDescriptor          = agentServiceServiceDescriptor.Methods().ByName("CreateAgentRole")
+	agentServiceListAgentRolesMethodDescriptor           = agentServiceServiceDescriptor.Methods().ByName("ListAgentRoles")
 	agentServiceCreateAgentMethodDescriptor              = agentServiceServiceDescriptor.Methods().ByName("CreateAgent")
 	agentServiceListAgentsMethodDescriptor               = agentServiceServiceDescriptor.Methods().ByName("ListAgents")
 	agentServiceArchiveAgentMethodDescriptor             = agentServiceServiceDescriptor.Methods().ByName("ArchiveAgent")
@@ -1066,6 +1070,7 @@ func (UnimplementedProjectServiceHandler) PurgeProject(context.Context, *connect
 // AgentServiceClient is a client for the tasker.health.v1.AgentService service.
 type AgentServiceClient interface {
 	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
+	ListAgentRoles(context.Context, *connect.Request[v1.ListAgentRolesRequest]) (*connect.Response[v1.ListAgentRolesResponse], error)
 	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error)
 	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error)
 	ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error)
@@ -1087,6 +1092,12 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+AgentServiceCreateAgentRoleProcedure,
 			connect.WithSchema(agentServiceCreateAgentRoleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listAgentRoles: connect.NewClient[v1.ListAgentRolesRequest, v1.ListAgentRolesResponse](
+			httpClient,
+			baseURL+AgentServiceListAgentRolesProcedure,
+			connect.WithSchema(agentServiceListAgentRolesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		createAgent: connect.NewClient[v1.CreateAgentRequest, v1.CreateAgentResponse](
@@ -1125,6 +1136,7 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 // agentServiceClient implements AgentServiceClient.
 type agentServiceClient struct {
 	createAgentRole *connect.Client[v1.CreateAgentRoleRequest, v1.CreateAgentRoleResponse]
+	listAgentRoles  *connect.Client[v1.ListAgentRolesRequest, v1.ListAgentRolesResponse]
 	createAgent     *connect.Client[v1.CreateAgentRequest, v1.CreateAgentResponse]
 	listAgents      *connect.Client[v1.ListAgentsRequest, v1.ListAgentsResponse]
 	archiveAgent    *connect.Client[v1.ArchiveAgentRequest, v1.ArchiveAgentResponse]
@@ -1135,6 +1147,11 @@ type agentServiceClient struct {
 // CreateAgentRole calls tasker.health.v1.AgentService.CreateAgentRole.
 func (c *agentServiceClient) CreateAgentRole(ctx context.Context, req *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error) {
 	return c.createAgentRole.CallUnary(ctx, req)
+}
+
+// ListAgentRoles calls tasker.health.v1.AgentService.ListAgentRoles.
+func (c *agentServiceClient) ListAgentRoles(ctx context.Context, req *connect.Request[v1.ListAgentRolesRequest]) (*connect.Response[v1.ListAgentRolesResponse], error) {
+	return c.listAgentRoles.CallUnary(ctx, req)
 }
 
 // CreateAgent calls tasker.health.v1.AgentService.CreateAgent.
@@ -1165,6 +1182,7 @@ func (c *agentServiceClient) PurgeAgent(ctx context.Context, req *connect.Reques
 // AgentServiceHandler is an implementation of the tasker.health.v1.AgentService service.
 type AgentServiceHandler interface {
 	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
+	ListAgentRoles(context.Context, *connect.Request[v1.ListAgentRolesRequest]) (*connect.Response[v1.ListAgentRolesResponse], error)
 	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error)
 	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error)
 	ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error)
@@ -1182,6 +1200,12 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 		AgentServiceCreateAgentRoleProcedure,
 		svc.CreateAgentRole,
 		connect.WithSchema(agentServiceCreateAgentRoleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	agentServiceListAgentRolesHandler := connect.NewUnaryHandler(
+		AgentServiceListAgentRolesProcedure,
+		svc.ListAgentRoles,
+		connect.WithSchema(agentServiceListAgentRolesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	agentServiceCreateAgentHandler := connect.NewUnaryHandler(
@@ -1218,6 +1242,8 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 		switch r.URL.Path {
 		case AgentServiceCreateAgentRoleProcedure:
 			agentServiceCreateAgentRoleHandler.ServeHTTP(w, r)
+		case AgentServiceListAgentRolesProcedure:
+			agentServiceListAgentRolesHandler.ServeHTTP(w, r)
 		case AgentServiceCreateAgentProcedure:
 			agentServiceCreateAgentHandler.ServeHTTP(w, r)
 		case AgentServiceListAgentsProcedure:
@@ -1239,6 +1265,10 @@ type UnimplementedAgentServiceHandler struct{}
 
 func (UnimplementedAgentServiceHandler) CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.CreateAgentRole is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) ListAgentRoles(context.Context, *connect.Request[v1.ListAgentRolesRequest]) (*connect.Response[v1.ListAgentRolesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.ListAgentRoles is not implemented"))
 }
 
 func (UnimplementedAgentServiceHandler) CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error) {

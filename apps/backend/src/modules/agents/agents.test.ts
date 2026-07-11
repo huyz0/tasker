@@ -34,6 +34,10 @@ describe("Agents Handler Integration Tests", () => {
     expect(roleResp.role).toBeDefined();
     expect(roleResp.role.name).toBe("Integration Test Role");
 
+    const rolesListResp = await handler.listAgentRoles({}, ctx);
+    expect(rolesListResp.roles.some((r: any) => r.id === roleResp.role.id)).toBe(true);
+    await expect(handler.listAgentRoles({}, makeAuthContext(null))).rejects.toThrow();
+
     const createAgentReq = {
       orgId: orgId,
       agentRoleId: roleResp.role.id,

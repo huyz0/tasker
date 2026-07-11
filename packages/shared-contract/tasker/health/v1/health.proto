@@ -289,6 +289,13 @@ message CreateAgentRoleResponse {
   AgentRole role = 1;
 }
 
+message ListAgentRolesRequest {
+}
+
+message ListAgentRolesResponse {
+  repeated AgentRole roles = 1;
+}
+
 message CreateAgentRequest {
   string org_id = 1;
   string agent_role_id = 2;
@@ -301,6 +308,7 @@ message CreateAgentResponse {
 
 service AgentService {
   rpc CreateAgentRole(CreateAgentRoleRequest) returns (CreateAgentRoleResponse);
+  rpc ListAgentRoles(ListAgentRolesRequest) returns (ListAgentRolesResponse);
   rpc CreateAgent(CreateAgentRequest) returns (CreateAgentResponse);
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
   rpc ArchiveAgent(ArchiveAgentRequest) returns (ArchiveAgentResponse);

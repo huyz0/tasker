@@ -53,6 +53,12 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       return { role: payload };
     },
+    async listAgentRoles(_req: unknown, { values: contextValues }: { values: any }) {
+      requireUserId(contextValues);
+      const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
+      const rows = await db.select().from(roles);
+      return { roles: rows };
+    },
     async createAgent(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = CreateAgentSchema.parse(req);
