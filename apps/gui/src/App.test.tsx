@@ -45,6 +45,15 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
 }));
 
 // -------------------------------------------------------------------
+// ProtectedRoute has its own dedicated test file covering auth-gating and
+// the dev-session-bootstrap behavior; here we only care about routing and
+// page content, so bypass it entirely.
+// -------------------------------------------------------------------
+vi.mock('./components/auth/ProtectedRoute', () => ({
+  ProtectedRoute: ({ children }: { children: unknown }) => children,
+}));
+
+// -------------------------------------------------------------------
 // Tests
 // -------------------------------------------------------------------
 describe('App', () => {

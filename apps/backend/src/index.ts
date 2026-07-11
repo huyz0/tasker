@@ -85,7 +85,12 @@ http.createServer(async (req, res) => {
 
   if (req.url?.startsWith("/api/auth/")) {
     const url = `http://${req.headers.host}${req.url}`;
-    const authResponse = await authRoutes.handle(new Request(url, { method: req.method }));
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (value === undefined) continue;
+      for (const v of Array.isArray(value) ? value : [value]) headers.append(key, v);
+    }
+    const authResponse = await authRoutes.handle(new Request(url, { method: req.method, headers }));
     res.writeHead(authResponse.status, Object.fromEntries(authResponse.headers.entries()));
     res.end(await authResponse.text());
     return;
