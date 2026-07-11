@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { RepositoryIntegrationConfig } from '../../components/ui/repositories/RepositoryIntegrationConfig';
+import { useAuthSession } from '../../hooks/useAuthSession';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
@@ -12,8 +13,8 @@ const templateClient = createClient(ProjectTemplateService, transport);
 export function ProjectsWizard() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
-  // Using a mock owner ID for now as user sessions are handled securely server-side.
-  const activeOwnerId = "usr-1"; 
+  const { userId: activeOwnerId } = useAuthSession();
+  const [projectName, setProjectName] = useState('');
 
   const queryClient = useQueryClient();
   useEffect(() => setActivePageTitle('Projects'), [setActivePageTitle]);
@@ -36,19 +37,18 @@ export function ProjectsWizard() {
 
   const createProjectMutation = useMutation({
     mutationFn: async (templateId: string) => {
-      // Find template name to derive project name
-      const template = templatesData?.find(t => t.id === templateId);
-      const name = `${template?.name || 'New'} Project - ${Math.random().toString(36).substring(7)}`;
+      if (!activeOwnerId) throw new Error('No authenticated user - cannot determine project owner.');
       const resp = await projectClient.createProject({
         orgId: activeOrgId,
         templateId,
-        name,
+        name: projectName.trim(),
         ownerId: activeOwnerId
       });
       return resp.project;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+      setProjectName('');
     }
   });
 
@@ -61,6 +61,17 @@ export function ProjectsWizard() {
 
       <section>
         <h2 className="text-xl font-medium mb-4">Start from a Template</h2>
+        <div className="mb-4">
+          <input
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            placeholder="New project name"
+            className="w-full max-w-sm rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+          />
+        </div>
+        {createProjectMutation.isError && (
+          <p className="text-sm text-destructive mb-4">Failed to create project: {(createProjectMutation.error as Error).message}</p>
+        )}
         {isLoadingTemplates ? (
            <p className="text-sm text-muted-foreground">Loading templates...</p>
         ) : templatesData && templatesData.length > 0 ? (
@@ -72,9 +83,9 @@ export function ProjectsWizard() {
                  </div>
                  <h3 className="font-semibold text-lg">{t.name}</h3>
                  <p className="text-sm text-muted-foreground mt-1 mb-6 flex-grow">{t.description}</p>
-                 <button 
+                 <button
                    onClick={() => createProjectMutation.mutate(t.id)}
-                   disabled={createProjectMutation.isPending}
+                   disabled={createProjectMutation.isPending || !projectName.trim()}
                    className="w-full px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
                  >
                    {createProjectMutation.isPending ? 'Creating...' : 'Use Template'}
