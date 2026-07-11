@@ -1,5 +1,21 @@
 import { describe, it, expect, mock, afterEach } from 'bun:test';
 import { authRoutes } from './auth';
+import { createSessionToken, parseSessionCookie, verifySessionToken } from './session';
+
+describe('Auth session status', () => {
+  it('reports unauthenticated when there is no session cookie', async () => {
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/session'));
+    expect(await res.json()).toEqual({ authenticated: false, userId: null });
+  });
+
+  it('reports the authenticated user when a valid session cookie is present', async () => {
+    const token = createSessionToken('user-42');
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
+      headers: { cookie: `session=${token}` },
+    }));
+    expect(await res.json()).toEqual({ authenticated: true, userId: 'user-42' });
+  });
+});
 
 describe('Auth Routes (Google OAuth 2.1)', () => {
   it('should redirect to Google consent screen on /api/auth/google/login', async () => {
@@ -32,9 +48,39 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/');
     // Check if Set-Cookie header is properly applied
-    expect(res.headers.get('set-cookie')).toContain('SESSION_testuser123_');
-    expect(res.headers.get('set-cookie')).toContain('HttpOnly');
-    
+    const cookie = res.headers.get('set-cookie');
+    expect(cookie).toContain('HttpOnly');
+    const session = verifySessionToken(parseSessionCookie(cookie)!);
+    expect(session?.userId).toBe('testuser123');
+
     globalThis.fetch = originalFetch;
+  });
+
+  it('should allow cookie injection when test login is enabled', async () => {
+    const originalEnable = require('../../config').config.enableTestLogin;
+    require('../../config').config.enableTestLogin = true;
+
+    const req = new Request('http://localhost/api/auth/test/inject?userId=admin999');
+    const res = await authRoutes.handle(req);
+
+    expect(res.status).toBe(200);
+    const cookie = res.headers.get('set-cookie');
+    const session = verifySessionToken(parseSessionCookie(cookie)!);
+    expect(session?.userId).toBe('admin999');
+
+    require('../../config').config.enableTestLogin = originalEnable;
+  });
+
+  it('should block cookie injection when test login is disabled', async () => {
+    const originalEnable = require('../../config').config.enableTestLogin;
+    require('../../config').config.enableTestLogin = false;
+
+    const req = new Request('http://localhost/api/auth/test/inject?userId=admin999');
+    const res = await authRoutes.handle(req);
+    
+    expect(res.status).toBe(403);
+    expect(res.headers.get('set-cookie')).toBeNull();
+    
+    require('../../config').config.enableTestLogin = originalEnable;
   });
 });

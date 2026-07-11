@@ -1,8 +1,11 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
 import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, RepositoryService, SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
+import { authRoutes } from "./modules/auth/auth";
+import { currentUserIdKey, parseSessionCookie, verifySessionToken } from "./modules/auth/session";
 import { createOrgsHandler } from "./modules/orgs/orgs.handler";
 import { createProjectTemplatesHandler, createProjectsHandler } from "./modules/projects/projects.handler";
 import { createTasksHandler, createTaskManagementHandler } from "./modules/tasks/tasks.handler";
@@ -30,7 +33,15 @@ try {
   // handled
 }
 
+const sessionInterceptor: Interceptor = (next) => async (req) => {
+  const token = parseSessionCookie(req.header.get("cookie"));
+  const session = token ? verifySessionToken(token) : null;
+  req.contextValues.set(currentUserIdKey, session?.userId ?? null);
+  return next(req);
+};
+
 const handler = connectNodeAdapter({
+  interceptors: [sessionInterceptor],
   routes: (router) => {
     router.service(HealthService as any, createHealthHandler(db));
     router.service(TaskTypeService as any, createTasksHandler(db, nc));
@@ -48,17 +59,26 @@ const handler = connectNodeAdapter({
   },
 });
 
-http.createServer((req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+http.createServer(async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Connect-Protocol-Version");
-  
+
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
     return;
   }
-  
+
+  if (req.url?.startsWith("/api/auth/")) {
+    const url = `http://${req.headers.host}${req.url}`;
+    const authResponse = await authRoutes.handle(new Request(url, { method: req.method }));
+    res.writeHead(authResponse.status, Object.fromEntries(authResponse.headers.entries()));
+    res.end(await authResponse.text());
+    return;
+  }
+
   if (req.method === "GET" && !req.url?.startsWith("/tasker.")) {
       if (req.url === "/" || req.url === "/index.html") {
          res.writeHead(200, { "Content-Type": "text/html" });

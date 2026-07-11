@@ -11,6 +11,10 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
+    launchOptions: {
+      executablePath: '/usr/bin/chromium-browser',
+    },
+    video: 'on',
   },
   projects: [
     {

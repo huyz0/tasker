@@ -25,7 +25,7 @@ describe('LoginPage Component', () => {
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
 
-    expect(window.location.href).toBe('/api/auth/google/login');
+    expect(window.location.href).toBe('http://localhost:8080/api/auth/google/login');
   });
 
   it('should only render a single button', () => {

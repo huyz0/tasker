@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia';
 import { config } from '../../config';
+import { createSessionToken, parseSessionCookie, verifySessionToken } from './session';
 
 export const authRoutes = new Elysia()
   .get('/api/auth/google/login', () => {
@@ -64,11 +65,28 @@ export const authRoutes = new Elysia()
         status: 302,
         headers: {
           'location': '/',
-          'set-cookie': `SESSION_${profile.id}_${Math.random().toString(36).substring(7)}; HttpOnly; Path=/; SameSite=Lax`
+          'set-cookie': `session=${createSessionToken(profile.id)}; HttpOnly; Path=/; SameSite=Lax`
         }
       });
     } catch (e: any) {
       console.error('Google Auth Error:', e.message);
       return new Response('Authentication failed due to server error', { status: 500 });
     }
+  })
+  .get('/api/auth/session', ({ request }) => {
+    const token = parseSessionCookie(request.headers.get('cookie'));
+    const session = token ? verifySessionToken(token) : null;
+    return Response.json({ authenticated: !!session, userId: session?.userId ?? null });
+  })
+  .get('/api/auth/test/inject', ({ query }) => {
+    if (!config.enableTestLogin) {
+      return new Response('Test login disabled', { status: 403 });
+    }
+    const userId = (query.userId as string) || 'testuser123';
+    return new Response('Mock session injected', {
+      status: 200,
+      headers: {
+        'set-cookie': `session=${createSessionToken(userId)}; HttpOnly; Path=/; SameSite=Lax`
+      }
+    });
   });

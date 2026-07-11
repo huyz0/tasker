@@ -6,6 +6,7 @@ const configSchema = z.object({
   googleRedirectUri: z.string().default(''),
   jwtSecret: z.string().default('default_secret'),
   nodeEnv: z.enum(['development', 'production', 'test']).default('development'),
+  enableTestLogin: z.boolean().default(false),
 });
 
 const loadConfig = () => {
@@ -16,6 +17,7 @@ const loadConfig = () => {
     googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || (process.env.NODE_ENV === 'test' ? 'MOCK_REDIRECT_URI' : undefined),
     jwtSecret: process.env.JWT_SECRET,
     nodeEnv: process.env.NODE_ENV,
+    enableTestLogin: process.env.ENABLE_TEST_LOGIN === 'true',
   };
 
   const parsed = configSchema.safeParse(envConfig);

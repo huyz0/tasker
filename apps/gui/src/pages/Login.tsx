@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 export default function LoginPage() {
   const handleGoogleLogin = () => {
     // Redirect user to backend's Auth route to start the OAuth 2.1 flow securely.
-    window.location.href = '/api/auth/google/login';
+    window.location.href = 'http://localhost:8080/api/auth/google/login';
   };
 
   return (
