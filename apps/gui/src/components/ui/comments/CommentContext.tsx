@@ -1,21 +1,28 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { createClient } from '@connectrpc/connect';
+import { transport } from '../../../lib/connectTransport';
+import { CommentService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+
+const commentClient = createClient(CommentService, transport);
 
 export interface CommentData {
   id: string;
-  author: string;
+  userId?: string;
+  agentId?: string;
   content: string;
-  isAgent?: boolean;
   createdAt: string;
 }
 
 export interface CommentState {
   comments: CommentData[];
   isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
 }
 
 export interface CommentActions {
   addComment: (content: string) => Promise<void>;
-  addAgentComment: (content: string) => void;
 }
 
 export interface CommentContextValue {
@@ -35,57 +42,44 @@ export function useComments(): CommentContextValue {
 }
 
 interface CommentProviderProps {
-  initialComments?: CommentData[];
-  onAddComment?: (content: string) => Promise<void>;
+  entityId: string;
+  entityType: 'task' | 'artifact';
   children: React.ReactNode;
 }
 
-export function CommentProvider({ initialComments = [], onAddComment, children }: CommentProviderProps) {
-  const [comments, setComments] = useState<CommentData[]>(initialComments);
-  const [isLoading, setIsLoading] = useState(false);
+export function CommentProvider({ entityId, entityType, children }: CommentProviderProps) {
+  const queryClient = useQueryClient();
+  const queryKey = ['comments', entityType, entityId];
 
-  // We memoize handlers to avoid unnecessary re-renders in consumers
-  const handleAddComment = useMemo(() => async (content: string) => {
-    setIsLoading(true);
-    try {
-      if (onAddComment) {
-        await onAddComment(content);
-      } else {
-        // Fallback simulate network delay if no external handler is provided
-        await new Promise((r) => setTimeout(r, 200));
-      }
-      setComments(prev => [
-        ...prev,
-        {
-          id: `cmt-${Date.now()}`,
-          author: 'Human User',
-          content,
-          createdAt: new Date().toISOString(),
-          isAgent: false
-        }
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [onAddComment]);
+  const { data, isLoading: isLoadingList } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const resp = await commentClient.listComments({ entityId, entityType });
+      return resp.comments;
+    },
+  });
 
-  const handleAddAgentComment = useMemo(() => (content: string) => {
-    setComments(prev => [
-      ...prev,
-      {
-        id: `cmt-ai-${Date.now()}`,
-        author: 'Agent Alpha',
-        content,
-        isAgent: true,
-        createdAt: new Date().toISOString()
-      }
-    ]);
-  }, []);
+  const addCommentMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const resp = await commentClient.createComment({ entityId, entityType, content, userId: '', agentId: '' });
+      return resp.comment;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
 
-  const value = useMemo(() => ({
-    state: { comments, isLoading },
-    actions: { addComment: handleAddComment, addAgentComment: handleAddAgentComment }
-  }), [comments, isLoading, handleAddComment, handleAddAgentComment]);
+  const value = useMemo<CommentContextValue>(() => ({
+    state: {
+      comments: data ?? [],
+      isLoading: isLoadingList || addCommentMutation.isPending,
+      isError: addCommentMutation.isError,
+      error: addCommentMutation.error as Error | null,
+    },
+    actions: {
+      addComment: async (content: string) => {
+        await addCommentMutation.mutateAsync(content);
+      },
+    },
+  }), [data, isLoadingList, addCommentMutation]);
 
   return (
     <CommentContext.Provider value={value}>

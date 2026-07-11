@@ -16,6 +16,9 @@ export function CommentComposer() {
 
   return (
     <div className="pt-4 border-t border-border mt-4">
+      {state.isError && (
+        <p className="text-sm text-destructive mb-3">Failed to post comment: {state.error?.message}</p>
+      )}
       <form onSubmit={handleSubmit} className="flex flex-col space-y-3">
         <textarea
           className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"

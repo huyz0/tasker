@@ -4,23 +4,8 @@ import { createClient } from "@connectrpc/connect";
 import { transport } from "../lib/connectTransport";
 import { HealthService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { useLayoutStore, type LayoutState } from '../store/layout';
-import { Comment, useComments } from '../components/ui/comments';
-import { MarkdownRenderer } from '../components/ui/MarkdownRenderer';
 
 const client = createClient(HealthService, transport);
-
-function SimulateAgentButton() {
-  const { actions } = useComments();
-  return (
-    <button 
-      data-testid="inject-ai-note"
-      className="mt-4 px-3 py-1 text-xs bg-primary/20 text-primary rounded"
-      onClick={() => actions.addAgentComment('Agent reasoning injected.')}
-    >
-      Simulate Agent Note
-    </button>
-  );
-}
 
 export function DashboardPlaceholder() {
   const setActivePageTitle = useLayoutStore((s: LayoutState) => s.setActivePageTitle);
@@ -61,22 +46,6 @@ export function DashboardPlaceholder() {
             <p><span className="text-muted-foreground">DB Status:</span> {data.dbStatus}</p>
           </div>
         )}
-      </div>
-
-      <div className="border rounded-lg bg-card text-card-foreground shadow-sm p-6 max-h-[600px] overflow-y-auto">
-        <h2 className="text-xl font-medium mb-4">Task Discussion (Epic Verification)</h2>
-        <div className="mb-4 p-4 rounded bg-muted/50">
-          <h3 className="font-semibold text-sm mb-2">Original Task Description</h3>
-          <MarkdownRenderer content={"This is the **root** task describing the feature. It demonstrates inline `code` and parsing."} />
-        </div>
-        <Comment.Provider>
-          <div className="flex flex-col space-y-6">
-            <h3 className="text-lg font-semibold tracking-tight">Comments</h3>
-            <Comment.List />
-            <Comment.Composer />
-          </div>
-          <SimulateAgentButton />
-        </Comment.Provider>
       </div>
     </div>
   );

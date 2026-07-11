@@ -380,6 +380,7 @@ message Comment {
   string userId = 4;
   string agentId = 5;
   string content = 6;
+  string createdAt = 7;
 }
 
 message CreateCommentRequest {

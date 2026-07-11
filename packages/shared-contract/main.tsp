@@ -407,6 +407,7 @@ model Comment {
   @field(4) userId: string;
   @field(5) agentId: string;
   @field(6) content: string;
+  @field(7) createdAt: string;
 }
 
 model CreateCommentRequest {

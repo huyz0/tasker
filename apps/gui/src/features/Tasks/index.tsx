@@ -6,6 +6,7 @@ import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { TaskService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
+import { Comment } from '../../components/ui/comments';
 
 const taskClient = createClient(TaskService, transport);
 
@@ -98,6 +99,13 @@ export function TasksWorkbench() {
                 ) : (
                   <p className="text-muted-foreground italic">No description provided.</p>
                 )}
+             </div>
+             <div className="mt-8">
+               <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>
+               <Comment.Provider entityId={expandedTask.id} entityType="task">
+                 <Comment.List />
+                 <Comment.Composer />
+               </Comment.Provider>
              </div>
            </div>
         </div>

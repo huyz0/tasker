@@ -45,7 +45,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
 
       await insertRecord(db, comments, payload, isStandalone);
 
-      const commentResp = { ...payload };
+      const commentResp = { ...payload, createdAt: new Date().toISOString() };
       if (nc) nc.publish("domain.comment.created", Buffer.from(JSON.stringify(commentResp)));
       return { comment: commentResp };
     },
