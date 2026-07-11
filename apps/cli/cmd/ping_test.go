@@ -46,8 +46,11 @@ func TestRunPingSuccess(t *testing.T) {
 	// Build a minimal in-process Connect handler that returns canned data.
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewHealthServiceHandler(&fakePingHandler{
-		message:  "pong",
-		dbStatus: "online",
+		message:    "pong",
+		dbStatus:   "online",
+		natsStatus: "connected",
+		version:    "test-sha",
+		uptime:     42,
 	}))
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -67,6 +70,15 @@ func TestRunPingSuccess(t *testing.T) {
 	}
 	if !strings.Contains(out, "online") {
 		t.Errorf("expected output to contain 'online', got: %q", out)
+	}
+	if !strings.Contains(out, "connected") {
+		t.Errorf("expected output to contain NATS status 'connected', got: %q", out)
+	}
+	if !strings.Contains(out, "test-sha") {
+		t.Errorf("expected output to contain version 'test-sha', got: %q", out)
+	}
+	if !strings.Contains(out, "42") {
+		t.Errorf("expected output to contain uptime '42', got: %q", out)
 	}
 }
 
@@ -99,8 +111,11 @@ func TestRunPingError(t *testing.T) {
 
 type fakePingHandler struct {
 	v1connect.UnimplementedHealthServiceHandler
-	message  string
-	dbStatus string
+	message    string
+	dbStatus   string
+	natsStatus string
+	version    string
+	uptime     int32
 }
 
 func (f *fakePingHandler) Ping(
@@ -108,7 +123,10 @@ func (f *fakePingHandler) Ping(
 	_ *connect.Request[healthv1.PingRequest],
 ) (*connect.Response[healthv1.PingResponse], error) {
 	return connect.NewResponse(&healthv1.PingResponse{
-		Message:  f.message,
-		DbStatus: f.dbStatus,
+		Message:       f.message,
+		DbStatus:      f.dbStatus,
+		NatsStatus:    f.natsStatus,
+		Version:       f.version,
+		UptimeSeconds: f.uptime,
 	}), nil
 }

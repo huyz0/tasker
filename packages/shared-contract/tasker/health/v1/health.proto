@@ -9,6 +9,9 @@ message PingRequest {}
 message PingResponse {
   string message = 1;
   string dbStatus = 2;
+  string natsStatus = 3;
+  string version = 4;
+  int32 uptimeSeconds = 5;
 }
 
 service HealthService {

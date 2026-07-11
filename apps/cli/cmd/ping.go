@@ -36,7 +36,8 @@ func runPing(w io.Writer, factory PingClientFactory, httpClient *http.Client, se
 		return fmt.Errorf("ping failed: %w", err)
 	}
 
-	fmt.Fprintf(w, "Received: %v\nDB Status: %v\n", res.Msg.Message, res.Msg.DbStatus)
+	fmt.Fprintf(w, "Received: %v\nDB Status: %v\nNATS Status: %v\nVersion: %v\nUptime: %vs\n",
+		res.Msg.Message, res.Msg.DbStatus, res.Msg.NatsStatus, res.Msg.Version, res.Msg.UptimeSeconds)
 	return nil
 }
 

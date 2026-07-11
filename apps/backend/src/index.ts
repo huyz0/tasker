@@ -53,7 +53,7 @@ const sessionInterceptor: Interceptor = (next) => async (req) => {
 const handler = connectNodeAdapter({
   interceptors: [requestLoggingInterceptor, sessionInterceptor],
   routes: (router) => {
-    router.service(HealthService as any, createHealthHandler(db));
+    router.service(HealthService as any, createHealthHandler(db, nc));
     router.service(TaskTypeService as any, createTasksHandler(db, nc));
     router.service(AuthService as any, createAuthHandler(db));
     router.service(OrgService as any, createOrgsHandler(db, nc));

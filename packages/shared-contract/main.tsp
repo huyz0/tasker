@@ -13,6 +13,9 @@ model PingRequest {}
 model PingResponse {
   @field(1) message: string;
   @field(2) dbStatus: string;
+  @field(3) natsStatus: string;
+  @field(4) version: string;
+  @field(5) uptimeSeconds: int32;
 }
 
 interface HealthService {
