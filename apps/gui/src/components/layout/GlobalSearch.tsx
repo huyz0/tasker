@@ -6,6 +6,7 @@ import { SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb
 import { Search, CheckSquare, FileBox, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
+import { useLayoutStore } from '../../store/layout';
 
 const searchClient = createClient(SearchService, transport);
 
@@ -14,6 +15,7 @@ export function GlobalSearch() {
   const [query, setQuery] = useState('');
   const [debouncedQuery] = useDebounce(query, 300);
   const navigate = useNavigate();
+  const activeOrgId = useLayoutStore((s) => s.activeOrgId);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -30,10 +32,10 @@ export function GlobalSearch() {
   }, []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['universalSearch', debouncedQuery],
+    queryKey: ['universalSearch', debouncedQuery, activeOrgId],
     queryFn: async () => {
       if (!debouncedQuery) return [];
-      const resp = await searchClient.universalSearch({ query: debouncedQuery });
+      const resp = await searchClient.universalSearch({ query: debouncedQuery, orgId: activeOrgId });
       return resp.results;
     },
     enabled: debouncedQuery.length > 0 && isOpen,

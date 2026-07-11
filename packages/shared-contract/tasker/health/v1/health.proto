@@ -499,6 +499,7 @@ message SearchResult {
 
 message UniversalSearchRequest {
   string query = 1;
+  string orgId = 3;
 }
 
 message UniversalSearchResponse {

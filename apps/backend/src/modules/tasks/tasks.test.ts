@@ -1,14 +1,14 @@
 import { expect, test, describe } from "bun:test";
-import { setupIntegrationTest } from "../../test/setup";
+import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createTasksHandler } from "./tasks.handler";
 
 describe("Tasks Handler Integration Tests", () => {
   test("createTaskType can create, publish, and retrieve task types", async () => {
     const { db, nc } = await setupIntegrationTest();
-    
-    // Pre-requisite: Setup dummy organization explicitly needed to avoid foreign constraints
+
     const orgId = "org-handlertt-" + Date.now().toString();
+    const userId = "user-handlertt-" + Date.now().toString();
     try {
         await db.insert(schemaSqlite.organizations).values({
           id: orgId,
@@ -16,36 +16,37 @@ describe("Tasks Handler Integration Tests", () => {
           slug: "test-org-handlertt-" + Date.now().toString(),
           createdAt: new Date(),
         });
+        await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+        await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
     } catch {}
+    const ctx = makeAuthContext(userId);
 
-    // 3. Inject Dependencies into factory
     const handler = createTasksHandler(db, nc);
 
-    // 4. Test createTaskType
     const reqCreate = {
       orgId: orgId,
       projectId: null,
       name: "Integration Test Task",
     };
 
-    const createResp = await handler.createTaskType(reqCreate);
+    const createResp = await handler.createTaskType(reqCreate, ctx);
     expect(createResp.taskType).toBeDefined();
     expect(createResp.taskType.name).toBe("Integration Test Task");
 
-    // 5. Verify NATS publish logic fired
     const subjects = nc.publishedMessages.map((m: any) => m.subject);
     expect(subjects).toContain("domain.task_type.created");
 
-    // 6. Test getTaskType (fetching what we just created)
-    const getRes = await handler.getTaskType({ id: createResp.taskType.id });
+    const getRes = await handler.getTaskType({ id: createResp.taskType.id }, ctx);
     expect(getRes.taskType).toBeDefined();
     expect(getRes.taskType.id).toBe(createResp.taskType.id);
     expect(getRes.taskType.name).toBe("Integration Test Task");
+
+    await expect(handler.getTaskType({ id: createResp.taskType.id }, makeAuthContext("user-outsider"))).rejects.toThrow();
   });
 
   test("createTaskManagementHandler can create/assign tasks", async () => {
     const { db, nc } = await setupIntegrationTest();
-    
+
     const orgId = "org-taskman-" + Date.now().toString();
     const userId = "user-taskman-" + Date.now().toString();
     const templateId = "tmpl-taskman-" + Date.now().toString();
@@ -63,6 +64,7 @@ describe("Tasks Handler Integration Tests", () => {
           slug: "test-org-taskman-" + Date.now().toString(),
           createdAt: new Date(),
         });
+        await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
         await db.insert(schemaSqlite.projectTemplates).values({
           id: templateId,
           orgId: orgId,
@@ -78,6 +80,7 @@ describe("Tasks Handler Integration Tests", () => {
           createdAt: new Date(),
         });
     } catch {}
+    const ctx = makeAuthContext(userId);
 
     const { createTaskManagementHandler } = require("./tasks.handler");
     const handler = createTaskManagementHandler(db, nc);
@@ -87,8 +90,8 @@ describe("Tasks Handler Integration Tests", () => {
       title: "New Test Task",
       status: "todo",
       description: "testing",
-    });
-    
+    }, ctx);
+
     expect(taskResp.task).toBeDefined();
     expect(taskResp.task.title).toBe("New Test Task");
 
@@ -98,14 +101,20 @@ describe("Tasks Handler Integration Tests", () => {
     const assignResp = await handler.assignTask({
       taskId: taskResp.task.id,
       userId: userId,
-    });
-    
+    }, ctx);
+
     expect(assignResp.success).toBe(true);
 
-    const listResp = await handler.listTasks({ projectId: projectId });
+    const listResp = await handler.listTasks({ projectId: projectId }, ctx);
     expect(listResp.tasks.length).toBeGreaterThan(0);
     expect(listResp.tasks.some((t: any) => t.title === "New Test Task")).toBe(true);
 
-    expect(handler.listTasks({})).rejects.toThrow();
+    await expect(handler.listTasks({}, ctx)).rejects.toThrow();
+
+    const outsiderCtx = makeAuthContext("user-outsider-taskman");
+    await db.insert(schemaSqlite.users).values({ id: "user-outsider-taskman", email: "outsider-tm@test.com", createdAt: new Date() });
+    await expect(handler.listTasks({ projectId }, outsiderCtx)).rejects.toThrow();
+    await expect(handler.createTask({ projectId, title: "X" }, outsiderCtx)).rejects.toThrow();
+    await expect(handler.assignTask({ taskId: taskResp.task.id, userId: "user-outsider-taskman" }, outsiderCtx)).rejects.toThrow();
   });
 });

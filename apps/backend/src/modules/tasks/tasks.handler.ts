@@ -3,6 +3,8 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
+import { requireUserId, assertOrgMember, getProjectOrgId, getTaskOrgId } from "../../lib/authz";
+import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
 
@@ -34,11 +36,13 @@ const AssignTaskSchema = z.object({
 export const createTasksHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
-    async getTaskType(req: unknown) {
+    async getTaskType(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = GetTaskTypeSchema.parse(req);
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
       const result = await db.select().from(types).where(eq((types as any).id, parsed.id)).limit(1);
-      if (!result || result.length === 0) throw new Error("unauthenticated or not found");
+      if (!result || result.length === 0) throw new ConnectError("task type not found", Code.NotFound);
+      await assertOrgMember(db, userId, result[0].orgId);
 
       const taskType = result[0];
       const statusesSchema = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
@@ -53,8 +57,10 @@ export const createTasksHandler = (db: any, nc: any = null) => {
         transitions: transitions,
       };
     },
-    async createTaskType(req: unknown) {
+    async createTaskType(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = CreateTaskTypeSchema.parse(req);
+      await assertOrgMember(db, userId, parsed.orgId);
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
       const newId = `tt-${crypto.randomUUID()}`;
       const payload = {
@@ -77,8 +83,12 @@ export const createTasksHandler = (db: any, nc: any = null) => {
 export const createTaskManagementHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
-    async createTask(req: unknown) {
+    async createTask(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = CreateTaskSchema.parse(req);
+      const orgId = await getProjectOrgId(db, parsed.projectId);
+      await assertOrgMember(db, userId, orgId);
+
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       const newId = `tsk-${crypto.randomUUID()}`;
       const payload = {
@@ -94,8 +104,12 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       if (nc) nc.publish("domain.task.created", Buffer.from(JSON.stringify(payload)));
       return { task: payload };
     },
-    async listTasks(req: any) {
+    async listTasks(req: any, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       if (!req.projectId) throw new Error("projectId is required");
+      const orgId = await getProjectOrgId(db, req.projectId);
+      await assertOrgMember(db, userId, orgId);
+
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       const { items, nextCursor } = await executePaginatedQuery(db, tasks, eq((tasks as any).projectId, req.projectId), req.page);
 
@@ -107,8 +121,12 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         page: { nextCursor },
       };
     },
-    async assignTask(req: unknown) {
+    async assignTask(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = AssignTaskSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgMember(db, userId, orgId);
+
       const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
       const newId = `ta-${crypto.randomUUID()}`;
       const payload = {

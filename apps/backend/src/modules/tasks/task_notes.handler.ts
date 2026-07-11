@@ -3,6 +3,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
+import { requireUserId, assertOrgMember, getTaskOrgId } from "../../lib/authz";
 
 // --- Zod Request Schema ---
 
@@ -18,8 +19,12 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
 
   return {
-    async createTaskNote(req: unknown) {
+    async createTaskNote(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = CreateTaskNoteSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgMember(db, userId, orgId);
+
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
       const newId = `tnt-${crypto.randomUUID()}`;
       const payload = {
@@ -35,8 +40,12 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       if (nc) nc.publish("domain.tasknote.created", Buffer.from(JSON.stringify(noteResp)));
       return { taskNote: noteResp };
     },
-    async listTaskNotes(req: any) {
+    async listTaskNotes(req: any, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       if (!req.taskId) throw new Error("taskId is required");
+      const orgId = await getTaskOrgId(db, req.taskId);
+      await assertOrgMember(db, userId, orgId);
+
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
       const { items, nextCursor } = await executePaginatedQuery(db, notes, eq((notes as any).taskId, req.taskId), req.page);
 

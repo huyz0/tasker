@@ -77,10 +77,27 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
 
     const req = new Request('http://localhost/api/auth/test/inject?userId=admin999');
     const res = await authRoutes.handle(req);
-    
+
     expect(res.status).toBe(403);
     expect(res.headers.get('set-cookie')).toBeNull();
-    
+
     require('../../config').config.enableTestLogin = originalEnable;
+  });
+
+  it('should mark the session cookie Secure in production, but not otherwise', async () => {
+    const cfg = require('../../config').config;
+    const original = { enableTestLogin: cfg.enableTestLogin, nodeEnv: cfg.nodeEnv };
+    cfg.enableTestLogin = true;
+
+    cfg.nodeEnv = 'production';
+    const prodRes = await authRoutes.handle(new Request('http://localhost/api/auth/test/inject?userId=u1'));
+    expect(prodRes.headers.get('set-cookie')).toContain('Secure');
+
+    cfg.nodeEnv = 'development';
+    const devRes = await authRoutes.handle(new Request('http://localhost/api/auth/test/inject?userId=u1'));
+    expect(devRes.headers.get('set-cookie')).not.toContain('Secure');
+
+    cfg.enableTestLogin = original.enableTestLogin;
+    cfg.nodeEnv = original.nodeEnv;
   });
 });

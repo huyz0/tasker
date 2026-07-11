@@ -1,6 +1,8 @@
 import { z } from "zod/v4";
+import { eq } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
+import { requireUserId, assertOrgMember } from "../../lib/authz";
 
 // --- Zod Request Schemas ---
 
@@ -21,7 +23,8 @@ const CreateAgentSchema = z.object({
 export const createAgentsHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
-    async createAgentRole(req: unknown) {
+    async createAgentRole(req: unknown, { values: contextValues }: { values: any }) {
+      requireUserId(contextValues);
       const parsed = CreateAgentRoleSchema.parse(req);
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
       const newId = `ar-${crypto.randomUUID()}`;
@@ -36,8 +39,11 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       return { role: payload };
     },
-    async createAgent(req: unknown) {
+    async createAgent(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = CreateAgentSchema.parse(req);
+      await assertOrgMember(db, userId, parsed.orgId);
+
       const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const newId = `ag-${crypto.randomUUID()}`;
       const payload = {
@@ -52,12 +58,12 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       if (nc) nc.publish("domain.agent.created", Buffer.from(JSON.stringify(payload)));
       return { agent: payload };
     },
-    async listAgents(req: any) {
+    async listAgents(req: any, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       if (!req.orgId) throw new Error("orgId is required");
+      await assertOrgMember(db, userId, req.orgId);
+
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
-      // Drizzle eq helper is already in scope if we imported it, let's import it if needed.
-      // Wait, eq is not imported in this file. I need to add the import or just use db.select.
-      const { eq } = require("drizzle-orm");
       const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).orgId, req.orgId));
       return { agents: result };
     },

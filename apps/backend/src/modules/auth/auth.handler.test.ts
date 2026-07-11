@@ -23,23 +23,40 @@ describe('auth handler getIdentity', () => {
     const contextValues = createContextValues();
     contextValues.set(currentUserIdKey, 'user-b');
 
-    const result = await handler.getIdentity({}, { contextValues } as any);
+    const result = await handler.getIdentity({}, { values: contextValues } as any);
     expect(result.user.id).toBe('user-b');
   });
 
-  it('falls back to the first user when there is no session', async () => {
-    const users = [{ id: 'user-a', email: 'a@tasker', name: 'A', createdAt: new Date() }];
+  it('rejects when there is no session instead of leaking/impersonating a user', async () => {
     const db = {
       select: () => ({
         from: () => ({
-          limit: (n: number) => users.slice(0, n),
+          where: () => ({
+            limit: () => [],
+          }),
         }),
       }),
     };
     const handler = createAuthHandler(db);
     const contextValues = createContextValues();
 
-    const result = await handler.getIdentity({}, { contextValues } as any);
-    expect(result.user.id).toBe('user-a');
+    await expect(handler.getIdentity({}, { values: contextValues } as any)).rejects.toThrow();
+  });
+
+  it('rejects with not-found when the session user id has no matching row', async () => {
+    const db = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: () => [],
+          }),
+        }),
+      }),
+    };
+    const handler = createAuthHandler(db);
+    const contextValues = createContextValues();
+    contextValues.set(currentUserIdKey, 'user-deleted');
+
+    await expect(handler.getIdentity({}, { values: contextValues } as any)).rejects.toThrow();
   });
 });

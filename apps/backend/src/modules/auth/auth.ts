@@ -3,6 +3,11 @@ import { config } from '../../config';
 import { createSessionToken, parseSessionCookie, verifySessionToken } from './session';
 import { logger } from '../../lib/logger';
 
+function sessionCookie(userId: string): string {
+  const secure = config.nodeEnv === 'production' ? '; Secure' : '';
+  return `session=${createSessionToken(userId)}; HttpOnly; Path=/; SameSite=Lax${secure}`;
+}
+
 export const authRoutes = new Elysia()
   .get('/api/auth/google/login', () => {
     const params = new URLSearchParams({
@@ -66,7 +71,7 @@ export const authRoutes = new Elysia()
         status: 302,
         headers: {
           'location': '/',
-          'set-cookie': `session=${createSessionToken(profile.id)}; HttpOnly; Path=/; SameSite=Lax`
+          'set-cookie': sessionCookie(profile.id)
         }
       });
     } catch (e: any) {
@@ -87,7 +92,7 @@ export const authRoutes = new Elysia()
     return new Response('Mock session injected', {
       status: 200,
       headers: {
-        'set-cookie': `session=${createSessionToken(userId)}; HttpOnly; Path=/; SameSite=Lax`
+        'set-cookie': sessionCookie(userId)
       }
     });
   });

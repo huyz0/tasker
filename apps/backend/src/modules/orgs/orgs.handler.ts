@@ -1,7 +1,9 @@
 import { z } from "zod/v4";
+import { inArray } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
+import { requireUserId, assertOrgAdmin } from "../../lib/authz";
 
 // --- Zod Request Schemas ---
 
@@ -20,9 +22,18 @@ const InviteUserSchema = z.object({
 export const createOrgsHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
-    async listOrgs(req: any) {
+    async listOrgs(req: any, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
-      const { items, nextCursor } = await executePaginatedQuery(db, orgs, undefined, req.page);
+      const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
+
+      const memberRows = await db.select().from(members).where(inArray(members.userId, [userId]));
+      const memberOrgIds = memberRows.map((m: any) => m.orgId);
+      if (memberOrgIds.length === 0) {
+        return { organizations: [], page: {} };
+      }
+
+      const { items, nextCursor } = await executePaginatedQuery(db, orgs, inArray(orgs.id, memberOrgIds), req.page);
 
       return {
         organizations: items.map((o: any) => ({
@@ -32,7 +43,8 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         page: { nextCursor },
       };
     },
-    async seedOrg(req: unknown) {
+    async seedOrg(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = SeedOrgSchema.parse(req);
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
@@ -41,7 +53,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const orgPayload = { id: newOrgId, name: parsed.name, slug: parsed.slug };
 
       await insertRecord(db, orgs, orgPayload, isStandalone);
-      const memberPayload = { orgId: newOrgId, userId: "user-1", role: "admin" };
+      const memberPayload = { orgId: newOrgId, userId, role: "admin" };
       await insertRecord(db, members, memberPayload, isStandalone, "joinedAt");
 
       if (nc) {
@@ -49,14 +61,17 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       }
       return { organization: { ...orgPayload, role: "admin" } };
     },
-    async inviteUser(req: unknown) {
+    async inviteUser(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = InviteUserSchema.parse(req);
+      await assertOrgAdmin(db, userId, parsed.orgId);
+
       const invs = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
       const payload = {
         id: `i-${crypto.randomUUID()}`,
         orgId: parsed.orgId,
         email: parsed.email,
-        invitedBy: "user-1",
+        invitedBy: userId,
       };
       await insertRecord(db, invs, payload, isStandalone);
       return { success: true };

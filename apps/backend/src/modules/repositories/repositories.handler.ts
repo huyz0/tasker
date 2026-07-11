@@ -1,13 +1,15 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import crypto from "node:crypto";
 import { logger } from "../../lib/logger";
+import { requireUserId, assertOrgMember, getProjectOrgId, getRepositoryLinkOrgId } from "../../lib/authz";
+import { config } from "../../config";
 
 const ALGORITHM = "aes-256-gcm";
-const ENCRYPTION_KEY = process.env.APP_ENCRYPTION_SECRET || "00000000000000000000000000000000"; // Fallback for dev only
+const ENCRYPTION_KEY = config.appEncryptionSecret;
 
 function encryptToken(token: string): string {
     const iv = crypto.randomBytes(12);
@@ -67,10 +69,14 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   
   return {
-    async addRepositoryLink(req: unknown) {
+    async addRepositoryLink(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = AddRepositoryLinkSchema.parse(req);
+      const orgId = await getProjectOrgId(db, parsed.projectId);
+      await assertOrgMember(db, userId, orgId);
+
       const links = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
-      
+
       let tokenToStore = "";
       if (parsed.provider === "github") {
         const response = await fetch("https://github.com/login/oauth/access_token", {
@@ -120,8 +126,12 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       };
     },
     
-    async listRepositoryLinks(req: unknown) {
+    async listRepositoryLinks(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = ListRepositoryLinksSchema.parse(req);
+      const orgId = await getProjectOrgId(db, parsed.projectId);
+      await assertOrgMember(db, userId, orgId);
+
       const links = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       
       const { items, nextCursor } = await executePaginatedQuery(
@@ -142,11 +152,15 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       };
     },
     
-    async syncPullRequests(req: unknown) {
+    async syncPullRequests(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = SyncPullRequestsSchema.parse(req);
+      const orgId = await getProjectOrgId(db, parsed.projectId);
+      await assertOrgMember(db, userId, orgId);
+
       const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       const prsTable = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
-      
+
       const links = await db.select().from(linksTable).where(eq((linksTable as any).projectId, parsed.projectId));
       const failures: string[] = [];
 
@@ -167,11 +181,21 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
               continue;
             }
             const prs = await response.json() as any[];
+
+            // Batch-fetch existing PRs for this link once, scoped by repositoryLinkId,
+            // instead of querying per-PR (N+1) and matching on remotePrId globally
+            // (which could collide with another repo's PR #<n>).
+            const existingByRemoteId = new Map<string, any>();
+            const existingRows = await db.select().from(prsTable).where(eq((prsTable as any).repositoryLinkId, link.id));
+            for (const row of existingRows) {
+              existingByRemoteId.set(row.remotePrId, row);
+            }
+
             for (const pr of prs) {
-              const existing = await db.select().from(prsTable).where(eq((prsTable as any).remotePrId, String(pr.number)));
+              const existing = existingByRemoteId.get(String(pr.number));
               const prStatus = pr.merged_at ? 'merged' : (pr.state === 'closed' ? 'closed' : (pr.draft ? 'draft' : 'open'));
 
-              if (existing.length === 0) {
+              if (!existing) {
                 await insertRecord(db, prsTable, {
                   id: `pr-${crypto.randomUUID()}`,
                   repositoryLinkId: link.id,
@@ -185,7 +209,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
                   title: pr.title,
                   status: prStatus,
                   updatedAt: isStandalone ? new Date() : undefined // MySQL usually has auto-update, but fallback
-                }).where(eq((prsTable as any).id, existing[0].id));
+                }).where(and(eq((prsTable as any).id, existing.id), eq((prsTable as any).repositoryLinkId, link.id)));
               }
             }
           } catch (e) {
@@ -200,11 +224,15 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       return { success: failures.length === 0 };
     },
 
-    async listBuilds(req: unknown) {
+    async listBuilds(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
       const parsed = ListBuildsSchema.parse(req);
+      const orgId = await getRepositoryLinkOrgId(db, parsed.repositoryLinkId);
+      await assertOrgMember(db, userId, orgId);
+
       const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       const links = await db.select().from(linksTable).where(eq((linksTable as any).id, parsed.repositoryLinkId));
-      
+
       if (links.length === 0) throw new Error("Repository link not found");
       const link = links[0];
       
@@ -248,9 +276,10 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       return { builds: [] };
     },
 
-    async listDeployments(req: unknown) {
+    async listDeployments(req: unknown, { values: contextValues }: { values: any }) {
+      requireUserId(contextValues);
       const parsed = ListDeploymentsSchema.parse(req);
-      
+
       return { deployments: [
         {
           id: `dep-${parsed.buildId}`,

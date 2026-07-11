@@ -1,9 +1,22 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import crypto from "node:crypto";
 import { createRepositoriesHandler } from "./repositories.handler";
+import * as schemaSqlite from "../../db/schema.sqlite";
+import { createContextValues } from "@connectrpc/connect";
+import { currentUserIdKey } from "../auth/session";
 
 const runIntegration = process.env.TASKER_REAL_INTEGRATION === "1";
 const testIf = runIntegration ? describe : describe.skip;
+
+const TEST_USER_ID = "integration-test-user";
+const TEST_ORG_ID = "integration-test-org";
+const TEST_PROJECT_ID = "dummy-project";
+
+const ctx = (() => {
+  const contextValues = createContextValues();
+  contextValues.set(currentUserIdKey, TEST_USER_ID);
+  return { values: contextValues } as any;
+})();
 
 testIf("Real GitHub Integration: Repositories", () => {
   let handler: ReturnType<typeof createRepositoriesHandler>;
@@ -11,19 +24,33 @@ testIf("Real GitHub Integration: Repositories", () => {
   let sandboxRepo: string;
   let testToken: string;
 
-  // We need a dummy database interface to inject
+  // Dummy database interface that fakes just enough of each table the
+  // handler + authz helpers touch (repositoryLinks, projects, organizationMembers)
+  // to exercise the real GitHub API calls without a real DB.
   const mockDb = {
     select: () => ({
-      from: () => ({
-        where: () => [
-          {
-            id: `link-${executionId}`,
-            provider: "github",
-            remoteName: sandboxRepo,
-            // Normally this is encrypted, we mock it to decrypt to our real test token
-            accessTokenEncrypted: mockEncrypt(testToken),
-          },
-        ],
+      from: (table: any) => ({
+        where: () => {
+          if (table === schemaSqlite.repositoryLinks) {
+            return [
+              {
+                id: `link-${executionId}`,
+                projectId: TEST_PROJECT_ID,
+                provider: "github",
+                remoteName: sandboxRepo,
+                // Normally this is encrypted, we mock it to decrypt to our real test token
+                accessTokenEncrypted: mockEncrypt(testToken),
+              },
+            ];
+          }
+          if (table === schemaSqlite.projects) {
+            return [{ id: TEST_PROJECT_ID, orgId: TEST_ORG_ID }];
+          }
+          if (table === schemaSqlite.organizationMembers) {
+            return [{ orgId: TEST_ORG_ID, userId: TEST_USER_ID, role: "admin" }];
+          }
+          return [];
+        },
       }),
     }),
   };
@@ -105,7 +132,7 @@ testIf("Real GitHub Integration: Repositories", () => {
     // or return an empty array if none exist, but the request itself should succeed.
     const response = await handler.listBuilds({
       repositoryLinkId: `link-${executionId}`,
-    });
+    }, ctx);
 
     expect(response).toHaveProperty("builds");
     expect(Array.isArray(response.builds)).toBe(true);
@@ -127,8 +154,8 @@ testIf("Real GitHub Integration: Repositories", () => {
     // Note: Creating a PR dynamically requires a branch with a commit, which is complex 
     // to do in one API call. Alternatively, we just test that syncPullRequests can 
     // contact GitHub without throwing an error (using our mockDb).
-    const req = { projectId: "dummy-project" };
-    const response = await handler.syncPullRequests(req);
+    const req = { projectId: TEST_PROJECT_ID };
+    const response = await handler.syncPullRequests(req, ctx);
 
     expect(response.success).toBe(true);
   });

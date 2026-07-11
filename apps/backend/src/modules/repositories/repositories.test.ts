@@ -1,5 +1,5 @@
 import { expect, test, describe, beforeAll, mock, afterAll } from "bun:test";
-import { setupIntegrationTest } from "../../test/setup";
+import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import { createRepositoriesHandler } from "./repositories.handler";
 import { createProjectsHandler } from "../projects/projects.handler";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -9,6 +9,8 @@ describe("Repositories Handler >", () => {
   let db: any;
   let repHandler: any;
   let pHandler: any;
+  let ctx1: any;
+  let ctx2: any;
 
   let originalFetch: typeof globalThis.fetch;
 
@@ -18,7 +20,9 @@ describe("Repositories Handler >", () => {
     db = setup.db;
     repHandler = createRepositoriesHandler(db, setup.nc);
     pHandler = createProjectsHandler(db, setup.nc);
-    
+    ctx1 = makeAuthContext("usr-1");
+    ctx2 = makeAuthContext("usr-2");
+
     originalFetch = globalThis.fetch;
     globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
       if (url.toString() === "https://github.com/login/oauth/access_token") {
@@ -47,6 +51,7 @@ describe("Repositories Handler >", () => {
       email: "test@tasker.local",
       createdAt: new Date(),
     });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: "org-1", userId: "usr-1", role: "admin", joinedAt: new Date() });
     await db.insert(schemaSqlite.projectTemplates).values({
       id: "tpl-1",
       orgId: "org-1",
@@ -58,7 +63,7 @@ describe("Repositories Handler >", () => {
       templateId: "tpl-1",
       name: "Super Secret Product",
       ownerId: "usr-1",
-    });
+    }, ctx1);
     const projectId = projResp.project.id;
 
     // 2. Add repository link
@@ -67,7 +72,7 @@ describe("Repositories Handler >", () => {
       provider: "github",
       remoteName: "huyz0/tasker",
       oauthCode: "fake-oauth-code-123",
-    });
+    }, ctx1);
 
     expect(addResp.link).toBeDefined();
     expect(addResp.link.projectId).toBe(projectId);
@@ -78,39 +83,44 @@ describe("Repositories Handler >", () => {
     // 3. Verify it was encrypted in DB (by reading raw DB instead of handler)
     const rawLinks = await db.select().from(schemaSqlite.repositoryLinks).where(eq(schemaSqlite.repositoryLinks.id, linkId));
     expect(rawLinks.length).toBe(1);
-    
-    // The raw token is "mock_token_fake-oauth-code-123", but we should NOT see that in the database field.
+
     const encryptedTokenStr = rawLinks[0].accessTokenEncrypted;
     expect(encryptedTokenStr).not.toContain("mock_token");
-    
-    // We expect the AES string to be composed of "iv:authtag:cipher"
     expect(encryptedTokenStr.split(':').length).toBe(3);
+
+    // Outsider cannot add a link to this project
+    await expect(repHandler.addRepositoryLink({
+      projectId, provider: "github", remoteName: "x/y", oauthCode: "z",
+    }, makeAuthContext("usr-outsider"))).rejects.toThrow();
   });
-  
+
   test("should mask tokens on list fetching", async () => {
     // 1. Setup
     await db.insert(schemaSqlite.organizations).values({ id: "org-2", name: "T2", slug: "t2-org", createdAt: new Date() });
     await db.insert(schemaSqlite.users).values({ id: "usr-2", email: "test2@tasker.local", createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: "org-2", userId: "usr-2", role: "admin", joinedAt: new Date() });
     await db.insert(schemaSqlite.projectTemplates).values({ id: "tpl-2", orgId: "org-2", name: "Soft2", createdAt: new Date() });
-    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P2", ownerId: "usr-2" })).project.id;
-    
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P2", ownerId: "usr-2" }, ctx2)).project.id;
+
     await repHandler.addRepositoryLink({
       projectId: pId,
       provider: "bitbucket",
       remoteName: "huyz0/test2",
       oauthCode: "foo",
-    });
+    }, ctx2);
 
-    const listResp = await repHandler.listRepositoryLinks({ projectId: pId });
+    const listResp = await repHandler.listRepositoryLinks({ projectId: pId }, ctx2);
     expect(listResp.links).toBeDefined();
     expect(listResp.links.length).toBe(1);
     expect(listResp.links[0].accessTokenEncrypted).toBeUndefined(); // Crucial security feature
+
+    await expect(repHandler.listRepositoryLinks({ projectId: pId }, makeAuthContext("usr-outsider"))).rejects.toThrow();
   });
 
   test("should synchronize pull requests from provider", async () => {
     // 1. Setup
-    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P3", ownerId: "usr-2" })).project.id;
-    
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P3", ownerId: "usr-2" }, ctx2)).project.id;
+
     // Mock the fetch for this specific test
     globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
       if (url.toString() === "https://github.com/login/oauth/access_token") {
@@ -130,25 +140,56 @@ describe("Repositories Handler >", () => {
       provider: "github",
       remoteName: "foo/bar",
       oauthCode: "fake-code",
-    });
+    }, ctx2);
 
-    await repHandler.syncPullRequests({ projectId: pId });
+    await repHandler.syncPullRequests({ projectId: pId }, ctx2);
 
     // Verify
     const prs = await db.select().from(schemaSqlite.remotePullRequests);
     expect(prs.length).toBeGreaterThanOrEqual(2);
-    
+
     const pr1 = prs.find((p: any) => p.title === "PR 1 TSK-123");
     expect(pr1).toBeDefined();
     expect(pr1.status).toBe("open");
-    
+
     const pr2 = prs.find((p: any) => p.title === "PR 2");
     expect(pr2).toBeDefined();
     expect(pr2.status).toBe("merged");
   });
 
+  test("syncPullRequests does not collide PRs across different repository links with the same remotePrId", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P-collision", ownerId: "usr-2" }, ctx2)).project.id;
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/repos/foo/repo-a/pulls")) {
+        return new Response(JSON.stringify([{ number: 1, title: "Repo A PR#1", state: "open", draft: false, html_url: "u" }]), { status: 200 });
+      }
+      if (url.toString().includes("/repos/foo/repo-b/pulls")) {
+        return new Response(JSON.stringify([{ number: 1, title: "Repo B PR#1", state: "open", draft: false, html_url: "u" }]), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const linkA = (await repHandler.addRepositoryLink({ projectId: pId, provider: "github", remoteName: "foo/repo-a", oauthCode: "a" }, ctx2)).link;
+    const linkB = (await repHandler.addRepositoryLink({ projectId: pId, provider: "github", remoteName: "foo/repo-b", oauthCode: "b" }, ctx2)).link;
+
+    await repHandler.syncPullRequests({ projectId: pId }, ctx2);
+
+    const prsForA = await db.select().from(schemaSqlite.remotePullRequests).where(eq(schemaSqlite.remotePullRequests.repositoryLinkId, linkA.id));
+    const prsForB = await db.select().from(schemaSqlite.remotePullRequests).where(eq(schemaSqlite.remotePullRequests.repositoryLinkId, linkB.id));
+
+    expect(prsForA.some((p: any) => p.title === "Repo A PR#1")).toBe(true);
+    expect(prsForB.some((p: any) => p.title === "Repo B PR#1")).toBe(true);
+    // Each link's PR #1 must remain attributed to its own link, not merged into one row.
+    expect(prsForA.find((p: any) => p.remotePrId === "1")?.title).toBe("Repo A PR#1");
+    expect(prsForB.find((p: any) => p.remotePrId === "1")?.title).toBe("Repo B PR#1");
+  });
+
   test("syncPullRequests reports failure when the provider call fails", async () => {
-    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P4", ownerId: "usr-2" })).project.id;
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P4", ownerId: "usr-2" }, ctx2)).project.id;
 
     globalThis.fetch = mock(async (url: string | Request | URL) => {
       if (url.toString() === "https://github.com/login/oauth/access_token") {
@@ -165,14 +206,14 @@ describe("Repositories Handler >", () => {
       provider: "github",
       remoteName: "foo/broken",
       oauthCode: "fake-code",
-    });
+    }, ctx2);
 
-    const result = await repHandler.syncPullRequests({ projectId: pId });
+    const result = await repHandler.syncPullRequests({ projectId: pId }, ctx2);
     expect(result.success).toBe(false);
   });
 
   test("listBuilds throws instead of silently returning an empty list on provider failure", async () => {
-    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P5", ownerId: "usr-2" })).project.id;
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P5", ownerId: "usr-2" }, ctx2)).project.id;
 
     globalThis.fetch = mock(async (url: string | Request | URL) => {
       if (url.toString() === "https://github.com/login/oauth/access_token") {
@@ -189,8 +230,9 @@ describe("Repositories Handler >", () => {
       provider: "github",
       remoteName: "foo/broken-builds",
       oauthCode: "fake-code",
-    })).link;
+    }, ctx2)).link;
 
-    await expect(repHandler.listBuilds({ repositoryLinkId: link.id })).rejects.toThrow(/GitHub API returned 503/);
+    await expect(repHandler.listBuilds({ repositoryLinkId: link.id }, ctx2)).rejects.toThrow(/GitHub API returned 503/);
+    await expect(repHandler.listBuilds({ repositoryLinkId: link.id }, makeAuthContext("usr-outsider"))).rejects.toThrow();
   });
 });

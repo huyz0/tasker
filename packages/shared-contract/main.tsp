@@ -577,6 +577,7 @@ model SearchResult {
 model UniversalSearchRequest {
   @field(1) query: string;
   @field(2) page?: PageRequest;
+  @field(3) orgId: string;
 }
 
 model UniversalSearchResponse {
