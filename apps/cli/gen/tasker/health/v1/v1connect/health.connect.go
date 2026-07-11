@@ -43,6 +43,8 @@ const (
 	CommentServiceName = "tasker.health.v1.CommentService"
 	// TaskNoteServiceName is the fully-qualified name of the TaskNoteService service.
 	TaskNoteServiceName = "tasker.health.v1.TaskNoteService"
+	// LabelServiceName is the fully-qualified name of the LabelService service.
+	LabelServiceName = "tasker.health.v1.LabelService"
 	// RepositoryServiceName is the fully-qualified name of the RepositoryService service.
 	RepositoryServiceName = "tasker.health.v1.RepositoryService"
 	// SearchServiceName is the fully-qualified name of the SearchService service.
@@ -185,6 +187,20 @@ const (
 	// TaskNoteServiceListTaskNotesProcedure is the fully-qualified name of the TaskNoteService's
 	// ListTaskNotes RPC.
 	TaskNoteServiceListTaskNotesProcedure = "/tasker.health.v1.TaskNoteService/ListTaskNotes"
+	// LabelServiceCreateLabelProcedure is the fully-qualified name of the LabelService's CreateLabel
+	// RPC.
+	LabelServiceCreateLabelProcedure = "/tasker.health.v1.LabelService/CreateLabel"
+	// LabelServiceListLabelsProcedure is the fully-qualified name of the LabelService's ListLabels RPC.
+	LabelServiceListLabelsProcedure = "/tasker.health.v1.LabelService/ListLabels"
+	// LabelServiceAttachLabelProcedure is the fully-qualified name of the LabelService's AttachLabel
+	// RPC.
+	LabelServiceAttachLabelProcedure = "/tasker.health.v1.LabelService/AttachLabel"
+	// LabelServiceDetachLabelProcedure is the fully-qualified name of the LabelService's DetachLabel
+	// RPC.
+	LabelServiceDetachLabelProcedure = "/tasker.health.v1.LabelService/DetachLabel"
+	// LabelServiceListEntityLabelsProcedure is the fully-qualified name of the LabelService's
+	// ListEntityLabels RPC.
+	LabelServiceListEntityLabelsProcedure = "/tasker.health.v1.LabelService/ListEntityLabels"
 	// RepositoryServiceAddRepositoryLinkProcedure is the fully-qualified name of the
 	// RepositoryService's AddRepositoryLink RPC.
 	RepositoryServiceAddRepositoryLinkProcedure = "/tasker.health.v1.RepositoryService/AddRepositoryLink"
@@ -260,6 +276,12 @@ var (
 	taskNoteServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskNoteService")
 	taskNoteServiceCreateTaskNoteMethodDescriptor        = taskNoteServiceServiceDescriptor.Methods().ByName("CreateTaskNote")
 	taskNoteServiceListTaskNotesMethodDescriptor         = taskNoteServiceServiceDescriptor.Methods().ByName("ListTaskNotes")
+	labelServiceServiceDescriptor                        = v1.File_tasker_health_v1_health_proto.Services().ByName("LabelService")
+	labelServiceCreateLabelMethodDescriptor              = labelServiceServiceDescriptor.Methods().ByName("CreateLabel")
+	labelServiceListLabelsMethodDescriptor               = labelServiceServiceDescriptor.Methods().ByName("ListLabels")
+	labelServiceAttachLabelMethodDescriptor              = labelServiceServiceDescriptor.Methods().ByName("AttachLabel")
+	labelServiceDetachLabelMethodDescriptor              = labelServiceServiceDescriptor.Methods().ByName("DetachLabel")
+	labelServiceListEntityLabelsMethodDescriptor         = labelServiceServiceDescriptor.Methods().ByName("ListEntityLabels")
 	repositoryServiceServiceDescriptor                   = v1.File_tasker_health_v1_health_proto.Services().ByName("RepositoryService")
 	repositoryServiceAddRepositoryLinkMethodDescriptor   = repositoryServiceServiceDescriptor.Methods().ByName("AddRepositoryLink")
 	repositoryServiceListRepositoryLinksMethodDescriptor = repositoryServiceServiceDescriptor.Methods().ByName("ListRepositoryLinks")
@@ -1977,6 +1999,178 @@ func (UnimplementedTaskNoteServiceHandler) CreateTaskNote(context.Context, *conn
 
 func (UnimplementedTaskNoteServiceHandler) ListTaskNotes(context.Context, *connect.Request[v1.ListTaskNotesRequest]) (*connect.Response[v1.ListTaskNotesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskNoteService.ListTaskNotes is not implemented"))
+}
+
+// LabelServiceClient is a client for the tasker.health.v1.LabelService service.
+type LabelServiceClient interface {
+	CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error)
+	ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error)
+	AttachLabel(context.Context, *connect.Request[v1.AttachLabelRequest]) (*connect.Response[v1.AttachLabelResponse], error)
+	DetachLabel(context.Context, *connect.Request[v1.DetachLabelRequest]) (*connect.Response[v1.DetachLabelResponse], error)
+	ListEntityLabels(context.Context, *connect.Request[v1.ListEntityLabelsRequest]) (*connect.Response[v1.ListEntityLabelsResponse], error)
+}
+
+// NewLabelServiceClient constructs a client for the tasker.health.v1.LabelService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewLabelServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) LabelServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &labelServiceClient{
+		createLabel: connect.NewClient[v1.CreateLabelRequest, v1.CreateLabelResponse](
+			httpClient,
+			baseURL+LabelServiceCreateLabelProcedure,
+			connect.WithSchema(labelServiceCreateLabelMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listLabels: connect.NewClient[v1.ListLabelsRequest, v1.ListLabelsResponse](
+			httpClient,
+			baseURL+LabelServiceListLabelsProcedure,
+			connect.WithSchema(labelServiceListLabelsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		attachLabel: connect.NewClient[v1.AttachLabelRequest, v1.AttachLabelResponse](
+			httpClient,
+			baseURL+LabelServiceAttachLabelProcedure,
+			connect.WithSchema(labelServiceAttachLabelMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		detachLabel: connect.NewClient[v1.DetachLabelRequest, v1.DetachLabelResponse](
+			httpClient,
+			baseURL+LabelServiceDetachLabelProcedure,
+			connect.WithSchema(labelServiceDetachLabelMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listEntityLabels: connect.NewClient[v1.ListEntityLabelsRequest, v1.ListEntityLabelsResponse](
+			httpClient,
+			baseURL+LabelServiceListEntityLabelsProcedure,
+			connect.WithSchema(labelServiceListEntityLabelsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// labelServiceClient implements LabelServiceClient.
+type labelServiceClient struct {
+	createLabel      *connect.Client[v1.CreateLabelRequest, v1.CreateLabelResponse]
+	listLabels       *connect.Client[v1.ListLabelsRequest, v1.ListLabelsResponse]
+	attachLabel      *connect.Client[v1.AttachLabelRequest, v1.AttachLabelResponse]
+	detachLabel      *connect.Client[v1.DetachLabelRequest, v1.DetachLabelResponse]
+	listEntityLabels *connect.Client[v1.ListEntityLabelsRequest, v1.ListEntityLabelsResponse]
+}
+
+// CreateLabel calls tasker.health.v1.LabelService.CreateLabel.
+func (c *labelServiceClient) CreateLabel(ctx context.Context, req *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error) {
+	return c.createLabel.CallUnary(ctx, req)
+}
+
+// ListLabels calls tasker.health.v1.LabelService.ListLabels.
+func (c *labelServiceClient) ListLabels(ctx context.Context, req *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error) {
+	return c.listLabels.CallUnary(ctx, req)
+}
+
+// AttachLabel calls tasker.health.v1.LabelService.AttachLabel.
+func (c *labelServiceClient) AttachLabel(ctx context.Context, req *connect.Request[v1.AttachLabelRequest]) (*connect.Response[v1.AttachLabelResponse], error) {
+	return c.attachLabel.CallUnary(ctx, req)
+}
+
+// DetachLabel calls tasker.health.v1.LabelService.DetachLabel.
+func (c *labelServiceClient) DetachLabel(ctx context.Context, req *connect.Request[v1.DetachLabelRequest]) (*connect.Response[v1.DetachLabelResponse], error) {
+	return c.detachLabel.CallUnary(ctx, req)
+}
+
+// ListEntityLabels calls tasker.health.v1.LabelService.ListEntityLabels.
+func (c *labelServiceClient) ListEntityLabels(ctx context.Context, req *connect.Request[v1.ListEntityLabelsRequest]) (*connect.Response[v1.ListEntityLabelsResponse], error) {
+	return c.listEntityLabels.CallUnary(ctx, req)
+}
+
+// LabelServiceHandler is an implementation of the tasker.health.v1.LabelService service.
+type LabelServiceHandler interface {
+	CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error)
+	ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error)
+	AttachLabel(context.Context, *connect.Request[v1.AttachLabelRequest]) (*connect.Response[v1.AttachLabelResponse], error)
+	DetachLabel(context.Context, *connect.Request[v1.DetachLabelRequest]) (*connect.Response[v1.DetachLabelResponse], error)
+	ListEntityLabels(context.Context, *connect.Request[v1.ListEntityLabelsRequest]) (*connect.Response[v1.ListEntityLabelsResponse], error)
+}
+
+// NewLabelServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewLabelServiceHandler(svc LabelServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	labelServiceCreateLabelHandler := connect.NewUnaryHandler(
+		LabelServiceCreateLabelProcedure,
+		svc.CreateLabel,
+		connect.WithSchema(labelServiceCreateLabelMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	labelServiceListLabelsHandler := connect.NewUnaryHandler(
+		LabelServiceListLabelsProcedure,
+		svc.ListLabels,
+		connect.WithSchema(labelServiceListLabelsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	labelServiceAttachLabelHandler := connect.NewUnaryHandler(
+		LabelServiceAttachLabelProcedure,
+		svc.AttachLabel,
+		connect.WithSchema(labelServiceAttachLabelMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	labelServiceDetachLabelHandler := connect.NewUnaryHandler(
+		LabelServiceDetachLabelProcedure,
+		svc.DetachLabel,
+		connect.WithSchema(labelServiceDetachLabelMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	labelServiceListEntityLabelsHandler := connect.NewUnaryHandler(
+		LabelServiceListEntityLabelsProcedure,
+		svc.ListEntityLabels,
+		connect.WithSchema(labelServiceListEntityLabelsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.LabelService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case LabelServiceCreateLabelProcedure:
+			labelServiceCreateLabelHandler.ServeHTTP(w, r)
+		case LabelServiceListLabelsProcedure:
+			labelServiceListLabelsHandler.ServeHTTP(w, r)
+		case LabelServiceAttachLabelProcedure:
+			labelServiceAttachLabelHandler.ServeHTTP(w, r)
+		case LabelServiceDetachLabelProcedure:
+			labelServiceDetachLabelHandler.ServeHTTP(w, r)
+		case LabelServiceListEntityLabelsProcedure:
+			labelServiceListEntityLabelsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedLabelServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedLabelServiceHandler struct{}
+
+func (UnimplementedLabelServiceHandler) CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.LabelService.CreateLabel is not implemented"))
+}
+
+func (UnimplementedLabelServiceHandler) ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.LabelService.ListLabels is not implemented"))
+}
+
+func (UnimplementedLabelServiceHandler) AttachLabel(context.Context, *connect.Request[v1.AttachLabelRequest]) (*connect.Response[v1.AttachLabelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.LabelService.AttachLabel is not implemented"))
+}
+
+func (UnimplementedLabelServiceHandler) DetachLabel(context.Context, *connect.Request[v1.DetachLabelRequest]) (*connect.Response[v1.DetachLabelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.LabelService.DetachLabel is not implemented"))
+}
+
+func (UnimplementedLabelServiceHandler) ListEntityLabels(context.Context, *connect.Request[v1.ListEntityLabelsRequest]) (*connect.Response[v1.ListEntityLabelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.LabelService.ListEntityLabels is not implemented"))
 }
 
 // RepositoryServiceClient is a client for the tasker.health.v1.RepositoryService service.

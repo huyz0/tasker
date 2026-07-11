@@ -158,6 +158,22 @@ export const comments = mysqlTable("comments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const labels = mysqlTable("labels", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  name: varchar("name", { length: 256 }).notNull(),
+  color: varchar("color", { length: 32 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const entityLabels = mysqlTable("entity_labels", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  entityId: varchar("entity_id", { length: 256 }).notNull(),
+  entityType: mysqlEnum("entity_type", ['task', 'artifact']).notNull(),
+  labelId: varchar("label_id", { length: 256 }).notNull().references(() => labels.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const taskNotes = mysqlTable("task_notes", {
   id: varchar("id", { length: 256 }).primaryKey(),
   taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),

@@ -1,6 +1,6 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, RepositoryService, SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
@@ -13,6 +13,7 @@ import { createTaskNotesHandler } from "./modules/tasks/task_notes.handler";
 import { createAgentsHandler } from "./modules/agents/agents.handler";
 import { createArtifactsHandler } from "./modules/artifacts/artifacts.handler";
 import { createCommentsHandler } from "./modules/comments/comments.handler";
+import { createLabelsHandler } from "./modules/labels/labels.handler";
 import { createRepositoriesHandler } from "./modules/repositories/repositories.handler";
 import createSearchHandler from "./modules/search/search.handler";
 import { setupDatabase } from "./db/db";
@@ -66,6 +67,7 @@ const handler = connectNodeAdapter({
     router.service(ArtifactService as any, createArtifactsHandler(db, nc));
     router.service(CommentService as any, createCommentsHandler(db, nc));
     router.service(TaskNoteService as any, createTaskNotesHandler(db, nc));
+    router.service(LabelService as any, createLabelsHandler(db, nc));
     router.service(RepositoryService as any, createRepositoriesHandler(db, nc));
     createSearchHandler(router, db);
   },

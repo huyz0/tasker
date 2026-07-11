@@ -158,6 +158,22 @@ export const comments = sqliteTable("comments", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
+export const labels = sqliteTable("labels", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  name: text("name").notNull(),
+  color: text("color"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const entityLabels = sqliteTable("entity_labels", {
+  id: text("id").primaryKey(),
+  entityId: text("entity_id").notNull(),
+  entityType: text("entity_type").notNull(),
+  labelId: text("label_id").notNull().references(() => labels.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
 export const taskNotes = sqliteTable("task_notes", {
   id: text("id").primaryKey(),
   taskId: text("task_id").notNull().references(() => tasks.id),

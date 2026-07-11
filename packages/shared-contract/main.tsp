@@ -665,6 +665,65 @@ interface TaskNoteService {
   listTaskNotes(request: ListTaskNotesRequest): ListTaskNotesResponse;
 }
 
+// ==== Labels ====
+
+model Label {
+  @field(1) id: string;
+  @field(2) orgId: string;
+  @field(3) name: string;
+  @field(4) color: string;
+}
+
+model CreateLabelRequest {
+  @field(1) orgId: string;
+  @field(2) name: string;
+  @field(3) color: string; // Optional
+}
+model CreateLabelResponse {
+  @field(1) label: Label;
+}
+
+model ListLabelsRequest {
+  @field(1) orgId: string;
+}
+model ListLabelsResponse {
+  @field(1) labels: Label[];
+}
+
+model AttachLabelRequest {
+  @field(1) entityId: string;
+  @field(2) entityType: string;
+  @field(3) labelId: string;
+}
+model AttachLabelResponse {
+  @field(1) success: boolean;
+}
+
+model DetachLabelRequest {
+  @field(1) entityId: string;
+  @field(2) entityType: string;
+  @field(3) labelId: string;
+}
+model DetachLabelResponse {
+  @field(1) success: boolean;
+}
+
+model ListEntityLabelsRequest {
+  @field(1) entityId: string;
+  @field(2) entityType: string;
+}
+model ListEntityLabelsResponse {
+  @field(1) labels: Label[];
+}
+
+interface LabelService {
+  createLabel(request: CreateLabelRequest): CreateLabelResponse;
+  listLabels(request: ListLabelsRequest): ListLabelsResponse;
+  attachLabel(request: AttachLabelRequest): AttachLabelResponse;
+  detachLabel(request: DetachLabelRequest): DetachLabelResponse;
+  listEntityLabels(request: ListEntityLabelsRequest): ListEntityLabelsResponse;
+}
+
 // ==== Repositories ====
 
 model RepositoryLink {

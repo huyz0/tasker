@@ -629,6 +629,68 @@ service TaskNoteService {
   rpc ListTaskNotes(ListTaskNotesRequest) returns (ListTaskNotesResponse);
 }
 
+message Label {
+  string id = 1;
+  string orgId = 2;
+  string name = 3;
+  string color = 4;
+}
+
+message CreateLabelRequest {
+  string orgId = 1;
+  string name = 2;
+  string color = 3;
+}
+
+message CreateLabelResponse {
+  Label label = 1;
+}
+
+message ListLabelsRequest {
+  string orgId = 1;
+}
+
+message ListLabelsResponse {
+  repeated Label labels = 1;
+}
+
+message AttachLabelRequest {
+  string entityId = 1;
+  string entityType = 2;
+  string labelId = 3;
+}
+
+message AttachLabelResponse {
+  bool success = 1;
+}
+
+message DetachLabelRequest {
+  string entityId = 1;
+  string entityType = 2;
+  string labelId = 3;
+}
+
+message DetachLabelResponse {
+  bool success = 1;
+}
+
+message ListEntityLabelsRequest {
+  string entityId = 1;
+  string entityType = 2;
+}
+
+message ListEntityLabelsResponse {
+  repeated Label labels = 1;
+}
+
+service LabelService {
+  rpc CreateLabel(CreateLabelRequest) returns (CreateLabelResponse);
+  rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse);
+  rpc AttachLabel(AttachLabelRequest) returns (AttachLabelResponse);
+  rpc DetachLabel(DetachLabelRequest) returns (DetachLabelResponse);
+  rpc ListEntityLabels(ListEntityLabelsRequest) returns (ListEntityLabelsResponse);
+}
+
 message RepositoryLink {
   string id = 1;
   string project_id = 2;
