@@ -7,12 +7,12 @@ import (
 
 var repoCmd = &cobra.Command{
 	Use:   "repo",
-	Short: "Manage repository integrations and pull requests",
+	Short: "Manage repository integrations and pull requests (mock - not yet wired to the backend)",
 }
 
 var repoListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List repository links for a project or PRs for a task",
+	Short: "List repository links for a project or PRs for a task (mock)",
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		taskId, _ := cmd.Flags().GetString("task-id")
@@ -20,24 +20,24 @@ var repoListCmd = &cobra.Command{
 		if taskId != "" {
 			if isJson {
 				data := []map[string]interface{}{
-					{"id": "pr_1", "remote_pr_id": "123", "title": "Implement auth", "status": "open"},
+					{"id": "pr_1", "remote_pr_id": "123", "title": "Implement auth", "status": "open", "mock": true},
 				}
 				jsonString, _ := json.Marshal(data)
 				cmd.Println(string(jsonString))
 			} else {
-				cmd.Printf("Pull Requests for task %s:\n", taskId)
+				cmd.Printf("Pull Requests for task %s: [mock data - not yet wired to the backend]\n", taskId)
 				cmd.Println("- PR 123: Implement auth (open)")
 			}
 			return
 		}
 		if isJson {
 			data := []map[string]interface{}{
-				{"id": "link_1", "provider": "github", "remote_name": "huyz0/tasker"},
+				{"id": "link_1", "provider": "github", "remote_name": "huyz0/tasker", "mock": true},
 			}
 			jsonString, _ := json.Marshal(data)
 			cmd.Println(string(jsonString))
 		} else {
-			cmd.Println("Repository Links:")
+			cmd.Println("Repository Links: [mock data - not yet wired to the backend]")
 			cmd.Println("- github: huyz0/tasker")
 		}
 	},
@@ -45,45 +45,45 @@ var repoListCmd = &cobra.Command{
 
 var repoLinkCmd = &cobra.Command{
 	Use:   "link",
-	Short: "Link a new repository to a project",
+	Short: "Link a new repository to a project (mock)",
 	Run: func(cmd *cobra.Command, args []string) {
 		provider, _ := cmd.Flags().GetString("provider")
 		remote, _ := cmd.Flags().GetString("remote")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
-			cmd.Printf(`{"status": "linked", "provider": "%s", "remote_name": "%s"}%s`, provider, remote, "\n")
+			cmd.Printf(`{"status": "linked", "provider": "%s", "remote_name": "%s", "mock": true}%s`, provider, remote, "\n")
 		} else {
-			cmd.Printf("Successfully linked %s repository: %s\n", provider, remote)
+			cmd.Printf("[mock - not yet wired to the backend] Successfully linked %s repository: %s\n", provider, remote)
 		}
 	},
 }
 
 var repoSyncCmd = &cobra.Command{
 	Use:   "sync",
-	Short: "Sync pull requests from linked repositories",
+	Short: "Sync pull requests from linked repositories (mock)",
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
-			cmd.Printf(`{"status": "synced", "message": "Pull requests synchronized successfully"}%s`, "\n")
+			cmd.Printf(`{"status": "synced", "message": "Pull requests synchronized successfully", "mock": true}%s`, "\n")
 		} else {
-			cmd.Println("Pull requests synchronized successfully.")
+			cmd.Println("[mock - not yet wired to the backend] Pull requests synchronized successfully.")
 		}
 	},
 }
 
 var repoBuildsCmd = &cobra.Command{
 	Use:   "builds",
-	Short: "List builds for a repository link",
+	Short: "List builds for a repository link (mock)",
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
 			data := []map[string]interface{}{
-				{"id": "build_1", "status": "SUCCESS", "commitSha": "abc1234"},
+				{"id": "build_1", "status": "SUCCESS", "commitSha": "abc1234", "mock": true},
 			}
 			jsonString, _ := json.Marshal(data)
 			cmd.Println(string(jsonString))
 		} else {
-			cmd.Println("Builds:")
+			cmd.Println("Builds: [mock data - not yet wired to the backend]")
 			cmd.Println("- abc1234: SUCCESS")
 		}
 	},
@@ -91,17 +91,17 @@ var repoBuildsCmd = &cobra.Command{
 
 var repoDeploymentsCmd = &cobra.Command{
 	Use:   "deployments",
-	Short: "List deployments for a build",
+	Short: "List deployments for a build (mock)",
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
 			data := []map[string]interface{}{
-				{"id": "dep_1", "environment": "PRODUCTION", "status": "SUCCESS"},
+				{"id": "dep_1", "environment": "PRODUCTION", "status": "SUCCESS", "mock": true},
 			}
 			jsonString, _ := json.Marshal(data)
 			cmd.Println(string(jsonString))
 		} else {
-			cmd.Println("Deployments:")
+			cmd.Println("Deployments: [mock data - not yet wired to the backend]")
 			cmd.Println("- PRODUCTION: SUCCESS")
 		}
 	},

@@ -52,29 +52,29 @@ var tasksListCmd = &cobra.Command{
 
 var tasksCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create a new task",
+	Short: "Create a new task (mock - not yet wired to the backend)",
 	Run: func(cmd *cobra.Command, args []string) {
 		title, _ := cmd.Flags().GetString("title")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
-			cmd.Printf(`{"status": "created", "task": "%s"}%s`, title, "\n")
+			cmd.Printf(`{"status": "created", "task": "%s", "mock": true}%s`, title, "\n")
 		} else {
-			cmd.Printf("Task created: %s\n", title)
+			cmd.Printf("[mock - not yet wired to the backend] Task created: %s\n", title)
 		}
 	},
 }
 
 var tasksAssignCmd = &cobra.Command{
 	Use:   "assign [task_id]",
-	Short: "Assign a task to an agent or user",
+	Short: "Assign a task to an agent or user (mock - not yet wired to the backend)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		assignee, _ := cmd.Flags().GetString("assignee")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if isJson {
-			cmd.Printf(`{"status": "assigned", "task_id": "%s", "assignee": "%s"}%s`, args[0], assignee, "\n")
+			cmd.Printf(`{"status": "assigned", "task_id": "%s", "assignee": "%s", "mock": true}%s`, args[0], assignee, "\n")
 		} else {
-			cmd.Printf("Task %s assigned to %s\n", args[0], assignee)
+			cmd.Printf("[mock - not yet wired to the backend] Task %s assigned to %s\n", args[0], assignee)
 		}
 	},
 }
