@@ -4,6 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { like, or, and, eq } from "drizzle-orm";
 import { requireUserId, assertOrgMember } from "../../lib/authz";
+import { notDeleted } from "../../db/query-builder";
 
 export default (router: ConnectRouter, db: any) => {
   const isStandalone = process.env.STANDALONE === "true";
@@ -28,6 +29,7 @@ export default (router: ConnectRouter, db: any) => {
         .where(
           and(
             eq(projects.orgId, orgId),
+            notDeleted(tasks),
             or(
               like(tasks.title, searchPattern),
               like(tasks.description, searchPattern)
@@ -54,6 +56,7 @@ export default (router: ConnectRouter, db: any) => {
         .where(
           and(
             eq(projects.orgId, orgId),
+            notDeleted(artifacts),
             or(
               like(artifacts.name, searchPattern),
               like(artifacts.content, searchPattern)

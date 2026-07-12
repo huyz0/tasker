@@ -84,4 +84,17 @@ describe("Search Handler", () => {
   it("rejects unauthenticated search", async () => {
     await expect(impl.universalSearch({ query: "Findable", orgId }, makeAuthContext(null))).rejects.toThrow();
   });
+
+  it("excludes soft-deleted (binned) tasks and artifacts from results", async () => {
+    const deletedTaskId = "tsk-" + crypto.randomUUID();
+    const deletedArtifactId = "art-" + crypto.randomUUID();
+    const folderId = "fld-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.tasks).values({ id: deletedTaskId, projectId, title: "Findable Deleted Task", status: "todo", createdAt: new Date(), deletedAt: new Date() });
+    await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: "F2", createdAt: new Date() });
+    await db.insert(schemaSqlite.artifacts).values({ id: deletedArtifactId, folderId, name: "Findable Deleted Artifact", createdAt: new Date(), deletedAt: new Date() });
+
+    const res = await impl.universalSearch({ query: "Findable Deleted", orgId }, ctx);
+    expect(res.results.some((r: any) => r.id === deletedTaskId)).toBe(false);
+    expect(res.results.some((r: any) => r.id === deletedArtifactId)).toBe(false);
+  });
 });
