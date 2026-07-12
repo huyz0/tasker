@@ -1,6 +1,18 @@
-import { describe, it, expect, mock, afterEach } from 'bun:test';
-import { authRoutes } from './auth';
+import { describe, it, expect, mock, afterEach, beforeEach } from 'bun:test';
+import { createAuthRoutes } from './auth';
 import { createSessionToken, parseSessionCookie, verifySessionToken } from './session';
+import { setupIntegrationTest } from '../../test/setup';
+import * as schemaSqlite from '../../db/schema.sqlite';
+import { eq } from 'drizzle-orm';
+
+let db: any;
+let authRoutes: ReturnType<typeof createAuthRoutes>;
+
+beforeEach(async () => {
+  const setup = await setupIntegrationTest();
+  db = setup.db;
+  authRoutes = createAuthRoutes(db);
+});
 
 describe('Auth session status', () => {
   it('reports unauthenticated when there is no session cookie', async () => {
@@ -59,6 +71,52 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
     expect(cookie).toContain('HttpOnly');
     const session = verifySessionToken(parseSessionCookie(cookie)!);
     expect(session?.userId).toBe('testuser123');
+
+    // Login must persist a users row - previously it never did, so
+    // getIdentity and every users.id foreign key would only work for rows a
+    // test had inserted by hand.
+    const userRows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.id, 'testuser123'));
+    expect(userRows).toHaveLength(1);
+    expect(userRows[0].email).toBe('test@example.com');
+
+    globalThis.fetch = originalFetch;
+  });
+
+  it('should accept a pending invitation matching the logged-in email, joining the invited org', async () => {
+    await db.insert(schemaSqlite.organizations).values({ id: 'org-invited', name: 'Invited Org', slug: 'invited-org', createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: 'inviter-1', email: 'inviter@example.com', createdAt: new Date() });
+    await db.insert(schemaSqlite.invitations).values({
+      id: 'inv-1',
+      orgId: 'org-invited',
+      email: 'invitee@example.com',
+      invitedBy: 'inviter-1',
+      createdAt: new Date(),
+    });
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') {
+        return new Response(JSON.stringify({ access_token: 'mock_access_token' }), { status: 200 });
+      }
+      if (urlStr === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        return new Response(JSON.stringify({ id: 'invitee-user-1', email: 'invitee@example.com' }), { status: 200 });
+      }
+      return originalFetch(url, options);
+    }) as unknown as typeof fetch;
+
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/callback?code=123'));
+    expect(res.status).toBe(302);
+
+    const membership = await db.select().from(schemaSqlite.organizationMembers)
+      .where(eq(schemaSqlite.organizationMembers.userId, 'invitee-user-1'));
+    expect(membership).toHaveLength(1);
+    expect(membership[0].orgId).toBe('org-invited');
+    expect(membership[0].role).toBe('member');
+
+    // The invitation is consumed on acceptance, not left dangling.
+    const remainingInvites = await db.select().from(schemaSqlite.invitations).where(eq(schemaSqlite.invitations.id, 'inv-1'));
+    expect(remainingInvites).toHaveLength(0);
 
     globalThis.fetch = originalFetch;
   });

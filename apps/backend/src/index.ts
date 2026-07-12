@@ -4,7 +4,7 @@ import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplat
 import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
-import { authRoutes } from "./modules/auth/auth";
+import { createAuthRoutes } from "./modules/auth/auth";
 import { currentUserIdKey, resolveSessionUserId } from "./modules/auth/session";
 import { createOrgsHandler } from "./modules/orgs/orgs.handler";
 import { createProjectTemplatesHandler, createProjectsHandler } from "./modules/projects/projects.handler";
@@ -54,6 +54,8 @@ const sessionInterceptor: Interceptor = (next) => async (req) => {
   req.contextValues.set(currentUserIdKey, userId);
   return next(req);
 };
+
+const authRoutes = createAuthRoutes(db);
 
 const handler = connectNodeAdapter({
   interceptors: [requestLoggingInterceptor, sessionInterceptor],

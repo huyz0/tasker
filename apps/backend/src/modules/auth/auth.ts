@@ -1,4 +1,7 @@
 import { Elysia } from 'elysia';
+import { eq, and } from 'drizzle-orm';
+import * as schemaMysql from '../../db/schema.mysql';
+import * as schemaSqlite from '../../db/schema.sqlite';
 import { config } from '../../config';
 import { createSessionToken, parseSessionCookie, verifySessionToken } from './session';
 import { logger } from '../../lib/logger';
@@ -13,7 +16,56 @@ function sessionCookie(userId: string): string {
 // browser session. Must match apps/cli/cmd/auth.go's local listener.
 const CLI_CALLBACK_PORT = 3952;
 
-export const authRoutes = new Elysia()
+interface GoogleProfile {
+  id: string;
+  email: string;
+  name?: string;
+  picture?: string;
+}
+
+/**
+ * Upserts the users row for this Google profile (login was previously never
+ * persisting one at all - getIdentity and every users.id foreign key would
+ * only work for rows a test had inserted by hand), then accepts any pending
+ * invitations for this email: joins the invited org and consumes the invite.
+ * Runs on every login, not just the first, since a user may accept new
+ * invitations sent after their account already exists.
+ */
+async function completeLogin(db: any, profile: GoogleProfile): Promise<void> {
+  const isStandalone = process.env.STANDALONE === "true";
+  const users = isStandalone ? schemaSqlite.users : schemaMysql.users;
+  const invitations = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
+  const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
+
+  const existing = await db.select().from(users).where(eq((users as any).id, profile.id)).limit(1);
+  if (existing.length === 0) {
+    await db.insert(users).values({
+      id: profile.id,
+      email: profile.email,
+      name: profile.name || null,
+      avatarUrl: profile.picture || null,
+      createdAt: new Date(),
+    });
+  } else {
+    await db.update(users)
+      .set({ name: profile.name || existing[0].name, avatarUrl: profile.picture || existing[0].avatarUrl })
+      .where(eq((users as any).id, profile.id));
+  }
+
+  const pendingInvites = await db.select().from(invitations).where(eq((invitations as any).email, profile.email));
+  for (const invite of pendingInvites) {
+    const alreadyMember = await db.select().from(members)
+      .where(and(eq((members as any).orgId, invite.orgId), eq((members as any).userId, profile.id)))
+      .limit(1);
+    if (alreadyMember.length === 0) {
+      await db.insert(members).values({ orgId: invite.orgId, userId: profile.id, role: 'member', joinedAt: new Date() });
+    }
+    await db.delete(invitations).where(eq((invitations as any).id, invite.id));
+  }
+}
+
+export function createAuthRoutes(db: any) {
+  return new Elysia()
   .get('/api/auth/google/login', ({ query }) => {
     const isCli = query.cli === 'true';
     const params = new URLSearchParams({
@@ -77,6 +129,7 @@ export const authRoutes = new Elysia()
       }
       
       const profile = (await profileResponse.json()) as any;
+      await completeLogin(db, profile);
 
       if (isCli) {
         const token = createSessionToken(profile.id);
@@ -115,3 +168,4 @@ export const authRoutes = new Elysia()
       }
     });
   });
+}
