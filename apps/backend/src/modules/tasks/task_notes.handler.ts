@@ -4,6 +4,7 @@ import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import { requireUserId, assertOrgMember, getTaskOrgId } from "../../lib/authz";
+import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schema ---
 
@@ -42,7 +43,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
     },
     async listTaskNotes(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
-      if (!req.taskId) throw new Error("taskId is required");
+      if (!req.taskId) throw new ConnectError("taskId is required", Code.InvalidArgument);
       const orgId = await getTaskOrgId(db, req.taskId);
       await assertOrgMember(db, userId, orgId);
 

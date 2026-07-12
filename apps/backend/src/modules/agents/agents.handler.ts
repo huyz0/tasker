@@ -86,7 +86,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
     },
     async listAgents(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
-      if (!req.orgId) throw new Error("orgId is required");
+      if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, req.orgId);
 
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;

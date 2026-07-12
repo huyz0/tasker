@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import { Code } from "@connectrpc/connect";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import createSearchHandler from "./search.handler";
@@ -77,8 +78,14 @@ describe("Search Handler", () => {
     await expect(impl.universalSearch({ query: "Findable", orgId }, makeAuthContext("user-outsider"))).rejects.toThrow();
   });
 
-  it("rejects search with no orgId", async () => {
+  it("rejects search with no orgId using a proper ConnectError InvalidArgument code, not a plain Error", async () => {
     await expect(impl.universalSearch({ query: "Findable" }, ctx)).rejects.toThrow();
+    try {
+      await impl.universalSearch({ query: "Findable" }, ctx);
+      expect.unreachable();
+    } catch (e: any) {
+      expect(e.code).toBe(Code.InvalidArgument);
+    }
   });
 
   it("rejects unauthenticated search", async () => {

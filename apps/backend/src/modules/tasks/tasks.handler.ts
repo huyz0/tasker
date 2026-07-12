@@ -302,7 +302,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     },
     async listTasks(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
-      if (!req.projectId) throw new Error("projectId is required");
+      if (!req.projectId) throw new ConnectError("projectId is required", Code.InvalidArgument);
       const orgId = await getProjectOrgId(db, req.projectId);
       await assertOrgMember(db, userId, orgId);
 

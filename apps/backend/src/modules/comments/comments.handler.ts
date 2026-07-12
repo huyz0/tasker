@@ -4,6 +4,7 @@ import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import { requireUserId, assertOrgMember, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schema ---
 
@@ -51,7 +52,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
     },
     async listComments(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
-      if (!req.entityId || !req.entityType) throw new Error("entityId and entityType are required");
+      if (!req.entityId || !req.entityType) throw new ConnectError("entityId and entityType are required", Code.InvalidArgument);
       const orgId = req.entityType === "task"
         ? await getTaskOrgId(db, req.entityId)
         : await getArtifactOrgId(db, req.entityId);

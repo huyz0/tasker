@@ -4,6 +4,7 @@ import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import { requireUserId, assertOrgMember, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
 
@@ -55,7 +56,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
 
     async listLabels(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
-      if (!req.orgId) throw new Error("orgId is required");
+      if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, req.orgId);
 
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
@@ -73,7 +74,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       const labelsTable = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
       const labelRows = await db.select().from(labelsTable).where(eq((labelsTable as any).id, parsed.labelId)).limit(1);
       if (!labelRows || labelRows.length === 0 || labelRows[0].orgId !== orgId) {
-        throw new Error("Label not found in this organization");
+        throw new ConnectError("Label not found in this organization", Code.NotFound);
       }
 
       const entityLabels = isStandalone ? schemaSqlite.entityLabels : schemaMysql.entityLabels;

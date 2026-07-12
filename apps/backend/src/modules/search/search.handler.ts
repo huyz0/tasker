@@ -1,4 +1,4 @@
-import { type ConnectRouter } from "@connectrpc/connect";
+import { type ConnectRouter, ConnectError, Code } from "@connectrpc/connect";
 import { SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -14,7 +14,7 @@ export default (router: ConnectRouter, db: any) => {
     async universalSearch(request: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const { query, orgId, page } = request;
-      if (!orgId) throw new Error("orgId is required");
+      if (!orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, orgId);
 
       const { tasks, artifacts, projects, folders } = schema;

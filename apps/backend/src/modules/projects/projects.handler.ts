@@ -113,7 +113,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
     },
     async listProjects(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
-      if (!req.orgId) throw new Error("orgId is required");
+      if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, req.orgId);
 
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
@@ -229,7 +229,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
     },
     async listTemplates(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
-      if (!req.orgId) throw new Error("orgId is required");
+      if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, req.orgId);
 
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;

@@ -6,6 +6,7 @@ import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import crypto from "node:crypto";
 import { logger } from "../../lib/logger";
 import { requireUserId, assertOrgMember, getProjectOrgId, getRepositoryLinkOrgId } from "../../lib/authz";
+import { ConnectError, Code } from "@connectrpc/connect";
 import { config } from "../../config";
 
 const ALGORITHM = "aes-256-gcm";
@@ -508,7 +509,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       const links = await db.select().from(linksTable).where(eq((linksTable as any).id, parsed.repositoryLinkId));
 
-      if (links.length === 0) throw new Error("Repository link not found");
+      if (links.length === 0) throw new ConnectError("Repository link not found", Code.NotFound);
       const link = links[0];
 
       if (link.provider !== "github" && link.provider !== "bitbucket") {
@@ -538,7 +539,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       const links = await db.select().from(linksTable).where(eq((linksTable as any).id, parsed.repositoryLinkId));
 
-      if (links.length === 0) throw new Error("Repository link not found");
+      if (links.length === 0) throw new ConnectError("Repository link not found", Code.NotFound);
       const link = links[0];
 
       if (link.provider !== "github" && link.provider !== "bitbucket") {
