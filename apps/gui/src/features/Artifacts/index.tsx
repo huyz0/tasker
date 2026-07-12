@@ -17,6 +17,10 @@ export function ArtifactsBrowser() {
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedArtifact, setSelectedArtifact] = useState<any | null>(null);
+  const [isAddingFolder, setIsAddingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [isAddingArtifact, setIsAddingArtifact] = useState(false);
+  const [newArtifactName, setNewArtifactName] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch all folders for the project
@@ -59,6 +63,28 @@ export function ArtifactsBrowser() {
     },
   });
 
+  const createFolderMutation = useMutation({
+    mutationFn: async (name: string) => {
+      await artifactClient.createFolder({ projectId: activeProjectId, name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['folders', activeProjectId] });
+      setNewFolderName('');
+      setIsAddingFolder(false);
+    },
+  });
+
+  const createArtifactMutation = useMutation({
+    mutationFn: async ({ folderId, name }: { folderId: string; name: string }) => {
+      await artifactClient.createArtifact({ folderId, name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['artifacts', selectedFolderId] });
+      setNewArtifactName('');
+      setIsAddingArtifact(false);
+    },
+  });
+
   const rootFolders = foldersData?.filter(f => !f.parentId) || [];
 
   return (
@@ -67,18 +93,50 @@ export function ArtifactsBrowser() {
       <div className="w-64 flex-shrink-0 flex flex-col bg-card border rounded-lg overflow-hidden shadow-sm">
         <div className="p-3 border-b text-sm font-semibold flex justify-between items-center">
           Artifacts Explorer
-          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Project Alpha</span>
+          <button
+            onClick={() => setIsAddingFolder(true)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+            title="New folder"
+          >
+            + Folder
+          </button>
         </div>
         <div className="p-2 space-y-1 text-sm overflow-y-auto">
-          {isLoadingFolders && <p className="p-2 text-muted-foreground text-xs">Loading folders...</p>}
-          {!isLoadingFolders && rootFolders.length === 0 && (
-             <p className="p-2 text-muted-foreground text-xs">No folders found. Seed from backend.</p>
+          {isAddingFolder && (
+            <form
+              className="flex gap-1 px-1 pb-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (newFolderName.trim()) createFolderMutation.mutate(newFolderName.trim());
+              }}
+            >
+              <input
+                autoFocus
+                type="text"
+                placeholder="Folder name"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onBlur={() => { if (!newFolderName.trim()) setIsAddingFolder(false); }}
+                className="border p-1 rounded text-xs flex-1 bg-background"
+              />
+              <button type="submit" disabled={createFolderMutation.isPending || !newFolderName.trim()} className="text-xs px-2 rounded bg-primary text-primary-foreground disabled:opacity-50">
+                Add
+              </button>
+            </form>
           )}
-          
+          {isLoadingFolders && <p className="p-2 text-muted-foreground text-xs">Loading folders...</p>}
+          {!isLoadingFolders && rootFolders.length === 0 && !isAddingFolder && (
+             <p className="p-2 text-muted-foreground text-xs">No folders yet.</p>
+          )}
+
           {rootFolders.map(folder => (
             <div key={folder.id}>
               <div
-                onClick={() => setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id)}
+                onClick={() => {
+                  setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id);
+                  setIsAddingArtifact(false);
+                  setNewArtifactName('');
+                }}
                 className={`px-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center justify-between gap-2 group ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
               >
                 <span className="flex items-center gap-2"><span>{selectedFolderId === folder.id ? '📂' : '📁'}</span> {folder.name}</span>
@@ -121,8 +179,37 @@ export function ArtifactsBrowser() {
                       </button>
                     </div>
                   ))}
-                  {!isLoadingArtifacts && artifactsData?.length === 0 && (
+                  {!isLoadingArtifacts && artifactsData?.length === 0 && !isAddingArtifact && (
                     <div className="text-xs text-muted-foreground/50 px-2 py-1 italic">Empty folder</div>
+                  )}
+                  {isAddingArtifact ? (
+                    <form
+                      className="flex gap-1 px-1"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (newArtifactName.trim()) createArtifactMutation.mutate({ folderId: folder.id, name: newArtifactName.trim() });
+                      }}
+                    >
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Artifact name"
+                        value={newArtifactName}
+                        onChange={(e) => setNewArtifactName(e.target.value)}
+                        onBlur={() => { if (!newArtifactName.trim()) setIsAddingArtifact(false); }}
+                        className="border p-1 rounded text-xs flex-1 bg-background"
+                      />
+                      <button type="submit" disabled={createArtifactMutation.isPending || !newArtifactName.trim()} className="text-xs px-2 rounded bg-primary text-primary-foreground disabled:opacity-50">
+                        Add
+                      </button>
+                    </form>
+                  ) : (
+                    <button
+                      onClick={() => setIsAddingArtifact(true)}
+                      className="w-full text-left px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm"
+                    >
+                      + New artifact
+                    </button>
                   )}
                 </div>
               )}

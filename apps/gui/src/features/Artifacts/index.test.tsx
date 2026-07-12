@@ -7,6 +7,8 @@ const {
   mockListArtifacts,
   mockArchiveFolder,
   mockArchiveArtifact,
+  mockCreateFolder,
+  mockCreateArtifact,
   mockListEntityLabels,
   mockListLabels,
 } = vi.hoisted(() => ({
@@ -14,6 +16,8 @@ const {
   mockListArtifacts: vi.fn(),
   mockArchiveFolder: vi.fn(),
   mockArchiveArtifact: vi.fn(),
+  mockCreateFolder: vi.fn(),
+  mockCreateArtifact: vi.fn(),
   mockListEntityLabels: vi.fn(),
   mockListLabels: vi.fn(),
 }));
@@ -35,6 +39,8 @@ vi.mock('@connectrpc/connect', () => ({
       listArtifacts: mockListArtifacts,
       archiveFolder: mockArchiveFolder,
       archiveArtifact: mockArchiveArtifact,
+      createFolder: mockCreateFolder,
+      createArtifact: mockCreateArtifact,
     };
   }),
 }));
@@ -67,6 +73,8 @@ describe('ArtifactsBrowser', () => {
     mockListArtifacts.mockReset();
     mockArchiveFolder.mockReset();
     mockArchiveArtifact.mockReset();
+    mockCreateFolder.mockReset();
+    mockCreateArtifact.mockReset();
     mockListEntityLabels.mockReset();
     mockListEntityLabels.mockResolvedValue({ labels: [] });
     mockListLabels.mockReset();
@@ -111,5 +119,41 @@ describe('ArtifactsBrowser', () => {
     fireEvent.click(screen.getByText('docs'));
 
     await waitFor(() => expect(screen.getByText('Empty folder')).toBeDefined());
+  });
+
+  it('creates a new folder via a real API call, using real data instead of a static placeholder', async () => {
+    mockListFolders.mockResolvedValue({ folders: [] });
+    mockCreateFolder.mockResolvedValue({ folder: { id: 'fld-new', projectId: 'proj-1', name: 'New Folder' } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('+ Folder')).toBeDefined());
+    fireEvent.click(screen.getByText('+ Folder'));
+
+    const input = await screen.findByPlaceholderText('Folder name');
+    fireEvent.change(input, { target: { value: 'New Folder' } });
+    fireEvent.click(screen.getByText('Add'));
+
+    await waitFor(() => expect(mockCreateFolder).toHaveBeenCalledWith({ projectId: 'proj-1', name: 'New Folder' }));
+  });
+
+  it('creates a new artifact within a selected folder via a real API call', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    mockCreateArtifact.mockResolvedValue({ artifact: { id: 'art-new', folderId: 'fld-1', name: 'notes.md' } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+
+    await waitFor(() => expect(screen.getByText('+ New artifact')).toBeDefined());
+    fireEvent.click(screen.getByText('+ New artifact'));
+
+    const input = await screen.findByPlaceholderText('Artifact name');
+    fireEvent.change(input, { target: { value: 'notes.md' } });
+    fireEvent.click(screen.getByText('Add'));
+
+    await waitFor(() => expect(mockCreateArtifact).toHaveBeenCalledWith({ folderId: 'fld-1', name: 'notes.md' }));
   });
 });
