@@ -812,12 +812,12 @@ model ListBuildsResponse {
 
 model ListDeploymentsRequest {
   @field(1) buildId: string;
-  @field(2) page?: PageRequest;
+  @field(2) repositoryLinkId: string;
+  @field(3) commitSha: string;
 }
 
 model ListDeploymentsResponse {
   @field(1) deployments: Deployment[];
-  @field(2) page?: PageResponse;
 }
 
 interface RepositoryService {

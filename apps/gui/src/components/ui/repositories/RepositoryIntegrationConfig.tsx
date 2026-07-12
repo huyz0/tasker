@@ -31,11 +31,11 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function DeploymentsList({ buildId }: { buildId: string }) {
+function DeploymentsList({ buildId, repositoryLinkId, commitSha }: { buildId: string; repositoryLinkId: string; commitSha: string }) {
   const { data: deployments, isLoading } = useQuery({
-    queryKey: ['deployments', buildId],
+    queryKey: ['deployments', repositoryLinkId, commitSha],
     queryFn: async () => {
-      const resp = await repositoryClient.listDeployments({ buildId });
+      const resp = await repositoryClient.listDeployments({ buildId, repositoryLinkId, commitSha });
       return resp.deployments;
     },
   });
@@ -81,7 +81,9 @@ function BuildsPanel({ repositoryLinkId }: { repositoryLinkId: string }) {
             <span>{build.commitSha.substring(0, 7)}</span>
             <StatusBadge status={build.status} />
           </div>
-          {expandedBuildId === build.id && <DeploymentsList buildId={build.id} />}
+          {expandedBuildId === build.id && (
+            <DeploymentsList buildId={build.id} repositoryLinkId={repositoryLinkId} commitSha={build.commitSha} />
+          )}
         </li>
       ))}
     </ul>

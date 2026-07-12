@@ -180,13 +180,23 @@ var repoBuildsCmd = &cobra.Command{
 
 var repoDeploymentsCmd = &cobra.Command{
 	Use:   "deployments [build_id]",
-	Short: "List deployments for a build",
+	Short: "List deployments for a build's commit (GitHub deployments are keyed by commit sha, not by CI run)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
+		repositoryLinkID, _ := cmd.Flags().GetString("link")
+		commitSha, _ := cmd.Flags().GetString("commit")
+		if repositoryLinkID == "" || commitSha == "" {
+			cmd.Println("Error: --link and --commit are both required (run `repo builds` first to find a build's commit sha).")
+			return
+		}
 
 		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
-		res, err := client.ListDeployments(context.Background(), connect.NewRequest(&healthv1.ListDeploymentsRequest{BuildId: args[0]}))
+		res, err := client.ListDeployments(context.Background(), connect.NewRequest(&healthv1.ListDeploymentsRequest{
+			BuildId:          args[0],
+			RepositoryLinkId: repositoryLinkID,
+			CommitSha:        commitSha,
+		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list deployments: %v\n", err)
 			return
@@ -222,4 +232,7 @@ func init() {
 
 	repoSyncCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	repoPrsCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
+
+	repoDeploymentsCmd.Flags().String("link", "", "Repository link ID (from `repo list`)")
+	repoDeploymentsCmd.Flags().String("commit", "", "Commit SHA to look up deployments for (from `repo builds`)")
 }

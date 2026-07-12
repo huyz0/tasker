@@ -781,6 +781,8 @@ message ListBuildsResponse {
 
 message ListDeploymentsRequest {
   string build_id = 1;
+  string repository_link_id = 2;
+  string commit_sha = 3;
 }
 
 message ListDeploymentsResponse {

@@ -124,7 +124,7 @@ describe('RepositoryIntegrationConfig', () => {
 
     fireEvent.click(screen.getByText('abc1234'));
 
-    await waitFor(() => expect(mockListDeployments).toHaveBeenCalledWith({ buildId: 'build-1' }));
+    await waitFor(() => expect(mockListDeployments).toHaveBeenCalledWith({ buildId: 'build-1', repositoryLinkId: 'link-1', commitSha: 'abc1234def' }));
     await waitFor(() => expect(screen.getByText('STAGING')).toBeDefined());
   });
 

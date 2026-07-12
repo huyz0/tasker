@@ -49,6 +49,17 @@ func (f *fakeRepositoryHandler) ListPullRequests(
 	}), nil
 }
 
+func (f *fakeRepositoryHandler) ListDeployments(
+	_ context.Context,
+	req *connect.Request[healthv1.ListDeploymentsRequest],
+) (*connect.Response[healthv1.ListDeploymentsResponse], error) {
+	return connect.NewResponse(&healthv1.ListDeploymentsResponse{
+		Deployments: []*healthv1.Deployment{
+			{Id: "dep_1", BuildId: req.Msg.BuildId, Environment: "production", Status: "SUCCESS"},
+		},
+	}), nil
+}
+
 func TestRepoListCmd(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
@@ -106,5 +117,41 @@ func TestRepoPrsCmd(t *testing.T) {
 	out := b.String()
 	if !strings.Contains(out, "remote_pr_id") {
 		t.Fatalf("expected JSON output containing PRs, got %s", out)
+	}
+}
+
+func TestRepoDeploymentsCmd(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"repo", "deployments", "run-123", "--link", "link_1", "--commit", "abc123"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "production") || !strings.Contains(out, "SUCCESS") {
+		t.Fatalf("expected output to contain the deployment, got %s", out)
+	}
+}
+
+func TestRepoDeploymentsCmdRequiresLinkAndCommit(t *testing.T) {
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	repoDeploymentsCmd.Flags().Set("link", "")
+	repoDeploymentsCmd.Flags().Set("commit", "")
+	rootCmd.SetArgs([]string{"repo", "deployments", "run-123"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "--link and --commit are both required") {
+		t.Fatalf("expected a validation error, got %s", out)
 	}
 }

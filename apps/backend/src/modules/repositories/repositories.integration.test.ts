@@ -151,6 +151,28 @@ testIf("Real GitHub Integration: Repositories", () => {
     }
   });
 
+  it("should fetch real deployments for the sandbox repo's default branch commit via listDeployments proxy", async () => {
+    // The sandbox repo may have zero deployments for this sha - that's fine,
+    // we're verifying the real GitHub API round-trip (auth, URL construction,
+    // status lookup) succeeds, not that deployments exist.
+    const response = await handler.listDeployments({
+      buildId: `run-${executionId}`,
+      repositoryLinkId: `link-${executionId}`,
+      commitSha: "main",
+    }, ctx);
+
+    expect(response).toHaveProperty("deployments");
+    expect(Array.isArray(response.deployments)).toBe(true);
+
+    if (response.deployments.length > 0) {
+      const deployment = response.deployments[0];
+      expect(deployment).toHaveProperty("id");
+      expect(deployment).toHaveProperty("environment");
+      expect(deployment).toHaveProperty("status");
+      expect(deployment).toHaveProperty("createdAt");
+    }
+  });
+
   it("should synchronize real pull requests", async () => {
     // First we create a fake PR in the sandbox using direct API
     const prTitle = `[${executionId}] Dummy PR for Sync Test`;

@@ -247,4 +247,89 @@ describe("Repositories Handler >", () => {
     await expect(repHandler.listBuilds({ repositoryLinkId: link.id }, ctx2)).rejects.toThrow(/GitHub API returned 503/);
     await expect(repHandler.listBuilds({ repositoryLinkId: link.id }, makeAuthContext("usr-outsider"))).rejects.toThrow();
   });
+
+  test("listDeployments fetches real deployments for a commit sha and resolves each one's latest status", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P6", ownerId: "usr-2" }, ctx2)).project.id;
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/deployments?sha=")) {
+        return new Response(JSON.stringify([
+          { id: 111, environment: "production", created_at: "2024-01-01T00:00:00Z" },
+          { id: 222, environment: "staging", created_at: "2024-01-02T00:00:00Z" },
+        ]), { status: 200 });
+      }
+      if (url.toString().includes("/deployments/111/statuses")) {
+        return new Response(JSON.stringify([{ state: "success" }]), { status: 200 });
+      }
+      if (url.toString().includes("/deployments/222/statuses")) {
+        return new Response(JSON.stringify([{ state: "failure" }]), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const link = (await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "github",
+      remoteName: "foo/deploy-repo",
+      oauthCode: "fake-code",
+    }, ctx2)).link;
+
+    const res = await repHandler.listDeployments({
+      buildId: "run-123",
+      repositoryLinkId: link.id,
+      commitSha: "abc123",
+    }, ctx2);
+
+    expect(res.deployments).toHaveLength(2);
+    const prod = res.deployments.find((d: any) => d.environment === "production");
+    expect(prod.status).toBe("SUCCESS");
+    expect(prod.buildId).toBe("run-123");
+    const staging = res.deployments.find((d: any) => d.environment === "staging");
+    expect(staging.status).toBe("FAILURE");
+
+    await expect(
+      repHandler.listDeployments({ buildId: "run-123", repositoryLinkId: link.id, commitSha: "abc123" }, makeAuthContext("usr-outsider"))
+    ).rejects.toThrow();
+  });
+
+  test("listDeployments returns an empty list for a non-github provider without calling out", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P7", ownerId: "usr-2" }, ctx2)).project.id;
+    const link = (await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "bitbucket",
+      remoteName: "foo/bb-repo",
+      oauthCode: "fake-code",
+    }, ctx2)).link;
+
+    const res = await repHandler.listDeployments({ buildId: "run-1", repositoryLinkId: link.id, commitSha: "sha1" }, ctx2);
+    expect(res.deployments).toEqual([]);
+  });
+
+  test("listDeployments throws on provider failure instead of returning fabricated data", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P8", ownerId: "usr-2" }, ctx2)).project.id;
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/deployments?sha=")) {
+        return new Response("Service unavailable", { status: 503 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const link = (await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "github",
+      remoteName: "foo/broken-deployments",
+      oauthCode: "fake-code",
+    }, ctx2)).link;
+
+    await expect(
+      repHandler.listDeployments({ buildId: "run-1", repositoryLinkId: link.id, commitSha: "sha1" }, ctx2)
+    ).rejects.toThrow(/GitHub API returned 503/);
+  });
 });

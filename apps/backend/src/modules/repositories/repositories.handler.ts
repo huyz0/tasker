@@ -66,7 +66,8 @@ const ListBuildsSchema = z.object({
 
 const ListDeploymentsSchema = z.object({
   buildId: z.string().min(1),
-  page: z.any().optional()
+  repositoryLinkId: z.string().min(1),
+  commitSha: z.string().min(1),
 });
 
 export const createRepositoriesHandler = (db: any, nc: any = null) => {
@@ -304,18 +305,78 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
 
     async listDeployments(req: unknown, { values: contextValues }: { values: any }) {
-      requireUserId(contextValues);
+      const userId = requireUserId(contextValues);
       const parsed = ListDeploymentsSchema.parse(req);
+      const orgId = await getRepositoryLinkOrgId(db, parsed.repositoryLinkId);
+      await assertOrgMember(db, userId, orgId);
 
-      return { deployments: [
-        {
-          id: `dep-${parsed.buildId}`,
-          buildId: parsed.buildId,
-          environment: 'STAGING',
-          status: 'SUCCESS',
-          createdAt: new Date().toISOString()
+      const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
+      const links = await db.select().from(linksTable).where(eq((linksTable as any).id, parsed.repositoryLinkId));
+
+      if (links.length === 0) throw new Error("Repository link not found");
+      const link = links[0];
+
+      if (link.provider !== "github") {
+        return { deployments: [] };
+      }
+
+      const token = decryptToken(link.accessTokenEncrypted);
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "Tasker-Agent"
+      };
+
+      let deploymentsResponse: Response;
+      try {
+        // GitHub deployments are keyed by commit sha, not by our workflow-run
+        // based build id - there's no other stable link between a CI run and
+        // a deployment, so this is the only correct way to associate them.
+        deploymentsResponse = await fetch(
+          `https://api.github.com/repos/${link.remoteName}/deployments?sha=${parsed.commitSha}&per_page=10`,
+          { headers }
+        );
+      } catch (e) {
+        logger.error({ remoteName: link.remoteName, err: e }, "listDeployments.fetch_failed");
+        throw new Error(`Failed to fetch deployments for ${link.remoteName}: ${(e as Error).message}`);
+      }
+
+      if (!deploymentsResponse.ok) {
+        logger.error({ remoteName: link.remoteName, status: deploymentsResponse.status }, "listDeployments.provider_error");
+        throw new Error(`GitHub API returned ${deploymentsResponse.status} while fetching deployments for ${link.remoteName}`);
+      }
+
+      const rawDeployments = await deploymentsResponse.json() as any[];
+
+      const deployments = await Promise.all(rawDeployments.map(async (deployment: any) => {
+        let status = 'PENDING';
+        try {
+          // Statuses are returned newest-first; the latest one is this
+          // deployment's current state.
+          const statusesResponse = await fetch(
+            `https://api.github.com/repos/${link.remoteName}/deployments/${deployment.id}/statuses?per_page=1`,
+            { headers }
+          );
+          if (statusesResponse.ok) {
+            const statuses = await statusesResponse.json() as any[];
+            const state = statuses[0]?.state;
+            if (state === 'success') status = 'SUCCESS';
+            else if (state === 'failure' || state === 'error') status = 'FAILURE';
+          }
+        } catch (e) {
+          logger.error({ remoteName: link.remoteName, deploymentId: deployment.id, err: e }, "listDeployments.status_fetch_failed");
         }
-      ] };
+
+        return {
+          id: String(deployment.id),
+          buildId: parsed.buildId,
+          environment: deployment.environment,
+          status,
+          createdAt: deployment.created_at,
+        };
+      }));
+
+      return { deployments };
     }
   };
 };
