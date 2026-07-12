@@ -233,7 +233,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, req.orgId);
 
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
-      const { items, nextCursor } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, req.orgId), req.page);
+      const { items, nextCursor } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, req.orgId), req.page, (pts as any).name, { name: (pts as any).name, createdAt: (pts as any).createdAt });
 
       return {
         templates: items.map((t: any) => ({

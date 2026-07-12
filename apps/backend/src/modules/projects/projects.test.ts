@@ -154,6 +154,19 @@ describe("Projects Handler Integration Logic", () => {
     await expect(ptHandler.listTemplates({ orgId: "org-test" }, makeAuthContext("user-outsider"))).rejects.toThrow();
   });
 
+  test("listTemplates supports filter and sort by name", async () => {
+    await ptHandler.createTemplate({ orgId: "org-test", name: "Zebra Template" }, ctx);
+    await ptHandler.createTemplate({ orgId: "org-test", name: "Aardvark Template" }, ctx);
+
+    const filtered = await ptHandler.listTemplates({ orgId: "org-test", page: { filter: "Zebra" } }, ctx);
+    expect(filtered.templates.every((t: any) => t.name.includes("Zebra"))).toBe(true);
+    expect(filtered.templates.length).toBeGreaterThan(0);
+
+    const sorted = await ptHandler.listTemplates({ orgId: "org-test", page: { sort: "name:asc" } }, ctx);
+    const names = sorted.templates.map((t: any) => t.name);
+    expect(names.indexOf("Aardvark Template")).toBeLessThan(names.indexOf("Zebra Template"));
+  });
+
   test("archiveProject hides the project from listProjects and restoreProject brings it back, admin-only", async () => {
     const memberId = "user-archive-member-" + Date.now();
     await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });

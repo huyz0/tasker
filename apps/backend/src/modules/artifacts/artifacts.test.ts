@@ -234,6 +234,19 @@ describe("Artifacts Handler", () => {
     expect(res.folders.map((f: any) => f.name)).toContain("Folder 1");
   });
 
+  it("should filter and sort folders by name", async () => {
+    await handler.createFolder({ projectId, name: "Zebra Folder" }, ctx);
+    await handler.createFolder({ projectId, name: "Alpha Folder" }, ctx);
+
+    const filtered = await handler.listFolders({ projectId, page: { filter: "Zebra" } }, ctx);
+    expect(filtered.folders.every((f: any) => f.name.includes("Zebra"))).toBe(true);
+    expect(filtered.folders.length).toBeGreaterThan(0);
+
+    const sorted = await handler.listFolders({ projectId, page: { sort: "name:asc" } }, ctx);
+    const names = sorted.folders.map((f: any) => f.name);
+    expect(names.indexOf("Alpha Folder")).toBeLessThan(names.indexOf("Zebra Folder"));
+  });
+
   it("should reject listFolders with missing projectId", async () => {
     expect(handler.listFolders({}, ctx)).rejects.toThrow();
   });
@@ -252,6 +265,21 @@ describe("Artifacts Handler", () => {
     const res = await handler.listArtifacts({ folderId: fId }, ctx);
     expect(res.artifacts).toHaveLength(2);
     expect(res.artifacts.map((a: any) => a.name)).toContain("Art 1");
+  });
+
+  it("should filter and sort artifacts by name", async () => {
+    const fld = await handler.createFolder({ projectId, name: "Sortable Fld" }, ctx);
+    const fId = fld.folder.id;
+    await handler.createArtifact({ folderId: fId, name: "Zebra Art" }, ctx);
+    await handler.createArtifact({ folderId: fId, name: "Alpha Art" }, ctx);
+
+    const filtered = await handler.listArtifacts({ folderId: fId, page: { filter: "Zebra" } }, ctx);
+    expect(filtered.artifacts.every((a: any) => a.name.includes("Zebra"))).toBe(true);
+    expect(filtered.artifacts.length).toBeGreaterThan(0);
+
+    const sorted = await handler.listArtifacts({ folderId: fId, page: { sort: "name:asc" } }, ctx);
+    const names = sorted.artifacts.map((a: any) => a.name);
+    expect(names.indexOf("Alpha Art")).toBeLessThan(names.indexOf("Zebra Art"));
   });
 
   it("should reject listArtifacts with missing folderId", async () => {

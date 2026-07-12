@@ -142,7 +142,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       const flds = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const deletedFolderFilter = req.onlyDeleted ? not(notDeleted(flds)) : notDeleted(flds);
-      const { items, nextCursor } = await executePaginatedQuery(db, flds, and(eq((flds as any).projectId, req.projectId), deletedFolderFilter), req.page);
+      const { items, nextCursor } = await executePaginatedQuery(db, flds, and(eq((flds as any).projectId, req.projectId), deletedFolderFilter), req.page, (flds as any).name, { name: (flds as any).name, createdAt: (flds as any).createdAt });
 
       return {
         folders: items.map((f: any) => ({
@@ -160,7 +160,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const deletedArtifactFilter = req.onlyDeleted ? not(notDeleted(arts)) : notDeleted(arts);
-      const { items, nextCursor } = await executePaginatedQuery(db, arts, and(eq((arts as any).folderId, req.folderId), deletedArtifactFilter), req.page);
+      const { items, nextCursor } = await executePaginatedQuery(db, arts, and(eq((arts as any).folderId, req.folderId), deletedArtifactFilter), req.page, (arts as any).name, { name: (arts as any).name, createdAt: (arts as any).createdAt });
 
       return {
         artifacts: items.map((a: any) => ({
