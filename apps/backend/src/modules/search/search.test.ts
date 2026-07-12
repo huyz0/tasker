@@ -85,6 +85,23 @@ describe("Search Handler", () => {
     await expect(impl.universalSearch({ query: "Findable", orgId }, makeAuthContext(null))).rejects.toThrow();
   });
 
+  it("reports totalCount for the full matched set", async () => {
+    const res = await impl.universalSearch({ query: "Findable", orgId }, ctx);
+    // totalCount reflects everything matched (2 here), independent of the
+    // per-request limit split across task/artifact result types.
+    expect(res.page.totalCount).toBe(2);
+  });
+
+  it("respects page.limit, splitting it across task and artifact results, and reports the full totalCount regardless", async () => {
+    for (let i = 0; i < 4; i++) {
+      await db.insert(schemaSqlite.tasks).values({ id: `tsk-limit-${i}`, projectId, title: `UniquelyLimitable Task ${i}`, status: "todo", createdAt: new Date() });
+    }
+
+    const res = await impl.universalSearch({ query: "UniquelyLimitable", orgId, page: { limit: 2 } }, ctx);
+    expect(res.results.length).toBeLessThanOrEqual(2);
+    expect(res.page.totalCount).toBe(4);
+  });
+
   it("excludes soft-deleted (binned) tasks and artifacts from results", async () => {
     const deletedTaskId = "tsk-" + crypto.randomUUID();
     const deletedArtifactId = "art-" + crypto.randomUUID();

@@ -880,11 +880,13 @@ message SearchResult {
 
 message UniversalSearchRequest {
   string query = 1;
+  PageRequest page = 2;
   string orgId = 3;
 }
 
 message UniversalSearchResponse {
   repeated SearchResult results = 1;
+  PageResponse page = 2;
 }
 
 service SearchService {
