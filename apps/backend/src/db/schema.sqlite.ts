@@ -97,6 +97,7 @@ export const agentRoles = sqliteTable("agent_roles", {
   name: text("name").notNull(),
   systemPrompt: text("system_prompt").notNull(),
   capabilities: text("capabilities").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }),
 });
 
 export const agents = sqliteTable("agents", {
@@ -105,6 +106,7 @@ export const agents = sqliteTable("agents", {
   agentRoleId: text("agent_role_id").notNull().references(() => agentRoles.id),
   name: text("name").notNull(),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }),
 });
 
 export const tasks = sqliteTable("tasks", {

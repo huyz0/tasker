@@ -316,10 +316,12 @@ message CreateAgentRoleResponse {
 }
 
 message ListAgentRolesRequest {
+  PageRequest page = 1;
 }
 
 message ListAgentRolesResponse {
   repeated AgentRole roles = 1;
+  PageResponse page = 2;
 }
 
 message CreateAgentRequest {
@@ -345,10 +347,12 @@ service AgentService {
 message ListAgentsRequest {
   string org_id = 1;
   bool onlyDeleted = 2;
+  PageRequest page = 3;
 }
 
 message ListAgentsResponse {
   repeated Agent agents = 1;
+  PageResponse page = 2;
 }
 
 message ArchiveAgentRequest {
@@ -722,10 +726,12 @@ message CreateLabelResponse {
 
 message ListLabelsRequest {
   string orgId = 1;
+  PageRequest page = 2;
 }
 
 message ListLabelsResponse {
   repeated Label labels = 1;
+  PageResponse page = 2;
 }
 
 message AttachLabelRequest {

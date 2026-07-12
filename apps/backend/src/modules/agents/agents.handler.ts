@@ -4,7 +4,7 @@ import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { requireUserId, assertOrgMember } from "../../lib/authz";
-import { notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
+import { notDeleted, softDeleteById, restoreById, executePaginatedQuery, insertRecord } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
 
@@ -49,15 +49,15 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
         capabilities: parsed.capabilities,
       };
 
-      await db.insert(roles).values(payload);
+      await insertRecord(db, roles, payload, isStandalone);
 
       return { role: payload };
     },
-    async listAgentRoles(_req: unknown, { values: contextValues }: { values: any }) {
+    async listAgentRoles(req: any, { values: contextValues }: { values: any }) {
       requireUserId(contextValues);
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
-      const rows = await db.select().from(roles);
-      return { roles: rows };
+      const { items, nextCursor } = await executePaginatedQuery(db, roles, undefined, req?.page, (roles as any).name, { name: (roles as any).name });
+      return { roles: items, page: { nextCursor } };
     },
     async createAgent(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
@@ -79,7 +79,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
         name: parsed.name,
       };
 
-      await db.insert(agents).values(payload);
+      await insertRecord(db, agents, payload, isStandalone);
 
       if (nc) nc.publish("domain.agent.created", Buffer.from(JSON.stringify(payload)));
       return { agent: payload };
@@ -91,8 +91,8 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(agentsSchema)) : notDeleted(agentsSchema);
-      const result = await db.select().from(agentsSchema).where(and(eq((agentsSchema as any).orgId, req.orgId), deletedFilter));
-      return { agents: result };
+      const { items, nextCursor } = await executePaginatedQuery(db, agentsSchema, and(eq((agentsSchema as any).orgId, req.orgId), deletedFilter), req.page, (agentsSchema as any).name, { name: (agentsSchema as any).name, createdAt: (agentsSchema as any).createdAt });
+      return { agents: items, page: { nextCursor } };
     },
     async archiveAgent(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

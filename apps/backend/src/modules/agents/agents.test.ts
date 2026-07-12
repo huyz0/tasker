@@ -63,6 +63,40 @@ describe("Agents Handler Integration Tests", () => {
     await expect(handler.createAgent({ orgId, agentRoleId: "role-does-not-exist", name: "X" }, ctx)).rejects.toThrow();
   });
 
+  test("listAgentRoles and listAgents support filter and sort by name", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-agents-fs-" + Date.now().toString();
+    const userId = "user-agents-fs-" + Date.now().toString();
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "FS Org", slug: "fs-org-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
+    const ctx = makeAuthContext(userId);
+    const handler = createAgentsHandler(db, nc);
+
+    const zebraRole = await handler.createAgentRole({ name: "Zebra Role", systemPrompt: "p", capabilities: "{}" }, ctx);
+    const alphaRole = await handler.createAgentRole({ name: "Alpha Role", systemPrompt: "p", capabilities: "{}" }, ctx);
+
+    const filteredRoles = await handler.listAgentRoles({ page: { filter: "Zebra Role" } }, ctx);
+    expect(filteredRoles.roles.some((r: any) => r.id === zebraRole.role.id)).toBe(true);
+    expect(filteredRoles.roles.some((r: any) => r.id === alphaRole.role.id)).toBe(false);
+
+    const sortedRoles = await handler.listAgentRoles({ page: { sort: "name:asc" } }, ctx);
+    const roleNames = sortedRoles.roles.map((r: any) => r.name);
+    expect(roleNames.indexOf("Alpha Role")).toBeLessThan(roleNames.indexOf("Zebra Role"));
+
+    await handler.createAgent({ orgId, agentRoleId: zebraRole.role.id, name: "Zebra Agent" }, ctx);
+    await handler.createAgent({ orgId, agentRoleId: alphaRole.role.id, name: "Alpha Agent" }, ctx);
+
+    const filteredAgents = await handler.listAgents({ orgId, page: { filter: "Zebra" } }, ctx);
+    expect(filteredAgents.agents.every((a: any) => a.name.includes("Zebra"))).toBe(true);
+    expect(filteredAgents.agents.length).toBeGreaterThan(0);
+
+    const sortedAgents = await handler.listAgents({ orgId, page: { sort: "name:asc" } }, ctx);
+    const agentNames = sortedAgents.agents.map((a: any) => a.name);
+    expect(agentNames.indexOf("Alpha Agent")).toBeLessThan(agentNames.indexOf("Zebra Agent"));
+  });
+
   test("archiveAgent hides the agent from listAgents and restoreAgent brings it back", async () => {
     const { db, nc } = await setupIntegrationTest();
 

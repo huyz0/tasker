@@ -349,9 +349,12 @@ model CreateAgentRoleResponse {
   @field(1) role: AgentRole;
 }
 
-model ListAgentRolesRequest {}
+model ListAgentRolesRequest {
+  @field(1) page?: PageRequest;
+}
 model ListAgentRolesResponse {
   @field(1) roles: AgentRole[];
+  @field(2) page?: PageResponse;
 }
 
 model CreateAgentRequest {
@@ -367,10 +370,12 @@ model CreateAgentResponse {
 model ListAgentsRequest {
   @field(1) orgId: string;
   @field(2) onlyDeleted?: boolean;
+  @field(3) page?: PageRequest;
 }
 
 model ListAgentsResponse {
   @field(1) agents: Agent[];
+  @field(2) page?: PageResponse;
 }
 
 model ArchiveAgentRequest {
@@ -759,9 +764,11 @@ model CreateLabelResponse {
 
 model ListLabelsRequest {
   @field(1) orgId: string;
+  @field(2) page?: PageRequest;
 }
 model ListLabelsResponse {
   @field(1) labels: Label[];
+  @field(2) page?: PageResponse;
 }
 
 model AttachLabelRequest {

@@ -93,6 +93,7 @@ export const agentRoles = mysqlTable("agent_roles", {
   name: varchar("name", { length: 256 }).notNull(),
   systemPrompt: varchar("system_prompt", { length: 4096 }).notNull(),
   capabilities: varchar("capabilities", { length: 2048 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const agents = mysqlTable("agents", {
@@ -100,6 +101,7 @@ export const agents = mysqlTable("agents", {
   orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
   agentRoleId: varchar("agent_role_id", { length: 256 }).notNull().references(() => agentRoles.id),
   name: varchar("name", { length: 256 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),
 });
 

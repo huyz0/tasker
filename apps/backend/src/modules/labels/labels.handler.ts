@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
-import { insertRecord } from "../../db/query-builder";
+import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import { requireUserId, assertOrgMember, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 
 // --- Zod Request Schemas ---
@@ -59,9 +59,9 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, req.orgId);
 
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
-      const rows = await db.select().from(labels).where(eq((labels as any).orgId, req.orgId));
+      const { items, nextCursor } = await executePaginatedQuery(db, labels, eq((labels as any).orgId, req.orgId), req.page, (labels as any).name, { name: (labels as any).name, createdAt: (labels as any).createdAt });
 
-      return { labels: rows };
+      return { labels: items, page: { nextCursor } };
     },
 
     async attachLabel(req: unknown, { values: contextValues }: { values: any }) {

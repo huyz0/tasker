@@ -68,6 +68,19 @@ describe("Labels Handler", () => {
     expect(handler.listLabels({ orgId }, makeAuthContext("user-outsider"))).rejects.toThrow();
   });
 
+  it("should filter and sort labels by name", async () => {
+    await handler.createLabel({ orgId, name: "zebra" }, ctx);
+    await handler.createLabel({ orgId, name: "alpha" }, ctx);
+
+    const filtered = await handler.listLabels({ orgId, page: { filter: "zebra" } }, ctx);
+    expect(filtered.labels.every((l: any) => l.name.includes("zebra"))).toBe(true);
+    expect(filtered.labels.length).toBeGreaterThan(0);
+
+    const sorted = await handler.listLabels({ orgId, page: { sort: "name:asc" } }, ctx);
+    const names = sorted.labels.map((l: any) => l.name);
+    expect(names.indexOf("alpha")).toBeLessThan(names.indexOf("zebra"));
+  });
+
   // --- attachLabel / listEntityLabels / detachLabel ---
 
   it("should attach a label to a task and list it", async () => {

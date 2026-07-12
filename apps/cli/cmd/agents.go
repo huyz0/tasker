@@ -22,6 +22,8 @@ var agentsListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		orgID, _ := cmd.Flags().GetString("org")
+		filter, _ := cmd.Flags().GetString("filter")
+		sort, _ := cmd.Flags().GetString("sort")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
 		}
@@ -31,7 +33,10 @@ var agentsListCmd = &cobra.Command{
 		}
 
 		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
-		res, err := client.ListAgents(context.Background(), connect.NewRequest(&healthv1.ListAgentsRequest{OrgId: orgID}))
+		res, err := client.ListAgents(context.Background(), connect.NewRequest(&healthv1.ListAgentsRequest{
+			OrgId: orgID,
+			Page:  &healthv1.PageRequest{Filter: filter, Sort: sort},
+		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list agents: %v\n", err)
 			return
@@ -90,9 +95,13 @@ var agentsListRolesCmd = &cobra.Command{
 	Short: "List all agent role personas",
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
+		filter, _ := cmd.Flags().GetString("filter")
+		sort, _ := cmd.Flags().GetString("sort")
 
 		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
-		res, err := client.ListAgentRoles(context.Background(), connect.NewRequest(&healthv1.ListAgentRolesRequest{}))
+		res, err := client.ListAgentRoles(context.Background(), connect.NewRequest(&healthv1.ListAgentRolesRequest{
+			Page: &healthv1.PageRequest{Filter: filter, Sort: sort},
+		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list agent roles: %v\n", err)
 			return
@@ -202,6 +211,10 @@ func init() {
 	agentsCreateCmd.Flags().String("name", "", "Display name for the agent instance")
 	agentsCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	agentsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	agentsListCmd.Flags().StringP("filter", "f", "", "Substring match against agent name")
+	agentsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\"")
+	agentsListRolesCmd.Flags().StringP("filter", "f", "", "Substring match against role name")
+	agentsListRolesCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\"")
 	agentsCreateRoleCmd.Flags().String("name", "", "Role name")
 	agentsCreateRoleCmd.Flags().String("system-prompt", "", "System prompt for the role")
 	agentsCreateRoleCmd.Flags().String("capabilities", "", "Capabilities/skills description for the role")

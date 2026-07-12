@@ -58,6 +58,8 @@ var labelsListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		orgID, _ := cmd.Flags().GetString("org")
 		isJson, _ := cmd.Flags().GetBool("json")
+		filter, _ := cmd.Flags().GetString("filter")
+		sort, _ := cmd.Flags().GetString("sort")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
 		}
@@ -67,7 +69,10 @@ var labelsListCmd = &cobra.Command{
 		}
 
 		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
-		res, err := client.ListLabels(context.Background(), connect.NewRequest(&healthv1.ListLabelsRequest{OrgId: orgID}))
+		res, err := client.ListLabels(context.Background(), connect.NewRequest(&healthv1.ListLabelsRequest{
+			OrgId: orgID,
+			Page:  &healthv1.PageRequest{Filter: filter, Sort: sort},
+		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list labels: %v\n", err)
 			return
@@ -197,6 +202,8 @@ func init() {
 	labelsCreateCmd.Flags().String("color", "", "Label color (e.g. hex code)")
 	labelsCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	labelsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	labelsListCmd.Flags().StringP("filter", "f", "", "Substring match against label name")
+	labelsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\"")
 	labelsAttachCmd.Flags().String("entity-type", "", "Entity type: task or artifact")
 	labelsAttachCmd.Flags().String("label", "", "Label ID to attach")
 	labelsDetachCmd.Flags().String("entity-type", "", "Entity type: task or artifact")
