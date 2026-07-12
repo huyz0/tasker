@@ -218,10 +218,12 @@ message CreateProjectTemplateResponse {
 
 message ListProjectTemplatesRequest {
   string orgId = 1;
+  PageRequest page = 2;
 }
 
 message ListProjectTemplatesResponse {
   repeated ProjectTemplate templates = 1;
+  PageResponse page = 2;
 }
 
 service ProjectTemplateService {
