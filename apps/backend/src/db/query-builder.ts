@@ -1,4 +1,4 @@
-import { SQL, and, lt, or, eq, desc, isNull } from "drizzle-orm";
+import { SQL, and, lt, or, eq, desc, isNull, like } from "drizzle-orm";
 import { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
 export interface PaginationParams {
@@ -82,32 +82,45 @@ export async function insertRecord(
   }
 }
 
+/**
+ * Applies pageOpts.filter as a case-sensitive substring match against filterColumn,
+ * combining it with an existing base condition. filterColumn is optional because
+ * not every entity has an obvious free-text column to filter on.
+ */
+export function applyFilter(baseCondition: SQL | undefined, filterColumn: any, filterValue: string | undefined): SQL | undefined {
+  if (!filterValue || !filterColumn) return baseCondition;
+  const filterClause = like(filterColumn, `%${filterValue}%`);
+  return baseCondition ? and(baseCondition, filterClause) : filterClause;
+}
+
 export async function executePaginatedQuery(
   db: any,
   table: any,
   baseCondition: SQL | undefined,
-  pageOpts: any
+  pageOpts: any,
+  filterColumn?: any
 ) {
   const limit = Math.min(pageOpts?.limit || 50, 100);
   const cursorData = decodeCursor(pageOpts?.cursor);
+  const condition = applyFilter(baseCondition, filterColumn, pageOpts?.filter);
 
   let query = db.select().from(table);
-  if (baseCondition) {
-    query = query.where(baseCondition);
+  if (condition) {
+    query = query.where(condition);
   }
   query = query.limit(limit) as any;
 
   query = query.orderBy(...buildPaginationOrderBy(table.createdAt, table.id));
   const whereClause = buildCursorPaginationWhere(cursorData, table.createdAt, table.id);
-  
+
   if (whereClause) {
-    const finalWhere = baseCondition ? and(baseCondition, whereClause) : whereClause;
+    const finalWhere = condition ? and(condition, whereClause) : whereClause;
     query = db.select().from(table).where(finalWhere).limit(limit).orderBy(...buildPaginationOrderBy(table.createdAt, table.id)) as any;
   }
 
   const result = await query;
   const lastItem = result[result.length - 1];
   const nextCursor = lastItem && result.length === limit ? encodeCursor((lastItem.createdAt instanceof Date ? lastItem.createdAt : new Date(lastItem.createdAt)).getTime(), lastItem.id) : undefined;
-  
+
   return { items: result, nextCursor };
 }

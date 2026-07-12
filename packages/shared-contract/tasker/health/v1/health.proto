@@ -379,6 +379,8 @@ message AssignTaskResponse {
 message PageRequest {
   int32 limit = 1;
   string cursor = 2;
+  string filter = 3;
+  string sort = 4;
 }
 
 message PageResponse {

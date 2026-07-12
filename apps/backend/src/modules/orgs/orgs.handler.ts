@@ -53,7 +53,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       }
 
       const deletedFilter = req.onlyDeleted ? not(notDeleted(orgs)) : notDeleted(orgs);
-      const { items, nextCursor } = await executePaginatedQuery(db, orgs, and(inArray(orgs.id, memberOrgIds), deletedFilter), req.page);
+      const { items, nextCursor } = await executePaginatedQuery(db, orgs, and(inArray(orgs.id, memberOrgIds), deletedFilter), req.page, (orgs as any).name);
 
       return {
         organizations: items.map((o: any) => ({

@@ -25,6 +25,12 @@ describe("Organizations Handler Integration Logic", () => {
     const lists = await handler.listOrgs({}, ctx);
     expect(lists.organizations.length).toBeGreaterThan(0);
 
+    const filtered = await handler.listOrgs({ page: { filter: "Test Org Z" } }, ctx);
+    expect(filtered.organizations.some((o: any) => o.id === res.organization.id)).toBe(true);
+
+    const filteredOut = await handler.listOrgs({ page: { filter: "no-such-org-name" } }, ctx);
+    expect(filteredOut.organizations.some((o: any) => o.id === res.organization.id)).toBe(false);
+
     // Test inviteUser
     const inviteRes = await handler.inviteUser({
         orgId: res.organization.id,

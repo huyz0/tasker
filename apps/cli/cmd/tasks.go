@@ -22,6 +22,7 @@ var tasksListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		projectID, _ := cmd.Flags().GetString("project")
+		filter, _ := cmd.Flags().GetString("filter")
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
 		}
@@ -38,6 +39,7 @@ var tasksListCmd = &cobra.Command{
 
 		req := connect.NewRequest(&healthv1.ListTasksRequest{
 			ProjectId: projectID,
+			Page:      &healthv1.PageRequest{Filter: filter},
 		})
 
 		res, err := client.ListTasks(context.Background(), req)
@@ -407,6 +409,7 @@ func init() {
 	tasksAssignCmd.Flags().String("user", "", "User ID to assign")
 	tasksUpdateStatusCmd.Flags().String("status", "", "The new status (todo, in-progress, done)")
 	tasksListCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
+	tasksListCmd.Flags().StringP("filter", "f", "", "Substring match against task title")
 	tasksCommentAddCmd.Flags().String("content", "", "Comment text")
 	tasksCommentAddCmd.Flags().String("user", "", "User ID authoring the comment")
 	tasksCommentAddCmd.Flags().String("agent", "", "Agent ID authoring the comment")

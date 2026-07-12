@@ -22,6 +22,7 @@ var projectsListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		orgID, _ := cmd.Flags().GetString("org")
+		filter, _ := cmd.Flags().GetString("filter")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
 		}
@@ -31,7 +32,10 @@ var projectsListCmd = &cobra.Command{
 		}
 
 		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
-		res, err := client.ListProjects(context.Background(), connect.NewRequest(&healthv1.ListProjectsRequest{OrgId: orgID}))
+		res, err := client.ListProjects(context.Background(), connect.NewRequest(&healthv1.ListProjectsRequest{
+			OrgId: orgID,
+			Page:  &healthv1.PageRequest{Filter: filter},
+		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list projects: %v\n", err)
 			return
@@ -169,4 +173,5 @@ func init() {
 	projectsCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	projectsCreateCmd.Flags().String("owner", "", "User ID of the project owner")
 	projectsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	projectsListCmd.Flags().StringP("filter", "f", "", "Substring match against project name")
 }
