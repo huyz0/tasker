@@ -17,10 +17,82 @@ const PR_STATUS_STYLES: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground border-border',
 };
 
+const STATUS_STYLES: Record<string, string> = {
+  SUCCESS: 'bg-green-500/10 text-green-500 border-green-500/20',
+  FAILURE: 'bg-red-500/10 text-red-500 border-red-500/20',
+  PENDING: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+};
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider border ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground border-border'}`}>
+      {status}
+    </span>
+  );
+}
+
+function DeploymentsList({ buildId }: { buildId: string }) {
+  const { data: deployments, isLoading } = useQuery({
+    queryKey: ['deployments', buildId],
+    queryFn: async () => {
+      const resp = await repositoryClient.listDeployments({ buildId });
+      return resp.deployments;
+    },
+  });
+
+  if (isLoading) return <p className="text-xs text-muted-foreground pl-4 py-1">Loading deployments...</p>;
+  if (!deployments || deployments.length === 0) return <p className="text-xs text-muted-foreground pl-4 py-1">No deployments for this build.</p>;
+
+  return (
+    <ul className="pl-4 py-1 space-y-1">
+      {deployments.map(d => (
+        <li key={d.id} className="text-xs flex items-center justify-between px-2 py-1 rounded bg-muted/10">
+          <span>{d.environment}</span>
+          <StatusBadge status={d.status} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function BuildsPanel({ repositoryLinkId }: { repositoryLinkId: string }) {
+  const [expandedBuildId, setExpandedBuildId] = useState<string | null>(null);
+
+  const { data: builds, isLoading, error } = useQuery({
+    queryKey: ['builds', repositoryLinkId],
+    queryFn: async () => {
+      const resp = await repositoryClient.listBuilds({ repositoryLinkId });
+      return resp.builds;
+    },
+  });
+
+  if (isLoading) return <p className="text-xs text-muted-foreground pl-3 py-2">Loading builds...</p>;
+  if (error) return <p className="text-xs text-destructive pl-3 py-2">Failed to load builds</p>;
+  if (!builds || builds.length === 0) return <p className="text-xs text-muted-foreground pl-3 py-2">No builds found.</p>;
+
+  return (
+    <ul className="pl-3 py-1 space-y-1">
+      {builds.map(build => (
+        <li key={build.id}>
+          <div
+            onClick={() => setExpandedBuildId(expandedBuildId === build.id ? null : build.id)}
+            className="text-xs flex items-center justify-between px-2 py-1 rounded bg-muted/20 cursor-pointer hover:bg-muted/30"
+          >
+            <span>{build.commitSha.substring(0, 7)}</span>
+            <StatusBadge status={build.status} />
+          </div>
+          {expandedBuildId === build.id && <DeploymentsList buildId={build.id} />}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegrationConfigProps) {
 
   const [provider, setProvider] = useState('github');
   const [remoteName, setRemoteName] = useState('');
+  const [expandedLinkId, setExpandedLinkId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
@@ -57,15 +129,26 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
       {data && data.length > 0 && (
         <ul className="mb-4 space-y-2">
           {data.map(link => (
-            <li key={link.id} className="text-sm flex justify-between items-center bg-muted/30 px-3 py-2 rounded">
-              <span><strong>{link.provider}</strong>: {link.remoteName}</span>
-              <button
-                onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending}
-                className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded hover:bg-secondary/80 disabled:opacity-50"
-              >
-                {syncMutation.isPending ? 'Syncing...' : 'Sync PRs'}
-              </button>
+            <li key={link.id} className="bg-muted/30 rounded">
+              <div className="text-sm flex justify-between items-center px-3 py-2">
+                <span><strong>{link.provider}</strong>: {link.remoteName}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setExpandedLinkId(expandedLinkId === link.id ? null : link.id)}
+                    className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded hover:bg-secondary/80"
+                  >
+                    {expandedLinkId === link.id ? 'Hide Builds' : 'Show Builds'}
+                  </button>
+                  <button
+                    onClick={() => syncMutation.mutate()}
+                    disabled={syncMutation.isPending}
+                    className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded hover:bg-secondary/80 disabled:opacity-50"
+                  >
+                    {syncMutation.isPending ? 'Syncing...' : 'Sync PRs'}
+                  </button>
+                </div>
+              </div>
+              {expandedLinkId === link.id && <BuildsPanel repositoryLinkId={link.id} />}
             </li>
           ))}
         </ul>

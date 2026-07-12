@@ -3,10 +3,12 @@ import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { RepositoryIntegrationConfig } from './RepositoryIntegrationConfig';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListRepositoryLinks, mockListPullRequests, mockSyncPullRequests } = vi.hoisted(() => ({
+const { mockListRepositoryLinks, mockListPullRequests, mockSyncPullRequests, mockListBuilds, mockListDeployments } = vi.hoisted(() => ({
   mockListRepositoryLinks: vi.fn(),
   mockListPullRequests: vi.fn(),
   mockSyncPullRequests: vi.fn(),
+  mockListBuilds: vi.fn(),
+  mockListDeployments: vi.fn(),
 }));
 
 // Mock the ConnectRPC client
@@ -15,6 +17,8 @@ vi.mock('@connectrpc/connect', () => ({
     listRepositoryLinks: mockListRepositoryLinks,
     listPullRequests: mockListPullRequests,
     syncPullRequests: mockSyncPullRequests,
+    listBuilds: mockListBuilds,
+    listDeployments: mockListDeployments,
   }),
 }));
 
@@ -36,6 +40,8 @@ describe('RepositoryIntegrationConfig', () => {
     mockListRepositoryLinks.mockReset();
     mockListPullRequests.mockReset();
     mockSyncPullRequests.mockReset();
+    mockListBuilds.mockReset();
+    mockListDeployments.mockReset();
   });
 
   test('renders loading and then data', async () => {
@@ -96,5 +102,42 @@ describe('RepositoryIntegrationConfig', () => {
     fireEvent.click(screen.getByText('Sync PRs'));
 
     await waitFor(() => expect(screen.getByText('Failed to sync pull requests: provider unavailable')).toBeDefined());
+  });
+
+  test('shows builds and their deployments when expanded', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockListBuilds.mockResolvedValue({
+      builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'abc1234def' }],
+    });
+    mockListDeployments.mockResolvedValue({
+      deployments: [{ id: 'dep-1', buildId: 'build-1', environment: 'STAGING', status: 'SUCCESS' }],
+    });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
+    fireEvent.click(screen.getByText('Show Builds'));
+
+    await waitFor(() => expect(mockListBuilds).toHaveBeenCalledWith({ repositoryLinkId: 'link-1' }));
+    await waitFor(() => expect(screen.getByText('abc1234')).toBeDefined());
+
+    fireEvent.click(screen.getByText('abc1234'));
+
+    await waitFor(() => expect(mockListDeployments).toHaveBeenCalledWith({ buildId: 'build-1' }));
+    await waitFor(() => expect(screen.getByText('STAGING')).toBeDefined());
+  });
+
+  test('shows an empty state when a repository link has no builds', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockListBuilds.mockResolvedValue({ builds: [] });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
+    fireEvent.click(screen.getByText('Show Builds'));
+
+    await waitFor(() => expect(screen.getByText('No builds found.')).toBeDefined());
   });
 });
