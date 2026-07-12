@@ -175,5 +175,5 @@ func init() {
 	projectsCreateCmd.Flags().String("owner", "", "User ID of the project owner")
 	projectsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	projectsListCmd.Flags().StringP("filter", "f", "", "Substring match against project name")
-	projectsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (a sorted request returns a single page, no cursor)")
+	projectsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 }

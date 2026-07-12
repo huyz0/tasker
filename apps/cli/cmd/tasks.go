@@ -411,7 +411,7 @@ func init() {
 	tasksUpdateStatusCmd.Flags().String("status", "", "The new status (todo, in-progress, done)")
 	tasksListCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	tasksListCmd.Flags().StringP("filter", "f", "", "Substring match against task title")
-	tasksListCmd.Flags().StringP("sort", "s", "", "Sort as \"title\"/\"status\" or \"title:desc\" (a sorted request returns a single page, no cursor)")
+	tasksListCmd.Flags().StringP("sort", "s", "", "Sort as \"title\"/\"status\" or \"title:desc\" (works with --cursor for paging)")
 	tasksCommentAddCmd.Flags().String("content", "", "Comment text")
 	tasksCommentAddCmd.Flags().String("user", "", "User ID authoring the comment")
 	tasksCommentAddCmd.Flags().String("agent", "", "Agent ID authoring the comment")

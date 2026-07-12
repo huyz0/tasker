@@ -1,4 +1,4 @@
-import { SQL, and, lt, or, eq, desc, asc, isNull, like } from "drizzle-orm";
+import { SQL, and, lt, gt, or, eq, desc, asc, isNull, like } from "drizzle-orm";
 import { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
 export interface PaginationParams {
@@ -6,14 +6,23 @@ export interface PaginationParams {
   cursor?: string;
 }
 
+export type SortDirection = "asc" | "desc";
+
+/**
+ * value is the cursor's position in whichever column it's sorting by - a
+ * timestamp (ms) for date columns, or the raw value for text columns like
+ * name. field records which column that is, so a cursor from one sort can't
+ * be silently misapplied to a request sorting by a different column.
+ */
 export interface CursorData {
-  createdAt: number;
+  value: number | string;
   id: string;
+  field: string;
 }
 
-export function encodeCursor(createdAt: number, id: string): string {
-  if (!createdAt || !id) return "";
-  const data: CursorData = { createdAt, id };
+export function encodeCursor(value: number | string, id: string, field: string = "createdAt"): string {
+  if (value === undefined || value === null || value === "" || !id) return "";
+  const data: CursorData = { value, id, field };
   return Buffer.from(JSON.stringify(data)).toString("base64");
 }
 
@@ -21,8 +30,12 @@ export function decodeCursor(cursor?: string): CursorData | null {
   if (!cursor) return null;
   try {
     const jsonStr = Buffer.from(cursor, "base64").toString("utf-8");
-    const data = JSON.parse(jsonStr) as CursorData;
+    const data = JSON.parse(jsonStr) as any;
+    // Back-compat with the older {createdAt, id} cursor shape (pre-sort support).
     if (typeof data.createdAt === "number" && typeof data.id === "string") {
+      return { value: data.createdAt, id: data.id, field: "createdAt" };
+    }
+    if ((typeof data.value === "number" || typeof data.value === "string") && typeof data.id === "string" && typeof data.field === "string") {
       return data;
     }
   } catch {
@@ -31,28 +44,38 @@ export function decodeCursor(cursor?: string): CursorData | null {
   return null;
 }
 
+/**
+ * Builds the "give me everything after this cursor" WHERE clause for a
+ * column sorted in the given direction, breaking ties on id in the same
+ * direction. A cursor whose field doesn't match sortField is treated as
+ * absent - it belongs to a different sort and can't be reused (e.g. the
+ * caller changed --sort between page requests).
+ */
 export function buildCursorPaginationWhere(
   cursor: CursorData | null,
-  createdAtCol: SQLiteColumn,
+  sortCol: SQLiteColumn,
   idCol: SQLiteColumn,
+  sortField: string = "createdAt",
+  direction: SortDirection = "desc",
 ): SQL | undefined {
-  if (!cursor) return undefined;
-  // For descending order, we want items strictly older (less than),
-  // OR same time but alphabetically lower ID (breaking ties)
+  if (!cursor || cursor.field !== sortField) return undefined;
+  const op = direction === "desc" ? lt : gt;
+  const value = typeof cursor.value === "number" ? new Date(cursor.value) : cursor.value;
   return or(
-    lt(createdAtCol, new Date(cursor.createdAt)),
+    op(sortCol, value as any),
     and(
-      eq(createdAtCol, new Date(cursor.createdAt)),
-      lt(idCol, cursor.id),
+      eq(sortCol, value as any),
+      op(idCol, cursor.id),
     ),
   );
 }
 
 export function buildPaginationOrderBy(
-  createdAtCol: SQLiteColumn,
+  sortCol: SQLiteColumn,
   idCol: SQLiteColumn,
+  direction: SortDirection = "desc",
 ) {
-  return [desc(createdAtCol), desc(idCol)];
+  return direction === "desc" ? [desc(sortCol), desc(idCol)] : [asc(sortCol), asc(idCol)];
 }
 
 export function notDeleted(table: any): SQL {
@@ -93,18 +116,34 @@ export function applyFilter(baseCondition: SQL | undefined, filterColumn: any, f
   return baseCondition ? and(baseCondition, filterClause) : filterClause;
 }
 
+export interface ParsedSort {
+  field: string;
+  column: any;
+  direction: SortDirection;
+}
+
 /**
  * Parses a "field" or "field:asc"/"field:desc" sort string against a whitelist
  * of sortable columns (field name -> column). Returns null when sortValue is
  * empty or doesn't match a whitelisted field, so callers can fall back to the
  * default createdAt/id ordering.
  */
-export function parseSort(sortableColumns: Record<string, any> | undefined, sortValue: string | undefined): SQL | null {
+export function parseSort(sortableColumns: Record<string, any> | undefined, sortValue: string | undefined): ParsedSort | null {
   if (!sortValue || !sortableColumns) return null;
   const [field, direction] = sortValue.split(":");
   const column = field ? sortableColumns[field] : undefined;
-  if (!column) return null;
-  return direction === "desc" ? desc(column) : asc(column);
+  if (!column || !field) return null;
+  return { field, column, direction: direction === "desc" ? "desc" : "asc" };
+}
+
+/**
+ * Reads a cursor's sort-column value back off a result row for re-encoding
+ * into the next page's cursor. Dates are stored as epoch ms; everything else
+ * (e.g. a name column) is used as-is.
+ */
+function extractCursorValue(row: any, field: string): number | string {
+  const raw = row[field];
+  return raw instanceof Date ? raw.getTime() : raw;
 }
 
 export async function executePaginatedQuery(
@@ -118,37 +157,26 @@ export async function executePaginatedQuery(
   const limit = Math.min(pageOpts?.limit || 50, 100);
   const condition = applyFilter(baseCondition, filterColumn, pageOpts?.filter);
 
-  // A whitelisted sort takes over ordering entirely. Cursor pagination is keyed
-  // to createdAt+id, so it can't compose with an arbitrary sort column without
-  // encoding that column into the cursor too - out of scope for now, so a
-  // sorted request always returns a single page (no nextCursor).
-  const sortOrderBy = parseSort(sortableColumns, pageOpts?.sort);
-  if (sortOrderBy) {
-    let sortedQuery = db.select().from(table);
-    if (condition) sortedQuery = sortedQuery.where(condition);
-    const result = await sortedQuery.orderBy(sortOrderBy, asc(table.id)).limit(limit);
-    return { items: result, nextCursor: undefined };
-  }
+  const sort = parseSort(sortableColumns, pageOpts?.sort);
+  const sortField = sort?.field ?? "createdAt";
+  const sortCol = sort?.column ?? table.createdAt;
+  const direction: SortDirection = sort?.direction ?? "desc";
 
   const cursorData = decodeCursor(pageOpts?.cursor);
+  const whereClause = buildCursorPaginationWhere(cursorData, sortCol, table.id, sortField, direction);
+  const finalWhere = whereClause ? (condition ? and(condition, whereClause) : whereClause) : condition;
 
-  let query = db.select().from(table);
-  if (condition) {
-    query = query.where(condition);
-  }
-  query = query.limit(limit) as any;
+  const result = await db
+    .select()
+    .from(table)
+    .where(finalWhere)
+    .limit(limit)
+    .orderBy(...buildPaginationOrderBy(sortCol, table.id, direction));
 
-  query = query.orderBy(...buildPaginationOrderBy(table.createdAt, table.id));
-  const whereClause = buildCursorPaginationWhere(cursorData, table.createdAt, table.id);
-
-  if (whereClause) {
-    const finalWhere = condition ? and(condition, whereClause) : whereClause;
-    query = db.select().from(table).where(finalWhere).limit(limit).orderBy(...buildPaginationOrderBy(table.createdAt, table.id)) as any;
-  }
-
-  const result = await query;
   const lastItem = result[result.length - 1];
-  const nextCursor = lastItem && result.length === limit ? encodeCursor((lastItem.createdAt instanceof Date ? lastItem.createdAt : new Date(lastItem.createdAt)).getTime(), lastItem.id) : undefined;
+  const nextCursor = lastItem && result.length === limit
+    ? encodeCursor(extractCursorValue(lastItem, sortField), lastItem.id, sortField)
+    : undefined;
 
   return { items: result, nextCursor };
 }

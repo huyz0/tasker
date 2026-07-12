@@ -39,7 +39,18 @@ describe("Organizations Handler Integration Logic", () => {
     const sortedDesc = await handler.listOrgs({ page: { sort: "name:desc" } }, ctx);
     const namesDesc = sortedDesc.organizations.map((o: any) => o.name);
     expect(namesDesc.indexOf("Test Org Z")).toBeLessThan(namesDesc.indexOf("Test Org A"));
-    expect(sortedDesc.page.nextCursor).toBeUndefined();
+
+    // Sort composes with cursor pagination: paging through name:asc with a
+    // small limit should walk the same sorted order one page at a time.
+    const page1 = await handler.listOrgs({ page: { sort: "name:asc", limit: 1 } }, ctx);
+    expect(page1.organizations).toHaveLength(1);
+    expect(page1.organizations[0].name).toBe(namesAsc[0]);
+    expect(page1.page.nextCursor).toBeDefined();
+
+    const page2 = await handler.listOrgs({ page: { sort: "name:asc", limit: 1, cursor: page1.page.nextCursor } }, ctx);
+    expect(page2.organizations).toHaveLength(1);
+    expect(page2.organizations[0].name).toBe(namesAsc[1]);
+    expect(page2.organizations[0].id).not.toBe(page1.organizations[0].id);
 
     // Test inviteUser
     const inviteRes = await handler.inviteUser({

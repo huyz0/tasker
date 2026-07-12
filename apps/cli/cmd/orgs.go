@@ -121,6 +121,6 @@ func init() {
 	orgsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	orgsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	orgsListCmd.Flags().StringP("filter", "f", "", "Substring match against organization name")
-	orgsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (a sorted request returns a single page, no cursor)")
+	orgsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 	orgsSetRetentionCmd.Flags().Int32("days", 30, "Number of days before archived items are automatically purged")
 }
