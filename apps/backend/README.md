@@ -39,3 +39,12 @@ bun run index.ts
 | `LOG_LEVEL` | Pino logger level. |
 
 The backend always listens on port `8080`.
+
+## Testing
+
+`bun run test` runs the full unit/integration suite against an in-memory SQLite database - no external services required. A few tests are gated behind extra env vars and skip by default:
+
+| Env var | Gates | Needs |
+| --- | --- | --- |
+| `TASKER_REAL_INTEGRATION=1` | `src/modules/repositories/repositories.integration.test.ts` | `GITHUB_TEST_TOKEN`, `GITHUB_TEST_REPO` - runs real GitHub API calls against a sandbox repo. |
+| `TASKER_MYSQL_INTEGRATION=1` | `src/db/db.mysql.test.ts` | A running MySQL instance (`docker compose up -d mysql` from the repo root) reachable via `DB_HOST`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`. Verifies migrations actually apply on boot. |
