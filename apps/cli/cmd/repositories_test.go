@@ -2,32 +2,85 @@ package cmd
 
 import (
 	"bytes"
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"connectrpc.com/connect"
+
+	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
+	"github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 )
 
+type fakeRepositoryHandler struct {
+	v1connect.UnimplementedRepositoryServiceHandler
+}
+
+func (f *fakeRepositoryHandler) ListRepositoryLinks(
+	_ context.Context,
+	req *connect.Request[healthv1.ListRepositoryLinksRequest],
+) (*connect.Response[healthv1.ListRepositoryLinksResponse], error) {
+	return connect.NewResponse(&healthv1.ListRepositoryLinksResponse{
+		Links: []*healthv1.RepositoryLink{
+			{Id: "link_1", ProjectId: req.Msg.ProjectId, Provider: "github", RemoteName: "huyz0/tasker"},
+		},
+	}), nil
+}
+
+func (f *fakeRepositoryHandler) AddRepositoryLink(
+	_ context.Context,
+	req *connect.Request[healthv1.AddRepositoryLinkRequest],
+) (*connect.Response[healthv1.AddRepositoryLinkResponse], error) {
+	return connect.NewResponse(&healthv1.AddRepositoryLinkResponse{
+		Link: &healthv1.RepositoryLink{Id: "link_2", ProjectId: req.Msg.ProjectId, Provider: req.Msg.Provider, RemoteName: req.Msg.RemoteName},
+	}), nil
+}
+
+func (f *fakeRepositoryHandler) ListPullRequests(
+	_ context.Context,
+	req *connect.Request[healthv1.ListPullRequestsRequest],
+) (*connect.Response[healthv1.ListPullRequestsResponse], error) {
+	return connect.NewResponse(&healthv1.ListPullRequestsResponse{
+		PullRequests: []*healthv1.RemotePullRequest{
+			{Id: "pr_1", RemotePrId: "123", Title: "Implement auth", Status: "open"},
+		},
+	}), nil
+}
+
 func TestRepoListCmd(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
-	rootCmd.SetArgs([]string{"repo", "list"})
-	err := rootCmd.Execute()
-	if err != nil {
+	rootCmd.SetArgs([]string{"repo", "list", "--project", "proj-1"})
+	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
-	if !strings.Contains(out, "Repository Links:") {
-		t.Fatalf("expected output to contain 'Repository Links:', got %s", out)
+	if !strings.Contains(out, "Repository Links:") || !strings.Contains(out, "huyz0/tasker") {
+		t.Fatalf("expected output to contain repository links, got %s", out)
 	}
 }
 
 func TestRepoLinkCmd(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
-	rootCmd.SetArgs([]string{"repo", "link", "--provider", "github", "--remote", "test/repo"})
-	err := rootCmd.Execute()
-	if err != nil {
+	rootCmd.SetArgs([]string{"repo", "link", "--project", "proj-1", "--provider", "github", "--remote", "test/repo", "--oauth-code", "fake-code"})
+	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -36,13 +89,18 @@ func TestRepoLinkCmd(t *testing.T) {
 	}
 }
 
-func TestRepoListCmdWithTaskId(t *testing.T) {
+func TestRepoPrsCmd(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "true")
-	rootCmd.SetArgs([]string{"repo", "list", "--task-id", "123", "--json"})
-	err := rootCmd.Execute()
-	if err != nil {
+	rootCmd.SetArgs([]string{"repo", "prs", "--project", "proj-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()

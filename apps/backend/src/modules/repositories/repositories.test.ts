@@ -155,6 +155,18 @@ describe("Repositories Handler >", () => {
     const pr2 = prs.find((p: any) => p.title === "PR 2");
     expect(pr2).toBeDefined();
     expect(pr2.status).toBe("merged");
+
+    const listResp = await repHandler.listPullRequests({ projectId: pId }, ctx2);
+    expect(listResp.pullRequests.length).toBeGreaterThanOrEqual(2);
+    expect(listResp.pullRequests.some((p: any) => p.title === "PR 1 TSK-123")).toBe(true);
+
+    await expect(repHandler.listPullRequests({ projectId: pId }, makeAuthContext("usr-outsider"))).rejects.toThrow();
+  });
+
+  test("listPullRequests returns an empty list for a project with no linked repositories", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P-no-links", ownerId: "usr-2" }, ctx2)).project.id;
+    const listResp = await repHandler.listPullRequests({ projectId: pId }, ctx2);
+    expect(listResp.pullRequests).toEqual([]);
   });
 
   test("syncPullRequests does not collide PRs across different repository links with the same remotePrId", async () => {

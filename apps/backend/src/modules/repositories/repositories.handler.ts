@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import crypto from "node:crypto";
 import { logger } from "../../lib/logger";
@@ -52,6 +52,10 @@ const ListRepositoryLinksSchema = z.object({
 });
 
 const SyncPullRequestsSchema = z.object({
+  projectId: z.string().min(1)
+});
+
+const ListPullRequestsSchema = z.object({
   projectId: z.string().min(1)
 });
 
@@ -222,6 +226,29 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       if (nc) nc.publish("domain.repository.sync_requested", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
 
       return { success: failures.length === 0 };
+    },
+
+    async listPullRequests(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ListPullRequestsSchema.parse(req);
+      const orgId = await getProjectOrgId(db, parsed.projectId);
+      await assertOrgMember(db, userId, orgId);
+
+      const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
+      const prsTable = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
+
+      const links = await db.select().from(linksTable).where(eq((linksTable as any).projectId, parsed.projectId));
+      if (links.length === 0) return { pullRequests: [] };
+
+      const linkIds = links.map((l: any) => l.id);
+      const prs = await db.select().from(prsTable).where(inArray((prsTable as any).repositoryLinkId, linkIds));
+
+      return {
+        pullRequests: prs.map((pr: any) => ({
+          ...pr,
+          updatedAt: pr.updatedAt instanceof Date ? pr.updatedAt.toISOString() : pr.updatedAt,
+        })),
+      };
     },
 
     async listBuilds(req: unknown, { values: contextValues }: { values: any }) {

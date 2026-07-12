@@ -747,10 +747,53 @@ message SyncPullRequestsResponse {
   bool success = 1;
 }
 
+message ListPullRequestsRequest {
+  string project_id = 1;
+}
+
+message ListPullRequestsResponse {
+  repeated RemotePullRequest pull_requests = 1;
+}
+
+message Build {
+  string id = 1;
+  string repository_link_id = 2;
+  string status = 3;
+  string commit_sha = 4;
+  string created_at = 5;
+}
+
+message Deployment {
+  string id = 1;
+  string build_id = 2;
+  string environment = 3;
+  string status = 4;
+  string created_at = 5;
+}
+
+message ListBuildsRequest {
+  string repository_link_id = 1;
+}
+
+message ListBuildsResponse {
+  repeated Build builds = 1;
+}
+
+message ListDeploymentsRequest {
+  string build_id = 1;
+}
+
+message ListDeploymentsResponse {
+  repeated Deployment deployments = 1;
+}
+
 service RepositoryService {
   rpc AddRepositoryLink(AddRepositoryLinkRequest) returns (AddRepositoryLinkResponse);
   rpc ListRepositoryLinks(ListRepositoryLinksRequest) returns (ListRepositoryLinksResponse);
   rpc SyncPullRequests(SyncPullRequestsRequest) returns (SyncPullRequestsResponse);
+  rpc ListPullRequests(ListPullRequestsRequest) returns (ListPullRequestsResponse);
+  rpc ListBuilds(ListBuildsRequest) returns (ListBuildsResponse);
+  rpc ListDeployments(ListDeploymentsRequest) returns (ListDeploymentsResponse);
 }
 
 message SearchResult {

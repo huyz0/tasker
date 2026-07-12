@@ -213,6 +213,15 @@ const (
 	// RepositoryServiceSyncPullRequestsProcedure is the fully-qualified name of the RepositoryService's
 	// SyncPullRequests RPC.
 	RepositoryServiceSyncPullRequestsProcedure = "/tasker.health.v1.RepositoryService/SyncPullRequests"
+	// RepositoryServiceListPullRequestsProcedure is the fully-qualified name of the RepositoryService's
+	// ListPullRequests RPC.
+	RepositoryServiceListPullRequestsProcedure = "/tasker.health.v1.RepositoryService/ListPullRequests"
+	// RepositoryServiceListBuildsProcedure is the fully-qualified name of the RepositoryService's
+	// ListBuilds RPC.
+	RepositoryServiceListBuildsProcedure = "/tasker.health.v1.RepositoryService/ListBuilds"
+	// RepositoryServiceListDeploymentsProcedure is the fully-qualified name of the RepositoryService's
+	// ListDeployments RPC.
+	RepositoryServiceListDeploymentsProcedure = "/tasker.health.v1.RepositoryService/ListDeployments"
 	// SearchServiceUniversalSearchProcedure is the fully-qualified name of the SearchService's
 	// UniversalSearch RPC.
 	SearchServiceUniversalSearchProcedure = "/tasker.health.v1.SearchService/UniversalSearch"
@@ -290,6 +299,9 @@ var (
 	repositoryServiceAddRepositoryLinkMethodDescriptor   = repositoryServiceServiceDescriptor.Methods().ByName("AddRepositoryLink")
 	repositoryServiceListRepositoryLinksMethodDescriptor = repositoryServiceServiceDescriptor.Methods().ByName("ListRepositoryLinks")
 	repositoryServiceSyncPullRequestsMethodDescriptor    = repositoryServiceServiceDescriptor.Methods().ByName("SyncPullRequests")
+	repositoryServiceListPullRequestsMethodDescriptor    = repositoryServiceServiceDescriptor.Methods().ByName("ListPullRequests")
+	repositoryServiceListBuildsMethodDescriptor          = repositoryServiceServiceDescriptor.Methods().ByName("ListBuilds")
+	repositoryServiceListDeploymentsMethodDescriptor     = repositoryServiceServiceDescriptor.Methods().ByName("ListDeployments")
 	searchServiceServiceDescriptor                       = v1.File_tasker_health_v1_health_proto.Services().ByName("SearchService")
 	searchServiceUniversalSearchMethodDescriptor         = searchServiceServiceDescriptor.Methods().ByName("UniversalSearch")
 )
@@ -2208,6 +2220,9 @@ type RepositoryServiceClient interface {
 	AddRepositoryLink(context.Context, *connect.Request[v1.AddRepositoryLinkRequest]) (*connect.Response[v1.AddRepositoryLinkResponse], error)
 	ListRepositoryLinks(context.Context, *connect.Request[v1.ListRepositoryLinksRequest]) (*connect.Response[v1.ListRepositoryLinksResponse], error)
 	SyncPullRequests(context.Context, *connect.Request[v1.SyncPullRequestsRequest]) (*connect.Response[v1.SyncPullRequestsResponse], error)
+	ListPullRequests(context.Context, *connect.Request[v1.ListPullRequestsRequest]) (*connect.Response[v1.ListPullRequestsResponse], error)
+	ListBuilds(context.Context, *connect.Request[v1.ListBuildsRequest]) (*connect.Response[v1.ListBuildsResponse], error)
+	ListDeployments(context.Context, *connect.Request[v1.ListDeploymentsRequest]) (*connect.Response[v1.ListDeploymentsResponse], error)
 }
 
 // NewRepositoryServiceClient constructs a client for the tasker.health.v1.RepositoryService
@@ -2238,6 +2253,24 @@ func NewRepositoryServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(repositoryServiceSyncPullRequestsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listPullRequests: connect.NewClient[v1.ListPullRequestsRequest, v1.ListPullRequestsResponse](
+			httpClient,
+			baseURL+RepositoryServiceListPullRequestsProcedure,
+			connect.WithSchema(repositoryServiceListPullRequestsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listBuilds: connect.NewClient[v1.ListBuildsRequest, v1.ListBuildsResponse](
+			httpClient,
+			baseURL+RepositoryServiceListBuildsProcedure,
+			connect.WithSchema(repositoryServiceListBuildsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listDeployments: connect.NewClient[v1.ListDeploymentsRequest, v1.ListDeploymentsResponse](
+			httpClient,
+			baseURL+RepositoryServiceListDeploymentsProcedure,
+			connect.WithSchema(repositoryServiceListDeploymentsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -2246,6 +2279,9 @@ type repositoryServiceClient struct {
 	addRepositoryLink   *connect.Client[v1.AddRepositoryLinkRequest, v1.AddRepositoryLinkResponse]
 	listRepositoryLinks *connect.Client[v1.ListRepositoryLinksRequest, v1.ListRepositoryLinksResponse]
 	syncPullRequests    *connect.Client[v1.SyncPullRequestsRequest, v1.SyncPullRequestsResponse]
+	listPullRequests    *connect.Client[v1.ListPullRequestsRequest, v1.ListPullRequestsResponse]
+	listBuilds          *connect.Client[v1.ListBuildsRequest, v1.ListBuildsResponse]
+	listDeployments     *connect.Client[v1.ListDeploymentsRequest, v1.ListDeploymentsResponse]
 }
 
 // AddRepositoryLink calls tasker.health.v1.RepositoryService.AddRepositoryLink.
@@ -2263,11 +2299,29 @@ func (c *repositoryServiceClient) SyncPullRequests(ctx context.Context, req *con
 	return c.syncPullRequests.CallUnary(ctx, req)
 }
 
+// ListPullRequests calls tasker.health.v1.RepositoryService.ListPullRequests.
+func (c *repositoryServiceClient) ListPullRequests(ctx context.Context, req *connect.Request[v1.ListPullRequestsRequest]) (*connect.Response[v1.ListPullRequestsResponse], error) {
+	return c.listPullRequests.CallUnary(ctx, req)
+}
+
+// ListBuilds calls tasker.health.v1.RepositoryService.ListBuilds.
+func (c *repositoryServiceClient) ListBuilds(ctx context.Context, req *connect.Request[v1.ListBuildsRequest]) (*connect.Response[v1.ListBuildsResponse], error) {
+	return c.listBuilds.CallUnary(ctx, req)
+}
+
+// ListDeployments calls tasker.health.v1.RepositoryService.ListDeployments.
+func (c *repositoryServiceClient) ListDeployments(ctx context.Context, req *connect.Request[v1.ListDeploymentsRequest]) (*connect.Response[v1.ListDeploymentsResponse], error) {
+	return c.listDeployments.CallUnary(ctx, req)
+}
+
 // RepositoryServiceHandler is an implementation of the tasker.health.v1.RepositoryService service.
 type RepositoryServiceHandler interface {
 	AddRepositoryLink(context.Context, *connect.Request[v1.AddRepositoryLinkRequest]) (*connect.Response[v1.AddRepositoryLinkResponse], error)
 	ListRepositoryLinks(context.Context, *connect.Request[v1.ListRepositoryLinksRequest]) (*connect.Response[v1.ListRepositoryLinksResponse], error)
 	SyncPullRequests(context.Context, *connect.Request[v1.SyncPullRequestsRequest]) (*connect.Response[v1.SyncPullRequestsResponse], error)
+	ListPullRequests(context.Context, *connect.Request[v1.ListPullRequestsRequest]) (*connect.Response[v1.ListPullRequestsResponse], error)
+	ListBuilds(context.Context, *connect.Request[v1.ListBuildsRequest]) (*connect.Response[v1.ListBuildsResponse], error)
+	ListDeployments(context.Context, *connect.Request[v1.ListDeploymentsRequest]) (*connect.Response[v1.ListDeploymentsResponse], error)
 }
 
 // NewRepositoryServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -2294,6 +2348,24 @@ func NewRepositoryServiceHandler(svc RepositoryServiceHandler, opts ...connect.H
 		connect.WithSchema(repositoryServiceSyncPullRequestsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	repositoryServiceListPullRequestsHandler := connect.NewUnaryHandler(
+		RepositoryServiceListPullRequestsProcedure,
+		svc.ListPullRequests,
+		connect.WithSchema(repositoryServiceListPullRequestsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	repositoryServiceListBuildsHandler := connect.NewUnaryHandler(
+		RepositoryServiceListBuildsProcedure,
+		svc.ListBuilds,
+		connect.WithSchema(repositoryServiceListBuildsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	repositoryServiceListDeploymentsHandler := connect.NewUnaryHandler(
+		RepositoryServiceListDeploymentsProcedure,
+		svc.ListDeployments,
+		connect.WithSchema(repositoryServiceListDeploymentsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.RepositoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RepositoryServiceAddRepositoryLinkProcedure:
@@ -2302,6 +2374,12 @@ func NewRepositoryServiceHandler(svc RepositoryServiceHandler, opts ...connect.H
 			repositoryServiceListRepositoryLinksHandler.ServeHTTP(w, r)
 		case RepositoryServiceSyncPullRequestsProcedure:
 			repositoryServiceSyncPullRequestsHandler.ServeHTTP(w, r)
+		case RepositoryServiceListPullRequestsProcedure:
+			repositoryServiceListPullRequestsHandler.ServeHTTP(w, r)
+		case RepositoryServiceListBuildsProcedure:
+			repositoryServiceListBuildsHandler.ServeHTTP(w, r)
+		case RepositoryServiceListDeploymentsProcedure:
+			repositoryServiceListDeploymentsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2321,6 +2399,18 @@ func (UnimplementedRepositoryServiceHandler) ListRepositoryLinks(context.Context
 
 func (UnimplementedRepositoryServiceHandler) SyncPullRequests(context.Context, *connect.Request[v1.SyncPullRequestsRequest]) (*connect.Response[v1.SyncPullRequestsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RepositoryService.SyncPullRequests is not implemented"))
+}
+
+func (UnimplementedRepositoryServiceHandler) ListPullRequests(context.Context, *connect.Request[v1.ListPullRequestsRequest]) (*connect.Response[v1.ListPullRequestsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RepositoryService.ListPullRequests is not implemented"))
+}
+
+func (UnimplementedRepositoryServiceHandler) ListBuilds(context.Context, *connect.Request[v1.ListBuildsRequest]) (*connect.Response[v1.ListBuildsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RepositoryService.ListBuilds is not implemented"))
+}
+
+func (UnimplementedRepositoryServiceHandler) ListDeployments(context.Context, *connect.Request[v1.ListDeploymentsRequest]) (*connect.Response[v1.ListDeploymentsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RepositoryService.ListDeployments is not implemented"))
 }
 
 // SearchServiceClient is a client for the tasker.health.v1.SearchService service.

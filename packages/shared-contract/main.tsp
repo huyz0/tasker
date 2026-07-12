@@ -777,6 +777,13 @@ model SyncPullRequestsResponse {
   @field(1) success: boolean;
 }
 
+model ListPullRequestsRequest {
+  @field(1) projectId: string;
+}
+model ListPullRequestsResponse {
+  @field(1) pullRequests: RemotePullRequest[];
+}
+
 model Build {
   @field(1) id: string;
   @field(2) repositoryLinkId: string;
@@ -821,6 +828,7 @@ interface RepositoryService {
     request: ListRepositoryLinksRequest,
   ): ListRepositoryLinksResponse;
   syncPullRequests(request: SyncPullRequestsRequest): SyncPullRequestsResponse;
+  listPullRequests(request: ListPullRequestsRequest): ListPullRequestsResponse;
   listBuilds(request: ListBuildsRequest): ListBuildsResponse;
   listDeployments(request: ListDeploymentsRequest): ListDeploymentsResponse;
 }
