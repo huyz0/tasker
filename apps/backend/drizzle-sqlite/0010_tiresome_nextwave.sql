@@ -1,0 +1,1 @@
+ALTER TABLE `artifacts` ADD `content_type` text DEFAULT 'text/markdown' NOT NULL;

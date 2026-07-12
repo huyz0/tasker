@@ -18,7 +18,10 @@ const CreateArtifactSchema = z.object({
   folderId: z.string().min(1, "folderId is required"),
   name: z.string().min(1, "name is required").max(256),
   description: z.string().max(1024).optional().default(""),
-  content: z.string().max(8192).optional().default(""),
+  // For images, content is base64-encoded and contentType is the image's
+  // MIME type (e.g. "image/png") - up to ~10MB of raw image data.
+  content: z.string().max(15_000_000).optional().default(""),
+  contentType: z.string().min(1).max(128).optional().default("text/markdown"),
 });
 
 const LinkTaskArtifactSchema = z.object({
@@ -101,6 +104,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         name: parsed.name,
         description: parsed.description,
         content: parsed.content,
+        contentType: parsed.contentType,
       };
 
       await insertRecord(db, artifacts, payload, isStandalone);

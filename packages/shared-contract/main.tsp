@@ -551,6 +551,7 @@ model Artifact {
   @field(4) description: string;
   @field(5) content: string;
   @field(6) deletedAt?: string;
+  @field(7) contentType: string;
 }
 
 model TaskArtifactLink {
@@ -573,6 +574,7 @@ model CreateArtifactRequest {
   @field(2) name: string;
   @field(3) description: string;
   @field(4) content: string;
+  @field(5) contentType: string;
 }
 model CreateArtifactResponse {
   @field(1) artifact: Artifact;

@@ -3,12 +3,14 @@ package cmd
 import (
 	"connectrpc.com/connect"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
 	"net/http"
+	"os"
 )
 
 var artifactsCmd = &cobra.Command{
@@ -110,10 +112,27 @@ var artifactsCreateCmd = &cobra.Command{
 		name, _ := cmd.Flags().GetString("name")
 		description, _ := cmd.Flags().GetString("description")
 		content, _ := cmd.Flags().GetString("content")
+		contentType, _ := cmd.Flags().GetString("content-type")
+		filePath, _ := cmd.Flags().GetString("file")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if folderID == "" || name == "" {
 			cmd.Println("Error: --folder and --name are required.")
 			return
+		}
+
+		if filePath != "" {
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				cmd.PrintErrf("Failed to read %s: %v\n", filePath, err)
+				return
+			}
+			content = base64.StdEncoding.EncodeToString(data)
+			if contentType == "" {
+				contentType = http.DetectContentType(data)
+			}
+		}
+		if contentType == "" {
+			contentType = "text/markdown"
 		}
 
 		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -122,6 +141,7 @@ var artifactsCreateCmd = &cobra.Command{
 			Name:        name,
 			Description: description,
 			Content:     content,
+			ContentType: contentType,
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create artifact: %v\n", err)
@@ -283,6 +303,8 @@ func init() {
 	artifactsCreateCmd.Flags().String("name", "", "Artifact name")
 	artifactsCreateCmd.Flags().String("description", "", "Artifact description")
 	artifactsCreateCmd.Flags().String("content", "", "Artifact text content")
+	artifactsCreateCmd.Flags().String("content-type", "", "MIME type of the content (default text/markdown, or auto-detected with --file)")
+	artifactsCreateCmd.Flags().String("file", "", "Path to a local file to upload as the artifact's content (e.g. an image); base64-encoded automatically")
 	foldersCreateCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	foldersCreateCmd.Flags().String("parent", "", "Parent folder ID (optional, for nesting)")
 	foldersCreateCmd.Flags().String("name", "", "Folder name")

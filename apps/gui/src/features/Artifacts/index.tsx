@@ -142,10 +142,16 @@ export function ArtifactsBrowser() {
             </div>
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
                <div className="prose prose-sm dark:prose-invert max-w-none">
-                 {selectedArtifact.content ? (
-                   <MarkdownRenderer content={selectedArtifact.content} />
-                 ) : (
+                 {!selectedArtifact.content ? (
                    <p className="text-muted-foreground italic">This artifact has no content.</p>
+                 ) : selectedArtifact.contentType?.startsWith("image/") ? (
+                   <img
+                     src={`data:${selectedArtifact.contentType};base64,${selectedArtifact.content}`}
+                     alt={selectedArtifact.name}
+                     className="max-w-full rounded-md border"
+                   />
+                 ) : (
+                   <MarkdownRenderer content={selectedArtifact.content} />
                  )}
                </div>
                <div className="mt-6 not-prose">

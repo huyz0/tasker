@@ -71,6 +71,13 @@
       "when": 1783831169607,
       "tag": "0009_lush_wither",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1783831577487,
+      "tag": "0010_tiresome_nextwave",
+      "breakpoints": true
     }
   ]
 }

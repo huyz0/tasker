@@ -1,4 +1,4 @@
-import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, int, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
+import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, int, mediumtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const testSchema = mysqlTable("schema_migrations_test", {
   id: varchar("id", { length: 256 }).primaryKey(),
@@ -144,7 +144,8 @@ export const artifacts = mysqlTable("artifacts", {
   folderId: varchar("folder_id", { length: 256 }).notNull().references(() => folders.id),
   name: varchar("name", { length: 256 }).notNull(),
   description: varchar("description", { length: 1024 }),
-  content: varchar("content", { length: 8192 }),
+  content: mediumtext("content"),
+  contentType: varchar("content_type", { length: 128 }).notNull().default("text/markdown"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 });

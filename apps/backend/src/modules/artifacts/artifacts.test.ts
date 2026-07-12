@@ -109,6 +109,24 @@ describe("Artifacts Handler", () => {
     expect(res.artifact).toBeDefined();
     expect(res.artifact.name).toBe("Design Doc");
     expect(res.artifact.id).toStartWith("art-");
+    expect(res.artifact.contentType).toBe("text/markdown");
+  });
+
+  it("should create an image artifact with base64 content and an explicit contentType", async () => {
+    const folder = await handler.createFolder({
+      projectId,
+      parentId: null,
+      name: "Image Artifacts Folder",
+    }, ctx);
+    const base64Png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    const res = await handler.createArtifact({
+      folderId: folder.folder.id,
+      name: "logo.png",
+      contentType: "image/png",
+      content: base64Png,
+    }, ctx);
+    expect(res.artifact.contentType).toBe("image/png");
+    expect(res.artifact.content).toBe(base64Png);
   });
 
   it("should reject createArtifact with missing folderId", async () => {

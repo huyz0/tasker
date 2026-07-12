@@ -519,6 +519,7 @@ message Artifact {
   string description = 4;
   string content = 5;
   string deletedAt = 6;
+  string contentType = 7;
 }
 
 message TaskArtifactLink {
@@ -542,6 +543,7 @@ message CreateArtifactRequest {
   string name = 2;
   string description = 3;
   string content = 4;
+  string contentType = 5;
 }
 
 message CreateArtifactResponse {

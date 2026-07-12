@@ -157,6 +157,9 @@ export const artifacts = sqliteTable("artifacts", {
   name: text("name").notNull(),
   description: text("description"),
   content: text("content"),
+  // MIME type of `content` - "text/markdown" for text artifacts, "image/png"
+  // etc for images (stored as base64 in `content`).
+  contentType: text("content_type").notNull().default("text/markdown"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
