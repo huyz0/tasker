@@ -361,9 +361,29 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
 
       const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       const prsTable = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
+      const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
 
       const links = await db.select().from(linksTable).where(eq((linksTable as any).projectId, parsed.projectId));
       const failures: string[] = [];
+
+      // A PR's title conventionally references a task by its human-readable
+      // displayId (e.g. "SP-42: fix login bug") - resolve that back to a real
+      // taskId so the GUI can show PRs on their linked task instead of
+      // leaving remotePullRequests.taskId permanently null.
+      const projectTasks = await db.select({ id: (tasksTable as any).id, displayId: (tasksTable as any).displayId })
+        .from(tasksTable)
+        .where(eq((tasksTable as any).projectId, parsed.projectId));
+      const taskIdByDisplayId = new Map<string, string>(
+        projectTasks.filter((t: any) => t.displayId).map((t: any) => [t.displayId, t.id])
+      );
+      function resolveTaskId(title: string): string | null {
+        for (const [displayId, taskId] of taskIdByDisplayId) {
+          if (new RegExp(`\\b${displayId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(title)) {
+            return taskId;
+          }
+        }
+        return null;
+      }
 
       for (const link of links) {
         if (link.provider !== "github" && link.provider !== "bitbucket") continue;
@@ -384,11 +404,13 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
 
           for (const pr of normalizedPrs) {
             const existing = existingByRemoteId.get(pr.remoteId);
+            const taskId = resolveTaskId(pr.title);
 
             if (!existing) {
               await insertRecord(db, prsTable, {
                 id: `pr-${crypto.randomUUID()}`,
                 repositoryLinkId: link.id,
+                taskId,
                 remotePrId: pr.remoteId,
                 title: pr.title,
                 status: pr.status,
@@ -398,6 +420,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
               await db.update(prsTable).set({
                 title: pr.title,
                 status: pr.status,
+                taskId,
                 updatedAt: isStandalone ? new Date() : undefined // MySQL usually has auto-update, but fallback
               }).where(and(eq((prsTable as any).id, existing.id), eq((prsTable as any).repositoryLinkId, link.id)));
             }

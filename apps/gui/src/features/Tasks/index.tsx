@@ -4,12 +4,13 @@ import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBa
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { TaskService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { TaskService, RepositoryService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
 
 const taskClient = createClient(TaskService, transport);
+const repositoryClient = createClient(RepositoryService, transport);
 
 const STATUS_OPTIONS = [
   { id: 'todo', display: 'Todo' },
@@ -35,6 +36,22 @@ export function TasksWorkbench() {
   });
 
   const expandedTask = tasksData?.find(t => t.id === expandedTaskId) ?? null;
+
+  const { data: pullRequestsData } = useQuery({
+    queryKey: ['pullRequests', activeProjectId],
+    queryFn: async () => {
+      const resp = await repositoryClient.listPullRequests({ projectId: activeProjectId });
+      return resp.pullRequests;
+    },
+    enabled: !!activeProjectId,
+  });
+  const pullRequestsByTaskId = new Map<string, NonNullable<typeof pullRequestsData>>();
+  for (const pr of pullRequestsData ?? []) {
+    if (!pr.taskId) continue;
+    const existing = pullRequestsByTaskId.get(pr.taskId) ?? [];
+    existing.push(pr);
+    pullRequestsByTaskId.set(pr.taskId, existing);
+  }
 
   const updateStatusMutation = useMutation({
     mutationFn: async (variables: { taskId: string; status: string }) => {
@@ -86,10 +103,13 @@ export function TasksWorkbench() {
                       <h4 className="font-medium text-sm leading-tight mb-2">{task.title}</h4>
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{task.description || 'No description provided.'}</p>
                       
-                      {/* Pull Requests list inline (mocked for now until integrated) */}
-                      <div className="flex gap-2 mb-3">
-                         <PullRequestBadge pr={{ remotePrId: `#101`, title: `Fix issue in feature`, status: 'open', url: '#' }} />
-                      </div>
+                      {(pullRequestsByTaskId.get(task.id)?.length ?? 0) > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {pullRequestsByTaskId.get(task.id)!.map(pr => (
+                            <PullRequestBadge key={pr.id} pr={{ remotePrId: `#${pr.remotePrId}`, title: pr.title, status: pr.status, url: pr.url }} />
+                          ))}
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-between mt-auto">
                         <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">U</div>

@@ -2,13 +2,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockListComments, mockListEntityLabels, mockListLabels } = vi.hoisted(() => ({
+const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests } = vi.hoisted(() => ({
   mockListTasks: vi.fn(),
   mockUpdateTaskStatus: vi.fn(),
   mockDeleteTask: vi.fn(),
   mockListComments: vi.fn(),
   mockListEntityLabels: vi.fn(),
   mockListLabels: vi.fn(),
+  mockListPullRequests: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -24,6 +25,7 @@ vi.mock('@connectrpc/connect', () => ({
       detachLabel: vi.fn(),
       createLabel: vi.fn(),
     };
+    if (service === 'RepositoryService') return { listPullRequests: mockListPullRequests };
     return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask };
   }),
 }));
@@ -31,6 +33,7 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   TaskService: {},
   CommentService: 'CommentService',
   LabelService: 'LabelService',
+  RepositoryService: 'RepositoryService',
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
@@ -62,6 +65,8 @@ describe('TasksWorkbench', () => {
     mockListEntityLabels.mockResolvedValue({ labels: [] });
     mockListLabels.mockReset();
     mockListLabels.mockResolvedValue({ labels: [] });
+    mockListPullRequests.mockReset();
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
@@ -78,6 +83,17 @@ describe('TasksWorkbench', () => {
     fireEvent.change(select, { target: { value: 'in-progress' } });
 
     await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
+  });
+
+  it('shows a pull request badge on a task it is linked to, using real data not a hardcoded placeholder', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    mockListPullRequests.mockResolvedValue({
+      pullRequests: [{ id: 'pr-1', taskId: 'task-1', remotePrId: '42', title: 'ENG-1: fix bug', status: 'open', url: 'http://example.com/pr/42' }],
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('#42')).toBeDefined());
   });
 
   it('shows an error message when the status update fails', async () => {

@@ -2,6 +2,7 @@ import { expect, test, describe, beforeAll, mock, afterAll } from "bun:test";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import { createRepositoriesHandler } from "./repositories.handler";
 import { createProjectsHandler } from "../projects/projects.handler";
+import { createTaskManagementHandler } from "../tasks/tasks.handler";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 
@@ -165,6 +166,35 @@ describe("Repositories Handler >", () => {
     expect(listResp.pullRequests.some((p: any) => p.title === "PR 1 TSK-123")).toBe(true);
 
     await expect(repHandler.listPullRequests({ projectId: pId }, makeAuthContext("usr-outsider"))).rejects.toThrow();
+  });
+
+  test("syncPullRequests links a PR to a task when the title references its displayId", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "PR Linking", ownerId: "usr-2" }, ctx2)).project.id;
+    const taskHandler = createTaskManagementHandler(db, null);
+    const task = (await taskHandler.createTask({ projectId: pId, title: "Fix the login bug" }, ctx2)).task;
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/pulls")) {
+        return new Response(JSON.stringify([
+          { number: 1, title: `${task.displayId}: fix the login bug`, state: "open", draft: false, html_url: "http://github/1" },
+          { number: 2, title: "Unrelated PR with no task reference", state: "open", draft: false, html_url: "http://github/2" },
+        ]), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    await repHandler.addRepositoryLink({ projectId: pId, provider: "github", remoteName: "foo/pr-linking", oauthCode: "fake-code" }, ctx2);
+    await repHandler.syncPullRequests({ projectId: pId }, ctx2);
+
+    const listResp = await repHandler.listPullRequests({ projectId: pId }, ctx2);
+    const linkedPr = listResp.pullRequests.find((p: any) => p.title.includes(task.displayId));
+    expect(linkedPr.taskId).toBe(task.id);
+
+    const unrelatedPr = listResp.pullRequests.find((p: any) => p.title === "Unrelated PR with no task reference");
+    expect(unrelatedPr.taskId).toBeFalsy();
   });
 
   test("listPullRequests returns an empty list for a project with no linked repositories", async () => {
