@@ -22,7 +22,10 @@ const CreateTaskTypeSchema = z.object({
 const CreateTaskSchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
   title: z.string().min(1, "title is required").max(512),
-  status: z.string().max(256).optional().default("todo"),
+  // Proto3 can't distinguish an omitted string field from an empty one - the
+  // CLI/GUI always send status: "" when the caller didn't pick one - so ""
+  // must be treated the same as "not provided" for the default to ever apply.
+  status: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional().default("todo")),
   description: z.string().max(4096).optional().default(""),
   taskTypeId: z.string().nullable().optional(),
 });

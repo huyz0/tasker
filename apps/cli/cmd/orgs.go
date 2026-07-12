@@ -3,6 +3,7 @@ package cmd
 import (
 	"connectrpc.com/connect"
 	"context"
+	"encoding/json"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -42,6 +43,63 @@ var orgsListCmd = &cobra.Command{
 		for _, org := range res.Msg.Organizations {
 			cmd.Printf("- %s (Slug: %s)\n", org.Name, org.Slug)
 		}
+	},
+}
+
+var orgsSeedCmd = &cobra.Command{
+	Use:   "seed",
+	Short: "Bootstrap a new organization (or sub-organization) - typically the first setup step",
+	Run: func(cmd *cobra.Command, args []string) {
+		name, _ := cmd.Flags().GetString("name")
+		slug, _ := cmd.Flags().GetString("slug")
+		parentOrgID, _ := cmd.Flags().GetString("parent")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if name == "" || slug == "" {
+			cmd.Println("Error: --name and --slug are required.")
+			return
+		}
+
+		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.SeedOrg(context.Background(), connect.NewRequest(&healthv1.SeedOrgRequest{
+			Name:        name,
+			Slug:        slug,
+			ParentOrgId: parentOrgID,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to seed organization: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Organization)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Organization seeded: %s (id: %s, slug: %s)\n", res.Msg.Organization.Name, res.Msg.Organization.Id, res.Msg.Organization.Slug)
+		}
+	},
+}
+
+var orgsInviteCmd = &cobra.Command{
+	Use:   "invite [org_id]",
+	Short: "Invite a user to an organization by email",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		email, _ := cmd.Flags().GetString("email")
+		if email == "" {
+			cmd.Println("Error: --email is required.")
+			return
+		}
+
+		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		_, err := client.InviteUser(context.Background(), connect.NewRequest(&healthv1.InviteUserRequest{
+			OrgId: args[0],
+			Email: email,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to invite user: %v\n", err)
+			return
+		}
+		cmd.Printf("Invited %s to organization %s\n", email, args[0])
 	},
 }
 
@@ -113,6 +171,8 @@ var orgsSetRetentionCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(orgsCmd)
 	orgsCmd.AddCommand(orgsListCmd)
+	orgsCmd.AddCommand(orgsSeedCmd)
+	orgsCmd.AddCommand(orgsInviteCmd)
 	orgsCmd.AddCommand(orgsDeleteCmd)
 	orgsCmd.AddCommand(orgsRestoreCmd)
 	orgsCmd.AddCommand(orgsPurgeCmd)
@@ -123,4 +183,8 @@ func init() {
 	orgsListCmd.Flags().StringP("filter", "f", "", "Substring match against organization name")
 	orgsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 	orgsSetRetentionCmd.Flags().Int32("days", 30, "Number of days before archived items are automatically purged")
+	orgsSeedCmd.Flags().String("name", "", "Organization name")
+	orgsSeedCmd.Flags().String("slug", "", "Organization slug (unique, URL-safe)")
+	orgsSeedCmd.Flags().String("parent", "", "Optional parent organization ID, to create a sub-organization")
+	orgsInviteCmd.Flags().String("email", "", "Email address to invite")
 }

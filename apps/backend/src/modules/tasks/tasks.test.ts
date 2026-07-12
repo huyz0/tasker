@@ -137,6 +137,16 @@ describe("Tasks Handler Integration Tests", () => {
     expect(taskResp.task).toBeDefined();
     expect(taskResp.task.title).toBe("New Test Task");
 
+    // Proto3 can't distinguish an omitted string field from an empty one, so
+    // the CLI/GUI always send status: "" when the caller didn't pick one -
+    // that must still fall back to the "todo" default, not persist as "".
+    const defaultStatusResp = await handler.createTask({
+      projectId: projectId,
+      title: "No Explicit Status",
+      status: "",
+    }, ctx);
+    expect(defaultStatusResp.task.status).toBe("todo");
+
     const subjects = nc.publishedMessages.map((m: any) => m.subject);
     expect(subjects).toContain("domain.task.created");
 
