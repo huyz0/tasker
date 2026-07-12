@@ -17,11 +17,12 @@ var orgsCmd = &cobra.Command{
 
 var orgsListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List organizations with pagination and name filtering",
+	Short: "List organizations with pagination, name filtering, and sorting",
 	Run: func(cmd *cobra.Command, args []string) {
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
 		filter, _ := cmd.Flags().GetString("filter")
+		sort, _ := cmd.Flags().GetString("sort")
 
 		client := healthv1connect.NewOrgServiceClient(
 			http.DefaultClient,
@@ -30,7 +31,7 @@ var orgsListCmd = &cobra.Command{
 		)
 
 		req := connect.NewRequest(&healthv1.ListOrgsRequest{
-			Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter},
+			Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		})
 		res, err := client.ListOrgs(context.Background(), req)
 		if err != nil {
@@ -120,5 +121,6 @@ func init() {
 	orgsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	orgsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	orgsListCmd.Flags().StringP("filter", "f", "", "Substring match against organization name")
+	orgsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (a sorted request returns a single page, no cursor)")
 	orgsSetRetentionCmd.Flags().Int32("days", 30, "Number of days before archived items are automatically purged")
 }

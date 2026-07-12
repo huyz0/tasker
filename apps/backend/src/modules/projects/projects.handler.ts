@@ -91,7 +91,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
 
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(ps)) : notDeleted(ps);
-      const { items, nextCursor } = await executePaginatedQuery(db, ps, and(eq((ps as any).orgId, req.orgId), deletedFilter), req.page, (ps as any).name);
+      const { items, nextCursor } = await executePaginatedQuery(db, ps, and(eq((ps as any).orgId, req.orgId), deletedFilter), req.page, (ps as any).name, { name: (ps as any).name, createdAt: (ps as any).createdAt });
 
       return {
         projects: items.map((p: any) => ({

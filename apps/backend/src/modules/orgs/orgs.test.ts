@@ -31,6 +31,16 @@ describe("Organizations Handler Integration Logic", () => {
     const filteredOut = await handler.listOrgs({ page: { filter: "no-such-org-name" } }, ctx);
     expect(filteredOut.organizations.some((o: any) => o.id === res.organization.id)).toBe(false);
 
+    await handler.seedOrg({ name: "Test Org A", slug: "test-org-a" + Date.now().toString() }, ctx);
+    const sortedAsc = await handler.listOrgs({ page: { sort: "name:asc" } }, ctx);
+    const namesAsc = sortedAsc.organizations.map((o: any) => o.name);
+    expect(namesAsc.indexOf("Test Org A")).toBeLessThan(namesAsc.indexOf("Test Org Z"));
+
+    const sortedDesc = await handler.listOrgs({ page: { sort: "name:desc" } }, ctx);
+    const namesDesc = sortedDesc.organizations.map((o: any) => o.name);
+    expect(namesDesc.indexOf("Test Org Z")).toBeLessThan(namesDesc.indexOf("Test Org A"));
+    expect(sortedDesc.page.nextCursor).toBeUndefined();
+
     // Test inviteUser
     const inviteRes = await handler.inviteUser({
         orgId: res.organization.id,

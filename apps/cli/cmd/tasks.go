@@ -23,6 +23,7 @@ var tasksListCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 		projectID, _ := cmd.Flags().GetString("project")
 		filter, _ := cmd.Flags().GetString("filter")
+		sort, _ := cmd.Flags().GetString("sort")
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
 		}
@@ -39,7 +40,7 @@ var tasksListCmd = &cobra.Command{
 
 		req := connect.NewRequest(&healthv1.ListTasksRequest{
 			ProjectId: projectID,
-			Page:      &healthv1.PageRequest{Filter: filter},
+			Page:      &healthv1.PageRequest{Filter: filter, Sort: sort},
 		})
 
 		res, err := client.ListTasks(context.Background(), req)
@@ -410,6 +411,7 @@ func init() {
 	tasksUpdateStatusCmd.Flags().String("status", "", "The new status (todo, in-progress, done)")
 	tasksListCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	tasksListCmd.Flags().StringP("filter", "f", "", "Substring match against task title")
+	tasksListCmd.Flags().StringP("sort", "s", "", "Sort as \"title\"/\"status\" or \"title:desc\" (a sorted request returns a single page, no cursor)")
 	tasksCommentAddCmd.Flags().String("content", "", "Comment text")
 	tasksCommentAddCmd.Flags().String("user", "", "User ID authoring the comment")
 	tasksCommentAddCmd.Flags().String("agent", "", "Agent ID authoring the comment")

@@ -1,4 +1,4 @@
-import { SQL, and, lt, or, eq, desc, isNull, like } from "drizzle-orm";
+import { SQL, and, lt, or, eq, desc, asc, isNull, like } from "drizzle-orm";
 import { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
 export interface PaginationParams {
@@ -93,16 +93,44 @@ export function applyFilter(baseCondition: SQL | undefined, filterColumn: any, f
   return baseCondition ? and(baseCondition, filterClause) : filterClause;
 }
 
+/**
+ * Parses a "field" or "field:asc"/"field:desc" sort string against a whitelist
+ * of sortable columns (field name -> column). Returns null when sortValue is
+ * empty or doesn't match a whitelisted field, so callers can fall back to the
+ * default createdAt/id ordering.
+ */
+export function parseSort(sortableColumns: Record<string, any> | undefined, sortValue: string | undefined): SQL | null {
+  if (!sortValue || !sortableColumns) return null;
+  const [field, direction] = sortValue.split(":");
+  const column = field ? sortableColumns[field] : undefined;
+  if (!column) return null;
+  return direction === "desc" ? desc(column) : asc(column);
+}
+
 export async function executePaginatedQuery(
   db: any,
   table: any,
   baseCondition: SQL | undefined,
   pageOpts: any,
-  filterColumn?: any
+  filterColumn?: any,
+  sortableColumns?: Record<string, any>
 ) {
   const limit = Math.min(pageOpts?.limit || 50, 100);
-  const cursorData = decodeCursor(pageOpts?.cursor);
   const condition = applyFilter(baseCondition, filterColumn, pageOpts?.filter);
+
+  // A whitelisted sort takes over ordering entirely. Cursor pagination is keyed
+  // to createdAt+id, so it can't compose with an arbitrary sort column without
+  // encoding that column into the cursor too - out of scope for now, so a
+  // sorted request always returns a single page (no nextCursor).
+  const sortOrderBy = parseSort(sortableColumns, pageOpts?.sort);
+  if (sortOrderBy) {
+    let sortedQuery = db.select().from(table);
+    if (condition) sortedQuery = sortedQuery.where(condition);
+    const result = await sortedQuery.orderBy(sortOrderBy, asc(table.id)).limit(limit);
+    return { items: result, nextCursor: undefined };
+  }
+
+  const cursorData = decodeCursor(pageOpts?.cursor);
 
   let query = db.select().from(table);
   if (condition) {

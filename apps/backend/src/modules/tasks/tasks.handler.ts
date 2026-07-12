@@ -139,7 +139,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(tasks)) : notDeleted(tasks);
-      const { items, nextCursor } = await executePaginatedQuery(db, tasks, and(eq((tasks as any).projectId, req.projectId), deletedFilter), req.page, (tasks as any).title);
+      const { items, nextCursor } = await executePaginatedQuery(db, tasks, and(eq((tasks as any).projectId, req.projectId), deletedFilter), req.page, (tasks as any).title, { title: (tasks as any).title, status: (tasks as any).status, createdAt: (tasks as any).createdAt });
 
       return {
         tasks: items.map((t: any) => ({
