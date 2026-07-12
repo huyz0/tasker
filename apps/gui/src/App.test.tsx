@@ -6,13 +6,21 @@ import App from './App';
 // -------------------------------------------------------------------
 // Mock @tanstack/react-query so we control what useQuery returns.
 // -------------------------------------------------------------------
-const mockUseQuery = vi.fn();
+// The Dashboard fires several useQuery calls (health ping, orgs, projects,
+// agents, tasks) per render. These tests only care about the health ping
+// response, so the mock keys off queryKey[0] and gives every other query an
+// inert default instead of one blanket return value for every call.
+let healthQueryResult: { data: unknown; error: unknown; isLoading: boolean } = { data: undefined, error: null, isLoading: false };
+const mockUseQuery = vi.fn((opts: { queryKey: unknown[] }) => {
+  if (opts.queryKey[0] === 'healthPing') return healthQueryResult;
+  return { data: undefined, error: null, isLoading: false };
+});
 const mockUseMutation = vi.fn(() => ({ mutate: vi.fn(), isPending: false }));
 const mockUseQueryClient = vi.fn(() => ({ invalidateQueries: vi.fn() }));
 const mockUseInfiniteQuery = vi.fn(() => ({ data: undefined, isLoading: false, isFetchingNextPage: false, fetchNextPage: vi.fn() }));
 
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: (opts: unknown) => mockUseQuery(opts),
+  useQuery: (opts: unknown) => mockUseQuery(opts as { queryKey: unknown[] }),
   useMutation: () => mockUseMutation(),
   useQueryClient: () => mockUseQueryClient(),
   useInfiniteQuery: () => mockUseInfiniteQuery(),
@@ -71,46 +79,46 @@ describe('App', () => {
   );
 
   it('renders the heading', () => {
-    mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: false });
+    healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp();
     expect(screen.getByRole('heading', { name: 'Dashboard Overview' })).toBeDefined();
   });
 
   it('shows a Ping Backend button', () => {
-    mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: false });
+    healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp();
     expect(screen.getByRole('button', { name: 'Ping Backend' })).toBeDefined();
   });
 
   it('shows loading indicator while fetching', () => {
-    mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: true });
+    healthQueryResult = { data: undefined, error: null, isLoading: true };
     renderApp();
     expect(screen.getByText('Loading telemetry...')).toBeDefined();
   });
 
   it('shows error message when the query fails', () => {
-    mockUseQuery.mockReturnValue({
+    healthQueryResult = {
       data: undefined,
       error: new Error('connection refused'),
       isLoading: false,
-    });
+    };
     renderApp();
     expect(screen.getByText(/Error: connection refused/)).toBeDefined();
   });
 
   it('shows message and DB status when data is returned', () => {
-    mockUseQuery.mockReturnValue({
+    healthQueryResult = {
       data: { message: 'pong', dbStatus: 'ok' },
       error: null,
       isLoading: false,
-    });
+    };
     renderApp();
     expect(screen.getByText(/pong/)).toBeDefined();
     expect(screen.getByText(/ok/)).toBeDefined();
   });
 
   it('clicking Ping Backend updates the queryKey (triggers refetch)', async () => {
-    mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: false });
+    healthQueryResult = { data: undefined, error: null, isLoading: false };
 
     renderApp();
     const before = mockUseQuery.mock.calls.length;
@@ -121,14 +129,16 @@ describe('App', () => {
       expect(mockUseQuery.mock.calls.length).toBeGreaterThan(before);
     });
 
-    const calls = mockUseQuery.mock.calls;
-    const firstKey = (calls[0][0] as { queryKey: unknown[] }).queryKey[1];
-    const lastKey = (calls[calls.length - 1][0] as { queryKey: unknown[] }).queryKey[1];
+    const healthCalls = mockUseQuery.mock.calls
+      .map((call) => call[0] as { queryKey: unknown[] })
+      .filter((opts) => opts.queryKey[0] === 'healthPing');
+    const firstKey = healthCalls[0].queryKey[1];
+    const lastKey = healthCalls[healthCalls.length - 1].queryKey[1];
     expect(firstKey).not.toBe(lastKey);
   });
 
   it('can toggle the sidebar dynamically', () => {
-    mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: false });
+    healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp();
     const toggleBtn = screen.getByRole('button', { name: 'Toggle Sidebar' });
     fireEvent.click(toggleBtn);
@@ -136,7 +146,7 @@ describe('App', () => {
   });
 
   it('can route to generic placeholder views', () => {
-    mockUseQuery.mockReturnValue({ data: undefined, error: null, isLoading: false });
+    healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp();
     const orgLink = screen.getByRole('link', { name: 'Organizations' });
     fireEvent.click(orgLink);

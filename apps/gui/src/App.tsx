@@ -7,7 +7,7 @@ import { AgentsDashboard } from './features/Agents';
 import { ArtifactsBrowser } from './features/Artifacts';
 import { LabelsManager } from './features/Labels';
 import { BinDashboard } from './features/Bin';
-import { DashboardPlaceholder } from './pages/Dashboard';
+import { Dashboard } from './pages/Dashboard';
 import { GenericPlaceholder } from './components/ui/GenericPlaceholder';
 import { OAuthCallback } from './pages/OAuthCallback';
 import LoginPage from './pages/Login';
@@ -23,7 +23,7 @@ function App() {
           <ProtectedRoute>
             <AppShell>
               <Routes>
-                <Route path="/" element={<DashboardPlaceholder />} />
+                <Route path="/" element={<Dashboard />} />
                 <Route path="/organizations" element={<OrganizationsDashboard />} />
                 <Route path="/projects" element={<ProjectsWizard />} />
                 <Route path="/tasks" element={<TasksWorkbench />} />
