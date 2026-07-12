@@ -5,7 +5,8 @@ import mysql from "mysql2/promise";
 import * as schemaMysql from "./schema.mysql";
 import * as schemaSqlite from "./schema.sqlite";
 
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { migrate as migrateSqlite } from "drizzle-orm/bun-sqlite/migrator";
+import { migrate as migrateMysql } from "drizzle-orm/mysql2/migrator";
 
 export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlitePath: string = ".data/local.sqlite") {
   if (driver === "sqlite") {
@@ -17,7 +18,7 @@ export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlite
     `).run();
     
     const db = drizzleSqlite(sqlite, { schema: schemaSqlite });
-    migrate(db, { migrationsFolder: "./drizzle-sqlite" });
+    migrateSqlite(db, { migrationsFolder: "./drizzle-sqlite" });
     return db;
   }
 
@@ -28,5 +29,7 @@ export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlite
     database: process.env.DB_NAME || "tasker",
     port: 3306
   });
-  return drizzleMysql(connection, { schema: schemaMysql, mode: "default" });
+  const db = drizzleMysql(connection, { schema: schemaMysql, mode: "default" });
+  await migrateMysql(db, { migrationsFolder: "./drizzle-mysql" });
+  return db;
 }
