@@ -29,6 +29,10 @@ describe("Repositories Handler >", () => {
         const body = JSON.parse(options?.body as string);
         return new Response(JSON.stringify({ access_token: "mock_token_" + body.code }), { status: 200 });
       }
+      if (url.toString() === "https://bitbucket.org/site/oauth2/access_token") {
+        const body = new URLSearchParams(options?.body as string);
+        return new Response(JSON.stringify({ access_token: "mock_bb_token_" + body.get("code") }), { status: 200 });
+      }
       return originalFetch(url, options);
     }) as unknown as typeof fetch;
   });
@@ -224,6 +228,40 @@ describe("Repositories Handler >", () => {
     expect(result.success).toBe(false);
   });
 
+  test("listBuilds maps GitHub workflow runs to normalized build statuses", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P-gh-builds", ownerId: "usr-2" }, ctx2)).project.id;
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/actions/runs")) {
+        return new Response(JSON.stringify({
+          workflow_runs: [
+            { id: 1, status: "completed", conclusion: "success", head_sha: "sha-1", created_at: "2024-01-01T00:00:00Z" },
+            { id: 2, status: "completed", conclusion: "failure", head_sha: "sha-2", created_at: "2024-01-02T00:00:00Z" },
+            { id: 3, status: "in_progress", head_sha: "sha-3", created_at: "2024-01-03T00:00:00Z" },
+          ],
+        }), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const link = (await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "github",
+      remoteName: "foo/gh-builds",
+      oauthCode: "fake-code",
+    }, ctx2)).link;
+
+    const res = await repHandler.listBuilds({ repositoryLinkId: link.id }, ctx2);
+    expect(res.builds).toHaveLength(3);
+    expect(res.builds.find((b: any) => b.id === "1").status).toBe("SUCCESS");
+    expect(res.builds.find((b: any) => b.id === "2").status).toBe("FAILURE");
+    expect(res.builds.find((b: any) => b.id === "3").status).toBe("PENDING");
+    expect(res.builds.every((b: any) => b.repositoryLinkId === link.id)).toBe(true);
+  });
+
   test("listBuilds throws instead of silently returning an empty list on provider failure", async () => {
     const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P5", ownerId: "usr-2" }, ctx2)).project.id;
 
@@ -295,17 +333,79 @@ describe("Repositories Handler >", () => {
     ).rejects.toThrow();
   });
 
-  test("listDeployments returns an empty list for a non-github provider without calling out", async () => {
+  test("listDeployments returns an empty list for an unsupported provider without calling out", async () => {
     const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P7", ownerId: "usr-2" }, ctx2)).project.id;
+    await db.insert(schemaSqlite.repositoryLinks).values({
+      id: "replink-unsupported-provider",
+      projectId: pId,
+      provider: "unsupported-provider",
+      remoteName: "foo/bb-repo",
+      accessTokenEncrypted: "irrelevant",
+      createdAt: new Date(),
+    });
+
+    const res = await repHandler.listDeployments({ buildId: "run-1", repositoryLinkId: "replink-unsupported-provider", commitSha: "sha1" }, ctx2);
+    expect(res.deployments).toEqual([]);
+  });
+
+  test("syncPullRequests, listBuilds, and listDeployments work against Bitbucket Cloud's API", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P-bitbucket", ownerId: "usr-2" }, ctx2)).project.id;
+
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      const u = url.toString();
+      if (u === "https://bitbucket.org/site/oauth2/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_bb_token" }), { status: 200 });
+      }
+      if (u.includes("/pullrequests?")) {
+        return new Response(JSON.stringify({
+          values: [
+            { id: 1, title: "BB PR Open", state: "OPEN", draft: false, links: { html: { href: "http://bb/1" } } },
+            { id: 2, title: "BB PR Merged", state: "MERGED", links: { html: { href: "http://bb/2" } } },
+          ],
+        }), { status: 200 });
+      }
+      if (u.includes("/pipelines/")) {
+        return new Response(JSON.stringify({
+          values: [
+            { uuid: "{pipe-1}", state: { name: "COMPLETED", result: { name: "SUCCESSFUL" } }, target: { commit: { hash: "sha-bb-1" } }, created_on: "2024-01-01T00:00:00Z" },
+            { uuid: "{pipe-2}", state: { name: "IN_PROGRESS" }, target: { commit: { hash: "sha-bb-2" } }, created_on: "2024-01-02T00:00:00Z" },
+          ],
+        }), { status: 200 });
+      }
+      if (u.includes("/deployments/")) {
+        return new Response(JSON.stringify({
+          values: [
+            { uuid: "{dep-1}", environment: { name: "production" }, state: { name: "COMPLETED", status: "SUCCESSFUL" }, deployable: { commit: { hash: "sha-bb-match" } }, created_on: "2024-02-01T00:00:00Z" },
+            { uuid: "{dep-2}", environment: { name: "staging" }, state: { name: "COMPLETED", status: "SUCCESSFUL" }, deployable: { commit: { hash: "sha-bb-other" } }, created_on: "2024-02-02T00:00:00Z" },
+          ],
+        }), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
     const link = (await repHandler.addRepositoryLink({
       projectId: pId,
       provider: "bitbucket",
-      remoteName: "foo/bb-repo",
+      remoteName: "foo/bb-full",
       oauthCode: "fake-code",
     }, ctx2)).link;
 
-    const res = await repHandler.listDeployments({ buildId: "run-1", repositoryLinkId: link.id, commitSha: "sha1" }, ctx2);
-    expect(res.deployments).toEqual([]);
+    await repHandler.syncPullRequests({ projectId: pId }, ctx2);
+    const prsResp = await repHandler.listPullRequests({ projectId: pId }, ctx2);
+    expect(prsResp.pullRequests.some((p: any) => p.title === "BB PR Open" && p.status === "open")).toBe(true);
+    expect(prsResp.pullRequests.some((p: any) => p.title === "BB PR Merged" && p.status === "merged")).toBe(true);
+
+    const buildsResp = await repHandler.listBuilds({ repositoryLinkId: link.id }, ctx2);
+    expect(buildsResp.builds).toHaveLength(2);
+    expect(buildsResp.builds.find((b: any) => b.id === "pipe-1").status).toBe("SUCCESS");
+    expect(buildsResp.builds.find((b: any) => b.id === "pipe-2").status).toBe("PENDING");
+
+    // Only the deployment whose commit matches commitSha should be returned.
+    const deploymentsResp = await repHandler.listDeployments({ buildId: "pipe-1", repositoryLinkId: link.id, commitSha: "sha-bb-match" }, ctx2);
+    expect(deploymentsResp.deployments).toHaveLength(1);
+    expect(deploymentsResp.deployments[0].environment).toBe("production");
+    expect(deploymentsResp.deployments[0].status).toBe("SUCCESS");
+    expect(deploymentsResp.deployments[0].buildId).toBe("pipe-1");
   });
 
   test("listDeployments throws on provider failure instead of returning fabricated data", async () => {

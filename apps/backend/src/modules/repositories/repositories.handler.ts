@@ -70,6 +70,179 @@ const ListDeploymentsSchema = z.object({
   commitSha: z.string().min(1),
 });
 
+interface NormalizedPullRequest {
+  remoteId: string;
+  title: string;
+  status: string;
+  url: string;
+}
+
+async function fetchGithubPullRequests(remoteName: string, token: string): Promise<NormalizedPullRequest[]> {
+  const response = await fetch(`https://api.github.com/repos/${remoteName}/pulls?state=all&per_page=50`, {
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/vnd.github.v3+json",
+      "User-Agent": "Tasker-Agent"
+    }
+  });
+  if (!response.ok) throw new Error(`GitHub API returned ${response.status} while fetching pull requests for ${remoteName}`);
+
+  const prs = await response.json() as any[];
+  return prs.map((pr: any) => ({
+    remoteId: String(pr.number),
+    title: pr.title,
+    status: pr.merged_at ? 'merged' : (pr.state === 'closed' ? 'closed' : (pr.draft ? 'draft' : 'open')),
+    url: pr.html_url,
+  }));
+}
+
+async function fetchBitbucketPullRequests(remoteName: string, token: string): Promise<NormalizedPullRequest[]> {
+  // Bitbucket Cloud's pullrequests endpoint only returns OPEN PRs unless
+  // explicitly told otherwise - repeat the `state` param per value to mirror
+  // GitHub's state=all.
+  const response = await fetch(
+    `https://api.bitbucket.org/2.0/repositories/${remoteName}/pullrequests?state=OPEN&state=MERGED&state=DECLINED&state=SUPERSEDED&pagelen=50`,
+    { headers: { "Authorization": `Bearer ${token}` } }
+  );
+  if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching pull requests for ${remoteName}`);
+
+  const data = await response.json() as any;
+  const prs = (data.values || []) as any[];
+  return prs.map((pr: any) => ({
+    remoteId: String(pr.id),
+    title: pr.title,
+    status: pr.state === 'MERGED' ? 'merged' : (pr.state === 'OPEN' ? (pr.draft ? 'draft' : 'open') : 'closed'),
+    url: pr.links?.html?.href,
+  }));
+}
+
+interface NormalizedBuild {
+  id: string;
+  status: string;
+  commitSha: string;
+  createdAt: string;
+}
+
+async function fetchGithubBuilds(remoteName: string, token: string): Promise<NormalizedBuild[]> {
+  const response = await fetch(`https://api.github.com/repos/${remoteName}/actions/runs?per_page=10`, {
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/vnd.github.v3+json",
+      "User-Agent": "Tasker-Agent"
+    }
+  });
+  if (!response.ok) throw new Error(`GitHub API returned ${response.status} while fetching builds for ${remoteName}`);
+
+  const data = await response.json() as any;
+  return data.workflow_runs.map((run: any) => {
+    let status = 'PENDING';
+    if (run.status === 'completed') {
+      status = run.conclusion === 'success' ? 'SUCCESS' : 'FAILURE';
+    }
+    return {
+      id: String(run.id),
+      status,
+      commitSha: run.head_sha,
+      createdAt: run.created_at,
+    };
+  });
+}
+
+async function fetchBitbucketBuilds(remoteName: string, token: string): Promise<NormalizedBuild[]> {
+  const response = await fetch(`https://api.bitbucket.org/2.0/repositories/${remoteName}/pipelines/?sort=-created_on&pagelen=10`, {
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching builds for ${remoteName}`);
+
+  const data = await response.json() as any;
+  const pipelines = (data.values || []) as any[];
+  return pipelines.map((pipeline: any) => {
+    let status = 'PENDING';
+    if (pipeline.state?.name === 'COMPLETED') {
+      status = pipeline.state?.result?.name === 'SUCCESSFUL' ? 'SUCCESS' : 'FAILURE';
+    }
+    return {
+      id: String(pipeline.uuid).replace(/[{}]/g, ''),
+      status,
+      commitSha: pipeline.target?.commit?.hash,
+      createdAt: pipeline.created_on,
+    };
+  });
+}
+
+interface NormalizedDeployment {
+  id: string;
+  environment: string;
+  status: string;
+  createdAt: string;
+}
+
+async function fetchGithubDeployments(remoteName: string, commitSha: string, token: string): Promise<NormalizedDeployment[]> {
+  const headers = {
+    "Authorization": `Bearer ${token}`,
+    "Accept": "application/vnd.github.v3+json",
+    "User-Agent": "Tasker-Agent"
+  };
+
+  // GitHub deployments are keyed by commit sha, not by our workflow-run
+  // based build id - there's no other stable link between a CI run and
+  // a deployment, so this is the only correct way to associate them.
+  const response = await fetch(`https://api.github.com/repos/${remoteName}/deployments?sha=${commitSha}&per_page=10`, { headers });
+  if (!response.ok) throw new Error(`GitHub API returned ${response.status} while fetching deployments for ${remoteName}`);
+
+  const rawDeployments = await response.json() as any[];
+  return Promise.all(rawDeployments.map(async (deployment: any) => {
+    let status = 'PENDING';
+    try {
+      // Statuses are returned newest-first; the latest one is this
+      // deployment's current state.
+      const statusesResponse = await fetch(`https://api.github.com/repos/${remoteName}/deployments/${deployment.id}/statuses?per_page=1`, { headers });
+      if (statusesResponse.ok) {
+        const statuses = await statusesResponse.json() as any[];
+        const state = statuses[0]?.state;
+        if (state === 'success') status = 'SUCCESS';
+        else if (state === 'failure' || state === 'error') status = 'FAILURE';
+      }
+    } catch (e) {
+      logger.error({ remoteName, deploymentId: deployment.id, err: e }, "listDeployments.status_fetch_failed");
+    }
+
+    return {
+      id: String(deployment.id),
+      environment: deployment.environment,
+      status,
+      createdAt: deployment.created_at,
+    };
+  }));
+}
+
+async function fetchBitbucketDeployments(remoteName: string, commitSha: string, token: string): Promise<NormalizedDeployment[]> {
+  const headers = { "Authorization": `Bearer ${token}` };
+
+  // Bitbucket's deployments endpoint has no server-side commit-sha filter,
+  // unlike GitHub's - fetch recent deployments and filter client-side by the
+  // commit hash on each deployment's deployable.
+  const response = await fetch(`https://api.bitbucket.org/2.0/repositories/${remoteName}/deployments/?sort=-created_on&pagelen=25`, { headers });
+  if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching deployments for ${remoteName}`);
+
+  const data = await response.json() as any;
+  const deployments = (data.values || []) as any[];
+  return deployments
+    .filter((deployment: any) => deployment.deployable?.commit?.hash === commitSha)
+    .map((deployment: any) => {
+      let status = 'PENDING';
+      if (deployment.state?.name === 'COMPLETED') {
+        status = deployment.state?.status === 'SUCCESSFUL' ? 'SUCCESS' : 'FAILURE';
+      }
+      return {
+        id: String(deployment.uuid).replace(/[{}]/g, ''),
+        environment: deployment.environment?.name,
+        status,
+        createdAt: deployment.created_on ?? new Date().toISOString(),
+      };
+    });
+}
+
 export const createRepositoriesHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   
@@ -105,11 +278,34 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         if (data.error) {
           throw new Error(`GitHub OAuth error: ${data.error_description || data.error}`);
         }
-        
+
+        tokenToStore = data.access_token;
+      } else if (parsed.provider === "bitbucket") {
+        // Bitbucket Cloud's OAuth2 token endpoint authenticates the client via
+        // HTTP Basic (client_id:client_secret), not a body param like GitHub,
+        // and expects a form-encoded body rather than JSON.
+        const basicAuth = Buffer.from(`${process.env.BITBUCKET_CLIENT_ID || ""}:${process.env.BITBUCKET_CLIENT_SECRET || ""}`).toString("base64");
+        const response = await fetch("https://bitbucket.org/site/oauth2/access_token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": `Basic ${basicAuth}`,
+          },
+          body: new URLSearchParams({ grant_type: "authorization_code", code: parsed.oauthCode }).toString(),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to exchange Bitbucket token`);
+        }
+
+        const data = await response.json() as any;
+        if (data.error) {
+          throw new Error(`Bitbucket OAuth error: ${data.error_description || data.error}`);
+        }
+
         tokenToStore = data.access_token;
       } else {
-        // Fallback for other providers that aren't implemented yet
-        tokenToStore = `mock_token_${parsed.oauthCode}`;
+        throw new Error(`Unsupported repository provider: ${parsed.provider}`);
       }
       const accessTokenEncrypted = encryptToken(tokenToStore);
 
@@ -170,57 +366,45 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const failures: string[] = [];
 
       for (const link of links) {
-        if (link.provider === "github") {
-          try {
-            const token = decryptToken(link.accessTokenEncrypted);
-            const response = await fetch(`https://api.github.com/repos/${link.remoteName}/pulls?state=all&per_page=50`, {
-              headers: {
-                "Authorization": `Bearer ${token}`,
-                "Accept": "application/vnd.github.v3+json",
-                "User-Agent": "Tasker-Agent"
-              }
-            });
-            if (!response.ok) {
-              failures.push(link.remoteName);
-              logger.error({ remoteName: link.remoteName, status: response.status }, "syncPullRequests.provider_error");
-              continue;
-            }
-            const prs = await response.json() as any[];
+        if (link.provider !== "github" && link.provider !== "bitbucket") continue;
+        try {
+          const token = decryptToken(link.accessTokenEncrypted);
+          const normalizedPrs = link.provider === "github"
+            ? await fetchGithubPullRequests(link.remoteName, token)
+            : await fetchBitbucketPullRequests(link.remoteName, token);
 
-            // Batch-fetch existing PRs for this link once, scoped by repositoryLinkId,
-            // instead of querying per-PR (N+1) and matching on remotePrId globally
-            // (which could collide with another repo's PR #<n>).
-            const existingByRemoteId = new Map<string, any>();
-            const existingRows = await db.select().from(prsTable).where(eq((prsTable as any).repositoryLinkId, link.id));
-            for (const row of existingRows) {
-              existingByRemoteId.set(row.remotePrId, row);
-            }
-
-            for (const pr of prs) {
-              const existing = existingByRemoteId.get(String(pr.number));
-              const prStatus = pr.merged_at ? 'merged' : (pr.state === 'closed' ? 'closed' : (pr.draft ? 'draft' : 'open'));
-
-              if (!existing) {
-                await insertRecord(db, prsTable, {
-                  id: `pr-${crypto.randomUUID()}`,
-                  repositoryLinkId: link.id,
-                  remotePrId: String(pr.number),
-                  title: pr.title,
-                  status: prStatus,
-                  url: pr.html_url
-                }, isStandalone, 'updatedAt');
-              } else {
-                await db.update(prsTable).set({
-                  title: pr.title,
-                  status: prStatus,
-                  updatedAt: isStandalone ? new Date() : undefined // MySQL usually has auto-update, but fallback
-                }).where(and(eq((prsTable as any).id, existing.id), eq((prsTable as any).repositoryLinkId, link.id)));
-              }
-            }
-          } catch (e) {
-             failures.push(link.remoteName);
-             logger.error({ remoteName: link.remoteName, err: e }, "syncPullRequests.failed");
+          // Batch-fetch existing PRs for this link once, scoped by repositoryLinkId,
+          // instead of querying per-PR (N+1) and matching on remotePrId globally
+          // (which could collide with another repo's PR #<n>).
+          const existingByRemoteId = new Map<string, any>();
+          const existingRows = await db.select().from(prsTable).where(eq((prsTable as any).repositoryLinkId, link.id));
+          for (const row of existingRows) {
+            existingByRemoteId.set(row.remotePrId, row);
           }
+
+          for (const pr of normalizedPrs) {
+            const existing = existingByRemoteId.get(pr.remoteId);
+
+            if (!existing) {
+              await insertRecord(db, prsTable, {
+                id: `pr-${crypto.randomUUID()}`,
+                repositoryLinkId: link.id,
+                remotePrId: pr.remoteId,
+                title: pr.title,
+                status: pr.status,
+                url: pr.url
+              }, isStandalone, 'updatedAt');
+            } else {
+              await db.update(prsTable).set({
+                title: pr.title,
+                status: pr.status,
+                updatedAt: isStandalone ? new Date() : undefined // MySQL usually has auto-update, but fallback
+              }).where(and(eq((prsTable as any).id, existing.id), eq((prsTable as any).repositoryLinkId, link.id)));
+            }
+          }
+        } catch (e) {
+           failures.push(link.remoteName);
+           logger.error({ remoteName: link.remoteName, err: e }, "syncPullRequests.failed");
         }
       }
 
@@ -263,45 +447,23 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
 
       if (links.length === 0) throw new Error("Repository link not found");
       const link = links[0];
-      
-      if (link.provider === "github") {
-        let response: Response;
-        try {
-          const token = decryptToken(link.accessTokenEncrypted);
-          response = await fetch(`https://api.github.com/repos/${link.remoteName}/actions/runs?per_page=10`, {
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Accept": "application/vnd.github.v3+json",
-              "User-Agent": "Tasker-Agent"
-            }
-          });
-        } catch (e) {
-          logger.error({ remoteName: link.remoteName, err: e }, "listBuilds.fetch_failed");
-          throw new Error(`Failed to fetch builds for ${link.remoteName}: ${(e as Error).message}`);
-        }
 
-        if (!response.ok) {
-          logger.error({ remoteName: link.remoteName, status: response.status }, "listBuilds.provider_error");
-          throw new Error(`GitHub API returned ${response.status} while fetching builds for ${link.remoteName}`);
-        }
-
-        const data = await response.json() as any;
-        const builds = data.workflow_runs.map((run: any) => {
-           let status = 'PENDING';
-           if (run.status === 'completed') {
-             status = run.conclusion === 'success' ? 'SUCCESS' : 'FAILURE';
-           }
-           return {
-             id: String(run.id),
-             repositoryLinkId: link.id,
-             status: status,
-             commitSha: run.head_sha,
-             createdAt: run.created_at
-           };
-        });
-        return { builds };
+      if (link.provider !== "github" && link.provider !== "bitbucket") {
+        return { builds: [] };
       }
-      return { builds: [] };
+
+      let normalizedBuilds: NormalizedBuild[];
+      try {
+        const token = decryptToken(link.accessTokenEncrypted);
+        normalizedBuilds = link.provider === "github"
+          ? await fetchGithubBuilds(link.remoteName, token)
+          : await fetchBitbucketBuilds(link.remoteName, token);
+      } catch (e) {
+        logger.error({ remoteName: link.remoteName, err: e }, "listBuilds.fetch_failed");
+        throw e;
+      }
+
+      return { builds: normalizedBuilds.map((b) => ({ ...b, repositoryLinkId: link.id })) };
     },
 
     async listDeployments(req: unknown, { values: contextValues }: { values: any }) {
@@ -316,67 +478,22 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       if (links.length === 0) throw new Error("Repository link not found");
       const link = links[0];
 
-      if (link.provider !== "github") {
+      if (link.provider !== "github" && link.provider !== "bitbucket") {
         return { deployments: [] };
       }
 
-      const token = decryptToken(link.accessTokenEncrypted);
-      const headers = {
-        "Authorization": `Bearer ${token}`,
-        "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "Tasker-Agent"
-      };
-
-      let deploymentsResponse: Response;
+      let normalizedDeployments: NormalizedDeployment[];
       try {
-        // GitHub deployments are keyed by commit sha, not by our workflow-run
-        // based build id - there's no other stable link between a CI run and
-        // a deployment, so this is the only correct way to associate them.
-        deploymentsResponse = await fetch(
-          `https://api.github.com/repos/${link.remoteName}/deployments?sha=${parsed.commitSha}&per_page=10`,
-          { headers }
-        );
+        const token = decryptToken(link.accessTokenEncrypted);
+        normalizedDeployments = link.provider === "github"
+          ? await fetchGithubDeployments(link.remoteName, parsed.commitSha, token)
+          : await fetchBitbucketDeployments(link.remoteName, parsed.commitSha, token);
       } catch (e) {
         logger.error({ remoteName: link.remoteName, err: e }, "listDeployments.fetch_failed");
-        throw new Error(`Failed to fetch deployments for ${link.remoteName}: ${(e as Error).message}`);
+        throw e;
       }
 
-      if (!deploymentsResponse.ok) {
-        logger.error({ remoteName: link.remoteName, status: deploymentsResponse.status }, "listDeployments.provider_error");
-        throw new Error(`GitHub API returned ${deploymentsResponse.status} while fetching deployments for ${link.remoteName}`);
-      }
-
-      const rawDeployments = await deploymentsResponse.json() as any[];
-
-      const deployments = await Promise.all(rawDeployments.map(async (deployment: any) => {
-        let status = 'PENDING';
-        try {
-          // Statuses are returned newest-first; the latest one is this
-          // deployment's current state.
-          const statusesResponse = await fetch(
-            `https://api.github.com/repos/${link.remoteName}/deployments/${deployment.id}/statuses?per_page=1`,
-            { headers }
-          );
-          if (statusesResponse.ok) {
-            const statuses = await statusesResponse.json() as any[];
-            const state = statuses[0]?.state;
-            if (state === 'success') status = 'SUCCESS';
-            else if (state === 'failure' || state === 'error') status = 'FAILURE';
-          }
-        } catch (e) {
-          logger.error({ remoteName: link.remoteName, deploymentId: deployment.id, err: e }, "listDeployments.status_fetch_failed");
-        }
-
-        return {
-          id: String(deployment.id),
-          buildId: parsed.buildId,
-          environment: deployment.environment,
-          status,
-          createdAt: deployment.created_at,
-        };
-      }));
-
-      return { deployments };
+      return { deployments: normalizedDeployments.map((d) => ({ ...d, buildId: parsed.buildId })) };
     }
   };
 };
