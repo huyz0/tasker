@@ -19,6 +19,11 @@ const CreateTaskTypeSchema = z.object({
   name: z.string().min(1, "name is required").max(256),
 });
 
+const ListTaskTypesSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+  page: z.any().optional(),
+});
+
 const CreateTaskSchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
   title: z.string().min(1, "title is required").max(512),
@@ -146,6 +151,25 @@ export const createTasksHandler = (db: any, nc: any = null) => {
 
       if (nc) nc.publish("domain.task_type.created", Buffer.from(JSON.stringify(payload)));
       return { taskType: taskTypeResp };
+    },
+    async listTaskTypes(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ListTaskTypesSchema.parse(req);
+      await assertOrgMember(db, userId, parsed.orgId);
+
+      const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(
+        db, types, eq((types as any).orgId, parsed.orgId), parsed.page,
+        (types as any).name, { name: (types as any).name, createdAt: (types as any).createdAt }
+      );
+
+      return {
+        taskTypes: items.map((t: any) => ({
+          ...t,
+          createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
+        })),
+        page: { nextCursor, totalCount },
+      };
     },
     async createTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

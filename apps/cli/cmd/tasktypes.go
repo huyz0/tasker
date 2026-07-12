@@ -57,6 +57,43 @@ var taskTypesCreateCmd = &cobra.Command{
 	},
 }
 
+var taskTypesListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List task types for an organization",
+	Run: func(cmd *cobra.Command, args []string) {
+		orgID, _ := cmd.Flags().GetString("org")
+		filter, _ := cmd.Flags().GetString("filter")
+		sort, _ := cmd.Flags().GetString("sort")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if orgID == "" {
+			orgID = backend.DefaultOrgID()
+		}
+		if orgID == "" {
+			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
+			return
+		}
+
+		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.ListTaskTypes(context.Background(), connect.NewRequest(&healthv1.ListTaskTypesRequest{
+			OrgId: orgID,
+			Page:  &healthv1.PageRequest{Filter: filter, Sort: sort},
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to list task types: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.TaskTypes)
+			cmd.Println(string(jsonString))
+		} else {
+			for _, t := range res.Msg.TaskTypes {
+				cmd.Printf("  - %s (id: %s)\n", t.Name, t.Id)
+			}
+		}
+	},
+}
+
 var taskTypesGetCmd = &cobra.Command{
 	Use:   "get [task_type_id]",
 	Short: "Show a task type along with its configured statuses and transitions",
@@ -158,6 +195,7 @@ var taskTypesCreateTransitionCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(taskTypesCmd)
 	taskTypesCmd.AddCommand(taskTypesCreateCmd)
+	taskTypesCmd.AddCommand(taskTypesListCmd)
 	taskTypesCmd.AddCommand(taskTypesGetCmd)
 	taskTypesCmd.AddCommand(taskTypesCreateStatusCmd)
 	taskTypesCmd.AddCommand(taskTypesCreateTransitionCmd)
@@ -166,6 +204,10 @@ func init() {
 	taskTypesCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	taskTypesCreateCmd.Flags().String("project", "", "Optional project ID to scope this type to (or set TASKER_PROJECT_ID)")
 	taskTypesCreateCmd.Flags().String("parent", "", "Optional parent task type ID, for building a task type hierarchy")
+
+	taskTypesListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	taskTypesListCmd.Flags().StringP("filter", "f", "", "Substring match against task type name")
+	taskTypesListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\"")
 
 	taskTypesCreateStatusCmd.Flags().String("name", "", "Status name (e.g. open, in_review, closed)")
 

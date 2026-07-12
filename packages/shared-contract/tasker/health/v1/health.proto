@@ -153,6 +153,16 @@ message CreateTaskTypeResponse {
   TaskType taskType = 1;
 }
 
+message ListTaskTypesRequest {
+  string orgId = 1;
+  PageRequest page = 2;
+}
+
+message ListTaskTypesResponse {
+  repeated TaskType taskTypes = 1;
+  PageResponse page = 2;
+}
+
 message CreateTaskStatusRequest {
   string taskTypeId = 1;
   string name = 2;
@@ -175,6 +185,7 @@ message CreateTaskStatusTransitionResponse {
 service TaskTypeService {
   rpc GetTaskType(GetTaskTypeRequest) returns (GetTaskTypeResponse);
   rpc CreateTaskType(CreateTaskTypeRequest) returns (CreateTaskTypeResponse);
+  rpc ListTaskTypes(ListTaskTypesRequest) returns (ListTaskTypesResponse);
   rpc CreateTaskStatus(CreateTaskStatusRequest) returns (CreateTaskStatusResponse);
   rpc CreateTaskStatusTransition(CreateTaskStatusTransitionRequest) returns (CreateTaskStatusTransitionResponse);
 }

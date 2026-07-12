@@ -5,20 +5,34 @@ import { useAuthSession } from '../../hooks/useAuthSession';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { ProjectService, ProjectTemplateService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { ProjectService, ProjectTemplateService, TaskTypeService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { PaginationControls } from '../../components/PaginationControls';
 
 const projectClient = createClient(ProjectService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
+const taskTypeClient = createClient(TaskTypeService, transport);
 
 export function ProjectsWizard() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const { userId: activeOwnerId } = useAuthSession();
   const [projectName, setProjectName] = useState('');
+  const [isAddingTemplate, setIsAddingTemplate] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateDescription, setNewTemplateDescription] = useState('');
+  const [isAddingTaskType, setIsAddingTaskType] = useState(false);
+  const [newTaskTypeName, setNewTaskTypeName] = useState('');
 
   const queryClient = useQueryClient();
   useEffect(() => setActivePageTitle('Projects'), [setActivePageTitle]);
+
+  const { data: taskTypesData, isLoading: isLoadingTaskTypes } = useQuery({
+    queryKey: ['taskTypes', activeOrgId],
+    queryFn: async () => {
+      const resp = await taskTypeClient.listTaskTypes({ orgId: activeOrgId });
+      return resp.taskTypes;
+    }
+  });
 
   const { data: templatesData, isLoading: isLoadingTemplates } = useQuery({
     queryKey: ['templates', activeOrgId],
@@ -62,6 +76,33 @@ export function ProjectsWizard() {
     }
   });
 
+  const createTemplateMutation = useMutation({
+    mutationFn: async () => {
+      await templateClient.createTemplate({
+        orgId: activeOrgId,
+        name: newTemplateName.trim(),
+        description: newTemplateDescription.trim(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates', activeOrgId] });
+      setNewTemplateName('');
+      setNewTemplateDescription('');
+      setIsAddingTemplate(false);
+    },
+  });
+
+  const createTaskTypeMutation = useMutation({
+    mutationFn: async () => {
+      await taskTypeClient.createTaskType({ orgId: activeOrgId, name: newTaskTypeName.trim() });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['taskTypes', activeOrgId] });
+      setNewTaskTypeName('');
+      setIsAddingTaskType(false);
+    },
+  });
+
   const archiveProjectMutation = useMutation({
     mutationFn: async (projectId: string) => {
       await projectClient.archiveProject({ projectId });
@@ -77,7 +118,51 @@ export function ProjectsWizard() {
       </div>
 
       <section>
-        <h2 className="text-xl font-medium mb-4">Start from a Template</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-medium">Start from a Template</h2>
+          <button
+            onClick={() => setIsAddingTemplate((v) => !v)}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            {isAddingTemplate ? 'Cancel' : '+ New Template'}
+          </button>
+        </div>
+
+        {isAddingTemplate && (
+          <form
+            className="mb-6 border rounded-lg bg-card p-4 flex flex-col gap-3 max-w-md"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newTemplateName.trim()) createTemplateMutation.mutate();
+            }}
+          >
+            <input
+              autoFocus
+              value={newTemplateName}
+              onChange={(e) => setNewTemplateName(e.target.value)}
+              placeholder="Template name"
+              className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <textarea
+              value={newTemplateDescription}
+              onChange={(e) => setNewTemplateDescription(e.target.value)}
+              placeholder="Description (optional)"
+              rows={2}
+              className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            {createTemplateMutation.isError && (
+              <p className="text-sm text-destructive">Failed to create template: {(createTemplateMutation.error as Error).message}</p>
+            )}
+            <button
+              type="submit"
+              disabled={createTemplateMutation.isPending || !newTemplateName.trim()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
+            >
+              {createTemplateMutation.isPending ? 'Creating...' : 'Create Template'}
+            </button>
+          </form>
+        )}
+
         <div className="mb-4">
           <input
             value={projectName}
@@ -111,7 +196,59 @@ export function ProjectsWizard() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No templates available. Seed them from the backend first.</p>
+          <p className="text-sm text-muted-foreground">No templates yet - create one above.</p>
+        )}
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between mb-4 border-t pt-8">
+          <h2 className="text-xl font-medium">Task Types</h2>
+          <button
+            onClick={() => setIsAddingTaskType((v) => !v)}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            {isAddingTaskType ? 'Cancel' : '+ New Task Type'}
+          </button>
+        </div>
+
+        {isAddingTaskType && (
+          <form
+            className="mb-4 border rounded-lg bg-card p-4 flex gap-2 max-w-md"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newTaskTypeName.trim()) createTaskTypeMutation.mutate();
+            }}
+          >
+            <input
+              autoFocus
+              value={newTaskTypeName}
+              onChange={(e) => setNewTaskTypeName(e.target.value)}
+              placeholder="Task type name (e.g. Bug, Epic)"
+              className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <button
+              type="submit"
+              disabled={createTaskTypeMutation.isPending || !newTaskTypeName.trim()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
+            >
+              {createTaskTypeMutation.isPending ? 'Creating...' : 'Create'}
+            </button>
+          </form>
+        )}
+        {createTaskTypeMutation.isError && (
+          <p className="text-sm text-destructive mb-4">Failed to create task type: {(createTaskTypeMutation.error as Error).message}</p>
+        )}
+
+        {isLoadingTaskTypes ? (
+          <p className="text-sm text-muted-foreground">Loading task types...</p>
+        ) : taskTypesData && taskTypesData.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {taskTypesData.map(tt => (
+              <span key={tt.id} className="text-xs bg-muted px-2 py-1 rounded-full">{tt.name}</span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No task types yet - create one above.</p>
         )}
       </section>
 

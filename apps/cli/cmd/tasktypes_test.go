@@ -40,6 +40,18 @@ func (f *fakeTaskTypeHandler) GetTaskType(
 	}), nil
 }
 
+func (f *fakeTaskTypeHandler) ListTaskTypes(
+	_ context.Context,
+	req *connect.Request[healthv1.ListTaskTypesRequest],
+) (*connect.Response[healthv1.ListTaskTypesResponse], error) {
+	return connect.NewResponse(&healthv1.ListTaskTypesResponse{
+		TaskTypes: []*healthv1.TaskType{
+			{Id: "tt_1", OrgId: req.Msg.OrgId, Name: "Epic"},
+			{Id: "tt_2", OrgId: req.Msg.OrgId, Name: "Story"},
+		},
+	}), nil
+}
+
 func (f *fakeTaskTypeHandler) CreateTaskStatus(
 	_ context.Context,
 	req *connect.Request[healthv1.CreateTaskStatusRequest],
@@ -101,6 +113,22 @@ func TestTaskTypesCreateCmdWithParent(t *testing.T) {
 	out := b.String()
 	if !strings.Contains(out, "tt_1") {
 		t.Fatalf("expected output to contain the created task type, got %s", out)
+	}
+}
+
+func TestTaskTypesListCmd(t *testing.T) {
+	withTaskTypeServer(t)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"task-types", "list", "--org", "org-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "Epic") || !strings.Contains(out, "Story") {
+		t.Fatalf("expected output to list both task types, got %s", out)
 	}
 }
 

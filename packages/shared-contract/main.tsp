@@ -180,6 +180,16 @@ model CreateTaskTypeResponse {
   @field(1) taskType: TaskType;
 }
 
+model ListTaskTypesRequest {
+  @field(1) orgId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListTaskTypesResponse {
+  @field(1) taskTypes: TaskType[];
+  @field(2) page?: PageResponse;
+}
+
 model CreateTaskStatusRequest {
   @field(1) taskTypeId: string;
   @field(2) name: string;
@@ -200,6 +210,7 @@ model CreateTaskStatusTransitionResponse {
 interface TaskTypeService {
   getTaskType(request: GetTaskTypeRequest): GetTaskTypeResponse;
   createTaskType(request: CreateTaskTypeRequest): CreateTaskTypeResponse;
+  listTaskTypes(request: ListTaskTypesRequest): ListTaskTypesResponse;
   createTaskStatus(request: CreateTaskStatusRequest): CreateTaskStatusResponse;
   createTaskStatusTransition(
     request: CreateTaskStatusTransitionRequest,

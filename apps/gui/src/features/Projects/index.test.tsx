@@ -2,10 +2,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListTemplates, mockListProjects, mockCreateProject } = vi.hoisted(() => ({
+const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockListTaskTypes, mockCreateTaskType } = vi.hoisted(() => ({
   mockListTemplates: vi.fn(),
   mockListProjects: vi.fn(),
   mockCreateProject: vi.fn(),
+  mockCreateTemplate: vi.fn(),
+  mockListTaskTypes: vi.fn(),
+  mockCreateTaskType: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -16,11 +19,15 @@ vi.mock('@connectrpc/connect', () => ({
     listTemplates: mockListTemplates,
     listProjects: mockListProjects,
     createProject: mockCreateProject,
+    createTemplate: mockCreateTemplate,
+    listTaskTypes: mockListTaskTypes,
+    createTaskType: mockCreateTaskType,
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   ProjectService: {},
   ProjectTemplateService: {},
+  TaskTypeService: {},
 }));
 vi.mock('../../components/ui/repositories/RepositoryIntegrationConfig', () => ({
   RepositoryIntegrationConfig: () => null,
@@ -53,6 +60,10 @@ describe('ProjectsWizard', () => {
     mockListTemplates.mockReset();
     mockListProjects.mockReset();
     mockCreateProject.mockReset();
+    mockCreateTemplate.mockReset();
+    mockListTaskTypes.mockReset();
+    mockListTaskTypes.mockResolvedValue({ taskTypes: [] });
+    mockCreateTaskType.mockReset();
   });
 
   it('disables project creation until a name is entered', async () => {
@@ -102,6 +113,42 @@ describe('ProjectsWizard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
+  });
+
+  it('creates a project template via a real API call, using real data instead of requiring the backend/CLI', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    mockCreateTemplate.mockResolvedValue({ template: { id: 'tpl-new', name: 'New Template' } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('+ New Template')).toBeDefined());
+    fireEvent.click(screen.getByText('+ New Template'));
+
+    fireEvent.change(screen.getByPlaceholderText('Template name'), { target: { value: 'New Template' } });
+    fireEvent.change(screen.getByPlaceholderText('Description (optional)'), { target: { value: 'A description' } });
+    fireEvent.click(screen.getByText('Create Template'));
+
+    await waitFor(() => expect(mockCreateTemplate).toHaveBeenCalledWith({
+      orgId: 'org-1',
+      name: 'New Template',
+      description: 'A description',
+    }));
+  });
+
+  it('lists and creates task types via real API calls', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    mockListTaskTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Bug' }] });
+    mockCreateTaskType.mockResolvedValue({ taskType: { id: 'tt-new', name: 'Epic' } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Bug')).toBeDefined());
+
+    fireEvent.click(screen.getByText('+ New Task Type'));
+    fireEvent.change(screen.getByPlaceholderText('Task type name (e.g. Bug, Epic)'), { target: { value: 'Epic' } });
+    fireEvent.click(screen.getByText('Create'));
+
+    await waitFor(() => expect(mockCreateTaskType).toHaveBeenCalledWith({ orgId: 'org-1', name: 'Epic' }));
   });
 
   it('loads the next page of projects when Load More is clicked', async () => {

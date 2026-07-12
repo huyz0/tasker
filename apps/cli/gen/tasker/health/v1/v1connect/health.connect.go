@@ -84,6 +84,9 @@ const (
 	// TaskTypeServiceCreateTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
 	// CreateTaskType RPC.
 	TaskTypeServiceCreateTaskTypeProcedure = "/tasker.health.v1.TaskTypeService/CreateTaskType"
+	// TaskTypeServiceListTaskTypesProcedure is the fully-qualified name of the TaskTypeService's
+	// ListTaskTypes RPC.
+	TaskTypeServiceListTaskTypesProcedure = "/tasker.health.v1.TaskTypeService/ListTaskTypes"
 	// TaskTypeServiceCreateTaskStatusProcedure is the fully-qualified name of the TaskTypeService's
 	// CreateTaskStatus RPC.
 	TaskTypeServiceCreateTaskStatusProcedure = "/tasker.health.v1.TaskTypeService/CreateTaskStatus"
@@ -259,6 +262,7 @@ var (
 	taskTypeServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskTypeService")
 	taskTypeServiceGetTaskTypeMethodDescriptor                = taskTypeServiceServiceDescriptor.Methods().ByName("GetTaskType")
 	taskTypeServiceCreateTaskTypeMethodDescriptor             = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskType")
+	taskTypeServiceListTaskTypesMethodDescriptor              = taskTypeServiceServiceDescriptor.Methods().ByName("ListTaskTypes")
 	taskTypeServiceCreateTaskStatusMethodDescriptor           = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskStatus")
 	taskTypeServiceCreateTaskStatusTransitionMethodDescriptor = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskStatusTransition")
 	projectTemplateServiceServiceDescriptor                   = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectTemplateService")
@@ -690,6 +694,7 @@ func (UnimplementedOrgServiceHandler) InviteUser(context.Context, *connect.Reque
 type TaskTypeServiceClient interface {
 	GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error)
 	CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error)
+	ListTaskTypes(context.Context, *connect.Request[v1.ListTaskTypesRequest]) (*connect.Response[v1.ListTaskTypesResponse], error)
 	CreateTaskStatus(context.Context, *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error)
 	CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error)
 }
@@ -716,6 +721,12 @@ func NewTaskTypeServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(taskTypeServiceCreateTaskTypeMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listTaskTypes: connect.NewClient[v1.ListTaskTypesRequest, v1.ListTaskTypesResponse](
+			httpClient,
+			baseURL+TaskTypeServiceListTaskTypesProcedure,
+			connect.WithSchema(taskTypeServiceListTaskTypesMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		createTaskStatus: connect.NewClient[v1.CreateTaskStatusRequest, v1.CreateTaskStatusResponse](
 			httpClient,
 			baseURL+TaskTypeServiceCreateTaskStatusProcedure,
@@ -735,6 +746,7 @@ func NewTaskTypeServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 type taskTypeServiceClient struct {
 	getTaskType                *connect.Client[v1.GetTaskTypeRequest, v1.GetTaskTypeResponse]
 	createTaskType             *connect.Client[v1.CreateTaskTypeRequest, v1.CreateTaskTypeResponse]
+	listTaskTypes              *connect.Client[v1.ListTaskTypesRequest, v1.ListTaskTypesResponse]
 	createTaskStatus           *connect.Client[v1.CreateTaskStatusRequest, v1.CreateTaskStatusResponse]
 	createTaskStatusTransition *connect.Client[v1.CreateTaskStatusTransitionRequest, v1.CreateTaskStatusTransitionResponse]
 }
@@ -747,6 +759,11 @@ func (c *taskTypeServiceClient) GetTaskType(ctx context.Context, req *connect.Re
 // CreateTaskType calls tasker.health.v1.TaskTypeService.CreateTaskType.
 func (c *taskTypeServiceClient) CreateTaskType(ctx context.Context, req *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error) {
 	return c.createTaskType.CallUnary(ctx, req)
+}
+
+// ListTaskTypes calls tasker.health.v1.TaskTypeService.ListTaskTypes.
+func (c *taskTypeServiceClient) ListTaskTypes(ctx context.Context, req *connect.Request[v1.ListTaskTypesRequest]) (*connect.Response[v1.ListTaskTypesResponse], error) {
+	return c.listTaskTypes.CallUnary(ctx, req)
 }
 
 // CreateTaskStatus calls tasker.health.v1.TaskTypeService.CreateTaskStatus.
@@ -763,6 +780,7 @@ func (c *taskTypeServiceClient) CreateTaskStatusTransition(ctx context.Context, 
 type TaskTypeServiceHandler interface {
 	GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error)
 	CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error)
+	ListTaskTypes(context.Context, *connect.Request[v1.ListTaskTypesRequest]) (*connect.Response[v1.ListTaskTypesResponse], error)
 	CreateTaskStatus(context.Context, *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error)
 	CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error)
 }
@@ -785,6 +803,12 @@ func NewTaskTypeServiceHandler(svc TaskTypeServiceHandler, opts ...connect.Handl
 		connect.WithSchema(taskTypeServiceCreateTaskTypeMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskTypeServiceListTaskTypesHandler := connect.NewUnaryHandler(
+		TaskTypeServiceListTaskTypesProcedure,
+		svc.ListTaskTypes,
+		connect.WithSchema(taskTypeServiceListTaskTypesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	taskTypeServiceCreateTaskStatusHandler := connect.NewUnaryHandler(
 		TaskTypeServiceCreateTaskStatusProcedure,
 		svc.CreateTaskStatus,
@@ -803,6 +827,8 @@ func NewTaskTypeServiceHandler(svc TaskTypeServiceHandler, opts ...connect.Handl
 			taskTypeServiceGetTaskTypeHandler.ServeHTTP(w, r)
 		case TaskTypeServiceCreateTaskTypeProcedure:
 			taskTypeServiceCreateTaskTypeHandler.ServeHTTP(w, r)
+		case TaskTypeServiceListTaskTypesProcedure:
+			taskTypeServiceListTaskTypesHandler.ServeHTTP(w, r)
 		case TaskTypeServiceCreateTaskStatusProcedure:
 			taskTypeServiceCreateTaskStatusHandler.ServeHTTP(w, r)
 		case TaskTypeServiceCreateTaskStatusTransitionProcedure:
@@ -822,6 +848,10 @@ func (UnimplementedTaskTypeServiceHandler) GetTaskType(context.Context, *connect
 
 func (UnimplementedTaskTypeServiceHandler) CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.CreateTaskType is not implemented"))
+}
+
+func (UnimplementedTaskTypeServiceHandler) ListTaskTypes(context.Context, *connect.Request[v1.ListTaskTypesRequest]) (*connect.Response[v1.ListTaskTypesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.ListTaskTypes is not implemented"))
 }
 
 func (UnimplementedTaskTypeServiceHandler) CreateTaskStatus(context.Context, *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error) {

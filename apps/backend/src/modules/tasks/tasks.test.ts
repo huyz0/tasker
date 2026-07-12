@@ -86,6 +86,36 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.createTaskType({ orgId, name: "Cross-org child", parentId: otherParentResp.taskType.id }, ctx)).rejects.toThrow();
   });
 
+  test("listTaskTypes lists task types for an org, scoped by membership, with filter/sort support", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-listtt-" + Date.now().toString();
+    const userId = "user-listtt-" + Date.now().toString();
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "List TT Org", slug: "list-tt-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
+
+    const ctx = makeAuthContext(userId);
+    const handler = createTasksHandler(db, nc);
+
+    await handler.createTaskType({ orgId, name: "Zebra Type" }, ctx);
+    await handler.createTaskType({ orgId, name: "Alpha Type" }, ctx);
+
+    const listResp = await handler.listTaskTypes({ orgId }, ctx);
+    expect(listResp.taskTypes.length).toBe(2);
+    expect(listResp.page.totalCount).toBe(2);
+
+    const filtered = await handler.listTaskTypes({ orgId, page: { filter: "Zebra" } }, ctx);
+    expect(filtered.taskTypes.every((t: any) => t.name.includes("Zebra"))).toBe(true);
+
+    const sorted = await handler.listTaskTypes({ orgId, page: { sort: "name:asc" } }, ctx);
+    const names = sorted.taskTypes.map((t: any) => t.name);
+    expect(names.indexOf("Alpha Type")).toBeLessThan(names.indexOf("Zebra Type"));
+
+    await expect(handler.listTaskTypes({ orgId }, makeAuthContext("user-outsider-listtt"))).rejects.toThrow();
+    await expect(handler.listTaskTypes({}, ctx)).rejects.toThrow();
+  });
+
   test("createTaskManagementHandler can create/assign tasks", async () => {
     const { db, nc } = await setupIntegrationTest();
 
