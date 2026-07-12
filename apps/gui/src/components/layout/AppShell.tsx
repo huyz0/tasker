@@ -8,7 +8,8 @@ import {
   Menu,
   Activity,
   UserCircle,
-  Trash2
+  Trash2,
+  Tag
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
@@ -22,6 +23,7 @@ const NAVIGATION_ITEMS = [
   { name: 'Tasks', path: '/tasks', icon: CheckSquare },
   { name: 'AI Agents', path: '/agents', icon: Bot },
   { name: 'Artifacts', path: '/artifacts', icon: FileBox },
+  { name: 'Labels', path: '/labels', icon: Tag },
   { name: 'Bin', path: '/bin', icon: Trash2 },
 ];
 
