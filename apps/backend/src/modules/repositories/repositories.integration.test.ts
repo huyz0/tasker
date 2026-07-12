@@ -31,8 +31,9 @@ testIf("Real GitHub Integration: Repositories", () => {
     select: () => ({
       from: (table: any) => ({
         where: () => {
+          let rows: any[];
           if (table === schemaSqlite.repositoryLinks) {
-            return [
+            rows = [
               {
                 id: `link-${executionId}`,
                 projectId: TEST_PROJECT_ID,
@@ -42,14 +43,18 @@ testIf("Real GitHub Integration: Repositories", () => {
                 accessTokenEncrypted: mockEncrypt(testToken),
               },
             ];
+          } else if (table === schemaSqlite.projects) {
+            rows = [{ id: TEST_PROJECT_ID, orgId: TEST_ORG_ID }];
+          } else if (table === schemaSqlite.organizationMembers) {
+            rows = [{ orgId: TEST_ORG_ID, userId: TEST_USER_ID, role: "admin" }];
+          } else {
+            rows = [];
           }
-          if (table === schemaSqlite.projects) {
-            return [{ id: TEST_PROJECT_ID, orgId: TEST_ORG_ID }];
-          }
-          if (table === schemaSqlite.organizationMembers) {
-            return [{ orgId: TEST_ORG_ID, userId: TEST_USER_ID, role: "admin" }];
-          }
-          return [];
+          // authz.ts's getProjectOrgId/getRepositoryLinkOrgId chain a .limit(1)
+          // after .where() - support that here so this fixture keeps working
+          // as those helpers evolve, instead of just faking the query shape
+          // this test happened to need when it was first written.
+          return Object.assign(rows, { limit: (_n: number) => rows });
         },
       }),
     }),
