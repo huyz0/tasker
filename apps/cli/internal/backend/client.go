@@ -65,7 +65,25 @@ func RequestIDInterceptor() connect.Interceptor {
 	})
 }
 
+// AuthInterceptor attaches the CLI's saved session token (from `tasker auth
+// login`) as an Authorization: Bearer header on every outgoing RPC. Commands
+// run with no saved credentials simply send no header - the backend then
+// rejects with Unauthenticated, same as an anonymous browser request.
+func AuthInterceptor() connect.Interceptor {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			token, err := LoadCredentials()
+			if err != nil {
+				Logger.Warn("failed to load saved credentials", "err", err)
+			} else if token != "" {
+				req.Header().Set("Authorization", "Bearer "+token)
+			}
+			return next(ctx, req)
+		}
+	})
+}
+
 // ClientOptions returns the connect.ClientOption set every CLI client should use.
 func ClientOptions() []connect.ClientOption {
-	return []connect.ClientOption{connect.WithInterceptors(RequestIDInterceptor())}
+	return []connect.ClientOption{connect.WithInterceptors(RequestIDInterceptor(), AuthInterceptor())}
 }

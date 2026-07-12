@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -42,5 +43,45 @@ func TestRequestIDInterceptorStampsHeaderAndLogsFailures(t *testing.T) {
 	}
 	if !called {
 		t.Error("expected next to be called")
+	}
+}
+
+func TestAuthInterceptorAttachesSavedTokenAsBearerHeader(t *testing.T) {
+	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "credentials.json"))
+	if err := SaveCredentials("my-session-token"); err != nil {
+		t.Fatalf("expected SaveCredentials to succeed, got: %v", err)
+	}
+
+	interceptor := AuthInterceptor()
+	var gotHeader string
+	next := connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		gotHeader = req.Header().Get("Authorization")
+		return nil, nil
+	})
+
+	wrapped := interceptor.WrapUnary(next)
+	_, _ = wrapped(context.Background(), connect.NewRequest(&struct{}{}))
+
+	if gotHeader != "Bearer my-session-token" {
+		t.Errorf("expected Authorization header 'Bearer my-session-token', got %q", gotHeader)
+	}
+}
+
+func TestAuthInterceptorSendsNoHeaderWhenLoggedOut(t *testing.T) {
+	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "does-not-exist.json"))
+
+	interceptor := AuthInterceptor()
+	var gotHeader string
+	headerWasSet := false
+	next := connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		gotHeader, headerWasSet = req.Header().Get("Authorization"), req.Header().Get("Authorization") != ""
+		return nil, nil
+	})
+
+	wrapped := interceptor.WrapUnary(next)
+	_, _ = wrapped(context.Background(), connect.NewRequest(&struct{}{}))
+
+	if headerWasSet {
+		t.Errorf("expected no Authorization header when logged out, got %q", gotHeader)
 	}
 }

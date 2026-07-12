@@ -22,6 +22,13 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
     const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toContain('accounts.google.com/o/oauth2/v2/auth');
+    expect(res.headers.get('location')).not.toContain('state=');
+  });
+
+  it('should carry a cli state flag through the consent screen redirect when ?cli=true', async () => {
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/login?cli=true'));
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toContain('state=cli');
   });
 
   afterEach(() => {
@@ -52,6 +59,32 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
     expect(cookie).toContain('HttpOnly');
     const session = verifySessionToken(parseSessionCookie(cookie)!);
     expect(session?.userId).toBe('testuser123');
+
+    globalThis.fetch = originalFetch;
+  });
+
+  it('should hand off a bearer token to the CLI local callback instead of a cookie when state=cli', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') {
+        return new Response(JSON.stringify({ access_token: 'mock_access_token' }), { status: 200 });
+      }
+      if (urlStr === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        return new Response(JSON.stringify({ id: 'cli-user-1', email: 'cli@example.com' }), { status: 200 });
+      }
+      return originalFetch(url, options);
+    }) as unknown as typeof fetch;
+
+    const req = new Request('http://localhost/api/auth/google/callback?code=123&state=cli');
+    const res = await authRoutes.handle(req);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get('set-cookie')).toBeNull();
+    const location = res.headers.get('location')!;
+    expect(location).toStartWith('http://localhost:3952/callback?token=');
+    const token = new URL(location).searchParams.get('token')!;
+    expect(verifySessionToken(token)?.userId).toBe('cli-user-1');
 
     globalThis.fetch = originalFetch;
   });

@@ -1,10 +1,20 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"connectrpc.com/connect"
+	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
+	"github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
 )
 
 func TestAuthCommandMetadata(t *testing.T) {
@@ -57,14 +67,15 @@ func TestAuthRegisteredUnderRoot(t *testing.T) {
 
 func TestSaveCredentialsPersistsTokenToDisk(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("TASKER_CREDENTIALS_PATH", "")
 
-	if err := saveCredentials("test-token-123"); err != nil {
-		t.Fatalf("expected saveCredentials to succeed, got: %v", err)
+	if err := backend.SaveCredentials("test-token-123"); err != nil {
+		t.Fatalf("expected SaveCredentials to succeed, got: %v", err)
 	}
 
-	path, err := credentialsPath()
+	path, err := backend.CredentialsPath()
 	if err != nil {
-		t.Fatalf("expected credentialsPath to succeed, got: %v", err)
+		t.Fatalf("expected CredentialsPath to succeed, got: %v", err)
 	}
 
 	info, err := os.Stat(path)
@@ -86,18 +97,138 @@ func TestSaveCredentialsPersistsTokenToDisk(t *testing.T) {
 	if saved["token"] != "test-token-123" {
 		t.Errorf("expected saved token 'test-token-123', got %q", saved["token"])
 	}
+
+	loaded, err := backend.LoadCredentials()
+	if err != nil {
+		t.Fatalf("expected LoadCredentials to succeed, got: %v", err)
+	}
+	if loaded != "test-token-123" {
+		t.Errorf("expected loaded token 'test-token-123', got %q", loaded)
+	}
 }
 
 func TestCredentialsPathIsUnderHomeDotTasker(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
+	t.Setenv("TASKER_CREDENTIALS_PATH", "")
 
-	path, err := credentialsPath()
+	path, err := backend.CredentialsPath()
 	if err != nil {
-		t.Fatalf("expected credentialsPath to succeed, got: %v", err)
+		t.Fatalf("expected CredentialsPath to succeed, got: %v", err)
 	}
 	expected := filepath.Join(tmpHome, ".tasker", "credentials.json")
 	if path != expected {
 		t.Errorf("expected path %q, got %q", expected, path)
+	}
+}
+
+func TestLoadCredentialsReturnsEmptyWhenLoggedOut(t *testing.T) {
+	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "does-not-exist.json"))
+
+	token, err := backend.LoadCredentials()
+	if err != nil {
+		t.Fatalf("expected no error for a missing credentials file, got: %v", err)
+	}
+	if token != "" {
+		t.Errorf("expected empty token when logged out, got %q", token)
+	}
+}
+
+func TestClearCredentialsRemovesTheFile(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "credentials.json")
+	t.Setenv("TASKER_CREDENTIALS_PATH", credPath)
+
+	if err := backend.SaveCredentials("token-to-clear"); err != nil {
+		t.Fatalf("expected SaveCredentials to succeed, got: %v", err)
+	}
+	if err := backend.ClearCredentials(); err != nil {
+		t.Fatalf("expected ClearCredentials to succeed, got: %v", err)
+	}
+	if _, err := os.Stat(credPath); !os.IsNotExist(err) {
+		t.Errorf("expected credentials file to be removed, stat err: %v", err)
+	}
+
+	// Logging out twice should be a no-op, not an error.
+	if err := backend.ClearCredentials(); err != nil {
+		t.Errorf("expected ClearCredentials to be idempotent, got: %v", err)
+	}
+}
+
+type fakeAuthHandler struct {
+	v1connect.UnimplementedAuthServiceHandler
+	receivedAuthHeader string
+}
+
+func (f *fakeAuthHandler) GetIdentity(
+	ctx context.Context,
+	req *connect.Request[healthv1.GetIdentityRequest],
+) (*connect.Response[healthv1.GetIdentityResponse], error) {
+	f.receivedAuthHeader = req.Header().Get("Authorization")
+	return connect.NewResponse(&healthv1.GetIdentityResponse{
+		User: &healthv1.User{Id: "user-1", Name: "Ada Lovelace", Email: "ada@example.com"},
+	}), nil
+}
+
+func TestWhoamiSendsTheSavedTokenAsABearerHeader(t *testing.T) {
+	fake := &fakeAuthHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewAuthServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "credentials.json"))
+
+	if err := backend.SaveCredentials("saved-session-token"); err != nil {
+		t.Fatalf("expected SaveCredentials to succeed, got: %v", err)
+	}
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"auth", "whoami"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.receivedAuthHeader != "Bearer saved-session-token" {
+		t.Errorf("expected the AuthService to receive the saved token as a bearer header, got %q", fake.receivedAuthHeader)
+	}
+	out := b.String()
+	if !strings.Contains(out, "Ada Lovelace") || !strings.Contains(out, "ada@example.com") {
+		t.Errorf("expected output to contain the identity, got %s", out)
+	}
+}
+
+func TestWhoamiReportsNotLoggedInWithoutSavedCredentials(t *testing.T) {
+	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "does-not-exist.json"))
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"auth", "whoami"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "Not logged in") {
+		t.Errorf("expected a not-logged-in message, got %s", out)
+	}
+}
+
+func TestLogoutCommandClearsSavedCredentials(t *testing.T) {
+	credPath := filepath.Join(t.TempDir(), "credentials.json")
+	t.Setenv("TASKER_CREDENTIALS_PATH", credPath)
+	if err := backend.SaveCredentials("token-to-remove"); err != nil {
+		t.Fatalf("expected SaveCredentials to succeed, got: %v", err)
+	}
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"auth", "logout"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(credPath); !os.IsNotExist(err) {
+		t.Errorf("expected credentials file to be removed after logout, stat err: %v", err)
 	}
 }

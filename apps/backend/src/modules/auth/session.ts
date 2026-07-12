@@ -43,4 +43,27 @@ export const parseSessionCookie = (cookieHeader: string | null): string | null =
   return match ? match.slice('session='.length) : null;
 };
 
+/**
+ * Same session token format as the browser cookie, just delivered as a
+ * bearer header instead - this is how the CLI (and, by extension, AI agents
+ * scripting against it) authenticate, since they have no cookie jar tied to
+ * a browser session.
+ */
+export const parseBearerToken = (authorizationHeader: string | null): string | null => {
+  if (!authorizationHeader?.startsWith('Bearer ')) return null;
+  return authorizationHeader.slice('Bearer '.length).trim() || null;
+};
+
+/**
+ * Resolves the authenticated userId for a request from either an
+ * Authorization: Bearer header (CLI/agents) or a session cookie (browser),
+ * checking the bearer header first. Returns null if neither is present or
+ * valid - callers decide whether that's an error.
+ */
+export const resolveSessionUserId = (headers: { cookie: string | null; authorization: string | null }): string | null => {
+  const token = parseBearerToken(headers.authorization) ?? parseSessionCookie(headers.cookie);
+  const session = token ? verifySessionToken(token) : null;
+  return session?.userId ?? null;
+};
+
 export const currentUserIdKey = createContextKey<string | null>(null);

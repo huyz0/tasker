@@ -5,7 +5,7 @@ import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
 import { authRoutes } from "./modules/auth/auth";
-import { currentUserIdKey, parseSessionCookie, verifySessionToken } from "./modules/auth/session";
+import { currentUserIdKey, resolveSessionUserId } from "./modules/auth/session";
 import { createOrgsHandler } from "./modules/orgs/orgs.handler";
 import { createProjectTemplatesHandler, createProjectsHandler } from "./modules/projects/projects.handler";
 import { createTasksHandler, createTaskManagementHandler } from "./modules/tasks/tasks.handler";
@@ -47,9 +47,11 @@ try {
 }
 
 const sessionInterceptor: Interceptor = (next) => async (req) => {
-  const token = parseSessionCookie(req.header.get("cookie"));
-  const session = token ? verifySessionToken(token) : null;
-  req.contextValues.set(currentUserIdKey, session?.userId ?? null);
+  const userId = resolveSessionUserId({
+    cookie: req.header.get("cookie"),
+    authorization: req.header.get("authorization"),
+  });
+  req.contextValues.set(currentUserIdKey, userId);
   return next(req);
 };
 

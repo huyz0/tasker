@@ -8,15 +8,25 @@ function sessionCookie(userId: string): string {
   return `session=${createSessionToken(userId)}; HttpOnly; Path=/; SameSite=Lax${secure}`;
 }
 
+// The CLI's `tasker auth login` starts a short-lived localhost HTTP server on
+// this port to catch the OAuth handoff, since it has no cookie jar tied to a
+// browser session. Must match apps/cli/cmd/auth.go's local listener.
+const CLI_CALLBACK_PORT = 3952;
+
 export const authRoutes = new Elysia()
-  .get('/api/auth/google/login', () => {
+  .get('/api/auth/google/login', ({ query }) => {
+    const isCli = query.cli === 'true';
     const params = new URLSearchParams({
       client_id: config.googleClientId,
       redirect_uri: config.googleRedirectUri,
       response_type: 'code',
       scope: 'email profile',
       access_type: 'offline',
-      prompt: 'consent'
+      prompt: 'consent',
+      // Google echoes `state` back verbatim on the callback - this is how the
+      // callback knows to hand off a bearer token to the CLI's local server
+      // instead of setting a browser cookie.
+      ...(isCli ? { state: 'cli' } : {}),
     });
 
     return new Response('', {
@@ -27,6 +37,7 @@ export const authRoutes = new Elysia()
   .get('/api/auth/google/callback', async ({ query }) => {
     const code = query.code as string;
     const error = query.error as string;
+    const isCli = query.state === 'cli';
 
     if (error) {
       return new Response(`Authentication failed: ${error}`, { status: 400 });
@@ -66,6 +77,14 @@ export const authRoutes = new Elysia()
       }
       
       const profile = (await profileResponse.json()) as any;
+
+      if (isCli) {
+        const token = createSessionToken(profile.id);
+        return new Response('', {
+          status: 302,
+          headers: { location: `http://localhost:${CLI_CALLBACK_PORT}/callback?token=${encodeURIComponent(token)}` }
+        });
+      }
 
       return new Response('', {
         status: 302,
