@@ -32,6 +32,7 @@ model PageRequest {
 
 model PageResponse {
   @field(1) nextCursor?: string;
+  @field(2) totalCount?: int32;
 }
 
 // ==== IAM Models ====

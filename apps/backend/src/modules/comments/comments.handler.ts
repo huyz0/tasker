@@ -58,14 +58,14 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, orgId);
 
       const cmts = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
-      const { items, nextCursor } = await executePaginatedQuery(db, cmts, and(eq((cmts as any).entityId, req.entityId), eq((cmts as any).entityType, req.entityType)), req.page);
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, cmts, and(eq((cmts as any).entityId, req.entityId), eq((cmts as any).entityType, req.entityType)), req.page);
 
       return {
         comments: items.map((c: any) => ({
           ...c,
           createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
         })),
-        page: { nextCursor },
+        page: { nextCursor, totalCount },
       };
     },
   };

@@ -1,4 +1,4 @@
-import { SQL, and, lt, gt, or, eq, desc, asc, isNull, like } from "drizzle-orm";
+import { SQL, and, lt, gt, or, eq, desc, asc, isNull, like, sql } from "drizzle-orm";
 import { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
 export interface PaginationParams {
@@ -166,17 +166,28 @@ export async function executePaginatedQuery(
   const whereClause = buildCursorPaginationWhere(cursorData, sortCol, table.id, sortField, direction);
   const finalWhere = whereClause ? (condition ? and(condition, whereClause) : whereClause) : condition;
 
-  const result = await db
-    .select()
-    .from(table)
-    .where(finalWhere)
-    .limit(limit)
-    .orderBy(...buildPaginationOrderBy(sortCol, table.id, direction));
+  // totalCount reflects the filtered set (base condition + filter), not the
+  // current page - it must ignore the cursor's WHERE clause, since "how many
+  // results total" shouldn't change as the caller pages through them.
+  const [result, countRows] = await Promise.all([
+    db
+      .select()
+      .from(table)
+      .where(finalWhere)
+      .limit(limit)
+      .orderBy(...buildPaginationOrderBy(sortCol, table.id, direction)),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(table)
+      .where(condition),
+  ]);
 
   const lastItem = result[result.length - 1];
   const nextCursor = lastItem && result.length === limit
     ? encodeCursor(extractCursorValue(lastItem, sortField), lastItem.id, sortField)
     : undefined;
 
-  return { items: result, nextCursor };
+  const totalCount = Number(countRows[0]?.count ?? 0);
+
+  return { items: result, nextCursor, totalCount };
 }

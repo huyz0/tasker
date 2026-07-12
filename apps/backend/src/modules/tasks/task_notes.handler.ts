@@ -47,14 +47,14 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, orgId);
 
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
-      const { items, nextCursor } = await executePaginatedQuery(db, notes, eq((notes as any).taskId, req.taskId), req.page);
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, notes, eq((notes as any).taskId, req.taskId), req.page);
 
       return {
         taskNotes: items.map((n: any) => ({
           ...n,
           createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : n.createdAt,
         })),
-        page: { nextCursor },
+        page: { nextCursor, totalCount },
       };
     },
   };

@@ -375,7 +375,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
 
       const links = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       
-      const { items, nextCursor } = await executePaginatedQuery(
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(
           db, 
           links, 
           eq((links as any).projectId, parsed.projectId), 
@@ -389,7 +389,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
           accessTokenEncrypted: undefined, 
           createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
         })),
-        page: { nextCursor },
+        page: { nextCursor, totalCount },
       };
     },
     

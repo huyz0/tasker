@@ -53,14 +53,14 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       }
 
       const deletedFilter = req.onlyDeleted ? not(notDeleted(orgs)) : notDeleted(orgs);
-      const { items, nextCursor } = await executePaginatedQuery(db, orgs, and(inArray(orgs.id, memberOrgIds), deletedFilter), req.page, (orgs as any).name, { name: (orgs as any).name, createdAt: (orgs as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, orgs, and(inArray(orgs.id, memberOrgIds), deletedFilter), req.page, (orgs as any).name, { name: (orgs as any).name, createdAt: (orgs as any).createdAt });
 
       return {
         organizations: items.map((o: any) => ({
           ...o,
           createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : o.createdAt,
         })),
-        page: { nextCursor },
+        page: { nextCursor, totalCount },
       };
     },
     async seedOrg(req: unknown, { values: contextValues }: { values: any }) {

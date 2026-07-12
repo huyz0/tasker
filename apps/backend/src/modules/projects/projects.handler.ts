@@ -118,14 +118,14 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
 
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(ps)) : notDeleted(ps);
-      const { items, nextCursor } = await executePaginatedQuery(db, ps, and(eq((ps as any).orgId, req.orgId), deletedFilter), req.page, (ps as any).name, { name: (ps as any).name, createdAt: (ps as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, ps, and(eq((ps as any).orgId, req.orgId), deletedFilter), req.page, (ps as any).name, { name: (ps as any).name, createdAt: (ps as any).createdAt });
 
       return {
         projects: items.map((p: any) => ({
           ...p,
           createdAt: p.createdAt instanceof Date ? p.createdAt.toISOString() : p.createdAt,
         })),
-        page: { nextCursor },
+        page: { nextCursor, totalCount },
       };
     },
     async archiveProject(req: unknown, { values: contextValues }: { values: any }) {
@@ -233,14 +233,14 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, req.orgId);
 
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
-      const { items, nextCursor } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, req.orgId), req.page, (pts as any).name, { name: (pts as any).name, createdAt: (pts as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, req.orgId), req.page, (pts as any).name, { name: (pts as any).name, createdAt: (pts as any).createdAt });
 
       return {
         templates: items.map((t: any) => ({
           ...t,
           createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
         })),
-        page: { nextCursor },
+        page: { nextCursor, totalCount },
       };
     },
   };

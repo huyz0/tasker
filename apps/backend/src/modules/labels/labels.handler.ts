@@ -59,9 +59,9 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, req.orgId);
 
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
-      const { items, nextCursor } = await executePaginatedQuery(db, labels, eq((labels as any).orgId, req.orgId), req.page, (labels as any).name, { name: (labels as any).name, createdAt: (labels as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, labels, eq((labels as any).orgId, req.orgId), req.page, (labels as any).name, { name: (labels as any).name, createdAt: (labels as any).createdAt });
 
-      return { labels: items, page: { nextCursor } };
+      return { labels: items, page: { nextCursor, totalCount } };
     },
 
     async attachLabel(req: unknown, { values: contextValues }: { values: any }) {

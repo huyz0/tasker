@@ -56,8 +56,8 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
     async listAgentRoles(req: any, { values: contextValues }: { values: any }) {
       requireUserId(contextValues);
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
-      const { items, nextCursor } = await executePaginatedQuery(db, roles, undefined, req?.page, (roles as any).name, { name: (roles as any).name });
-      return { roles: items, page: { nextCursor } };
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, roles, undefined, req?.page, (roles as any).name, { name: (roles as any).name });
+      return { roles: items, page: { nextCursor, totalCount } };
     },
     async createAgent(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
@@ -91,8 +91,8 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(agentsSchema)) : notDeleted(agentsSchema);
-      const { items, nextCursor } = await executePaginatedQuery(db, agentsSchema, and(eq((agentsSchema as any).orgId, req.orgId), deletedFilter), req.page, (agentsSchema as any).name, { name: (agentsSchema as any).name, createdAt: (agentsSchema as any).createdAt });
-      return { agents: items, page: { nextCursor } };
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, agentsSchema, and(eq((agentsSchema as any).orgId, req.orgId), deletedFilter), req.page, (agentsSchema as any).name, { name: (agentsSchema as any).name, createdAt: (agentsSchema as any).createdAt });
+      return { agents: items, page: { nextCursor, totalCount } };
     },
     async archiveAgent(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

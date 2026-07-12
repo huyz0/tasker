@@ -46,11 +46,14 @@ describe("Organizations Handler Integration Logic", () => {
     expect(page1.organizations).toHaveLength(1);
     expect(page1.organizations[0].name).toBe(namesAsc[0]);
     expect(page1.page.nextCursor).toBeDefined();
+    // totalCount reflects the whole filtered set, not just this page.
+    expect(page1.page.totalCount).toBe(2);
 
     const page2 = await handler.listOrgs({ page: { sort: "name:asc", limit: 1, cursor: page1.page.nextCursor } }, ctx);
     expect(page2.organizations).toHaveLength(1);
     expect(page2.organizations[0].name).toBe(namesAsc[1]);
     expect(page2.organizations[0].id).not.toBe(page1.organizations[0].id);
+    expect(page2.page.totalCount).toBe(2);
 
     // Test inviteUser
     const inviteRes = await handler.inviteUser({
