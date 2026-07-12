@@ -377,6 +377,7 @@ message Task {
   string deletedAt = 6;
   string display_id = 7;
   string task_type_id = 8;
+  string created_by = 9;
 }
 
 message CreateTaskRequest {
@@ -399,6 +400,35 @@ message AssignTaskRequest {
 
 message AssignTaskResponse {
   bool success = 1;
+}
+
+message TaskReviewer {
+  string id = 1;
+  string task_id = 2;
+  string user_id = 3;
+}
+
+message AddTaskReviewerRequest {
+  string task_id = 1;
+  string user_id = 2;
+}
+message AddTaskReviewerResponse {
+  bool success = 1;
+}
+
+message RemoveTaskReviewerRequest {
+  string task_id = 1;
+  string user_id = 2;
+}
+message RemoveTaskReviewerResponse {
+  bool success = 1;
+}
+
+message ListTaskReviewersRequest {
+  string task_id = 1;
+}
+message ListTaskReviewersResponse {
+  repeated TaskReviewer reviewers = 1;
 }
 
 message PageRequest {
@@ -465,6 +495,9 @@ service TaskService {
   rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
   rpc RestoreTask(RestoreTaskRequest) returns (RestoreTaskResponse);
   rpc PurgeTask(PurgeTaskRequest) returns (PurgeTaskResponse);
+  rpc AddTaskReviewer(AddTaskReviewerRequest) returns (AddTaskReviewerResponse);
+  rpc RemoveTaskReviewer(RemoveTaskReviewerRequest) returns (RemoveTaskReviewerResponse);
+  rpc ListTaskReviewers(ListTaskReviewersRequest) returns (ListTaskReviewersResponse);
 }
 
 message Folder {

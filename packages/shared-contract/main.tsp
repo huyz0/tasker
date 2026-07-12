@@ -413,6 +413,7 @@ model Task {
   @field(6) deletedAt?: string;
   @field(7) displayId: string;
   @field(8) taskTypeId?: string;
+  @field(9) createdBy?: string;
 }
 
 // ==== Task Services ====
@@ -437,6 +438,35 @@ model AssignTaskRequest {
 
 model AssignTaskResponse {
   @field(1) success: boolean;
+}
+
+model TaskReviewer {
+  @field(1) id: string;
+  @field(2) taskId: string;
+  @field(3) userId: string;
+}
+
+model AddTaskReviewerRequest {
+  @field(1) taskId: string;
+  @field(2) userId: string;
+}
+model AddTaskReviewerResponse {
+  @field(1) success: boolean;
+}
+
+model RemoveTaskReviewerRequest {
+  @field(1) taskId: string;
+  @field(2) userId: string;
+}
+model RemoveTaskReviewerResponse {
+  @field(1) success: boolean;
+}
+
+model ListTaskReviewersRequest {
+  @field(1) taskId: string;
+}
+model ListTaskReviewersResponse {
+  @field(1) reviewers: TaskReviewer[];
 }
 
 model ListTasksRequest {
@@ -491,6 +521,13 @@ interface TaskService {
   deleteTask(request: DeleteTaskRequest): DeleteTaskResponse;
   restoreTask(request: RestoreTaskRequest): RestoreTaskResponse;
   purgeTask(request: PurgeTaskRequest): PurgeTaskResponse;
+  addTaskReviewer(request: AddTaskReviewerRequest): AddTaskReviewerResponse;
+  removeTaskReviewer(
+    request: RemoveTaskReviewerRequest,
+  ): RemoveTaskReviewerResponse;
+  listTaskReviewers(
+    request: ListTaskReviewersRequest,
+  ): ListTaskReviewersResponse;
 }
 
 // ==== Artifacts ====

@@ -63,3 +63,89 @@ func TestTasksCommentAddCommand(t *testing.T) {
 		t.Errorf("Expected comment output to contain the new comment id, got %s", output)
 	}
 }
+
+type fakeTaskReviewerHandler struct {
+	v1connect.UnimplementedTaskServiceHandler
+	reviewers []string
+}
+
+func (f *fakeTaskReviewerHandler) AddTaskReviewer(
+	_ context.Context,
+	req *connect.Request[healthv1.AddTaskReviewerRequest],
+) (*connect.Response[healthv1.AddTaskReviewerResponse], error) {
+	f.reviewers = append(f.reviewers, req.Msg.UserId)
+	return connect.NewResponse(&healthv1.AddTaskReviewerResponse{Success: true}), nil
+}
+
+func (f *fakeTaskReviewerHandler) RemoveTaskReviewer(
+	_ context.Context,
+	req *connect.Request[healthv1.RemoveTaskReviewerRequest],
+) (*connect.Response[healthv1.RemoveTaskReviewerResponse], error) {
+	filtered := f.reviewers[:0]
+	for _, r := range f.reviewers {
+		if r != req.Msg.UserId {
+			filtered = append(filtered, r)
+		}
+	}
+	f.reviewers = filtered
+	return connect.NewResponse(&healthv1.RemoveTaskReviewerResponse{Success: true}), nil
+}
+
+func (f *fakeTaskReviewerHandler) ListTaskReviewers(
+	_ context.Context,
+	_ *connect.Request[healthv1.ListTaskReviewersRequest],
+) (*connect.Response[healthv1.ListTaskReviewersResponse], error) {
+	reviewers := make([]*healthv1.TaskReviewer, 0, len(f.reviewers))
+	for _, r := range f.reviewers {
+		reviewers = append(reviewers, &healthv1.TaskReviewer{UserId: r})
+	}
+	return connect.NewResponse(&healthv1.ListTaskReviewersResponse{Reviewers: reviewers}), nil
+}
+
+func TestTasksReviewerCommands(t *testing.T) {
+	fake := &fakeTaskReviewerHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "reviewer-add", "task-1", "--user", "user-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("reviewer-add failed: %v", err)
+	}
+	if !strings.Contains(b.String(), "user-1") {
+		t.Errorf("Expected reviewer-add output to mention user-1, got %s", b.String())
+	}
+
+	b.Reset()
+	rootCmd.SetArgs([]string{"tasks", "reviewers", "task-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("reviewers list failed: %v", err)
+	}
+	if !strings.Contains(b.String(), "user-1") {
+		t.Errorf("Expected reviewers list output to contain user-1, got %s", b.String())
+	}
+
+	b.Reset()
+	rootCmd.SetArgs([]string{"tasks", "reviewer-remove", "task-1", "--user", "user-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("reviewer-remove failed: %v", err)
+	}
+	if !strings.Contains(b.String(), "user-1") {
+		t.Errorf("Expected reviewer-remove output to mention user-1, got %s", b.String())
+	}
+
+	b.Reset()
+	rootCmd.SetArgs([]string{"tasks", "reviewers", "task-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("reviewers list after removal failed: %v", err)
+	}
+	if strings.Contains(b.String(), "user-1") {
+		t.Errorf("Expected reviewer to be removed from list, got %s", b.String())
+	}
+}

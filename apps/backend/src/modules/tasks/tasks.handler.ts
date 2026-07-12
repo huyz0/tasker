@@ -43,6 +43,20 @@ const AssignTaskSchema = z.object({
   userId: z.string().nullable().optional(),
 });
 
+const AddTaskReviewerSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+  userId: z.string().min(1, "userId is required"),
+});
+
+const RemoveTaskReviewerSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+  userId: z.string().min(1, "userId is required"),
+});
+
+const ListTaskReviewersSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+});
+
 // Tasks with no taskTypeId (or a type with no statuses configured) fall back
 // to this fixed enum - the default, zero-setup workflow. A task type with
 // statuses configured switches to that type's own state machine instead.
@@ -261,6 +275,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         projectId: parsed.projectId,
         displayId,
         taskTypeId: parsed.taskTypeId || null,
+        createdBy: userId,
         title: parsed.title,
         status: parsed.status,
         description: parsed.description,
@@ -321,6 +336,43 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       await db.insert(assignments).values(payload);
       return { success: true };
+    },
+    async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = AddTaskReviewerSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgMember(db, userId, orgId);
+      await assertOrgMember(db, parsed.userId, orgId);
+
+      const reviewers = isStandalone ? schemaSqlite.taskReviewers : schemaMysql.taskReviewers;
+      const existing = await db.select().from(reviewers)
+        .where(and(eq((reviewers as any).taskId, parsed.taskId), eq((reviewers as any).userId, parsed.userId)))
+        .limit(1);
+      if (existing.length > 0) return { success: true };
+
+      const newId = `trv-${crypto.randomUUID()}`;
+      await db.insert(reviewers).values({ id: newId, taskId: parsed.taskId, userId: parsed.userId });
+      return { success: true };
+    },
+    async removeTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = RemoveTaskReviewerSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgMember(db, userId, orgId);
+
+      const reviewers = isStandalone ? schemaSqlite.taskReviewers : schemaMysql.taskReviewers;
+      await db.delete(reviewers).where(and(eq((reviewers as any).taskId, parsed.taskId), eq((reviewers as any).userId, parsed.userId)));
+      return { success: true };
+    },
+    async listTaskReviewers(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ListTaskReviewersSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgMember(db, userId, orgId);
+
+      const reviewers = isStandalone ? schemaSqlite.taskReviewers : schemaMysql.taskReviewers;
+      const rows = await db.select().from(reviewers).where(eq((reviewers as any).taskId, parsed.taskId));
+      return { reviewers: rows };
     },
     async updateTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

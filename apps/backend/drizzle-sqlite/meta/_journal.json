@@ -57,6 +57,13 @@
       "when": 1783822475116,
       "tag": "0007_bizarre_venom",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1783823056022,
+      "tag": "0008_marvelous_namor",
+      "breakpoints": true
     }
   ]
 }

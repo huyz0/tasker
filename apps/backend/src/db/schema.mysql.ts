@@ -106,6 +106,7 @@ export const tasks = mysqlTable("tasks", {
   projectId: varchar("project_id", { length: 256 }).notNull().references(() => projects.id),
   displayId: varchar("display_id", { length: 64 }).notNull().default(""),
   taskTypeId: varchar("task_type_id", { length: 256 }).references(() => taskTypes.id),
+  createdBy: varchar("created_by", { length: 256 }).references(() => users.id),
   title: varchar("title", { length: 512 }).notNull(),
   status: varchar("status", { length: 256 }).notNull(),
   description: varchar("description", { length: 4096 }),

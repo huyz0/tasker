@@ -134,6 +134,95 @@ var tasksAssignCmd = &cobra.Command{
 	},
 }
 
+var tasksReviewerAddCmd = &cobra.Command{
+	Use:   "reviewer-add [task_id]",
+	Short: "Add a reviewer to a task",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		userID, _ := cmd.Flags().GetString("user")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if userID == "" {
+			cmd.Println("Error: --user is required.")
+			return
+		}
+
+		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.AddTaskReviewer(context.Background(), connect.NewRequest(&healthv1.AddTaskReviewerRequest{
+			TaskId: args[0],
+			UserId: userID,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to add reviewer: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "task_id": args[0], "user_id": userID})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Reviewer %s added to task %s\n", userID, args[0])
+		}
+	},
+}
+
+var tasksReviewerRemoveCmd = &cobra.Command{
+	Use:   "reviewer-remove [task_id]",
+	Short: "Remove a reviewer from a task",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		userID, _ := cmd.Flags().GetString("user")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if userID == "" {
+			cmd.Println("Error: --user is required.")
+			return
+		}
+
+		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.RemoveTaskReviewer(context.Background(), connect.NewRequest(&healthv1.RemoveTaskReviewerRequest{
+			TaskId: args[0],
+			UserId: userID,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to remove reviewer: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "task_id": args[0], "user_id": userID})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Reviewer %s removed from task %s\n", userID, args[0])
+		}
+	},
+}
+
+var tasksReviewersCmd = &cobra.Command{
+	Use:   "reviewers [task_id]",
+	Short: "List a task's reviewers",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		isJson, _ := cmd.Flags().GetBool("json")
+
+		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		res, err := client.ListTaskReviewers(context.Background(), connect.NewRequest(&healthv1.ListTaskReviewersRequest{
+			TaskId: args[0],
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to list reviewers: %v\n", err)
+			return
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Reviewers)
+			cmd.Println(string(jsonString))
+		} else {
+			for _, r := range res.Msg.Reviewers {
+				cmd.Printf("  - %s\n", r.UserId)
+			}
+		}
+	},
+}
+
 var tasksUpdateStatusCmd = &cobra.Command{
 	Use:   "update-status [task_id]",
 	Short: "Update a task's status",
@@ -395,6 +484,9 @@ func init() {
 	tasksCmd.AddCommand(tasksListCmd)
 	tasksCmd.AddCommand(tasksCreateCmd)
 	tasksCmd.AddCommand(tasksAssignCmd)
+	tasksCmd.AddCommand(tasksReviewerAddCmd)
+	tasksCmd.AddCommand(tasksReviewerRemoveCmd)
+	tasksCmd.AddCommand(tasksReviewersCmd)
 	tasksCmd.AddCommand(tasksUpdateStatusCmd)
 	tasksCmd.AddCommand(tasksDeleteCmd)
 	tasksCmd.AddCommand(tasksRestoreCmd)
@@ -411,6 +503,8 @@ func init() {
 	tasksCreateCmd.Flags().String("task-type", "", "Optional task type ID; enforces that type's status enum/transitions if configured")
 	tasksAssignCmd.Flags().String("agent", "", "Agent ID to assign")
 	tasksAssignCmd.Flags().String("user", "", "User ID to assign")
+	tasksReviewerAddCmd.Flags().String("user", "", "User ID to add as reviewer")
+	tasksReviewerRemoveCmd.Flags().String("user", "", "User ID to remove as reviewer")
 	tasksUpdateStatusCmd.Flags().String("status", "", "The new status (todo, in-progress, done)")
 	tasksListCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	tasksListCmd.Flags().StringP("filter", "f", "", "Substring match against task title")

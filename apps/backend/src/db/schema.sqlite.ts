@@ -116,6 +116,9 @@ export const tasks = sqliteTable("tasks", {
   // updateTaskStatus enforces that state machine instead of the default
   // fixed todo/in-progress/done enum.
   taskTypeId: text("task_type_id").references(() => taskTypes.id),
+  // The authenticated caller at creation time, not client-supplied - same
+  // attribution pattern used by comments, to prevent impersonation.
+  createdBy: text("created_by").references(() => users.id),
   title: text("title").notNull(),
   status: text("status").notNull(),
   description: text("description"),

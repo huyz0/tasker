@@ -1,0 +1,1 @@
+ALTER TABLE `tasks` ADD `created_by` text REFERENCES users(id);

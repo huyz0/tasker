@@ -137,6 +137,59 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.assignTask({ taskId: taskResp.task.id, userId: "user-outsider-taskman" }, ctx)).rejects.toThrow();
   });
 
+  test("createTask records createdBy, and task reviewers can be added/listed/removed", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-reviewers-" + Date.now().toString();
+    const userId = "user-reviewers-" + Date.now().toString();
+    const reviewerId = "user-reviewer2-" + Date.now().toString();
+    const outsiderId = "user-reviewer-outsider-" + Date.now().toString();
+    const templateId = "tmpl-reviewers-" + Date.now().toString();
+    const projectId = "proj-reviewers-" + Date.now().toString();
+
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: reviewerId, email: `${reviewerId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Reviewers Org", slug: "reviewers-org-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: reviewerId, role: "member", joinedAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "P", createdAt: new Date() });
+
+    const ctx = makeAuthContext(userId);
+    const { createTaskManagementHandler } = require("./tasks.handler");
+    const handler = createTaskManagementHandler(db, nc);
+
+    const taskResp = await handler.createTask({ projectId, title: "Reviewed Task", status: "todo", description: "" }, ctx);
+    expect(taskResp.task.createdBy).toBe(userId);
+
+    const addResp = await handler.addTaskReviewer({ taskId: taskResp.task.id, userId: reviewerId }, ctx);
+    expect(addResp.success).toBe(true);
+
+    // Adding the same reviewer again is idempotent.
+    const addAgainResp = await handler.addTaskReviewer({ taskId: taskResp.task.id, userId: reviewerId }, ctx);
+    expect(addAgainResp.success).toBe(true);
+
+    const listResp = await handler.listTaskReviewers({ taskId: taskResp.task.id }, ctx);
+    expect(listResp.reviewers.length).toBe(1);
+    expect(listResp.reviewers[0].userId).toBe(reviewerId);
+
+    // Cannot add a reviewer who isn't a member of the task's org.
+    await expect(handler.addTaskReviewer({ taskId: taskResp.task.id, userId: outsiderId }, ctx)).rejects.toThrow();
+
+    // Outsiders cannot manage or view reviewers on a task outside their org.
+    const outsiderCtx = makeAuthContext(outsiderId);
+    await expect(handler.addTaskReviewer({ taskId: taskResp.task.id, userId: reviewerId }, outsiderCtx)).rejects.toThrow();
+    await expect(handler.listTaskReviewers({ taskId: taskResp.task.id }, outsiderCtx)).rejects.toThrow();
+    await expect(handler.removeTaskReviewer({ taskId: taskResp.task.id, userId: reviewerId }, outsiderCtx)).rejects.toThrow();
+
+    const removeResp = await handler.removeTaskReviewer({ taskId: taskResp.task.id, userId: reviewerId }, ctx);
+    expect(removeResp.success).toBe(true);
+
+    const listAfterRemove = await handler.listTaskReviewers({ taskId: taskResp.task.id }, ctx);
+    expect(listAfterRemove.reviewers.length).toBe(0);
+  });
+
   test("updateTaskStatus updates status for org members and rejects everyone else", async () => {
     const { db, nc } = await setupIntegrationTest();
 
