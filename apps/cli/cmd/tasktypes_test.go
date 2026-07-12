@@ -23,7 +23,7 @@ func (f *fakeTaskTypeHandler) CreateTaskType(
 	req *connect.Request[healthv1.CreateTaskTypeRequest],
 ) (*connect.Response[healthv1.CreateTaskTypeResponse], error) {
 	return connect.NewResponse(&healthv1.CreateTaskTypeResponse{
-		TaskType: &healthv1.TaskType{Id: "tt_1", OrgId: req.Msg.OrgId, Name: req.Msg.Name},
+		TaskType: &healthv1.TaskType{Id: "tt_1", OrgId: req.Msg.OrgId, Name: req.Msg.Name, ParentId: req.Msg.ParentId},
 	}), nil
 }
 
@@ -32,7 +32,7 @@ func (f *fakeTaskTypeHandler) GetTaskType(
 	req *connect.Request[healthv1.GetTaskTypeRequest],
 ) (*connect.Response[healthv1.GetTaskTypeResponse], error) {
 	return connect.NewResponse(&healthv1.GetTaskTypeResponse{
-		TaskType: &healthv1.TaskType{Id: req.Msg.Id, Name: "Ticket"},
+		TaskType: &healthv1.TaskType{Id: req.Msg.Id, Name: "Ticket", ParentId: "tt_parent"},
 		Statuses: []*healthv1.TaskStatus{{Id: "st_1", Name: "open"}},
 		Transitions: []*healthv1.TaskStatusTransition{
 			{Id: "tr_1", FromStatusId: "st_1", ToStatusId: "st_2"},
@@ -88,6 +88,22 @@ func TestTaskTypesCreateCmd(t *testing.T) {
 	}
 }
 
+func TestTaskTypesCreateCmdWithParent(t *testing.T) {
+	withTaskTypeServer(t)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"task-types", "create", "--org", "org-1", "--name", "Story", "--parent", "tt_parent"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "tt_1") {
+		t.Fatalf("expected output to contain the created task type, got %s", out)
+	}
+}
+
 func TestTaskTypesGetCmd(t *testing.T) {
 	withTaskTypeServer(t)
 
@@ -101,6 +117,9 @@ func TestTaskTypesGetCmd(t *testing.T) {
 	out := b.String()
 	if !strings.Contains(out, "open") || !strings.Contains(out, "st_1 -> st_2") {
 		t.Fatalf("expected output to contain statuses and transitions, got %s", out)
+	}
+	if !strings.Contains(out, "tt_parent") {
+		t.Fatalf("expected output to contain the parent task type id, got %s", out)
 	}
 }
 

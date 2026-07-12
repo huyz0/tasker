@@ -23,6 +23,7 @@ var taskTypesCreateCmd = &cobra.Command{
 		name, _ := cmd.Flags().GetString("name")
 		orgID, _ := cmd.Flags().GetString("org")
 		projectID, _ := cmd.Flags().GetString("project")
+		parentID, _ := cmd.Flags().GetString("parent")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
@@ -40,6 +41,7 @@ var taskTypesCreateCmd = &cobra.Command{
 			OrgId:     orgID,
 			ProjectId: projectID,
 			Name:      name,
+			ParentId:  parentID,
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create task type: %v\n", err)
@@ -74,6 +76,9 @@ var taskTypesGetCmd = &cobra.Command{
 			cmd.Println(string(jsonString))
 		} else {
 			cmd.Printf("Task type: %s (id: %s)\n", res.Msg.TaskType.Name, res.Msg.TaskType.Id)
+			if res.Msg.TaskType.ParentId != "" {
+				cmd.Printf("Parent: %s\n", res.Msg.TaskType.ParentId)
+			}
 			cmd.Println("Statuses:")
 			for _, s := range res.Msg.Statuses {
 				cmd.Printf("  - %s (id: %s)\n", s.Name, s.Id)
@@ -160,6 +165,7 @@ func init() {
 	taskTypesCreateCmd.Flags().String("name", "", "Task type name")
 	taskTypesCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	taskTypesCreateCmd.Flags().String("project", "", "Optional project ID to scope this type to (or set TASKER_PROJECT_ID)")
+	taskTypesCreateCmd.Flags().String("parent", "", "Optional parent task type ID, for building a task type hierarchy")
 
 	taskTypesCreateStatusCmd.Flags().String("name", "", "Status name (e.g. open, in_review, closed)")
 

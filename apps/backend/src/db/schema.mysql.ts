@@ -41,6 +41,7 @@ export const taskTypes = mysqlTable("task_types", {
   id: varchar("id", { length: 256 }).primaryKey(),
   orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
   projectId: varchar("project_id", { length: 256 }),
+  parentId: varchar("parent_id", { length: 256 }).references((): AnyMySqlColumn => taskTypes.id),
   name: varchar("name", { length: 256 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -71,6 +72,7 @@ export const projectTemplates = mysqlTable("project_templates", {
   orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
   name: varchar("name", { length: 256 }).notNull(),
   description: varchar("description", { length: 1024 }),
+  rootTaskTypeId: varchar("root_task_type_id", { length: 256 }).references(() => taskTypes.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createProjectsHandler, createProjectTemplatesHandler } from "./projects.handler";
+import { createTasksHandler } from "../tasks/tasks.handler";
 
 describe("Projects Handler Integration Logic", () => {
   let db: any;
@@ -82,6 +83,25 @@ describe("Projects Handler Integration Logic", () => {
      expect(listRes.projects.some((p: any) => p.name === "Test Project")).toBe(true);
 
      expect(pHandler.listProjects({}, ctx)).rejects.toThrow();
+  });
+
+  test("createTemplate can set and validate a rootTaskTypeId", async () => {
+    const ttHandler = createTasksHandler(db, mockNc);
+    const typeResp = await ttHandler.createTaskType({ orgId: "org-test", name: "Root Type" }, ctx);
+
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Rooted Template", rootTaskTypeId: typeResp.taskType.id }, ctx);
+    expect(tResp.template.rootTaskTypeId).toBe(typeResp.taskType.id);
+
+    await expect(ptHandler.createTemplate({ orgId: "org-test", name: "Bad Root", rootTaskTypeId: "tt-does-not-exist" }, ctx)).rejects.toThrow();
+
+    const otherOrgId = "org-roottpl-other-" + Date.now();
+    const otherUserId = "user-roottpl-other-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: "roottpl-other-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    const otherTypeResp = await ttHandler.createTaskType({ orgId: otherOrgId, name: "Other Root Type" }, makeAuthContext(otherUserId));
+
+    await expect(ptHandler.createTemplate({ orgId: "org-test", name: "Cross-org Root", rootTaskTypeId: otherTypeResp.taskType.id }, ctx)).rejects.toThrow();
   });
 
   test("derives a short project key from the name and de-duplicates on collision", async () => {

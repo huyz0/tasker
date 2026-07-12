@@ -50,6 +50,7 @@ const CreateTemplateSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   name: z.string().min(1, "name is required").max(256),
   description: z.string().max(1024).optional().default(""),
+  rootTaskTypeId: z.string().nullable().optional(),
 });
 
 const ArchiveProjectSchema = z.object({
@@ -202,6 +203,15 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       const parsed = CreateTemplateSchema.parse(req);
       await assertOrgMember(db, userId, parsed.orgId);
 
+      if (parsed.rootTaskTypeId) {
+        const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+        const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.rootTaskTypeId)).limit(1);
+        if (!typeRows || typeRows.length === 0) throw new ConnectError("root task type not found", Code.NotFound);
+        if (typeRows[0].orgId !== parsed.orgId) {
+          throw new ConnectError("root task type belongs to a different organization", Code.InvalidArgument);
+        }
+      }
+
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const newId = `pt-${crypto.randomUUID()}`;
       const payload = {
@@ -209,6 +219,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
         orgId: parsed.orgId,
         name: parsed.name,
         description: parsed.description,
+        rootTaskTypeId: parsed.rootTaskTypeId || null,
       };
 
       await insertRecord(db, pts, payload, isStandalone);

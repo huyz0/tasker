@@ -15,6 +15,7 @@ const GetTaskTypeSchema = z.object({
 const CreateTaskTypeSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   projectId: z.string().nullable().optional(),
+  parentId: z.string().nullable().optional(),
   name: z.string().min(1, "name is required").max(256),
 });
 
@@ -118,11 +119,21 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       }
 
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+
+      if (parsed.parentId) {
+        const parentRows = await db.select().from(types).where(eq((types as any).id, parsed.parentId)).limit(1);
+        if (!parentRows || parentRows.length === 0) throw new ConnectError("parent task type not found", Code.NotFound);
+        if (parentRows[0].orgId !== parsed.orgId) {
+          throw new ConnectError("parent task type belongs to a different organization", Code.InvalidArgument);
+        }
+      }
+
       const newId = `tt-${crypto.randomUUID()}`;
       const payload = {
         id: newId,
         orgId: parsed.orgId,
         projectId: parsed.projectId || null,
+        parentId: parsed.parentId || null,
         name: parsed.name,
       };
 

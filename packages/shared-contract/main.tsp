@@ -142,6 +142,7 @@ model TaskType {
   @field(3) projectId: string;
   @field(4) name: string;
   @field(5) createdAt: string;
+  @field(6) parentId?: string;
 }
 
 model TaskStatus {
@@ -172,6 +173,7 @@ model CreateTaskTypeRequest {
   @field(1) orgId: string;
   @field(2) projectId: string;
   @field(3) name: string;
+  @field(4) parentId?: string;
 }
 model CreateTaskTypeResponse {
   @field(1) taskType: TaskType;
@@ -210,6 +212,7 @@ model ProjectTemplate {
   @field(2) orgId: string;
   @field(3) name: string;
   @field(4) description: string;
+  @field(5) rootTaskTypeId?: string;
 }
 
 model Project {
@@ -234,6 +237,7 @@ model CreateProjectTemplateRequest {
   @field(1) orgId: string;
   @field(2) name: string;
   @field(3) description: string;
+  @field(4) rootTaskTypeId?: string;
 }
 model CreateProjectTemplateResponse {
   @field(1) template: ProjectTemplate;

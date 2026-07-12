@@ -116,6 +116,7 @@ message TaskType {
   string projectId = 3;
   string name = 4;
   string createdAt = 5;
+  string parentId = 6;
 }
 
 message TaskStatus {
@@ -145,6 +146,7 @@ message CreateTaskTypeRequest {
   string orgId = 1;
   string projectId = 2;
   string name = 3;
+  string parentId = 4;
 }
 
 message CreateTaskTypeResponse {
@@ -182,6 +184,7 @@ message ProjectTemplate {
   string orgId = 2;
   string name = 3;
   string description = 4;
+  string rootTaskTypeId = 5;
 }
 
 message Project {
@@ -206,6 +209,7 @@ message CreateProjectTemplateRequest {
   string orgId = 1;
   string name = 2;
   string description = 3;
+  string rootTaskTypeId = 4;
 }
 
 message CreateProjectTemplateResponse {

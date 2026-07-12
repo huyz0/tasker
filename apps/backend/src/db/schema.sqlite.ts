@@ -41,6 +41,7 @@ export const taskTypes = sqliteTable("task_types", {
   id: text("id").primaryKey(),
   orgId: text("org_id").notNull().references(() => organizations.id),
   projectId: text("project_id"),
+  parentId: text("parent_id").references((): AnySQLiteColumn => taskTypes.id),
   name: text("name").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
@@ -71,6 +72,7 @@ export const projectTemplates = sqliteTable("project_templates", {
   orgId: text("org_id").notNull().references(() => organizations.id),
   name: text("name").notNull(),
   description: text("description"),
+  rootTaskTypeId: text("root_task_type_id").references(() => taskTypes.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 

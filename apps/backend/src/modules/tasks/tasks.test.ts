@@ -58,6 +58,34 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.createTaskType({ orgId, projectId: otherProjectId, name: "Cross" }, ctx)).rejects.toThrow();
   });
 
+  test("createTaskType supports a parentId hierarchy, rejecting cross-org parents", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-tthier-" + Date.now().toString();
+    const userId = "user-tthier-" + Date.now().toString();
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "TT Hier Org", slug: "tt-hier-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
+
+    const ctx = makeAuthContext(userId);
+    const handler = createTasksHandler(db, nc);
+
+    const parentResp = await handler.createTaskType({ orgId, name: "Epic" }, ctx);
+    const childResp = await handler.createTaskType({ orgId, name: "Story", parentId: parentResp.taskType.id }, ctx);
+    expect(childResp.taskType.parentId).toBe(parentResp.taskType.id);
+
+    await expect(handler.createTaskType({ orgId, name: "Bad", parentId: "tt-does-not-exist" }, ctx)).rejects.toThrow();
+
+    const otherOrgId = "org-tthier-other-" + Date.now();
+    const otherUserId = "user-tthier-other-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: "tt-hier-other-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    const otherParentResp = await handler.createTaskType({ orgId: otherOrgId, name: "Other Epic" }, makeAuthContext(otherUserId));
+
+    await expect(handler.createTaskType({ orgId, name: "Cross-org child", parentId: otherParentResp.taskType.id }, ctx)).rejects.toThrow();
+  });
+
   test("createTaskManagementHandler can create/assign tasks", async () => {
     const { db, nc } = await setupIntegrationTest();
 
