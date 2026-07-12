@@ -198,6 +198,7 @@ export const repositoryLinks = mysqlTable("repository_links", {
   provider: mysqlEnum("provider", ['github', 'bitbucket']).notNull(),
   remoteName: varchar("remote_name", { length: 256 }).notNull(),
   accessTokenEncrypted: varchar("access_token_encrypted", { length: 2048 }).notNull(),
+  authEmail: varchar("auth_email", { length: 256 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

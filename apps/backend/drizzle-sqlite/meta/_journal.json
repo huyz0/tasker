@@ -85,6 +85,13 @@
       "when": 1783841747496,
       "tag": "0011_aberrant_longshot",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1783847485135,
+      "tag": "0012_red_maverick",
+      "breakpoints": true
     }
   ]
 }

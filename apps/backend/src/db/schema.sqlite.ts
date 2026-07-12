@@ -212,6 +212,10 @@ export const repositoryLinks = sqliteTable("repository_links", {
   provider: text("provider").notNull(), // 'github' | 'bitbucket'
   remoteName: text("remote_name").notNull(),
   accessTokenEncrypted: text("access_token_encrypted").notNull(),
+  // Set only for Bitbucket links created with a direct Atlassian API token
+  // (Basic auth, email:token) rather than the OAuth2 authorization-code flow
+  // (Bearer token) - null means "use Bearer".
+  authEmail: text("auth_email"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 

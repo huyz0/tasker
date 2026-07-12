@@ -51,18 +51,24 @@ var repoListCmd = &cobra.Command{
 
 var repoLinkCmd = &cobra.Command{
 	Use:   "link",
-	Short: "Link a new repository to a project (requires an OAuth authorization code from a browser-based flow)",
+	Short: "Link a new repository to a project, via an OAuth authorization code or (Bitbucket only) a direct API token",
 	Run: func(cmd *cobra.Command, args []string) {
 		provider, _ := cmd.Flags().GetString("provider")
 		remote, _ := cmd.Flags().GetString("remote")
 		projectID, _ := cmd.Flags().GetString("project")
 		oauthCode, _ := cmd.Flags().GetString("oauth-code")
+		apiToken, _ := cmd.Flags().GetString("api-token")
+		email, _ := cmd.Flags().GetString("email")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
 		}
-		if provider == "" || remote == "" || projectID == "" || oauthCode == "" {
-			cmd.Println("Error: --project, --provider, --remote, and --oauth-code are all required.")
+		if provider == "" || remote == "" || projectID == "" {
+			cmd.Println("Error: --project, --provider, and --remote are all required.")
+			return
+		}
+		if oauthCode == "" && (apiToken == "" || email == "") {
+			cmd.Println("Error: provide either --oauth-code, or both --api-token and --email (Bitbucket only).")
 			return
 		}
 
@@ -72,6 +78,8 @@ var repoLinkCmd = &cobra.Command{
 			Provider:   provider,
 			RemoteName: remote,
 			OauthCode:  oauthCode,
+			ApiToken:   apiToken,
+			Email:      email,
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to link repository: %v\n", err)
@@ -229,6 +237,8 @@ func init() {
 	repoLinkCmd.Flags().String("remote", "", "Remote repository name")
 	repoLinkCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	repoLinkCmd.Flags().String("oauth-code", "", "OAuth authorization code obtained from the provider's consent screen")
+	repoLinkCmd.Flags().String("api-token", "", "Bitbucket only: a direct Atlassian API token, as an alternative to --oauth-code")
+	repoLinkCmd.Flags().String("email", "", "Bitbucket only: the Atlassian account email paired with --api-token")
 
 	repoSyncCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	repoPrsCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")

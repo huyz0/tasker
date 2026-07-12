@@ -1,0 +1,1 @@
+ALTER TABLE `repository_links` ADD `auth_email` text;

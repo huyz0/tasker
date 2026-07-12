@@ -34,7 +34,7 @@ func (f *fakeRepositoryHandler) AddRepositoryLink(
 	req *connect.Request[healthv1.AddRepositoryLinkRequest],
 ) (*connect.Response[healthv1.AddRepositoryLinkResponse], error) {
 	return connect.NewResponse(&healthv1.AddRepositoryLinkResponse{
-		Link: &healthv1.RepositoryLink{Id: "link_2", ProjectId: req.Msg.ProjectId, Provider: req.Msg.Provider, RemoteName: req.Msg.RemoteName},
+		Link: &healthv1.RepositoryLink{Id: "link_2", ProjectId: req.Msg.ProjectId, Provider: req.Msg.Provider, RemoteName: req.Msg.RemoteName, AuthEmail: req.Msg.Email},
 	}), nil
 }
 
@@ -97,6 +97,50 @@ func TestRepoLinkCmd(t *testing.T) {
 	out := b.String()
 	if !strings.Contains(out, "Successfully linked github repository: test/repo") {
 		t.Fatalf("expected success message, got %s", out)
+	}
+}
+
+func TestRepoLinkCmdWithDirectApiToken(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "true")
+	rootCmd.SetArgs([]string{
+		"repo", "link", "--project", "proj-1", "--provider", "bitbucket", "--remote", "team/repo",
+		"--api-token", "ATATT-fake", "--email", "user@example.com", "--json",
+	})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "user@example.com") {
+		t.Fatalf("expected output to contain the auth email, got %s", out)
+	}
+	rootCmd.Flags().Set("json", "false")
+}
+
+func TestRepoLinkCmdRequiresOauthCodeOrApiTokenWithEmail(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"repo", "link", "--project", "proj-1", "--provider", "bitbucket", "--remote", "team/repo", "--oauth-code", "", "--api-token", "tok-without-email", "--email", ""})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "Error:") {
+		t.Fatalf("expected an error about missing email, got %s", out)
 	}
 }
 

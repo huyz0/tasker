@@ -438,6 +438,51 @@ describe("Repositories Handler >", () => {
     expect(deploymentsResp.deployments[0].buildId).toBe("pipe-1");
   });
 
+  test("Bitbucket direct-token links (Atlassian API tokens) authenticate with Basic auth instead of Bearer", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P-bb-apitoken", ownerId: "usr-2" }, ctx2)).project.id;
+
+    const captured: { authHeader: string | null } = { authHeader: null };
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      const u = url.toString();
+      if (u.includes("/pullrequests?")) {
+        captured.authHeader = (options?.headers as Record<string, string>)?.Authorization ?? null;
+        return new Response(JSON.stringify({ values: [] }), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    // No oauthCode - this is the direct-token flow, which requires apiToken + email.
+    const link = (await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "bitbucket",
+      remoteName: "foo/bb-apitoken",
+      apiToken: "ATATT-fake-api-token",
+      email: "user@example.com",
+    }, ctx2)).link;
+    expect(link.authEmail).toBe("user@example.com");
+
+    // The stored token must be the raw apiToken, not something exchanged via OAuth.
+    const rawLink = (await db.select().from(schemaSqlite.repositoryLinks).where(eq(schemaSqlite.repositoryLinks.id, link.id)))[0];
+    const ALGORITHM = "aes-256-gcm";
+    const [ivHex, authTagHex, encryptedHex] = rawLink.accessTokenEncrypted.split(":");
+    const crypto = await import("node:crypto");
+    const decipher = crypto.createDecipheriv(ALGORITHM, Buffer.from("00000000000000000000000000000000", "utf8"), Buffer.from(ivHex, "hex"));
+    decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
+    const decrypted = decipher.update(encryptedHex, "hex", "utf8") + decipher.final("utf8");
+    expect(decrypted).toBe("ATATT-fake-api-token");
+
+    await repHandler.syncPullRequests({ projectId: pId }, ctx2);
+    expect(captured.authHeader).toBe(`Basic ${Buffer.from("user@example.com:ATATT-fake-api-token").toString("base64")}`);
+
+    // Rejecting invalid combinations: apiToken without email, or a non-Bitbucket provider.
+    await expect(repHandler.addRepositoryLink({
+      projectId: pId, provider: "bitbucket", remoteName: "foo/bad", apiToken: "tok",
+    }, ctx2)).rejects.toThrow();
+    await expect(repHandler.addRepositoryLink({
+      projectId: pId, provider: "github", remoteName: "foo/bad", apiToken: "tok", email: "a@b.com",
+    }, ctx2)).rejects.toThrow();
+  });
+
   test("listDeployments throws on provider failure instead of returning fabricated data", async () => {
     const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P8", ownerId: "usr-2" }, ctx2)).project.id;
 

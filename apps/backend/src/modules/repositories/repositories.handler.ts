@@ -39,11 +39,28 @@ function decryptToken(encryptedString: string): string {
     return decrypted;
 }
 
+// Direct-token links (authEmail set) use Basic auth per Atlassian's API-token
+// scheme; OAuth2-issued links (authEmail null) use the token as a Bearer
+// access token, per Bitbucket's standard OAuth2 flow.
+function bitbucketAuthHeader(token: string, authEmail?: string | null): string {
+  if (authEmail) {
+    return `Basic ${Buffer.from(`${authEmail}:${token}`).toString('base64')}`;
+  }
+  return `Bearer ${token}`;
+}
+
 const AddRepositoryLinkSchema = z.object({
   projectId: z.string().min(1),
   provider: z.string().min(1),
   remoteName: z.string().min(1),
-  oauthCode: z.string().min(1)
+  oauthCode: z.string().optional(),
+  // Direct-token flow (Bitbucket only) - a pre-existing API token used as-is
+  // with Basic auth, as an alternative to the OAuth2 authorization-code
+  // exchange. Bitbucket's app passwords are deprecated in favor of these.
+  apiToken: z.string().optional(),
+  email: z.string().optional(),
+}).refine((v) => !!v.oauthCode || (!!v.apiToken && !!v.email), {
+  message: "either oauthCode, or both apiToken and email, are required",
 });
 
 const ListRepositoryLinksSchema = z.object({
@@ -96,13 +113,13 @@ async function fetchGithubPullRequests(remoteName: string, token: string): Promi
   }));
 }
 
-async function fetchBitbucketPullRequests(remoteName: string, token: string): Promise<NormalizedPullRequest[]> {
+async function fetchBitbucketPullRequests(remoteName: string, token: string, authEmail?: string | null): Promise<NormalizedPullRequest[]> {
   // Bitbucket Cloud's pullrequests endpoint only returns OPEN PRs unless
   // explicitly told otherwise - repeat the `state` param per value to mirror
   // GitHub's state=all.
   const response = await fetch(
     `https://api.bitbucket.org/2.0/repositories/${remoteName}/pullrequests?state=OPEN&state=MERGED&state=DECLINED&state=SUPERSEDED&pagelen=50`,
-    { headers: { "Authorization": `Bearer ${token}` } }
+    { headers: { "Authorization": bitbucketAuthHeader(token, authEmail) } }
   );
   if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching pull requests for ${remoteName}`);
 
@@ -148,9 +165,9 @@ async function fetchGithubBuilds(remoteName: string, token: string): Promise<Nor
   });
 }
 
-async function fetchBitbucketBuilds(remoteName: string, token: string): Promise<NormalizedBuild[]> {
+async function fetchBitbucketBuilds(remoteName: string, token: string, authEmail?: string | null): Promise<NormalizedBuild[]> {
   const response = await fetch(`https://api.bitbucket.org/2.0/repositories/${remoteName}/pipelines/?sort=-created_on&pagelen=10`, {
-    headers: { "Authorization": `Bearer ${token}` }
+    headers: { "Authorization": bitbucketAuthHeader(token, authEmail) }
   });
   if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching builds for ${remoteName}`);
 
@@ -216,8 +233,8 @@ async function fetchGithubDeployments(remoteName: string, commitSha: string, tok
   }));
 }
 
-async function fetchBitbucketDeployments(remoteName: string, commitSha: string, token: string): Promise<NormalizedDeployment[]> {
-  const headers = { "Authorization": `Bearer ${token}` };
+async function fetchBitbucketDeployments(remoteName: string, commitSha: string, token: string, authEmail?: string | null): Promise<NormalizedDeployment[]> {
+  const headers = { "Authorization": bitbucketAuthHeader(token, authEmail) };
 
   // Bitbucket's deployments endpoint has no server-side commit-sha filter,
   // unlike GitHub's - fetch recent deployments and filter client-side by the
@@ -256,7 +273,15 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const links = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
 
       let tokenToStore = "";
-      if (parsed.provider === "github") {
+      let authEmail: string | null = null;
+      if (parsed.apiToken && parsed.email) {
+        if (parsed.provider !== "bitbucket") {
+          throw new Error(`The direct-token flow is only supported for Bitbucket, not ${parsed.provider}`);
+        }
+        tokenToStore = parsed.apiToken;
+        authEmail = parsed.email;
+      } else if (parsed.provider === "github") {
+        if (!parsed.oauthCode) throw new Error("oauthCode is required");
         const response = await fetch("https://github.com/login/oauth/access_token", {
           method: "POST",
           headers: {
@@ -281,6 +306,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
 
         tokenToStore = data.access_token;
       } else if (parsed.provider === "bitbucket") {
+        if (!parsed.oauthCode) throw new Error("oauthCode is required");
         // Bitbucket Cloud's OAuth2 token endpoint authenticates the client via
         // HTTP Basic (client_id:client_secret), not a body param like GitHub,
         // and expects a form-encoded body rather than JSON.
@@ -316,6 +342,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         provider: parsed.provider,
         remoteName: parsed.remoteName,
         accessTokenEncrypted: accessTokenEncrypted,
+        authEmail,
       };
 
       await insertRecord(db, links, payload, isStandalone, true);
@@ -391,7 +418,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
           const token = decryptToken(link.accessTokenEncrypted);
           const normalizedPrs = link.provider === "github"
             ? await fetchGithubPullRequests(link.remoteName, token)
-            : await fetchBitbucketPullRequests(link.remoteName, token);
+            : await fetchBitbucketPullRequests(link.remoteName, token, link.authEmail);
 
           // Batch-fetch existing PRs for this link once, scoped by repositoryLinkId,
           // instead of querying per-PR (N+1) and matching on remotePrId globally
@@ -480,7 +507,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         const token = decryptToken(link.accessTokenEncrypted);
         normalizedBuilds = link.provider === "github"
           ? await fetchGithubBuilds(link.remoteName, token)
-          : await fetchBitbucketBuilds(link.remoteName, token);
+          : await fetchBitbucketBuilds(link.remoteName, token, link.authEmail);
       } catch (e) {
         logger.error({ remoteName: link.remoteName, err: e }, "listBuilds.fetch_failed");
         throw e;
@@ -510,7 +537,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         const token = decryptToken(link.accessTokenEncrypted);
         normalizedDeployments = link.provider === "github"
           ? await fetchGithubDeployments(link.remoteName, parsed.commitSha, token)
-          : await fetchBitbucketDeployments(link.remoteName, parsed.commitSha, token);
+          : await fetchBitbucketDeployments(link.remoteName, parsed.commitSha, token, link.authEmail);
       } catch (e) {
         logger.error({ remoteName: link.remoteName, err: e }, "listDeployments.fetch_failed");
         throw e;

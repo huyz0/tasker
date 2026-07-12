@@ -777,6 +777,7 @@ message RepositoryLink {
   string provider = 3;
   string remote_name = 4;
   string created_at = 5;
+  string auth_email = 6;
 }
 
 message RemotePullRequest {
@@ -794,7 +795,9 @@ message AddRepositoryLinkRequest {
   string project_id = 1;
   string provider = 2;
   string remote_name = 3;
-  string oauth_code = 4;
+  string oauth_code = 4; // OAuth2 flow: exchanged for a Bearer access token
+  string api_token = 5; // Direct-token flow (Bitbucket only): used as-is with Basic auth
+  string email = 6; // Required alongside api_token for Bitbucket's Basic auth scheme
 }
 
 message AddRepositoryLinkResponse {

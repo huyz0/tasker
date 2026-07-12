@@ -813,6 +813,7 @@ model RepositoryLink {
   @field(3) provider: string; // 'github' | 'bitbucket'
   @field(4) remoteName: string;
   @field(5) createdAt: string;
+  @field(6) authEmail?: string;
 }
 
 model RemotePullRequest {
@@ -830,7 +831,9 @@ model AddRepositoryLinkRequest {
   @field(1) projectId: string;
   @field(2) provider: string;
   @field(3) remoteName: string;
-  @field(4) oauthCode: string; // Will be exchanged for access token
+  @field(4) oauthCode?: string; // OAuth2 flow: exchanged for a Bearer access token
+  @field(5) apiToken?: string; // Direct-token flow (Bitbucket only): used as-is with Basic auth
+  @field(6) email?: string; // Required alongside apiToken for Bitbucket's Basic auth scheme
 }
 model AddRepositoryLinkResponse {
   @field(1) link: RepositoryLink;
