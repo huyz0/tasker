@@ -23,6 +23,18 @@ const CreateTaskSchema = z.object({
   title: z.string().min(1, "title is required").max(512),
   status: z.string().max(256).optional().default("todo"),
   description: z.string().max(4096).optional().default(""),
+  taskTypeId: z.string().nullable().optional(),
+});
+
+const CreateTaskStatusSchema = z.object({
+  taskTypeId: z.string().min(1, "taskTypeId is required"),
+  name: z.string().min(1, "name is required").max(256),
+});
+
+const CreateTaskStatusTransitionSchema = z.object({
+  taskTypeId: z.string().min(1, "taskTypeId is required"),
+  fromStatusId: z.string().min(1, "fromStatusId is required"),
+  toStatusId: z.string().min(1, "toStatusId is required"),
 });
 
 const AssignTaskSchema = z.object({
@@ -31,11 +43,14 @@ const AssignTaskSchema = z.object({
   userId: z.string().nullable().optional(),
 });
 
+// Tasks with no taskTypeId (or a type with no statuses configured) fall back
+// to this fixed enum - the default, zero-setup workflow. A task type with
+// statuses configured switches to that type's own state machine instead.
 const KNOWN_STATUSES = ["todo", "in-progress", "done"] as const;
 
 const UpdateTaskStatusSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
-  status: z.enum(KNOWN_STATUSES),
+  status: z.string().min(1, "status is required").max(256),
 });
 
 const DeleteTaskSchema = z.object({
@@ -104,8 +119,109 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       if (nc) nc.publish("domain.task_type.created", Buffer.from(JSON.stringify(payload)));
       return { taskType: taskTypeResp };
     },
+    async createTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = CreateTaskStatusSchema.parse(req);
+
+      const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+      const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
+      if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
+      await assertOrgMember(db, userId, typeRows[0].orgId);
+
+      const statuses = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
+      const newId = `tst-${crypto.randomUUID()}`;
+      const payload = { id: newId, taskTypeId: parsed.taskTypeId, name: parsed.name };
+
+      await insertRecord(db, statuses, payload, isStandalone, false);
+
+      if (nc) nc.publish("domain.task_status.created", Buffer.from(JSON.stringify(payload)));
+      return { status: payload };
+    },
+    async createTaskStatusTransition(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = CreateTaskStatusTransitionSchema.parse(req);
+
+      const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+      const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
+      if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
+      await assertOrgMember(db, userId, typeRows[0].orgId);
+
+      const statuses = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
+      const [fromRows, toRows] = await Promise.all([
+        db.select().from(statuses).where(eq((statuses as any).id, parsed.fromStatusId)).limit(1),
+        db.select().from(statuses).where(eq((statuses as any).id, parsed.toStatusId)).limit(1),
+      ]);
+      if (!fromRows.length || fromRows[0].taskTypeId !== parsed.taskTypeId) {
+        throw new ConnectError("fromStatusId does not belong to this task type", Code.InvalidArgument);
+      }
+      if (!toRows.length || toRows[0].taskTypeId !== parsed.taskTypeId) {
+        throw new ConnectError("toStatusId does not belong to this task type", Code.InvalidArgument);
+      }
+
+      const transitions = isStandalone ? schemaSqlite.taskStatusTransitions : schemaMysql.taskStatusTransitions;
+      const newId = `tstr-${crypto.randomUUID()}`;
+      const payload = { id: newId, taskTypeId: parsed.taskTypeId, fromStatusId: parsed.fromStatusId, toStatusId: parsed.toStatusId };
+
+      await insertRecord(db, transitions, payload, isStandalone, false);
+
+      if (nc) nc.publish("domain.task_status_transition.created", Buffer.from(JSON.stringify(payload)));
+      return { transition: payload };
+    },
   };
 };
+
+/**
+ * Validates a status value against a task's type state machine, falling back
+ * to the fixed KNOWN_STATUSES enum whenever there's nothing configured to
+ * enforce instead - a task with no taskTypeId, or a type with no statuses
+ * defined yet, behaves exactly as it always has.
+ */
+async function validateStatusForTaskType(
+  db: any,
+  isStandalone: boolean,
+  taskTypeId: string | null,
+  currentStatus: string | null,
+  newStatus: string
+): Promise<void> {
+  if (!taskTypeId) {
+    if (!(KNOWN_STATUSES as readonly string[]).includes(newStatus)) {
+      throw new ConnectError(`invalid status "${newStatus}" - expected one of: ${KNOWN_STATUSES.join(", ")}`, Code.InvalidArgument);
+    }
+    return;
+  }
+
+  const statusesTable = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
+  const configuredStatuses = await db.select().from(statusesTable).where(eq((statusesTable as any).taskTypeId, taskTypeId));
+
+  if (configuredStatuses.length === 0) {
+    if (!(KNOWN_STATUSES as readonly string[]).includes(newStatus)) {
+      throw new ConnectError(`invalid status "${newStatus}" - expected one of: ${KNOWN_STATUSES.join(", ")}`, Code.InvalidArgument);
+    }
+    return;
+  }
+
+  const newStatusRow = configuredStatuses.find((s: any) => s.name === newStatus);
+  if (!newStatusRow) {
+    throw new ConnectError(
+      `invalid status "${newStatus}" for this task's type - expected one of: ${configuredStatuses.map((s: any) => s.name).join(", ")}`,
+      Code.InvalidArgument
+    );
+  }
+
+  if (currentStatus === null) return; // Task creation: no prior status, so no transition edge to check.
+
+  const currentStatusRow = configuredStatuses.find((s: any) => s.name === currentStatus);
+  if (!currentStatusRow) return; // Current status predates this type's state machine - allow moving into it.
+
+  const transitionsTable = isStandalone ? schemaSqlite.taskStatusTransitions : schemaMysql.taskStatusTransitions;
+  const edges = await db.select().from(transitionsTable).where(eq((transitionsTable as any).taskTypeId, taskTypeId));
+  if (edges.length === 0) return; // No transitions configured yet - only status membership is enforced.
+
+  const allowed = edges.some((e: any) => e.fromStatusId === currentStatusRow.id && e.toStatusId === newStatusRow.id);
+  if (!allowed) {
+    throw new ConnectError(`transition from "${currentStatus}" to "${newStatus}" is not allowed for this task's type`, Code.InvalidArgument);
+  }
+}
 
 export const createTaskManagementHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
@@ -115,6 +231,14 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const parsed = CreateTaskSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
       await assertOrgMember(db, userId, orgId);
+
+      if (parsed.taskTypeId) {
+        const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+        const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
+        if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
+        if (typeRows[0].orgId !== orgId) throw new ConnectError("task type belongs to a different organization", Code.InvalidArgument);
+      }
+      await validateStatusForTaskType(db, isStandalone, parsed.taskTypeId || null, null, parsed.status);
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
@@ -136,6 +260,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         id: newId,
         projectId: parsed.projectId,
         displayId,
+        taskTypeId: parsed.taskTypeId || null,
         title: parsed.title,
         status: parsed.status,
         description: parsed.description,
@@ -204,6 +329,12 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, orgId);
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const existingRows = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
+      if (!existingRows || existingRows.length === 0) throw new ConnectError("task not found", Code.NotFound);
+      const currentTask = existingRows[0];
+
+      await validateStatusForTaskType(db, isStandalone, currentTask.taskTypeId || null, currentTask.status, parsed.status);
+
       await db.update(tasks).set({ status: parsed.status }).where(eq((tasks as any).id, parsed.taskId));
 
       const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);

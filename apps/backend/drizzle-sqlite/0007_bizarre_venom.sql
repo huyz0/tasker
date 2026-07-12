@@ -1,0 +1,1 @@
+ALTER TABLE `tasks` ADD `task_type_id` text REFERENCES task_types(id);

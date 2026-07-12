@@ -69,6 +69,7 @@ var tasksCreateCmd = &cobra.Command{
 		status, _ := cmd.Flags().GetString("status")
 		description, _ := cmd.Flags().GetString("description")
 		projectID, _ := cmd.Flags().GetString("project")
+		taskTypeID, _ := cmd.Flags().GetString("task-type")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
@@ -84,6 +85,7 @@ var tasksCreateCmd = &cobra.Command{
 			Title:       title,
 			Status:      status,
 			Description: description,
+			TaskTypeId:  taskTypeID,
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create task: %v\n", err)
@@ -406,6 +408,7 @@ func init() {
 	tasksCreateCmd.Flags().String("status", "", "Initial status")
 	tasksCreateCmd.Flags().String("description", "", "Task description")
 	tasksCreateCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
+	tasksCreateCmd.Flags().String("task-type", "", "Optional task type ID; enforces that type's status enum/transitions if configured")
 	tasksAssignCmd.Flags().String("agent", "", "Agent ID to assign")
 	tasksAssignCmd.Flags().String("user", "", "User ID to assign")
 	tasksUpdateStatusCmd.Flags().String("status", "", "The new status (todo, in-progress, done)")

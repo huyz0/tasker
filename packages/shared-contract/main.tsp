@@ -177,9 +177,30 @@ model CreateTaskTypeResponse {
   @field(1) taskType: TaskType;
 }
 
+model CreateTaskStatusRequest {
+  @field(1) taskTypeId: string;
+  @field(2) name: string;
+}
+model CreateTaskStatusResponse {
+  @field(1) status: TaskStatus;
+}
+
+model CreateTaskStatusTransitionRequest {
+  @field(1) taskTypeId: string;
+  @field(2) fromStatusId: string;
+  @field(3) toStatusId: string;
+}
+model CreateTaskStatusTransitionResponse {
+  @field(1) transition: TaskStatusTransition;
+}
+
 interface TaskTypeService {
   getTaskType(request: GetTaskTypeRequest): GetTaskTypeResponse;
   createTaskType(request: CreateTaskTypeRequest): CreateTaskTypeResponse;
+  createTaskStatus(request: CreateTaskStatusRequest): CreateTaskStatusResponse;
+  createTaskStatusTransition(
+    request: CreateTaskStatusTransitionRequest,
+  ): CreateTaskStatusTransitionResponse;
 }
 
 // ==== Project Models ====
@@ -391,6 +412,7 @@ model Task {
   @field(5) description: string;
   @field(6) deletedAt?: string;
   @field(7) displayId: string;
+  @field(8) taskTypeId?: string;
 }
 
 // ==== Task Services ====
@@ -400,6 +422,7 @@ model CreateTaskRequest {
   @field(2) title: string;
   @field(3) status: string;
   @field(4) description: string;
+  @field(5) taskTypeId?: string;
 }
 
 model CreateTaskResponse {

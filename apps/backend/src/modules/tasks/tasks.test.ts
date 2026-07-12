@@ -316,4 +316,82 @@ describe("Tasks Handler Integration Tests", () => {
     expect(task1.task.displayId).toBe("BS-1");
     expect(task2.task.displayId).toBe("BS-2");
   });
+
+  test("enforces a task type's configured status enum and transition state machine", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const { createProjectsHandler, createProjectTemplatesHandler } = require("../projects/projects.handler");
+    const { createTaskManagementHandler } = require("./tasks.handler");
+
+    const orgId = "org-statemachine-" + Date.now();
+    const userId = "user-statemachine-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "State Machine Org", slug: "statemachine-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
+    const ctx = makeAuthContext(userId);
+
+    const typesHandler = createTasksHandler(db, nc);
+    const pHandler = createProjectsHandler(db, nc);
+    const ptHandler = createProjectTemplatesHandler(db, nc);
+    const taskHandler = createTaskManagementHandler(db, nc);
+
+    const tResp = await ptHandler.createTemplate({ orgId, name: "T", description: "" }, ctx);
+    const pResp = await pHandler.createProject({ orgId, templateId: tResp.template.id, name: "Support Queue", ownerId: userId }, ctx);
+
+    const typeResp = await typesHandler.createTaskType({ orgId, projectId: pResp.project.id, name: "Ticket" }, ctx);
+    const taskTypeId = typeResp.taskType.id;
+
+    // No statuses configured yet - falls back to the default enum.
+    const beforeStatuses = await taskHandler.createTask({ projectId: pResp.project.id, title: "Early", status: "todo", taskTypeId }, ctx);
+    expect(beforeStatuses.task.taskTypeId).toBe(taskTypeId);
+    await expect(taskHandler.createTask({ projectId: pResp.project.id, title: "Bad", status: "bogus", taskTypeId }, ctx)).rejects.toThrow();
+
+    const openStatus = await typesHandler.createTaskStatus({ taskTypeId, name: "open" }, ctx);
+    const inReviewStatus = await typesHandler.createTaskStatus({ taskTypeId, name: "in_review" }, ctx);
+    await typesHandler.createTaskStatus({ taskTypeId, name: "closed" }, ctx);
+
+    await expect(
+      typesHandler.createTaskStatus({ taskTypeId: "does-not-exist", name: "x" }, ctx)
+    ).rejects.toThrow();
+
+    // Creating a task with a status outside the now-configured enum is rejected.
+    await expect(
+      taskHandler.createTask({ projectId: pResp.project.id, title: "Wrong Status", status: "todo", taskTypeId }, ctx)
+    ).rejects.toThrow();
+
+    const created = await taskHandler.createTask({ projectId: pResp.project.id, title: "Ticket 1", status: "open", taskTypeId }, ctx);
+    expect(created.task.status).toBe("open");
+
+    // No transitions configured yet - only status membership is enforced, so any configured status is reachable.
+    const toClosedDirect = await taskHandler.updateTaskStatus({ taskId: created.task.id, status: "closed" }, ctx);
+    expect(toClosedDirect.task.status).toBe("closed");
+    await taskHandler.updateTaskStatus({ taskId: created.task.id, status: "open" }, ctx);
+
+    const transition = await typesHandler.createTaskStatusTransition({
+      taskTypeId,
+      fromStatusId: openStatus.status.id,
+      toStatusId: inReviewStatus.status.id,
+    }, ctx);
+    expect(transition.transition.id).toBeDefined();
+
+    await expect(
+      typesHandler.createTaskStatusTransition({ taskTypeId, fromStatusId: "bad-id", toStatusId: inReviewStatus.status.id }, ctx)
+    ).rejects.toThrow();
+    await expect(
+      typesHandler.createTaskStatusTransition({ taskTypeId, fromStatusId: openStatus.status.id, toStatusId: "bad-id" }, ctx)
+    ).rejects.toThrow();
+
+    // Now that a transition graph exists, an edge not in it is rejected...
+    await expect(
+      taskHandler.updateTaskStatus({ taskId: created.task.id, status: "closed" }, ctx)
+    ).rejects.toThrow();
+
+    // ...while the configured edge succeeds.
+    const toInReview = await taskHandler.updateTaskStatus({ taskId: created.task.id, status: "in_review" }, ctx);
+    expect(toInReview.task.status).toBe("in_review");
+
+    // A status name that isn't one of this type's configured statuses is still rejected outright.
+    await expect(
+      taskHandler.updateTaskStatus({ taskId: created.task.id, status: "todo" }, ctx)
+    ).rejects.toThrow();
+  });
 });

@@ -151,9 +151,30 @@ message CreateTaskTypeResponse {
   TaskType taskType = 1;
 }
 
+message CreateTaskStatusRequest {
+  string taskTypeId = 1;
+  string name = 2;
+}
+
+message CreateTaskStatusResponse {
+  TaskStatus status = 1;
+}
+
+message CreateTaskStatusTransitionRequest {
+  string taskTypeId = 1;
+  string fromStatusId = 2;
+  string toStatusId = 3;
+}
+
+message CreateTaskStatusTransitionResponse {
+  TaskStatusTransition transition = 1;
+}
+
 service TaskTypeService {
   rpc GetTaskType(GetTaskTypeRequest) returns (GetTaskTypeResponse);
   rpc CreateTaskType(CreateTaskTypeRequest) returns (CreateTaskTypeResponse);
+  rpc CreateTaskStatus(CreateTaskStatusRequest) returns (CreateTaskStatusResponse);
+  rpc CreateTaskStatusTransition(CreateTaskStatusTransitionRequest) returns (CreateTaskStatusTransitionResponse);
 }
 
 message ProjectTemplate {
@@ -355,6 +376,7 @@ message Task {
   string description = 5;
   string deletedAt = 6;
   string display_id = 7;
+  string task_type_id = 8;
 }
 
 message CreateTaskRequest {
@@ -362,6 +384,7 @@ message CreateTaskRequest {
   string title = 2;
   string status = 3;
   string description = 4;
+  string task_type_id = 5;
 }
 
 message CreateTaskResponse {

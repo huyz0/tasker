@@ -84,6 +84,12 @@ const (
 	// TaskTypeServiceCreateTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
 	// CreateTaskType RPC.
 	TaskTypeServiceCreateTaskTypeProcedure = "/tasker.health.v1.TaskTypeService/CreateTaskType"
+	// TaskTypeServiceCreateTaskStatusProcedure is the fully-qualified name of the TaskTypeService's
+	// CreateTaskStatus RPC.
+	TaskTypeServiceCreateTaskStatusProcedure = "/tasker.health.v1.TaskTypeService/CreateTaskStatus"
+	// TaskTypeServiceCreateTaskStatusTransitionProcedure is the fully-qualified name of the
+	// TaskTypeService's CreateTaskStatusTransition RPC.
+	TaskTypeServiceCreateTaskStatusTransitionProcedure = "/tasker.health.v1.TaskTypeService/CreateTaskStatusTransition"
 	// ProjectTemplateServiceGetTemplateProcedure is the fully-qualified name of the
 	// ProjectTemplateService's GetTemplate RPC.
 	ProjectTemplateServiceGetTemplateProcedure = "/tasker.health.v1.ProjectTemplateService/GetTemplate"
@@ -229,81 +235,83 @@ const (
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	healthServiceServiceDescriptor                       = v1.File_tasker_health_v1_health_proto.Services().ByName("HealthService")
-	healthServicePingMethodDescriptor                    = healthServiceServiceDescriptor.Methods().ByName("Ping")
-	authServiceServiceDescriptor                         = v1.File_tasker_health_v1_health_proto.Services().ByName("AuthService")
-	authServiceGetIdentityMethodDescriptor               = authServiceServiceDescriptor.Methods().ByName("GetIdentity")
-	orgServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("OrgService")
-	orgServiceListOrgsMethodDescriptor                   = orgServiceServiceDescriptor.Methods().ByName("ListOrgs")
-	orgServiceSeedOrgMethodDescriptor                    = orgServiceServiceDescriptor.Methods().ByName("SeedOrg")
-	orgServiceArchiveOrgMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("ArchiveOrg")
-	orgServiceRestoreOrgMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("RestoreOrg")
-	orgServicePurgeOrgMethodDescriptor                   = orgServiceServiceDescriptor.Methods().ByName("PurgeOrg")
-	orgServiceSetOrgRetentionDaysMethodDescriptor        = orgServiceServiceDescriptor.Methods().ByName("SetOrgRetentionDays")
-	orgServiceInviteUserMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("InviteUser")
-	taskTypeServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskTypeService")
-	taskTypeServiceGetTaskTypeMethodDescriptor           = taskTypeServiceServiceDescriptor.Methods().ByName("GetTaskType")
-	taskTypeServiceCreateTaskTypeMethodDescriptor        = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskType")
-	projectTemplateServiceServiceDescriptor              = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectTemplateService")
-	projectTemplateServiceGetTemplateMethodDescriptor    = projectTemplateServiceServiceDescriptor.Methods().ByName("GetTemplate")
-	projectTemplateServiceCreateTemplateMethodDescriptor = projectTemplateServiceServiceDescriptor.Methods().ByName("CreateTemplate")
-	projectTemplateServiceListTemplatesMethodDescriptor  = projectTemplateServiceServiceDescriptor.Methods().ByName("ListTemplates")
-	projectServiceServiceDescriptor                      = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectService")
-	projectServiceGetProjectMethodDescriptor             = projectServiceServiceDescriptor.Methods().ByName("GetProject")
-	projectServiceCreateProjectMethodDescriptor          = projectServiceServiceDescriptor.Methods().ByName("CreateProject")
-	projectServiceListProjectsMethodDescriptor           = projectServiceServiceDescriptor.Methods().ByName("ListProjects")
-	projectServiceArchiveProjectMethodDescriptor         = projectServiceServiceDescriptor.Methods().ByName("ArchiveProject")
-	projectServiceRestoreProjectMethodDescriptor         = projectServiceServiceDescriptor.Methods().ByName("RestoreProject")
-	projectServicePurgeProjectMethodDescriptor           = projectServiceServiceDescriptor.Methods().ByName("PurgeProject")
-	agentServiceServiceDescriptor                        = v1.File_tasker_health_v1_health_proto.Services().ByName("AgentService")
-	agentServiceCreateAgentRoleMethodDescriptor          = agentServiceServiceDescriptor.Methods().ByName("CreateAgentRole")
-	agentServiceListAgentRolesMethodDescriptor           = agentServiceServiceDescriptor.Methods().ByName("ListAgentRoles")
-	agentServiceCreateAgentMethodDescriptor              = agentServiceServiceDescriptor.Methods().ByName("CreateAgent")
-	agentServiceListAgentsMethodDescriptor               = agentServiceServiceDescriptor.Methods().ByName("ListAgents")
-	agentServiceArchiveAgentMethodDescriptor             = agentServiceServiceDescriptor.Methods().ByName("ArchiveAgent")
-	agentServiceRestoreAgentMethodDescriptor             = agentServiceServiceDescriptor.Methods().ByName("RestoreAgent")
-	agentServicePurgeAgentMethodDescriptor               = agentServiceServiceDescriptor.Methods().ByName("PurgeAgent")
-	taskServiceServiceDescriptor                         = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskService")
-	taskServiceCreateTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("CreateTask")
-	taskServiceAssignTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
-	taskServiceListTasksMethodDescriptor                 = taskServiceServiceDescriptor.Methods().ByName("ListTasks")
-	taskServiceUpdateTaskStatusMethodDescriptor          = taskServiceServiceDescriptor.Methods().ByName("UpdateTaskStatus")
-	taskServiceDeleteTaskMethodDescriptor                = taskServiceServiceDescriptor.Methods().ByName("DeleteTask")
-	taskServiceRestoreTaskMethodDescriptor               = taskServiceServiceDescriptor.Methods().ByName("RestoreTask")
-	taskServicePurgeTaskMethodDescriptor                 = taskServiceServiceDescriptor.Methods().ByName("PurgeTask")
-	artifactServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
-	artifactServiceCreateFolderMethodDescriptor          = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
-	artifactServiceCreateArtifactMethodDescriptor        = artifactServiceServiceDescriptor.Methods().ByName("CreateArtifact")
-	artifactServiceLinkTaskArtifactMethodDescriptor      = artifactServiceServiceDescriptor.Methods().ByName("LinkTaskArtifact")
-	artifactServiceListArtifactsMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("ListArtifacts")
-	artifactServiceListFoldersMethodDescriptor           = artifactServiceServiceDescriptor.Methods().ByName("ListFolders")
-	artifactServiceArchiveArtifactMethodDescriptor       = artifactServiceServiceDescriptor.Methods().ByName("ArchiveArtifact")
-	artifactServiceRestoreArtifactMethodDescriptor       = artifactServiceServiceDescriptor.Methods().ByName("RestoreArtifact")
-	artifactServiceArchiveFolderMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("ArchiveFolder")
-	artifactServiceRestoreFolderMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("RestoreFolder")
-	artifactServicePurgeArtifactMethodDescriptor         = artifactServiceServiceDescriptor.Methods().ByName("PurgeArtifact")
-	artifactServicePurgeFolderMethodDescriptor           = artifactServiceServiceDescriptor.Methods().ByName("PurgeFolder")
-	commentServiceServiceDescriptor                      = v1.File_tasker_health_v1_health_proto.Services().ByName("CommentService")
-	commentServiceCreateCommentMethodDescriptor          = commentServiceServiceDescriptor.Methods().ByName("CreateComment")
-	commentServiceListCommentsMethodDescriptor           = commentServiceServiceDescriptor.Methods().ByName("ListComments")
-	taskNoteServiceServiceDescriptor                     = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskNoteService")
-	taskNoteServiceCreateTaskNoteMethodDescriptor        = taskNoteServiceServiceDescriptor.Methods().ByName("CreateTaskNote")
-	taskNoteServiceListTaskNotesMethodDescriptor         = taskNoteServiceServiceDescriptor.Methods().ByName("ListTaskNotes")
-	labelServiceServiceDescriptor                        = v1.File_tasker_health_v1_health_proto.Services().ByName("LabelService")
-	labelServiceCreateLabelMethodDescriptor              = labelServiceServiceDescriptor.Methods().ByName("CreateLabel")
-	labelServiceListLabelsMethodDescriptor               = labelServiceServiceDescriptor.Methods().ByName("ListLabels")
-	labelServiceAttachLabelMethodDescriptor              = labelServiceServiceDescriptor.Methods().ByName("AttachLabel")
-	labelServiceDetachLabelMethodDescriptor              = labelServiceServiceDescriptor.Methods().ByName("DetachLabel")
-	labelServiceListEntityLabelsMethodDescriptor         = labelServiceServiceDescriptor.Methods().ByName("ListEntityLabels")
-	repositoryServiceServiceDescriptor                   = v1.File_tasker_health_v1_health_proto.Services().ByName("RepositoryService")
-	repositoryServiceAddRepositoryLinkMethodDescriptor   = repositoryServiceServiceDescriptor.Methods().ByName("AddRepositoryLink")
-	repositoryServiceListRepositoryLinksMethodDescriptor = repositoryServiceServiceDescriptor.Methods().ByName("ListRepositoryLinks")
-	repositoryServiceSyncPullRequestsMethodDescriptor    = repositoryServiceServiceDescriptor.Methods().ByName("SyncPullRequests")
-	repositoryServiceListPullRequestsMethodDescriptor    = repositoryServiceServiceDescriptor.Methods().ByName("ListPullRequests")
-	repositoryServiceListBuildsMethodDescriptor          = repositoryServiceServiceDescriptor.Methods().ByName("ListBuilds")
-	repositoryServiceListDeploymentsMethodDescriptor     = repositoryServiceServiceDescriptor.Methods().ByName("ListDeployments")
-	searchServiceServiceDescriptor                       = v1.File_tasker_health_v1_health_proto.Services().ByName("SearchService")
-	searchServiceUniversalSearchMethodDescriptor         = searchServiceServiceDescriptor.Methods().ByName("UniversalSearch")
+	healthServiceServiceDescriptor                            = v1.File_tasker_health_v1_health_proto.Services().ByName("HealthService")
+	healthServicePingMethodDescriptor                         = healthServiceServiceDescriptor.Methods().ByName("Ping")
+	authServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("AuthService")
+	authServiceGetIdentityMethodDescriptor                    = authServiceServiceDescriptor.Methods().ByName("GetIdentity")
+	orgServiceServiceDescriptor                               = v1.File_tasker_health_v1_health_proto.Services().ByName("OrgService")
+	orgServiceListOrgsMethodDescriptor                        = orgServiceServiceDescriptor.Methods().ByName("ListOrgs")
+	orgServiceSeedOrgMethodDescriptor                         = orgServiceServiceDescriptor.Methods().ByName("SeedOrg")
+	orgServiceArchiveOrgMethodDescriptor                      = orgServiceServiceDescriptor.Methods().ByName("ArchiveOrg")
+	orgServiceRestoreOrgMethodDescriptor                      = orgServiceServiceDescriptor.Methods().ByName("RestoreOrg")
+	orgServicePurgeOrgMethodDescriptor                        = orgServiceServiceDescriptor.Methods().ByName("PurgeOrg")
+	orgServiceSetOrgRetentionDaysMethodDescriptor             = orgServiceServiceDescriptor.Methods().ByName("SetOrgRetentionDays")
+	orgServiceInviteUserMethodDescriptor                      = orgServiceServiceDescriptor.Methods().ByName("InviteUser")
+	taskTypeServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskTypeService")
+	taskTypeServiceGetTaskTypeMethodDescriptor                = taskTypeServiceServiceDescriptor.Methods().ByName("GetTaskType")
+	taskTypeServiceCreateTaskTypeMethodDescriptor             = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskType")
+	taskTypeServiceCreateTaskStatusMethodDescriptor           = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskStatus")
+	taskTypeServiceCreateTaskStatusTransitionMethodDescriptor = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskStatusTransition")
+	projectTemplateServiceServiceDescriptor                   = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectTemplateService")
+	projectTemplateServiceGetTemplateMethodDescriptor         = projectTemplateServiceServiceDescriptor.Methods().ByName("GetTemplate")
+	projectTemplateServiceCreateTemplateMethodDescriptor      = projectTemplateServiceServiceDescriptor.Methods().ByName("CreateTemplate")
+	projectTemplateServiceListTemplatesMethodDescriptor       = projectTemplateServiceServiceDescriptor.Methods().ByName("ListTemplates")
+	projectServiceServiceDescriptor                           = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectService")
+	projectServiceGetProjectMethodDescriptor                  = projectServiceServiceDescriptor.Methods().ByName("GetProject")
+	projectServiceCreateProjectMethodDescriptor               = projectServiceServiceDescriptor.Methods().ByName("CreateProject")
+	projectServiceListProjectsMethodDescriptor                = projectServiceServiceDescriptor.Methods().ByName("ListProjects")
+	projectServiceArchiveProjectMethodDescriptor              = projectServiceServiceDescriptor.Methods().ByName("ArchiveProject")
+	projectServiceRestoreProjectMethodDescriptor              = projectServiceServiceDescriptor.Methods().ByName("RestoreProject")
+	projectServicePurgeProjectMethodDescriptor                = projectServiceServiceDescriptor.Methods().ByName("PurgeProject")
+	agentServiceServiceDescriptor                             = v1.File_tasker_health_v1_health_proto.Services().ByName("AgentService")
+	agentServiceCreateAgentRoleMethodDescriptor               = agentServiceServiceDescriptor.Methods().ByName("CreateAgentRole")
+	agentServiceListAgentRolesMethodDescriptor                = agentServiceServiceDescriptor.Methods().ByName("ListAgentRoles")
+	agentServiceCreateAgentMethodDescriptor                   = agentServiceServiceDescriptor.Methods().ByName("CreateAgent")
+	agentServiceListAgentsMethodDescriptor                    = agentServiceServiceDescriptor.Methods().ByName("ListAgents")
+	agentServiceArchiveAgentMethodDescriptor                  = agentServiceServiceDescriptor.Methods().ByName("ArchiveAgent")
+	agentServiceRestoreAgentMethodDescriptor                  = agentServiceServiceDescriptor.Methods().ByName("RestoreAgent")
+	agentServicePurgeAgentMethodDescriptor                    = agentServiceServiceDescriptor.Methods().ByName("PurgeAgent")
+	taskServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskService")
+	taskServiceCreateTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("CreateTask")
+	taskServiceAssignTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
+	taskServiceListTasksMethodDescriptor                      = taskServiceServiceDescriptor.Methods().ByName("ListTasks")
+	taskServiceUpdateTaskStatusMethodDescriptor               = taskServiceServiceDescriptor.Methods().ByName("UpdateTaskStatus")
+	taskServiceDeleteTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("DeleteTask")
+	taskServiceRestoreTaskMethodDescriptor                    = taskServiceServiceDescriptor.Methods().ByName("RestoreTask")
+	taskServicePurgeTaskMethodDescriptor                      = taskServiceServiceDescriptor.Methods().ByName("PurgeTask")
+	artifactServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
+	artifactServiceCreateFolderMethodDescriptor               = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
+	artifactServiceCreateArtifactMethodDescriptor             = artifactServiceServiceDescriptor.Methods().ByName("CreateArtifact")
+	artifactServiceLinkTaskArtifactMethodDescriptor           = artifactServiceServiceDescriptor.Methods().ByName("LinkTaskArtifact")
+	artifactServiceListArtifactsMethodDescriptor              = artifactServiceServiceDescriptor.Methods().ByName("ListArtifacts")
+	artifactServiceListFoldersMethodDescriptor                = artifactServiceServiceDescriptor.Methods().ByName("ListFolders")
+	artifactServiceArchiveArtifactMethodDescriptor            = artifactServiceServiceDescriptor.Methods().ByName("ArchiveArtifact")
+	artifactServiceRestoreArtifactMethodDescriptor            = artifactServiceServiceDescriptor.Methods().ByName("RestoreArtifact")
+	artifactServiceArchiveFolderMethodDescriptor              = artifactServiceServiceDescriptor.Methods().ByName("ArchiveFolder")
+	artifactServiceRestoreFolderMethodDescriptor              = artifactServiceServiceDescriptor.Methods().ByName("RestoreFolder")
+	artifactServicePurgeArtifactMethodDescriptor              = artifactServiceServiceDescriptor.Methods().ByName("PurgeArtifact")
+	artifactServicePurgeFolderMethodDescriptor                = artifactServiceServiceDescriptor.Methods().ByName("PurgeFolder")
+	commentServiceServiceDescriptor                           = v1.File_tasker_health_v1_health_proto.Services().ByName("CommentService")
+	commentServiceCreateCommentMethodDescriptor               = commentServiceServiceDescriptor.Methods().ByName("CreateComment")
+	commentServiceListCommentsMethodDescriptor                = commentServiceServiceDescriptor.Methods().ByName("ListComments")
+	taskNoteServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskNoteService")
+	taskNoteServiceCreateTaskNoteMethodDescriptor             = taskNoteServiceServiceDescriptor.Methods().ByName("CreateTaskNote")
+	taskNoteServiceListTaskNotesMethodDescriptor              = taskNoteServiceServiceDescriptor.Methods().ByName("ListTaskNotes")
+	labelServiceServiceDescriptor                             = v1.File_tasker_health_v1_health_proto.Services().ByName("LabelService")
+	labelServiceCreateLabelMethodDescriptor                   = labelServiceServiceDescriptor.Methods().ByName("CreateLabel")
+	labelServiceListLabelsMethodDescriptor                    = labelServiceServiceDescriptor.Methods().ByName("ListLabels")
+	labelServiceAttachLabelMethodDescriptor                   = labelServiceServiceDescriptor.Methods().ByName("AttachLabel")
+	labelServiceDetachLabelMethodDescriptor                   = labelServiceServiceDescriptor.Methods().ByName("DetachLabel")
+	labelServiceListEntityLabelsMethodDescriptor              = labelServiceServiceDescriptor.Methods().ByName("ListEntityLabels")
+	repositoryServiceServiceDescriptor                        = v1.File_tasker_health_v1_health_proto.Services().ByName("RepositoryService")
+	repositoryServiceAddRepositoryLinkMethodDescriptor        = repositoryServiceServiceDescriptor.Methods().ByName("AddRepositoryLink")
+	repositoryServiceListRepositoryLinksMethodDescriptor      = repositoryServiceServiceDescriptor.Methods().ByName("ListRepositoryLinks")
+	repositoryServiceSyncPullRequestsMethodDescriptor         = repositoryServiceServiceDescriptor.Methods().ByName("SyncPullRequests")
+	repositoryServiceListPullRequestsMethodDescriptor         = repositoryServiceServiceDescriptor.Methods().ByName("ListPullRequests")
+	repositoryServiceListBuildsMethodDescriptor               = repositoryServiceServiceDescriptor.Methods().ByName("ListBuilds")
+	repositoryServiceListDeploymentsMethodDescriptor          = repositoryServiceServiceDescriptor.Methods().ByName("ListDeployments")
+	searchServiceServiceDescriptor                            = v1.File_tasker_health_v1_health_proto.Services().ByName("SearchService")
+	searchServiceUniversalSearchMethodDescriptor              = searchServiceServiceDescriptor.Methods().ByName("UniversalSearch")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -670,6 +678,8 @@ func (UnimplementedOrgServiceHandler) InviteUser(context.Context, *connect.Reque
 type TaskTypeServiceClient interface {
 	GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error)
 	CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error)
+	CreateTaskStatus(context.Context, *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error)
+	CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error)
 }
 
 // NewTaskTypeServiceClient constructs a client for the tasker.health.v1.TaskTypeService service. By
@@ -694,13 +704,27 @@ func NewTaskTypeServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(taskTypeServiceCreateTaskTypeMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		createTaskStatus: connect.NewClient[v1.CreateTaskStatusRequest, v1.CreateTaskStatusResponse](
+			httpClient,
+			baseURL+TaskTypeServiceCreateTaskStatusProcedure,
+			connect.WithSchema(taskTypeServiceCreateTaskStatusMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		createTaskStatusTransition: connect.NewClient[v1.CreateTaskStatusTransitionRequest, v1.CreateTaskStatusTransitionResponse](
+			httpClient,
+			baseURL+TaskTypeServiceCreateTaskStatusTransitionProcedure,
+			connect.WithSchema(taskTypeServiceCreateTaskStatusTransitionMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // taskTypeServiceClient implements TaskTypeServiceClient.
 type taskTypeServiceClient struct {
-	getTaskType    *connect.Client[v1.GetTaskTypeRequest, v1.GetTaskTypeResponse]
-	createTaskType *connect.Client[v1.CreateTaskTypeRequest, v1.CreateTaskTypeResponse]
+	getTaskType                *connect.Client[v1.GetTaskTypeRequest, v1.GetTaskTypeResponse]
+	createTaskType             *connect.Client[v1.CreateTaskTypeRequest, v1.CreateTaskTypeResponse]
+	createTaskStatus           *connect.Client[v1.CreateTaskStatusRequest, v1.CreateTaskStatusResponse]
+	createTaskStatusTransition *connect.Client[v1.CreateTaskStatusTransitionRequest, v1.CreateTaskStatusTransitionResponse]
 }
 
 // GetTaskType calls tasker.health.v1.TaskTypeService.GetTaskType.
@@ -713,10 +737,22 @@ func (c *taskTypeServiceClient) CreateTaskType(ctx context.Context, req *connect
 	return c.createTaskType.CallUnary(ctx, req)
 }
 
+// CreateTaskStatus calls tasker.health.v1.TaskTypeService.CreateTaskStatus.
+func (c *taskTypeServiceClient) CreateTaskStatus(ctx context.Context, req *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error) {
+	return c.createTaskStatus.CallUnary(ctx, req)
+}
+
+// CreateTaskStatusTransition calls tasker.health.v1.TaskTypeService.CreateTaskStatusTransition.
+func (c *taskTypeServiceClient) CreateTaskStatusTransition(ctx context.Context, req *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error) {
+	return c.createTaskStatusTransition.CallUnary(ctx, req)
+}
+
 // TaskTypeServiceHandler is an implementation of the tasker.health.v1.TaskTypeService service.
 type TaskTypeServiceHandler interface {
 	GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error)
 	CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error)
+	CreateTaskStatus(context.Context, *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error)
+	CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error)
 }
 
 // NewTaskTypeServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -737,12 +773,28 @@ func NewTaskTypeServiceHandler(svc TaskTypeServiceHandler, opts ...connect.Handl
 		connect.WithSchema(taskTypeServiceCreateTaskTypeMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskTypeServiceCreateTaskStatusHandler := connect.NewUnaryHandler(
+		TaskTypeServiceCreateTaskStatusProcedure,
+		svc.CreateTaskStatus,
+		connect.WithSchema(taskTypeServiceCreateTaskStatusMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskTypeServiceCreateTaskStatusTransitionHandler := connect.NewUnaryHandler(
+		TaskTypeServiceCreateTaskStatusTransitionProcedure,
+		svc.CreateTaskStatusTransition,
+		connect.WithSchema(taskTypeServiceCreateTaskStatusTransitionMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskTypeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskTypeServiceGetTaskTypeProcedure:
 			taskTypeServiceGetTaskTypeHandler.ServeHTTP(w, r)
 		case TaskTypeServiceCreateTaskTypeProcedure:
 			taskTypeServiceCreateTaskTypeHandler.ServeHTTP(w, r)
+		case TaskTypeServiceCreateTaskStatusProcedure:
+			taskTypeServiceCreateTaskStatusHandler.ServeHTTP(w, r)
+		case TaskTypeServiceCreateTaskStatusTransitionProcedure:
+			taskTypeServiceCreateTaskStatusTransitionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -758,6 +810,14 @@ func (UnimplementedTaskTypeServiceHandler) GetTaskType(context.Context, *connect
 
 func (UnimplementedTaskTypeServiceHandler) CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.CreateTaskType is not implemented"))
+}
+
+func (UnimplementedTaskTypeServiceHandler) CreateTaskStatus(context.Context, *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.CreateTaskStatus is not implemented"))
+}
+
+func (UnimplementedTaskTypeServiceHandler) CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.CreateTaskStatusTransition is not implemented"))
 }
 
 // ProjectTemplateServiceClient is a client for the tasker.health.v1.ProjectTemplateService service.

@@ -112,6 +112,10 @@ export const tasks = sqliteTable("tasks", {
   // number (e.g. "ENG-42"), assigned once at creation - never recomputed, so
   // it stays stable even if the project is later renamed.
   displayId: text("display_id").notNull().default(""),
+  // Optional: when set and the type has statuses/transitions configured,
+  // updateTaskStatus enforces that state machine instead of the default
+  // fixed todo/in-progress/done enum.
+  taskTypeId: text("task_type_id").references(() => taskTypes.id),
   title: text("title").notNull(),
   status: text("status").notNull(),
   description: text("description"),
