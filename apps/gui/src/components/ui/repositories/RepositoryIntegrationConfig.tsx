@@ -95,7 +95,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
   const [provider, setProvider] = useState('github');
   const [remoteName, setRemoteName] = useState('');
   const [bitbucketEmail, setBitbucketEmail] = useState('');
-  const [bitbucketApiToken, setBitbucketApiToken] = useState('');
+  const [apiToken, setApiToken] = useState('');
   const [expandedLinkId, setExpandedLinkId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -129,15 +129,15 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
         projectId,
         provider,
         remoteName,
-        email: bitbucketEmail,
-        apiToken: bitbucketApiToken,
+        email: provider === 'bitbucket' ? bitbucketEmail : '',
+        apiToken,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['repositoryLinks', projectId] });
       setRemoteName('');
       setBitbucketEmail('');
-      setBitbucketApiToken('');
+      setApiToken('');
     },
   });
 
@@ -220,40 +220,56 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
           />
         </div>
 
-        {provider === 'bitbucket' && (
-          <div className="flex flex-col gap-2 p-3 rounded border border-dashed">
-            <p className="text-xs text-muted-foreground">
-              Link with a direct Atlassian API token (Basic auth) - the app-password replacement.
-              Generate one at <span className="font-mono">id.atlassian.com/manage-profile/security/api-tokens</span>.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="Atlassian account email"
-                value={bitbucketEmail}
-                onChange={e => setBitbucketEmail(e.target.value)}
-                className="border p-2 rounded text-sm flex-1 bg-background"
-              />
+        <div className="flex flex-col gap-2 p-3 rounded border border-dashed">
+          {provider === 'bitbucket' ? (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Link with a direct Atlassian API token (Basic auth) - the app-password replacement.
+                Generate one at <span className="font-mono">id.atlassian.com/manage-profile/security/api-tokens</span>.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="Atlassian account email"
+                  value={bitbucketEmail}
+                  onChange={e => setBitbucketEmail(e.target.value)}
+                  className="border p-2 rounded text-sm flex-1 bg-background"
+                />
+                <input
+                  type="password"
+                  placeholder="API token"
+                  value={apiToken}
+                  onChange={e => setApiToken(e.target.value)}
+                  className="border p-2 rounded text-sm flex-1 bg-background"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Link with a direct personal access token (used as a Bearer token, same as OAuth2).
+                Generate one at <span className="font-mono">github.com/settings/tokens</span> with the "repo" scope.
+              </p>
               <input
                 type="password"
-                placeholder="API token"
-                value={bitbucketApiToken}
-                onChange={e => setBitbucketApiToken(e.target.value)}
-                className="border p-2 rounded text-sm flex-1 bg-background"
+                placeholder="Personal access token"
+                value={apiToken}
+                onChange={e => setApiToken(e.target.value)}
+                className="border p-2 rounded text-sm w-full bg-background"
               />
-            </div>
-            <button
-              disabled={!remoteName || !bitbucketEmail || !bitbucketApiToken || addLinkMutation.isPending}
-              onClick={() => addLinkMutation.mutate()}
-              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              {addLinkMutation.isPending ? 'Linking...' : 'Link with API token'}
-            </button>
-            {addLinkMutation.isError && (
-              <p className="text-sm text-destructive">Failed to link: {(addLinkMutation.error as Error).message}</p>
-            )}
-          </div>
-        )}
+            </>
+          )}
+          <button
+            disabled={!remoteName || !apiToken || (provider === 'bitbucket' && !bitbucketEmail) || addLinkMutation.isPending}
+            onClick={() => addLinkMutation.mutate()}
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {addLinkMutation.isPending ? 'Linking...' : 'Link with API token'}
+          </button>
+          {addLinkMutation.isError && (
+            <p className="text-sm text-destructive">Failed to link: {(addLinkMutation.error as Error).message}</p>
+          )}
+        </div>
 
         <div className="flex gap-2">
           <button

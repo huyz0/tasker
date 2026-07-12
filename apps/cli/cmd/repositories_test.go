@@ -124,6 +124,29 @@ func TestRepoLinkCmdWithDirectApiToken(t *testing.T) {
 	rootCmd.Flags().Set("json", "false")
 }
 
+func TestRepoLinkCmdWithGithubDirectApiTokenNeedsNoEmail(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{
+		"repo", "link", "--project", "proj-1", "--provider", "github", "--remote", "huyz0/tasker",
+		"--oauth-code", "", "--api-token", "ghp_fake-pat", "--email", "",
+	})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "Successfully linked github repository: huyz0/tasker") {
+		t.Fatalf("expected success message, got %s", out)
+	}
+}
+
 func TestRepoLinkCmdRequiresOauthCodeOrApiTokenWithEmail(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))

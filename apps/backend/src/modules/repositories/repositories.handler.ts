@@ -54,13 +54,20 @@ const AddRepositoryLinkSchema = z.object({
   provider: z.string().min(1),
   remoteName: z.string().min(1),
   oauthCode: z.string().optional(),
-  // Direct-token flow (Bitbucket only) - a pre-existing API token used as-is
-  // with Basic auth, as an alternative to the OAuth2 authorization-code
-  // exchange. Bitbucket's app passwords are deprecated in favor of these.
+  // Direct-token flow - a pre-existing API token used as-is, as an
+  // alternative to the OAuth2 authorization-code exchange. For GitHub this
+  // is a personal access token, used as a Bearer token exactly like an
+  // OAuth2 access token. For Bitbucket this is an Atlassian API token
+  // (the app-password replacement), which requires Basic auth, so `email`
+  // is required alongside it.
   apiToken: z.string().optional(),
   email: z.string().optional(),
-}).refine((v) => !!v.oauthCode || (!!v.apiToken && !!v.email), {
-  message: "either oauthCode, or both apiToken and email, are required",
+}).refine((v) => {
+  if (v.oauthCode) return true;
+  if (!v.apiToken) return false;
+  return v.provider !== "bitbucket" || !!v.email;
+}, {
+  message: "either oauthCode, or apiToken (with email required for Bitbucket), is required",
 });
 
 const ListRepositoryLinksSchema = z.object({
@@ -274,12 +281,18 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
 
       let tokenToStore = "";
       let authEmail: string | null = null;
-      if (parsed.apiToken && parsed.email) {
-        if (parsed.provider !== "bitbucket") {
-          throw new Error(`The direct-token flow is only supported for Bitbucket, not ${parsed.provider}`);
+      if (parsed.apiToken) {
+        if (parsed.provider !== "github" && parsed.provider !== "bitbucket") {
+          throw new Error(`The direct-token flow is only supported for GitHub and Bitbucket, not ${parsed.provider}`);
+        }
+        // GitHub personal access tokens are used as a Bearer token, exactly
+        // like an OAuth2 access token, so no authEmail is needed. Bitbucket's
+        // Atlassian API tokens require Basic auth, hence the email.
+        if (parsed.provider === "bitbucket" && !parsed.email) {
+          throw new Error("email is required alongside apiToken for Bitbucket");
         }
         tokenToStore = parsed.apiToken;
-        authEmail = parsed.email;
+        authEmail = parsed.provider === "bitbucket" ? parsed.email! : null;
       } else if (parsed.provider === "github") {
         if (!parsed.oauthCode) throw new Error("oauthCode is required");
         const response = await fetch("https://github.com/login/oauth/access_token", {

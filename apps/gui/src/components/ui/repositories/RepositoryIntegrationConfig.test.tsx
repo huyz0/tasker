@@ -88,6 +88,26 @@ describe('RepositoryIntegrationConfig', () => {
     }));
   });
 
+  test('links a GitHub repository using a direct personal access token, with no email required', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [] });
+    mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-3', provider: 'github', remoteName: 'huyz0/gh-repo' } });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    fireEvent.change(screen.getByPlaceholderText('Remote (e.g. huyz0/tasker)'), { target: { value: 'huyz0/gh-repo' } });
+    fireEvent.change(screen.getByPlaceholderText('Personal access token'), { target: { value: 'ghp_fake-pat' } });
+    fireEvent.click(screen.getByText('Link with API token'));
+
+    await waitFor(() => expect(mockAddRepositoryLink).toHaveBeenCalledWith({
+      projectId: 'proj-123',
+      provider: 'github',
+      remoteName: 'huyz0/gh-repo',
+      email: '',
+      apiToken: 'ghp_fake-pat',
+    }));
+  });
+
   test('lists synced pull requests for a linked repository', async () => {
     mockListRepositoryLinks.mockResolvedValue({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
     mockListPullRequests.mockResolvedValue({

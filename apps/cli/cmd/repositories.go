@@ -51,7 +51,7 @@ var repoListCmd = &cobra.Command{
 
 var repoLinkCmd = &cobra.Command{
 	Use:   "link",
-	Short: "Link a new repository to a project, via an OAuth authorization code or (Bitbucket only) a direct API token",
+	Short: "Link a new repository to a project, via an OAuth authorization code or a direct API token",
 	Run: func(cmd *cobra.Command, args []string) {
 		provider, _ := cmd.Flags().GetString("provider")
 		remote, _ := cmd.Flags().GetString("remote")
@@ -67,8 +67,12 @@ var repoLinkCmd = &cobra.Command{
 			cmd.Println("Error: --project, --provider, and --remote are all required.")
 			return
 		}
-		if oauthCode == "" && (apiToken == "" || email == "") {
-			cmd.Println("Error: provide either --oauth-code, or both --api-token and --email (Bitbucket only).")
+		if oauthCode == "" && apiToken == "" {
+			cmd.Println("Error: provide either --oauth-code, or --api-token (add --email too for Bitbucket).")
+			return
+		}
+		if oauthCode == "" && provider == "bitbucket" && email == "" {
+			cmd.Println("Error: --email is required alongside --api-token for Bitbucket.")
 			return
 		}
 
@@ -237,7 +241,7 @@ func init() {
 	repoLinkCmd.Flags().String("remote", "", "Remote repository name")
 	repoLinkCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	repoLinkCmd.Flags().String("oauth-code", "", "OAuth authorization code obtained from the provider's consent screen")
-	repoLinkCmd.Flags().String("api-token", "", "Bitbucket only: a direct Atlassian API token, as an alternative to --oauth-code")
+	repoLinkCmd.Flags().String("api-token", "", "A direct API token, as an alternative to --oauth-code (a GitHub personal access token, or a Bitbucket Atlassian API token)")
 	repoLinkCmd.Flags().String("email", "", "Bitbucket only: the Atlassian account email paired with --api-token")
 
 	repoSyncCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")

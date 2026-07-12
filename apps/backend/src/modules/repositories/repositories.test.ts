@@ -474,13 +474,39 @@ describe("Repositories Handler >", () => {
     await repHandler.syncPullRequests({ projectId: pId }, ctx2);
     expect(captured.authHeader).toBe(`Basic ${Buffer.from("user@example.com:ATATT-fake-api-token").toString("base64")}`);
 
-    // Rejecting invalid combinations: apiToken without email, or a non-Bitbucket provider.
+    // Rejecting invalid combinations: Bitbucket apiToken without email, or an unsupported provider.
     await expect(repHandler.addRepositoryLink({
       projectId: pId, provider: "bitbucket", remoteName: "foo/bad", apiToken: "tok",
     }, ctx2)).rejects.toThrow();
     await expect(repHandler.addRepositoryLink({
-      projectId: pId, provider: "github", remoteName: "foo/bad", apiToken: "tok", email: "a@b.com",
+      projectId: pId, provider: "gitlab", remoteName: "foo/bad", apiToken: "tok",
     }, ctx2)).rejects.toThrow();
+  });
+
+  test("GitHub direct-token links (personal access tokens) authenticate as a Bearer token, same as OAuth2", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P-gh-apitoken", ownerId: "usr-2" }, ctx2)).project.id;
+
+    const captured: { authHeader: string | null } = { authHeader: null };
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      const u = url.toString();
+      if (u.includes("/pulls")) {
+        captured.authHeader = (options?.headers as Record<string, string>)?.Authorization ?? null;
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    // No oauthCode, no email - a GitHub PAT needs neither.
+    const link = (await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "github",
+      remoteName: "foo/gh-apitoken",
+      apiToken: "ghp_fake-personal-access-token",
+    }, ctx2)).link;
+    expect(link.authEmail).toBeFalsy();
+
+    await repHandler.syncPullRequests({ projectId: pId }, ctx2);
+    expect(captured.authHeader).toBe("Bearer ghp_fake-personal-access-token");
   });
 
   test("listDeployments throws on provider failure instead of returning fabricated data", async () => {
