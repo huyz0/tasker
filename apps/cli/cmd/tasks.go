@@ -55,7 +55,7 @@ var tasksListCmd = &cobra.Command{
 		} else {
 			cmd.Println("Tasks Workbench:")
 			for _, task := range res.Msg.Tasks {
-				cmd.Printf("- %s [%s]: %s\n", task.Id, task.Status, task.Title)
+				cmd.Printf("- %s [%s]: %s (id: %s)\n", task.DisplayId, task.Status, task.Title, task.Id)
 			}
 		}
 	},
@@ -94,7 +94,7 @@ var tasksCreateCmd = &cobra.Command{
 			jsonString, _ := json.Marshal(res.Msg.Task)
 			cmd.Println(string(jsonString))
 		} else {
-			cmd.Printf("Task created: %s (id: %s)\n", res.Msg.Task.Title, res.Msg.Task.Id)
+			cmd.Printf("Task created: %s [%s] (id: %s)\n", res.Msg.Task.Title, res.Msg.Task.DisplayId, res.Msg.Task.Id)
 		}
 	},
 }

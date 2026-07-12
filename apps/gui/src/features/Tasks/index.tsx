@@ -82,7 +82,7 @@ export function TasksWorkbench() {
                <div className="flex flex-col gap-3 flex-1 overflow-y-auto">
                  {col.items.map(task => (
                    <div key={task.id} onClick={() => setExpandedTaskId(task.id)} className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-pointer transition-colors">
-                      <div className="text-xs text-muted-foreground mb-1">Project {activeProjectId}</div>
+                      <div className="text-xs text-muted-foreground mb-1 font-mono">{task.displayId}</div>
                       <h4 className="font-medium text-sm leading-tight mb-2">{task.title}</h4>
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{task.description || 'No description provided.'}</p>
                       
@@ -128,7 +128,7 @@ export function TasksWorkbench() {
              <p className="text-sm text-destructive px-4 pt-2">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
            )}
            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-             <div className="text-sm text-primary font-medium mb-1">ID: {expandedTask.id}</div>
+             <div className="text-sm text-primary font-medium mb-1">{expandedTask.displayId}</div>
              <h3 className="text-xl font-bold mb-4">{expandedTask.title}</h3>
              <div className="space-y-3 text-sm text-muted-foreground mb-6">
                 <div className="flex justify-between items-center">

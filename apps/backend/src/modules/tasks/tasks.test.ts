@@ -290,4 +290,30 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.restoreTask({ taskId }, makeAuthContext(adminId))).rejects.toThrow();
     expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.task.purged");
   });
+
+  test("assigns each task a stable, human-readable displayId derived from the project's key", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const { createProjectsHandler, createProjectTemplatesHandler } = require("../projects/projects.handler");
+
+    const orgId = "org-displayid-" + Date.now();
+    const userId = "user-displayid-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Display Id Org", slug: "displayid-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
+    const ctx = makeAuthContext(userId);
+
+    const pHandler = createProjectsHandler(db, nc);
+    const ptHandler = createProjectTemplatesHandler(db, nc);
+    const tResp = await ptHandler.createTemplate({ orgId, name: "T", description: "" }, ctx);
+    const pResp = await pHandler.createProject({ orgId, templateId: tResp.template.id, name: "Backend Services", ownerId: userId }, ctx);
+    expect(pResp.project.key).toBe("BS");
+
+    const { createTaskManagementHandler } = require("./tasks.handler");
+    const taskHandler = createTaskManagementHandler(db, nc);
+    const task1 = await taskHandler.createTask({ projectId: pResp.project.id, title: "First", status: "todo", description: "" }, ctx);
+    const task2 = await taskHandler.createTask({ projectId: pResp.project.id, title: "Second", status: "todo", description: "" }, ctx);
+
+    expect(task1.task.displayId).toBe("BS-1");
+    expect(task2.task.displayId).toBe("BS-2");
+  });
 });

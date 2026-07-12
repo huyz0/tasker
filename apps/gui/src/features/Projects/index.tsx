@@ -125,7 +125,7 @@ export function ProjectsWizard() {
               <div key={p.id} className="border rounded-lg bg-card p-6 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <div>
-                    <h3 className="font-semibold text-lg">{p.name}</h3>
+                    <h3 className="font-semibold text-lg">{p.name} <span className="text-xs font-mono text-muted-foreground">[{p.key}]</span></h3>
                     <p className="text-xs text-muted-foreground mt-1">ID: {p.id}</p>
                   </div>
                   <button

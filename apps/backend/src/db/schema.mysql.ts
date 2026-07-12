@@ -79,6 +79,8 @@ export const projects = mysqlTable("projects", {
   orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
   templateId: varchar("template_id", { length: 256 }).notNull().references(() => projectTemplates.id),
   name: varchar("name", { length: 256 }).notNull(),
+  key: varchar("key_code", { length: 32 }).notNull().default(""),
+  nextTaskNumber: int("next_task_number").notNull().default(1),
   ownerId: varchar("owner_id", { length: 256 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
@@ -102,6 +104,7 @@ export const agents = mysqlTable("agents", {
 export const tasks = mysqlTable("tasks", {
   id: varchar("id", { length: 256 }).primaryKey(),
   projectId: varchar("project_id", { length: 256 }).notNull().references(() => projects.id),
+  displayId: varchar("display_id", { length: 64 }).notNull().default(""),
   title: varchar("title", { length: 512 }).notNull(),
   status: varchar("status", { length: 256 }).notNull(),
   description: varchar("description", { length: 4096 }),

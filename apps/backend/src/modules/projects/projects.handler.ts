@@ -6,6 +6,29 @@ import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restor
 import { requireUserId, assertOrgMember, assertOrgAdmin } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
+/** Derives a short, human-typeable project key from its name, e.g. "Engineering Docs" -> "ED", "Backend" -> "BACKEN". */
+function baseKeyFromName(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const raw = words.length > 1 ? words.map((w) => w[0]).join("") : name;
+  const alnum = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return (alnum || "PROJ").slice(0, 6);
+}
+
+/** Appends a numeric suffix until the key is unique within the org - project keys are the display-ID prefix, so collisions would be genuinely confusing. */
+async function generateUniqueProjectKey(db: any, projectsTable: any, orgId: string, name: string): Promise<string> {
+  const base = baseKeyFromName(name);
+  let candidate = base;
+  let suffix = 2;
+  while (true) {
+    const existing = await db.select().from(projectsTable)
+      .where(and(eq((projectsTable as any).orgId, orgId), eq((projectsTable as any).key, candidate)))
+      .limit(1);
+    if (!existing || existing.length === 0) return candidate;
+    candidate = `${base}${suffix}`;
+    suffix++;
+  }
+}
+
 // --- Zod Request Schemas ---
 
 const GetProjectSchema = z.object({
@@ -70,12 +93,15 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       }
 
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
+      const key = await generateUniqueProjectKey(db, ps, parsed.orgId, parsed.name);
       const newId = `p-${crypto.randomUUID()}`;
       const payload = {
         id: newId,
         orgId: parsed.orgId,
         templateId: parsed.templateId,
         name: parsed.name,
+        key,
+        nextTaskNumber: 1,
         ownerId: parsed.ownerId,
       };
 

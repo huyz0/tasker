@@ -84,6 +84,18 @@ describe("Projects Handler Integration Logic", () => {
      expect(pHandler.listProjects({}, ctx)).rejects.toThrow();
   });
 
+  test("derives a short project key from the name and de-duplicates on collision", async () => {
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Key Template", description: "" }, ctx);
+
+    const first = await pHandler.createProject({ orgId: "org-test", templateId: tResp.template.id, name: "Engineering Docs", ownerId: "user-test" }, ctx);
+    expect(first.project.key).toBe("ED");
+
+    // Same name again in the same org must not collide on the key.
+    const second = await pHandler.createProject({ orgId: "org-test", templateId: tResp.template.id, name: "Engineering Docs", ownerId: "user-test" }, ctx);
+    expect(second.project.key).toBe("ED2");
+    expect(second.project.key).not.toBe(first.project.key);
+  });
+
   test("rejects access from a user who isn't a member of the org", async () => {
      const outsiderCtx = makeAuthContext("user-outsider");
      await db.insert(schemaSqlite.users).values({ id: "user-outsider", email: "outsider@example.com", createdAt: new Date() });

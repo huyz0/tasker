@@ -198,6 +198,7 @@ model Project {
   @field(4) name: string;
   @field(5) ownerId: string;
   @field(6) deletedAt?: string;
+  @field(7) key: string;
 }
 
 // ==== Project Services ====
@@ -389,6 +390,7 @@ model Task {
   @field(4) status: string;
   @field(5) description: string;
   @field(6) deletedAt?: string;
+  @field(7) displayId: string;
 }
 
 // ==== Task Services ====

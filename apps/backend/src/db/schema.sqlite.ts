@@ -79,6 +79,12 @@ export const projects = sqliteTable("projects", {
   orgId: text("org_id").notNull().references(() => organizations.id),
   templateId: text("template_id").notNull().references(() => projectTemplates.id),
   name: text("name").notNull(),
+  // Short, human-typeable prefix for this project's task display IDs (e.g.
+  // "ENG-42"), unique within the org. Auto-derived from name at creation.
+  key: text("key").notNull().default(""),
+  // Next sequence number to hand out for a task's display ID within this
+  // project; incremented atomically on each task creation.
+  nextTaskNumber: integer("next_task_number").notNull().default(1),
   ownerId: text("owner_id").notNull().references(() => users.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
@@ -102,6 +108,10 @@ export const agents = sqliteTable("agents", {
 export const tasks = sqliteTable("tasks", {
   id: text("id").primaryKey(),
   projectId: text("project_id").notNull().references(() => projects.id),
+  // Human-readable ID derived from the project's key + a per-project sequence
+  // number (e.g. "ENG-42"), assigned once at creation - never recomputed, so
+  // it stays stable even if the project is later renamed.
+  displayId: text("display_id").notNull().default(""),
   title: text("title").notNull(),
   status: text("status").notNull(),
   description: text("description"),

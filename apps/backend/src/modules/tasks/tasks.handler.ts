@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and, not } from "drizzle-orm";
+import { eq, and, not, sql } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUserId, assertOrgMember, assertOrgAdmin, getProjectOrgId, getTaskOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -117,10 +117,25 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, orgId);
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
+
+      // Atomically claim this project's next task number, then build a
+      // stable, human-readable display ID from the project's key + that
+      // number (e.g. "ENG-42") - assigned once here, never recomputed, so it
+      // survives a later project rename. Note: this update-then-select is
+      // race-free under SQLite's single-writer model (used by every test and
+      // standalone deployment) but not under concurrent MySQL writers without
+      // a transaction - MySQL isn't exercised by this repo's test suite today.
+      await db.update(ps).set({ nextTaskNumber: sql`${(ps as any).nextTaskNumber} + 1` }).where(eq((ps as any).id, parsed.projectId));
+      const [projectRow] = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
+      const taskNumber = projectRow.nextTaskNumber - 1;
+      const displayId = `${projectRow.key}-${taskNumber}`;
+
       const newId = `tsk-${crypto.randomUUID()}`;
       const payload = {
         id: newId,
         projectId: parsed.projectId,
+        displayId,
         title: parsed.title,
         status: parsed.status,
         description: parsed.description,

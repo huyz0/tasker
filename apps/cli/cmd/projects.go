@@ -48,7 +48,7 @@ var projectsListCmd = &cobra.Command{
 		} else {
 			cmd.Println("Projects:")
 			for _, p := range res.Msg.Projects {
-				cmd.Printf("- %s: %s\n", p.Id, p.Name)
+				cmd.Printf("- [%s] %s (id: %s)\n", p.Key, p.Name, p.Id)
 			}
 		}
 	},
@@ -110,7 +110,7 @@ var projectsCreateCmd = &cobra.Command{
 			jsonString, _ := json.Marshal(res.Msg.Project)
 			cmd.Println(string(jsonString))
 		} else {
-			cmd.Printf("Successfully created project '%s' (id: %s) from template '%s'\n", res.Msg.Project.Name, res.Msg.Project.Id, template)
+			cmd.Printf("Successfully created project '%s' [%s] (id: %s) from template '%s'\n", res.Msg.Project.Name, res.Msg.Project.Key, res.Msg.Project.Id, template)
 		}
 	},
 }

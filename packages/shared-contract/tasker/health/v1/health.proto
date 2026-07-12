@@ -170,6 +170,7 @@ message Project {
   string name = 4;
   string ownerId = 5;
   string deletedAt = 6;
+  string key = 7;
 }
 
 message GetProjectTemplateRequest {
@@ -353,6 +354,7 @@ message Task {
   string status = 4;
   string description = 5;
   string deletedAt = 6;
+  string display_id = 7;
 }
 
 message CreateTaskRequest {
