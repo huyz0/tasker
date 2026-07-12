@@ -94,6 +94,8 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
 
   const [provider, setProvider] = useState('github');
   const [remoteName, setRemoteName] = useState('');
+  const [bitbucketEmail, setBitbucketEmail] = useState('');
+  const [bitbucketApiToken, setBitbucketApiToken] = useState('');
   const [expandedLinkId, setExpandedLinkId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -119,6 +121,24 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
       await repositoryClient.syncPullRequests({ projectId });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pullRequests', projectId] }),
+  });
+
+  const addLinkMutation = useMutation({
+    mutationFn: async () => {
+      await repositoryClient.addRepositoryLink({
+        projectId,
+        provider,
+        remoteName,
+        email: bitbucketEmail,
+        apiToken: bitbucketApiToken,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['repositoryLinks', projectId] });
+      setRemoteName('');
+      setBitbucketEmail('');
+      setBitbucketApiToken('');
+    },
   });
 
   return (
@@ -181,37 +201,77 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
       )}
 
       <div className="flex flex-col gap-3 mt-4 pt-4 border-t">
-        <h4 className="text-sm font-medium">Add New Link (OAuth flow simulation)</h4>
+        <h4 className="text-sm font-medium">Add New Link</h4>
         <div className="flex gap-2">
-          <select 
-            value={provider} 
+          <select
+            value={provider}
             onChange={e => setProvider(e.target.value)}
             className="border p-2 rounded text-sm bg-background"
           >
             <option value="github">GitHub</option>
-            <option value="gitlab">GitLab</option>
             <option value="bitbucket">Bitbucket</option>
           </select>
-          <input 
-            type="text" 
-            placeholder="Remote (e.g. huyz0/tasker)" 
+          <input
+            type="text"
+            placeholder="Remote (e.g. huyz0/tasker)"
             value={remoteName}
             onChange={e => setRemoteName(e.target.value)}
             className="border p-2 rounded text-sm flex-1 bg-background"
           />
         </div>
+
+        {provider === 'bitbucket' && (
+          <div className="flex flex-col gap-2 p-3 rounded border border-dashed">
+            <p className="text-xs text-muted-foreground">
+              Link with a direct Atlassian API token (Basic auth) - the app-password replacement.
+              Generate one at <span className="font-mono">id.atlassian.com/manage-profile/security/api-tokens</span>.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                placeholder="Atlassian account email"
+                value={bitbucketEmail}
+                onChange={e => setBitbucketEmail(e.target.value)}
+                className="border p-2 rounded text-sm flex-1 bg-background"
+              />
+              <input
+                type="password"
+                placeholder="API token"
+                value={bitbucketApiToken}
+                onChange={e => setBitbucketApiToken(e.target.value)}
+                className="border p-2 rounded text-sm flex-1 bg-background"
+              />
+            </div>
+            <button
+              disabled={!remoteName || !bitbucketEmail || !bitbucketApiToken || addLinkMutation.isPending}
+              onClick={() => addLinkMutation.mutate()}
+              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {addLinkMutation.isPending ? 'Linking...' : 'Link with API token'}
+            </button>
+            {addLinkMutation.isError && (
+              <p className="text-sm text-destructive">Failed to link: {(addLinkMutation.error as Error).message}</p>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2">
-          <button 
+          <button
             disabled={!remoteName}
             onClick={() => {
               const state = btoa(JSON.stringify({ projectId, provider, remoteName }));
-              const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || "MOCK_CLIENT_ID";
               const redirectUri = window.location.origin + "/oauth/callback";
-              window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=repo`;
+              if (provider === 'bitbucket') {
+                const clientId = import.meta.env.VITE_BITBUCKET_CLIENT_ID || "MOCK_CLIENT_ID";
+                window.location.href = `https://bitbucket.org/site/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+              } else {
+                const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || "MOCK_CLIENT_ID";
+                window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=repo`;
+              }
             }}
             className="px-4 py-2 flex-1 bg-[#2b3137] text-white text-sm font-medium rounded hover:bg-[#2b3137]/90 disabled:opacity-50 transition-colors"
           >
-            Connect {provider === 'github' ? 'GitHub' : provider}
+            Connect {provider === 'github' ? 'GitHub' : 'Bitbucket'} via OAuth
           </button>
         </div>
       </div>

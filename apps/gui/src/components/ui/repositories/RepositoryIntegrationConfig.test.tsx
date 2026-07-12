@@ -3,12 +3,13 @@ import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { RepositoryIntegrationConfig } from './RepositoryIntegrationConfig';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListRepositoryLinks, mockListPullRequests, mockSyncPullRequests, mockListBuilds, mockListDeployments } = vi.hoisted(() => ({
+const { mockListRepositoryLinks, mockListPullRequests, mockSyncPullRequests, mockListBuilds, mockListDeployments, mockAddRepositoryLink } = vi.hoisted(() => ({
   mockListRepositoryLinks: vi.fn(),
   mockListPullRequests: vi.fn(),
   mockSyncPullRequests: vi.fn(),
   mockListBuilds: vi.fn(),
   mockListDeployments: vi.fn(),
+  mockAddRepositoryLink: vi.fn(),
 }));
 
 // Mock the ConnectRPC client
@@ -19,6 +20,7 @@ vi.mock('@connectrpc/connect', () => ({
     syncPullRequests: mockSyncPullRequests,
     listBuilds: mockListBuilds,
     listDeployments: mockListDeployments,
+    addRepositoryLink: mockAddRepositoryLink,
   }),
 }));
 
@@ -42,6 +44,7 @@ describe('RepositoryIntegrationConfig', () => {
     mockSyncPullRequests.mockReset();
     mockListBuilds.mockReset();
     mockListDeployments.mockReset();
+    mockAddRepositoryLink.mockReset();
   });
 
   test('renders loading and then data', async () => {
@@ -51,7 +54,38 @@ describe('RepositoryIntegrationConfig', () => {
     renderComponent();
 
     expect(await screen.findByText(/huyz0\/tasker/)).toBeDefined();
-    expect(screen.getByText('Add New Link (OAuth flow simulation)')).toBeDefined();
+    expect(screen.getByText('Add New Link')).toBeDefined();
+  });
+
+  test('does not offer GitLab as a provider option, since it is not supported by the backend', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [] });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    expect(screen.queryByText('GitLab')).toBeNull();
+  });
+
+  test('links a Bitbucket repository using a direct API token', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [] });
+    mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-2', provider: 'bitbucket', remoteName: 'huyz0/bb-repo' } });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    fireEvent.change(screen.getByDisplayValue('GitHub'), { target: { value: 'bitbucket' } });
+    fireEvent.change(screen.getByPlaceholderText('Remote (e.g. huyz0/tasker)'), { target: { value: 'huyz0/bb-repo' } });
+    fireEvent.change(screen.getByPlaceholderText('Atlassian account email'), { target: { value: 'user@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('API token'), { target: { value: 'ATATT-fake-token' } });
+    fireEvent.click(screen.getByText('Link with API token'));
+
+    await waitFor(() => expect(mockAddRepositoryLink).toHaveBeenCalledWith({
+      projectId: 'proj-123',
+      provider: 'bitbucket',
+      remoteName: 'huyz0/bb-repo',
+      email: 'user@example.com',
+      apiToken: 'ATATT-fake-token',
+    }));
   });
 
   test('lists synced pull requests for a linked repository', async () => {
