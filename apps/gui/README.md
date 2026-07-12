@@ -35,3 +35,10 @@ bun run build
 - **State Management**: React Query for async server states; Zustand for global layout UI state.
 - **Styling**: Tailwind CSS utilizing HSL Semantic tokens for explicit dark/light mode toggles.
 - **Components**: Adheres to a strict domain-driven container/presentational split with `lucide-react` icons.
+
+## Environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `VITE_GITHUB_CLIENT_ID` | GitHub OAuth consumer ID used by the "Connect GitHub via OAuth" button on the repository link form. |
+| `VITE_BITBUCKET_CLIENT_ID` | Bitbucket OAuth consumer ID used by the "Connect Bitbucket via OAuth" button. Not needed for the direct-API-token Bitbucket linking option, which posts credentials straight to the backend. |

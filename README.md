@@ -101,7 +101,7 @@ moon run :test
 
 Beyond the `.specs/` configuration layer, the functional execution environment is organized as follows:
 
-- `/apps/`: Contains the specific application interfaces (CLI, GUI, Backend Services).
+- `/apps/`: Contains the specific application interfaces - [`cli`](apps/cli/README.md), [`gui`](apps/gui/README.md), [`backend`](apps/backend/README.md).
 - `/packages/`: Contains shared foundational libraries and universal strict API contract definitions.
 - `/.agents/`: Houses the operational logic for our autonomous AI developer system (Skills and Workflows).
 - `/.epics/`: Contains explicitly version-controlled feature packages (`EPIC.md`) currently in motion.

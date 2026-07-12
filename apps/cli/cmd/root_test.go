@@ -16,13 +16,13 @@ func TestRootCommandMetadata(t *testing.T) {
 	}
 }
 
-func TestRootCommandHasToggleFlag(t *testing.T) {
-	flag := rootCmd.Flags().Lookup("toggle")
+func TestRootCommandHasJsonFlag(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("json")
 	if flag == nil {
-		t.Error("expected --toggle flag to be registered on root command")
+		t.Error("expected --json persistent flag to be registered on root command")
 	}
 	if flag.DefValue != "false" {
-		t.Errorf("expected --toggle default value 'false', got %q", flag.DefValue)
+		t.Errorf("expected --json default value 'false', got %q", flag.DefValue)
 	}
 }
 
