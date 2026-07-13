@@ -154,7 +154,7 @@ export async function executePaginatedQuery(
   filterColumn?: any,
   sortableColumns?: Record<string, any>
 ) {
-  const limit = Math.min(pageOpts?.limit || 50, 100);
+  const limit = Math.min(Math.max(pageOpts?.limit || 50, 1), 100);
   const condition = applyFilter(baseCondition, filterColumn, pageOpts?.filter);
 
   const sort = parseSort(sortableColumns, pageOpts?.sort);

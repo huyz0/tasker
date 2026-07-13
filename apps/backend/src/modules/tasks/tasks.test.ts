@@ -191,6 +191,10 @@ describe("Tasks Handler Integration Tests", () => {
     expect(listResp.tasks.length).toBeGreaterThan(0);
     expect(listResp.tasks.some((t: any) => t.title === "New Test Task")).toBe(true);
 
+    // A negative limit must not bypass the page-size cap or blow up the query.
+    const negativeLimitResp = await handler.listTasks({ projectId: projectId, page: { limit: -5 } }, ctx);
+    expect(negativeLimitResp.tasks.length).toBeGreaterThan(0);
+
     await expect(handler.listTasks({}, ctx)).rejects.toThrow();
 
     const outsiderCtx = makeAuthContext("user-outsider-taskman");
