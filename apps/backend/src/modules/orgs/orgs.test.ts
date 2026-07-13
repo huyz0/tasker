@@ -194,11 +194,34 @@ describe("Organizations Handler Integration Logic", () => {
 
     await expect(handler.purgeOrg({ orgId: org.organization.id }, makeAuthContext(memberId))).rejects.toThrow();
 
+    // Org-scoped rows that don't gate the purge precondition, but must not
+    // be left behind orphaned once the org itself is gone.
+    const labelId = "lbl-purge-org-" + Date.now();
+    await db.insert(schemaSqlite.labels).values({ id: labelId, orgId: org.organization.id, name: "purge-org-label", createdAt: new Date() });
+    const taskTypeId = "tt-purge-org-" + Date.now();
+    await db.insert(schemaSqlite.taskTypes).values({ id: taskTypeId, orgId: org.organization.id, name: "Custom Type", createdAt: new Date() });
+    const statusId = "ts-purge-org-" + Date.now();
+    await db.insert(schemaSqlite.taskStatuses).values({ id: statusId, taskTypeId, name: "backlog" });
+    const otherStatusId = "ts-purge-org-2-" + Date.now();
+    await db.insert(schemaSqlite.taskStatuses).values({ id: otherStatusId, taskTypeId, name: "shipped" });
+    await db.insert(schemaSqlite.taskStatusTransitions).values({ id: "tst-purge-org-" + Date.now(), taskTypeId, fromStatusId: statusId, toStatusId: otherStatusId });
+
     await handler.purgeOrg({ orgId: org.organization.id }, makeAuthContext(adminId));
 
     const afterPurge = await db.select().from(schemaSqlite.organizations).where(eq(schemaSqlite.organizations.id, org.organization.id));
     expect(afterPurge.length).toBe(0);
     expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.org.purged");
+
+    const remainingTemplates = await db.select().from(schemaSqlite.projectTemplates).where(eq(schemaSqlite.projectTemplates.id, templateId));
+    expect(remainingTemplates.length).toBe(0);
+    const remainingLabels = await db.select().from(schemaSqlite.labels).where(eq(schemaSqlite.labels.id, labelId));
+    expect(remainingLabels.length).toBe(0);
+    const remainingTaskTypes = await db.select().from(schemaSqlite.taskTypes).where(eq(schemaSqlite.taskTypes.id, taskTypeId));
+    expect(remainingTaskTypes.length).toBe(0);
+    const remainingStatuses = await db.select().from(schemaSqlite.taskStatuses).where(eq(schemaSqlite.taskStatuses.taskTypeId, taskTypeId));
+    expect(remainingStatuses.length).toBe(0);
+    const remainingTransitions = await db.select().from(schemaSqlite.taskStatusTransitions).where(eq(schemaSqlite.taskStatusTransitions.taskTypeId, taskTypeId));
+    expect(remainingTransitions.length).toBe(0);
   });
 
   test("setOrgRetentionDays updates the org's bin retention, admin-only", async () => {

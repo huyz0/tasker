@@ -25,6 +25,7 @@ export async function purgeTaskCascade(db: any, taskId: string): Promise<void> {
   await db.delete(schema.taskArtifactLinks).where(eq(schema.taskArtifactLinks.taskId, taskId));
   await db.delete(schema.taskNotes).where(eq(schema.taskNotes.taskId, taskId));
   await db.delete(schema.comments).where(and(eq(schema.comments.entityId, taskId), eq(schema.comments.entityType, "task")));
+  await db.delete(schema.entityLabels).where(and(eq(schema.entityLabels.entityId, taskId), eq(schema.entityLabels.entityType, "task")));
   await db.update(schema.remotePullRequests).set({ taskId: null }).where(eq(schema.remotePullRequests.taskId, taskId));
   await db.delete(schema.tasks).where(eq(schema.tasks.id, taskId));
 }
@@ -36,6 +37,7 @@ export async function purgeArtifactCascade(db: any, artifactId: string): Promise
 
   await db.delete(schema.taskArtifactLinks).where(eq(schema.taskArtifactLinks.artifactId, artifactId));
   await db.delete(schema.comments).where(and(eq(schema.comments.entityId, artifactId), eq(schema.comments.entityType, "artifact")));
+  await db.delete(schema.entityLabels).where(and(eq(schema.entityLabels.entityId, artifactId), eq(schema.entityLabels.entityType, "artifact")));
   await db.delete(schema.artifacts).where(eq(schema.artifacts.id, artifactId));
 }
 
@@ -125,13 +127,17 @@ export async function purgeOrgCascade(db: any, orgId: string): Promise<void> {
     await purgeAgentCascade(db, agent.id);
   }
 
+  // projectTemplates.rootTaskTypeId references taskTypes, so it must be
+  // cleared before the taskTypes rows it points to are deleted below.
+  await db.delete(schema.projectTemplates).where(eq(schema.projectTemplates.orgId, orgId));
+  await db.delete(schema.labels).where(eq(schema.labels.orgId, orgId));
+
   const orgTaskTypes = await db.select().from(schema.taskTypes).where(eq(schema.taskTypes.orgId, orgId));
   for (const taskType of orgTaskTypes) {
     await db.delete(schema.taskStatusTransitions).where(eq(schema.taskStatusTransitions.taskTypeId, taskType.id));
     await db.delete(schema.taskStatuses).where(eq(schema.taskStatuses.taskTypeId, taskType.id));
     await db.delete(schema.taskTypes).where(eq(schema.taskTypes.id, taskType.id));
   }
-
   await db.delete(schema.organizationMembers).where(eq(schema.organizationMembers.orgId, orgId));
   await db.delete(schema.invitations).where(eq(schema.invitations.orgId, orgId));
   await db.delete(schema.organizations).where(eq(schema.organizations.id, orgId));

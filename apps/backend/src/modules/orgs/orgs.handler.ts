@@ -156,6 +156,23 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
 
       const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
       const invitations = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
+      const taskTypes = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+      const taskStatuses = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
+      const taskStatusTransitions = isStandalone ? schemaSqlite.taskStatusTransitions : schemaMysql.taskStatusTransitions;
+      const projectTemplates = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
+      const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
+
+      // projectTemplates.rootTaskTypeId references taskTypes, so it must be
+      // cleared before the taskTypes rows it points to are deleted below.
+      await db.delete(projectTemplates).where(eq((projectTemplates as any).orgId, parsed.orgId));
+      await db.delete(labels).where(eq((labels as any).orgId, parsed.orgId));
+
+      const orgTaskTypes = await db.select().from(taskTypes).where(eq((taskTypes as any).orgId, parsed.orgId));
+      for (const taskType of orgTaskTypes) {
+        await db.delete(taskStatusTransitions).where(eq((taskStatusTransitions as any).taskTypeId, taskType.id));
+        await db.delete(taskStatuses).where(eq((taskStatuses as any).taskTypeId, taskType.id));
+        await db.delete(taskTypes).where(eq((taskTypes as any).id, taskType.id));
+      }
       await db.delete(members).where(eq((members as any).orgId, parsed.orgId));
       await db.delete(invitations).where(eq((invitations as any).orgId, parsed.orgId));
       await db.delete(orgs).where(eq((orgs as any).id, parsed.orgId));
