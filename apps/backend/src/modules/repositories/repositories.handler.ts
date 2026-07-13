@@ -195,6 +195,35 @@ async function fetchBitbucketBuilds(remoteName: string, token: string, authEmail
   });
 }
 
+// Fetches a single build by id so listDeployments can confirm the
+// caller-supplied buildId actually produced commitSha before echoing it back
+// - without this, a caller could pass any buildId (even one belonging to a
+// different commit or repository) and have it silently attached to
+// unrelated deployment records in the response.
+async function fetchGithubBuildCommitSha(remoteName: string, buildId: string, token: string): Promise<string | null> {
+  const response = await fetch(`https://api.github.com/repos/${remoteName}/actions/runs/${buildId}`, {
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/vnd.github.v3+json",
+      "User-Agent": "Tasker-Agent"
+    }
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`GitHub API returned ${response.status} while fetching build ${buildId} for ${remoteName}`);
+  const run = await response.json() as any;
+  return run.head_sha ?? null;
+}
+
+async function fetchBitbucketBuildCommitSha(remoteName: string, buildId: string, token: string, authEmail?: string | null): Promise<string | null> {
+  const response = await fetch(`https://api.bitbucket.org/2.0/repositories/${remoteName}/pipelines/${buildId}`, {
+    headers: { "Authorization": bitbucketAuthHeader(token, authEmail) }
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching build ${buildId} for ${remoteName}`);
+  const pipeline = await response.json() as any;
+  return pipeline.target?.commit?.hash ?? null;
+}
+
 interface NormalizedDeployment {
   id: string;
   environment: string;
@@ -547,14 +576,24 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       }
 
       let normalizedDeployments: NormalizedDeployment[];
+      let buildCommitSha: string | null;
       try {
         const token = decryptToken(link.accessTokenEncrypted);
-        normalizedDeployments = link.provider === "github"
-          ? await fetchGithubDeployments(link.remoteName, parsed.commitSha, token)
-          : await fetchBitbucketDeployments(link.remoteName, parsed.commitSha, token, link.authEmail);
+        [normalizedDeployments, buildCommitSha] = await Promise.all([
+          link.provider === "github"
+            ? fetchGithubDeployments(link.remoteName, parsed.commitSha, token)
+            : fetchBitbucketDeployments(link.remoteName, parsed.commitSha, token, link.authEmail),
+          link.provider === "github"
+            ? fetchGithubBuildCommitSha(link.remoteName, parsed.buildId, token)
+            : fetchBitbucketBuildCommitSha(link.remoteName, parsed.buildId, token, link.authEmail),
+        ]);
       } catch (e) {
         logger.error({ remoteName: link.remoteName, err: e }, "listDeployments.fetch_failed");
         throw e;
+      }
+
+      if (buildCommitSha !== parsed.commitSha) {
+        throw new ConnectError("buildId does not correspond to the given commitSha", Code.InvalidArgument);
       }
 
       return { deployments: normalizedDeployments.map((d) => ({ ...d, buildId: parsed.buildId })) };

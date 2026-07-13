@@ -343,6 +343,9 @@ describe("Repositories Handler >", () => {
       if (url.toString().includes("/deployments/222/statuses")) {
         return new Response(JSON.stringify([{ state: "failure" }]), { status: 200 });
       }
+      if (url.toString().includes("/actions/runs/run-123")) {
+        return new Response(JSON.stringify({ head_sha: "abc123" }), { status: 200 });
+      }
       return new Response("Not found", { status: 404 });
     }) as unknown as typeof fetch;
 
@@ -369,6 +372,39 @@ describe("Repositories Handler >", () => {
     await expect(
       repHandler.listDeployments({ buildId: "run-123", repositoryLinkId: link.id, commitSha: "abc123" }, makeAuthContext("usr-outsider"))
     ).rejects.toThrow();
+  });
+
+  test("listDeployments rejects a buildId that didn't actually produce the given commitSha", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P6b", ownerId: "usr-2" }, ctx2)).project.id;
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      const u = url.toString();
+      if (u === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (u.includes("/deployments?sha=")) {
+        return new Response(JSON.stringify([{ id: 111, environment: "production", created_at: "2024-01-01T00:00:00Z" }]), { status: 200 });
+      }
+      if (u.includes("/deployments/111/statuses")) {
+        return new Response(JSON.stringify([{ state: "success" }]), { status: 200 });
+      }
+      if (u.includes("/actions/runs/run-999")) {
+        // This build actually produced a different commit than the one requested.
+        return new Response(JSON.stringify({ head_sha: "some-other-sha" }), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const link = (await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "github",
+      remoteName: "foo/deploy-mismatch",
+      oauthCode: "fake-code",
+    }, ctx2)).link;
+
+    await expect(
+      repHandler.listDeployments({ buildId: "run-999", repositoryLinkId: link.id, commitSha: "abc123" }, ctx2)
+    ).rejects.toThrow(/buildId does not correspond/);
   });
 
   test("listDeployments returns an empty list for an unsupported provider without calling out", async () => {
@@ -401,6 +437,9 @@ describe("Repositories Handler >", () => {
             { id: 2, title: "BB PR Merged", state: "MERGED", links: { html: { href: "http://bb/2" } } },
           ],
         }), { status: 200 });
+      }
+      if (u.includes("/pipelines/pipe-1")) {
+        return new Response(JSON.stringify({ target: { commit: { hash: "sha-bb-match" } } }), { status: 200 });
       }
       if (u.includes("/pipelines/")) {
         return new Response(JSON.stringify({
