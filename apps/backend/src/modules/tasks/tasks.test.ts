@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createTasksHandler } from "./tasks.handler";
@@ -381,6 +381,9 @@ describe("Tasks Handler Integration Tests", () => {
     await db.insert(schemaSqlite.comments).values({ id: "cmt-del-" + Date.now(), entityId: taskId, entityType: "task", userId: memberId, content: "hi", createdAt: new Date() });
     const prId = "pr-del-" + Date.now();
     await db.insert(schemaSqlite.remotePullRequests).values({ id: prId, repositoryLinkId: repoLinkId, taskId, remotePrId: "1", title: "PR", status: "open", url: "http://x", updatedAt: new Date() });
+    const labelId = "lbl-purge-" + Date.now();
+    await db.insert(schemaSqlite.labels).values({ id: labelId, orgId, name: "purge-label", createdAt: new Date() });
+    await db.insert(schemaSqlite.entityLabels).values({ id: "el-del-" + Date.now(), entityId: taskId, entityType: "task", labelId, createdAt: new Date() });
 
     // Cannot purge a live (non-archived) task.
     await expect(handler.purgeTask({ taskId }, makeAuthContext(adminId))).rejects.toThrow();
@@ -410,6 +413,9 @@ describe("Tasks Handler Integration Tests", () => {
     const remainingPrs = await db.select().from(schemaSqlite.remotePullRequests).where(eq(schemaSqlite.remotePullRequests.id, prId));
     expect(remainingPrs.length).toBe(1);
     expect(remainingPrs[0].taskId).toBeNull();
+
+    const remainingEntityLabels = await db.select().from(schemaSqlite.entityLabels).where(and(eq(schemaSqlite.entityLabels.entityId, taskId), eq(schemaSqlite.entityLabels.entityType, "task")));
+    expect(remainingEntityLabels.length).toBe(0);
 
     // Restoring/purging again fails since the row no longer exists.
     await expect(handler.restoreTask({ taskId }, makeAuthContext(adminId))).rejects.toThrow();

@@ -475,12 +475,14 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
       const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
       const pullRequests = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
+      const entityLabels = isStandalone ? schemaSqlite.entityLabels : schemaMysql.entityLabels;
 
       await db.delete(assignments).where(eq((assignments as any).taskId, parsed.taskId));
       await db.delete(reviewers).where(eq((reviewers as any).taskId, parsed.taskId));
       await db.delete(artifactLinks).where(eq((artifactLinks as any).taskId, parsed.taskId));
       await db.delete(notes).where(eq((notes as any).taskId, parsed.taskId));
       await db.delete(comments).where(and(eq((comments as any).entityId, parsed.taskId), eq((comments as any).entityType, "task")));
+      await db.delete(entityLabels).where(and(eq((entityLabels as any).entityId, parsed.taskId), eq((entityLabels as any).entityType, "task")));
       await db.update(pullRequests).set({ taskId: null }).where(eq((pullRequests as any).taskId, parsed.taskId));
       await db.delete(tasks).where(eq((tasks as any).id, parsed.taskId));
 

@@ -237,7 +237,9 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       }
 
       const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
+      const entityLabels = isStandalone ? schemaSqlite.entityLabels : schemaMysql.entityLabels;
       await db.delete(comments).where(and(eq((comments as any).entityId, parsed.artifactId), eq((comments as any).entityType, "artifact")));
+      await db.delete(entityLabels).where(and(eq((entityLabels as any).entityId, parsed.artifactId), eq((entityLabels as any).entityType, "artifact")));
       await db.delete(arts).where(eq((arts as any).id, parsed.artifactId));
 
       if (nc) nc.publish("domain.artifact.purged", Buffer.from(JSON.stringify({ artifactId: parsed.artifactId })));

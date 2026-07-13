@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createArtifactsHandler } from "./artifacts.handler";
@@ -377,6 +377,10 @@ describe("Artifacts Handler", () => {
 
     await db.delete(schemaSqlite.taskArtifactLinks).where(eq(schemaSqlite.taskArtifactLinks.artifactId, artifact.artifact.id));
 
+    const labelId = "lbl-purge-art-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.labels).values({ id: labelId, orgId, name: "purge-art-label", createdAt: new Date() });
+    await db.insert(schemaSqlite.entityLabels).values({ id: "el-purge-art-" + crypto.randomUUID(), entityId: artifact.artifact.id, entityType: "artifact", labelId, createdAt: new Date() });
+
     const memberId = "user-member-purge-art-" + crypto.randomUUID();
     await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
     await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
@@ -386,6 +390,9 @@ describe("Artifacts Handler", () => {
 
     const remaining = await db.select().from(schemaSqlite.artifacts).where(eq(schemaSqlite.artifacts.id, artifact.artifact.id));
     expect(remaining.length).toBe(0);
+
+    const remainingEntityLabels = await db.select().from(schemaSqlite.entityLabels).where(and(eq(schemaSqlite.entityLabels.entityId, artifact.artifact.id), eq(schemaSqlite.entityLabels.entityType, "artifact")));
+    expect(remainingEntityLabels.length).toBe(0);
   });
 
   it("should require a folder be archived and empty before it can be purged", async () => {
