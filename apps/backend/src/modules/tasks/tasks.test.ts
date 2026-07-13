@@ -531,6 +531,23 @@ describe("Tasks Handler Integration Tests", () => {
     }, ctx);
     expect(transition.transition.id).toBeDefined();
 
+    // Creating the exact same transition again is idempotent, not a second
+    // accumulating row.
+    const dupTransition = await typesHandler.createTaskStatusTransition({
+      taskTypeId,
+      fromStatusId: openStatus.status.id,
+      toStatusId: inReviewStatus.status.id,
+    }, ctx);
+    expect(dupTransition.transition.id).toBe(transition.transition.id);
+
+    const transitionRows = await db.select().from(schemaSqlite.taskStatusTransitions)
+      .where(and(
+        eq(schemaSqlite.taskStatusTransitions.taskTypeId, taskTypeId),
+        eq(schemaSqlite.taskStatusTransitions.fromStatusId, openStatus.status.id),
+        eq(schemaSqlite.taskStatusTransitions.toStatusId, inReviewStatus.status.id),
+      ));
+    expect(transitionRows.length).toBe(1);
+
     await expect(
       typesHandler.createTaskStatusTransition({ taskTypeId, fromStatusId: "bad-id", toStatusId: inReviewStatus.status.id }, ctx)
     ).rejects.toThrow();

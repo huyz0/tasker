@@ -222,6 +222,15 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       }
 
       const transitions = isStandalone ? schemaSqlite.taskStatusTransitions : schemaMysql.taskStatusTransitions;
+      const existingTransition = await db.select().from(transitions)
+        .where(and(
+          eq((transitions as any).taskTypeId, parsed.taskTypeId),
+          eq((transitions as any).fromStatusId, parsed.fromStatusId),
+          eq((transitions as any).toStatusId, parsed.toStatusId),
+        ))
+        .limit(1);
+      if (existingTransition.length > 0) return { transition: existingTransition[0] };
+
       const newId = `tstr-${crypto.randomUUID()}`;
       const payload = { id: newId, taskTypeId: parsed.taskTypeId, fromStatusId: parsed.fromStatusId, toStatusId: parsed.toStatusId };
 
