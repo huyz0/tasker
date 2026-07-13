@@ -20,7 +20,7 @@ describe('config production safety checks', () => {
     const { exitCode } = await loadConfigWith({
       NODE_ENV: 'production',
       JWT_SECRET: undefined,
-      APP_ENCRYPTION_SECRET: 'a-real-encryption-secret',
+      APP_ENCRYPTION_SECRET: 'a-real-encryption-secret32bytes!',
       ENABLE_TEST_LOGIN: 'false',
     });
     expect(exitCode).not.toBe(0);
@@ -40,7 +40,7 @@ describe('config production safety checks', () => {
     const { exitCode } = await loadConfigWith({
       NODE_ENV: 'production',
       JWT_SECRET: 'a-real-jwt-secret',
-      APP_ENCRYPTION_SECRET: 'a-real-encryption-secret',
+      APP_ENCRYPTION_SECRET: 'a-real-encryption-secret32bytes!',
       ENABLE_TEST_LOGIN: 'true',
     });
     expect(exitCode).not.toBe(0);
@@ -50,13 +50,23 @@ describe('config production safety checks', () => {
     const { exitCode } = await loadConfigWith({
       NODE_ENV: 'production',
       JWT_SECRET: 'a-real-jwt-secret',
-      APP_ENCRYPTION_SECRET: 'a-real-encryption-secret',
+      APP_ENCRYPTION_SECRET: 'a-real-encryption-secret32bytes!',
       ENABLE_TEST_LOGIN: 'false',
       GOOGLE_CLIENT_ID: 'x',
       GOOGLE_CLIENT_SECRET: 'x',
       GOOGLE_REDIRECT_URI: 'x',
     });
     expect(exitCode).toBe(0);
+  });
+
+  it('fails fast in production when the encryption secret is not exactly 32 bytes', async () => {
+    const { exitCode } = await loadConfigWith({
+      NODE_ENV: 'production',
+      JWT_SECRET: 'a-real-jwt-secret',
+      APP_ENCRYPTION_SECRET: 'too-short-for-aes-256-gcm',
+      ENABLE_TEST_LOGIN: 'false',
+    });
+    expect(exitCode).not.toBe(0);
   });
 
   it('allows default secrets outside production (dev/test convenience)', async () => {

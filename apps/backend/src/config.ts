@@ -3,6 +3,10 @@ import { logger } from './lib/logger';
 
 const DEFAULT_JWT_SECRET = 'default_secret';
 const DEFAULT_ENCRYPTION_KEY = '00000000000000000000000000000000';
+// AES-256-GCM (used to encrypt repository-link tokens) requires exactly a
+// 32-byte key - any other length throws "Invalid key length" at the first
+// encrypt/decrypt call, not at boot, so validate it up front instead.
+const ENCRYPTION_KEY_BYTES = 32;
 
 const configSchema = z.object({
   googleClientId: z.string().default(''),
@@ -20,6 +24,12 @@ const configSchema = z.object({
   }
   if (cfg.appEncryptionSecret === DEFAULT_ENCRYPTION_KEY) {
     ctx.addIssue({ code: 'custom', path: ['appEncryptionSecret'], message: 'APP_ENCRYPTION_SECRET must be set to a real secret in production' });
+  } else if (Buffer.byteLength(cfg.appEncryptionSecret, 'utf8') !== ENCRYPTION_KEY_BYTES) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['appEncryptionSecret'],
+      message: `APP_ENCRYPTION_SECRET must be exactly ${ENCRYPTION_KEY_BYTES} bytes for AES-256-GCM (got ${Buffer.byteLength(cfg.appEncryptionSecret, 'utf8')})`,
+    });
   }
   if (cfg.enableTestLogin) {
     ctx.addIssue({ code: 'custom', path: ['enableTestLogin'], message: 'ENABLE_TEST_LOGIN must not be enabled in production' });
