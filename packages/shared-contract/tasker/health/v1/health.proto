@@ -679,10 +679,12 @@ message CreateCommentResponse {
 message ListCommentsRequest {
   string entityId = 1;
   string entityType = 2;
+  PageRequest page = 3;
 }
 
 message ListCommentsResponse {
   repeated Comment comments = 1;
+  PageResponse page = 2;
 }
 
 service CommentService {
@@ -709,10 +711,12 @@ message CreateTaskNoteResponse {
 
 message ListTaskNotesRequest {
   string taskId = 1;
+  PageRequest page = 2;
 }
 
 message ListTaskNotesResponse {
   repeated TaskNote taskNotes = 1;
+  PageResponse page = 2;
 }
 
 service TaskNoteService {
@@ -819,10 +823,12 @@ message AddRepositoryLinkResponse {
 
 message ListRepositoryLinksRequest {
   string project_id = 1;
+  PageRequest page = 2;
 }
 
 message ListRepositoryLinksResponse {
   repeated RepositoryLink links = 1;
+  PageResponse page = 2;
 }
 
 message SyncPullRequestsRequest {
@@ -859,10 +865,12 @@ message Deployment {
 
 message ListBuildsRequest {
   string repository_link_id = 1;
+  PageRequest page = 2;
 }
 
 message ListBuildsResponse {
   repeated Build builds = 1;
+  PageResponse page = 2;
 }
 
 message ListDeploymentsRequest {
