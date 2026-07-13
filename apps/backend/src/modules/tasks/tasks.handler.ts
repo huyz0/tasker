@@ -392,6 +392,13 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       }
 
       const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+
+      const dupCondition = parsed.agentId
+        ? and(eq((assignments as any).taskId, parsed.taskId), eq((assignments as any).agentId, parsed.agentId))
+        : and(eq((assignments as any).taskId, parsed.taskId), eq((assignments as any).userId, parsed.userId));
+      const existingAssignment = await db.select().from(assignments).where(dupCondition).limit(1);
+      if (existingAssignment.length > 0) return { success: true };
+
       const newId = `ta-${crypto.randomUUID()}`;
       const payload = {
         id: newId,

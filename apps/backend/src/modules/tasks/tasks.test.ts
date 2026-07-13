@@ -188,6 +188,18 @@ describe("Tasks Handler Integration Tests", () => {
 
     expect(assignResp.success).toBe(true);
 
+    // Assigning the same user to the same task again is idempotent, not a
+    // second accumulating row.
+    const assignAgainResp = await handler.assignTask({
+      taskId: taskResp.task.id,
+      userId: userId,
+    }, ctx);
+    expect(assignAgainResp.success).toBe(true);
+
+    const assignmentRows = await db.select().from(schemaSqlite.taskAssignments)
+      .where(and(eq(schemaSqlite.taskAssignments.taskId, taskResp.task.id), eq(schemaSqlite.taskAssignments.userId, userId)));
+    expect(assignmentRows.length).toBe(1);
+
     const listResp = await handler.listTasks({ projectId: projectId }, ctx);
     expect(listResp.tasks.length).toBeGreaterThan(0);
     expect(listResp.tasks.some((t: any) => t.title === "New Test Task")).toBe(true);
