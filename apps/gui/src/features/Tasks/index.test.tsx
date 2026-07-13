@@ -89,6 +89,18 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
   });
 
+  it('auto-loads later pages so the Kanban board is not missing tasks past the first page', async () => {
+    mockListTasks
+      .mockResolvedValueOnce({ tasks: [{ id: 'task-1', title: 'Page One Task', status: 'todo', description: '' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ tasks: [{ id: 'task-2', title: 'Page Two Task', status: 'todo', description: '' }], page: {} });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Page One Task')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Page Two Task')).toBeDefined());
+    expect(mockListTasks).toHaveBeenCalledWith({ projectId: 'proj-1', page: { cursor: 'cursor-2' } });
+  });
+
   it('shows a pull request badge on a task it is linked to, using real data not a hardcoded placeholder', async () => {
     mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
     mockListPullRequests.mockResolvedValue({
