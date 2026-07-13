@@ -1,4 +1,4 @@
-import { text, sqliteTable, primaryKey, integer, index, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
+import { text, sqliteTable, primaryKey, integer, index, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 
 export const testSchema = sqliteTable("schema_migrations_test", {
   id: text("id").primaryKey(),
@@ -90,6 +90,13 @@ export const projects = sqliteTable("projects", {
   ownerId: text("owner_id").notNull().references(() => users.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
+}, (table) => {
+  return {
+    // Enforces key uniqueness within an org at the DB level, closing the
+    // check-then-insert race generateUniqueProjectKey's SELECT alone can't
+    // prevent under concurrent requests.
+    orgKeyIdx: uniqueIndex("projects_org_id_key_idx").on(table.orgId, table.key),
+  };
 });
 
 export const agentRoles = sqliteTable("agent_roles", {

@@ -27,8 +27,8 @@ describe("Artifacts Handler", () => {
     await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
     await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
     await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "Tmpl", createdAt: new Date() });
-    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", createdAt: new Date() });
-    await db.insert(schemaSqlite.projects).values({ id: otherProjectId, orgId, templateId, ownerId: userId, name: "Proj2", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", key: "PROJ", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: otherProjectId, orgId, templateId, ownerId: userId, name: "Proj2", key: "PROJ2", createdAt: new Date() });
 
     ctx = makeAuthContext(userId);
   });

@@ -1,4 +1,4 @@
-import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, int, mediumtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
+import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, mediumtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const testSchema = mysqlTable("schema_migrations_test", {
   id: varchar("id", { length: 256 }).primaryKey(),
@@ -86,6 +86,13 @@ export const projects = mysqlTable("projects", {
   ownerId: varchar("owner_id", { length: 256 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
+}, (table) => {
+  return {
+    // Enforces key uniqueness within an org at the DB level, closing the
+    // check-then-insert race generateUniqueProjectKey's SELECT alone can't
+    // prevent under concurrent requests.
+    orgKeyIdx: uniqueIndex("projects_org_id_key_idx").on(table.orgId, table.key),
+  };
 });
 
 export const agentRoles = mysqlTable("agent_roles", {

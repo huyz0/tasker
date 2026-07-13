@@ -116,6 +116,40 @@ describe("Projects Handler Integration Logic", () => {
     expect(second.project.key).not.toBe(first.project.key);
   });
 
+  test("retries with a fresh key when a concurrent request wins the race for the same candidate", async () => {
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Race Template", description: "" }, ctx);
+
+    // Simulate two concurrent requests racing for the same key: the real
+    // unique index (projects_org_id_key_idx) is what actually prevents the
+    // duplicate, and createProject must catch that conflict and retry with a
+    // fresh candidate instead of surfacing the raw DB error.
+    let insertCalls = 0;
+    const realInsert = db.insert.bind(db);
+    const racyDb = Object.assign(Object.create(Object.getPrototypeOf(db)), db, {
+      insert: (table: any) => {
+        const original = realInsert(table);
+        return Object.assign(Object.create(Object.getPrototypeOf(original)), original, {
+          values: async (payload: any) => {
+            if (table === schemaSqlite.projects && insertCalls === 0) {
+              insertCalls++;
+              throw new Error("UNIQUE constraint failed: projects_org_id_key_idx");
+            }
+            return original.values(payload);
+          },
+        });
+      },
+    });
+
+    const racyHandler = createProjectsHandler(racyDb, mockNc);
+    const resp = await racyHandler.createProject({ orgId: "org-test", templateId: tResp.template.id, name: "Race Condition", ownerId: "user-test" }, ctx);
+
+    expect(resp.project).toBeDefined();
+    expect(insertCalls).toBe(1);
+
+    const listed = await pHandler.listProjects({ orgId: "org-test" }, ctx);
+    expect(listed.projects.filter((p: any) => p.id === resp.project.id)).toHaveLength(1);
+  });
+
   test("rejects access from a user who isn't a member of the org", async () => {
      const outsiderCtx = makeAuthContext("user-outsider");
      await db.insert(schemaSqlite.users).values({ id: "user-outsider", email: "outsider@example.com", createdAt: new Date() });

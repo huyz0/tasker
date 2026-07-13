@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD CONSTRAINT `projects_org_id_key_idx` UNIQUE(`org_id`,`key_code`);

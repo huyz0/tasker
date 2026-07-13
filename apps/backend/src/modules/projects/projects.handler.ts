@@ -29,6 +29,19 @@ async function generateUniqueProjectKey(db: any, projectsTable: any, orgId: stri
   }
 }
 
+/**
+ * This SELECT-then-INSERT check alone can't prevent two concurrent requests
+ * from both picking the same "unique" candidate key before either commits -
+ * the DB-level unique index (projects_org_id_key_idx) is what actually
+ * prevents the duplicate, and this recognizes that specific violation so the
+ * caller can regenerate a fresh candidate and retry instead of surfacing a
+ * raw DB error.
+ */
+function isProjectKeyConflict(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e);
+  return msg.includes("projects_org_id_key_idx") || msg.includes("UNIQUE constraint failed") || msg.includes("Duplicate entry");
+}
+
 // --- Zod Request Schemas ---
 
 const GetProjectSchema = z.object({
@@ -94,22 +107,33 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       }
 
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
-      const key = await generateUniqueProjectKey(db, ps, parsed.orgId, parsed.name);
       const newId = `p-${crypto.randomUUID()}`;
-      const payload = {
-        id: newId,
-        orgId: parsed.orgId,
-        templateId: parsed.templateId,
-        name: parsed.name,
-        key,
-        nextTaskNumber: 1,
-        ownerId: parsed.ownerId,
-      };
 
-      await insertRecord(db, ps, payload, isStandalone);
-
-      if (nc) nc.publish("domain.project.created", Buffer.from(JSON.stringify(payload)));
-      return { project: payload };
+      // Retry on a real DB-level key conflict (a concurrent request won the
+      // race for the same candidate key), not just the pre-check above.
+      const MAX_ATTEMPTS = 5;
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        const key = await generateUniqueProjectKey(db, ps, parsed.orgId, parsed.name);
+        const payload = {
+          id: newId,
+          orgId: parsed.orgId,
+          templateId: parsed.templateId,
+          name: parsed.name,
+          key,
+          nextTaskNumber: 1,
+          ownerId: parsed.ownerId,
+        };
+        try {
+          await insertRecord(db, ps, payload, isStandalone);
+          if (nc) nc.publish("domain.project.created", Buffer.from(JSON.stringify(payload)));
+          return { project: payload };
+        } catch (e) {
+          if (!isProjectKeyConflict(e)) throw e;
+          lastError = e;
+        }
+      }
+      throw lastError;
     },
     async listProjects(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

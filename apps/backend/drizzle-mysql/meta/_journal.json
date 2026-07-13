@@ -8,6 +8,13 @@
       "when": 1783851552271,
       "tag": "0000_spooky_tana_nile",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1783933054771,
+      "tag": "0001_rapid_namorita",
+      "breakpoints": true
     }
   ]
 }

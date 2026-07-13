@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `projects_org_id_key_idx` ON `projects` (`org_id`,`key`);
