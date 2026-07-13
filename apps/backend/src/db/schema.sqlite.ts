@@ -195,6 +195,11 @@ export const labels = sqliteTable("labels", {
   name: text("name").notNull(),
   color: text("color"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    // Prevents duplicate label names within an org.
+    orgNameIdx: uniqueIndex("labels_org_id_name_idx").on(table.orgId, table.name),
+  };
 });
 
 export const entityLabels = sqliteTable("entity_labels", {

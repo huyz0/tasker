@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `labels_org_id_name_idx` ON `labels` (`org_id`,`name`);

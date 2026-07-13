@@ -61,6 +61,23 @@ describe("Labels Handler", () => {
     expect(handler.createLabel({ orgId, name: "bug" }, makeAuthContext("user-outsider"))).rejects.toThrow();
   });
 
+  it("should reject createLabel with a name already used in this org", async () => {
+    await handler.createLabel({ orgId, name: "bug" }, ctx);
+    await expect(handler.createLabel({ orgId, name: "bug" }, ctx)).rejects.toThrow();
+  });
+
+  it("should allow the same label name in a different org", async () => {
+    await handler.createLabel({ orgId, name: "bug" }, ctx);
+    const otherOrgId = "org-other-" + crypto.randomUUID();
+    const otherUserId = "user-other-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other Org", slug: "org-other-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+
+    const res = await handler.createLabel({ orgId: otherOrgId, name: "bug" }, makeAuthContext(otherUserId));
+    expect(res.label.name).toBe("bug");
+  });
+
   // --- listLabels ---
 
   it("should list labels for an org", async () => {

@@ -1,0 +1,1 @@
+ALTER TABLE `labels` ADD CONSTRAINT `labels_org_id_name_idx` UNIQUE(`org_id`,`name`);

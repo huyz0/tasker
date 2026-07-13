@@ -181,6 +181,11 @@ export const labels = mysqlTable("labels", {
   name: varchar("name", { length: 256 }).notNull(),
   color: varchar("color", { length: 32 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Prevents duplicate label names within an org.
+    orgNameIdx: uniqueIndex("labels_org_id_name_idx").on(table.orgId, table.name),
+  };
 });
 
 export const entityLabels = mysqlTable("entity_labels", {

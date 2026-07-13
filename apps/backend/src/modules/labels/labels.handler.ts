@@ -39,6 +39,15 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, parsed.orgId);
 
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
+      const existing = await db
+        .select()
+        .from(labels)
+        .where(and(eq((labels as any).orgId, parsed.orgId), eq((labels as any).name, parsed.name)))
+        .limit(1);
+      if (existing.length > 0) {
+        throw new ConnectError("a label with this name already exists in this organization", Code.AlreadyExists);
+      }
+
       const newId = `lbl-${crypto.randomUUID()}`;
       const payload = {
         id: newId,
