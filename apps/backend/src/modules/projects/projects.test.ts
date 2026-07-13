@@ -159,6 +159,15 @@ describe("Projects Handler Integration Logic", () => {
      await expect(pHandler.listProjects({}, makeAuthContext(null))).rejects.toThrow();
   });
 
+  test("rejects createProject when ownerId isn't a member of the org", async () => {
+     const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Owner Check Tpl" }, ctx);
+     const nonMemberId = "user-not-a-member-" + Date.now();
+     await db.insert(schemaSqlite.users).values({ id: nonMemberId, email: `${nonMemberId}@example.com`, createdAt: new Date() });
+     await expect(pHandler.createProject({
+       orgId: "org-test", templateId: tResp.template.id, name: "X", ownerId: nonMemberId,
+     }, ctx)).rejects.toThrow();
+  });
+
   test("rejects createProject with a nonexistent templateId", async () => {
      await expect(pHandler.createProject({
        orgId: "org-test", templateId: "template-does-not-exist", name: "X", ownerId: "user-test",

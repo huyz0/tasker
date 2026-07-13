@@ -96,6 +96,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = CreateProjectSchema.parse(req);
       await assertOrgMember(db, userId, parsed.orgId);
+      await assertOrgMember(db, parsed.ownerId, parsed.orgId);
 
       const templates = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const templateRows = await db.select().from(templates).where(eq((templates as any).id, parsed.templateId)).limit(1);
