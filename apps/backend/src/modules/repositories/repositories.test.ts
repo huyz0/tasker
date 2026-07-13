@@ -231,6 +231,33 @@ describe("Repositories Handler >", () => {
     expect(unrelatedPr.taskId).toBeFalsy();
   });
 
+  test("syncPullRequests prefers the longest displayId match, e.g. ENG-11 over ENG-1", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "Longest Match", ownerId: "usr-2" }, ctx2)).project.id;
+    const taskShort = "tsk-" + crypto.randomUUID();
+    const taskLong = "tsk-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.tasks).values({ id: taskShort, projectId: pId, title: "Short", status: "todo", displayId: "ENG-1", createdAt: new Date() });
+    await db.insert(schemaSqlite.tasks).values({ id: taskLong, projectId: pId, title: "Long", status: "todo", displayId: "ENG-11", createdAt: new Date() });
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/pulls")) {
+        return new Response(JSON.stringify([
+          { number: 1, title: "ENG-11: fix bug", state: "open", draft: false, html_url: "http://github/1" },
+        ]), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    await repHandler.addRepositoryLink({ projectId: pId, provider: "github", remoteName: "foo/longest-match", oauthCode: "fake-code" }, ctx2);
+    await repHandler.syncPullRequests({ projectId: pId }, ctx2);
+
+    const listResp = await repHandler.listPullRequests({ projectId: pId }, ctx2);
+    const pr = listResp.pullRequests.find((p: any) => p.title === "ENG-11: fix bug");
+    expect(pr.taskId).toBe(taskLong);
+  });
+
   test("listPullRequests returns an empty list for a project with no linked repositories", async () => {
     const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P-no-links", ownerId: "usr-2" }, ctx2)).project.id;
     const listResp = await repHandler.listPullRequests({ projectId: pId }, ctx2);

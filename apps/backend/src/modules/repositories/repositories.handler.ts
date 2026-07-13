@@ -447,12 +447,21 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         projectTasks.filter((t: any) => t.displayId).map((t: any) => [t.displayId, t.id])
       );
       function resolveTaskId(title: string): string | null {
+        // Prefer the longest matching displayId, not the first one in Map
+        // insertion order - e.g. "ENG-11: fix bug" must resolve to ENG-11,
+        // not ENG-1, even though both independently satisfy the \b...\b
+        // word-boundary check (a "-" counts as a boundary on either side).
+        let bestDisplayId: string | null = null;
+        let bestTaskId: string | null = null;
         for (const [displayId, taskId] of taskIdByDisplayId) {
           if (new RegExp(`\\b${displayId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(title)) {
-            return taskId;
+            if (!bestDisplayId || displayId.length > bestDisplayId.length) {
+              bestDisplayId = displayId;
+              bestTaskId = taskId;
+            }
           }
         }
-        return null;
+        return bestTaskId;
       }
 
       for (const link of links) {
