@@ -88,6 +88,30 @@ describe('RepositoryIntegrationConfig', () => {
     }));
   });
 
+  test('stores a per-flow nonce in sessionStorage before starting the OAuth redirect, binding the callback to this tab (login CSRF protection)', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [] });
+    sessionStorage.removeItem('repoLinkOauthNonce');
+
+    const originalLocation = window.location;
+    const locationStub = { href: '' };
+    Object.defineProperty(window, 'location', { writable: true, configurable: true, value: locationStub });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    fireEvent.change(screen.getByPlaceholderText('Remote (e.g. huyz0/tasker)'), { target: { value: 'huyz0/tasker' } });
+    fireEvent.click(screen.getByText('Connect GitHub via OAuth'));
+
+    const nonce = sessionStorage.getItem('repoLinkOauthNonce');
+    expect(nonce).toBeTruthy();
+    expect(locationStub.href).toContain('state=');
+    const stateParam = new URL(locationStub.href).searchParams.get('state')!;
+    const state = JSON.parse(atob(stateParam));
+    expect(state.nonce).toBe(nonce);
+
+    Object.defineProperty(window, 'location', { writable: true, configurable: true, value: originalLocation });
+  });
+
   test('links a GitHub repository using a direct personal access token, with no email required', async () => {
     mockListRepositoryLinks.mockResolvedValue({ links: [] });
     mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-3', provider: 'github', remoteName: 'huyz0/gh-repo' } });

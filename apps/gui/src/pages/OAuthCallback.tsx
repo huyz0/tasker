@@ -49,6 +49,16 @@ export function OAuthCallback() {
 
     try {
       const state = JSON.parse(atob(stateRaw));
+
+      // Verify this tab is the one that actually started the flow (login
+      // CSRF protection) before storing an OAuth-derived credential.
+      const expectedNonce = sessionStorage.getItem('repoLinkOauthNonce');
+      sessionStorage.removeItem('repoLinkOauthNonce');
+      if (!state.nonce || !expectedNonce || state.nonce !== expectedNonce) {
+        setError("This authorization link doesn't match a repository link you started in this browser tab.");
+        return;
+      }
+
       mutation.mutate({
         projectId: state.projectId,
         provider: state.provider,

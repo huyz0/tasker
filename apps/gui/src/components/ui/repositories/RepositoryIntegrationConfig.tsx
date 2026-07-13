@@ -275,7 +275,14 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
           <button
             disabled={!remoteName}
             onClick={() => {
-              const state = btoa(JSON.stringify({ projectId, provider, remoteName }));
+              // Binds the callback to this browser tab, so an attacker can't
+              // get a victim to complete this project's repo link using the
+              // attacker's own OAuth code (login CSRF) - the nonce only
+              // exists in sessionStorage if this tab actually started the
+              // flow, and an attacker-crafted callback link can't set it.
+              const nonce = crypto.randomUUID();
+              sessionStorage.setItem('repoLinkOauthNonce', nonce);
+              const state = btoa(JSON.stringify({ projectId, provider, remoteName, nonce }));
               const redirectUri = window.location.origin + "/oauth/callback";
               if (provider === 'bitbucket') {
                 const clientId = import.meta.env.VITE_BITBUCKET_CLIENT_ID || "MOCK_CLIENT_ID";
