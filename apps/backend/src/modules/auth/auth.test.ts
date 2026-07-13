@@ -29,6 +29,26 @@ describe('Auth session status', () => {
   });
 });
 
+describe('Auth logout', () => {
+  it('clears the session cookie on /api/auth/logout', async () => {
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/logout', { method: 'POST' }));
+    const setCookie = res.headers.get('set-cookie')!;
+    expect(setCookie).toContain('session=;');
+    expect(setCookie).toContain('Max-Age=0');
+  });
+
+  it('leaves the caller unauthenticated when checking session status after logout', async () => {
+    const token = createSessionToken('user-42');
+    const logoutRes = await authRoutes.handle(new Request('http://localhost/api/auth/logout', { method: 'POST' }));
+    const clearedCookie = logoutRes.headers.get('set-cookie')!.split(';')[0];
+
+    const sessionRes = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
+      headers: { cookie: clearedCookie || `session=${token}` },
+    }));
+    expect(await sessionRes.json()).toEqual({ authenticated: false, userId: null });
+  });
+});
+
 /**
  * Extracts the `state` query param a /login redirect sent to Google, plus
  * the oauth_state cookie it set - the two pieces the callback needs to

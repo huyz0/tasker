@@ -12,6 +12,11 @@ function sessionCookie(userId: string): string {
   return `session=${createSessionToken(userId)}; HttpOnly; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`;
 }
 
+function clearSessionCookie(): string {
+  const secure = config.nodeEnv === 'production' ? '; Secure' : '';
+  return `session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+}
+
 // Binds the callback to the browser session that started the OAuth flow, so
 // an attacker can't get a victim's browser to complete a login as the
 // attacker's Google account (login CSRF). The nonce travels in Google's
@@ -195,6 +200,18 @@ export function createAuthRoutes(db: any) {
     const token = parseSessionCookie(request.headers.get('cookie'));
     const session = token ? verifySessionToken(token) : null;
     return Response.json({ authenticated: !!session, userId: session?.userId ?? null });
+  })
+  // There was previously no way to end a browser session at all - the
+  // cookie just sat there, valid, until it hit its 7-day Max-Age. Clearing
+  // the cookie here logs the browser out immediately; it doesn't revoke the
+  // underlying JWT (sessions are stateless, so a copy of the token used
+  // directly as a Bearer header would still verify until it expires), but
+  // it closes the "no way to log out at all" gap for the normal browser flow.
+  .post('/api/auth/logout', () => {
+    return new Response('', {
+      status: 204,
+      headers: { 'set-cookie': clearSessionCookie() },
+    });
   })
   .get('/api/auth/test/inject', ({ query }) => {
     if (!config.enableTestLogin) {

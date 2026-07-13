@@ -9,12 +9,14 @@ import {
   Activity,
   UserCircle,
   Trash2,
-  Tag
+  Tag,
+  LogOut
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { GlobalSearch } from './GlobalSearch';
 import { OrgProjectSwitcher } from './OrgProjectSwitcher';
+import { logout } from '../../lib/authSession';
 
 const NAVIGATION_ITEMS = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -30,6 +32,12 @@ const NAVIGATION_ITEMS = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { sidebarOpen, toggleSidebar } = useLayoutStore();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
     <div className="flex min-h-screen w-full flex-col md:flex-row bg-background">
@@ -84,12 +92,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="p-4 border-t/50 mt-auto">
-             <div className="flex items-center gap-3 py-2 px-3 text-sm text-muted-foreground">
-                <UserCircle className="h-6 w-6" />
-                <div className="flex flex-col">
-                  <span className="font-medium text-foreground">Tuong Nguyen</span>
-                  <span className="text-xs">Admin</span>
+             <div className="flex items-center justify-between gap-3 py-2 px-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <UserCircle className="h-6 w-6" />
+                  <div className="flex flex-col">
+                    <span className="font-medium text-foreground">Tuong Nguyen</span>
+                    <span className="text-xs">Admin</span>
+                  </div>
                 </div>
+                <button
+                  onClick={handleLogout}
+                  aria-label="Log out"
+                  className="rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
              </div>
           </div>
         </div>

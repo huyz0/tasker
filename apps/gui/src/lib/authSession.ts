@@ -10,3 +10,7 @@ export async function fetchAuthSession(): Promise<AuthSession> {
   }
   return res.json();
 }
+
+export async function logout(): Promise<void> {
+  await fetch('http://localhost:8080/api/auth/logout', { method: 'POST', credentials: 'include' });
+}
