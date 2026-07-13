@@ -11,7 +11,7 @@ import { ConnectError, Code } from "@connectrpc/connect";
 const CreateLabelSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   name: z.string().min(1, "name is required").max(128),
-  color: z.string().nullable().optional(),
+  color: z.string().max(32, "color must be at most 32 characters").nullable().optional(),
 });
 
 const EntityRefSchema = z.object({

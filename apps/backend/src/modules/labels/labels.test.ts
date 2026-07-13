@@ -50,6 +50,13 @@ describe("Labels Handler", () => {
     expect(handler.createLabel({ orgId, name: "" }, ctx)).rejects.toThrow();
   });
 
+  it("should reject createLabel with a color longer than the DB column allows", async () => {
+    // The color column is varchar(32) in MySQL - a longer value must be
+    // rejected at validation time rather than silently truncating or
+    // erroring at the DB layer.
+    expect(handler.createLabel({ orgId, name: "bug", color: "#" + "f".repeat(40) }, ctx)).rejects.toThrow();
+  });
+
   it("should reject createLabel from a user outside the org", async () => {
     expect(handler.createLabel({ orgId, name: "bug" }, makeAuthContext("user-outsider"))).rejects.toThrow();
   });
