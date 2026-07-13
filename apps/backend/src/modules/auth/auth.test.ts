@@ -29,18 +29,56 @@ describe('Auth session status', () => {
   });
 });
 
+/**
+ * Extracts the `state` query param a /login redirect sent to Google, plus
+ * the oauth_state cookie it set - the two pieces the callback needs to
+ * complete a legitimate flow (and that a CSRF attempt can't produce
+ * together, since it never received our set-cookie response).
+ */
+function extractLoginFlow(loginRes: Response): { state: string; cookie: string } {
+  const location = loginRes.headers.get('location')!;
+  const state = new URL(location).searchParams.get('state')!;
+  const cookie = loginRes.headers.get('set-cookie')!;
+  return { state, cookie };
+}
+
 describe('Auth Routes (Google OAuth 2.1)', () => {
   it('should redirect to Google consent screen on /api/auth/google/login', async () => {
     const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toContain('accounts.google.com/o/oauth2/v2/auth');
-    expect(res.headers.get('location')).not.toContain('state=');
+    expect(res.headers.get('location')).toContain('state=web%3A');
+  });
+
+  it('should set an HttpOnly oauth_state cookie binding the callback to this browser session', async () => {
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const cookie = res.headers.get('set-cookie');
+    expect(cookie).toContain('oauth_state=');
+    expect(cookie).toContain('HttpOnly');
   });
 
   it('should carry a cli state flag through the consent screen redirect when ?cli=true', async () => {
     const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/login?cli=true'));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toContain('state=cli');
+    expect(res.headers.get('location')).toContain('state=cli%3A');
+  });
+
+  it('should reject the callback when the state param does not match the oauth_state cookie (login CSRF)', async () => {
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { cookie } = extractLoginFlow(loginRes);
+
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/callback?code=123&state=web:attacker-supplied-nonce', {
+      headers: { cookie },
+    }));
+    expect(res.status).toBe(400);
+  });
+
+  it('should reject the callback when there is no oauth_state cookie at all', async () => {
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state } = extractLoginFlow(loginRes);
+
+    const res = await authRoutes.handle(new Request(`http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`));
+    expect(res.status).toBe(400);
   });
 
   afterEach(() => {
@@ -60,10 +98,16 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
       return originalFetch(url, options);
     }) as unknown as typeof fetch;
 
-    // MOCK: Sending a fake code '123' to the callback
-    const req = new Request('http://localhost/api/auth/google/callback?code=123');
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state, cookie: stateCookie } = extractLoginFlow(loginRes);
+
+    // MOCK: Sending a fake code '123' to the callback, with the state/cookie
+    // pair a real browser would carry from the /login redirect.
+    const req = new Request(`http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`, {
+      headers: { cookie: stateCookie },
+    });
     const res = await authRoutes.handle(req);
-    
+
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/');
     // Check if Set-Cookie header is properly applied
@@ -105,7 +149,11 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
       return originalFetch(url, options);
     }) as unknown as typeof fetch;
 
-    const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/callback?code=123'));
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state, cookie: stateCookie } = extractLoginFlow(loginRes);
+    const res = await authRoutes.handle(new Request(`http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`, {
+      headers: { cookie: stateCookie },
+    }));
     expect(res.status).toBe(302);
 
     const membership = await db.select().from(schemaSqlite.organizationMembers)
@@ -134,11 +182,16 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
       return originalFetch(url, options);
     }) as unknown as typeof fetch;
 
-    const req = new Request('http://localhost/api/auth/google/callback?code=123&state=cli');
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login?cli=true'));
+    const { state, cookie: stateCookie } = extractLoginFlow(loginRes);
+    const req = new Request(`http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`, {
+      headers: { cookie: stateCookie },
+    });
     const res = await authRoutes.handle(req);
 
     expect(res.status).toBe(302);
-    expect(res.headers.get('set-cookie')).toBeNull();
+    // No session cookie for the CLI flow - only the oauth_state cookie gets cleared.
+    expect(res.headers.get('set-cookie')).not.toContain('session=');
     const location = res.headers.get('location')!;
     expect(location).toStartWith('http://localhost:3952/callback?token=');
     const token = new URL(location).searchParams.get('token')!;

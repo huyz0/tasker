@@ -11,6 +11,27 @@ function sessionCookie(userId: string): string {
   return `session=${createSessionToken(userId)}; HttpOnly; Path=/; SameSite=Lax${secure}`;
 }
 
+// Binds the callback to the browser session that started the OAuth flow, so
+// an attacker can't get a victim's browser to complete a login as the
+// attacker's Google account (login CSRF). The nonce travels in Google's
+// `state` param and in a short-lived HttpOnly cookie only this browser
+// holds; the callback rejects unless the two match.
+function oauthStateCookie(nonce: string): string {
+  const secure = config.nodeEnv === 'production' ? '; Secure' : '';
+  return `oauth_state=${nonce}; HttpOnly; Path=/api/auth; Max-Age=300; SameSite=Lax${secure}`;
+}
+
+function clearOauthStateCookie(): string {
+  const secure = config.nodeEnv === 'production' ? '; Secure' : '';
+  return `oauth_state=; HttpOnly; Path=/api/auth; Max-Age=0; SameSite=Lax${secure}`;
+}
+
+function parseOauthStateCookie(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(/(?:^|;\s*)oauth_state=([^;]+)/);
+  return match?.[1] ?? null;
+}
+
 // The CLI's `tasker auth login` starts a short-lived localhost HTTP server on
 // this port to catch the OAuth handoff, since it has no cookie jar tied to a
 // browser session. Must match apps/cli/cmd/auth.go's local listener.
@@ -68,6 +89,7 @@ export function createAuthRoutes(db: any) {
   return new Elysia()
   .get('/api/auth/google/login', ({ query }) => {
     const isCli = query.cli === 'true';
+    const nonce = crypto.randomUUID();
     const params = new URLSearchParams({
       client_id: config.googleClientId,
       redirect_uri: config.googleRedirectUri,
@@ -75,21 +97,27 @@ export function createAuthRoutes(db: any) {
       scope: 'email profile',
       access_type: 'offline',
       prompt: 'consent',
-      // Google echoes `state` back verbatim on the callback - this is how the
-      // callback knows to hand off a bearer token to the CLI's local server
-      // instead of setting a browser cookie.
-      ...(isCli ? { state: 'cli' } : {}),
+      // Google echoes `state` back verbatim on the callback - the "cli:"/"web:"
+      // prefix is how the callback knows to hand off a bearer token to the
+      // CLI's local server instead of setting a browser cookie; the nonce
+      // after it is checked against oauthStateCookie to block login CSRF.
+      state: `${isCli ? 'cli' : 'web'}:${nonce}`,
     });
 
     return new Response('', {
       status: 302,
-      headers: { location: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` }
+      headers: {
+        location: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+        'set-cookie': oauthStateCookie(nonce),
+      }
     });
   })
-  .get('/api/auth/google/callback', async ({ query }) => {
+  .get('/api/auth/google/callback', async ({ query, request }) => {
     const code = query.code as string;
     const error = query.error as string;
-    const isCli = query.state === 'cli';
+    const state = (query.state as string) || '';
+    const [flow, nonce] = state.split(':');
+    const isCli = flow === 'cli';
 
     if (error) {
       return new Response(`Authentication failed: ${error}`, { status: 400 });
@@ -99,7 +127,13 @@ export function createAuthRoutes(db: any) {
       return new Response('No code provided', { status: 400 });
     }
 
-
+    const expectedNonce = parseOauthStateCookie(request.headers.get('cookie'));
+    if (!nonce || !expectedNonce || nonce !== expectedNonce) {
+      return new Response('Invalid or missing state', {
+        status: 400,
+        headers: { 'set-cookie': clearOauthStateCookie() },
+      });
+    }
 
     try {
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -133,19 +167,15 @@ export function createAuthRoutes(db: any) {
 
       if (isCli) {
         const token = createSessionToken(profile.id);
-        return new Response('', {
-          status: 302,
-          headers: { location: `http://localhost:${CLI_CALLBACK_PORT}/callback?token=${encodeURIComponent(token)}` }
-        });
+        const headers = new Headers({ location: `http://localhost:${CLI_CALLBACK_PORT}/callback?token=${encodeURIComponent(token)}` });
+        headers.append('set-cookie', clearOauthStateCookie());
+        return new Response('', { status: 302, headers });
       }
 
-      return new Response('', {
-        status: 302,
-        headers: {
-          'location': '/',
-          'set-cookie': sessionCookie(profile.id)
-        }
-      });
+      const headers = new Headers({ location: '/' });
+      headers.append('set-cookie', sessionCookie(profile.id));
+      headers.append('set-cookie', clearOauthStateCookie());
+      return new Response('', { status: 302, headers });
     } catch (e: any) {
       logger.error({ err: e }, 'auth.google_callback_failed');
       return new Response('Authentication failed due to server error', { status: 500 });
