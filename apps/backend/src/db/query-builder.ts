@@ -1,4 +1,4 @@
-import { SQL, and, lt, gt, or, eq, desc, asc, isNull, like, sql } from "drizzle-orm";
+import { SQL, and, lt, gt, or, eq, desc, asc, isNull, sql } from "drizzle-orm";
 import { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
 export interface PaginationParams {
@@ -105,6 +105,13 @@ export async function insertRecord(
   }
 }
 
+// Escapes LIKE's special characters (\, %, _) in caller-supplied filter text
+// so a filter for e.g. "100%" or "foo_bar" matches those literal characters
+// instead of "%"/"_" acting as SQL wildcards and matching unrelated rows.
+function escapeLikePattern(raw: string): string {
+  return raw.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
 /**
  * Applies pageOpts.filter as a case-sensitive substring match against filterColumn,
  * combining it with an existing base condition. filterColumn is optional because
@@ -112,7 +119,7 @@ export async function insertRecord(
  */
 export function applyFilter(baseCondition: SQL | undefined, filterColumn: any, filterValue: string | undefined): SQL | undefined {
   if (!filterValue || !filterColumn) return baseCondition;
-  const filterClause = like(filterColumn, `%${filterValue}%`);
+  const filterClause = sql`${filterColumn} LIKE ${`%${escapeLikePattern(filterValue)}%`} ESCAPE '\\'`;
   return baseCondition ? and(baseCondition, filterClause) : filterClause;
 }
 

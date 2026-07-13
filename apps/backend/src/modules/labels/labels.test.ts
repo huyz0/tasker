@@ -105,6 +105,18 @@ describe("Labels Handler", () => {
     expect(names.indexOf("alpha")).toBeLessThan(names.indexOf("zebra"));
   });
 
+  it("treats _ in the filter as a literal character, not a SQL single-char wildcard", async () => {
+    await handler.createLabel({ orgId, name: "foo_bar" }, ctx);
+    await handler.createLabel({ orgId, name: "foobar" }, ctx);
+
+    // Unescaped, the pattern "%o_b%" would also match "foobar" via its "oob"
+    // substring (the "_" wildcard matching the middle "o").
+    const filtered = await handler.listLabels({ orgId, page: { filter: "o_b" } }, ctx);
+    const names = filtered.labels.map((l: any) => l.name);
+    expect(names).toContain("foo_bar");
+    expect(names).not.toContain("foobar");
+  });
+
   // --- attachLabel / listEntityLabels / detachLabel ---
 
   it("should attach a label to a task and list it", async () => {
