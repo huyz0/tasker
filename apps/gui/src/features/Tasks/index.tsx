@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { TaskService, RepositoryService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { TaskService, RepositoryService, TaskTypeService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
 
 const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
+const taskTypeClient = createClient(TaskTypeService, transport);
 
-const STATUS_OPTIONS = [
+// Fallback status set for tasks with no taskTypeId, or whose task type has
+// no custom statuses configured - matches the backend's KNOWN_STATUSES.
+const DEFAULT_STATUS_OPTIONS = [
   { id: 'todo', display: 'Todo' },
   { id: 'in-progress', display: 'In Progress' },
   { id: 'done', display: 'Done' },
@@ -36,6 +39,46 @@ export function TasksWorkbench() {
   });
 
   const expandedTask = tasksData?.find(t => t.id === expandedTaskId) ?? null;
+
+  // Task types can define their own custom status sets/state machines
+  // (see tasks.handler.ts's validateStatusForTaskType) - fetch each distinct
+  // task type actually in use so the board can render columns for them
+  // instead of hiding tasks whose status doesn't match the 3 defaults.
+  const distinctTaskTypeIds = Array.from(new Set((tasksData ?? []).map(t => t.taskTypeId).filter((id): id is string => !!id)));
+  const taskTypeQueries = useQueries({
+    queries: distinctTaskTypeIds.map(taskTypeId => ({
+      queryKey: ['taskType', taskTypeId],
+      queryFn: async () => taskTypeClient.getTaskType({ id: taskTypeId }),
+    })),
+  });
+  const statusesByTaskType = new Map<string, string[]>();
+  distinctTaskTypeIds.forEach((taskTypeId, i) => {
+    const statuses = taskTypeQueries[i]?.data?.statuses;
+    if (statuses && statuses.length > 0) {
+      statusesByTaskType.set(taskTypeId, statuses.map(s => s.name));
+    }
+  });
+
+  const columnDefs = [...DEFAULT_STATUS_OPTIONS];
+  const seenStatusIds = new Set(columnDefs.map(c => c.id));
+  for (const statuses of statusesByTaskType.values()) {
+    for (const name of statuses) {
+      if (!seenStatusIds.has(name)) {
+        seenStatusIds.add(name);
+        columnDefs.push({ id: name, display: name });
+      }
+    }
+  }
+  // Defensive: a task's status might not match any known column yet (e.g.
+  // its task type's statuses are still loading) - still give it a column
+  // rather than silently dropping it from the board.
+  for (const t of tasksData ?? []) {
+    const status = t.status || 'todo';
+    if (!seenStatusIds.has(status)) {
+      seenStatusIds.add(status);
+      columnDefs.push({ id: status, display: status });
+    }
+  }
 
   const { data: pullRequestsData } = useQuery({
     queryKey: ['pullRequests', activeProjectId],
@@ -71,10 +114,14 @@ export function TasksWorkbench() {
     },
   });
 
-  const columns = STATUS_OPTIONS.map(col => {
+  const columns = columnDefs.map(col => {
     const items = tasksData?.filter(t => (t.status || 'todo') === col.id) || [];
     return { ...col, items, count: items.length };
-  });
+  }).filter(col => col.items.length > 0 || DEFAULT_STATUS_OPTIONS.some(d => d.id === col.id));
+
+  const expandedTaskStatusOptions = expandedTask?.taskTypeId && statusesByTaskType.has(expandedTask.taskTypeId)
+    ? statusesByTaskType.get(expandedTask.taskTypeId)!.map(name => ({ id: name, display: name }))
+    : DEFAULT_STATUS_OPTIONS;
 
   return (
     <div className="flex h-full gap-6">
@@ -159,7 +206,7 @@ export function TasksWorkbench() {
                     onChange={(e) => updateStatusMutation.mutate({ taskId: expandedTask.id, status: e.target.value })}
                     className="text-foreground bg-transparent border rounded-md px-2 py-1 text-sm"
                   >
-                    {STATUS_OPTIONS.map(opt => (
+                    {expandedTaskStatusOptions.map(opt => (
                       <option key={opt.id} value={opt.id}>{opt.display}</option>
                     ))}
                   </select>

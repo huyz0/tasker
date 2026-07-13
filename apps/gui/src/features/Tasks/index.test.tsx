@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests } = vi.hoisted(() => ({
+const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests, mockGetTaskType } = vi.hoisted(() => ({
   mockListTasks: vi.fn(),
   mockUpdateTaskStatus: vi.fn(),
   mockDeleteTask: vi.fn(),
@@ -10,6 +10,7 @@ const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockListComments, m
   mockListEntityLabels: vi.fn(),
   mockListLabels: vi.fn(),
   mockListPullRequests: vi.fn(),
+  mockGetTaskType: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -26,6 +27,7 @@ vi.mock('@connectrpc/connect', () => ({
       createLabel: vi.fn(),
     };
     if (service === 'RepositoryService') return { listPullRequests: mockListPullRequests };
+    if (service === 'TaskTypeService') return { getTaskType: mockGetTaskType };
     return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask };
   }),
 }));
@@ -34,6 +36,7 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   CommentService: 'CommentService',
   LabelService: 'LabelService',
   RepositoryService: 'RepositoryService',
+  TaskTypeService: 'TaskTypeService',
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
@@ -67,6 +70,7 @@ describe('TasksWorkbench', () => {
     mockListLabels.mockResolvedValue({ labels: [] });
     mockListPullRequests.mockReset();
     mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockGetTaskType.mockReset();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
@@ -140,6 +144,30 @@ describe('TasksWorkbench', () => {
     fireEvent.click(deleteButton);
 
     expect(mockDeleteTask).not.toHaveBeenCalled();
+  });
+
+  it('renders a task using a custom task-type status instead of hiding it', async () => {
+    mockListTasks.mockResolvedValue({
+      tasks: [{ id: 'task-1', title: 'Custom flow task', status: 'in-review', description: '', taskTypeId: 'tt-1' }],
+    });
+    mockGetTaskType.mockResolvedValue({
+      taskType: { id: 'tt-1' },
+      statuses: [{ id: 's-1', name: 'backlog' }, { id: 's-2', name: 'in-review' }, { id: 's-3', name: 'shipped' }],
+      transitions: [],
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Custom flow task')).toBeDefined());
+    expect(screen.getByText('in-review')).toBeDefined();
+
+    fireEvent.click(screen.getByText('Custom flow task'));
+    const select = await screen.findByDisplayValue('in-review');
+    expect(screen.getByRole('option', { name: 'backlog' })).toBeDefined();
+    expect(screen.getByRole('option', { name: 'shipped' })).toBeDefined();
+
+    fireEvent.change(select, { target: { value: 'shipped' } });
+    await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'shipped' }));
   });
 
   it('shows an error message when task deletion fails', async () => {
