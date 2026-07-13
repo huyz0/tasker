@@ -106,3 +106,45 @@ func (f *fakeEmptyCommentHandler) ListComments(
 ) (*connect.Response[healthv1.ListCommentsResponse], error) {
 	return connect.NewResponse(&healthv1.ListCommentsResponse{Comments: []*healthv1.Comment{}}), nil
 }
+
+// These exercise the RPC-failure branches of `comment add`/`comment list` -
+// previously these called os.Exit(1) directly, which would have killed the
+// entire test binary instead of returning control to cobra, so this failure
+// path had never actually been run under `go test`.
+func TestCommentAddCmdReportsErrorWithoutExitingProcess(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewCommentServiceHandler(&v1connect.UnimplementedCommentServiceHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"comment", "add", "--entity", "task-123", "--type", "task", "--content", "x"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "failed to add comment") {
+		t.Fatalf("expected an error message and for the process to still be alive, got %s", b.String())
+	}
+}
+
+func TestCommentListCmdReportsErrorWithoutExitingProcess(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewCommentServiceHandler(&v1connect.UnimplementedCommentServiceHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"comment", "list", "--entity", "task-123", "--type", "task"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "failed to list comments") {
+		t.Fatalf("expected an error message and for the process to still be alive, got %s", b.String())
+	}
+}

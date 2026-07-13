@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"os"
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
@@ -39,8 +37,8 @@ var commentAddCmd = &cobra.Command{
 
 		res, err := client.CreateComment(context.Background(), req)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to add comment: %v\n", err)
-			os.Exit(1)
+			cmd.PrintErrf("failed to add comment: %v\n", err)
+			return
 		}
 
 		cmd.Printf("Comment added successfully! ID: %s\n", res.Msg.Comment.Id)
@@ -60,8 +58,8 @@ var commentListCmd = &cobra.Command{
 
 		res, err := client.ListComments(context.Background(), req)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to list comments: %v\n", err)
-			os.Exit(1)
+			cmd.PrintErrf("failed to list comments: %v\n", err)
+			return
 		}
 
 		if len(res.Msg.Comments) == 0 {
