@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createOrgsHandler } from "./orgs.handler";
@@ -61,6 +61,18 @@ describe("Organizations Handler Integration Logic", () => {
         email: "invited@foo.com"
     }, ctx);
     expect(inviteRes.success).toBe(true);
+
+    // Inviting the same email to the same org again is idempotent, not a
+    // second accumulating row.
+    const dupInviteRes = await handler.inviteUser({
+        orgId: res.organization.id,
+        email: "invited@foo.com"
+    }, ctx);
+    expect(dupInviteRes.success).toBe(true);
+
+    const invRows = await db.select().from(schemaSqlite.invitations)
+      .where(and(eq(schemaSqlite.invitations.orgId, res.organization.id), eq(schemaSqlite.invitations.email, "invited@foo.com")));
+    expect(invRows.length).toBe(1);
   });
 
   test("rejects requests with no authenticated user", async () => {

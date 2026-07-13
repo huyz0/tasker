@@ -98,6 +98,11 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       await assertOrgAdmin(db, userId, parsed.orgId);
 
       const invs = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
+      const existing = await db.select().from(invs)
+        .where(and(eq((invs as any).orgId, parsed.orgId), eq((invs as any).email, parsed.email)))
+        .limit(1);
+      if (existing.length > 0) return { success: true };
+
       const payload = {
         id: `i-${crypto.randomUUID()}`,
         orgId: parsed.orgId,
