@@ -93,6 +93,13 @@ describe("Artifacts Handler", () => {
     ).rejects.toThrow();
   });
 
+  it("should reject createFolder for a soft-deleted project", async () => {
+    await db.update(schemaSqlite.projects).set({ deletedAt: new Date() }).where(eq(schemaSqlite.projects.id, projectId));
+    await expect(
+      handler.createFolder({ projectId, name: "Folder" }, ctx)
+    ).rejects.toThrow();
+  });
+
   // --- createArtifact ---
 
   it("should create artifact with valid input", async () => {

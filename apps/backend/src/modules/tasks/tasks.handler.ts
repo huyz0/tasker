@@ -448,7 +448,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     async restoreTask(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = RestoreTaskSchema.parse(req);
-      const orgId = await getTaskOrgId(db, parsed.taskId);
+      const orgId = await getTaskOrgId(db, parsed.taskId, true);
       await assertOrgAdmin(db, userId, orgId);
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
@@ -460,7 +460,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     async purgeTask(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = PurgeTaskSchema.parse(req);
-      const orgId = await getTaskOrgId(db, parsed.taskId);
+      const orgId = await getTaskOrgId(db, parsed.taskId, true);
       await assertOrgAdmin(db, userId, orgId);
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;

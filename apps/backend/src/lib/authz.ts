@@ -1,5 +1,5 @@
 import { ConnectError, Code } from '@connectrpc/connect';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
 import { currentUserIdKey } from '../modules/auth/session';
@@ -66,10 +66,20 @@ export async function assertOrgAdminOfAny(db: any, userId: string): Promise<void
   }
 }
 
-/** Resolves a project's orgId, throwing NotFound if the project doesn't exist. */
-export async function getProjectOrgId(db: any, projectId: string): Promise<string> {
+/**
+ * Resolves a project's orgId, throwing NotFound if the project doesn't
+ * exist. Pass includeDeleted=true from restore/purge flows, which must
+ * still resolve the org for a project that is currently soft-deleted.
+ */
+export async function getProjectOrgId(db: any, projectId: string, includeDeleted = false): Promise<string> {
   const projects = isStandalone() ? schemaSqlite.projects : schemaMysql.projects;
-  const rows = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+  const conditions = [eq(projects.id, projectId)];
+  if (!includeDeleted) conditions.push(isNull(projects.deletedAt));
+  const rows = await db
+    .select()
+    .from(projects)
+    .where(and(...conditions))
+    .limit(1);
   if (!rows || rows.length === 0) {
     throw new ConnectError('Project not found', Code.NotFound);
   }
@@ -77,16 +87,27 @@ export async function getProjectOrgId(db: any, projectId: string): Promise<strin
 }
 
 /** Resolves a task's project orgId, throwing NotFound if the task doesn't exist. */
-export async function getTaskOrgId(db: any, taskId: string): Promise<string> {
+export async function getTaskOrgId(db: any, taskId: string, includeDeleted = false): Promise<string> {
   const tasks = isStandalone() ? schemaSqlite.tasks : schemaMysql.tasks;
-  const rows = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+  const conditions = [eq(tasks.id, taskId)];
+  if (!includeDeleted) conditions.push(isNull(tasks.deletedAt));
+  const rows = await db
+    .select()
+    .from(tasks)
+    .where(and(...conditions))
+    .limit(1);
   if (!rows || rows.length === 0) {
     throw new ConnectError('Task not found', Code.NotFound);
   }
   return getProjectOrgId(db, rows[0].projectId);
 }
 
-/** Resolves a folder's project orgId, throwing NotFound if the folder doesn't exist. */
+/**
+ * Resolves a folder's project orgId, throwing NotFound if the folder doesn't
+ * exist. Doesn't filter the folder's own deletedAt: the app intentionally
+ * allows creating/purging artifacts inside an archived folder as part of
+ * its archive-then-purge cleanup workflow (see artifacts.test.ts).
+ */
 export async function getFolderOrgId(db: any, folderId: string): Promise<string> {
   const folders = isStandalone() ? schemaSqlite.folders : schemaMysql.folders;
   const rows = await db.select().from(folders).where(eq(folders.id, folderId)).limit(1);
@@ -96,7 +117,12 @@ export async function getFolderOrgId(db: any, folderId: string): Promise<string>
   return getProjectOrgId(db, rows[0].projectId);
 }
 
-/** Resolves an artifact's project orgId, throwing NotFound if the artifact doesn't exist. */
+/**
+ * Resolves an artifact's project orgId, throwing NotFound if the artifact
+ * doesn't exist. Doesn't filter the artifact's own deletedAt: linking an
+ * already-archived artifact to a task is an intentional part of the
+ * archive-then-purge cleanup workflow (see artifacts.test.ts).
+ */
 export async function getArtifactOrgId(db: any, artifactId: string): Promise<string> {
   const artifacts = isStandalone() ? schemaSqlite.artifacts : schemaMysql.artifacts;
   const rows = await db.select().from(artifacts).where(eq(artifacts.id, artifactId)).limit(1);

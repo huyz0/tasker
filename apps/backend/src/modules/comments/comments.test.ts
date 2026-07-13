@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createCommentsHandler } from "./comments.handler";
@@ -116,6 +117,13 @@ describe("Comments Handler", () => {
   it("should reject comment on a nonexistent entity", async () => {
     expect(
       handler.createComment({ entityId: "tsk-does-not-exist", entityType: "task", content: "x" }, ctx)
+    ).rejects.toThrow();
+  });
+
+  it("should reject comment on a soft-deleted task", async () => {
+    await db.update(schemaSqlite.tasks).set({ deletedAt: new Date() }).where(eq(schemaSqlite.tasks.id, taskId));
+    await expect(
+      handler.createComment({ entityId: taskId, entityType: "task", content: "x" }, ctx)
     ).rejects.toThrow();
   });
 
