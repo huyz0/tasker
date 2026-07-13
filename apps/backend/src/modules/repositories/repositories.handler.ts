@@ -5,7 +5,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import crypto from "node:crypto";
 import { logger } from "../../lib/logger";
-import { requireUserId, assertOrgMember, getProjectOrgId, getRepositoryLinkOrgId } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgAdmin, getProjectOrgId, getRepositoryLinkOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 import { config } from "../../config";
 
@@ -276,7 +276,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = AddRepositoryLinkSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgAdmin(db, userId, orgId);
 
       const links = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
 

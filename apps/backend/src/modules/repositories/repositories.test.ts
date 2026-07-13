@@ -97,6 +97,14 @@ describe("Repositories Handler >", () => {
     await expect(repHandler.addRepositoryLink({
       projectId, provider: "github", remoteName: "x/y", oauthCode: "z",
     }, makeAuthContext("usr-outsider"))).rejects.toThrow();
+
+    // A non-admin org member cannot add a repository link either - it stores
+    // a credential granting write access to an external repo on the org's behalf.
+    await db.insert(schemaSqlite.users).values({ id: "usr-1-member", email: "member@tasker.local", createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: "org-1", userId: "usr-1-member", role: "member", joinedAt: new Date() });
+    await expect(repHandler.addRepositoryLink({
+      projectId, provider: "github", remoteName: "x/y", oauthCode: "z",
+    }, makeAuthContext("usr-1-member"))).rejects.toThrow();
   });
 
   test("should mask tokens on list fetching", async () => {
