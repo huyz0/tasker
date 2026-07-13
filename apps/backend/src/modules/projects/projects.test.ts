@@ -1,4 +1,5 @@
 import { expect, test, describe, beforeAll } from "bun:test";
+import { Code } from "@connectrpc/connect";
 import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -165,7 +166,7 @@ describe("Projects Handler Integration Logic", () => {
      await db.insert(schemaSqlite.users).values({ id: nonMemberId, email: `${nonMemberId}@example.com`, createdAt: new Date() });
      await expect(pHandler.createProject({
        orgId: "org-test", templateId: tResp.template.id, name: "X", ownerId: nonMemberId,
-     }, ctx)).rejects.toThrow();
+     }, ctx)).rejects.toMatchObject({ code: Code.InvalidArgument });
   });
 
   test("rejects createProject with a nonexistent templateId", async () => {

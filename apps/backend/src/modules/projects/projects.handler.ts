@@ -96,7 +96,14 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = CreateProjectSchema.parse(req);
       await assertOrgMember(db, userId, parsed.orgId);
-      await assertOrgMember(db, parsed.ownerId, parsed.orgId);
+      try {
+        await assertOrgMember(db, parsed.ownerId, parsed.orgId);
+      } catch (e) {
+        if (e instanceof ConnectError && e.code === Code.PermissionDenied) {
+          throw new ConnectError("ownerId is not a member of this organization", Code.InvalidArgument);
+        }
+        throw e;
+      }
 
       const templates = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const templateRows = await db.select().from(templates).where(eq((templates as any).id, parsed.templateId)).limit(1);
