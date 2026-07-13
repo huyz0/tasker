@@ -520,6 +520,11 @@ describe("Tasks Handler Integration Tests", () => {
     const toInReview = await taskHandler.updateTaskStatus({ taskId: created.task.id, status: "in_review" }, ctx);
     expect(toInReview.task.status).toBe("in_review");
 
+    // Re-submitting the same status is always a no-op success, even with a
+    // transition graph configured and no self-loop edge for it.
+    const noOp = await taskHandler.updateTaskStatus({ taskId: created.task.id, status: "in_review" }, ctx);
+    expect(noOp.task.status).toBe("in_review");
+
     // A status name that isn't one of this type's configured statuses is still rejected outright.
     await expect(
       taskHandler.updateTaskStatus({ taskId: created.task.id, status: "todo" }, ctx)

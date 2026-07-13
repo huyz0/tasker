@@ -261,6 +261,7 @@ async function validateStatusForTaskType(
   }
 
   if (currentStatus === null) return; // Task creation: no prior status, so no transition edge to check.
+  if (currentStatus === newStatus) return; // No-op update - always allowed, regardless of configured edges.
 
   const currentStatusRow = configuredStatuses.find((s: any) => s.name === currentStatus);
   if (!currentStatusRow) return; // Current status predates this type's state machine - allow moving into it.
