@@ -56,9 +56,9 @@ describe('Dashboard', () => {
     mockListAgents.mockReset();
     mockListTasks.mockReset();
     mockPing.mockResolvedValue({ message: 'pong', dbStatus: 'ok' });
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1' }, { id: 'org-2' }] });
-    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1' }] });
-    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1' }, { id: 'agent-2' }, { id: 'agent-3' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1' }, { id: 'org-2' }], page: { totalCount: 2 } });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1' }], page: { totalCount: 1 } });
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1' }, { id: 'agent-2' }, { id: 'agent-3' }], page: { totalCount: 3 } });
     mockListTasks.mockResolvedValue({
       tasks: [
         { id: 't1', status: 'todo' },
@@ -66,6 +66,7 @@ describe('Dashboard', () => {
         { id: 't3', status: 'in-progress' },
         { id: 't4', status: 'done' },
       ],
+      page: { totalCount: 4 },
     });
   });
 
@@ -75,6 +76,16 @@ describe('Dashboard', () => {
     await waitFor(() => expect(screen.getByText('Organizations').nextElementSibling?.textContent).toBe('2'));
     expect(screen.getByText('Agents').nextElementSibling?.textContent).toBe('3');
     expect(screen.getByText('Tasks').nextElementSibling?.textContent).toBe('4');
+  });
+
+  it('shows the total count across all pages, not just the fetched page size', async () => {
+    mockListTasks.mockResolvedValue({
+      tasks: [{ id: 't1', status: 'todo' }],
+      page: { totalCount: 137 },
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Tasks').nextElementSibling?.textContent).toBe('137'));
   });
 
   it('breaks tasks down by status', async () => {

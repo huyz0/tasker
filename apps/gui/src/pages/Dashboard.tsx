@@ -44,28 +44,29 @@ export function Dashboard() {
     }
   });
 
-  const { data: orgs } = useQuery({
+  const { data: orgsResp } = useQuery({
     queryKey: ['orgs'],
-    queryFn: async () => (await orgClient.listOrgs({})).organizations,
+    queryFn: async () => orgClient.listOrgs({}),
   });
 
-  const { data: projects } = useQuery({
+  const { data: projectsResp } = useQuery({
     queryKey: ['projects', activeOrgId],
-    queryFn: async () => (await projectClient.listProjects({ orgId: activeOrgId })).projects,
+    queryFn: async () => projectClient.listProjects({ orgId: activeOrgId }),
     enabled: !!activeOrgId,
   });
 
-  const { data: agents } = useQuery({
+  const { data: agentsResp } = useQuery({
     queryKey: ['agents', activeOrgId],
-    queryFn: async () => (await agentClient.listAgents({ orgId: activeOrgId })).agents,
+    queryFn: async () => agentClient.listAgents({ orgId: activeOrgId }),
     enabled: !!activeOrgId,
   });
 
-  const { data: tasks } = useQuery({
+  const { data: tasksResp } = useQuery({
     queryKey: ['tasks', activeProjectId],
-    queryFn: async () => (await taskClient.listTasks({ projectId: activeProjectId })).tasks,
+    queryFn: async () => taskClient.listTasks({ projectId: activeProjectId }),
     enabled: !!activeProjectId,
   });
+  const tasks = tasksResp?.tasks;
 
   const tasksByStatus = (tasks ?? []).reduce<Record<string, number>>((acc, t) => {
     const status = t.status || 'todo';
@@ -81,10 +82,10 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Organizations" value={orgs?.length ?? '—'} icon="🏢" />
-        <StatCard label="Projects" value={activeOrgId ? (projects?.length ?? '—') : '—'} icon="📁" />
-        <StatCard label="Agents" value={activeOrgId ? (agents?.length ?? '—') : '—'} icon="🤖" />
-        <StatCard label="Tasks" value={activeProjectId ? (tasks?.length ?? '—') : '—'} icon="✅" />
+        <StatCard label="Organizations" value={orgsResp?.page?.totalCount ?? '—'} icon="🏢" />
+        <StatCard label="Projects" value={activeOrgId ? (projectsResp?.page?.totalCount ?? '—') : '—'} icon="📁" />
+        <StatCard label="Agents" value={activeOrgId ? (agentsResp?.page?.totalCount ?? '—') : '—'} icon="🤖" />
+        <StatCard label="Tasks" value={activeProjectId ? (tasksResp?.page?.totalCount ?? '—') : '—'} icon="✅" />
       </div>
 
       {activeProjectId && tasks && tasks.length > 0 && (
