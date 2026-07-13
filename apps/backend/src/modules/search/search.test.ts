@@ -109,6 +109,34 @@ describe("Search Handler", () => {
     expect(res.page.totalCount).toBe(4);
   });
 
+  it("pages through results using nextCursor until the full matched set has been seen", async () => {
+    for (let i = 0; i < 4; i++) {
+      await db.insert(schemaSqlite.tasks).values({
+        id: `tsk-page-${i}`,
+        projectId,
+        title: `PageableTask ${i}`,
+        status: "todo",
+        createdAt: new Date(Date.now() - i * 1000),
+      });
+    }
+
+    const seenIds = new Set<string>();
+    let cursor: string | undefined;
+    for (let page = 0; page < 10; page++) {
+      const res: any = await impl.universalSearch({ query: "PageableTask", orgId, page: { limit: 2, cursor } }, ctx);
+      res.results.forEach((r: any) => seenIds.add(r.id));
+      cursor = res.page.nextCursor;
+      if (!cursor) break;
+    }
+
+    expect(seenIds.size).toBe(4);
+  });
+
+  it("returns an undecodable cursor gracefully instead of throwing", async () => {
+    const res = await impl.universalSearch({ query: "Findable", orgId, page: { cursor: "not-valid-base64-json" } }, ctx);
+    expect(res.results.length).toBeGreaterThan(0);
+  });
+
   it("excludes soft-deleted (binned) tasks and artifacts from results", async () => {
     const deletedTaskId = "tsk-" + crypto.randomUUID();
     const deletedArtifactId = "art-" + crypto.randomUUID();
