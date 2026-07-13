@@ -27,6 +27,14 @@ async function getEntityOrgId(db: any, entityId: string, entityType: string): Pr
   return entityType === "task" ? getTaskOrgId(db, entityId) : getArtifactOrgId(db, entityId);
 }
 
+// Distinguishes a real DB-level unique-constraint violation (a concurrent
+// createLabel call won the race for the same orgId+name) from any other
+// insert failure, so only the former gets translated to AlreadyExists.
+function isLabelNameConflict(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e);
+  return msg.includes("labels_org_id_name_idx") || msg.includes("UNIQUE constraint failed") || msg.includes("Duplicate entry");
+}
+
 // --- Handler Factory ---
 
 export const createLabelsHandler = (db: any, nc: any = null) => {
@@ -56,7 +64,16 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
         color: parsed.color || null,
       };
 
-      await insertRecord(db, labels, payload, isStandalone);
+      // The select-then-insert check above has a race window - fall back to
+      // catching the DB's own unique-constraint violation for a concurrent
+      // duplicate insert, so it surfaces as AlreadyExists instead of a raw
+      // DB error.
+      try {
+        await insertRecord(db, labels, payload, isStandalone);
+      } catch (e) {
+        if (!isLabelNameConflict(e)) throw e;
+        throw new ConnectError("a label with this name already exists in this organization", Code.AlreadyExists);
+      }
 
       const labelResp = { ...payload };
       if (nc) nc.publish("domain.label.created", Buffer.from(JSON.stringify(labelResp)));

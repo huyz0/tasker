@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import { Code } from "@connectrpc/connect";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createLabelsHandler } from "./labels.handler";
@@ -64,6 +65,19 @@ describe("Labels Handler", () => {
   it("should reject createLabel with a name already used in this org", async () => {
     await handler.createLabel({ orgId, name: "bug" }, ctx);
     await expect(handler.createLabel({ orgId, name: "bug" }, ctx)).rejects.toThrow();
+  });
+
+  it("should reject one of two concurrent createLabel calls racing for the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const results = await Promise.allSettled([
+      handler.createLabel({ orgId, name: "race" }, ctx),
+      handler.createLabel({ orgId, name: "race" }, ctx),
+    ]);
+
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
   });
 
   it("should allow the same label name in a different org", async () => {
