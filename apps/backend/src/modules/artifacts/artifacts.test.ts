@@ -10,13 +10,14 @@ describe("Artifacts Handler", () => {
   let ctx: any;
   let projectId: string;
   let otherProjectId: string;
+  let orgId: string;
 
   beforeEach(async () => {
     const setup = await setupIntegrationTest();
     db = setup.db;
     handler = createArtifactsHandler(db, null);
 
-    const orgId = "org-" + crypto.randomUUID();
+    orgId = "org-" + crypto.randomUUID();
     const userId = "user-" + crypto.randomUUID();
     const templateId = "tmpl-" + crypto.randomUUID();
     projectId = "proj-" + crypto.randomUUID();
@@ -309,6 +310,16 @@ describe("Artifacts Handler", () => {
     await expect(handler.restoreFolder({ folderId: folder.folder.id }, makeAuthContext("user-outsider"))).rejects.toThrow();
   });
 
+  it("should reject archiveFolder/restoreFolder from a non-admin org member", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Admin Only" }, ctx);
+    const memberId = "user-member-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
+    const memberCtx = makeAuthContext(memberId);
+    await expect(handler.archiveFolder({ folderId: folder.folder.id }, memberCtx)).rejects.toThrow();
+    await expect(handler.restoreFolder({ folderId: folder.folder.id }, memberCtx)).rejects.toThrow();
+  });
+
   it("should archive and restore an artifact, hiding/showing it in listArtifacts", async () => {
     const folder = await handler.createFolder({ projectId, name: "Fld" }, ctx);
     const artifact = await handler.createArtifact({ folderId: folder.folder.id, name: "Archivable Art" }, ctx);
@@ -332,6 +343,17 @@ describe("Artifacts Handler", () => {
     await expect(handler.restoreArtifact({ artifactId: artifact.artifact.id }, makeAuthContext("user-outsider"))).rejects.toThrow();
   });
 
+  it("should reject archiveArtifact/restoreArtifact from a non-admin org member", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Fld" }, ctx);
+    const artifact = await handler.createArtifact({ folderId: folder.folder.id, name: "Admin Only Art" }, ctx);
+    const memberId = "user-member-art-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
+    const memberCtx = makeAuthContext(memberId);
+    await expect(handler.archiveArtifact({ artifactId: artifact.artifact.id }, memberCtx)).rejects.toThrow();
+    await expect(handler.restoreArtifact({ artifactId: artifact.artifact.id }, memberCtx)).rejects.toThrow();
+  });
+
   // --- purge ---
 
   it("should require an artifact be archived and unlinked before it can be purged", async () => {
@@ -347,6 +369,12 @@ describe("Artifacts Handler", () => {
     await expect(handler.purgeArtifact({ artifactId: artifact.artifact.id }, ctx)).rejects.toThrow();
 
     await db.delete(schemaSqlite.taskArtifactLinks).where(eq(schemaSqlite.taskArtifactLinks.artifactId, artifact.artifact.id));
+
+    const memberId = "user-member-purge-art-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
+    await expect(handler.purgeArtifact({ artifactId: artifact.artifact.id }, makeAuthContext(memberId))).rejects.toThrow();
+
     await handler.purgeArtifact({ artifactId: artifact.artifact.id }, ctx);
 
     const remaining = await db.select().from(schemaSqlite.artifacts).where(eq(schemaSqlite.artifacts.id, artifact.artifact.id));
@@ -364,6 +392,12 @@ describe("Artifacts Handler", () => {
     await expect(handler.purgeFolder({ folderId: folder.folder.id }, ctx)).rejects.toThrow();
 
     await db.delete(schemaSqlite.artifacts).where(eq(schemaSqlite.artifacts.id, artifact.artifact.id));
+
+    const memberId = "user-member-purge-fld-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
+    await expect(handler.purgeFolder({ folderId: folder.folder.id }, makeAuthContext(memberId))).rejects.toThrow();
+
     await handler.purgeFolder({ folderId: folder.folder.id }, ctx);
 
     const remaining = await db.select().from(schemaSqlite.folders).where(eq(schemaSqlite.folders.id, folder.folder.id));

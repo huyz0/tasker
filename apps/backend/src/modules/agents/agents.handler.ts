@@ -3,7 +3,7 @@ import { eq, and, not } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUserId, assertOrgMember } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgAdmin } from "../../lib/authz";
 import { notDeleted, softDeleteById, restoreById, executePaginatedQuery, insertRecord } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
@@ -100,7 +100,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("agent not found", Code.NotFound);
-      await assertOrgMember(db, userId, result[0].orgId);
+      await assertOrgAdmin(db, userId, result[0].orgId);
 
       await softDeleteById(db, agentsSchema, parsed.agentId);
 
@@ -113,7 +113,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("agent not found", Code.NotFound);
-      await assertOrgMember(db, userId, result[0].orgId);
+      await assertOrgAdmin(db, userId, result[0].orgId);
 
       await restoreById(db, agentsSchema, parsed.agentId);
 
@@ -126,7 +126,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("agent not found", Code.NotFound);
-      await assertOrgMember(db, userId, result[0].orgId);
+      await assertOrgAdmin(db, userId, result[0].orgId);
       if (!result[0].deletedAt) {
         throw new ConnectError("agent must be archived before it can be purged", Code.FailedPrecondition);
       }

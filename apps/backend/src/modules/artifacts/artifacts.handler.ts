@@ -3,7 +3,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgAdmin, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -174,7 +174,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = ArchiveArtifactSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgAdmin(db, userId, orgId);
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       await softDeleteById(db, arts, parsed.artifactId);
@@ -186,7 +186,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = RestoreArtifactSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgAdmin(db, userId, orgId);
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       await restoreById(db, arts, parsed.artifactId);
@@ -198,7 +198,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = ArchiveFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgAdmin(db, userId, orgId);
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       await softDeleteById(db, folders, parsed.folderId);
@@ -210,7 +210,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = RestoreFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgAdmin(db, userId, orgId);
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       await restoreById(db, folders, parsed.folderId);
@@ -222,7 +222,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = PurgeArtifactSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgAdmin(db, userId, orgId);
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const existing = await db.select().from(arts).where(eq((arts as any).id, parsed.artifactId)).limit(1);
@@ -247,7 +247,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = PurgeFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgAdmin(db, userId, orgId);
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const existing = await db.select().from(folders).where(eq((folders as any).id, parsed.folderId)).limit(1);

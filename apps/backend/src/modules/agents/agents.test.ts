@@ -130,6 +130,15 @@ describe("Agents Handler Integration Tests", () => {
     await expect(handler.archiveAgent({ agentId: agentResp.agent.id }, outsiderCtx)).rejects.toThrow();
     await expect(handler.restoreAgent({ agentId: agentResp.agent.id }, outsiderCtx)).rejects.toThrow();
     await expect(handler.archiveAgent({ agentId: "agent-does-not-exist" }, ctx)).rejects.toThrow();
+
+    // A non-admin org member must not be able to archive/restore either -
+    // these are destructive operations, admin-only like project/task archiving.
+    const memberId = "user-agent-archive-member-" + Date.now().toString();
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
+    const memberCtx = makeAuthContext(memberId);
+    await expect(handler.archiveAgent({ agentId: agentResp.agent.id }, memberCtx)).rejects.toThrow();
+    await expect(handler.restoreAgent({ agentId: agentResp.agent.id }, memberCtx)).rejects.toThrow();
   });
 
   test("purgeAgent requires the agent be archived and unassigned", async () => {
@@ -161,6 +170,13 @@ describe("Agents Handler Integration Tests", () => {
     await expect(handler.purgeAgent({ agentId: agentResp.agent.id }, ctx)).rejects.toThrow();
 
     await db.delete(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.agentId, agentResp.agent.id));
+
+    // A non-admin org member must not be able to purge.
+    const memberId = "user-agent-purge-member-" + Date.now().toString();
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
+    await expect(handler.purgeAgent({ agentId: agentResp.agent.id }, makeAuthContext(memberId))).rejects.toThrow();
+
     await handler.purgeAgent({ agentId: agentResp.agent.id }, ctx);
 
     const remaining = await db.select().from(schemaSqlite.agents).where(eq(schemaSqlite.agents.id, agentResp.agent.id));
