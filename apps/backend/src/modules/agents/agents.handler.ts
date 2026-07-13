@@ -3,7 +3,7 @@ import { eq, and, not } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUserId, assertOrgMember, assertOrgAdmin } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgAdmin, assertOrgAdminOfAny } from "../../lib/authz";
 import { notDeleted, softDeleteById, restoreById, executePaginatedQuery, insertRecord } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
@@ -38,7 +38,8 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
     async createAgentRole(req: unknown, { values: contextValues }: { values: any }) {
-      requireUserId(contextValues);
+      const userId = requireUserId(contextValues);
+      await assertOrgAdminOfAny(db, userId);
       const parsed = CreateAgentRoleSchema.parse(req);
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
       const newId = `ar-${crypto.randomUUID()}`;

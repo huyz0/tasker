@@ -46,6 +46,26 @@ export async function assertOrgAdmin(db: any, userId: string, orgId: string): Pr
   }
 }
 
+/**
+ * agentRoles has no orgId column - it's a deliberately global, shared
+ * catalog (every org's agents can reuse the same personas) - so there's no
+ * single org to check admin-of. This instead requires the caller be an
+ * admin of at least one organization, so an authenticated account with no
+ * real standing anywhere can't write into a catalog every org shares.
+ */
+export async function assertOrgAdminOfAny(db: any, userId: string): Promise<void> {
+  const members = isStandalone() ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
+  const rows = await db
+    .select()
+    .from(members)
+    .where(and(eq(members.userId, userId), eq(members.role, 'admin')))
+    .limit(1);
+
+  if (!rows || rows.length === 0) {
+    throw new ConnectError('Admin role required in at least one organization', Code.PermissionDenied);
+  }
+}
+
 /** Resolves a project's orgId, throwing NotFound if the project doesn't exist. */
 export async function getProjectOrgId(db: any, projectId: string): Promise<string> {
   const projects = isStandalone() ? schemaSqlite.projects : schemaMysql.projects;
