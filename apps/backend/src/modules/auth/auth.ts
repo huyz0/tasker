@@ -3,12 +3,13 @@ import { eq, and } from 'drizzle-orm';
 import * as schemaMysql from '../../db/schema.mysql';
 import * as schemaSqlite from '../../db/schema.sqlite';
 import { config } from '../../config';
-import { createSessionToken, parseSessionCookie, verifySessionToken } from './session';
+import { createSessionToken, parseSessionCookie, verifySessionToken, SESSION_TTL_MS } from './session';
 import { logger } from '../../lib/logger';
 
 function sessionCookie(userId: string): string {
   const secure = config.nodeEnv === 'production' ? '; Secure' : '';
-  return `session=${createSessionToken(userId)}; HttpOnly; Path=/; SameSite=Lax${secure}`;
+  const maxAgeSeconds = Math.floor(SESSION_TTL_MS / 1000);
+  return `session=${createSessionToken(userId)}; HttpOnly; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`;
 }
 
 // Binds the callback to the browser session that started the OAuth flow, so

@@ -272,4 +272,20 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
     cfg.enableTestLogin = original.enableTestLogin;
     cfg.nodeEnv = original.nodeEnv;
   });
+
+  it('should set the session cookie to survive a browser restart, not just the current session', async () => {
+    const originalEnable = require('../../config').config.enableTestLogin;
+    require('../../config').config.enableTestLogin = true;
+
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/test/inject?userId=u1'));
+    const cookie = res.headers.get('set-cookie')!;
+    // Without Max-Age/Expires, browsers treat this as a session cookie and
+    // drop it on browser close, even though the JWT itself stays valid for
+    // SESSION_TTL_MS (7 days) - so persistent login never actually happens.
+    expect(cookie).toMatch(/Max-Age=\d+/);
+    const maxAge = Number(cookie.match(/Max-Age=(\d+)/)![1]);
+    expect(maxAge).toBeGreaterThan(6 * 24 * 60 * 60); // close to 7 days, allowing for rounding
+
+    require('../../config').config.enableTestLogin = originalEnable;
+  });
 });
