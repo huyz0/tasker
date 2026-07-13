@@ -107,7 +107,10 @@ export function ProjectsWizard() {
     mutationFn: async (projectId: string) => {
       await projectClient.archiveProject({ projectId });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['projects', 'bin', activeOrgId] });
+    },
   });
 
   return (

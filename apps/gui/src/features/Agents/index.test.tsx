@@ -34,11 +34,12 @@ import { AgentsDashboard } from './index';
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const utils = render(
     <QueryClientProvider client={queryClient}>
       <AgentsDashboard />
     </QueryClientProvider>
   );
+  return { ...utils, queryClient };
 }
 
 describe('AgentsDashboard', () => {
@@ -102,5 +103,19 @@ describe('AgentsDashboard', () => {
     fireEvent.click(screen.getByText('Delete'));
 
     await waitFor(() => expect(mockArchiveAgent).toHaveBeenCalledWith({ agentId: 'agent-1' }));
+  });
+
+  it('invalidates the Bin page query key after archiving an agent, so the Bin view refreshes', async () => {
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1', name: 'Agent Smith', agentRoleId: 'role-1' }] });
+    mockArchiveAgent.mockResolvedValue({});
+
+    const { queryClient } = renderPage();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
+    fireEvent.click(screen.getByText('Delete'));
+
+    await waitFor(() => expect(mockArchiveAgent).toHaveBeenCalled());
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agents', 'bin', 'org-1'] });
   });
 });

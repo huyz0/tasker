@@ -39,7 +39,10 @@ export function AgentsDashboard() {
     mutationFn: async (agentId: string) => {
       await agentClient.archiveAgent({ agentId });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents', activeOrgId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agents', activeOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['agents', 'bin', activeOrgId] });
+    },
   });
 
   const createAgentMutation = useMutation({

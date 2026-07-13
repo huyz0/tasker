@@ -49,6 +49,7 @@ export function ArtifactsBrowser() {
     },
     onSuccess: (_data, folderId) => {
       queryClient.invalidateQueries({ queryKey: ['folders', activeProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['folders', 'bin', activeProjectId] });
       if (selectedFolderId === folderId) setSelectedFolderId(null);
     },
   });
@@ -59,6 +60,7 @@ export function ArtifactsBrowser() {
     },
     onSuccess: (_data, artifactId) => {
       queryClient.invalidateQueries({ queryKey: ['artifacts', selectedFolderId] });
+      queryClient.invalidateQueries({ queryKey: ['artifacts', 'bin', activeProjectId] });
       if (selectedArtifact?.id === artifactId) setSelectedArtifact(null);
     },
   });

@@ -2,13 +2,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockListTaskTypes, mockCreateTaskType } = vi.hoisted(() => ({
+const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockListTaskTypes, mockCreateTaskType, mockArchiveProject } = vi.hoisted(() => ({
   mockListTemplates: vi.fn(),
   mockListProjects: vi.fn(),
   mockCreateProject: vi.fn(),
   mockCreateTemplate: vi.fn(),
   mockListTaskTypes: vi.fn(),
   mockCreateTaskType: vi.fn(),
+  mockArchiveProject: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -22,6 +23,7 @@ vi.mock('@connectrpc/connect', () => ({
     createTemplate: mockCreateTemplate,
     listTaskTypes: mockListTaskTypes,
     createTaskType: mockCreateTaskType,
+    archiveProject: mockArchiveProject,
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
@@ -48,11 +50,12 @@ import { ProjectsWizard } from './index';
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const utils = render(
     <QueryClientProvider client={queryClient}>
       <ProjectsWizard />
     </QueryClientProvider>
   );
+  return { ...utils, queryClient };
 }
 
 describe('ProjectsWizard', () => {
@@ -64,6 +67,8 @@ describe('ProjectsWizard', () => {
     mockListTaskTypes.mockReset();
     mockListTaskTypes.mockResolvedValue({ taskTypes: [] });
     mockCreateTaskType.mockReset();
+    mockArchiveProject.mockReset();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('disables project creation until a name is entered', async () => {
@@ -113,6 +118,21 @@ describe('ProjectsWizard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
+  });
+
+  it('invalidates the Bin page query key after archiving a project, so the Bin view refreshes', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    mockArchiveProject.mockResolvedValue({});
+
+    const { queryClient } = renderPage();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
+    fireEvent.click(screen.getByText('Delete'));
+
+    await waitFor(() => expect(mockArchiveProject).toHaveBeenCalledWith({ projectId: 'proj-1' }));
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['projects', 'bin', 'org-1'] });
   });
 
   it('creates a project template via a real API call, using real data instead of requiring the backend/CLI', async () => {

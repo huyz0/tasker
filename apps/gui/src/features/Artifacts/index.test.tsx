@@ -60,11 +60,12 @@ import { ArtifactsBrowser } from './index';
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const utils = render(
     <QueryClientProvider client={queryClient}>
       <ArtifactsBrowser />
     </QueryClientProvider>
   );
+  return { ...utils, queryClient };
 }
 
 describe('ArtifactsBrowser', () => {
@@ -107,6 +108,20 @@ describe('ArtifactsBrowser', () => {
     fireEvent.click(screen.getByText('✕'));
 
     await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalledWith({ folderId: 'fld-1' }));
+  });
+
+  it('invalidates the Bin page query keys after archiving a folder, so the Bin view refreshes', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockArchiveFolder.mockResolvedValue({});
+
+    const { queryClient } = renderPage();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('✕'));
+
+    await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalled());
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['folders', 'bin', 'proj-1'] });
   });
 
   it('shows an empty-folder message when a selected folder has no artifacts', async () => {
