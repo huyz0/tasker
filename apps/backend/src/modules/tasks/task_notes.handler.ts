@@ -26,6 +26,15 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgMember(db, userId, orgId);
 
+      const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+      const agentRows = await db.select().from(agents).where(eq((agents as any).id, parsed.agentId)).limit(1);
+      if (!agentRows || agentRows.length === 0) {
+        throw new ConnectError("agent not found", Code.NotFound);
+      }
+      if (agentRows[0].orgId !== orgId) {
+        throw new ConnectError("agent belongs to a different organization", Code.InvalidArgument);
+      }
+
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
       const newId = `tnt-${crypto.randomUUID()}`;
       const payload = {

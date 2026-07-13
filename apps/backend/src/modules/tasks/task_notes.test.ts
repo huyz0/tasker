@@ -8,6 +8,7 @@ describe("Task Notes Handler", () => {
   let handler: ReturnType<typeof createTaskNotesHandler>;
   let ctx: any;
   let taskId: string;
+  let agentId: string;
 
   beforeEach(async () => {
     const setup = await setupIntegrationTest();
@@ -18,7 +19,9 @@ describe("Task Notes Handler", () => {
     const userId = "user-" + crypto.randomUUID();
     const templateId = "tmpl-" + crypto.randomUUID();
     const projectId = "proj-" + crypto.randomUUID();
+    const agentRoleId = "ar-" + crypto.randomUUID();
     taskId = "tsk-" + crypto.randomUUID();
+    agentId = "agt-" + crypto.randomUUID();
 
     await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Org", slug: "org-" + Date.now(), createdAt: new Date() });
     await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
@@ -26,6 +29,8 @@ describe("Task Notes Handler", () => {
     await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "Tmpl", createdAt: new Date() });
     await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", createdAt: new Date() });
     await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: "Task", status: "todo", createdAt: new Date() });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "{}" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent", createdAt: new Date() });
 
     ctx = makeAuthContext(userId);
   });
@@ -35,13 +40,13 @@ describe("Task Notes Handler", () => {
   it("should create a task note", async () => {
     const res = await handler.createTaskNote({
       taskId,
-      agentId: "agent-alpha",
+      agentId,
       content: "This is a detailed AI reasoning block.",
     }, ctx);
 
     expect(res.taskNote).toBeDefined();
     expect(res.taskNote.taskId).toBe(taskId);
-    expect(res.taskNote.agentId).toBe("agent-alpha");
+    expect(res.taskNote.agentId).toBe(agentId);
     expect(res.taskNote.id).toStartWith("tnt-");
   });
 
@@ -51,7 +56,7 @@ describe("Task Notes Handler", () => {
     expect(
       handler.createTaskNote({
         taskId: "",
-        agentId: "agent-1",
+        agentId,
         content: "Test note",
       }, ctx)
     ).rejects.toThrow();
@@ -71,7 +76,7 @@ describe("Task Notes Handler", () => {
     expect(
       handler.createTaskNote({
         taskId,
-        agentId: "agent-1",
+        agentId,
         content: "",
       }, ctx)
     ).rejects.toThrow();
@@ -79,13 +84,32 @@ describe("Task Notes Handler", () => {
 
   it("should reject task note for a nonexistent task", async () => {
     expect(
-      handler.createTaskNote({ taskId: "tsk-does-not-exist", agentId: "agent-1", content: "x" }, ctx)
+      handler.createTaskNote({ taskId: "tsk-does-not-exist", agentId, content: "x" }, ctx)
     ).rejects.toThrow();
   });
 
   it("should reject task note creation from a user outside the task's org", async () => {
     expect(
-      handler.createTaskNote({ taskId, agentId: "agent-1", content: "x" }, makeAuthContext("user-outsider"))
+      handler.createTaskNote({ taskId, agentId, content: "x" }, makeAuthContext("user-outsider"))
+    ).rejects.toThrow();
+  });
+
+  it("should reject task note for a nonexistent agentId", async () => {
+    expect(
+      handler.createTaskNote({ taskId, agentId: "agt-does-not-exist", content: "x" }, ctx)
+    ).rejects.toThrow();
+  });
+
+  it("should reject task note for an agent belonging to a different org", async () => {
+    const otherOrgId = "org-other-" + crypto.randomUUID();
+    const otherAgentRoleId = "ar-other-" + crypto.randomUUID();
+    const otherAgentId = "agt-other-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other Org", slug: "org-other-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.agentRoles).values({ id: otherAgentRoleId, name: "Other Role", systemPrompt: "p", capabilities: "{}" });
+    await db.insert(schemaSqlite.agents).values({ id: otherAgentId, orgId: otherOrgId, agentRoleId: otherAgentRoleId, name: "Other Agent", createdAt: new Date() });
+
+    expect(
+      handler.createTaskNote({ taskId, agentId: otherAgentId, content: "x" }, ctx)
     ).rejects.toThrow();
   });
 
@@ -101,7 +125,7 @@ describe("Task Notes Handler", () => {
     const h = createTaskNotesHandler(db, mockNc);
     await h.createTaskNote({
       taskId,
-      agentId: "agent-x",
+      agentId,
       content: "Event propagation test",
     }, ctx);
 
@@ -112,8 +136,8 @@ describe("Task Notes Handler", () => {
   // --- listTaskNotes ---
 
   it("should list task notes for a task", async () => {
-    await handler.createTaskNote({ taskId, agentId: "a1", content: "N1" }, ctx);
-    await handler.createTaskNote({ taskId, agentId: "a2", content: "N2" }, ctx);
+    await handler.createTaskNote({ taskId, agentId, content: "N1" }, ctx);
+    await handler.createTaskNote({ taskId, agentId, content: "N2" }, ctx);
     const res = await handler.listTaskNotes({ taskId }, ctx);
     expect(res.taskNotes).toHaveLength(2);
     expect(res.taskNotes.map((n: any) => n.content)).toContain("N1");
