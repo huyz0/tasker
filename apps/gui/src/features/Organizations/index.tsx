@@ -28,6 +28,7 @@ export function OrganizationsDashboard() {
     isLoading,
     isFetchingNextPage,
     fetchNextPage,
+    hasNextPage,
   } = useInfiniteQuery({
     queryKey: ['orgs', 'paginated'],
     queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
@@ -36,6 +37,16 @@ export function OrganizationsDashboard() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
   });
+
+  // The parent-org dropdown needs every root org to pick from, not just
+  // whatever page happens to be loaded - otherwise a root org past the first
+  // page is simply impossible to select as a parent. Load the rest as soon
+  // as the "New Organization" form (which is what needs the full list) opens.
+  useEffect(() => {
+    if (showNewOrgForm && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [showNewOrgForm, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const orgsData = orgsPages?.pages.flatMap((page) => page.organizations);
   const nextCursor = orgsPages?.pages.at(-1)?.page?.nextCursor;

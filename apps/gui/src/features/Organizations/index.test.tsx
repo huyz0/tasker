@@ -149,6 +149,20 @@ describe('OrganizationsDashboard', () => {
     await waitFor(() => expect(screen.getByText('No more items to load')).toBeDefined());
   });
 
+  it('auto-loads later pages so a root org past the first page is selectable as a new org\'s parent', async () => {
+    mockActiveOrgId = 'org-1';
+    mockListOrgs
+      .mockResolvedValueOnce({ organizations: [{ id: 'org-1', name: 'Page One Root', slug: 'page-one' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ organizations: [{ id: 'org-2', name: 'Page Two Root', slug: 'page-two' }], page: {} });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Page One Root')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'New Organization' }));
+
+    await waitFor(() => expect(screen.getByText('Under Page Two Root')).toBeDefined());
+    expect(screen.getByText('Under Page One Root')).toBeDefined();
+  });
+
   it('shows and saves bin retention for the active org', async () => {
     mockActiveOrgId = 'org-1';
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Active Org', slug: 'active-org', binRetentionDays: 45 }] });
