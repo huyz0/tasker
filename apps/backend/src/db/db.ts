@@ -22,7 +22,12 @@ export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlite
     return db;
   }
 
-  const connection = await mysql.createConnection({
+  // A pool, not a single connection: db.transaction() needs a dedicated
+  // connection per in-flight transaction so concurrent requests (e.g. two
+  // createTask calls racing for the same project's next task number) get
+  // independent MySQL sessions instead of interleaving BEGIN/COMMIT state
+  // on one shared connection.
+  const connection = mysql.createPool({
     host: process.env.DB_HOST || "127.0.0.1",
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "password",
