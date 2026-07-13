@@ -20,8 +20,16 @@ export function AgentsDashboard() {
   const { data: agentsData, isLoading } = useQuery({
     queryKey: ['agents', activeOrgId],
     queryFn: async () => {
-      const resp = await agentClient.listAgents({ orgId: activeOrgId });
-      return resp.agents;
+      // The dashboard needs every agent to render deploy/archive actions
+      // correctly, not just the first page - loop until no pages remain.
+      const allAgents: Awaited<ReturnType<typeof agentClient.listAgents>>['agents'] = [];
+      let cursor: string | undefined;
+      do {
+        const resp = await agentClient.listAgents({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
+        allAgents.push(...resp.agents);
+        cursor = resp.page?.nextCursor || undefined;
+      } while (cursor);
+      return allAgents;
     }
   });
 

@@ -61,6 +61,18 @@ describe('AgentsDashboard', () => {
     expect(screen.getByText('Researcher')).toBeDefined();
   });
 
+  it('auto-loads later pages so agents past the first page are not hidden', async () => {
+    mockListAgents
+      .mockResolvedValueOnce({ agents: [{ id: 'agent-1', name: 'Page One Agent', agentRoleId: 'role-1' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ agents: [{ id: 'agent-2', name: 'Page Two Agent', agentRoleId: 'role-1' }], page: {} });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Page One Agent')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Page Two Agent')).toBeDefined());
+    expect(mockListAgents).toHaveBeenCalledWith({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
+  });
+
   it('deploys a new agent via the form', async () => {
     mockListAgents.mockResolvedValue({ agents: [] });
     mockCreateAgent.mockResolvedValue({ agent: { id: 'agent-2', name: 'New Agent', agentRoleId: 'role-1' } });
