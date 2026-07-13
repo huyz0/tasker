@@ -200,6 +200,34 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
     globalThis.fetch = originalFetch;
   });
 
+  it('should echo the CLI-supplied cliNonce back on the localhost callback', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') {
+        return new Response(JSON.stringify({ access_token: 'mock_access_token' }), { status: 200 });
+      }
+      if (urlStr === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        return new Response(JSON.stringify({ id: 'cli-user-2', email: 'cli2@example.com' }), { status: 200 });
+      }
+      return originalFetch(url, options);
+    }) as unknown as typeof fetch;
+
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login?cli=true&cliNonce=my-cli-nonce'));
+    const { state, cookie: stateCookie } = extractLoginFlow(loginRes);
+    expect(state).toContain(':my-cli-nonce');
+
+    const req = new Request(`http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`, {
+      headers: { cookie: stateCookie },
+    });
+    const res = await authRoutes.handle(req);
+
+    const location = res.headers.get('location')!;
+    expect(new URL(location).searchParams.get('nonce')).toBe('my-cli-nonce');
+
+    globalThis.fetch = originalFetch;
+  });
+
   it('should allow cookie injection when test login is enabled', async () => {
     const originalEnable = require('../../config').config.enableTestLogin;
     require('../../config').config.enableTestLogin = true;

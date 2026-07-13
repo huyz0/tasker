@@ -26,6 +26,70 @@ func TestAuthCommandMetadata(t *testing.T) {
 	}
 }
 
+func TestGenerateNonceReturnsDistinctValues(t *testing.T) {
+	a, err := generateNonce()
+	if err != nil {
+		t.Fatalf("expected generateNonce to succeed, got: %v", err)
+	}
+	if len(a) == 0 {
+		t.Error("expected a non-empty nonce")
+	}
+	b, err := generateNonce()
+	if err != nil {
+		t.Fatalf("expected generateNonce to succeed, got: %v", err)
+	}
+	if a == b {
+		t.Error("expected two calls to generateNonce to produce distinct values")
+	}
+}
+
+func TestCallbackHandlerAcceptsAMatchingNonce(t *testing.T) {
+	ch := make(chan string, 1)
+	handler := newCallbackHandler("expected-nonce", ch)
+
+	req := httptest.NewRequest("GET", "/callback?token=real-token&nonce=expected-nonce", nil)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200 for a matching nonce, got %d", rec.Code)
+	}
+	select {
+	case token := <-ch:
+		if token != "real-token" {
+			t.Errorf("expected token 'real-token', got %q", token)
+		}
+	default:
+		t.Error("expected the token to be sent on the channel")
+	}
+}
+
+func TestCallbackHandlerRejectsAMismatchedOrMissingNonce(t *testing.T) {
+	ch := make(chan string, 1)
+	handler := newCallbackHandler("expected-nonce", ch)
+
+	req := httptest.NewRequest("GET", "/callback?token=attacker-token&nonce=wrong-nonce", nil)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for a mismatched nonce, got %d", rec.Code)
+	}
+	select {
+	case token := <-ch:
+		t.Errorf("expected no token to be sent on the channel, got %q", token)
+	default:
+	}
+
+	// Also reject when the nonce is missing entirely.
+	req2 := httptest.NewRequest("GET", "/callback?token=attacker-token", nil)
+	rec2 := httptest.NewRecorder()
+	handler(rec2, req2)
+	if rec2.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for a missing nonce, got %d", rec2.Code)
+	}
+}
+
 func TestLoginCommandMetadata(t *testing.T) {
 	if loginCmd.Use != "login" {
 		t.Errorf("expected loginCmd.Use 'login', got %q", loginCmd.Use)

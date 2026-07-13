@@ -90,6 +90,12 @@ export function createAuthRoutes(db: any) {
   .get('/api/auth/google/login', ({ query }) => {
     const isCli = query.cli === 'true';
     const nonce = crypto.randomUUID();
+    // The CLI generates its own nonce and never exposes it to arbitrary web
+    // content - only this login URL (which the user opens themselves) and
+    // the eventual localhost callback carry it. Echoing it back on the
+    // callback lets the CLI's local listener reject a token delivered by
+    // anything other than the login flow it actually started.
+    const cliNonce = isCli ? (query.cliNonce as string) || '' : '';
     const params = new URLSearchParams({
       client_id: config.googleClientId,
       redirect_uri: config.googleRedirectUri,
@@ -100,8 +106,9 @@ export function createAuthRoutes(db: any) {
       // Google echoes `state` back verbatim on the callback - the "cli:"/"web:"
       // prefix is how the callback knows to hand off a bearer token to the
       // CLI's local server instead of setting a browser cookie; the nonce
-      // after it is checked against oauthStateCookie to block login CSRF.
-      state: `${isCli ? 'cli' : 'web'}:${nonce}`,
+      // after it is checked against oauthStateCookie to block login CSRF,
+      // and (for cli) the trailing cliNonce is echoed back to the CLI.
+      state: isCli ? `cli:${nonce}:${cliNonce}` : `web:${nonce}`,
     });
 
     return new Response('', {
@@ -116,7 +123,7 @@ export function createAuthRoutes(db: any) {
     const code = query.code as string;
     const error = query.error as string;
     const state = (query.state as string) || '';
-    const [flow, nonce] = state.split(':');
+    const [flow, nonce, cliNonce] = state.split(':');
     const isCli = flow === 'cli';
 
     if (error) {
@@ -167,7 +174,9 @@ export function createAuthRoutes(db: any) {
 
       if (isCli) {
         const token = createSessionToken(profile.id);
-        const headers = new Headers({ location: `http://localhost:${CLI_CALLBACK_PORT}/callback?token=${encodeURIComponent(token)}` });
+        const callbackParams = new URLSearchParams({ token });
+        if (cliNonce) callbackParams.set('nonce', cliNonce);
+        const headers = new Headers({ location: `http://localhost:${CLI_CALLBACK_PORT}/callback?${callbackParams.toString()}` });
         headers.append('set-cookie', clearOauthStateCookie());
         return new Response('', { status: 302, headers });
       }

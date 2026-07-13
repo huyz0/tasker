@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +15,34 @@ import (
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
 )
+
+// generateNonce returns a random hex string used to bind this login attempt's
+// localhost callback to the login this process actually started - see
+// newCallbackHandler.
+func generateNonce() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// newCallbackHandler builds the /callback handler for the CLI's local OAuth
+// listener. Extracted from loginCmd.Run for testability. Only accepts a
+// callback that echoes back the nonce this specific login attempt
+// generated - rejects a token an unrelated page might fetch this endpoint
+// with, since it can't know a nonce that was never exposed to it.
+func newCallbackHandler(nonce string, ch chan<- string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("nonce") != nonce {
+			http.Error(w, "Invalid or missing nonce", http.StatusBadRequest)
+			return
+		}
+		token := r.URL.Query().Get("token")
+		ch <- token
+		fmt.Fprintf(w, "Success! You can close this window now.")
+	}
+}
 
 var authCmd = &cobra.Command{
 	Use:   "auth",
@@ -28,18 +58,20 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Login to the Tasker system via Google",
 	Run: func(cmd *cobra.Command, args []string) {
-		loginURL := fmt.Sprintf("%s/api/auth/google/login?cli=true", backend.URL())
+		nonce, err := generateNonce()
+		if err != nil {
+			cmd.PrintErrf("Failed to start login: %v\n", err)
+			return
+		}
+
+		loginURL := fmt.Sprintf("%s/api/auth/google/login?cli=true&cliNonce=%s", backend.URL(), nonce)
 		cmd.Println("Please open this URL to authenticate:")
 		cmd.Println(loginURL)
 		cmd.Printf("Waiting for callback on localhost:%d... ⏳\n", cliCallbackPort)
 
 		ch := make(chan string, 1)
 		mux := http.NewServeMux()
-		mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-			token := r.URL.Query().Get("token")
-			ch <- token
-			fmt.Fprintf(w, "Success! You can close this window now.")
-		})
+		mux.HandleFunc("/callback", newCallbackHandler(nonce, ch))
 
 		srv := &http.Server{Addr: fmt.Sprintf(":%d", cliCallbackPort), Handler: mux}
 		go srv.ListenAndServe()
