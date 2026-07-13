@@ -376,7 +376,19 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       }
 
       if (parsed.userId) {
-        await assertOrgMember(db, parsed.userId, orgId);
+        // assertOrgMember reports PermissionDenied - correct when it's the
+        // *caller* who lacks access, but here parsed.userId is the assignee,
+        // not the caller. An invalid/foreign assignee id is the caller's
+        // own bad argument, so report it as InvalidArgument instead of
+        // implying the caller's own auth is broken.
+        try {
+          await assertOrgMember(db, parsed.userId, orgId);
+        } catch (e) {
+          if (e instanceof ConnectError && e.code === Code.PermissionDenied) {
+            throw new ConnectError("userId is not a member of this task's organization", Code.InvalidArgument);
+          }
+          throw e;
+        }
       }
 
       const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;

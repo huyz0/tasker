@@ -1,4 +1,5 @@
 import { expect, test, describe } from "bun:test";
+import { Code } from "@connectrpc/connect";
 import { eq, and } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -206,7 +207,12 @@ describe("Tasks Handler Integration Tests", () => {
     // A legitimate org member trying to assign the task to an agentId that doesn't exist, or to a
     // user who isn't a member of this org, must be rejected too.
     await expect(handler.assignTask({ taskId: taskResp.task.id, agentId: "agent-does-not-exist" }, ctx)).rejects.toThrow();
-    await expect(handler.assignTask({ taskId: taskResp.task.id, userId: "user-outsider-taskman" }, ctx)).rejects.toThrow();
+    // A foreign/invalid assignee userId is the caller's own bad argument, not
+    // a permission problem with the caller - must be InvalidArgument, not
+    // PermissionDenied (which assertOrgMember would report if reused as-is).
+    await expect(
+      handler.assignTask({ taskId: taskResp.task.id, userId: "user-outsider-taskman" }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
   });
 
   test("createTask records createdBy, and task reviewers can be added/listed/removed", async () => {
