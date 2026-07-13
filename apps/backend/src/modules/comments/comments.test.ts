@@ -11,6 +11,7 @@ describe("Comments Handler", () => {
   let userId: string;
   let taskId: string;
   let artifactId: string;
+  let agentId: string;
 
   beforeEach(async () => {
     const setup = await setupIntegrationTest();
@@ -22,8 +23,10 @@ describe("Comments Handler", () => {
     const templateId = "tmpl-" + crypto.randomUUID();
     const projectId = "proj-" + crypto.randomUUID();
     const folderId = "fld-" + crypto.randomUUID();
+    const agentRoleId = "ar-" + crypto.randomUUID();
     taskId = "tsk-" + crypto.randomUUID();
     artifactId = "art-" + crypto.randomUUID();
+    agentId = "agt-" + crypto.randomUUID();
 
     await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Org", slug: "org-" + Date.now(), createdAt: new Date() });
     await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
@@ -33,6 +36,8 @@ describe("Comments Handler", () => {
     await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: "Task", status: "todo", createdAt: new Date() });
     await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: "Folder", createdAt: new Date() });
     await db.insert(schemaSqlite.artifacts).values({ id: artifactId, folderId, name: "Artifact", createdAt: new Date() });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "{}" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent", createdAt: new Date() });
 
     ctx = makeAuthContext(userId);
   });
@@ -64,11 +69,30 @@ describe("Comments Handler", () => {
     const res = await handler.createComment({
       entityId: taskId,
       entityType: "task",
-      agentId: "agent-1",
+      agentId,
       content: "Agent feedback",
     }, ctx);
-    expect(res.comment.agentId).toBe("agent-1");
+    expect(res.comment.agentId).toBe(agentId);
     expect(res.comment.userId).toBeNull();
+  });
+
+  it("should reject comment with a nonexistent agentId", async () => {
+    await expect(
+      handler.createComment({ entityId: taskId, entityType: "task", agentId: "agt-does-not-exist", content: "x" }, ctx)
+    ).rejects.toThrow();
+  });
+
+  it("should reject comment with an agentId belonging to a different org", async () => {
+    const otherOrgId = "org-other-" + crypto.randomUUID();
+    const otherAgentRoleId = "ar-other-" + crypto.randomUUID();
+    const otherAgentId = "agt-other-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other Org", slug: "org-other-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.agentRoles).values({ id: otherAgentRoleId, name: "Other Role", systemPrompt: "p", capabilities: "{}" });
+    await db.insert(schemaSqlite.agents).values({ id: otherAgentId, orgId: otherOrgId, agentRoleId: otherAgentRoleId, name: "Other Agent", createdAt: new Date() });
+
+    await expect(
+      handler.createComment({ entityId: taskId, entityType: "task", agentId: otherAgentId, content: "x" }, ctx)
+    ).rejects.toThrow();
   });
 
   it("attributes authorship to the authenticated caller, ignoring any client-supplied userId", async () => {

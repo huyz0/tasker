@@ -30,6 +30,17 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
         : await getArtifactOrgId(db, parsed.entityId);
       await assertOrgMember(db, userId, orgId);
 
+      if (parsed.agentId) {
+        const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+        const agentRows = await db.select().from(agents).where(eq((agents as any).id, parsed.agentId)).limit(1);
+        if (!agentRows || agentRows.length === 0) {
+          throw new ConnectError("agent not found", Code.NotFound);
+        }
+        if (agentRows[0].orgId !== orgId) {
+          throw new ConnectError("agent belongs to a different organization", Code.InvalidArgument);
+        }
+      }
+
       // Attribution is derived from the authenticated caller, not trusted from
       // the request body: agentId (if present) marks it as an AI note, otherwise
       // it's attributed to whoever is actually logged in - never a client-supplied userId.
