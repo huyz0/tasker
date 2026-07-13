@@ -313,18 +313,18 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       let authEmail: string | null = null;
       if (parsed.apiToken) {
         if (parsed.provider !== "github" && parsed.provider !== "bitbucket") {
-          throw new Error(`The direct-token flow is only supported for GitHub and Bitbucket, not ${parsed.provider}`);
+          throw new ConnectError(`The direct-token flow is only supported for GitHub and Bitbucket, not ${parsed.provider}`, Code.InvalidArgument);
         }
         // GitHub personal access tokens are used as a Bearer token, exactly
         // like an OAuth2 access token, so no authEmail is needed. Bitbucket's
         // Atlassian API tokens require Basic auth, hence the email.
         if (parsed.provider === "bitbucket" && !parsed.email) {
-          throw new Error("email is required alongside apiToken for Bitbucket");
+          throw new ConnectError("email is required alongside apiToken for Bitbucket", Code.InvalidArgument);
         }
         tokenToStore = parsed.apiToken;
         authEmail = parsed.provider === "bitbucket" ? parsed.email! : null;
       } else if (parsed.provider === "github") {
-        if (!parsed.oauthCode) throw new Error("oauthCode is required");
+        if (!parsed.oauthCode) throw new ConnectError("oauthCode is required", Code.InvalidArgument);
         const response = await fetch("https://github.com/login/oauth/access_token", {
           method: "POST",
           headers: {
@@ -349,7 +349,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
 
         tokenToStore = data.access_token;
       } else if (parsed.provider === "bitbucket") {
-        if (!parsed.oauthCode) throw new Error("oauthCode is required");
+        if (!parsed.oauthCode) throw new ConnectError("oauthCode is required", Code.InvalidArgument);
         // Bitbucket Cloud's OAuth2 token endpoint authenticates the client via
         // HTTP Basic (client_id:client_secret), not a body param like GitHub,
         // and expects a form-encoded body rather than JSON.
@@ -374,7 +374,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
 
         tokenToStore = data.access_token;
       } else {
-        throw new Error(`Unsupported repository provider: ${parsed.provider}`);
+        throw new ConnectError(`Unsupported repository provider: ${parsed.provider}`, Code.InvalidArgument);
       }
       const accessTokenEncrypted = encryptToken(tokenToStore);
 

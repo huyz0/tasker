@@ -1,4 +1,5 @@
 import { expect, test, describe, beforeAll, mock, afterAll } from "bun:test";
+import { Code } from "@connectrpc/connect";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import { createRepositoriesHandler } from "./repositories.handler";
 import { createProjectsHandler } from "../projects/projects.handler";
@@ -521,13 +522,16 @@ describe("Repositories Handler >", () => {
     await repHandler.syncPullRequests({ projectId: pId }, ctx2);
     expect(captured.authHeader).toBe(`Basic ${Buffer.from("user@example.com:ATATT-fake-api-token").toString("base64")}`);
 
-    // Rejecting invalid combinations: Bitbucket apiToken without email, or an unsupported provider.
+    // Rejecting invalid combinations: Bitbucket apiToken without email (caught
+    // by the request schema's own refine, before it reaches the handler body),
+    // or an unsupported provider (a caller mistake surfaced as
+    // InvalidArgument, not a generic/Unknown error).
     await expect(repHandler.addRepositoryLink({
       projectId: pId, provider: "bitbucket", remoteName: "foo/bad", apiToken: "tok",
     }, ctx2)).rejects.toThrow();
     await expect(repHandler.addRepositoryLink({
       projectId: pId, provider: "gitlab", remoteName: "foo/bad", apiToken: "tok",
-    }, ctx2)).rejects.toThrow();
+    }, ctx2)).rejects.toMatchObject({ code: Code.InvalidArgument });
   });
 
   test("GitHub direct-token links (personal access tokens) authenticate as a Bearer token, same as OAuth2", async () => {
