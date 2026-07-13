@@ -2,7 +2,7 @@ import { type ConnectRouter, ConnectError, Code } from "@connectrpc/connect";
 import { SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { like, or, and, eq, desc, sql } from "drizzle-orm";
+import { or, and, eq, desc, sql } from "drizzle-orm";
 import { requireUserId, assertOrgMember } from "../../lib/authz";
 import { notDeleted, encodeCursor, decodeCursor, buildCursorPaginationWhere } from "../../db/query-builder";
 
@@ -24,6 +24,17 @@ function decodeSearchCursor(cursor: string | undefined): { taskCursor?: string; 
   }
 }
 
+// Escapes LIKE's special characters (\, %, _) in caller-supplied query text
+// so a search for e.g. "100%" or "foo_bar" matches those literal characters
+// instead of "%"/"_" acting as SQL wildcards and matching unrelated rows.
+function escapeLikePattern(raw: string): string {
+  return raw.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function likeEscaped(column: any, pattern: string) {
+  return sql`${column} LIKE ${pattern} ESCAPE '\\'`;
+}
+
 export default (router: ConnectRouter, db: any) => {
   const isStandalone = process.env.STANDALONE === "true";
   const schema = isStandalone ? schemaSqlite : schemaMysql;
@@ -37,7 +48,7 @@ export default (router: ConnectRouter, db: any) => {
 
       const { tasks, artifacts, projects, folders } = schema;
       const results: any[] = [];
-      const searchPattern = `%${query}%`;
+      const searchPattern = `%${escapeLikePattern(query)}%`;
 
       // Split the caller's overall limit evenly between the two entity
       // types, so a single result type can't crowd out the other - a real,
@@ -50,8 +61,8 @@ export default (router: ConnectRouter, db: any) => {
         eq(projects.orgId, orgId),
         notDeleted(tasks),
         or(
-          like(tasks.title, searchPattern),
-          like(tasks.description, searchPattern)
+          likeEscaped(tasks.title, searchPattern),
+          likeEscaped(tasks.description, searchPattern)
         )
       );
       const taskCursorWhere = buildCursorPaginationWhere(decodeCursor(taskCursor), tasks.createdAt as any, tasks.id as any, "createdAt", "desc");
@@ -86,8 +97,8 @@ export default (router: ConnectRouter, db: any) => {
         eq(projects.orgId, orgId),
         notDeleted(artifacts),
         or(
-          like(artifacts.name, searchPattern),
-          like(artifacts.content, searchPattern)
+          likeEscaped(artifacts.name, searchPattern),
+          likeEscaped(artifacts.content, searchPattern)
         )
       );
       const artifactCursorWhere = buildCursorPaginationWhere(decodeCursor(artifactCursor), artifacts.createdAt as any, artifacts.id as any, "createdAt", "desc");
@@ -132,8 +143,11 @@ export default (router: ConnectRouter, db: any) => {
         ? encodeCursor(lastArtifact.createdAt instanceof Date ? lastArtifact.createdAt.getTime() : lastArtifact.createdAt, lastArtifact.id, "createdAt")
         : undefined;
 
+      // perTypeLimit is ceil(totalLimit / 2) per entity type, so the merged
+      // total can exceed totalLimit by 1 when totalLimit is odd - trim back
+      // down to the page size actually promised to the caller.
       return {
-        results,
+        results: results.slice(0, totalLimit),
         page: { totalCount, nextCursor: encodeSearchCursor(nextTaskCursor, nextArtifactCursor) },
       };
     },

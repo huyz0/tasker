@@ -109,6 +109,34 @@ describe("Search Handler", () => {
     expect(res.page.totalCount).toBe(4);
   });
 
+  it("never returns more results than page.limit, even when the limit is odd", async () => {
+    for (let i = 0; i < 4; i++) {
+      await db.insert(schemaSqlite.tasks).values({ id: `tsk-odd-${i}`, projectId, title: `OddLimitable Task ${i}`, status: "todo", createdAt: new Date() });
+    }
+    const folderId = "fld-odd-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: "Folder Odd", createdAt: new Date() });
+    for (let i = 0; i < 4; i++) {
+      await db.insert(schemaSqlite.artifacts).values({ id: `art-odd-${i}`, folderId, name: `OddLimitable Artifact ${i}`, createdAt: new Date() });
+    }
+
+    // perTypeLimit = ceil(3/2) = 2 per type; with >=2 matches of each type
+    // available, the merged total must still be capped at 3, not 4.
+    const res = await impl.universalSearch({ query: "OddLimitable", orgId, page: { limit: 3 } }, ctx);
+    expect(res.results.length).toBe(3);
+  });
+
+  it("treats _ in the search query as a literal character, not a SQL single-char wildcard", async () => {
+    await db.insert(schemaSqlite.tasks).values({ id: "tsk-literal-" + crypto.randomUUID(), projectId, title: "foo_bar release", status: "todo", createdAt: new Date() });
+    // Unescaped, the pattern "%o_b%" would also match this via its "oob"
+    // substring (the "_" wildcard matching the middle "o").
+    await db.insert(schemaSqlite.tasks).values({ id: "tsk-decoy-" + crypto.randomUUID(), projectId, title: "foobar unrelated", status: "todo", createdAt: new Date() });
+
+    const res = await impl.universalSearch({ query: "o_b", orgId }, ctx);
+    const titles = res.results.map((r: any) => r.title);
+    expect(titles).toContain("foo_bar release");
+    expect(titles).not.toContain("foobar unrelated");
+  });
+
   it("pages through results using nextCursor until the full matched set has been seen", async () => {
     for (let i = 0; i < 4; i++) {
       await db.insert(schemaSqlite.tasks).values({
