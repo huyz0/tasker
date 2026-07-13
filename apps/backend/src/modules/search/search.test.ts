@@ -125,6 +125,34 @@ describe("Search Handler", () => {
     expect(res.results.length).toBe(3);
   });
 
+  it("does not skip an artifact trimmed off by an odd page.limit when paging through all results", async () => {
+    // perTypeLimit = ceil(3/2) = 2 per type; with 2 tasks + 2 artifacts
+    // matching, the first page fetches 2+2=4 and trims to 3, dropping one
+    // artifact. That artifact must still surface on a later page instead of
+    // being permanently skipped by a cursor that points past it.
+    for (let i = 0; i < 2; i++) {
+      await db.insert(schemaSqlite.tasks).values({ id: `tsk-oddpage-${i}`, projectId, title: `OddPageable Task ${i}`, status: "todo", createdAt: new Date(Date.now() - i * 1000) });
+    }
+    const folderId = "fld-oddpage-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: "Folder OddPage", createdAt: new Date() });
+    for (let i = 0; i < 2; i++) {
+      await db.insert(schemaSqlite.artifacts).values({ id: `art-oddpage-${i}`, folderId, name: `OddPageable Artifact ${i}`, createdAt: new Date(Date.now() - i * 1000) });
+    }
+
+    const seenIds = new Set<string>();
+    let cursor: string | undefined;
+    for (let page = 0; page < 10; page++) {
+      const res: any = await impl.universalSearch({ query: "OddPageable", orgId, page: { limit: 3, cursor } }, ctx);
+      res.results.forEach((r: any) => seenIds.add(r.id));
+      cursor = res.page.nextCursor;
+      if (!cursor) break;
+    }
+
+    expect(seenIds.size).toBe(4);
+    expect(seenIds.has("art-oddpage-0")).toBe(true);
+    expect(seenIds.has("art-oddpage-1")).toBe(true);
+  });
+
   it("treats _ in the search query as a literal character, not a SQL single-char wildcard", async () => {
     await db.insert(schemaSqlite.tasks).values({ id: "tsk-literal-" + crypto.randomUUID(), projectId, title: "foo_bar release", status: "todo", createdAt: new Date() });
     // Unescaped, the pattern "%o_b%" would also match this via its "oob"

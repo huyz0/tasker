@@ -133,21 +133,31 @@ export default (router: ConnectRouter, db: any) => {
 
       const totalCount = Number(taskCountRow?.count ?? 0) + Number(artifactCountRow?.count ?? 0);
 
-      const lastTask = matchedTasks[matchedTasks.length - 1];
-      const nextTaskCursor = lastTask && matchedTasks.length === perTypeLimit
-        ? encodeCursor(lastTask.createdAt instanceof Date ? lastTask.createdAt.getTime() : lastTask.createdAt, lastTask.id, "createdAt")
-        : undefined;
-
-      const lastArtifact = matchedArtifacts[matchedArtifacts.length - 1];
-      const nextArtifactCursor = lastArtifact && matchedArtifacts.length === perTypeLimit
-        ? encodeCursor(lastArtifact.createdAt instanceof Date ? lastArtifact.createdAt.getTime() : lastArtifact.createdAt, lastArtifact.id, "createdAt")
-        : undefined;
-
       // perTypeLimit is ceil(totalLimit / 2) per entity type, so the merged
       // total can exceed totalLimit by 1 when totalLimit is odd - trim back
-      // down to the page size actually promised to the caller.
+      // down to the page size actually promised to the caller. Tasks are
+      // always pushed before artifacts, so trimming only ever drops
+      // artifacts; cursors must be derived from the last *kept* row of each
+      // type, not the last *fetched* one, or a trimmed-off row is skipped
+      // over forever (never returned on this page or any later one).
+      const keptResults = results.slice(0, totalLimit);
+      const keptTaskCount = Math.min(matchedTasks.length, totalLimit);
+      const keptArtifactCount = keptResults.length - keptTaskCount;
+
+      const lastKeptTask = matchedTasks[keptTaskCount - 1];
+      const moreTasksBeyondFetch = matchedTasks.length === perTypeLimit;
+      const nextTaskCursor = lastKeptTask && (keptTaskCount < matchedTasks.length || moreTasksBeyondFetch)
+        ? encodeCursor(lastKeptTask.createdAt instanceof Date ? lastKeptTask.createdAt.getTime() : lastKeptTask.createdAt, lastKeptTask.id, "createdAt")
+        : undefined;
+
+      const lastKeptArtifact = matchedArtifacts[keptArtifactCount - 1];
+      const moreArtifactsBeyondFetch = matchedArtifacts.length === perTypeLimit;
+      const nextArtifactCursor = lastKeptArtifact && (keptArtifactCount < matchedArtifacts.length || moreArtifactsBeyondFetch)
+        ? encodeCursor(lastKeptArtifact.createdAt instanceof Date ? lastKeptArtifact.createdAt.getTime() : lastKeptArtifact.createdAt, lastKeptArtifact.id, "createdAt")
+        : undefined;
+
       return {
-        results: results.slice(0, totalLimit),
+        results: keptResults,
         page: { totalCount, nextCursor: encodeSearchCursor(nextTaskCursor, nextArtifactCursor) },
       };
     },
