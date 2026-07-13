@@ -181,6 +181,17 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       await assertOrgMember(db, userId, typeRows[0].orgId);
 
       const statuses = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
+      // Two statuses with the same name under one task type would make
+      // validateStatusForTaskType's name-based lookup silently pick
+      // whichever row comes first, hiding transition edges configured
+      // against the "other" duplicate.
+      const existing = await db.select().from(statuses)
+        .where(and(eq((statuses as any).taskTypeId, parsed.taskTypeId), eq((statuses as any).name, parsed.name)))
+        .limit(1);
+      if (existing.length > 0) {
+        throw new ConnectError("a status with this name already exists for this task type", Code.AlreadyExists);
+      }
+
       const newId = `tst-${crypto.randomUUID()}`;
       const payload = { id: newId, taskTypeId: parsed.taskTypeId, name: parsed.name };
 

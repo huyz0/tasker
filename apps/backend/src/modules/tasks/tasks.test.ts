@@ -484,6 +484,13 @@ describe("Tasks Handler Integration Tests", () => {
       typesHandler.createTaskStatus({ taskTypeId: "does-not-exist", name: "x" }, ctx)
     ).rejects.toThrow();
 
+    // A duplicate status name for the same task type would let
+    // validateStatusForTaskType's name lookup silently resolve to the wrong
+    // row, hiding transition edges configured against the other duplicate.
+    await expect(
+      typesHandler.createTaskStatus({ taskTypeId, name: "open" }, ctx)
+    ).rejects.toThrow();
+
     // Creating a task with a status outside the now-configured enum is rejected.
     await expect(
       taskHandler.createTask({ projectId: pResp.project.id, title: "Wrong Status", status: "todo", taskTypeId }, ctx)
