@@ -339,12 +339,12 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to exchange GitHub token`);
+          throw new ConnectError(`Failed to exchange GitHub token: oauthCode is likely invalid or expired`, Code.InvalidArgument);
         }
 
         const data = await response.json() as any;
         if (data.error) {
-          throw new Error(`GitHub OAuth error: ${data.error_description || data.error}`);
+          throw new ConnectError(`GitHub OAuth error: ${data.error_description || data.error}`, Code.InvalidArgument);
         }
 
         tokenToStore = data.access_token;
@@ -364,12 +364,12 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to exchange Bitbucket token`);
+          throw new ConnectError(`Failed to exchange Bitbucket token: oauthCode is likely invalid or expired`, Code.InvalidArgument);
         }
 
         const data = await response.json() as any;
         if (data.error) {
-          throw new Error(`Bitbucket OAuth error: ${data.error_description || data.error}`);
+          throw new ConnectError(`Bitbucket OAuth error: ${data.error_description || data.error}`, Code.InvalidArgument);
         }
 
         tokenToStore = data.access_token;

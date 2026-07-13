@@ -29,10 +29,13 @@ describe("Repositories Handler >", () => {
     globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
       if (url.toString() === "https://github.com/login/oauth/access_token") {
         const body = JSON.parse(options?.body as string);
+        if (body.code === "expired-code") return new Response("", { status: 401 });
+        if (body.code === "revoked-code") return new Response(JSON.stringify({ error: "bad_verification_code" }), { status: 200 });
         return new Response(JSON.stringify({ access_token: "mock_token_" + body.code }), { status: 200 });
       }
       if (url.toString() === "https://bitbucket.org/site/oauth2/access_token") {
         const body = new URLSearchParams(options?.body as string);
+        if (body.get("code") === "expired-code") return new Response("", { status: 401 });
         return new Response(JSON.stringify({ access_token: "mock_bb_token_" + body.get("code") }), { status: 200 });
       }
       return originalFetch(url, options);
@@ -106,6 +109,28 @@ describe("Repositories Handler >", () => {
     await expect(repHandler.addRepositoryLink({
       projectId, provider: "github", remoteName: "x/y", oauthCode: "z",
     }, makeAuthContext("usr-1-member"))).rejects.toThrow();
+  });
+
+  test("addRepositoryLink reports InvalidArgument, not a bare internal error, when the oauthCode is bad", async () => {
+    const projResp = await pHandler.createProject({
+      orgId: "org-1", templateId: "tpl-1", name: "OAuth Failure Product", ownerId: "usr-1",
+    }, ctx1);
+    const projectId = projResp.project.id;
+
+    // GitHub's token endpoint returns a non-2xx for an expired/already-used code.
+    await expect(repHandler.addRepositoryLink({
+      projectId, provider: "github", remoteName: "huyz0/oauth-fail", oauthCode: "expired-code",
+    }, ctx1)).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // GitHub can also return 200 with an `error` field in the body.
+    await expect(repHandler.addRepositoryLink({
+      projectId, provider: "github", remoteName: "huyz0/oauth-fail-2", oauthCode: "revoked-code",
+    }, ctx1)).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // Bitbucket's token endpoint returns a non-2xx for an expired/already-used code.
+    await expect(repHandler.addRepositoryLink({
+      projectId, provider: "bitbucket", remoteName: "huyz0/oauth-fail-bb", oauthCode: "expired-code",
+    }, ctx1)).rejects.toMatchObject({ code: Code.InvalidArgument });
   });
 
   test("should mask tokens on list fetching", async () => {
