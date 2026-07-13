@@ -252,8 +252,10 @@ describe("Tasks Handler Integration Tests", () => {
     expect(listResp.reviewers.length).toBe(1);
     expect(listResp.reviewers[0].userId).toBe(reviewerId);
 
-    // Cannot add a reviewer who isn't a member of the task's org.
-    await expect(handler.addTaskReviewer({ taskId: taskResp.task.id, userId: outsiderId }, ctx)).rejects.toThrow();
+    // Cannot add a reviewer who isn't a member of the task's org; reported as
+    // InvalidArgument since userId (the reviewer) is bad input, not a caller auth failure.
+    await expect(handler.addTaskReviewer({ taskId: taskResp.task.id, userId: outsiderId }, ctx))
+      .rejects.toMatchObject({ code: Code.InvalidArgument });
 
     // Outsiders cannot manage or view reviewers on a task outside their org.
     const outsiderCtx = makeAuthContext(outsiderId);

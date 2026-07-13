@@ -408,7 +408,14 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const parsed = AddTaskReviewerSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgMember(db, userId, orgId);
-      await assertOrgMember(db, parsed.userId, orgId);
+      try {
+        await assertOrgMember(db, parsed.userId, orgId);
+      } catch (e) {
+        if (e instanceof ConnectError && e.code === Code.PermissionDenied) {
+          throw new ConnectError("userId is not a member of this task's organization", Code.InvalidArgument);
+        }
+        throw e;
+      }
 
       const reviewers = isStandalone ? schemaSqlite.taskReviewers : schemaMysql.taskReviewers;
       const existing = await db.select().from(reviewers)
