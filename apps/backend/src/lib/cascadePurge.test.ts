@@ -1,8 +1,8 @@
 import { expect, test, describe } from "bun:test";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { setupIntegrationTest } from "../test/setup";
 import * as schemaSqlite from "../db/schema.sqlite";
-import { purgeTaskCascade, purgeArtifactCascade, purgeOrgCascade } from "./cascadePurge";
+import { purgeTaskCascade, purgeArtifactCascade, purgeOrgCascade, purgeProjectCascade, purgeFolderCascade } from "./cascadePurge";
 
 describe("cascadePurge", () => {
   test("purgeTaskCascade deletes the task's entityLabels rows", async () => {
@@ -87,5 +87,102 @@ describe("cascadePurge", () => {
     expect(remainingStatuses.length).toBe(0);
     const remainingTransitions = await db.select().from(schemaSqlite.taskStatusTransitions).where(eq(schemaSqlite.taskStatusTransitions.taskTypeId, taskTypeId));
     expect(remainingTransitions.length).toBe(0);
+  });
+
+  // These exercise the bulk-collect-then-inArray-delete paths with more
+  // than one row per table - the actual risk surface of switching from a
+  // per-child-row loop to a single SELECT + bulk DELETE per table.
+  test("purgeFolderCascade removes a multi-level folder tree and every artifact beneath it", async () => {
+    const { db } = await setupIntegrationTest();
+
+    const orgId = "org-cascade-tree-" + Date.now();
+    const userId = "user-cascade-tree-" + Date.now();
+    const templateId = "tmpl-cascade-tree-" + Date.now();
+    const projectId = "proj-cascade-tree-" + Date.now();
+    const rootId = "fld-root-" + Date.now();
+    const childId = "fld-child-" + Date.now();
+    const grandchildId = "fld-grandchild-" + Date.now();
+    const artifactIds = [rootId, childId, grandchildId].map((f) => `art-${f}`);
+
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Org", slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "Tmpl", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", createdAt: new Date() });
+    await db.insert(schemaSqlite.folders).values({ id: rootId, projectId, name: "root", createdAt: new Date() });
+    await db.insert(schemaSqlite.folders).values({ id: childId, projectId, parentId: rootId, name: "child", createdAt: new Date() });
+    await db.insert(schemaSqlite.folders).values({ id: grandchildId, projectId, parentId: childId, name: "grandchild", createdAt: new Date() });
+    for (const [folderId, artifactId] of [[rootId, artifactIds[0]], [childId, artifactIds[1]], [grandchildId, artifactIds[2]]] as const) {
+      await db.insert(schemaSqlite.artifacts).values({ id: artifactId, folderId, name: artifactId, createdAt: new Date() });
+    }
+
+    await purgeFolderCascade(db, rootId);
+
+    const remainingFolders = await db.select().from(schemaSqlite.folders).where(inArray(schemaSqlite.folders.id, [rootId, childId, grandchildId]));
+    expect(remainingFolders.length).toBe(0);
+    const remainingArtifacts = await db.select().from(schemaSqlite.artifacts).where(inArray(schemaSqlite.artifacts.id, artifactIds));
+    expect(remainingArtifacts.length).toBe(0);
+  });
+
+  test("purgeProjectCascade removes multiple tasks, folders, repository links, and task types in one pass", async () => {
+    const { db } = await setupIntegrationTest();
+
+    const orgId = "org-cascade-proj-" + Date.now();
+    const userId = "user-cascade-proj-" + Date.now();
+    const templateId = "tmpl-cascade-proj-" + Date.now();
+    const projectId = "proj-cascade-proj-" + Date.now();
+    const taskIds = ["tsk-a-" + Date.now(), "tsk-b-" + Date.now()];
+    const folderIds = ["fld-a-" + Date.now(), "fld-b-" + Date.now()];
+    const repoLinkIds = ["repo-a-" + Date.now(), "repo-b-" + Date.now()];
+    const taskTypeId = "tt-cascade-proj-" + Date.now();
+    const statusId = "ts-cascade-proj-" + Date.now();
+
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Org", slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "Tmpl", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", createdAt: new Date() });
+    for (const taskId of taskIds) {
+      await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: taskId, status: "todo", createdAt: new Date() });
+    }
+    for (const folderId of folderIds) {
+      await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: folderId, createdAt: new Date() });
+    }
+    for (const repoLinkId of repoLinkIds) {
+      await db.insert(schemaSqlite.repositoryLinks).values({ id: repoLinkId, projectId, provider: "github", remoteName: "org/repo", accessTokenEncrypted: "enc", createdAt: new Date() });
+      await db.insert(schemaSqlite.remotePullRequests).values({ id: `pr-${repoLinkId}`, repositoryLinkId: repoLinkId, remotePrId: "1", title: "PR", status: "open", url: "https://example.com", updatedAt: new Date() });
+    }
+    await db.insert(schemaSqlite.taskTypes).values({ id: taskTypeId, orgId, projectId, name: "Type", createdAt: new Date() });
+    await db.insert(schemaSqlite.taskStatuses).values({ id: statusId, taskTypeId, name: "backlog" });
+
+    await purgeProjectCascade(db, projectId);
+
+    expect((await db.select().from(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, projectId))).length).toBe(0);
+    expect((await db.select().from(schemaSqlite.tasks).where(inArray(schemaSqlite.tasks.id, taskIds))).length).toBe(0);
+    expect((await db.select().from(schemaSqlite.folders).where(inArray(schemaSqlite.folders.id, folderIds))).length).toBe(0);
+    expect((await db.select().from(schemaSqlite.repositoryLinks).where(inArray(schemaSqlite.repositoryLinks.id, repoLinkIds))).length).toBe(0);
+    expect((await db.select().from(schemaSqlite.remotePullRequests).where(inArray(schemaSqlite.remotePullRequests.repositoryLinkId, repoLinkIds))).length).toBe(0);
+    expect((await db.select().from(schemaSqlite.taskTypes).where(eq(schemaSqlite.taskTypes.id, taskTypeId))).length).toBe(0);
+    expect((await db.select().from(schemaSqlite.taskStatuses).where(eq(schemaSqlite.taskStatuses.taskTypeId, taskTypeId))).length).toBe(0);
+  });
+
+  test("purgeOrgCascade nulls out comment.agentId and removes multiple agents", async () => {
+    const { db } = await setupIntegrationTest();
+
+    const orgId = "org-cascade-agents-" + Date.now();
+    const agentRoleId = "role-cascade-" + Date.now();
+    const agentIds = ["agt-a-" + Date.now(), "agt-b-" + Date.now()];
+    const taskId = "tsk-cascade-agents-" + Date.now();
+
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Org", slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "[]", createdAt: new Date() });
+    for (const agentId of agentIds) {
+      await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: agentId, createdAt: new Date() });
+    }
+    await db.insert(schemaSqlite.comments).values({ id: "cmt-cascade-" + Date.now(), entityId: taskId, entityType: "task", agentId: agentIds[0], content: "hi", createdAt: new Date() });
+
+    await purgeOrgCascade(db, orgId);
+
+    expect((await db.select().from(schemaSqlite.agents).where(inArray(schemaSqlite.agents.id, agentIds))).length).toBe(0);
+    const remainingComment = await db.select().from(schemaSqlite.comments).where(eq(schemaSqlite.comments.entityId, taskId));
+    expect(remainingComment[0]?.agentId).toBeNull();
   });
 });
