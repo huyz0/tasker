@@ -61,8 +61,14 @@ function BuildsPanel({ repositoryLinkId }: { repositoryLinkId: string }) {
   const { data: builds, isLoading, error } = useQuery({
     queryKey: ['builds', repositoryLinkId],
     queryFn: async () => {
-      const resp = await repositoryClient.listBuilds({ repositoryLinkId });
-      return resp.builds;
+      const allBuilds: Awaited<ReturnType<typeof repositoryClient.listBuilds>>['builds'] = [];
+      let cursor: string | undefined;
+      do {
+        const resp = await repositoryClient.listBuilds({ repositoryLinkId, page: cursor ? { cursor } : undefined });
+        allBuilds.push(...resp.builds);
+        cursor = resp.page?.nextCursor || undefined;
+      } while (cursor);
+      return allBuilds;
     },
   });
 
@@ -102,8 +108,14 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
   const { data, isLoading, error } = useQuery({
     queryKey: ['repositoryLinks', projectId],
     queryFn: async () => {
-      const resp = await repositoryClient.listRepositoryLinks({ projectId });
-      return resp.links;
+      const allLinks: Awaited<ReturnType<typeof repositoryClient.listRepositoryLinks>>['links'] = [];
+      let cursor: string | undefined;
+      do {
+        const resp = await repositoryClient.listRepositoryLinks({ projectId, page: cursor ? { cursor } : undefined });
+        allLinks.push(...resp.links);
+        cursor = resp.page?.nextCursor || undefined;
+      } while (cursor);
+      return allLinks;
     }
   });
 

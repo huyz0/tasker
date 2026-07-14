@@ -197,13 +197,35 @@ describe('RepositoryIntegrationConfig', () => {
     await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
     fireEvent.click(screen.getByText('Show Builds'));
 
-    await waitFor(() => expect(mockListBuilds).toHaveBeenCalledWith({ repositoryLinkId: 'link-1' }));
+    await waitFor(() => expect(mockListBuilds).toHaveBeenCalledWith({ repositoryLinkId: 'link-1', page: undefined }));
     await waitFor(() => expect(screen.getByText('abc1234')).toBeDefined());
 
     fireEvent.click(screen.getByText('abc1234'));
 
     await waitFor(() => expect(mockListDeployments).toHaveBeenCalledWith({ buildId: 'build-1', repositoryLinkId: 'link-1', commitSha: 'abc1234def' }));
     await waitFor(() => expect(screen.getByText('STAGING')).toBeDefined());
+  });
+
+  test('auto-loads later pages so repository links and builds past the first page are shown', async () => {
+    mockListRepositoryLinks
+      .mockResolvedValueOnce({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/page-one' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ links: [{ id: 'link-2', provider: 'github', remoteName: 'huyz0/page-two' }], page: {} });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockListBuilds
+      .mockResolvedValueOnce({ builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'aaa1111aaa' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ builds: [{ id: 'build-2', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'bbb2222bbb' }], page: {} });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('huyz0/page-one', { exact: false })).toBeDefined());
+    expect(screen.getByText('huyz0/page-two', { exact: false })).toBeDefined();
+    expect(mockListRepositoryLinks).toHaveBeenCalledWith({ projectId: 'proj-123', page: { cursor: 'cursor-2' } });
+
+    fireEvent.click(screen.getAllByText('Show Builds')[0]);
+
+    await waitFor(() => expect(screen.getByText('aaa1111')).toBeDefined());
+    expect(screen.getByText('bbb2222')).toBeDefined();
+    expect(mockListBuilds).toHaveBeenCalledWith({ repositoryLinkId: 'link-1', page: { cursor: 'cursor-2' } });
   });
 
   test('shows an empty state when a repository link has no builds', async () => {
