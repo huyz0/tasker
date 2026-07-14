@@ -16,15 +16,18 @@ import (
 
 type fakeAgentHandler struct {
 	v1connect.UnimplementedAgentServiceHandler
-	archivedID string
-	restoredID string
-	purgedID   string
+	archivedID  string
+	restoredID  string
+	purgedID    string
+	gotListPage *healthv1.PageRequest
+	gotRolePage *healthv1.PageRequest
 }
 
 func (f *fakeAgentHandler) ListAgents(
 	_ context.Context,
 	req *connect.Request[healthv1.ListAgentsRequest],
 ) (*connect.Response[healthv1.ListAgentsResponse], error) {
+	f.gotListPage = req.Msg.Page
 	return connect.NewResponse(&healthv1.ListAgentsResponse{
 		Agents: []*healthv1.Agent{
 			{Id: "ag_1", OrgId: req.Msg.OrgId, AgentRoleId: "ar_1", Name: "Reviewer Bot"},
@@ -43,8 +46,9 @@ func (f *fakeAgentHandler) CreateAgent(
 
 func (f *fakeAgentHandler) ListAgentRoles(
 	_ context.Context,
-	_ *connect.Request[healthv1.ListAgentRolesRequest],
+	req *connect.Request[healthv1.ListAgentRolesRequest],
 ) (*connect.Response[healthv1.ListAgentRolesResponse], error) {
+	f.gotRolePage = req.Msg.Page
 	return connect.NewResponse(&healthv1.ListAgentRolesResponse{
 		Roles: []*healthv1.AgentRole{{Id: "ar_1", Name: "Reviewer"}},
 	}), nil
@@ -93,18 +97,22 @@ func withAgentServer(t *testing.T, h *fakeAgentHandler) {
 }
 
 func TestAgentsListCmd(t *testing.T) {
-	withAgentServer(t, &fakeAgentHandler{})
+	fake := &fakeAgentHandler{}
+	withAgentServer(t, fake)
 
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
-	rootCmd.SetArgs([]string{"agents", "list", "--org", "org-1"})
+	rootCmd.SetArgs([]string{"agents", "list", "--org", "org-1", "--cursor", "cursor-2", "--limit", "10"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
 	if !strings.Contains(out, "Reviewer Bot") {
 		t.Fatalf("expected output to contain the listed agent, got %s", out)
+	}
+	if fake.gotListPage == nil || fake.gotListPage.Cursor != "cursor-2" || fake.gotListPage.Limit != 10 {
+		t.Fatalf("expected cursor/limit to be forwarded, got %+v", fake.gotListPage)
 	}
 }
 
@@ -125,18 +133,22 @@ func TestAgentsCreateCmd(t *testing.T) {
 }
 
 func TestAgentsListRolesCmd(t *testing.T) {
-	withAgentServer(t, &fakeAgentHandler{})
+	fake := &fakeAgentHandler{}
+	withAgentServer(t, fake)
 
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
-	rootCmd.SetArgs([]string{"agents", "list-roles"})
+	rootCmd.SetArgs([]string{"agents", "list-roles", "--cursor", "cursor-2", "--limit", "10"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
 	if !strings.Contains(out, "Reviewer") {
 		t.Fatalf("expected output to contain the listed role, got %s", out)
+	}
+	if fake.gotRolePage == nil || fake.gotRolePage.Cursor != "cursor-2" || fake.gotRolePage.Limit != 10 {
+		t.Fatalf("expected cursor/limit to be forwarded, got %+v", fake.gotRolePage)
 	}
 }
 

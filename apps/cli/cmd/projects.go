@@ -24,6 +24,8 @@ var projectsListCmd = &cobra.Command{
 		orgID, _ := cmd.Flags().GetString("org")
 		filter, _ := cmd.Flags().GetString("filter")
 		sort, _ := cmd.Flags().GetString("sort")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
 		}
@@ -35,7 +37,7 @@ var projectsListCmd = &cobra.Command{
 		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		res, err := client.ListProjects(context.Background(), connect.NewRequest(&healthv1.ListProjectsRequest{
 			OrgId: orgID,
-			Page:  &healthv1.PageRequest{Filter: filter, Sort: sort},
+			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list projects: %v\n", err)
@@ -176,4 +178,6 @@ func init() {
 	projectsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	projectsListCmd.Flags().StringP("filter", "f", "", "Substring match against project name")
 	projectsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
+	projectsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	projectsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 }

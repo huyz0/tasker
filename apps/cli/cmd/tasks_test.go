@@ -149,3 +149,46 @@ func TestTasksReviewerCommands(t *testing.T) {
 		t.Errorf("Expected reviewer to be removed from list, got %s", b.String())
 	}
 }
+
+type fakeTaskListHandler struct {
+	v1connect.UnimplementedTaskServiceHandler
+	gotPage *healthv1.PageRequest
+}
+
+func (f *fakeTaskListHandler) ListTasks(
+	_ context.Context,
+	req *connect.Request[healthv1.ListTasksRequest],
+) (*connect.Response[healthv1.ListTasksResponse], error) {
+	f.gotPage = req.Msg.Page
+	return connect.NewResponse(&healthv1.ListTasksResponse{}), nil
+}
+
+// Without --cursor and --limit wired through, "tasks list" could never page
+// past the server's default page size - the --sort flag's help text claimed
+// "works with --cursor for paging" but no such flag was ever registered.
+func TestTasksListCmdForwardsCursorAndLimit(t *testing.T) {
+	fake := &fakeTaskListHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "list", "--project", "proj-1", "--cursor", "cursor-2", "--limit", "10", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks list failed: %v", err)
+	}
+
+	if fake.gotPage == nil {
+		t.Fatal("expected a Page to be sent")
+	}
+	if fake.gotPage.Cursor != "cursor-2" {
+		t.Errorf("expected cursor to be forwarded, got %q", fake.gotPage.Cursor)
+	}
+	if fake.gotPage.Limit != 10 {
+		t.Errorf("expected limit to be forwarded, got %d", fake.gotPage.Limit)
+	}
+}

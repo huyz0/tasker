@@ -24,6 +24,8 @@ var agentsListCmd = &cobra.Command{
 		orgID, _ := cmd.Flags().GetString("org")
 		filter, _ := cmd.Flags().GetString("filter")
 		sort, _ := cmd.Flags().GetString("sort")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
 		}
@@ -35,7 +37,7 @@ var agentsListCmd = &cobra.Command{
 		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		res, err := client.ListAgents(context.Background(), connect.NewRequest(&healthv1.ListAgentsRequest{
 			OrgId: orgID,
-			Page:  &healthv1.PageRequest{Filter: filter, Sort: sort},
+			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list agents: %v\n", err)
@@ -97,10 +99,12 @@ var agentsListRolesCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 		filter, _ := cmd.Flags().GetString("filter")
 		sort, _ := cmd.Flags().GetString("sort")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 
 		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		res, err := client.ListAgentRoles(context.Background(), connect.NewRequest(&healthv1.ListAgentRolesRequest{
-			Page: &healthv1.PageRequest{Filter: filter, Sort: sort},
+			Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list agent roles: %v\n", err)
@@ -212,9 +216,13 @@ func init() {
 	agentsCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	agentsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	agentsListCmd.Flags().StringP("filter", "f", "", "Substring match against agent name")
-	agentsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\"")
+	agentsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
+	agentsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	agentsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	agentsListRolesCmd.Flags().StringP("filter", "f", "", "Substring match against role name")
-	agentsListRolesCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\"")
+	agentsListRolesCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
+	agentsListRolesCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	agentsListRolesCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	agentsCreateRoleCmd.Flags().String("name", "", "Role name")
 	agentsCreateRoleCmd.Flags().String("system-prompt", "", "System prompt for the role")
 	agentsCreateRoleCmd.Flags().String("capabilities", "", "Capabilities/skills description for the role")

@@ -24,6 +24,8 @@ var tasksListCmd = &cobra.Command{
 		projectID, _ := cmd.Flags().GetString("project")
 		filter, _ := cmd.Flags().GetString("filter")
 		sort, _ := cmd.Flags().GetString("sort")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
 		}
@@ -40,7 +42,7 @@ var tasksListCmd = &cobra.Command{
 
 		req := connect.NewRequest(&healthv1.ListTasksRequest{
 			ProjectId: projectID,
-			Page:      &healthv1.PageRequest{Filter: filter, Sort: sort},
+			Page:      &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		})
 
 		res, err := client.ListTasks(context.Background(), req)
@@ -509,6 +511,8 @@ func init() {
 	tasksListCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	tasksListCmd.Flags().StringP("filter", "f", "", "Substring match against task title")
 	tasksListCmd.Flags().StringP("sort", "s", "", "Sort as \"title\"/\"status\" or \"title:desc\" (works with --cursor for paging)")
+	tasksListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	tasksListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	tasksCommentAddCmd.Flags().String("content", "", "Comment text")
 	tasksCommentAddCmd.Flags().String("user", "", "User ID authoring the comment")
 	tasksCommentAddCmd.Flags().String("agent", "", "Agent ID authoring the comment")
