@@ -19,8 +19,16 @@ export function LabelsManager() {
   const { data: labelsData, isLoading } = useQuery({
     queryKey: ['labels', activeOrgId],
     queryFn: async () => {
-      const resp = await labelClient.listLabels({ orgId: activeOrgId });
-      return resp.labels;
+      // Every label must be visible here (and in the label picker elsewhere),
+      // not just the first page - loop until the server reports no more.
+      const allLabels: Awaited<ReturnType<typeof labelClient.listLabels>>['labels'] = [];
+      let cursor: string | undefined;
+      do {
+        const resp = await labelClient.listLabels({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
+        allLabels.push(...resp.labels);
+        cursor = resp.page?.nextCursor || undefined;
+      } while (cursor);
+      return allLabels;
     },
     enabled: !!activeOrgId,
   });

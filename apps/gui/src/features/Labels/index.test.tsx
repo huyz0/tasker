@@ -48,6 +48,18 @@ describe('LabelsManager', () => {
     await waitFor(() => expect(screen.getByText('bug')).toBeDefined());
   });
 
+  it('auto-loads later pages so labels past the first page are not hidden', async () => {
+    mockListLabels
+      .mockResolvedValueOnce({ labels: [{ id: 'lbl-1', name: 'Page One Label' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ labels: [{ id: 'lbl-2', name: 'Page Two Label' }], page: {} });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Page One Label')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Page Two Label')).toBeDefined());
+    expect(mockListLabels).toHaveBeenCalledWith({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
+  });
+
   it('shows an empty state when there are no labels', async () => {
     mockListLabels.mockResolvedValue({ labels: [] });
 
