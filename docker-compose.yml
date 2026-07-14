@@ -13,5 +13,20 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
 
+  # Ad-hoc DB inspection during local debugging (browse rows, run one-off
+  # SQL) without needing a separately installed MySQL client. Only started
+  # if you actually run `docker compose up adminer` / include it in `up` -
+  # not wired to `restart: always` or default profiles, so it doesn't add
+  # attack surface to anyone who just wants the DB.
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    depends_on:
+      - mysql
+
 volumes:
   mysql-data:
