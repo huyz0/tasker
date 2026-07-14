@@ -36,8 +36,9 @@ vi.mock('../../components/ui/repositories/RepositoryIntegrationConfig', () => ({
 }));
 
 const mockUserId = 'user-authed-1';
+let mockAuthUserId: string | null = mockUserId;
 vi.mock('../../hooks/useAuthSession', () => ({
-  useAuthSession: () => ({ isLoading: false, authenticated: true, userId: mockUserId }),
+  useAuthSession: () => ({ isLoading: false, authenticated: !!mockAuthUserId, get userId() { return mockAuthUserId; } }),
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
@@ -68,6 +69,7 @@ describe('ProjectsWizard', () => {
     mockListTaskTypes.mockResolvedValue({ taskTypes: [] });
     mockCreateTaskType.mockReset();
     mockArchiveProject.mockReset();
+    mockAuthUserId = mockUserId;
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
@@ -184,5 +186,144 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText('Page Two Project')).toBeDefined());
     expect(mockListProjects).toHaveBeenCalledWith({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
     await waitFor(() => expect(screen.getByText('No more items to load')).toBeDefined());
+  });
+
+  it('shows empty-state messages for templates, task types, and projects', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('No templates yet - create one above.')).toBeDefined());
+    expect(screen.getByText('No task types yet - create one above.')).toBeDefined();
+    expect(screen.getByText('No projects found. Create one from a template above.')).toBeDefined();
+  });
+
+  it('shows an error message when template creation fails', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    mockCreateTemplate.mockRejectedValue(new Error('name already exists'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('+ New Template')).toBeDefined());
+    fireEvent.click(screen.getByText('+ New Template'));
+    fireEvent.change(screen.getByPlaceholderText('Template name'), { target: { value: 'Dup' } });
+    fireEvent.click(screen.getByText('Create Template'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to create template/)).toBeDefined());
+  });
+
+  it('shows an error message when task type creation fails', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    mockCreateTaskType.mockRejectedValue(new Error('name already exists'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('+ New Task Type')).toBeDefined());
+    fireEvent.click(screen.getByText('+ New Task Type'));
+    fireEvent.change(screen.getByPlaceholderText('Task type name (e.g. Bug, Epic)'), { target: { value: 'Dup' } });
+    fireEvent.click(screen.getByText('Create'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to create task type/)).toBeDefined());
+  });
+
+  it('does not archive a project when confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
+    fireEvent.click(screen.getByText('Delete'));
+
+    expect(mockArchiveProject).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when project deletion fails', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    mockArchiveProject.mockRejectedValue(new Error('has active tasks'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
+    fireEvent.click(screen.getByText('Delete'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to delete project/)).toBeDefined());
+  });
+
+  it('shows an error when creating a project with no authenticated user', async () => {
+    mockAuthUserId = null;
+    mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
+    fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Use Template' }));
+
+    await waitFor(() => expect(screen.getByText(/Failed to create project/)).toBeDefined());
+    expect(mockCreateProject).not.toHaveBeenCalled();
+  });
+
+  it('does not submit blank template or task-type forms', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('+ New Template')).toBeDefined());
+    fireEvent.click(screen.getByText('+ New Template'));
+    fireEvent.submit(screen.getByPlaceholderText('Template name').closest('form')!);
+    expect(mockCreateTemplate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('+ New Task Type'));
+    fireEvent.submit(screen.getByPlaceholderText('Task type name (e.g. Bug, Epic)').closest('form')!);
+    expect(mockCreateTaskType).not.toHaveBeenCalled();
+  });
+
+  it('shows pending labels while creating a project, a template, and a task type', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    let resolveProject: (v: any) => void = () => {};
+    mockCreateProject.mockReturnValue(new Promise((resolve) => { resolveProject = resolve; }));
+    let resolveTemplate: (v: any) => void = () => {};
+    mockCreateTemplate.mockReturnValue(new Promise((resolve) => { resolveTemplate = resolve; }));
+    let resolveTaskType: (v: any) => void = () => {};
+    mockCreateTaskType.mockReturnValue(new Promise((resolve) => { resolveTaskType = resolve; }));
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
+
+    fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Use Template' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Creating...' })).toBeInTheDocument());
+    resolveProject({ project: { id: 'proj-new', name: 'X' } });
+
+    fireEvent.click(screen.getByText('+ New Template'));
+    fireEvent.change(screen.getByPlaceholderText('Template name'), { target: { value: 'Tmpl' } });
+    fireEvent.click(screen.getByText('Create Template'));
+    await waitFor(() => expect(screen.getByText('Creating...')).toBeInTheDocument());
+    resolveTemplate({ template: { id: 'tpl-new', name: 'Tmpl' } });
+
+    fireEvent.click(screen.getByText('+ New Task Type'));
+    fireEvent.change(screen.getByPlaceholderText('Task type name (e.g. Bug, Epic)'), { target: { value: 'Bug' } });
+    fireEvent.click(screen.getByText('Create'));
+    await waitFor(() => expect(screen.getByText('Creating...')).toBeInTheDocument());
+    resolveTaskType({ taskType: { id: 'tt-new', name: 'Bug' } });
+  });
+
+  it('toggles the new-template and new-task-type forms closed via Cancel', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('+ New Template')).toBeDefined());
+    fireEvent.click(screen.getByText('+ New Template'));
+    expect(screen.getByPlaceholderText('Template name')).toBeDefined();
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.queryByPlaceholderText('Template name')).toBeNull();
+
+    fireEvent.click(screen.getByText('+ New Task Type'));
+    expect(screen.getByPlaceholderText('Task type name (e.g. Bug, Epic)')).toBeDefined();
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.queryByPlaceholderText('Task type name (e.g. Bug, Epic)')).toBeNull();
   });
 });

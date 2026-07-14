@@ -99,4 +99,41 @@ describe('OAuthCallback', () => {
     await waitFor(() => expect(screen.getByText(/doesn't match a repository link you started/)).toBeDefined());
     expect(mockAddRepositoryLink).not.toHaveBeenCalled();
   });
+
+  it('shows an error when there is no authorization code in the URL', async () => {
+    renderAt('');
+    await waitFor(() => expect(screen.getByText('No authorization code found in URL.')).toBeDefined());
+  });
+
+  it('shows an error when there is no state parameter in the URL', async () => {
+    renderAt('?code=abc123');
+    await waitFor(() => expect(screen.getByText('No state parameter found. Cannot determine project to link.')).toBeDefined());
+  });
+
+  it('shows an error when the state parameter cannot be parsed', async () => {
+    renderAt('?code=abc123&state=not-valid-base64-json!!!');
+    await waitFor(() => expect(screen.getByText('Invalid state parameter.')).toBeDefined());
+  });
+
+  it('shows an error message and a way back when the link mutation fails', async () => {
+    sessionStorage.setItem('repoLinkOauthNonce', 'nonce-abc');
+    mockAddRepositoryLink.mockRejectedValue(new Error('provider rejected the code'));
+
+    const state = encodeState({ projectId: 'proj-1', provider: 'github', remoteName: 'huyz0/tasker', nonce: 'nonce-abc' });
+    renderAt(`?code=abc123&state=${state}`);
+
+    await waitFor(() => expect(screen.getByText('provider rejected the code')).toBeDefined());
+    screen.getByRole('button', { name: 'Return to Projects' }).click();
+    expect(mockNavigate).toHaveBeenCalledWith('/projects');
+  });
+
+  it('navigates to projects on a successful link', async () => {
+    sessionStorage.setItem('repoLinkOauthNonce', 'nonce-abc');
+    mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-1', projectId: 'proj-1' } });
+
+    const state = encodeState({ projectId: 'proj-1', provider: 'github', remoteName: 'huyz0/tasker', nonce: 'nonce-abc' });
+    renderAt(`?code=abc123&state=${state}`);
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/projects'));
+  });
 });

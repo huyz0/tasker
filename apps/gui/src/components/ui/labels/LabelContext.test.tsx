@@ -1,14 +1,16 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { LabelProvider } from './LabelContext';
+import { LabelProvider, useLabels } from './LabelContext';
 import { LabelPicker } from './LabelPicker';
+import { LabelChips } from './LabelChips';
 
-const { mockListLabels, mockListEntityLabels, mockAttachLabel, mockCreateLabel } = vi.hoisted(() => ({
+const { mockListLabels, mockListEntityLabels, mockAttachLabel, mockCreateLabel, mockDetachLabel } = vi.hoisted(() => ({
   mockListLabels: vi.fn(),
   mockListEntityLabels: vi.fn(),
   mockAttachLabel: vi.fn(),
   mockCreateLabel: vi.fn(),
+  mockDetachLabel: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -19,7 +21,7 @@ vi.mock('@connectrpc/connect', () => ({
     listLabels: mockListLabels,
     listEntityLabels: mockListEntityLabels,
     attachLabel: mockAttachLabel,
-    detachLabel: vi.fn(),
+    detachLabel: mockDetachLabel,
     createLabel: mockCreateLabel,
   })),
 }));
@@ -110,5 +112,85 @@ describe('LabelProvider', () => {
 
     await waitFor(() => expect(screen.getByText(/Failed to update labels/)).toBeInTheDocument());
     expect(screen.getByText(/label already attached/)).toBeInTheDocument();
+  });
+
+  it('does not fetch available labels when there is no org id', async () => {
+    mockListEntityLabels.mockResolvedValue({ labels: [] });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <LabelProvider entityId="task-1" entityType="task" orgId="">
+          <LabelPicker />
+        </LabelProvider>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => expect(mockListEntityLabels).toHaveBeenCalled());
+    expect(mockListLabels).not.toHaveBeenCalled();
+  });
+
+  it('ignores selecting the placeholder option in the attach dropdown', async () => {
+    mockListLabels.mockResolvedValue({ labels: [{ id: 'lbl-1', name: 'bug' }], page: {} });
+    renderPicker();
+
+    await waitFor(() => expect(screen.getByText('Attach a label...')).toBeInTheDocument());
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } });
+
+    expect(mockAttachLabel).not.toHaveBeenCalled();
+  });
+
+  it('does not create a label when the form is submitted with a whitespace-only name', async () => {
+    renderPicker();
+    await waitFor(() => expect(mockListLabels).toHaveBeenCalled());
+
+    const input = screen.getByPlaceholderText('New label name') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '   ' } });
+    fireEvent.submit(input.closest('form')!);
+
+    expect(mockCreateLabel).not.toHaveBeenCalled();
+  });
+
+  it('throws when useLabels is called outside of a LabelProvider', () => {
+    function Consumer() {
+      useLabels();
+      return null;
+    }
+    // Suppress the expected React error boundary console noise.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => render(<Consumer />)).toThrow('useLabels must be used within a LabelProvider');
+    spy.mockRestore();
+  });
+
+  it('detaches an attached label through the real provider', async () => {
+    mockListEntityLabels.mockResolvedValue({ labels: [{ id: 'lbl-1', name: 'bug' }] });
+    mockListLabels.mockResolvedValue({ labels: [] });
+    mockDetachLabel.mockResolvedValue({ success: true });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <LabelProvider entityId="task-1" entityType="task" orgId="org-1">
+          <LabelChips />
+        </LabelProvider>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText('bug')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Remove label bug' }));
+
+    await waitFor(() => expect(mockDetachLabel).toHaveBeenCalledWith({ entityId: 'task-1', entityType: 'task', labelId: 'lbl-1' }));
+  });
+
+  it('does not attach when label creation succeeds without returning a label', async () => {
+    mockListLabels.mockResolvedValue({ labels: [] });
+    mockCreateLabel.mockResolvedValue({ label: undefined });
+    renderPicker();
+    await waitFor(() => expect(mockListLabels).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByPlaceholderText('New label name'), { target: { value: 'feature' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Create & attach' }).closest('form')!);
+
+    await waitFor(() => expect(mockCreateLabel).toHaveBeenCalled());
+    expect(mockAttachLabel).not.toHaveBeenCalled();
   });
 });

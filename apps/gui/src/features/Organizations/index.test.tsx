@@ -204,4 +204,175 @@ describe('OrganizationsDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(mockSetOrgRetentionDays).not.toHaveBeenCalled();
   });
+
+  it('shows a message when there are no organizations', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No organizations found - create one above.')).toBeDefined());
+  });
+
+  it('archives a root org after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockArchiveOrg.mockResolvedValue({});
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(mockArchiveOrg).toHaveBeenCalledWith({ orgId: 'org-1' }));
+  });
+
+  it('does not archive an org when confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    expect(mockArchiveOrg).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when archiving an org fails', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockArchiveOrg.mockRejectedValue(new Error('cannot delete'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(screen.getByText(/Failed to delete organization/)).toBeDefined());
+  });
+
+  it('archives a child org after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockListOrgs.mockResolvedValue({
+      organizations: [
+        { id: 'org-root', name: 'Root Co', slug: 'root-co' },
+        { id: 'org-child', name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' },
+      ],
+    });
+    mockArchiveOrg.mockResolvedValue({});
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Child Co')).toBeDefined());
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[1]);
+
+    await waitFor(() => expect(mockArchiveOrg).toHaveBeenCalledWith({ orgId: 'org-child' }));
+  });
+
+  it('selects a root org via click and via keyboard', async () => {
+    mockListOrgs.mockResolvedValue({
+      organizations: [
+        { id: 'org-root', name: 'Root Co', slug: 'root-co' },
+        { id: 'org-other', name: 'Other Co', slug: 'other-co' },
+      ],
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Other Co')).toBeDefined());
+    fireEvent.click(screen.getByText('Other Co'));
+    expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-other');
+
+    fireEvent.keyDown(screen.getByText('Root Co'), { key: 'Enter' });
+    expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-root');
+  });
+
+  it('falls back to a generated slug when the org name has no alphanumeric characters', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockSeedOrg.mockResolvedValue({ organization: { id: 'org-new', name: '!!!', slug: 'org-123' } });
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'New Organization' }));
+    fireEvent.change(screen.getByPlaceholderText('Organization name'), { target: { value: '!!!' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => expect(mockSeedOrg).toHaveBeenCalled());
+    const call = mockSeedOrg.mock.calls[0][0];
+    expect(call.slug).toMatch(/^org-\d+$/);
+  });
+
+  it('shows a pending label while creating an organization', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    let resolveSeed: (v: any) => void = () => {};
+    mockSeedOrg.mockReturnValue(new Promise((resolve) => { resolveSeed = resolve; }));
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'New Organization' }));
+    fireEvent.change(screen.getByPlaceholderText('Organization name'), { target: { value: 'Pending Co' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => expect(screen.getByText('Creating...')).toBeInTheDocument());
+    resolveSeed({ organization: { id: 'org-new', name: 'Pending Co', slug: 'pending-co' } });
+  });
+
+  it('does not select an org when an unrelated key is pressed', async () => {
+    mockActiveOrgId = 'org-root';
+    mockListOrgs.mockResolvedValue({
+      organizations: [
+        { id: 'org-root', name: 'Root Co', slug: 'root-co' },
+        { id: 'org-child', name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' },
+      ],
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Child Co')).toBeDefined());
+    mockSetActiveOrgId.mockClear();
+    fireEvent.keyDown(screen.getByText('Root Co'), { key: 'Tab' });
+    fireEvent.keyDown(screen.getByText('Child Co'), { key: 'Tab' });
+
+    expect(mockSetActiveOrgId).not.toHaveBeenCalled();
+  });
+
+  it('does not create an organization when the form is submitted with a blank name', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'New Organization' }));
+    fireEvent.submit(screen.getByPlaceholderText('Organization name').closest('form')!);
+
+    expect(mockSeedOrg).not.toHaveBeenCalled();
+  });
+
+  it('does not switch the active org when the seeded organization is not returned', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockSeedOrg.mockResolvedValue({ organization: undefined });
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'New Organization' }));
+    fireEvent.change(screen.getByPlaceholderText('Organization name'), { target: { value: 'No Org Back' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => expect(mockSeedOrg).toHaveBeenCalled());
+    expect(mockSetActiveOrgId).not.toHaveBeenCalled();
+  });
+
+  it('highlights the active root and child org with an "Active" badge', async () => {
+    mockActiveOrgId = 'org-child';
+    mockListOrgs.mockResolvedValue({
+      organizations: [
+        { id: 'org-root', name: 'Root Co', slug: 'root-co' },
+        { id: 'org-child', name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' },
+      ],
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getAllByText('Active')).toHaveLength(1));
+  });
+
+  it('selects a child org via keyboard', async () => {
+    mockListOrgs.mockResolvedValue({
+      organizations: [
+        { id: 'org-root', name: 'Root Co', slug: 'root-co' },
+        { id: 'org-child', name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' },
+      ],
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Child Co')).toBeDefined());
+    fireEvent.keyDown(screen.getByText('Child Co'), { key: ' ' });
+    expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-child');
+  });
 });

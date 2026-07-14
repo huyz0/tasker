@@ -93,4 +93,13 @@ describe('LabelsManager', () => {
 
     await waitFor(() => expect(screen.getByText('Failed to create label: name already exists')).toBeDefined());
   });
+
+  it('renders a label without a color using no inline style', async () => {
+    mockListLabels.mockResolvedValue({ labels: [{ id: 'lbl-1', name: 'uncolored' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('uncolored')).toBeDefined());
+    expect(screen.getByText('uncolored').getAttribute('style')).toBeFalsy();
+  });
 });

@@ -103,4 +103,40 @@ describe('Dashboard', () => {
     await waitFor(() => expect(screen.getByText(/pong/)).toBeDefined());
     expect(screen.getByText(/ok/)).toBeDefined();
   });
+
+  it('shows db and nats latency when provided', async () => {
+    mockPing.mockResolvedValue({ message: 'pong', dbStatus: 'ok', dbLatencyMs: 12, natsStatus: 'ok', natsLatencyMs: 3 });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/ok \(12ms\)/)).toBeDefined());
+    expect(screen.getByText(/ok \(3ms\)/)).toBeDefined();
+  });
+
+  it('shows an error message when the health ping fails', async () => {
+    mockPing.mockRejectedValue(new Error('backend unreachable'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/backend unreachable/)).toBeDefined());
+  });
+
+  it('re-pings the backend when the button is clicked', async () => {
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/pong/)).toBeDefined());
+    mockPing.mockClear();
+    screen.getByRole('button', { name: 'Ping Backend' }).click();
+
+    await waitFor(() => expect(mockPing).toHaveBeenCalled());
+  });
+
+  it('defaults a task with no status to the todo bucket', async () => {
+    mockListTasks.mockResolvedValue({
+      tasks: [{ id: 't1' }],
+      page: { totalCount: 1 },
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Tasks by Status')).toBeDefined());
+    expect(screen.getByText('Todo').previousElementSibling?.textContent).toBe('1');
+  });
 });

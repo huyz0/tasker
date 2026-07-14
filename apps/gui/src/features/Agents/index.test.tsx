@@ -130,4 +130,76 @@ describe('AgentsDashboard', () => {
     await waitFor(() => expect(mockArchiveAgent).toHaveBeenCalled());
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agents', 'bin', 'org-1'] });
   });
+
+  it('does not archive an agent when confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1', name: 'Agent Smith', agentRoleId: 'role-1' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
+    fireEvent.click(screen.getByText('Delete'));
+
+    expect(mockArchiveAgent).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when archiving an agent fails', async () => {
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1', name: 'Agent Smith', agentRoleId: 'role-1' }] });
+    mockArchiveAgent.mockRejectedValue(new Error('agent is busy'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
+    fireEvent.click(screen.getByText('Delete'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to delete agent/)).toBeDefined());
+  });
+
+  it('shows the raw role id when no matching role is found', async () => {
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1', name: 'Agent Smith', agentRoleId: 'role-unknown' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
+    expect(screen.getByText('role-unknown')).toBeDefined();
+  });
+
+  it('shows a pending label while deploying an agent', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    let resolveCreate: (v: any) => void = () => {};
+    mockCreateAgent.mockReturnValue(new Promise((resolve) => { resolveCreate = resolve; }));
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No agent instances deployed yet - deploy one above.')).toBeDefined());
+    fireEvent.click(screen.getByText('Deploy Agent'));
+    fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'role-1' } });
+    fireEvent.click(screen.getByText('Deploy'));
+
+    await waitFor(() => expect(screen.getByText('Deploying...')).toBeInTheDocument());
+    resolveCreate({ agent: { id: 'agent-2', name: 'New Agent', agentRoleId: 'role-1' } });
+  });
+
+  it('falls back to an empty role list while roles are still loading', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockListAgentRoles.mockReturnValue(new Promise(() => {}));
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No agent instances deployed yet - deploy one above.')).toBeDefined());
+    fireEvent.click(screen.getByText('Deploy Agent'));
+
+    expect(screen.getByText('Select a role...')).toBeInTheDocument();
+  });
+
+  it('cancels the deploy form', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Deploy Agent')).toBeDefined());
+    fireEvent.click(screen.getByText('Deploy Agent'));
+    expect(screen.getByPlaceholderText('Agent name')).toBeDefined();
+
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.queryByPlaceholderText('Agent name')).toBeNull();
+  });
 });

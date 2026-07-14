@@ -2,6 +2,7 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Comment } from './index';
+import { useComments } from './CommentContext';
 
 const { mockListComments, mockCreateComment } = vi.hoisted(() => ({
   mockListComments: vi.fn(),
@@ -85,5 +86,54 @@ describe('Comment Compound Component', () => {
     const agentComment = screen.getByText(/Agent agent-alpha/).closest('div.p-4');
     expect(agentComment).toHaveClass('border-primary/20');
     expect(screen.getByText(/🤖/)).toBeInTheDocument();
+  });
+
+  test('renders "Unknown" as the author when a comment has neither a userId nor an agentId', async () => {
+    mockListComments.mockResolvedValue({
+      comments: [{ id: 'cmt-1', content: 'Anonymous note', createdAt: new Date().toISOString() }],
+    });
+
+    renderWithProvider(<Comment.List />);
+
+    await waitFor(() => expect(screen.getByText('Unknown')).toBeInTheDocument());
+  });
+
+  test('does not submit a blank or whitespace-only comment', async () => {
+    mockListComments.mockResolvedValue({ comments: [] });
+
+    renderWithProvider(<><Comment.List /><Comment.Composer /></>);
+
+    const textarea = await screen.findByPlaceholderText('Add your comment... (Markdown supported)');
+    fireEvent.change(textarea, { target: { value: '   ' } });
+    const form = textarea.closest('form')!;
+    fireEvent.submit(form);
+
+    expect(mockCreateComment).not.toHaveBeenCalled();
+  });
+
+  test('shows an error message when posting a comment fails', async () => {
+    mockListComments.mockResolvedValue({ comments: [] });
+    mockCreateComment.mockRejectedValue(new Error('rate limited'));
+
+    renderWithProvider(<><Comment.List /><Comment.Composer /></>);
+
+    const textarea = await screen.findByPlaceholderText('Add your comment... (Markdown supported)');
+    await waitFor(() => expect(textarea).not.toBeDisabled());
+    fireEvent.change(textarea, { target: { value: 'Hello there' } });
+    const button = screen.getByRole('button', { name: /post/i });
+    fireEvent.click(button);
+
+    await waitFor(() => expect(screen.getByText(/Failed to post comment/)).toBeInTheDocument());
+    expect(screen.getByText(/rate limited/)).toBeInTheDocument();
+  });
+
+  test('throws when useComments is called outside of a CommentProvider', () => {
+    function Consumer() {
+      useComments();
+      return null;
+    }
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => render(<Consumer />)).toThrow('useComments must be used within a CommentProvider');
+    spy.mockRestore();
   });
 });

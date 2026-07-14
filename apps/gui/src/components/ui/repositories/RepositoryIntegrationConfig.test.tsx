@@ -240,4 +240,94 @@ describe('RepositoryIntegrationConfig', () => {
 
     await waitFor(() => expect(screen.getByText('No builds found.')).toBeDefined());
   });
+
+  test('shows an error when loading builds fails', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockListBuilds.mockRejectedValue(new Error('boom'));
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
+    fireEvent.click(screen.getByText('Show Builds'));
+
+    await waitFor(() => expect(screen.getByText('Failed to load builds')).toBeDefined());
+  });
+
+  test('shows a fallback style for an unknown build status and lists deployments for an expanded build', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockListBuilds.mockResolvedValue({
+      builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'UNKNOWN_STATUS', commitSha: 'abc1234def' }],
+    });
+    mockListDeployments.mockResolvedValue({ deployments: [{ id: 'dep-1', buildId: 'build-1', environment: 'PROD', status: 'PENDING' }] });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
+    fireEvent.click(screen.getByText('Show Builds'));
+    await waitFor(() => expect(screen.getByText('UNKNOWN_STATUS')).toBeDefined());
+
+    fireEvent.click(screen.getByText('abc1234'));
+    await waitFor(() => expect(screen.getByText('PROD')).toBeDefined());
+
+    fireEvent.click(screen.getByText('abc1234'));
+    await waitFor(() => expect(screen.queryByText('PROD')).toBeNull());
+  });
+
+  test('shows a no-deployments message for a build with none', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockListBuilds.mockResolvedValue({
+      builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'abc1234def' }],
+    });
+    mockListDeployments.mockResolvedValue({ deployments: [] });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
+    fireEvent.click(screen.getByText('Show Builds'));
+    fireEvent.click(await screen.findByText('abc1234'));
+
+    await waitFor(() => expect(screen.getByText('No deployments for this build.')).toBeDefined());
+  });
+
+  test('shows an error message when loading repository links fails', async () => {
+    mockListRepositoryLinks.mockRejectedValue(new Error('down'));
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('Error loading links')).toBeDefined());
+  });
+
+  test('shows a fallback style for an unknown pull request status', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    mockListPullRequests.mockResolvedValue({
+      pullRequests: [{ id: 'pr-1', remotePrId: '1', title: 'Unknown status PR', status: 'unknown' }],
+    });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('#1: Unknown status PR')).toBeDefined());
+  });
+
+  test('builds a Bitbucket OAuth redirect URL when Bitbucket is selected', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [] });
+    sessionStorage.removeItem('repoLinkOauthNonce');
+
+    const originalLocation = window.location;
+    const locationStub = { href: '' };
+    Object.defineProperty(window, 'location', { writable: true, configurable: true, value: locationStub });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    fireEvent.change(screen.getByDisplayValue('GitHub'), { target: { value: 'bitbucket' } });
+    fireEvent.change(screen.getByPlaceholderText('Remote (e.g. huyz0/tasker)'), { target: { value: 'huyz0/bb-repo' } });
+    fireEvent.click(screen.getByText('Connect Bitbucket via OAuth'));
+
+    expect(locationStub.href).toContain('https://bitbucket.org/site/oauth2/authorize');
+
+    Object.defineProperty(window, 'location', { writable: true, configurable: true, value: originalLocation });
+  });
 });

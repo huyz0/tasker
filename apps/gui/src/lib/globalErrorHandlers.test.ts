@@ -37,4 +37,19 @@ describe('registerGlobalErrorHandlers', () => {
     expect(received).toHaveLength(1);
     expect(received[0].message).toBe('unhandledrejection');
   });
+
+  it('falls back to the event message when there is no error object', () => {
+    const handlers: Record<string, (event: any) => void> = {};
+    vi.spyOn(window, 'addEventListener').mockImplementation((type: string, listener: any) => {
+      handlers[type] = listener;
+    });
+    const received: any[] = [];
+    setErrorReporter({ report: (e) => received.push(e) });
+
+    registerGlobalErrorHandlers();
+    handlers.error({ error: undefined, message: 'Script error.' });
+
+    expect(received).toHaveLength(1);
+    expect(received[0].err).toBe('Script error.');
+  });
 });

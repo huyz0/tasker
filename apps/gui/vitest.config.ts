@@ -12,12 +12,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/main.tsx', 'src/**/*.gen.ts', 'src/**/*.pb.ts', 'src/**/*.generated.ts'],
+      exclude: ['src/main.tsx', 'src/**/*.gen.ts', 'src/**/*.pb.ts', 'src/**/*.generated.ts', 'src/**/*.stories.tsx'],
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80
+        lines: 95,
+        functions: 95,
+        branches: 95,
+        statements: 95
       }
     },
     projects: [{

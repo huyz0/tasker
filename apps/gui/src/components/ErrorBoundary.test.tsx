@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -30,5 +30,20 @@ describe('ErrorBoundary', () => {
     expect(screen.getByText('Something went wrong')).toBeDefined();
     expect(screen.getByText('kaboom')).toBeDefined();
     expect(spy).toHaveBeenCalled();
+  });
+
+  it('reloads the page when the Reload button is clicked', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const reloadSpy = vi.fn();
+    Object.defineProperty(window, 'location', { writable: true, configurable: true, value: { reload: reloadSpy } });
+
+    render(
+      <ErrorBoundary>
+        <Bomb />
+      </ErrorBoundary>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
+
+    expect(reloadSpy).toHaveBeenCalled();
   });
 });

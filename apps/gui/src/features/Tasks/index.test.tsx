@@ -196,4 +196,73 @@ describe('TasksWorkbench', () => {
 
     await waitFor(() => expect(screen.getByText(/Failed to delete task/)).toBeDefined());
   });
+
+  it('expands a task via keyboard Enter', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.keyDown(screen.getByText('Fix bug'), { key: 'Enter' });
+
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+  });
+
+  it('shows pending labels while deleting and while updating status', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: 'Some **markdown** body' } ] });
+    let resolveDelete: (v: any) => void = () => {};
+    mockDeleteTask.mockReturnValue(new Promise((resolve) => { resolveDelete = resolve; }));
+    let resolveUpdate: (v: any) => void = () => {};
+    mockUpdateTaskStatus.mockReturnValue(new Promise((resolve) => { resolveUpdate = resolve; }));
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    const select = await screen.findByDisplayValue('Todo');
+    fireEvent.change(select, { target: { value: 'in-progress' } });
+    await waitFor(() => expect(select).toBeDisabled());
+    resolveUpdate({ task: { id: 'task-1', title: 'Fix bug', status: 'in-progress', description: 'Some **markdown** body' } });
+
+    const deleteButton = await screen.findByRole('button', { name: 'Delete' });
+    fireEvent.click(deleteButton);
+    await waitFor(() => expect(screen.getByText('Moving to bin...')).toBeInTheDocument());
+    resolveDelete({ success: true });
+  });
+
+  it('defaults a task with no status to the todo column, both on the board and in the detail panel', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'No status task', description: '' }] });
+    mockListPullRequests.mockResolvedValue({
+      pullRequests: [{ id: 'pr-1', taskId: '', remotePrId: '1', title: 'orphan pr', status: 'open', url: 'http://x' }],
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('No status task')).toBeDefined());
+    fireEvent.click(screen.getByText('No status task'));
+
+    await screen.findByDisplayValue('Todo');
+  });
+
+  it('ignores non-activation keys on a task card', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.keyDown(screen.getByText('Fix bug'), { key: 'Tab' });
+
+    expect(screen.queryByText('Task Details')).toBeNull();
+  });
+
+  it('closes the detail panel via the close button', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+    fireEvent.click(screen.getByLabelText('Close task details'));
+
+    await waitFor(() => expect(screen.queryByText('Task Details')).toBeNull());
+  });
 });

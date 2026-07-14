@@ -19,4 +19,12 @@ describe('authSession', () => {
     await logout();
     expect(fetch).toHaveBeenCalledWith(`${BACKEND_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
   });
+
+  it('returns an unauthenticated session when the backend responds with a non-2xx status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401 }));
+
+    const session = await fetchAuthSession();
+
+    expect(session).toEqual({ authenticated: false, userId: null });
+  });
 });

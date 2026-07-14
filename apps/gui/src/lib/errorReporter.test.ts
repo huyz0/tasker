@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { reportError, setErrorReporter, RemoteErrorReporter, type ErrorReporter } from './errorReporter';
+import { reportError, setErrorReporter, RemoteErrorReporter, ConsoleErrorReporter, type ErrorReporter } from './errorReporter';
 import { BACKEND_URL } from './backendUrl';
 
 describe('errorReporter', () => {
@@ -23,6 +23,14 @@ describe('errorReporter', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     reportError({ message: 'default sink', severity: 'error' });
     expect(spy).toHaveBeenCalled();
+  });
+});
+
+describe('ConsoleErrorReporter', () => {
+  it('logs the event to the console', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    new ConsoleErrorReporter().report({ message: 'console sink', severity: 'fatal', err: new Error('boom') });
+    expect(spy).toHaveBeenCalledWith('[fatal] console sink', expect.any(Error), undefined);
   });
 });
 

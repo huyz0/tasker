@@ -9,9 +9,14 @@ export function CommentComposer() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-    
-    await actions.addComment(newComment);
-    setNewComment("");
+
+    try {
+      await actions.addComment(newComment);
+      setNewComment("");
+    } catch {
+      // Already surfaced via state.isError/state.error from the mutation
+      // itself - this catch only prevents an unhandled promise rejection.
+    }
   };
 
   return (

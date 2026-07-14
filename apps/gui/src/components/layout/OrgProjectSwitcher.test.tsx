@@ -112,4 +112,24 @@ describe('OrgProjectSwitcher', () => {
 
     expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-2');
   });
+
+  it('lets the user switch the active project', async () => {
+    mockActiveOrgId = 'org-1';
+    mockActiveProjectId = 'proj-1';
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }] });
+    mockListProjects.mockResolvedValue({
+      projects: [
+        { id: 'proj-1', name: 'Project One' },
+        { id: 'proj-2', name: 'Project Two' },
+      ],
+    });
+
+    renderSwitcher();
+
+    await waitFor(() => expect(screen.getByText('Project Two')).toBeDefined());
+    const projectSelect = screen.getByLabelText('Active project');
+    fireEvent.change(projectSelect, { target: { value: 'proj-2' } });
+
+    expect(mockSetActiveProjectId).toHaveBeenCalledWith('proj-2');
+  });
 });

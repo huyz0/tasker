@@ -192,4 +192,199 @@ describe('ArtifactsBrowser', () => {
 
     await waitFor(() => expect(mockCreateArtifact).toHaveBeenCalledWith({ folderId: 'fld-1', name: 'notes.md' }));
   });
+
+  it('archives an artifact after confirmation and closes it if it was selected', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello' }] });
+    mockArchiveArtifact.mockResolvedValue({});
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+    fireEvent.click(screen.getByText('readme.md'));
+    await waitFor(() => expect(screen.getByText('Hello')).toBeDefined());
+
+    fireEvent.click(screen.getByLabelText('Delete artifact readme.md'));
+    await waitFor(() => expect(mockArchiveArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
+  });
+
+  it('does not archive a folder when confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByLabelText('Delete folder docs'));
+
+    expect(mockArchiveFolder).not.toHaveBeenCalled();
+  });
+
+  it('renders an image artifact using a data URI', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'pic.png', content: 'abc123', contentType: 'image/png' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('pic.png')).toBeDefined());
+    fireEvent.click(screen.getByText('pic.png'));
+
+    const img = await screen.findByAltText('pic.png');
+    expect(img.getAttribute('src')).toBe('data:image/png;base64,abc123');
+  });
+
+  it('shows a placeholder message when the selected artifact has no content', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'empty.md', content: '' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('empty.md')).toBeDefined());
+    fireEvent.click(screen.getByText('empty.md'));
+
+    await waitFor(() => expect(screen.getByText('This artifact has no content.')).toBeDefined());
+  });
+
+  it('closes the new-folder form on blur when the name is empty', async () => {
+    mockListFolders.mockResolvedValue({ folders: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('+ Folder')).toBeDefined());
+    fireEvent.click(screen.getByText('+ Folder'));
+    const input = await screen.findByPlaceholderText('Folder name');
+    fireEvent.blur(input);
+
+    await waitFor(() => expect(screen.queryByPlaceholderText('Folder name')).toBeNull());
+  });
+
+  it('closes the new-artifact form on blur when the name is empty', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('+ New artifact')).toBeDefined());
+    fireEvent.click(screen.getByText('+ New artifact'));
+    const input = await screen.findByPlaceholderText('Artifact name');
+    fireEvent.blur(input);
+
+    await waitFor(() => expect(screen.queryByPlaceholderText('Artifact name')).toBeNull());
+  });
+
+  it('selects a folder via keyboard Enter and toggles it off via Space', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.keyDown(screen.getByText('docs'), { key: 'Enter' });
+    await waitFor(() => expect(screen.getByText('Empty folder')).toBeDefined());
+
+    fireEvent.keyDown(screen.getByText('docs'), { key: ' ' });
+    await waitFor(() => expect(screen.queryByText('Empty folder')).toBeNull());
+  });
+
+  it('keeps the new-folder form open on blur when there is unsaved text', async () => {
+    mockListFolders.mockResolvedValue({ folders: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('+ Folder')).toBeDefined());
+    fireEvent.click(screen.getByText('+ Folder'));
+    const input = await screen.findByPlaceholderText('Folder name');
+    fireEvent.change(input, { target: { value: 'draft' } });
+    fireEvent.blur(input);
+
+    expect(screen.getByPlaceholderText('Folder name')).toBeInTheDocument();
+  });
+
+  it('does not create a folder when the form is submitted blank', async () => {
+    mockListFolders.mockResolvedValue({ folders: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('+ Folder')).toBeDefined());
+    fireEvent.click(screen.getByText('+ Folder'));
+    const input = await screen.findByPlaceholderText('Folder name');
+    fireEvent.submit(input.closest('form')!);
+
+    expect(mockCreateFolder).not.toHaveBeenCalled();
+  });
+
+  it('keeps the new-artifact form open on blur when there is unsaved text', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('+ New artifact')).toBeDefined());
+    fireEvent.click(screen.getByText('+ New artifact'));
+    const input = await screen.findByPlaceholderText('Artifact name');
+    fireEvent.change(input, { target: { value: 'draft' } });
+    fireEvent.blur(input);
+
+    expect(screen.getByPlaceholderText('Artifact name')).toBeInTheDocument();
+  });
+
+  it('does not create an artifact when the form is submitted blank', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('+ New artifact')).toBeDefined());
+    fireEvent.click(screen.getByText('+ New artifact'));
+    const input = await screen.findByPlaceholderText('Artifact name');
+    fireEvent.submit(input.closest('form')!);
+
+    expect(mockCreateArtifact).not.toHaveBeenCalled();
+  });
+
+  it('ignores non-activation keys on the folder and artifact rows', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: '' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.keyDown(screen.getByText('docs'), { key: 'Tab' });
+    expect(screen.queryByText('readme.md')).toBeNull();
+
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+    fireEvent.keyDown(screen.getByText('readme.md'), { key: 'Tab' });
+    expect(screen.queryByText('This artifact has no content.')).toBeNull();
+  });
+
+  it('hides the empty-folder message while the new-artifact form is open', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('Empty folder')).toBeDefined());
+    fireEvent.click(screen.getByText('+ New artifact'));
+
+    expect(screen.queryByText('Empty folder')).toBeNull();
+  });
+
+  it('selects an artifact via keyboard Enter', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello there' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+    fireEvent.keyDown(screen.getByText('readme.md'), { key: 'Enter' });
+
+    await waitFor(() => expect(screen.getByText('Hello there')).toBeDefined());
+  });
 });

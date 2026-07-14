@@ -144,6 +144,17 @@ describe('GlobalSearch', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/artifacts/art-1');
   });
 
+  it('closes the dialog when clicking the backdrop overlay', () => {
+    const { container } = renderSearch();
+    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    expect(screen.getByPlaceholderText('Type a command or search...')).toBeInTheDocument();
+
+    const overlay = container.querySelector('.fixed.inset-0')!;
+    fireEvent.click(overlay);
+
+    expect(screen.queryByPlaceholderText('Type a command or search...')).not.toBeInTheDocument();
+  });
+
   it('does not call universalSearch while the query is empty', () => {
     renderSearch();
     fireEvent.click(screen.getByText('Search tasks, artifacts...'));
