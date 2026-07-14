@@ -31,11 +31,13 @@ describe("Repositories Handler >", () => {
         const body = JSON.parse(options?.body as string);
         if (body.code === "expired-code") return new Response("", { status: 401 });
         if (body.code === "revoked-code") return new Response(JSON.stringify({ error: "bad_verification_code" }), { status: 200 });
+        if (body.code === "no-token-code") return new Response(JSON.stringify({ token_type: "bearer" }), { status: 200 });
         return new Response(JSON.stringify({ access_token: "mock_token_" + body.code }), { status: 200 });
       }
       if (url.toString() === "https://bitbucket.org/site/oauth2/access_token") {
         const body = new URLSearchParams(options?.body as string);
         if (body.get("code") === "expired-code") return new Response("", { status: 401 });
+        if (body.get("code") === "no-token-code") return new Response(JSON.stringify({ token_type: "bearer" }), { status: 200 });
         return new Response(JSON.stringify({ access_token: "mock_bb_token_" + body.get("code") }), { status: 200 });
       }
       return originalFetch(url, options);
@@ -130,6 +132,16 @@ describe("Repositories Handler >", () => {
     // Bitbucket's token endpoint returns a non-2xx for an expired/already-used code.
     await expect(repHandler.addRepositoryLink({
       projectId, provider: "bitbucket", remoteName: "huyz0/oauth-fail-bb", oauthCode: "expired-code",
+    }, ctx1)).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A 200 response with no `error` field but also no access_token (an
+    // unexpected/partial provider response) must be rejected cleanly
+    // instead of crashing when the missing token is passed to encryptToken.
+    await expect(repHandler.addRepositoryLink({
+      projectId, provider: "github", remoteName: "huyz0/oauth-fail-3", oauthCode: "no-token-code",
+    }, ctx1)).rejects.toMatchObject({ code: Code.InvalidArgument });
+    await expect(repHandler.addRepositoryLink({
+      projectId, provider: "bitbucket", remoteName: "huyz0/oauth-fail-bb-2", oauthCode: "no-token-code",
     }, ctx1)).rejects.toMatchObject({ code: Code.InvalidArgument });
   });
 

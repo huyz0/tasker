@@ -361,6 +361,9 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         if (data.error) {
           throw new ConnectError(`GitHub OAuth error: ${data.error_description || data.error}`, Code.InvalidArgument);
         }
+        if (!data.access_token) {
+          throw new ConnectError("GitHub OAuth response did not include an access_token", Code.InvalidArgument);
+        }
 
         tokenToStore = data.access_token;
       } else if (parsed.provider === "bitbucket") {
@@ -385,6 +388,9 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         const data = await response.json() as any;
         if (data.error) {
           throw new ConnectError(`Bitbucket OAuth error: ${data.error_description || data.error}`, Code.InvalidArgument);
+        }
+        if (!data.access_token) {
+          throw new ConnectError("Bitbucket OAuth response did not include an access_token", Code.InvalidArgument);
         }
 
         tokenToStore = data.access_token;
