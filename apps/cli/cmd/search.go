@@ -18,6 +18,8 @@ var searchCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		orgID, _ := cmd.Flags().GetString("org")
 		isJson, _ := cmd.Flags().GetBool("json")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
 		}
@@ -30,6 +32,7 @@ var searchCmd = &cobra.Command{
 		res, err := client.UniversalSearch(context.Background(), connect.NewRequest(&healthv1.UniversalSearchRequest{
 			Query: args[0],
 			OrgId: orgID,
+			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to search: %v\n", err)
@@ -37,7 +40,7 @@ var searchCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Results)
+			jsonString, _ := json.Marshal(map[string]any{"results": res.Msg.Results, "page": res.Msg.Page})
 			cmd.Println(string(jsonString))
 		} else {
 			if len(res.Msg.Results) == 0 {
@@ -50,6 +53,9 @@ var searchCmd = &cobra.Command{
 					cmd.Printf("    %s\n", r.Snippet)
 				}
 			}
+			if res.Msg.Page != nil && res.Msg.Page.NextCursor != "" {
+				cmd.Printf("More results available; re-run with --cursor %s\n", res.Msg.Page.NextCursor)
+			}
 		}
 	},
 }
@@ -57,4 +63,6 @@ var searchCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(searchCmd)
 	searchCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	searchCmd.Flags().Int32P("limit", "l", 20, "Maximum number of items to return")
+	searchCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 }
