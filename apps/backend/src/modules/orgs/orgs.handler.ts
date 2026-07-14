@@ -33,7 +33,7 @@ const PurgeOrgSchema = z.object({
 
 const SetOrgRetentionDaysSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
-  binRetentionDays: z.number().int().min(1, "binRetentionDays must be at least 1"),
+  binRetentionDays: z.number().int().min(1, "binRetentionDays must be at least 1").max(3650, "binRetentionDays must be at most 3650 (10 years)"),
 });
 
 // --- Handler Factory ---

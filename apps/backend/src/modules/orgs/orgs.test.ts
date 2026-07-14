@@ -274,6 +274,9 @@ describe("Organizations Handler Integration Logic", () => {
 
     await expect(handler.setOrgRetentionDays({ orgId: org.organization.id, binRetentionDays: 7 }, makeAuthContext(memberId))).rejects.toThrow();
     await expect(handler.setOrgRetentionDays({ orgId: org.organization.id, binRetentionDays: 0 }, makeAuthContext(adminId))).rejects.toThrow();
+    // An unbounded value would let an admin effectively disable the
+    // retention sweep forever for their org.
+    await expect(handler.setOrgRetentionDays({ orgId: org.organization.id, binRetentionDays: 999999 }, makeAuthContext(adminId))).rejects.toThrow();
 
     const res = await handler.setOrgRetentionDays({ orgId: org.organization.id, binRetentionDays: 7 }, makeAuthContext(adminId));
     expect(res.success).toBe(true);
