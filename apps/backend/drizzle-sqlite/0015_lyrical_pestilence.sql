@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX `entity_labels_entity_label_idx` ON `entity_labels` (`entity_id`,`entity_type`,`label_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `remote_pull_requests_repo_remote_pr_idx` ON `remote_pull_requests` (`repository_link_id`,`remote_pr_id`);

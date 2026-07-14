@@ -12,6 +12,15 @@ import { config } from "../../config";
 const ALGORITHM = "aes-256-gcm";
 const ENCRYPTION_KEY = config.appEncryptionSecret;
 
+// Distinguishes a real DB-level unique-constraint violation (a concurrent
+// syncPullRequests call for the same link won the race for the same remote
+// PR) from any other insert failure, so only the former is treated as a
+// benign no-op.
+function isRemotePrConflict(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e);
+  return msg.includes("remote_pull_requests_repo_remote_pr_idx") || msg.includes("UNIQUE constraint failed") || msg.includes("Duplicate entry");
+}
+
 function encryptToken(token: string): string {
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, 'utf8'), iv);
@@ -486,15 +495,24 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
             const taskId = resolveTaskId(pr.title);
 
             if (!existing) {
-              await insertRecord(db, prsTable, {
-                id: `pr-${crypto.randomUUID()}`,
-                repositoryLinkId: link.id,
-                taskId,
-                remotePrId: pr.remoteId,
-                title: pr.title,
-                status: pr.status,
-                url: pr.url
-              }, isStandalone, 'updatedAt');
+              // The existingByRemoteId snapshot was taken once, up front - a
+              // concurrent sync for the same link could insert this exact PR
+              // in between, so fall back to treating the DB's own unique-
+              // constraint violation as "someone else just inserted it",
+              // same pattern as createLabel's race handling.
+              try {
+                await insertRecord(db, prsTable, {
+                  id: `pr-${crypto.randomUUID()}`,
+                  repositoryLinkId: link.id,
+                  taskId,
+                  remotePrId: pr.remoteId,
+                  title: pr.title,
+                  status: pr.status,
+                  url: pr.url
+                }, isStandalone, 'updatedAt');
+              } catch (e) {
+                if (!isRemotePrConflict(e)) throw e;
+              }
             } else {
               await db.update(prsTable).set({
                 title: pr.title,

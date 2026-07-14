@@ -1,0 +1,2 @@
+ALTER TABLE `entity_labels` ADD CONSTRAINT `entity_labels_entity_label_idx` UNIQUE(`entity_id`,`entity_type`,`label_id`);--> statement-breakpoint
+ALTER TABLE `remote_pull_requests` ADD CONSTRAINT `remote_pull_requests_repo_remote_pr_idx` UNIQUE(`repository_link_id`,`remote_pr_id`);

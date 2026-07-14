@@ -295,6 +295,34 @@ describe("Repositories Handler >", () => {
     expect(prsForB.find((p: any) => p.remotePrId === "1")?.title).toBe("Repo B PR#1");
   });
 
+  test("syncPullRequests does not create duplicate rows when two syncs for the same link race concurrently", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P-race", ownerId: "usr-2" }, ctx2)).project.id;
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/pulls")) {
+        return new Response(JSON.stringify([{ number: 1, title: "Racy PR", state: "open", draft: false, html_url: "u" }]), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const link = (await repHandler.addRepositoryLink({ projectId: pId, provider: "github", remoteName: "foo/repo-race", oauthCode: "a" }, ctx2)).link;
+
+    // Two concurrent syncs both see no existing row for this PR before either
+    // has a chance to insert it - the DB-level unique constraint (not the
+    // upfront snapshot) is what must prevent a duplicate.
+    await Promise.all([
+      repHandler.syncPullRequests({ projectId: pId }, ctx2),
+      repHandler.syncPullRequests({ projectId: pId }, ctx2),
+    ]);
+
+    const prs = await db.select().from(schemaSqlite.remotePullRequests).where(eq(schemaSqlite.remotePullRequests.repositoryLinkId, link.id));
+    expect(prs.length).toBe(1);
+    expect(prs[0].title).toBe("Racy PR");
+  });
+
   test("syncPullRequests reports failure when the provider call fails", async () => {
     const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P4", ownerId: "usr-2" }, ctx2)).project.id;
 

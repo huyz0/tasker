@@ -246,4 +246,10 @@ export const remotePullRequests = sqliteTable("remote_pull_requests", {
   status: text("status").notNull(), // 'open' | 'closed' | 'merged' | 'draft'
   url: text("url").notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    // Prevents a concurrent syncPullRequests race from creating duplicate
+    // rows for the same remote PR on the same repository link.
+    repoRemotePrIdx: uniqueIndex("remote_pull_requests_repo_remote_pr_idx").on(table.repositoryLinkId, table.remotePrId),
+  };
 });

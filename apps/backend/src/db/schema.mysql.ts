@@ -229,4 +229,10 @@ export const remotePullRequests = mysqlTable("remote_pull_requests", {
   status: mysqlEnum("status", ['open', 'closed', 'merged', 'draft']).notNull(),
   url: varchar("url", { length: 1024 }).notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Prevents a concurrent syncPullRequests race from creating duplicate
+    // rows for the same remote PR on the same repository link.
+    repoRemotePrIdx: uniqueIndex("remote_pull_requests_repo_remote_pr_idx").on(table.repositoryLinkId, table.remotePrId),
+  };
 });
