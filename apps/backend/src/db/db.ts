@@ -27,12 +27,24 @@ export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlite
   // createTask calls racing for the same project's next task number) get
   // independent MySQL sessions instead of interleaving BEGIN/COMMIT state
   // on one shared connection.
+  //
+  // mysql2's default connectionLimit is 10 - fine for local dev, nowhere
+  // near enough for the product's stated 20k-concurrent-agent scale target.
+  // Made explicit and configurable (rather than left at the library
+  // default) so it's a deliberate capacity decision, not an accident of
+  // whatever mysql2 happens to default to. queueLimit bounds how many
+  // callers can be waiting for a free connection at once - unbounded
+  // queuing just delays the same overload into a memory problem instead of
+  // failing fast.
   const connection = mysql.createPool({
     host: process.env.DB_HOST || "127.0.0.1",
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "password",
     database: process.env.DB_NAME || "tasker",
-    port: 3306
+    port: 3306,
+    connectionLimit: Number(process.env.DB_POOL_SIZE) || 20,
+    waitForConnections: true,
+    queueLimit: Number(process.env.DB_POOL_QUEUE_LIMIT) || 200,
   });
   const db = drizzleMysql(connection, { schema: schemaMysql, mode: "default" });
   await migrateMysql(db, { migrationsFolder: "./drizzle-mysql" });
