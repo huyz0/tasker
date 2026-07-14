@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'bun:test';
-import { unlinkSync, existsSync, readFileSync, mkdtempSync, rmdirSync } from 'node:fs';
+import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -22,7 +22,7 @@ describe('logger LOG_FILE opt-in', () => {
 
   afterEach(() => {
     if (tmpDir && existsSync(tmpDir)) {
-      try { rmdirSync(tmpDir, { recursive: true } as any); } catch {}
+      try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
     }
   });
 

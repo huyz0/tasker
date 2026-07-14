@@ -1,5 +1,6 @@
 import { Code } from '@connectrpc/connect';
 import { logger } from './logger';
+import { recordErrorEvent } from './errorRingBuffer';
 
 export interface ErrorEvent {
   message: string;
@@ -33,6 +34,7 @@ export class LoggerErrorReporter implements ErrorReporter {
   report(event: ErrorEvent) {
     const log = event.severity === 'fatal' ? logger.fatal.bind(logger) : logger.error.bind(logger);
     log({ err: event.err, ...connectErrorFields(event.err), ...event.context }, event.message);
+    recordErrorEvent(event.message, event.severity, event.err, event.context);
   }
 }
 

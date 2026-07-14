@@ -60,7 +60,7 @@ const sessionInterceptor: Interceptor = (next) => async (req) => {
 };
 
 const authRoutes = createAuthRoutes(db);
-const telemetryRoutes = createTelemetryRoutes();
+const telemetryRoutes = createTelemetryRoutes(db);
 
 const handler = connectNodeAdapter({
   interceptors: [requestLoggingInterceptor, sessionInterceptor],

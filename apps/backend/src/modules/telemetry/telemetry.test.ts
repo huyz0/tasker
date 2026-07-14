@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { createTelemetryRoutes } from './telemetry';
 import { setErrorReporter, LoggerErrorReporter, type ErrorReporter } from '../../lib/errorReporter';
+import { resetErrorRingBuffer } from '../../lib/errorRingBuffer';
+import { setupIntegrationTest } from '../../test/setup';
+import * as schemaSqlite from '../../db/schema.sqlite';
+import { createSessionToken } from '../auth/session';
 
 function postClientError(routes: ReturnType<typeof createTelemetryRoutes>, body: unknown) {
   return routes.handle(new Request('http://localhost/api/client-errors', {
@@ -10,12 +14,20 @@ function postClientError(routes: ReturnType<typeof createTelemetryRoutes>, body:
   }));
 }
 
+let db: any;
+
+beforeEach(async () => {
+  const setup = await setupIntegrationTest();
+  db = setup.db;
+  resetErrorRingBuffer();
+});
+
 describe('POST /api/client-errors', () => {
   it('routes a valid client error report through reportError with source: client', async () => {
     const received: any[] = [];
     setErrorReporter({ report: (event) => received.push(event) } as ErrorReporter);
     try {
-      const routes = createTelemetryRoutes();
+      const routes = createTelemetryRoutes(db);
       const res = await postClientError(routes, {
         message: 'window.onerror',
         severity: 'error',
@@ -37,11 +49,11 @@ describe('POST /api/client-errors', () => {
   });
 
   it('rejects a report with no message using an RFC7807 problem-details body', async () => {
-    const routes = createTelemetryRoutes();
+    const routes = createTelemetryRoutes(db);
     const res = await postClientError(routes, { severity: 'error' });
     expect(res.status).toBe(400);
     expect(res.headers.get('content-type')).toContain('application/problem+json');
-    const body = await res.json();
+    const body: any = await res.json();
     expect(body).toMatchObject({ title: 'Invalid client error report', status: 400 });
   });
 
@@ -49,7 +61,7 @@ describe('POST /api/client-errors', () => {
     const received: any[] = [];
     setErrorReporter({ report: (event) => received.push(event) } as ErrorReporter);
     try {
-      const routes = createTelemetryRoutes();
+      const routes = createTelemetryRoutes(db);
       const res = await postClientError(routes, { message: 'oops' });
       expect(res.status).toBe(204);
       expect(received[0].severity).toBe('error');
@@ -62,7 +74,7 @@ describe('POST /api/client-errors', () => {
     const received: any[] = [];
     setErrorReporter({ report: (event) => received.push(event) } as ErrorReporter);
     try {
-      const routes = createTelemetryRoutes();
+      const routes = createTelemetryRoutes(db);
       const hugeMessage = 'x'.repeat(10_000);
       await postClientError(routes, { message: hugeMessage });
       expect(received[0].message.length).toBeLessThan(hugeMessage.length);
@@ -70,5 +82,55 @@ describe('POST /api/client-errors', () => {
     } finally {
       setErrorReporter(new LoggerErrorReporter());
     }
+  });
+});
+
+describe('GET /api/debug/errors', () => {
+  async function makeOrgAdmin(userId: string) {
+    const orgId = 'org-debug-errors-' + Date.now() + '-' + userId;
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: 'Debug Org', slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: 'admin', joinedAt: new Date() });
+  }
+
+  it('rejects an unauthenticated request', async () => {
+    const routes = createTelemetryRoutes(db);
+    const res = await routes.handle(new Request('http://localhost/api/debug/errors'));
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an authenticated caller who is not an admin of any organization', async () => {
+    const userId = 'user-debug-nonadmin-' + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    const token = createSessionToken(userId);
+
+    const routes = createTelemetryRoutes(db);
+    const res = await routes.handle(new Request('http://localhost/api/debug/errors', {
+      headers: { authorization: `Bearer ${token}` },
+    }));
+    expect(res.status).toBe(403);
+  });
+
+  it('returns recently reported errors (most recent first) to an org admin', async () => {
+    const userId = 'user-debug-admin-' + Date.now();
+    await makeOrgAdmin(userId);
+    const token = createSessionToken(userId);
+
+    setErrorReporter(new LoggerErrorReporter());
+    const { reportError } = await import('../../lib/errorReporter');
+    reportError({ message: 'first error', err: new Error('boom-1'), severity: 'error' });
+    reportError({ message: 'second error', err: new Error('boom-2'), severity: 'fatal' });
+
+    const routes = createTelemetryRoutes(db);
+    const res = await routes.handle(new Request('http://localhost/api/debug/errors', {
+      headers: { authorization: `Bearer ${token}` },
+    }));
+
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body.errors.length).toBeGreaterThanOrEqual(2);
+    expect(body.errors[0].message).toBe('second error');
+    expect(body.errors[0].severity).toBe('fatal');
+    expect(body.errors[1].message).toBe('first error');
   });
 });

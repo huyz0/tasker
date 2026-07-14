@@ -1,6 +1,9 @@
 import { Elysia } from 'elysia';
 import { reportError } from '../../lib/errorReporter';
 import { problemDetails } from '../../lib/problemDetails';
+import { getRecentErrors } from '../../lib/errorRingBuffer';
+import { resolveSessionUserId } from '../auth/session';
+import { assertOrgAdminOfAny } from '../../lib/authz';
 
 // Caps how much of a client-supplied error report gets logged, so a
 // misbehaving/malicious client can't use this endpoint to write unbounded
@@ -12,7 +15,7 @@ function truncate(value: string, max: number): string {
   return value.length > max ? value.slice(0, max) + '...(truncated)' : value;
 }
 
-export function createTelemetryRoutes() {
+export function createTelemetryRoutes(db: any) {
   return new Elysia()
     // Client-side JS errors (window.onerror, unhandled rejections, React
     // error boundaries) previously only ever reached the browser console -
@@ -48,5 +51,24 @@ export function createTelemetryRoutes() {
 
       set.status = 204;
       return null;
+    })
+    // "What broke recently" without log/file access - gated the same way
+    // as other sensitive, non-org-scoped catalogs (assertOrgAdminOfAny),
+    // since this can surface error messages/stack traces across the whole
+    // instance, not just the caller's own org.
+    .get('/api/debug/errors', async ({ request }) => {
+      const userId = resolveSessionUserId({
+        cookie: request.headers.get('cookie'),
+        authorization: request.headers.get('authorization'),
+      });
+      if (!userId) return problemDetails(401, 'Authentication required');
+
+      try {
+        await assertOrgAdminOfAny(db, userId);
+      } catch {
+        return problemDetails(403, 'Admin role required in at least one organization');
+      }
+
+      return Response.json({ errors: getRecentErrors() });
     });
 }
