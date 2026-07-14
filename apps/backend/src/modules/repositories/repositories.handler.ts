@@ -479,22 +479,29 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const taskIdByDisplayId = new Map<string, string>(
         projectTasks.filter((t: any) => t.displayId).map((t: any) => [t.displayId, t.id])
       );
-      function resolveTaskId(title: string): string | null {
-        // Prefer the longest matching displayId, not the first one in Map
-        // insertion order - e.g. "ENG-11: fix bug" must resolve to ENG-11,
-        // not ENG-1, even though both independently satisfy the \b...\b
-        // word-boundary check (a "-" counts as a boundary on either side).
-        let bestDisplayId: string | null = null;
-        let bestTaskId: string | null = null;
-        for (const [displayId, taskId] of taskIdByDisplayId) {
-          if (new RegExp(`\\b${displayId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(title)) {
-            if (!bestDisplayId || displayId.length > bestDisplayId.length) {
-              bestDisplayId = displayId;
-              bestTaskId = taskId;
-            }
-          }
+      // Every task in a project shares the same displayId key prefix (e.g.
+      // "SP" in "SP-42" - see projects.key), so it only needs deriving once
+      // per sync call, from any one existing displayId, not looked up per PR.
+      const keyPrefix = (() => {
+        for (const t of projectTasks) {
+          const match = /^(.+)-\d+$/.exec(t.displayId ?? "");
+          if (match) return match[1];
         }
-        return bestTaskId;
+        return null;
+      })();
+      // Extracts a "KEY-<number>" token directly out of the title with one
+      // regex pass, instead of testing every one of the project's task
+      // displayIds against the title - the previous approach was
+      // O(tasks x PRs) regex compilations+tests per sync call, which gets
+      // very expensive for a project with thousands of tasks.
+      const displayIdPattern = keyPrefix ? new RegExp(`\\b${keyPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)\\b`, "g") : null;
+      function resolveTaskId(title: string): string | null {
+        if (!keyPrefix || !displayIdPattern) return null;
+        for (const match of title.matchAll(displayIdPattern)) {
+          const taskId = taskIdByDisplayId.get(`${keyPrefix}-${match[1]}`);
+          if (taskId) return taskId;
+        }
+        return null;
       }
 
       for (const link of links) {
