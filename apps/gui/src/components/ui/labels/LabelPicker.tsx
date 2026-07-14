@@ -24,7 +24,12 @@ export function LabelPicker() {
         <select
           value=""
           disabled={state.isLoading}
-          onChange={(e) => e.target.value && actions.attachLabel(e.target.value)}
+          onChange={(e) => {
+            // The failure is already surfaced via state.isError/state.error
+            // (from the mutation itself) - this catch only prevents an
+            // unhandled promise rejection, since nothing else awaits this call.
+            if (e.target.value) actions.attachLabel(e.target.value).catch(() => {});
+          }}
           className="text-xs bg-transparent border rounded-md px-2 py-1"
         >
           <option value="">Attach a label...</option>

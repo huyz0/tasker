@@ -164,4 +164,99 @@ describe('BinDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Failed to delete forever/)).toBeDefined());
   });
+
+  it('shows an error message when restoring fails', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
+    mockRestoreOrg.mockRejectedValue(new Error('parent organization is archived'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+
+    await waitFor(() => expect(screen.getByText(/Failed to restore/)).toBeDefined());
+  });
+
+  it('switches to the Projects tab and lists/restores an archived project', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-2', name: 'Archived Project', deletedAt: new Date().toISOString() }] });
+    mockRestoreProject.mockResolvedValue({ success: true });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Projects' }));
+    await waitFor(() => expect(screen.getByText('Archived Project')).toBeDefined());
+    expect(mockListProjects).toHaveBeenCalledWith({ orgId: 'org-1', onlyDeleted: true, page: undefined });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(mockRestoreProject).toHaveBeenCalledWith({ projectId: 'proj-2' }));
+  });
+
+  it('switches to the Agents tab and lists/purges an archived agent', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-2', name: 'Archived Agent', deletedAt: new Date().toISOString() }] });
+    mockPurgeAgent.mockResolvedValue({ success: true });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Agents' }));
+    await waitFor(() => expect(screen.getByText('Archived Agent')).toBeDefined());
+    expect(mockListAgents).toHaveBeenCalledWith({ orgId: 'org-1', onlyDeleted: true, page: undefined });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    await waitFor(() => expect(mockPurgeAgent).toHaveBeenCalledWith({ agentId: 'agent-2' }));
+  });
+
+  it('switches to the Folders tab and lists/restores an archived folder', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-2', name: 'Archived Folder', deletedAt: new Date().toISOString() }] });
+    mockRestoreFolder.mockResolvedValue({ success: true });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Folders' }));
+    await waitFor(() => expect(screen.getByText('Archived Folder')).toBeDefined());
+    expect(mockListFolders).toHaveBeenCalledWith({ projectId: 'proj-1', onlyDeleted: true, page: undefined });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(mockRestoreFolder).toHaveBeenCalledWith({ folderId: 'fld-2' }));
+  });
+
+  it('switches to the Artifacts tab, resolving archived artifacts across every folder in the project', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    // ArtifactsBin first lists ALL (non-deleted-filtered) folders in the
+    // project, then fetches archived artifacts within each one.
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-a' }, { id: 'fld-b' }] });
+    mockListArtifacts.mockImplementation(async ({ folderId }: any) => {
+      if (folderId === 'fld-a') return { artifacts: [{ id: 'art-1', name: 'Archived Artifact A', deletedAt: new Date().toISOString() }] };
+      return { artifacts: [{ id: 'art-2', name: 'Archived Artifact B', deletedAt: new Date().toISOString() }] };
+    });
+    mockPurgeArtifact.mockResolvedValue({ success: true });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Artifacts' }));
+    await waitFor(() => expect(screen.getByText('Archived Artifact A')).toBeDefined());
+    expect(screen.getByText('Archived Artifact B')).toBeDefined();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete Forever' })[0]!);
+    await waitFor(() => expect(mockPurgeArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
+  });
+
+  it("shows the Projects tab's empty message when no org is active", async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Projects' }));
+    // Projects query is `enabled: Boolean(activeOrgId)` - with activeOrgId
+    // set (org-1, per the mocked layout store), it still resolves via the
+    // mock and should show its own empty state without loading forever.
+    mockListProjects.mockResolvedValue({ projects: [] });
+    await waitFor(() => expect(screen.getByText('No archived projects in the active organization.')).toBeDefined());
+  });
 });

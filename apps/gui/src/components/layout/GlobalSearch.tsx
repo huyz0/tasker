@@ -71,7 +71,7 @@ export function GlobalSearch() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <button onClick={() => setIsOpen(false)} className="rounded-full p-1 hover:bg-muted">
+          <button onClick={() => setIsOpen(false)} aria-label="Close search" className="rounded-full p-1 hover:bg-muted">
             <X className="h-4 w-4 opacity-50" />
           </button>
         </div>
