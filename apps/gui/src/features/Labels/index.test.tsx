@@ -65,7 +65,7 @@ describe('LabelsManager', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('No labels created yet.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No labels created yet - create one above.')).toBeDefined());
   });
 
   it('creates a new label via the form', async () => {
@@ -74,7 +74,7 @@ describe('LabelsManager', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('No labels created yet.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No labels created yet - create one above.')).toBeDefined());
     fireEvent.change(screen.getByPlaceholderText('Label name'), { target: { value: 'feature' } });
     fireEvent.click(screen.getByText('Create'));
 
@@ -87,7 +87,7 @@ describe('LabelsManager', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('No labels created yet.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No labels created yet - create one above.')).toBeDefined());
     fireEvent.change(screen.getByPlaceholderText('Label name'), { target: { value: 'dup' } });
     fireEvent.click(screen.getByText('Create'));
 

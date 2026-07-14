@@ -100,7 +100,7 @@ export function LabelsManager() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No labels created yet.</p>
+          <p className="text-sm text-muted-foreground">No labels created yet - create one above.</p>
         )}
       </div>
     </div>
