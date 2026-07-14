@@ -9,5 +9,5 @@ coveragePathIgnorePatterns = [
 ]
 
 [test.coverageThreshold]
-line = 80
-function = 80
+line = 95
+function = 95
