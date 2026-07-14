@@ -327,6 +327,22 @@ describe("Artifacts Handler", () => {
     await expect(handler.restoreFolder({ folderId: folder.folder.id }, memberCtx)).rejects.toThrow();
   });
 
+  it("should restore a folder even when its parent project is itself archived (getFolderOrgId must still resolve an orgId)", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Under Archived Project" }, ctx);
+    await handler.archiveFolder({ folderId: folder.folder.id }, ctx);
+    await db.update(schemaSqlite.projects).set({ deletedAt: new Date() }).where(eq(schemaSqlite.projects.id, projectId));
+
+    await expect(handler.restoreFolder({ folderId: folder.folder.id }, ctx)).resolves.toEqual({ success: true });
+  });
+
+  it("should purge a folder even when its parent project is itself archived", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Purge Under Archived Project" }, ctx);
+    await handler.archiveFolder({ folderId: folder.folder.id }, ctx);
+    await db.update(schemaSqlite.projects).set({ deletedAt: new Date() }).where(eq(schemaSqlite.projects.id, projectId));
+
+    await expect(handler.purgeFolder({ folderId: folder.folder.id }, ctx)).resolves.toEqual({ success: true });
+  });
+
   it("should archive and restore an artifact, hiding/showing it in listArtifacts", async () => {
     const folder = await handler.createFolder({ projectId, name: "Fld" }, ctx);
     const artifact = await handler.createArtifact({ folderId: folder.folder.id, name: "Archivable Art" }, ctx);
@@ -359,6 +375,24 @@ describe("Artifacts Handler", () => {
     const memberCtx = makeAuthContext(memberId);
     await expect(handler.archiveArtifact({ artifactId: artifact.artifact.id }, memberCtx)).rejects.toThrow();
     await expect(handler.restoreArtifact({ artifactId: artifact.artifact.id }, memberCtx)).rejects.toThrow();
+  });
+
+  it("should restore an artifact even when its parent project is itself archived (getArtifactOrgId must still resolve an orgId)", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Fld" }, ctx);
+    const artifact = await handler.createArtifact({ folderId: folder.folder.id, name: "Under Archived Project" }, ctx);
+    await handler.archiveArtifact({ artifactId: artifact.artifact.id }, ctx);
+    await db.update(schemaSqlite.projects).set({ deletedAt: new Date() }).where(eq(schemaSqlite.projects.id, projectId));
+
+    await expect(handler.restoreArtifact({ artifactId: artifact.artifact.id }, ctx)).resolves.toEqual({ success: true });
+  });
+
+  it("should purge an artifact even when its parent project is itself archived", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Fld" }, ctx);
+    const artifact = await handler.createArtifact({ folderId: folder.folder.id, name: "Purge Under Archived Project" }, ctx);
+    await handler.archiveArtifact({ artifactId: artifact.artifact.id }, ctx);
+    await db.update(schemaSqlite.projects).set({ deletedAt: new Date() }).where(eq(schemaSqlite.projects.id, projectId));
+
+    await expect(handler.purgeArtifact({ artifactId: artifact.artifact.id }, ctx)).resolves.toEqual({ success: true });
   });
 
   // --- purge ---

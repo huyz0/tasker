@@ -488,6 +488,41 @@ describe("Tasks Handler Integration Tests", () => {
     expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.task.purged");
   });
 
+  test("restoreTask and purgeTask still resolve an orgId (and succeed) when the task's project is itself archived", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-archived-proj-" + Date.now();
+    const adminId = "user-archived-proj-admin-" + Date.now();
+    const templateId = "tmpl-archived-proj-" + Date.now();
+    const projectId = "proj-archived-proj-" + Date.now();
+
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Org", slug: "archived-proj-org-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: adminId, role: "admin", joinedAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: adminId, name: "P", createdAt: new Date() });
+
+    const { createTaskManagementHandler } = require("./tasks.handler");
+    const handler = createTaskManagementHandler(db, nc);
+
+    const restoreTaskResp = await handler.createTask({ projectId, title: "To Restore", status: "todo", description: "" }, makeAuthContext(adminId));
+    const purgeTaskResp = await handler.createTask({ projectId, title: "To Purge", status: "todo", description: "" }, makeAuthContext(adminId));
+    // Both tasks are archived while the project is still live - archiveTask
+    // isn't part of what's under test here and, correctly, does need the
+    // project to still resolve without includeDeleted.
+    await handler.deleteTask({ taskId: restoreTaskResp.task.id }, makeAuthContext(adminId));
+    await handler.deleteTask({ taskId: purgeTaskResp.task.id }, makeAuthContext(adminId));
+
+    // Archive the project itself - getTaskOrgId must still resolve an orgId
+    // for each task (to check admin permission) instead of misreporting
+    // "Project not found" because getProjectOrgId's default filters
+    // archived projects out.
+    await db.update(schemaSqlite.projects).set({ deletedAt: new Date() }).where(eq(schemaSqlite.projects.id, projectId));
+
+    await expect(handler.restoreTask({ taskId: restoreTaskResp.task.id }, makeAuthContext(adminId))).resolves.toEqual({ success: true });
+    await expect(handler.purgeTask({ taskId: purgeTaskResp.task.id }, makeAuthContext(adminId))).resolves.toEqual({ success: true });
+  });
+
   test("assigns each task a stable, human-readable displayId derived from the project's key", async () => {
     const { db, nc } = await setupIntegrationTest();
     const { createProjectsHandler, createProjectTemplatesHandler } = require("../projects/projects.handler");

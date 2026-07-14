@@ -186,7 +186,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     async restoreArtifact(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = RestoreArtifactSchema.parse(req);
-      const orgId = await getArtifactOrgId(db, parsed.artifactId);
+      const orgId = await getArtifactOrgId(db, parsed.artifactId, true);
       await assertOrgAdmin(db, userId, orgId);
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
@@ -210,7 +210,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     async restoreFolder(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = RestoreFolderSchema.parse(req);
-      const orgId = await getFolderOrgId(db, parsed.folderId);
+      const orgId = await getFolderOrgId(db, parsed.folderId, true);
       await assertOrgAdmin(db, userId, orgId);
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
@@ -222,7 +222,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     async purgeArtifact(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = PurgeArtifactSchema.parse(req);
-      const orgId = await getArtifactOrgId(db, parsed.artifactId);
+      const orgId = await getArtifactOrgId(db, parsed.artifactId, true);
       await assertOrgAdmin(db, userId, orgId);
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
@@ -249,7 +249,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     async purgeFolder(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = PurgeFolderSchema.parse(req);
-      const orgId = await getFolderOrgId(db, parsed.folderId);
+      const orgId = await getFolderOrgId(db, parsed.folderId, true);
       await assertOrgAdmin(db, userId, orgId);
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;

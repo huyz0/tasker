@@ -86,7 +86,14 @@ export async function getProjectOrgId(db: any, projectId: string, includeDeleted
   return rows[0].orgId;
 }
 
-/** Resolves a task's project orgId, throwing NotFound if the task doesn't exist. */
+/**
+ * Resolves a task's project orgId, throwing NotFound if the task doesn't
+ * exist. includeDeleted must propagate all the way down to the project
+ * lookup, not just gate the task's own row - restoreTask/purgeTask pass
+ * true precisely so a task under an *archived* project still resolves an
+ * orgId (to check admin permission) instead of getProjectOrgId's own
+ * default filtering the project out and misreporting "Project not found".
+ */
 export async function getTaskOrgId(db: any, taskId: string, includeDeleted = false): Promise<string> {
   const tasks = isStandalone() ? schemaSqlite.tasks : schemaMysql.tasks;
   const conditions = [eq(tasks.id, taskId)];
@@ -99,7 +106,7 @@ export async function getTaskOrgId(db: any, taskId: string, includeDeleted = fal
   if (!rows || rows.length === 0) {
     throw new ConnectError('Task not found', Code.NotFound);
   }
-  return getProjectOrgId(db, rows[0].projectId);
+  return getProjectOrgId(db, rows[0].projectId, includeDeleted);
 }
 
 /**
@@ -107,14 +114,18 @@ export async function getTaskOrgId(db: any, taskId: string, includeDeleted = fal
  * exist. Doesn't filter the folder's own deletedAt: the app intentionally
  * allows creating/purging artifacts inside an archived folder as part of
  * its archive-then-purge cleanup workflow (see artifacts.test.ts).
+ *
+ * includeDeleted propagates to the project lookup - see getTaskOrgId's note;
+ * restoreFolder/purgeFolder need this so a folder under an archived project
+ * still resolves.
  */
-export async function getFolderOrgId(db: any, folderId: string): Promise<string> {
+export async function getFolderOrgId(db: any, folderId: string, includeDeleted = false): Promise<string> {
   const folders = isStandalone() ? schemaSqlite.folders : schemaMysql.folders;
   const rows = await db.select().from(folders).where(eq(folders.id, folderId)).limit(1);
   if (!rows || rows.length === 0) {
     throw new ConnectError('Folder not found', Code.NotFound);
   }
-  return getProjectOrgId(db, rows[0].projectId);
+  return getProjectOrgId(db, rows[0].projectId, includeDeleted);
 }
 
 /**
@@ -122,14 +133,18 @@ export async function getFolderOrgId(db: any, folderId: string): Promise<string>
  * doesn't exist. Doesn't filter the artifact's own deletedAt: linking an
  * already-archived artifact to a task is an intentional part of the
  * archive-then-purge cleanup workflow (see artifacts.test.ts).
+ *
+ * includeDeleted propagates through the folder lookup to the project lookup
+ * - see getTaskOrgId's note; restoreArtifact/purgeArtifact need this so an
+ * artifact under an archived project still resolves.
  */
-export async function getArtifactOrgId(db: any, artifactId: string): Promise<string> {
+export async function getArtifactOrgId(db: any, artifactId: string, includeDeleted = false): Promise<string> {
   const artifacts = isStandalone() ? schemaSqlite.artifacts : schemaMysql.artifacts;
   const rows = await db.select().from(artifacts).where(eq(artifacts.id, artifactId)).limit(1);
   if (!rows || rows.length === 0) {
     throw new ConnectError('Artifact not found', Code.NotFound);
   }
-  return getFolderOrgId(db, rows[0].folderId);
+  return getFolderOrgId(db, rows[0].folderId, includeDeleted);
 }
 
 /** Resolves a repository link's project orgId, throwing NotFound if it doesn't exist. */
