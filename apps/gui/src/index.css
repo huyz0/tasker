@@ -107,4 +107,13 @@
     color: var(--color-foreground);
     @apply antialiased;
   }
+
+  /* Global keyboard-focus indicator - nothing in the app defined one, so
+     keyboard users tabbing through buttons, links, and custom clickable
+     rows had little or no visual indication of where focus was. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
 }
