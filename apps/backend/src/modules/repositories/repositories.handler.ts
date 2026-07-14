@@ -247,6 +247,14 @@ interface NormalizedDeployment {
   createdAt: string;
 }
 
+// GitHub's REST API has no way to fetch a deployment's latest status in the
+// same call as the deployments list, so resolving status for N deployments
+// unavoidably means N extra requests. `per_page=10` bounds the fan-out to a
+// small, fixed number rather than letting it grow with the repo's history,
+// and each of those N requests gets its own timeout so one slow/hanging
+// upstream call can't stall the whole listDeployments request indefinitely.
+const GITHUB_STATUS_FETCH_TIMEOUT_MS = 5000;
+
 async function fetchGithubDeployments(remoteName: string, commitSha: string, token: string): Promise<NormalizedDeployment[]> {
   const headers = {
     "Authorization": `Bearer ${token}`,
@@ -257,7 +265,7 @@ async function fetchGithubDeployments(remoteName: string, commitSha: string, tok
   // GitHub deployments are keyed by commit sha, not by our workflow-run
   // based build id - there's no other stable link between a CI run and
   // a deployment, so this is the only correct way to associate them.
-  const response = await fetch(`https://api.github.com/repos/${remoteName}/deployments?sha=${commitSha}&per_page=10`, { headers });
+  const response = await fetch(`https://api.github.com/repos/${remoteName}/deployments?sha=${commitSha}&per_page=10`, { headers, signal: AbortSignal.timeout(GITHUB_STATUS_FETCH_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`GitHub API returned ${response.status} while fetching deployments for ${remoteName}`);
 
   const rawDeployments = await response.json() as any[];
@@ -266,7 +274,7 @@ async function fetchGithubDeployments(remoteName: string, commitSha: string, tok
     try {
       // Statuses are returned newest-first; the latest one is this
       // deployment's current state.
-      const statusesResponse = await fetch(`https://api.github.com/repos/${remoteName}/deployments/${deployment.id}/statuses?per_page=1`, { headers });
+      const statusesResponse = await fetch(`https://api.github.com/repos/${remoteName}/deployments/${deployment.id}/statuses?per_page=1`, { headers, signal: AbortSignal.timeout(GITHUB_STATUS_FETCH_TIMEOUT_MS) });
       if (statusesResponse.ok) {
         const statuses = await statusesResponse.json() as any[];
         const state = statuses[0]?.state;
@@ -274,6 +282,9 @@ async function fetchGithubDeployments(remoteName: string, commitSha: string, tok
         else if (state === 'failure' || state === 'error') status = 'FAILURE';
       }
     } catch (e) {
+      // Includes a timed-out status fetch (AbortSignal.timeout throws a
+      // DOMException) - one deployment's status being unavailable
+      // shouldn't fail the whole list, it just stays 'PENDING'.
       logger.error({ remoteName, deploymentId: deployment.id, err: e }, "listDeployments.status_fetch_failed");
     }
 
