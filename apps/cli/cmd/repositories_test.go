@@ -16,16 +16,29 @@ import (
 
 type fakeRepositoryHandler struct {
 	v1connect.UnimplementedRepositoryServiceHandler
+	gotListLinksPage  *healthv1.PageRequest
+	gotListBuildsPage *healthv1.PageRequest
 }
 
 func (f *fakeRepositoryHandler) ListRepositoryLinks(
 	_ context.Context,
 	req *connect.Request[healthv1.ListRepositoryLinksRequest],
 ) (*connect.Response[healthv1.ListRepositoryLinksResponse], error) {
+	f.gotListLinksPage = req.Msg.Page
 	return connect.NewResponse(&healthv1.ListRepositoryLinksResponse{
 		Links: []*healthv1.RepositoryLink{
 			{Id: "link_1", ProjectId: req.Msg.ProjectId, Provider: "github", RemoteName: "huyz0/tasker"},
 		},
+	}), nil
+}
+
+func (f *fakeRepositoryHandler) ListBuilds(
+	_ context.Context,
+	req *connect.Request[healthv1.ListBuildsRequest],
+) (*connect.Response[healthv1.ListBuildsResponse], error) {
+	f.gotListBuildsPage = req.Msg.Page
+	return connect.NewResponse(&healthv1.ListBuildsResponse{
+		Builds: []*healthv1.Build{{Id: "build_1", RepositoryLinkId: req.Msg.RepositoryLinkId, CommitSha: "abc1234", Status: "SUCCESS"}},
 	}), nil
 }
 
@@ -77,6 +90,35 @@ func TestRepoListCmd(t *testing.T) {
 	out := b.String()
 	if !strings.Contains(out, "Repository Links:") || !strings.Contains(out, "huyz0/tasker") {
 		t.Fatalf("expected output to contain repository links, got %s", out)
+	}
+}
+
+func TestRepoListAndBuildsCmdForwardCursorAndLimit(t *testing.T) {
+	fake := &fakeRepositoryHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewRepositoryServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"repo", "list", "--project", "proj-1", "--cursor", "cursor-2", "--limit", "10"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.gotListLinksPage == nil || fake.gotListLinksPage.Cursor != "cursor-2" || fake.gotListLinksPage.Limit != 10 {
+		t.Fatalf("expected cursor/limit to be forwarded to ListRepositoryLinks, got %+v", fake.gotListLinksPage)
+	}
+
+	b.Reset()
+	rootCmd.SetArgs([]string{"repo", "builds", "link-1", "--cursor", "cursor-2", "--limit", "10"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.gotListBuildsPage == nil || fake.gotListBuildsPage.Cursor != "cursor-2" || fake.gotListBuildsPage.Limit != 10 {
+		t.Fatalf("expected cursor/limit to be forwarded to ListBuilds, got %+v", fake.gotListBuildsPage)
 	}
 }
 

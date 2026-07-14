@@ -22,6 +22,8 @@ var repoListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
 		projectID, _ := cmd.Flags().GetString("project")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
 		}
@@ -31,7 +33,10 @@ var repoListCmd = &cobra.Command{
 		}
 
 		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
-		res, err := client.ListRepositoryLinks(context.Background(), connect.NewRequest(&healthv1.ListRepositoryLinksRequest{ProjectId: projectID}))
+		res, err := client.ListRepositoryLinks(context.Background(), connect.NewRequest(&healthv1.ListRepositoryLinksRequest{
+			ProjectId: projectID,
+			Page:      &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list repository links: %v\n", err)
 			return
@@ -170,9 +175,14 @@ var repoBuildsCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		isJson, _ := cmd.Flags().GetBool("json")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 
 		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
-		res, err := client.ListBuilds(context.Background(), connect.NewRequest(&healthv1.ListBuildsRequest{RepositoryLinkId: args[0]}))
+		res, err := client.ListBuilds(context.Background(), connect.NewRequest(&healthv1.ListBuildsRequest{
+			RepositoryLinkId: args[0],
+			Page:             &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list builds: %v\n", err)
 			return
@@ -236,6 +246,8 @@ func init() {
 	repoCmd.AddCommand(repoDeploymentsCmd)
 
 	repoListCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
+	repoListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	repoListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 
 	repoLinkCmd.Flags().String("provider", "github", "Provider (e.g. github, bitbucket)")
 	repoLinkCmd.Flags().String("remote", "", "Remote repository name")
@@ -249,4 +261,7 @@ func init() {
 
 	repoDeploymentsCmd.Flags().String("link", "", "Repository link ID (from `repo list`)")
 	repoDeploymentsCmd.Flags().String("commit", "", "Commit SHA to look up deployments for (from `repo builds`)")
+
+	repoBuildsCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	repoBuildsCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 }
