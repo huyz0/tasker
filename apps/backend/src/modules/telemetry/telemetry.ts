@@ -8,6 +8,8 @@ import { assertOrgAdminOfAny } from '../../lib/authz';
 import { config } from '../../config';
 import { logger } from '../../lib/logger';
 import { getBusinessEventCounts } from '../../lib/businessEvents';
+import { getRpcMethodStats } from '../../lib/rpcMetrics';
+import { getHttpRequestCounts } from '../../lib/httpMetrics';
 
 const VALID_LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'];
 
@@ -140,5 +142,21 @@ export function createTelemetryRoutes(db: any) {
       if (denied) return denied;
 
       return Response.json({ eventCounts: getBusinessEventCounts() });
+    })
+    // A single lightweight snapshot of request volume - RPC calls by
+    // method (with error counts and latency), and plain HTTP routes
+    // (auth, client-errors, debug/*) by method/path/status. rpc.latency_summary
+    // and this cover the same RPC data periodically in the log stream; this
+    // endpoint is for pulling it on demand instead of waiting for the next
+    // 5-minute log line, and adds the plain-HTTP-route counts that summary
+    // doesn't include at all.
+    .get('/api/debug/metrics', async ({ request }) => {
+      const denied = await requireDebugAccess(db, request);
+      if (denied) return denied;
+
+      return Response.json({
+        rpc: getRpcMethodStats(),
+        http: getHttpRequestCounts(),
+      });
     });
 }

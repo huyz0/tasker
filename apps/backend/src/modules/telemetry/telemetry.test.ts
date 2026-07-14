@@ -8,6 +8,8 @@ import { createSessionToken } from '../auth/session';
 import { logger } from '../../lib/logger';
 import { resetBusinessEvents } from '../../lib/businessEvents';
 import { publishDomainEvent } from '../../lib/natsCorrelation';
+import { recordRpcDuration, resetRpcMetrics } from '../../lib/rpcMetrics';
+import { recordHttpRequest, resetHttpMetrics } from '../../lib/httpMetrics';
 
 function postClientError(routes: ReturnType<typeof createTelemetryRoutes>, body: unknown) {
   return routes.handle(new Request('http://localhost/api/client-errors', {
@@ -289,5 +291,41 @@ describe('GET /api/debug/business-events', () => {
     expect(res.status).toBe(200);
     const body: any = await res.json();
     expect(body.eventCounts).toEqual({ 'domain.task.created': 2, 'domain.project.created': 1 });
+  });
+});
+
+describe('GET /api/debug/metrics', () => {
+  beforeEach(() => {
+    resetRpcMetrics();
+    resetHttpMetrics();
+  });
+
+  it('rejects an unauthenticated request', async () => {
+    const routes = createTelemetryRoutes(db);
+    const res = await routes.handle(new Request('http://localhost/api/debug/metrics'));
+    expect(res.status).toBe(401);
+  });
+
+  it('returns combined RPC and plain-HTTP request counts to an org admin', async () => {
+    const userId = 'user-debug-metrics-admin-' + Date.now();
+    const orgId = 'org-debug-metrics-' + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: 'Debug Org', slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: 'admin', joinedAt: new Date() });
+    const token = createSessionToken(userId);
+
+    recordRpcDuration('TaskService', 'CreateTask', 12, false);
+    recordHttpRequest('GET', '/api/auth/session', 200);
+
+    const routes = createTelemetryRoutes(db);
+    const res = await routes.handle(new Request('http://localhost/api/debug/metrics', {
+      headers: { authorization: `Bearer ${token}` },
+    }));
+
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body.rpc).toHaveLength(1);
+    expect(body.rpc[0].method).toBe('TaskService/CreateTask');
+    expect(body.http).toEqual([{ method: 'GET', path: '/api/auth/session', status: 200, count: 1 }]);
   });
 });

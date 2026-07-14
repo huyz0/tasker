@@ -112,6 +112,14 @@ Every 5 minutes the backend logs a `rpc.latency_summary` line (see
 - useful for spotting which endpoint is actually slow without needing a
 dedicated metrics backend for local investigation.
 
+To pull a snapshot on demand instead of waiting for the next log line - and
+to also see the plain HTTP routes (`/api/auth/*`, `/api/client-errors`,
+`/api/debug/*`) that summary doesn't cover - hit `/api/debug/metrics`:
+
+```bash
+curl http://localhost:8080/api/debug/metrics -H "Authorization: Bearer <admin-token>"
+```
+
 ## Business event volume
 
 `rpc.latency_summary` tells you about traffic; it doesn't tell you about

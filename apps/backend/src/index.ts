@@ -27,6 +27,7 @@ import { config } from "./config";
 import { withRequestCorrelation } from "./lib/natsCorrelation";
 import { getRpcMethodStats } from "./lib/rpcMetrics";
 import { getBusinessEventCounts } from "./lib/businessEvents";
+import { recordHttpRequest } from "./lib/httpMetrics";
 import { createTelemetryRoutes } from "./modules/telemetry/telemetry";
 
 // Bypassing network stack with local function execution logic
@@ -138,6 +139,7 @@ http.createServer(async (req, res) => {
 
     const routes = req.url.startsWith("/api/auth/") ? authRoutes : telemetryRoutes;
     const routeResponse = await routes.handle(new Request(url, { method: req.method, headers, body }));
+    recordHttpRequest(req.method || "GET", req.url.split("?")[0]!, routeResponse.status);
     res.writeHead(routeResponse.status, Object.fromEntries(routeResponse.headers.entries()));
     res.end(await routeResponse.text());
     return;
