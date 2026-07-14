@@ -2,6 +2,12 @@ $schema: https://moonrepo.dev/schemas/project.json
 language: system
 
 tasks:
+  dev:
+    command: 'bash scripts/dev.sh'
+    options:
+      cache: false
+      persistent: true
+
   run-local-ci:
     command: 'bash -c "if .agents/skills/local-ci-run/scripts/check.sh >/dev/null 2>&1; then .agents/skills/local-ci-run/scripts/run.sh push; else echo \"⚠️ gh cli or act plugin not installed. Skipping local CI.\"; fi"'
     inputs:

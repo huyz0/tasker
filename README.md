@@ -95,6 +95,20 @@ moon run gui:build
 moon run :test
 ```
 
+### 4. Running Locally
+
+To start the backend and GUI together for local development (backend runs in
+STANDALONE mode against an embedded SQLite database - no Docker/MySQL setup
+required):
+
+```bash
+moon run dev
+```
+
+This tails both processes' logs in one terminal, prefixed `[backend]` /
+`[gui]`; Ctrl-C stops both. The backend listens on `:8080`, the GUI dev
+server on `:5173`.
+
 ---
 
 ## 📦 Monorepo Structure
