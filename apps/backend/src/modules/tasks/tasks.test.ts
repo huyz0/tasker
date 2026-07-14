@@ -85,6 +85,29 @@ describe("Tasks Handler Integration Tests", () => {
     const otherParentResp = await handler.createTaskType({ orgId: otherOrgId, name: "Other Epic" }, makeAuthContext(otherUserId));
 
     await expect(handler.createTaskType({ orgId, name: "Cross-org child", parentId: otherParentResp.taskType.id }, ctx)).rejects.toThrow();
+
+    // A project-scoped parent must stay within its own project's type tree -
+    // a child scoped to a different project (even in the same org) must be rejected.
+    const templateId = "tmpl-tthier-" + Date.now();
+    const projectAId = "proj-tthier-a-" + Date.now();
+    const projectBId = "proj-tthier-b-" + Date.now();
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectAId, orgId, templateId, ownerId: userId, name: "Project A", key: "PA-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectBId, orgId, templateId, ownerId: userId, name: "Project B", key: "PB-" + Date.now(), createdAt: new Date() });
+
+    const projectScopedParent = await handler.createTaskType({ orgId, projectId: projectAId, name: "A-Epic" }, ctx);
+    await expect(
+      handler.createTaskType({ orgId, projectId: projectBId, name: "B-Story", parentId: projectScopedParent.taskType.id }, ctx)
+    ).rejects.toThrow();
+
+    // Same project is fine.
+    const sameProjectChild = await handler.createTaskType({ orgId, projectId: projectAId, name: "A-Story", parentId: projectScopedParent.taskType.id }, ctx);
+    expect(sameProjectChild.taskType.parentId).toBe(projectScopedParent.taskType.id);
+
+    // An org-wide parent (no projectId) is reusable by any project's type.
+    const orgWideParent = await handler.createTaskType({ orgId, name: "Org-wide Epic" }, ctx);
+    const childUnderOrgWideParent = await handler.createTaskType({ orgId, projectId: projectBId, name: "B-Story-2", parentId: orgWideParent.taskType.id }, ctx);
+    expect(childUnderOrgWideParent.taskType.parentId).toBe(orgWideParent.taskType.id);
   });
 
   test("listTaskTypes lists task types for an org, scoped by membership, with filter/sort support", async () => {

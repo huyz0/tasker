@@ -136,6 +136,13 @@ export const createTasksHandler = (db: any, nc: any = null) => {
         if (parentRows[0].orgId !== parsed.orgId) {
           throw new ConnectError("parent task type belongs to a different organization", Code.InvalidArgument);
         }
+        // A project-scoped parent must stay within its own project's type
+        // tree; an org-wide parent (projectId null) is reusable across
+        // any project, so only enforce the match when the parent itself
+        // is project-scoped.
+        if (parentRows[0].projectId && parentRows[0].projectId !== (parsed.projectId || null)) {
+          throw new ConnectError("parent task type belongs to a different project", Code.InvalidArgument);
+        }
       }
 
       const newId = `tt-${crypto.randomUUID()}`;
