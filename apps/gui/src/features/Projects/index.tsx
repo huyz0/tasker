@@ -7,6 +7,7 @@ import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { ProjectService, ProjectTemplateService, TaskTypeService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { PaginationControls } from '../../components/PaginationControls';
+import { Package } from 'lucide-react';
 
 const projectClient = createClient(ProjectService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
@@ -173,6 +174,7 @@ export function ProjectsWizard() {
             placeholder="New project name"
             className="w-full max-w-sm rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
           />
+          <p className="text-xs text-muted-foreground mt-1">Enter a project name, then pick a template below to create it.</p>
         </div>
         {createProjectMutation.isError && (
           <p className="text-sm text-destructive mb-4">Failed to create project: {(createProjectMutation.error as Error).message}</p>
@@ -183,8 +185,8 @@ export function ProjectsWizard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {templatesData.map(t => (
               <div key={t.id} className="border rounded-lg bg-card p-6 shadow-sm hover:border-primary cursor-pointer transition-all flex flex-col h-full">
-                 <div className="w-10 h-10 mb-4 rounded bg-primary/10 flex items-center justify-center text-primary text-xl">
-                   📦
+                 <div className="w-10 h-10 mb-4 rounded bg-primary/10 flex items-center justify-center text-primary">
+                   <Package className="w-5 h-5" />
                  </div>
                  <h3 className="font-semibold text-lg">{t.name}</h3>
                  <p className="text-sm text-muted-foreground mt-1 mb-6 flex-grow">{t.description}</p>
