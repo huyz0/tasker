@@ -12,6 +12,8 @@ message PingResponse {
   string natsStatus = 3;
   string version = 4;
   int32 uptimeSeconds = 5;
+  int32 dbLatencyMs = 6;
+  int32 natsLatencyMs = 7;
 }
 
 service HealthService {

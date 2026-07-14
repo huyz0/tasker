@@ -16,6 +16,8 @@ model PingResponse {
   @field(3) natsStatus: string;
   @field(4) version: string;
   @field(5) uptimeSeconds: int32;
+  @field(6) dbLatencyMs?: int32;
+  @field(7) natsLatencyMs?: int32;
 }
 
 interface HealthService {

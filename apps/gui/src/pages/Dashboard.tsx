@@ -40,7 +40,7 @@ export function Dashboard() {
     queryKey: ['healthPing', timestamp],
     queryFn: async () => {
       const res = await healthClient.ping({});
-      return res as { message: string, dbStatus: string };
+      return res as { message: string, dbStatus: string, dbLatencyMs?: number, natsStatus: string, natsLatencyMs?: number };
     }
   });
 
@@ -118,7 +118,8 @@ export function Dashboard() {
         {health && (
           <div className="bg-muted p-4 rounded-md text-sm font-mono flex flex-col gap-2">
             <p><span className="text-muted-foreground">Message:</span> {health.message}</p>
-            <p><span className="text-muted-foreground">DB Status:</span> {health.dbStatus}</p>
+            <p><span className="text-muted-foreground">DB Status:</span> {health.dbStatus}{health.dbLatencyMs !== undefined ? ` (${health.dbLatencyMs}ms)` : ''}</p>
+            <p><span className="text-muted-foreground">NATS Status:</span> {health.natsStatus}{health.natsLatencyMs !== undefined ? ` (${health.natsLatencyMs}ms)` : ''}</p>
           </div>
         )}
       </div>

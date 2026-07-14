@@ -22,6 +22,8 @@ describe("Health Handler Integration Logic", () => {
     expect(res.dbStatus).not.toMatch(/^error:/);
     expect(typeof res.uptimeSeconds).toBe("number");
     expect(typeof res.version).toBe("string");
+    expect(typeof res.dbLatencyMs).toBe("number");
+    expect(res.dbLatencyMs).toBeGreaterThanOrEqual(0);
   });
 
   test("ping reports natsStatus based on the connection passed in", async () => {
@@ -37,8 +39,24 @@ describe("Health Handler Integration Logic", () => {
     const closedHandler = createHealthHandler(db, closedNc);
     expect((await closedHandler.ping({})).natsStatus).toBe("closed");
 
-    const liveNc = { isClosed: () => false };
+    const liveNc = { isClosed: () => false, flush: async () => {} };
     const liveHandler = createHealthHandler(db, liveNc);
-    expect((await liveHandler.ping({})).natsStatus).toBe("connected");
+    const liveRes = await liveHandler.ping({});
+    expect(liveRes.natsStatus).toBe("connected");
+    expect(typeof liveRes.natsLatencyMs).toBe("number");
+    expect(liveRes.natsLatencyMs).toBeGreaterThanOrEqual(0);
+  });
+
+  test("ping omits natsLatencyMs when the NATS connection has no flush method", async () => {
+    const { db } = await setupIntegrationTest();
+    try {
+        db.session.client.query(`CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(title, body);`).run();
+    } catch {}
+
+    const liveNc = { isClosed: () => false };
+    const handler = createHealthHandler(db, liveNc);
+    const res = await handler.ping({});
+    expect(res.natsStatus).toBe("connected");
+    expect(res.natsLatencyMs).toBeUndefined();
   });
 });
