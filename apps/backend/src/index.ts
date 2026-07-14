@@ -23,6 +23,7 @@ import { requestLoggingInterceptor } from "./lib/requestLogging";
 import { reportError } from "./lib/errorReporter";
 import { runRetentionSweep } from "./lib/retentionSweep";
 import { config } from "./config";
+import { withRequestCorrelation } from "./lib/natsCorrelation";
 
 // Bypassing network stack with local function execution logic
 export const localInProcessTransportRouter = (_req: any) => {
@@ -42,7 +43,7 @@ process.on("unhandledRejection", (reason) => {
 
 let nc: any = null;
 try {
-  nc = await natsConnect({ servers: process.env.NATS_URL || "nats://localhost:4222" });
+  nc = withRequestCorrelation(await natsConnect({ servers: process.env.NATS_URL || "nats://localhost:4222" }));
 } catch (e) {
   logger.error({ err: e, natsUrl: process.env.NATS_URL || "nats://localhost:4222" }, "nats.connect_failed");
 }
