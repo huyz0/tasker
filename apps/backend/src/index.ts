@@ -22,6 +22,7 @@ import { logger } from "./lib/logger";
 import { requestLoggingInterceptor } from "./lib/requestLogging";
 import { reportError } from "./lib/errorReporter";
 import { runRetentionSweep } from "./lib/retentionSweep";
+import { config } from "./config";
 
 // Bypassing network stack with local function execution logic
 export const localInProcessTransportRouter = (_req: any) => {
@@ -78,8 +79,16 @@ const handler = connectNodeAdapter({
 });
 
 http.createServer(async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
+  // Access-Control-Allow-Credentials: true means any origin this reflects
+  // back can read authenticated responses using a visitor's session
+  // cookie - only ever echo an Origin that's on the configured allowlist,
+  // never mirror an arbitrary caller-supplied Origin.
+  const origin = req.headers.origin;
+  if (origin && config.corsAllowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Connect-Protocol-Version, X-Request-Id");
   res.setHeader("Access-Control-Expose-Headers", "X-Request-Id");

@@ -78,4 +78,29 @@ describe('config production safety checks', () => {
     });
     expect(exitCode).toBe(0);
   });
+
+  it('fails fast in production with no CORS allowed origins configured', async () => {
+    const { exitCode } = await loadConfigWith({
+      NODE_ENV: 'production',
+      JWT_SECRET: 'a-real-jwt-secret',
+      APP_ENCRYPTION_SECRET: 'a-real-encryption-secret32bytes!',
+      ENABLE_TEST_LOGIN: 'false',
+      CORS_ALLOWED_ORIGINS: '',
+    });
+    expect(exitCode).not.toBe(0);
+  });
+
+  it('starts cleanly in production with CORS_ALLOWED_ORIGINS set', async () => {
+    const { exitCode } = await loadConfigWith({
+      NODE_ENV: 'production',
+      JWT_SECRET: 'a-real-jwt-secret',
+      APP_ENCRYPTION_SECRET: 'a-real-encryption-secret32bytes!',
+      ENABLE_TEST_LOGIN: 'false',
+      GOOGLE_CLIENT_ID: 'x',
+      GOOGLE_CLIENT_SECRET: 'x',
+      GOOGLE_REDIRECT_URI: 'x',
+      CORS_ALLOWED_ORIGINS: 'https://app.example.com',
+    });
+    expect(exitCode).toBe(0);
+  });
 });
