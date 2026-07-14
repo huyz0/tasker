@@ -8,7 +8,8 @@
     "test": "rm -rf .data && mkdir -p .data && bun test",
     "test:coverage": "rm -rf .data && mkdir -p .data && bun test --coverage",
     "test:integration": "bun test src/modules/repositories/repositories.integration.test.ts",
-    "build:standalone": "bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts"
+    "build:standalone": "bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts",
+    "seed": "STANDALONE=true bun run scripts/seed.ts"
   },
   "dependencies": {
     "pino": "^10.3.1",

@@ -109,6 +109,18 @@ This tails both processes' logs in one terminal, prefixed `[backend]` /
 `[gui]`; Ctrl-C stops both. The backend listens on `:8080`, the GUI dev
 server on `:5173`.
 
+To populate the local database with a realistic amount of data (an org,
+project, ~150 tasks, agents, labels) instead of starting from empty - useful
+for reproducing bugs that only show up once a list actually needs to
+paginate:
+
+```bash
+cd apps/backend && bun run seed
+```
+
+This prints a session token for the seeded user at the end; paste it into a
+`session` cookie in the browser, or use it as a Bearer token with the CLI.
+
 ---
 
 ## 📦 Monorepo Structure
