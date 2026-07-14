@@ -64,6 +64,8 @@ var taskTypesListCmd = &cobra.Command{
 		orgID, _ := cmd.Flags().GetString("org")
 		filter, _ := cmd.Flags().GetString("filter")
 		sort, _ := cmd.Flags().GetString("sort")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
@@ -76,7 +78,7 @@ var taskTypesListCmd = &cobra.Command{
 		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		res, err := client.ListTaskTypes(context.Background(), connect.NewRequest(&healthv1.ListTaskTypesRequest{
 			OrgId: orgID,
-			Page:  &healthv1.PageRequest{Filter: filter, Sort: sort},
+			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list task types: %v\n", err)
@@ -207,7 +209,9 @@ func init() {
 
 	taskTypesListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	taskTypesListCmd.Flags().StringP("filter", "f", "", "Substring match against task type name")
-	taskTypesListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\"")
+	taskTypesListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
+	taskTypesListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	taskTypesListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 
 	taskTypesCreateStatusCmd.Flags().String("name", "", "Status name (e.g. open, in_review, closed)")
 

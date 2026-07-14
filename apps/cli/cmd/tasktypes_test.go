@@ -16,6 +16,7 @@ import (
 
 type fakeTaskTypeHandler struct {
 	v1connect.UnimplementedTaskTypeServiceHandler
+	gotListPage *healthv1.PageRequest
 }
 
 func (f *fakeTaskTypeHandler) CreateTaskType(
@@ -44,6 +45,7 @@ func (f *fakeTaskTypeHandler) ListTaskTypes(
 	_ context.Context,
 	req *connect.Request[healthv1.ListTaskTypesRequest],
 ) (*connect.Response[healthv1.ListTaskTypesResponse], error) {
+	f.gotListPage = req.Msg.Page
 	return connect.NewResponse(&healthv1.ListTaskTypesResponse{
 		TaskTypes: []*healthv1.TaskType{
 			{Id: "tt_1", OrgId: req.Msg.OrgId, Name: "Epic"},
@@ -75,13 +77,15 @@ func (f *fakeTaskTypeHandler) CreateTaskStatusTransition(
 	}), nil
 }
 
-func withTaskTypeServer(t *testing.T) {
+func withTaskTypeServer(t *testing.T) *fakeTaskTypeHandler {
 	t.Helper()
+	fake := &fakeTaskTypeHandler{}
 	mux := http.NewServeMux()
-	mux.Handle(v1connect.NewTaskTypeServiceHandler(&fakeTaskTypeHandler{}))
+	mux.Handle(v1connect.NewTaskTypeServiceHandler(fake))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	return fake
 }
 
 func TestTaskTypesCreateCmd(t *testing.T) {
@@ -117,18 +121,21 @@ func TestTaskTypesCreateCmdWithParent(t *testing.T) {
 }
 
 func TestTaskTypesListCmd(t *testing.T) {
-	withTaskTypeServer(t)
+	fake := withTaskTypeServer(t)
 
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
-	rootCmd.SetArgs([]string{"task-types", "list", "--org", "org-1"})
+	rootCmd.SetArgs([]string{"task-types", "list", "--org", "org-1", "--cursor", "cursor-2", "--limit", "10"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
 	if !strings.Contains(out, "Epic") || !strings.Contains(out, "Story") {
 		t.Fatalf("expected output to list both task types, got %s", out)
+	}
+	if fake.gotListPage == nil || fake.gotListPage.Cursor != "cursor-2" || fake.gotListPage.Limit != 10 {
+		t.Fatalf("expected cursor/limit to be forwarded, got %+v", fake.gotListPage)
 	}
 }
 

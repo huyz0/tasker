@@ -86,6 +86,8 @@ var projectTemplatesListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		orgID, _ := cmd.Flags().GetString("org")
 		isJson, _ := cmd.Flags().GetBool("json")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
 		}
@@ -95,7 +97,10 @@ var projectTemplatesListCmd = &cobra.Command{
 		}
 
 		client := healthv1connect.NewProjectTemplateServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
-		res, err := client.ListTemplates(context.Background(), connect.NewRequest(&healthv1.ListProjectTemplatesRequest{OrgId: orgID}))
+		res, err := client.ListTemplates(context.Background(), connect.NewRequest(&healthv1.ListProjectTemplatesRequest{
+			OrgId: orgID,
+			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list project templates: %v\n", err)
 			return
@@ -124,4 +129,6 @@ func init() {
 	projectTemplatesCreateCmd.Flags().String("root-task-type", "", "Optional root task type ID for this template")
 
 	projectTemplatesListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	projectTemplatesListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	projectTemplatesListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 }

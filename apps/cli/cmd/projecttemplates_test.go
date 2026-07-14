@@ -16,6 +16,7 @@ import (
 
 type fakeProjectTemplateHandler struct {
 	v1connect.UnimplementedProjectTemplateServiceHandler
+	gotListPage *healthv1.PageRequest
 }
 
 func (f *fakeProjectTemplateHandler) CreateTemplate(
@@ -46,18 +47,21 @@ func (f *fakeProjectTemplateHandler) ListTemplates(
 	_ context.Context,
 	req *connect.Request[healthv1.ListProjectTemplatesRequest],
 ) (*connect.Response[healthv1.ListProjectTemplatesResponse], error) {
+	f.gotListPage = req.Msg.Page
 	return connect.NewResponse(&healthv1.ListProjectTemplatesResponse{
 		Templates: []*healthv1.ProjectTemplate{{Id: "pt_1", Name: "Template A", OrgId: req.Msg.OrgId}},
 	}), nil
 }
 
-func withProjectTemplateServer(t *testing.T) {
+func withProjectTemplateServer(t *testing.T) *fakeProjectTemplateHandler {
 	t.Helper()
+	fake := &fakeProjectTemplateHandler{}
 	mux := http.NewServeMux()
-	mux.Handle(v1connect.NewProjectTemplateServiceHandler(&fakeProjectTemplateHandler{}))
+	mux.Handle(v1connect.NewProjectTemplateServiceHandler(fake))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	return fake
 }
 
 func TestProjectTemplatesCreateCmd(t *testing.T) {
@@ -93,17 +97,20 @@ func TestProjectTemplatesGetCmd(t *testing.T) {
 }
 
 func TestProjectTemplatesListCmd(t *testing.T) {
-	withProjectTemplateServer(t)
+	fake := withProjectTemplateServer(t)
 
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
-	rootCmd.SetArgs([]string{"project-templates", "list", "--org", "org-1"})
+	rootCmd.SetArgs([]string{"project-templates", "list", "--org", "org-1", "--cursor", "cursor-2", "--limit", "10"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
 	if !strings.Contains(out, "Template A") {
 		t.Fatalf("expected output to contain the listed template, got %s", out)
+	}
+	if fake.gotListPage == nil || fake.gotListPage.Cursor != "cursor-2" || fake.gotListPage.Limit != 10 {
+		t.Fatalf("expected cursor/limit to be forwarded, got %+v", fake.gotListPage)
 	}
 }
