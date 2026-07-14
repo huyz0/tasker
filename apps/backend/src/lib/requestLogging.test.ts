@@ -1,6 +1,8 @@
 import { describe, it, expect, mock } from 'bun:test';
 import { createContextValues } from '@connectrpc/connect';
 import { requestLoggingInterceptor, requestIdKey } from './requestLogging';
+import { getRequestContext } from './requestContext';
+import { createSessionToken } from '../modules/auth/session';
 
 function makeReq(overrides: Partial<any> = {}) {
   const { header, ...rest } = overrides;
@@ -33,6 +35,37 @@ describe('requestLoggingInterceptor', () => {
 
     expect(req.contextValues.get(requestIdKey)).toBe('client-supplied-id');
     expect((res as any).header.get('x-request-id')).toBe('client-supplied-id');
+  });
+
+  it('binds requestId (and userId, when authenticated) into the request context for the duration of next()', async () => {
+    const token = createSessionToken('user-obs-2');
+    const req = makeReq({ header: { 'x-request-id': 'ctx-test-id', authorization: `Bearer ${token}` } });
+
+    let seenDuringNext: ReturnType<typeof getRequestContext>;
+    const next = mock(async () => {
+      seenDuringNext = getRequestContext();
+      return { stream: false, header: new Headers() };
+    });
+
+    await requestLoggingInterceptor(next as any)(req as any);
+
+    expect(seenDuringNext).toEqual({ requestId: 'ctx-test-id', userId: 'user-obs-2' });
+    // The context must not leak past the request - nothing bound it here.
+    expect(getRequestContext()).toBeUndefined();
+  });
+
+  it('binds a null userId when the request has no valid session, instead of omitting it silently', async () => {
+    const req = makeReq({ header: { 'x-request-id': 'ctx-test-anon' } });
+
+    let seenDuringNext: ReturnType<typeof getRequestContext>;
+    const next = mock(async () => {
+      seenDuringNext = getRequestContext();
+      return { stream: false, header: new Headers() };
+    });
+
+    await requestLoggingInterceptor(next as any)(req as any);
+
+    expect(seenDuringNext).toEqual({ requestId: 'ctx-test-anon', userId: null });
   });
 
   it('propagates errors after logging, without swallowing them', async () => {
