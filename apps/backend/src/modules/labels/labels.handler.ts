@@ -28,11 +28,11 @@ async function getEntityOrgId(db: any, entityId: string, entityType: string): Pr
 }
 
 // Distinguishes a real DB-level unique-constraint violation (a concurrent
-// createLabel call won the race for the same orgId+name) from any other
-// insert failure, so only the former gets translated to AlreadyExists.
-function isLabelNameConflict(e: unknown): boolean {
+// createLabel/attachLabel call won the race for the same unique key) from
+// any other insert failure, so only the former is treated as a benign no-op.
+function isUniqueConstraintConflict(e: unknown): boolean {
   const msg = String((e as any)?.message ?? e);
-  return msg.includes("labels_org_id_name_idx") || msg.includes("UNIQUE constraint failed") || msg.includes("Duplicate entry");
+  return msg.includes("labels_org_id_name_idx") || msg.includes("entity_labels_entity_label_idx") || msg.includes("UNIQUE constraint failed") || msg.includes("Duplicate entry");
 }
 
 // --- Handler Factory ---
@@ -71,7 +71,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       try {
         await insertRecord(db, labels, payload, isStandalone);
       } catch (e) {
-        if (!isLabelNameConflict(e)) throw e;
+        if (!isUniqueConstraintConflict(e)) throw e;
         throw new ConnectError("a label with this name already exists in this organization", Code.AlreadyExists);
       }
 
@@ -120,12 +120,21 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       }
 
       const newId = `elbl-${crypto.randomUUID()}`;
-      await insertRecord(db, entityLabels, {
-        id: newId,
-        entityId: parsed.entityId,
-        entityType: parsed.entityType,
-        labelId: parsed.labelId,
-      }, isStandalone);
+      // The select-then-insert check above has a race window - fall back to
+      // catching the DB's own unique-constraint violation for a concurrent
+      // duplicate attach, so it's treated as a no-op instead of surfacing a
+      // raw DB error.
+      try {
+        await insertRecord(db, entityLabels, {
+          id: newId,
+          entityId: parsed.entityId,
+          entityType: parsed.entityType,
+          labelId: parsed.labelId,
+        }, isStandalone);
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        return { success: true };
+      }
 
       if (nc) nc.publish("domain.label.attached", Buffer.from(JSON.stringify(parsed)));
       return { success: true };

@@ -194,6 +194,12 @@ export const entityLabels = mysqlTable("entity_labels", {
   entityType: mysqlEnum("entity_type", ['task', 'artifact']).notNull(),
   labelId: varchar("label_id", { length: 256 }).notNull().references(() => labels.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Prevents a concurrent attachLabel race from creating duplicate
+    // (entity, label) links.
+    entityLabelIdx: uniqueIndex("entity_labels_entity_label_idx").on(table.entityId, table.entityType, table.labelId),
+  };
 });
 
 export const taskNotes = mysqlTable("task_notes", {

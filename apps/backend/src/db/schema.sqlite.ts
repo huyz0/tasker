@@ -208,6 +208,12 @@ export const entityLabels = sqliteTable("entity_labels", {
   entityType: text("entity_type").notNull(),
   labelId: text("label_id").notNull().references(() => labels.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    // Prevents a concurrent attachLabel race from creating duplicate
+    // (entity, label) links.
+    entityLabelIdx: uniqueIndex("entity_labels_entity_label_idx").on(table.entityId, table.entityType, table.labelId),
+  };
 });
 
 export const taskNotes = sqliteTable("task_notes", {

@@ -156,6 +156,18 @@ describe("Labels Handler", () => {
     expect(res.labels).toHaveLength(1);
   });
 
+  it("should not create duplicate links when two attachLabel calls race for the same entity+label", async () => {
+    const created = await handler.createLabel({ orgId, name: "race-attach" }, ctx);
+    const results = await Promise.allSettled([
+      handler.attachLabel({ entityId: taskId, entityType: "task", labelId: created.label.id }, ctx),
+      handler.attachLabel({ entityId: taskId, entityType: "task", labelId: created.label.id }, ctx),
+    ]);
+    expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+
+    const res = await handler.listEntityLabels({ entityId: taskId, entityType: "task" }, ctx);
+    expect(res.labels).toHaveLength(1);
+  });
+
   it("should reject attaching a label from a different org", async () => {
     const otherOrgId = "org-" + crypto.randomUUID();
     await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: "other-" + Date.now(), createdAt: new Date() });
