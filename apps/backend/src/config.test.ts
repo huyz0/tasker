@@ -90,6 +90,20 @@ describe('config production safety checks', () => {
     expect(exitCode).not.toBe(0);
   });
 
+  it('fails fast in production with no Google OAuth client configured', async () => {
+    const { exitCode } = await loadConfigWith({
+      NODE_ENV: 'production',
+      JWT_SECRET: 'a-real-jwt-secret',
+      APP_ENCRYPTION_SECRET: 'a-real-encryption-secret32bytes!',
+      ENABLE_TEST_LOGIN: 'false',
+      CORS_ALLOWED_ORIGINS: 'https://app.example.com',
+      GOOGLE_CLIENT_ID: undefined,
+      GOOGLE_CLIENT_SECRET: undefined,
+      GOOGLE_REDIRECT_URI: undefined,
+    });
+    expect(exitCode).not.toBe(0);
+  });
+
   it('starts cleanly in production with CORS_ALLOWED_ORIGINS set', async () => {
     const { exitCode } = await loadConfigWith({
       NODE_ENV: 'production',

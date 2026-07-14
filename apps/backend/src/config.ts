@@ -45,6 +45,15 @@ const configSchema = z.object({
   if (cfg.corsAllowedOrigins.length === 0) {
     ctx.addIssue({ code: 'custom', path: ['corsAllowedOrigins'], message: 'CORS_ALLOWED_ORIGINS must be set in production' });
   }
+  if (!cfg.googleClientId) {
+    ctx.addIssue({ code: 'custom', path: ['googleClientId'], message: 'GOOGLE_CLIENT_ID must be set in production' });
+  }
+  if (!cfg.googleClientSecret) {
+    ctx.addIssue({ code: 'custom', path: ['googleClientSecret'], message: 'GOOGLE_CLIENT_SECRET must be set in production' });
+  }
+  if (!cfg.googleRedirectUri) {
+    ctx.addIssue({ code: 'custom', path: ['googleRedirectUri'], message: 'GOOGLE_REDIRECT_URI must be set in production' });
+  }
 });
 
 const loadConfig = () => {
