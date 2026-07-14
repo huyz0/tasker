@@ -98,6 +98,18 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(mockRestoreOrg).toHaveBeenCalledWith({ orgId: 'org-2' }));
   });
 
+  it('auto-loads later pages so archived orgs past the first page can be restored', async () => {
+    mockListOrgs
+      .mockResolvedValueOnce({ organizations: [{ id: 'org-2', name: 'Page One Org', deletedAt: new Date().toISOString() }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ organizations: [{ id: 'org-3', name: 'Page Two Org', deletedAt: new Date().toISOString() }], page: {} });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Page One Org')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Page Two Org')).toBeDefined());
+    expect(mockListOrgs).toHaveBeenCalledWith({ onlyDeleted: true, page: { cursor: 'cursor-2' } });
+  });
+
   it('shows an empty message when there is nothing archived', async () => {
     mockListOrgs.mockResolvedValue({ organizations: [] });
     renderPage();
@@ -114,7 +126,7 @@ describe('BinDashboard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Tasks' }));
     await waitFor(() => expect(screen.getByText('Archived Task')).toBeDefined());
-    expect(mockListTasks).toHaveBeenCalledWith({ projectId: 'proj-1', onlyDeleted: true });
+    expect(mockListTasks).toHaveBeenCalledWith({ projectId: 'proj-1', onlyDeleted: true, page: undefined });
   });
 
   it('permanently deletes an item after confirmation', async () => {

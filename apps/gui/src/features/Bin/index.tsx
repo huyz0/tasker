@@ -17,6 +17,19 @@ const taskClient = createClient(TaskService, transport);
 const agentClient = createClient(AgentService, transport);
 const artifactClient = createClient(ArtifactService, transport);
 
+// The Bin must show every archived item, not just the first page, or a
+// restore/purge action becomes permanently unreachable for anything past it.
+async function fetchAllPages<T>(fetchPage: (cursor: string | undefined) => Promise<{ items: T[]; nextCursor: string | undefined }>): Promise<T[]> {
+  const all: T[] = [];
+  let cursor: string | undefined;
+  do {
+    const { items, nextCursor } = await fetchPage(cursor);
+    all.push(...items);
+    cursor = nextCursor;
+  } while (cursor);
+  return all;
+}
+
 type EntityKind = 'organizations' | 'projects' | 'tasks' | 'agents' | 'folders' | 'artifacts';
 
 const TABS: { id: EntityKind; label: string }[] = [
@@ -32,7 +45,10 @@ function OrganizationsBin() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['orgs', 'bin'],
-    queryFn: async () => (await orgClient.listOrgs({ onlyDeleted: true })).organizations,
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await orgClient.listOrgs({ onlyDeleted: true, page: cursor ? { cursor } : undefined });
+      return { items: resp.organizations, nextCursor: resp.page?.nextCursor || undefined };
+    }),
   });
   const restoreMutation = useMutation({
     mutationFn: async (orgId: string) => { await orgClient.restoreOrg({ orgId }); },
@@ -65,7 +81,10 @@ function ProjectsBin() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['projects', 'bin', activeOrgId],
-    queryFn: async () => (await projectClient.listProjects({ orgId: activeOrgId, onlyDeleted: true })).projects,
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await projectClient.listProjects({ orgId: activeOrgId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
+      return { items: resp.projects, nextCursor: resp.page?.nextCursor || undefined };
+    }),
     enabled: Boolean(activeOrgId),
   });
   const restoreMutation = useMutation({
@@ -99,7 +118,10 @@ function TasksBin() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['tasks', 'bin', activeProjectId],
-    queryFn: async () => (await taskClient.listTasks({ projectId: activeProjectId, onlyDeleted: true })).tasks,
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await taskClient.listTasks({ projectId: activeProjectId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
+      return { items: resp.tasks, nextCursor: resp.page?.nextCursor || undefined };
+    }),
     enabled: Boolean(activeProjectId),
   });
   const restoreMutation = useMutation({
@@ -134,7 +156,10 @@ function AgentsBin() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['agents', 'bin', activeOrgId],
-    queryFn: async () => (await agentClient.listAgents({ orgId: activeOrgId, onlyDeleted: true })).agents,
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await agentClient.listAgents({ orgId: activeOrgId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
+      return { items: resp.agents, nextCursor: resp.page?.nextCursor || undefined };
+    }),
     enabled: Boolean(activeOrgId),
   });
   const restoreMutation = useMutation({
@@ -168,7 +193,10 @@ function FoldersBin() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['folders', 'bin', activeProjectId],
-    queryFn: async () => (await artifactClient.listFolders({ projectId: activeProjectId, onlyDeleted: true })).folders,
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await artifactClient.listFolders({ projectId: activeProjectId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
+      return { items: resp.folders, nextCursor: resp.page?.nextCursor || undefined };
+    }),
     enabled: Boolean(activeProjectId),
   });
   const restoreMutation = useMutation({
@@ -202,16 +230,22 @@ function ArtifactsBin() {
   const queryClient = useQueryClient();
   const { data: folders } = useQuery({
     queryKey: ['folders', activeProjectId],
-    queryFn: async () => (await artifactClient.listFolders({ projectId: activeProjectId })).folders,
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await artifactClient.listFolders({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
+      return { items: resp.folders, nextCursor: resp.page?.nextCursor || undefined };
+    }),
     enabled: Boolean(activeProjectId),
   });
   const { data, isLoading } = useQuery({
     queryKey: ['artifacts', 'bin', activeProjectId, folders?.map(f => f.id).join(',')],
     queryFn: async () => {
       const perFolder = await Promise.all(
-        (folders ?? []).map(f => artifactClient.listArtifacts({ folderId: f.id, onlyDeleted: true }))
+        (folders ?? []).map(f => fetchAllPages(async (cursor) => {
+          const resp = await artifactClient.listArtifacts({ folderId: f.id, onlyDeleted: true, page: cursor ? { cursor } : undefined });
+          return { items: resp.artifacts, nextCursor: resp.page?.nextCursor || undefined };
+        }))
       );
-      return perFolder.flatMap(r => r.artifacts);
+      return perFolder.flat();
     },
     enabled: Boolean(activeProjectId) && Boolean(folders),
   });
