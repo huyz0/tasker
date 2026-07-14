@@ -142,6 +142,26 @@ describe("Agents Handler Integration Tests", () => {
     await expect(handler.restoreAgent({ agentId: agentResp.agent.id }, memberCtx)).rejects.toThrow();
   });
 
+  test("restoreAgent rejects restoring into an archived organization", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-agent-restore-archived-" + Date.now().toString();
+    const userId = "user-agent-restore-archived-" + Date.now().toString();
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Restore Archived Org", slug: "restore-archived-org-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
+    const ctx = makeAuthContext(userId);
+
+    const handler = createAgentsHandler(db, nc);
+    const roleResp = await handler.createAgentRole({ name: "Role", systemPrompt: "p", capabilities: "{}" }, ctx);
+    const agentResp = await handler.createAgent({ orgId, agentRoleId: roleResp.role.id, name: "Agent" }, ctx);
+
+    await handler.archiveAgent({ agentId: agentResp.agent.id }, ctx);
+    await db.update(schemaSqlite.organizations).set({ deletedAt: new Date() }).where(eq(schemaSqlite.organizations.id, orgId));
+
+    await expect(handler.restoreAgent({ agentId: agentResp.agent.id }, ctx)).rejects.toThrow();
+  });
+
   test("purgeAgent requires the agent be archived and unassigned", async () => {
     const { db, nc } = await setupIntegrationTest();
 

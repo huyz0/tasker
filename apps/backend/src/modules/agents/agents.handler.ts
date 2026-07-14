@@ -116,6 +116,12 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       if (!result || result.length === 0) throw new ConnectError("agent not found", Code.NotFound);
       await assertOrgAdmin(db, userId, result[0].orgId);
 
+      const orgsTable = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+      const orgRows = await db.select().from(orgsTable).where(eq((orgsTable as any).id, result[0].orgId)).limit(1);
+      if (orgRows[0]?.deletedAt) {
+        throw new ConnectError("cannot restore an agent into an archived organization - restore the organization first", Code.FailedPrecondition);
+      }
+
       await restoreById(db, agentsSchema, parsed.agentId);
 
       if (nc) nc.publish("domain.agent.restored", Buffer.from(JSON.stringify({ agentId: parsed.agentId })));

@@ -181,6 +181,12 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
       await assertOrgAdmin(db, userId, result[0].orgId);
 
+      const orgsTable = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+      const orgRows = await db.select().from(orgsTable).where(eq((orgsTable as any).id, result[0].orgId)).limit(1);
+      if (orgRows[0]?.deletedAt) {
+        throw new ConnectError("cannot restore a project into an archived organization - restore the organization first", Code.FailedPrecondition);
+      }
+
       await restoreById(db, ps, parsed.projectId);
 
       if (nc) nc.publish("domain.project.restored", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));

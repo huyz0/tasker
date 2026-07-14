@@ -147,6 +147,30 @@ describe("Organizations Handler Integration Logic", () => {
     }, makeAuthContext(adminId))).rejects.toThrow();
   });
 
+  test("restoreOrg rejects restoring a sub-org into an archived parent org", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+
+    const adminId = "user-restore-parent-admin-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@foo.com`, createdAt: new Date() });
+
+    const parent = await handler.seedOrg({ name: "Restore Parent", slug: "restore-parent-" + Date.now() }, makeAuthContext(adminId));
+    const child = await handler.seedOrg({
+      name: "Restore Child",
+      slug: "restore-child-" + Date.now(),
+      parentOrgId: parent.organization.id,
+    }, makeAuthContext(adminId));
+
+    await handler.archiveOrg({ orgId: child.organization.id }, makeAuthContext(adminId));
+    await handler.archiveOrg({ orgId: parent.organization.id }, makeAuthContext(adminId));
+
+    await expect(handler.restoreOrg({ orgId: child.organization.id }, makeAuthContext(adminId))).rejects.toThrow();
+
+    await handler.restoreOrg({ orgId: parent.organization.id }, makeAuthContext(adminId));
+    const restored = await handler.restoreOrg({ orgId: child.organization.id }, makeAuthContext(adminId));
+    expect(restored.success).toBe(true);
+  });
+
   test("archiveOrg hides the org from listOrgs and restoreOrg brings it back, admin-only", async () => {
     const { db, nc } = await setupIntegrationTest();
     const handler = createOrgsHandler(db, nc);

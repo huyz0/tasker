@@ -129,6 +129,15 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       await assertOrgAdmin(db, userId, parsed.orgId);
 
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+      const orgRows = await db.select().from(orgs).where(eq((orgs as any).id, parsed.orgId)).limit(1);
+      const parentOrgId = orgRows[0]?.parentOrgId;
+      if (parentOrgId) {
+        const parentRows = await db.select().from(orgs).where(eq((orgs as any).id, parentOrgId)).limit(1);
+        if (parentRows[0]?.deletedAt) {
+          throw new ConnectError("cannot restore a sub-organization into an archived parent organization - restore the parent first", Code.FailedPrecondition);
+        }
+      }
+
       await restoreById(db, orgs, parsed.orgId);
 
       if (nc) nc.publish("domain.org.restored", Buffer.from(JSON.stringify({ orgId: parsed.orgId })));

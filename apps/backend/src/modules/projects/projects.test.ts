@@ -262,6 +262,20 @@ describe("Projects Handler Integration Logic", () => {
     expect(mockNc.publishedMessages.map((m: any) => m.subject)).toContain("domain.project.purged");
   });
 
+  test("restoreProject rejects restoring into an archived organization", async () => {
+    const orgId = "org-restore-archived-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Restore Archived Org", slug: "restore-archived-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: "user-test", role: "admin", joinedAt: new Date() });
+    const tResp = await ptHandler.createTemplate({ orgId, name: "Restore Archived Template" }, ctx);
+    const pResp = await pHandler.createProject({ orgId, templateId: tResp.template.id, name: "Restore Archived Project", ownerId: "user-test" }, ctx);
+
+    await pHandler.archiveProject({ projectId: pResp.project.id }, ctx);
+    // Now archive the org itself too.
+    await db.update(schemaSqlite.organizations).set({ deletedAt: new Date() }).where(eq(schemaSqlite.organizations.id, orgId));
+
+    await expect(pHandler.restoreProject({ projectId: pResp.project.id }, ctx)).rejects.toMatchObject({ code: Code.FailedPrecondition });
+  });
+
   test("purgeProject removes project-scoped task types instead of leaving them orphaned", async () => {
     const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Purge TT Template" }, ctx);
     const pResp = await pHandler.createProject({ orgId: "org-test", templateId: tResp.template.id, name: "Purge TT Me", ownerId: "user-test" }, ctx);
