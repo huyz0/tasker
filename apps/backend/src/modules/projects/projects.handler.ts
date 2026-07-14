@@ -210,6 +210,21 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
         throw new ConnectError("project still has tasks, folders, or repository links - archive or remove them first", Code.FailedPrecondition);
       }
 
+      // Project-scoped task types have no dedicated delete/archive endpoint
+      // of their own, so - unlike tasks/folders/repositoryLinks above - they
+      // can't be "removed first" by the caller. Force-cascade them here,
+      // same as purgeOrg does for org-scoped task types, instead of leaving
+      // them behind with a dangling projectId once the project is gone.
+      const taskTypes = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+      const taskStatuses = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
+      const taskStatusTransitions = isStandalone ? schemaSqlite.taskStatusTransitions : schemaMysql.taskStatusTransitions;
+      const projectTaskTypes = await db.select().from(taskTypes).where(eq((taskTypes as any).projectId, parsed.projectId));
+      for (const taskType of projectTaskTypes) {
+        await db.delete(taskStatusTransitions).where(eq((taskStatusTransitions as any).taskTypeId, taskType.id));
+        await db.delete(taskStatuses).where(eq((taskStatuses as any).taskTypeId, taskType.id));
+        await db.delete(taskTypes).where(eq((taskTypes as any).id, taskType.id));
+      }
+
       await db.delete(ps).where(eq((ps as any).id, parsed.projectId));
 
       if (nc) nc.publish("domain.project.purged", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));

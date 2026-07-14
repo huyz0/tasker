@@ -261,4 +261,22 @@ describe("Projects Handler Integration Logic", () => {
     expect(afterPurge.length).toBe(0);
     expect(mockNc.publishedMessages.map((m: any) => m.subject)).toContain("domain.project.purged");
   });
+
+  test("purgeProject removes project-scoped task types instead of leaving them orphaned", async () => {
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Purge TT Template" }, ctx);
+    const pResp = await pHandler.createProject({ orgId: "org-test", templateId: tResp.template.id, name: "Purge TT Me", ownerId: "user-test" }, ctx);
+
+    const taskHandler = createTasksHandler(db, mockNc);
+    const typeResp = await taskHandler.createTaskType({ orgId: "org-test", projectId: pResp.project.id, name: "Ticket" }, ctx);
+    const statusResp = await taskHandler.createTaskStatus({ taskTypeId: typeResp.taskType.id, name: "open" }, ctx);
+    const status2Resp = await taskHandler.createTaskStatus({ taskTypeId: typeResp.taskType.id, name: "closed" }, ctx);
+    await taskHandler.createTaskStatusTransition({ taskTypeId: typeResp.taskType.id, fromStatusId: statusResp.status.id, toStatusId: status2Resp.status.id }, ctx);
+
+    await pHandler.archiveProject({ projectId: pResp.project.id }, ctx);
+    await pHandler.purgeProject({ projectId: pResp.project.id }, ctx);
+
+    expect((await db.select().from(schemaSqlite.taskTypes).where(eq(schemaSqlite.taskTypes.id, typeResp.taskType.id))).length).toBe(0);
+    expect((await db.select().from(schemaSqlite.taskStatuses).where(eq(schemaSqlite.taskStatuses.taskTypeId, typeResp.taskType.id))).length).toBe(0);
+    expect((await db.select().from(schemaSqlite.taskStatusTransitions).where(eq(schemaSqlite.taskStatusTransitions.taskTypeId, typeResp.taskType.id))).length).toBe(0);
+  });
 });
