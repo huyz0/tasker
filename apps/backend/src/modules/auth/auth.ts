@@ -3,9 +3,10 @@ import { eq, and } from 'drizzle-orm';
 import * as schemaMysql from '../../db/schema.mysql';
 import * as schemaSqlite from '../../db/schema.sqlite';
 import { config } from '../../config';
-import { createSessionToken, resolveSessionUserId, SESSION_TTL_MS } from './session';
+import { createSessionToken, resolveSessionPayload, SESSION_TTL_MS } from './session';
 import { logger } from '../../lib/logger';
 import { problemDetails } from '../../lib/problemDetails';
+import { revokeSession, isSessionRevoked } from '../../lib/sessionRevocation';
 
 function sessionCookie(userId: string): string {
   const secure = config.nodeEnv === 'production' ? '; Secure' : '';
@@ -197,24 +198,35 @@ export function createAuthRoutes(db: any) {
       return new Response('Authentication failed due to server error', { status: 500 });
     }
   })
-  .get('/api/auth/session', ({ request }) => {
+  .get('/api/auth/session', async ({ request }) => {
     // Every RPC checks the Authorization: Bearer header first, then falls
-    // back to the cookie (see resolveSessionUserId) - a CLI/agent client
-    // authenticating purely via bearer token (no cookie jar) must see the
-    // same "am I logged in" answer here that it gets from any real RPC.
-    const userId = resolveSessionUserId({
+    // back to the cookie, and also enforces revocation (see
+    // sessionInterceptor in index.ts) - this must give the same "am I
+    // logged in" answer, or a client could see itself as logged out here
+    // while a revoked bearer token still worked against real RPCs (or
+    // vice versa: think it's logged out via cookie but the token would
+    // still authenticate a direct RPC call).
+    const payload = resolveSessionPayload({
       cookie: request.headers.get('cookie'),
       authorization: request.headers.get('authorization'),
     });
+    const userId = payload && !(await isSessionRevoked(db, payload.jti)) ? payload.userId : null;
     return Response.json({ authenticated: !!userId, userId });
   })
   // There was previously no way to end a browser session at all - the
-  // cookie just sat there, valid, until it hit its 7-day Max-Age. Clearing
-  // the cookie here logs the browser out immediately; it doesn't revoke the
-  // underlying JWT (sessions are stateless, so a copy of the token used
-  // directly as a Bearer header would still verify until it expires), but
-  // it closes the "no way to log out at all" gap for the normal browser flow.
-  .post('/api/auth/logout', () => {
+  // cookie just sat there, valid, until it hit its 7-day Max-Age. This both
+  // clears the cookie (logs the browser out immediately) and records the
+  // token's jti in revokedSessions, so a copy of it used directly as a
+  // Bearer header stops verifying too - not just "no cookie", but actually
+  // revoked (see sessionInterceptor's isSessionRevoked check in index.ts).
+  .post('/api/auth/logout', async ({ request }) => {
+    const payload = resolveSessionPayload({
+      cookie: request.headers.get('cookie'),
+      authorization: request.headers.get('authorization'),
+    });
+    if (payload) {
+      await revokeSession(db, payload.jti, payload.userId);
+    }
     return new Response('', {
       status: 204,
       headers: { 'set-cookie': clearSessionCookie() },

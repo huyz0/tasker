@@ -253,3 +253,13 @@ export const remotePullRequests = sqliteTable("remote_pull_requests", {
     repoRemotePrIdx: uniqueIndex("remote_pull_requests_repo_remote_pr_idx").on(table.repositoryLinkId, table.remotePrId),
   };
 });
+
+export const revokedSessions = sqliteTable("revoked_sessions", {
+  // The session token's jti claim - revoking a session means recording its
+  // jti here, so any copy of that token (browser cookie or a bearer header
+  // used directly) stops verifying immediately instead of staying valid
+  // until its 7-day exp.
+  jti: text("jti").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  revokedAt: integer("revoked_at", { mode: "timestamp" }).notNull(),
+});

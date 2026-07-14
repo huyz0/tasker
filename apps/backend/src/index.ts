@@ -5,7 +5,8 @@ import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
 import { createAuthRoutes } from "./modules/auth/auth";
-import { currentUserIdKey, resolveSessionUserId } from "./modules/auth/session";
+import { currentUserIdKey, resolveSessionPayload } from "./modules/auth/session";
+import { isSessionRevoked } from "./lib/sessionRevocation";
 import { createOrgsHandler } from "./modules/orgs/orgs.handler";
 import { createProjectTemplatesHandler, createProjectsHandler } from "./modules/projects/projects.handler";
 import { createTasksHandler, createTaskManagementHandler } from "./modules/tasks/tasks.handler";
@@ -51,10 +52,14 @@ try {
 }
 
 const sessionInterceptor: Interceptor = (next) => async (req) => {
-  const userId = resolveSessionUserId({
+  const payload = resolveSessionPayload({
     cookie: req.header.get("cookie"),
     authorization: req.header.get("authorization"),
   });
+  // A revoked session's token still verifies (signature/exp are unaffected
+  // by revocation), so this check is what actually makes logout - or any
+  // other revocation - take effect on subsequent requests.
+  const userId = payload && !(await isSessionRevoked(db, payload.jti)) ? payload.userId : null;
   req.contextValues.set(currentUserIdKey, userId);
   return next(req);
 };

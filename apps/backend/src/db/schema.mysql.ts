@@ -236,3 +236,13 @@ export const remotePullRequests = mysqlTable("remote_pull_requests", {
     repoRemotePrIdx: uniqueIndex("remote_pull_requests_repo_remote_pr_idx").on(table.repositoryLinkId, table.remotePrId),
   };
 });
+
+export const revokedSessions = mysqlTable("revoked_sessions", {
+  // The session token's jti claim - revoking a session means recording its
+  // jti here, so any copy of that token (browser cookie or a bearer header
+  // used directly) stops verifying immediately instead of staying valid
+  // until its 7-day exp.
+  jti: varchar("jti", { length: 256 }).primaryKey(),
+  userId: varchar("user_id", { length: 256 }).notNull().references(() => users.id),
+  revokedAt: timestamp("revoked_at").notNull(),
+});

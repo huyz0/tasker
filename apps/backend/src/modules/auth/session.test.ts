@@ -1,11 +1,26 @@
 import { describe, it, expect } from 'bun:test';
-import { createSessionToken, verifySessionToken, parseSessionCookie, parseBearerToken, resolveSessionUserId } from './session';
+import { createSessionToken, verifySessionToken, parseSessionCookie, parseBearerToken, resolveSessionUserId, resolveSessionPayload } from './session';
 
 describe('session tokens', () => {
   it('round-trips a valid token', () => {
     const token = createSessionToken('user-42');
     const session = verifySessionToken(token);
     expect(session?.userId).toBe('user-42');
+  });
+
+  it('assigns each token a unique jti', () => {
+    const a = verifySessionToken(createSessionToken('user-42'))!;
+    const b = verifySessionToken(createSessionToken('user-42'))!;
+    expect(a.jti).toBeTruthy();
+    expect(b.jti).toBeTruthy();
+    expect(a.jti).not.toBe(b.jti);
+  });
+
+  it('resolveSessionPayload exposes the full payload, including jti, for revocation checks', () => {
+    const token = createSessionToken('user-42');
+    const payload = resolveSessionPayload({ cookie: `session=${token}`, authorization: null });
+    expect(payload?.userId).toBe('user-42');
+    expect(typeof payload?.jti).toBe('string');
   });
 
   it('rejects a tampered token', () => {

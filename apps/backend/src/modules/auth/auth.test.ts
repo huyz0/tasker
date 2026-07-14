@@ -1,6 +1,7 @@
 import { describe, it, expect, mock, afterEach, beforeEach } from 'bun:test';
 import { createAuthRoutes } from './auth';
 import { createSessionToken, parseSessionCookie, verifySessionToken } from './session';
+import { isSessionRevoked } from '../../lib/sessionRevocation';
 import { setupIntegrationTest } from '../../test/setup';
 import * as schemaSqlite from '../../db/schema.sqlite';
 import { eq } from 'drizzle-orm';
@@ -54,6 +55,37 @@ describe('Auth logout', () => {
       headers: { cookie: clearedCookie || `session=${token}` },
     }));
     expect(await sessionRes.json()).toEqual({ authenticated: false, userId: null });
+  });
+
+  it('records the jti in revokedSessions so it revokes for real, not just clearing the cookie', async () => {
+    const token = createSessionToken('user-revoke-logout');
+    const payload = verifySessionToken(token)!;
+    expect(await isSessionRevoked(db, payload.jti)).toBe(false);
+
+    await authRoutes.handle(new Request('http://localhost/api/auth/logout', {
+      method: 'POST',
+      headers: { cookie: `session=${token}` },
+    }));
+
+    expect(await isSessionRevoked(db, payload.jti)).toBe(true);
+  });
+
+  it('rejects a revoked token presented directly as a Bearer header, even without the cookie', async () => {
+    const token = createSessionToken('user-revoke-bearer');
+    await authRoutes.handle(new Request('http://localhost/api/auth/logout', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+    }));
+
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
+      headers: { authorization: `Bearer ${token}` },
+    }));
+    expect(await res.json()).toEqual({ authenticated: false, userId: null });
+  });
+
+  it('is a no-op when logging out with no active session (no token to revoke)', async () => {
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/logout', { method: 'POST' }));
+    expect(res.status).toBe(204);
   });
 });
 
