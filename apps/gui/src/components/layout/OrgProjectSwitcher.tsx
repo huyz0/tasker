@@ -14,14 +14,35 @@ export function OrgProjectSwitcher() {
   const setActiveOrgId = useLayoutStore((s) => s.setActiveOrgId);
   const setActiveProjectId = useLayoutStore((s) => s.setActiveProjectId);
 
+  // Every org/project must be selectable here - it's the app's primary
+  // navigation switcher, so anything past the first page would otherwise be
+  // completely unreachable, not just hidden in a secondary view.
   const { data: orgsData } = useQuery({
     queryKey: ['orgs'],
-    queryFn: async () => (await orgClient.listOrgs({})).organizations,
+    queryFn: async () => {
+      const allOrgs: Awaited<ReturnType<typeof orgClient.listOrgs>>['organizations'] = [];
+      let cursor: string | undefined;
+      do {
+        const resp = await orgClient.listOrgs({ page: cursor ? { cursor } : undefined });
+        allOrgs.push(...resp.organizations);
+        cursor = resp.page?.nextCursor || undefined;
+      } while (cursor);
+      return allOrgs;
+    },
   });
 
   const { data: projectsData } = useQuery({
     queryKey: ['projects', activeOrgId],
-    queryFn: async () => (await projectClient.listProjects({ orgId: activeOrgId })).projects,
+    queryFn: async () => {
+      const allProjects: Awaited<ReturnType<typeof projectClient.listProjects>>['projects'] = [];
+      let cursor: string | undefined;
+      do {
+        const resp = await projectClient.listProjects({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
+        allProjects.push(...resp.projects);
+        cursor = resp.page?.nextCursor || undefined;
+      } while (cursor);
+      return allProjects;
+    },
     enabled: Boolean(activeOrgId),
   });
 

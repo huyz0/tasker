@@ -74,6 +74,26 @@ describe('OrgProjectSwitcher', () => {
     await waitFor(() => expect(mockSetActiveProjectId).toHaveBeenCalledWith('proj-1'));
   });
 
+  it('auto-loads later pages so orgs and projects past the first page are selectable', async () => {
+    mockActiveOrgId = 'org-1';
+    mockListOrgs
+      .mockResolvedValueOnce({ organizations: [{ id: 'org-1', name: 'Page One Org', slug: 'page-one' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ organizations: [{ id: 'org-2', name: 'Page Two Org', slug: 'page-two' }], page: {} });
+    mockListProjects
+      .mockResolvedValueOnce({ projects: [{ id: 'proj-1', name: 'Page One Project' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ projects: [{ id: 'proj-2', name: 'Page Two Project' }], page: {} });
+
+    renderSwitcher();
+
+    await waitFor(() => expect(screen.getByText('Page Two Org')).toBeDefined());
+    expect(screen.getByText('Page One Org')).toBeDefined();
+    expect(mockListOrgs).toHaveBeenCalledWith({ page: { cursor: 'cursor-2' } });
+
+    await waitFor(() => expect(screen.getByText('Page Two Project')).toBeDefined());
+    expect(screen.getByText('Page One Project')).toBeDefined();
+    expect(mockListProjects).toHaveBeenCalledWith({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
+  });
+
   it('lets the user switch the active organization', async () => {
     mockActiveOrgId = 'org-1';
     mockListOrgs.mockResolvedValue({
