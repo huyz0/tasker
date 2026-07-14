@@ -177,7 +177,13 @@ export function OrganizationsDashboard() {
              ) : orgsData && orgsData.length > 0 ? (
                rootOrgs.map(org => (
                  <div key={org.id}>
-                   <div onClick={() => setActiveOrgId(org.id)} className={`p-3 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 ${activeOrgId === org.id ? 'bg-primary/5' : ''}`}>
+                   <div
+                     role="button"
+                     tabIndex={0}
+                     onClick={() => setActiveOrgId(org.id)}
+                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveOrgId(org.id); } }}
+                     className={`p-3 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${activeOrgId === org.id ? 'bg-primary/5' : ''}`}
+                   >
                      <span className="min-w-[200px] flex items-center gap-2">
                        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">{org.name.charAt(0).toUpperCase()}</span>
                        {org.name} {activeOrgId === org.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
@@ -199,7 +205,14 @@ export function OrganizationsDashboard() {
                      </span>
                    </div>
                    {(childOrgsByParent.get(org.id) ?? []).map((child) => (
-                     <div key={child.id} onClick={() => setActiveOrgId(child.id)} className={`p-3 pl-10 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 border-t ${activeOrgId === child.id ? 'bg-primary/5' : ''}`}>
+                     <div
+                       key={child.id}
+                       role="button"
+                       tabIndex={0}
+                       onClick={() => setActiveOrgId(child.id)}
+                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveOrgId(child.id); } }}
+                       className={`p-3 pl-10 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 border-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${activeOrgId === child.id ? 'bg-primary/5' : ''}`}
+                     >
                        <span className="min-w-[200px] flex items-center gap-2">
                          <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">{child.name.charAt(0).toUpperCase()}</span>
                          {child.name} {activeOrgId === child.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
