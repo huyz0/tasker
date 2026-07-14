@@ -190,4 +190,18 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Failed to update retention/)).toBeDefined());
   });
+
+  it('shows validation feedback instead of silently no-opping on an invalid retention value', async () => {
+    mockActiveOrgId = 'org-1';
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Active Org', slug: 'active-org', binRetentionDays: 30 }] });
+
+    renderPage();
+
+    const input = await screen.findByDisplayValue('30');
+    fireEvent.change(input, { target: { value: '0' } });
+
+    await waitFor(() => expect(screen.getByText('Enter a number of days greater than 0.')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(mockSetOrgRetentionDays).not.toHaveBeenCalled();
+  });
 });

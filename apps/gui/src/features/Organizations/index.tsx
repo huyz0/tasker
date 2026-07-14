@@ -179,7 +179,7 @@ export function OrganizationsDashboard() {
                  <div key={org.id}>
                    <div onClick={() => setActiveOrgId(org.id)} className={`p-3 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 ${activeOrgId === org.id ? 'bg-primary/5' : ''}`}>
                      <span className="min-w-[200px] flex items-center gap-2">
-                       <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold">{org.name.charAt(0).toUpperCase()}</span>
+                       <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">{org.name.charAt(0).toUpperCase()}</span>
                        {org.name} {activeOrgId === org.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
                      </span>
                      <span className="flex items-center gap-3">
@@ -201,7 +201,7 @@ export function OrganizationsDashboard() {
                    {(childOrgsByParent.get(org.id) ?? []).map((child) => (
                      <div key={child.id} onClick={() => setActiveOrgId(child.id)} className={`p-3 pl-10 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 border-t ${activeOrgId === child.id ? 'bg-primary/5' : ''}`}>
                        <span className="min-w-[200px] flex items-center gap-2">
-                         <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold">{child.name.charAt(0).toUpperCase()}</span>
+                         <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">{child.name.charAt(0).toUpperCase()}</span>
                          {child.name} {activeOrgId === child.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
                        </span>
                        <span className="flex items-center gap-3">
@@ -224,7 +224,7 @@ export function OrganizationsDashboard() {
                  </div>
                ))
              ) : (
-               <div className="p-3 text-sm text-center text-muted-foreground">No organizations found.</div>
+               <div className="p-3 text-sm text-center text-muted-foreground">No organizations found - create one above.</div>
              )}
           </div>
           {orgsData && orgsData.length > 0 && (
@@ -265,6 +265,9 @@ export function OrganizationsDashboard() {
                   {setRetentionMutation.isPending ? 'Saving...' : 'Save'}
                 </button>
               </form>
+              {!(parseInt(retentionDaysInput, 10) > 0) && (
+                <p className="text-sm text-destructive mt-2">Enter a number of days greater than 0.</p>
+              )}
               {setRetentionMutation.isError && (
                 <p className="text-sm text-destructive mt-2">Failed to update retention: {(setRetentionMutation.error as Error).message}</p>
               )}
