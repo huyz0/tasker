@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -69,6 +70,26 @@ describe('OAuthCallback', () => {
 
     await waitFor(() => expect(screen.getByText(/doesn't match a repository link you started/)).toBeDefined());
     expect(mockAddRepositoryLink).not.toHaveBeenCalled();
+  });
+
+  it('does not misreport a nonce mismatch or double-submit the oauthCode under StrictMode double-invoke', async () => {
+    sessionStorage.setItem('repoLinkOauthNonce', 'nonce-strict');
+    mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-1', projectId: 'proj-1' } });
+
+    const state = encodeState({ projectId: 'proj-1', provider: 'github', remoteName: 'huyz0/tasker', nonce: 'nonce-strict' });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={[`/oauth/callback?code=abc123&state=${state}`]}>
+            <OAuthCallback />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </StrictMode>
+    );
+
+    await waitFor(() => expect(mockAddRepositoryLink).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(/doesn't match a repository link you started/)).toBeNull();
   });
 
   it('rejects the callback when there is no oauth nonce in sessionStorage at all', async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
@@ -13,6 +13,14 @@ export function OAuthCallback() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  // Consumes the one-time nonce and fires a one-time OAuth token exchange -
+  // not idempotent, so it must run at most once per real callback even
+  // though StrictMode double-invokes effects in development (mount ->
+  // cleanup -> mount, on the same instance, so this ref survives both).
+  // Without this guard the second invocation finds the nonce already
+  // deleted by the first, misreports a nonce mismatch, and re-submits the
+  // one-time oauthCode to the backend a second time.
+  const hasRunRef = useRef(false);
 
   const code = searchParams.get('code');
   const stateRaw = searchParams.get('state');
@@ -37,6 +45,9 @@ export function OAuthCallback() {
   });
 
   useEffect(() => {
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
+
     if (!code) {
       setError("No authorization code found in URL.");
       return;
