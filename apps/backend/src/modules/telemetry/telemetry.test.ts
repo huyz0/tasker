@@ -151,3 +151,47 @@ describe('GET /api/debug/errors', () => {
     expect(body.errors[1].message).toBe('first error');
   });
 });
+
+describe('GET /api/debug/config', () => {
+  it('rejects an unauthenticated request', async () => {
+    const routes = createTelemetryRoutes(db);
+    const res = await routes.handle(new Request('http://localhost/api/debug/config'));
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an authenticated caller who is not an admin of any organization', async () => {
+    const userId = 'user-debug-config-nonadmin-' + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    const token = createSessionToken(userId);
+
+    const routes = createTelemetryRoutes(db);
+    const res = await routes.handle(new Request('http://localhost/api/debug/config', {
+      headers: { authorization: `Bearer ${token}` },
+    }));
+    expect(res.status).toBe(403);
+  });
+
+  it('returns resolved non-secret config to an org admin, excluding secrets', async () => {
+    const userId = 'user-debug-config-admin-' + Date.now();
+    const orgId = 'org-debug-config-' + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: 'Debug Org', slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: 'admin', joinedAt: new Date() });
+    const token = createSessionToken(userId);
+
+    const routes = createTelemetryRoutes(db);
+    const res = await routes.handle(new Request('http://localhost/api/debug/config', {
+      headers: { authorization: `Bearer ${token}` },
+    }));
+
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body).toMatchObject({ nodeEnv: 'test' });
+    expect(typeof body.enableTestLogin).toBe('boolean');
+    expect(Array.isArray(body.corsAllowedOrigins)).toBe(true);
+    expect(typeof body.googleClientIdConfigured).toBe('boolean');
+    expect(body).not.toHaveProperty('jwtSecret');
+    expect(body).not.toHaveProperty('appEncryptionSecret');
+    expect(body).not.toHaveProperty('googleClientSecret');
+  });
+});
