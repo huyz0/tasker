@@ -88,6 +88,12 @@ describe("Search Handler", () => {
     }
   });
 
+  it("rejects search with an empty or missing query instead of silently matching everything", async () => {
+    await expect(impl.universalSearch({ orgId }, ctx)).rejects.toMatchObject({ code: Code.InvalidArgument });
+    await expect(impl.universalSearch({ query: "", orgId }, ctx)).rejects.toMatchObject({ code: Code.InvalidArgument });
+    await expect(impl.universalSearch({ query: "   ", orgId }, ctx)).rejects.toMatchObject({ code: Code.InvalidArgument });
+  });
+
   it("rejects unauthenticated search", async () => {
     await expect(impl.universalSearch({ query: "Findable", orgId }, makeAuthContext(null))).rejects.toThrow();
   });

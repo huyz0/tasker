@@ -44,6 +44,7 @@ export default (router: ConnectRouter, db: any) => {
       const userId = requireUserId(contextValues);
       const { query, orgId, page } = request;
       if (!orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
+      if (!query || !query.trim()) throw new ConnectError("query is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, orgId);
 
       const { tasks, artifacts, projects, folders } = schema;
