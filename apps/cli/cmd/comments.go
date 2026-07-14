@@ -49,11 +49,14 @@ var commentListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List comments for an entity",
 	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 		client := v1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 
 		req := connect.NewRequest(&healthv1.ListCommentsRequest{
 			EntityId:   entityId,
 			EntityType: entityType,
+			Page:       &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 		})
 
 		res, err := client.ListComments(context.Background(), req)
@@ -88,4 +91,6 @@ func init() {
 	commentListCmd.Flags().StringVar(&entityId, "entity", "", "Entity ID")
 	commentListCmd.MarkFlagRequired("entity")
 	commentListCmd.Flags().StringVar(&entityType, "type", "task", "Entity type")
+	commentListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	commentListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 }

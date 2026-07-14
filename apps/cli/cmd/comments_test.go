@@ -16,6 +16,7 @@ import (
 
 type fakeCommentListHandler struct {
 	v1connect.UnimplementedCommentServiceHandler
+	gotListPage *healthv1.PageRequest
 }
 
 func (f *fakeCommentListHandler) CreateComment(
@@ -31,6 +32,7 @@ func (f *fakeCommentListHandler) ListComments(
 	_ context.Context,
 	req *connect.Request[healthv1.ListCommentsRequest],
 ) (*connect.Response[healthv1.ListCommentsResponse], error) {
+	f.gotListPage = req.Msg.Page
 	return connect.NewResponse(&healthv1.ListCommentsResponse{
 		Comments: []*healthv1.Comment{
 			{Id: "cmt_1", EntityId: req.Msg.EntityId, EntityType: req.Msg.EntityType, Content: "Looks good to me"},
@@ -38,13 +40,15 @@ func (f *fakeCommentListHandler) ListComments(
 	}), nil
 }
 
-func withCommentServer(t *testing.T) {
+func withCommentServer(t *testing.T) *fakeCommentListHandler {
 	t.Helper()
+	fake := &fakeCommentListHandler{}
 	mux := http.NewServeMux()
-	mux.Handle(v1connect.NewCommentServiceHandler(&fakeCommentListHandler{}))
+	mux.Handle(v1connect.NewCommentServiceHandler(fake))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	return fake
 }
 
 func TestCommentAddCmd(t *testing.T) {
@@ -63,17 +67,20 @@ func TestCommentAddCmd(t *testing.T) {
 }
 
 func TestCommentListCmd(t *testing.T) {
-	withCommentServer(t)
+	fake := withCommentServer(t)
 
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
-	rootCmd.SetArgs([]string{"comment", "list", "--entity", "task-123", "--type", "task"})
+	rootCmd.SetArgs([]string{"comment", "list", "--entity", "task-123", "--type", "task", "--cursor", "cursor-2", "--limit", "10"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
 	if !strings.Contains(out, "Looks good to me") {
 		t.Fatalf("expected output to contain the listed comment, got %s", out)
+	}
+	if fake.gotListPage == nil || fake.gotListPage.Cursor != "cursor-2" || fake.gotListPage.Limit != 10 {
+		t.Fatalf("expected cursor/limit to be forwarded, got %+v", fake.gotListPage)
 	}
 }
 
