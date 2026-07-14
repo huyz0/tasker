@@ -103,15 +103,31 @@ http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.url?.startsWith("/api/auth/") || req.url?.startsWith("/api/client-errors")) {
+  if (req.url?.startsWith("/api/auth/") || req.url?.startsWith("/api/client-errors") || req.url?.startsWith("/api/debug/")) {
     const url = `http://${req.headers.host}${req.url}`;
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
       if (value === undefined) continue;
       for (const v of Array.isArray(value) ? value : [value]) headers.append(key, v);
     }
+
+    // Caps how much of a request body gets buffered into memory before any
+    // route-level validation runs - without this, a client posting an
+    // arbitrarily large body (e.g. to /api/client-errors) gets fully
+    // buffered via Buffer.concat regardless of what the handler eventually
+    // does with it, which is an unbounded-memory footgun on its own.
+    const MAX_BODY_BYTES = 256 * 1024;
     const chunks: Buffer[] = [];
-    for await (const chunk of req) chunks.push(chunk as Buffer);
+    let totalBytes = 0;
+    for await (const chunk of req) {
+      totalBytes += (chunk as Buffer).length;
+      if (totalBytes > MAX_BODY_BYTES) {
+        res.writeHead(413, { "Content-Type": "application/problem+json" });
+        res.end(JSON.stringify({ type: "about:blank", title: "Payload too large", status: 413 }));
+        return;
+      }
+      chunks.push(chunk as Buffer);
+    }
     const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
 
     const routes = req.url.startsWith("/api/auth/") ? authRoutes : telemetryRoutes;

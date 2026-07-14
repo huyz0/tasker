@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia';
+import { ConnectError, Code } from '@connectrpc/connect';
 import { reportError } from '../../lib/errorReporter';
 import { problemDetails } from '../../lib/problemDetails';
 import { getRecentErrors } from '../../lib/errorRingBuffer';
@@ -65,8 +66,16 @@ export function createTelemetryRoutes(db: any) {
 
       try {
         await assertOrgAdminOfAny(db, userId);
-      } catch {
-        return problemDetails(403, 'Admin role required in at least one organization');
+      } catch (e) {
+        // Only a genuine "not an admin anywhere" result should read as 403 -
+        // a transient failure (e.g. the DB being unreachable) must surface
+        // as a real server error, not be misreported as a permissions
+        // problem on the very endpoint meant to help diagnose outages.
+        if (e instanceof ConnectError && e.code === Code.PermissionDenied) {
+          return problemDetails(403, 'Admin role required in at least one organization');
+        }
+        reportError({ message: 'debug_errors.authz_check_failed', err: e, severity: 'error' });
+        return problemDetails(500, 'Internal server error');
       }
 
       return Response.json({ errors: getRecentErrors() });

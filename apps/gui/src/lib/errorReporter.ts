@@ -45,6 +45,15 @@ export class RemoteErrorReporter implements ErrorReporter {
       headers: { 'Content-Type': 'application/json' },
       body,
       keepalive: true,
+    }).then((res) => {
+      // fetch() only rejects on network failure, not on a non-2xx response -
+      // an application-level rejection (bad payload, future validation
+      // change) would otherwise be indistinguishable from a successful
+      // delivery. Logging it keeps that failure visible somewhere, even
+      // though we still don't retry (error reporting must never block).
+      if (!res.ok) {
+        console.warn(`Failed to ship error report to backend (status ${res.status})`);
+      }
     }).catch(() => {
       // Swallow - if the backend is unreachable, the console.error above is
       // still the fallback record.

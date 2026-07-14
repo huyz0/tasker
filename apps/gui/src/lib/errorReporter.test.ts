@@ -65,4 +65,15 @@ describe('RemoteErrorReporter', () => {
   it('does not throw when err is not an Error instance', () => {
     expect(() => new RemoteErrorReporter().report({ message: 'weird', err: 'a string error', severity: 'error' })).not.toThrow();
   });
+
+  it('warns when the backend rejects the report with a non-2xx status, not just on network failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 400 }));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    new RemoteErrorReporter().report({ message: 'bad payload', severity: 'error' });
+
+    // Let the fetch promise's .then() callback run.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('400'));
+  });
 });

@@ -111,6 +111,23 @@ describe('GET /api/debug/errors', () => {
     expect(res.status).toBe(403);
   });
 
+  it('reports a 500, not a 403, when the admin check itself fails for a non-authorization reason', async () => {
+    const userId = 'user-debug-dbfail-' + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    const token = createSessionToken(userId);
+
+    // A broken db.select (e.g. a transient DB outage) must not be
+    // misreported as "you're not an admin" - only a genuine
+    // PermissionDenied from assertOrgAdminOfAny should map to 403.
+    const brokenDb = { select: () => { throw new Error('connection refused'); } };
+
+    const routes = createTelemetryRoutes(brokenDb);
+    const res = await routes.handle(new Request('http://localhost/api/debug/errors', {
+      headers: { authorization: `Bearer ${token}` },
+    }));
+    expect(res.status).toBe(500);
+  });
+
   it('returns recently reported errors (most recent first) to an org admin', async () => {
     const userId = 'user-debug-admin-' + Date.now();
     await makeOrgAdmin(userId);
