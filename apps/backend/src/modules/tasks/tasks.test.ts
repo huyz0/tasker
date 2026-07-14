@@ -225,6 +225,10 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(
       handler.assignTask({ taskId: taskResp.task.id, userId: "user-outsider-taskman" }, ctx)
     ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // Omitting both agentId and userId would otherwise create an orphaned
+    // assignment row tied to nobody.
+    await expect(handler.assignTask({ taskId: taskResp.task.id }, ctx)).rejects.toThrow();
   });
 
   test("createTask records createdBy, and task reviewers can be added/listed/removed", async () => {

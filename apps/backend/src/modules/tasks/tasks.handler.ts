@@ -50,6 +50,8 @@ const AssignTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   agentId: z.string().nullable().optional(),
   userId: z.string().nullable().optional(),
+}).refine((data) => !!data.agentId || !!data.userId, {
+  message: "either agentId or userId is required",
 });
 
 const AddTaskReviewerSchema = z.object({
