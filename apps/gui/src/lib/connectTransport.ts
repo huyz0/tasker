@@ -1,8 +1,9 @@
 import { createConnectTransport } from "@connectrpc/connect-web";
 import type { Interceptor } from "@connectrpc/connect";
 import { reportError } from "./errorReporter";
+import { BACKEND_URL } from "./backendUrl";
 
-export const BACKEND_URL = "http://localhost:8080";
+export { BACKEND_URL };
 
 const requestLoggingInterceptor: Interceptor = (next) => async (req) => {
   const requestId = crypto.randomUUID();

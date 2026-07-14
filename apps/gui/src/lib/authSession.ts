@@ -1,4 +1,4 @@
-import { BACKEND_URL } from './connectTransport';
+import { BACKEND_URL } from './backendUrl';
 
 export interface AuthSession {
   authenticated: boolean;

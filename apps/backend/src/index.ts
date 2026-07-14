@@ -25,6 +25,7 @@ import { runRetentionSweep } from "./lib/retentionSweep";
 import { config } from "./config";
 import { withRequestCorrelation } from "./lib/natsCorrelation";
 import { getRpcMethodStats } from "./lib/rpcMetrics";
+import { createTelemetryRoutes } from "./modules/telemetry/telemetry";
 
 // Bypassing network stack with local function execution logic
 export const localInProcessTransportRouter = (_req: any) => {
@@ -59,6 +60,7 @@ const sessionInterceptor: Interceptor = (next) => async (req) => {
 };
 
 const authRoutes = createAuthRoutes(db);
+const telemetryRoutes = createTelemetryRoutes();
 
 const handler = connectNodeAdapter({
   interceptors: [requestLoggingInterceptor, sessionInterceptor],
@@ -101,16 +103,21 @@ http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.url?.startsWith("/api/auth/")) {
+  if (req.url?.startsWith("/api/auth/") || req.url?.startsWith("/api/client-errors")) {
     const url = `http://${req.headers.host}${req.url}`;
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
       if (value === undefined) continue;
       for (const v of Array.isArray(value) ? value : [value]) headers.append(key, v);
     }
-    const authResponse = await authRoutes.handle(new Request(url, { method: req.method, headers }));
-    res.writeHead(authResponse.status, Object.fromEntries(authResponse.headers.entries()));
-    res.end(await authResponse.text());
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
+
+    const routes = req.url.startsWith("/api/auth/") ? authRoutes : telemetryRoutes;
+    const routeResponse = await routes.handle(new Request(url, { method: req.method, headers, body }));
+    res.writeHead(routeResponse.status, Object.fromEntries(routeResponse.headers.entries()));
+    res.end(await routeResponse.text());
     return;
   }
 
