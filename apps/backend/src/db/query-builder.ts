@@ -13,16 +13,34 @@ export type SortDirection = "asc" | "desc";
  * timestamp (ms) for date columns, or the raw value for text columns like
  * name. field records which column that is, so a cursor from one sort can't
  * be silently misapplied to a request sorting by a different column.
+ *
+ * totalCount carries the filtered-set count computed on an earlier page
+ * forward into the next page's cursor, so executePaginatedQuery can skip
+ * re-running COUNT(*) on every page of the same list - only the first page
+ * (or an older cursor minted before this field existed) needs to compute it
+ * fresh. Optional so older in-flight cursors without it still decode fine
+ * and just fall back to recomputing, same as before this existed.
+ *
+ * filter is stored alongside it so a cached totalCount is only reused when
+ * the caller's filter hasn't changed since that count was computed -
+ * otherwise a client that changes --filter mid-pagination while reusing an
+ * old cursor would see a stale count for a completely different filtered set.
  */
 export interface CursorData {
   value: number | string;
   id: string;
   field: string;
+  totalCount?: number;
+  filter?: string;
 }
 
-export function encodeCursor(value: number | string, id: string, field: string = "createdAt"): string {
+export function encodeCursor(value: number | string, id: string, field: string = "createdAt", totalCount?: number, filter?: string): string {
   if (value === undefined || value === null || value === "" || !id) return "";
-  const data: CursorData = { value, id, field };
+  const data: CursorData = {
+    value, id, field,
+    ...(totalCount !== undefined ? { totalCount } : {}),
+    ...(filter ? { filter } : {}),
+  };
   return Buffer.from(JSON.stringify(data)).toString("base64");
 }
 
@@ -36,7 +54,13 @@ export function decodeCursor(cursor?: string): CursorData | null {
       return { value: data.createdAt, id: data.id, field: "createdAt" };
     }
     if ((typeof data.value === "number" || typeof data.value === "string") && typeof data.id === "string" && typeof data.field === "string") {
-      return data;
+      return {
+        value: data.value,
+        id: data.id,
+        field: data.field,
+        ...(typeof data.totalCount === "number" ? { totalCount: data.totalCount } : {}),
+        ...(typeof data.filter === "string" ? { filter: data.filter } : {}),
+      };
     }
   } catch {
     // Ignore invalid cursors
@@ -176,25 +200,32 @@ export async function executePaginatedQuery(
   // totalCount reflects the filtered set (base condition + filter), not the
   // current page - it must ignore the cursor's WHERE clause, since "how many
   // results total" shouldn't change as the caller pages through them.
-  const [result, countRows] = await Promise.all([
+  //
+  // A COUNT(*) on every page of the same list doubles the DB work of every
+  // list call for no reason once page 1's count is known - reuse the count
+  // carried forward in the cursor instead of recomputing it, as long as the
+  // filter hasn't changed since that count was computed (an older cursor
+  // minted before this existed, or one whose filter doesn't match the
+  // current request, still recomputes fresh, same as before this existed).
+  const currentFilter = pageOpts?.filter || undefined;
+  const canReuseCursorCount = cursorData?.totalCount !== undefined && cursorData.filter === currentFilter;
+
+  const [result, totalCount] = await Promise.all([
     db
       .select()
       .from(table)
       .where(finalWhere)
       .limit(limit)
       .orderBy(...buildPaginationOrderBy(sortCol, table.id, direction)),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(table)
-      .where(condition),
+    canReuseCursorCount
+      ? Promise.resolve(cursorData!.totalCount!)
+      : db.select({ count: sql<number>`count(*)` }).from(table).where(condition).then((rows: any[]) => Number(rows[0]?.count ?? 0)),
   ]);
 
   const lastItem = result[result.length - 1];
   const nextCursor = lastItem && result.length === limit
-    ? encodeCursor(extractCursorValue(lastItem, sortField), lastItem.id, sortField)
+    ? encodeCursor(extractCursorValue(lastItem, sortField), lastItem.id, sortField, totalCount, currentFilter)
     : undefined;
-
-  const totalCount = Number(countRows[0]?.count ?? 0);
 
   return { items: result, nextCursor, totalCount };
 }
