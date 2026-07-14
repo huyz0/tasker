@@ -121,6 +121,10 @@ cd apps/backend && bun run seed
 This prints a session token for the seeded user at the end; paste it into a
 `session` cookie in the browser, or use it as a Bearer token with the CLI.
 
+For investigating a specific problem once things are running - reading logs,
+checking a session token, inspecting the DB, confirming resolved config -
+see [**DEBUGGING.md**](DEBUGGING.md).
+
 ---
 
 ## 📦 Monorepo Structure
