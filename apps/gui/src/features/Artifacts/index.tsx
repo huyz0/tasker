@@ -6,6 +6,7 @@ import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { ArtifactService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Label } from '../../components/ui/labels';
+import { Folder, FolderOpen, FileText, X } from 'lucide-react';
 
 const artifactClient = createClient(ArtifactService, transport);
 
@@ -147,14 +148,24 @@ export function ArtifactsBrowser() {
           {rootFolders.map(folder => (
             <div key={folder.id}>
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id);
                   setIsAddingArtifact(false);
                   setNewArtifactName('');
                 }}
-                className={`px-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center justify-between gap-2 group ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id);
+                    setIsAddingArtifact(false);
+                    setNewArtifactName('');
+                  }
+                }}
+                className={`px-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center justify-between gap-2 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-sm ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
               >
-                <span className="flex items-center gap-2"><span>{selectedFolderId === folder.id ? '📂' : '📁'}</span> {folder.name}</span>
+                <span className="flex items-center gap-2">{selectedFolderId === folder.id ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />} {folder.name}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -163,9 +174,10 @@ export function ArtifactsBrowser() {
                     }
                   }}
                   disabled={archiveFolderMutation.isPending}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                  aria-label={`Delete folder ${folder.name}`}
+                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
                 >
-                  ✕
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
@@ -176,10 +188,18 @@ export function ArtifactsBrowser() {
                   {artifactsData?.map(artifact => (
                     <div
                       key={artifact.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelectedArtifact(artifact)}
-                      className={`px-2 py-1 hover:bg-muted cursor-pointer flex items-center justify-between gap-2 rounded-sm text-xs group ${selectedArtifact?.id === artifact.id ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedArtifact(artifact);
+                        }
+                      }}
+                      className={`px-2 py-1 hover:bg-muted cursor-pointer flex items-center justify-between gap-2 rounded-sm text-xs group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${selectedArtifact?.id === artifact.id ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}
                     >
-                      <span className="flex items-center gap-2"><span>📄</span> {artifact.name}</span>
+                      <span className="flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> {artifact.name}</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -188,9 +208,10 @@ export function ArtifactsBrowser() {
                           }
                         }}
                         disabled={archiveArtifactMutation.isPending}
-                        className="opacity-0 group-hover:opacity-100 hover:text-destructive disabled:opacity-50"
+                        aria-label={`Delete artifact ${artifact.name}`}
+                        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-destructive disabled:opacity-50"
                       >
-                        ✕
+                        <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
@@ -239,7 +260,7 @@ export function ArtifactsBrowser() {
           <>
             <div className="flex bg-muted/30 border-b overflow-x-auto text-sm">
                <div className="px-4 py-2 border-r bg-card border-t border-t-primary cursor-pointer flex items-center gap-2">
-                 <span className="text-blue-500 font-bold text-xs">M</span> {selectedArtifact.name}
+                 <FileText className="w-3.5 h-3.5 text-primary" /> {selectedArtifact.name}
                </div>
             </div>
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
@@ -269,7 +290,7 @@ export function ArtifactsBrowser() {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
-             <div className="text-4xl mb-2">📄</div>
+             <FileText className="w-10 h-10 mb-2 opacity-50" />
              Select an artifact from the explorer to view its contents
           </div>
         )}

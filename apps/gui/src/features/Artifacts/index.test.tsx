@@ -126,7 +126,7 @@ describe('ArtifactsBrowser', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
-    fireEvent.click(screen.getByText('✕'));
+    fireEvent.click(screen.getByLabelText('Delete folder docs'));
 
     await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalledWith({ folderId: 'fld-1' }));
   });
@@ -139,7 +139,7 @@ describe('ArtifactsBrowser', () => {
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
-    fireEvent.click(screen.getByText('✕'));
+    fireEvent.click(screen.getByLabelText('Delete folder docs'));
 
     await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalled());
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['folders', 'bin', 'proj-1'] });
