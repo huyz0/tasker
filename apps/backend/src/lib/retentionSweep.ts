@@ -62,9 +62,16 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
 
   const deletedOrgs = await db.select().from(schema.organizations).where(isNotNull(schema.organizations.deletedAt));
   for (const org of deletedOrgs) {
-    if (isExpired(org.deletedAt, org.binRetentionDays ?? DEFAULT_RETENTION_DAYS) && await stillExpired(db, schema.organizations, org.id)) {
-      await purgeOrgCascade(db, org.id);
-      purged.organizations++;
+    try {
+      if (isExpired(org.deletedAt, org.binRetentionDays ?? DEFAULT_RETENTION_DAYS) && await stillExpired(db, schema.organizations, org.id)) {
+        await purgeOrgCascade(db, org.id);
+        purged.organizations++;
+      }
+    } catch (err) {
+      // One org's cascade failing (e.g. an unexpected FK conflict) must not
+      // abort the whole sweep - every sibling loop below already isolates
+      // its own per-row failures the same way.
+      logger.error({ err, orgId: org.id }, "retention_sweep.org_failed");
     }
   }
 
@@ -125,10 +132,14 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
 
   const deletedAgents = await db.select().from(schema.agents).where(isNotNull(schema.agents.deletedAt));
   for (const agent of deletedAgents) {
-    const retentionDays = await getOrgRetentionDays(db, agent.orgId);
-    if (isExpired(agent.deletedAt, retentionDays) && await stillExpired(db, schema.agents, agent.id)) {
-      await purgeAgentCascade(db, agent.id);
-      purged.agents++;
+    try {
+      const retentionDays = await getOrgRetentionDays(db, agent.orgId);
+      if (isExpired(agent.deletedAt, retentionDays) && await stillExpired(db, schema.agents, agent.id)) {
+        await purgeAgentCascade(db, agent.id);
+        purged.agents++;
+      }
+    } catch (err) {
+      logger.error({ err, agentId: agent.id }, "retention_sweep.agent_failed");
     }
   }
 
