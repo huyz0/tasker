@@ -24,6 +24,7 @@ import { reportError } from "./lib/errorReporter";
 import { runRetentionSweep } from "./lib/retentionSweep";
 import { config } from "./config";
 import { withRequestCorrelation } from "./lib/natsCorrelation";
+import { getRpcMethodStats } from "./lib/rpcMetrics";
 
 // Bypassing network stack with local function execution logic
 export const localInProcessTransportRouter = (_req: any) => {
@@ -130,3 +131,11 @@ const RETENTION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 setInterval(() => {
   runRetentionSweep(db).catch((err) => reportError({ message: "retention_sweep.failed", err, severity: "error" }));
 }, RETENTION_SWEEP_INTERVAL_MS);
+
+// Periodic latency summary, so "is this endpoint slow" is answerable from
+// the log stream without a separate metrics backend.
+const METRICS_LOG_INTERVAL_MS = 5 * 60 * 1000;
+setInterval(() => {
+  const stats = getRpcMethodStats();
+  if (stats.length > 0) logger.info({ rpcMethodStats: stats }, "rpc.latency_summary");
+}, METRICS_LOG_INTERVAL_MS);

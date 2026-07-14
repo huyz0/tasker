@@ -3,6 +3,7 @@ import { logger } from './logger';
 import { reportError } from './errorReporter';
 import { runWithRequestContext } from './requestContext';
 import { resolveSessionUserId } from '../modules/auth/session';
+import { recordRpcDuration } from './rpcMetrics';
 
 export const requestIdKey = createContextKey<string>('');
 
@@ -26,17 +27,21 @@ export const requestLoggingInterceptor: Interceptor = (next) => async (req) => {
   return runWithRequestContext({ requestId, userId }, async () => {
     try {
       const res = await next(req);
-      logger.info({ requestId, service, method, durationMs: Date.now() - start }, 'rpc.ok');
+      const durationMs = Date.now() - start;
+      recordRpcDuration(service, method, durationMs, false);
+      logger.info({ requestId, service, method, durationMs }, 'rpc.ok');
       if (!res.stream) {
         res.header.set('x-request-id', requestId);
       }
       return res;
     } catch (err) {
+      const durationMs = Date.now() - start;
+      recordRpcDuration(service, method, durationMs, true);
       reportError({
         message: 'rpc.error',
         err,
         severity: 'error',
-        context: { requestId, service, method, durationMs: Date.now() - start },
+        context: { requestId, service, method, durationMs },
       });
       throw err;
     }
