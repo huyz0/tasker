@@ -34,6 +34,7 @@ export const organizationMembers = mysqlTable("organization_members", {
 }, (table) => {
   return {
     pk: primaryKey({ columns: [table.orgId, table.userId] }),
+    userIdIdx: index("organization_members_user_id_idx").on(table.userId),
   }
 });
 
@@ -44,12 +45,22 @@ export const taskTypes = mysqlTable("task_types", {
   parentId: varchar("parent_id", { length: 256 }).references((): AnyMySqlColumn => taskTypes.id),
   name: varchar("name", { length: 256 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    orgIdIdx: index("task_types_org_id_idx").on(table.orgId),
+    projectIdIdx: index("task_types_project_id_idx").on(table.projectId),
+    parentIdIdx: index("task_types_parent_id_idx").on(table.parentId),
+  };
 });
 
 export const taskStatuses = mysqlTable("task_statuses", {
   id: varchar("id", { length: 256 }).primaryKey(),
   taskTypeId: varchar("task_type_id", { length: 256 }).notNull().references(() => taskTypes.id),
   name: varchar("name", { length: 256 }).notNull(),
+}, (table) => {
+  return {
+    taskTypeIdIdx: index("task_statuses_task_type_id_idx").on(table.taskTypeId),
+  };
 });
 
 export const taskStatusTransitions = mysqlTable("task_status_transitions", {
@@ -57,6 +68,10 @@ export const taskStatusTransitions = mysqlTable("task_status_transitions", {
   taskTypeId: varchar("task_type_id", { length: 256 }).notNull().references(() => taskTypes.id),
   fromStatusId: varchar("from_status_id", { length: 256 }).notNull().references(() => taskStatuses.id),
   toStatusId: varchar("to_status_id", { length: 256 }).notNull().references(() => taskStatuses.id),
+}, (table) => {
+  return {
+    taskTypeIdIdx: index("task_status_transitions_task_type_id_idx").on(table.taskTypeId),
+  };
 });
 
 export const invitations = mysqlTable("invitations", {
@@ -65,6 +80,10 @@ export const invitations = mysqlTable("invitations", {
   email: varchar("email", { length: 256 }).notNull(),
   invitedBy: varchar("invited_by", { length: 256 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    orgIdIdx: index("invitations_org_id_idx").on(table.orgId),
+  };
 });
 
 export const projectTemplates = mysqlTable("project_templates", {
@@ -74,6 +93,10 @@ export const projectTemplates = mysqlTable("project_templates", {
   description: varchar("description", { length: 1024 }),
   rootTaskTypeId: varchar("root_task_type_id", { length: 256 }).references(() => taskTypes.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    orgIdIdx: index("project_templates_org_id_idx").on(table.orgId),
+  };
 });
 
 export const projects = mysqlTable("projects", {
@@ -92,6 +115,8 @@ export const projects = mysqlTable("projects", {
     // check-then-insert race generateUniqueProjectKey's SELECT alone can't
     // prevent under concurrent requests.
     orgKeyIdx: uniqueIndex("projects_org_id_key_idx").on(table.orgId, table.key),
+    templateIdIdx: index("projects_template_id_idx").on(table.templateId),
+    ownerIdIdx: index("projects_owner_id_idx").on(table.ownerId),
   };
 });
 
@@ -110,6 +135,11 @@ export const agents = mysqlTable("agents", {
   name: varchar("name", { length: 256 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),
+}, (table) => {
+  return {
+    orgIdIdx: index("agents_org_id_idx").on(table.orgId),
+    agentRoleIdIdx: index("agents_agent_role_id_idx").on(table.agentRoleId),
+  };
 });
 
 export const tasks = mysqlTable("tasks", {
@@ -123,6 +153,11 @@ export const tasks = mysqlTable("tasks", {
   description: varchar("description", { length: 4096 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
+}, (table) => {
+  return {
+    projectIdIdx: index("tasks_project_id_idx").on(table.projectId),
+    taskTypeIdIdx: index("tasks_task_type_id_idx").on(table.taskTypeId),
+  };
 });
 
 export const taskAssignments = mysqlTable("task_assignments", {
@@ -130,12 +165,23 @@ export const taskAssignments = mysqlTable("task_assignments", {
   taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
   agentId: varchar("agent_id", { length: 256 }).references(() => agents.id),
   userId: varchar("user_id", { length: 256 }).references(() => users.id),
+}, (table) => {
+  return {
+    taskIdIdx: index("task_assignments_task_id_idx").on(table.taskId),
+    agentIdIdx: index("task_assignments_agent_id_idx").on(table.agentId),
+    userIdIdx: index("task_assignments_user_id_idx").on(table.userId),
+  };
 });
 
 export const taskReviewers = mysqlTable("task_reviewers", {
   id: varchar("id", { length: 256 }).primaryKey(),
   taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
   userId: varchar("user_id", { length: 256 }).notNull().references(() => users.id),
+}, (table) => {
+  return {
+    taskIdIdx: index("task_reviewers_task_id_idx").on(table.taskId),
+    userIdIdx: index("task_reviewers_user_id_idx").on(table.userId),
+  };
 });
 
 
@@ -146,6 +192,10 @@ export const folders = mysqlTable("folders", {
   name: varchar("name", { length: 256 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
+}, (table) => {
+  return {
+    projectIdIdx: index("folders_project_id_idx").on(table.projectId),
+  };
 });
 
 export const artifacts = mysqlTable("artifacts", {
@@ -157,12 +207,21 @@ export const artifacts = mysqlTable("artifacts", {
   contentType: varchar("content_type", { length: 128 }).notNull().default("text/markdown"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
+}, (table) => {
+  return {
+    folderIdIdx: index("artifacts_folder_id_idx").on(table.folderId),
+  };
 });
 
 export const taskArtifactLinks = mysqlTable("task_artifact_links", {
   id: varchar("id", { length: 256 }).primaryKey(),
   taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
   artifactId: varchar("artifact_id", { length: 256 }).notNull().references(() => artifacts.id),
+}, (table) => {
+  return {
+    taskIdIdx: index("task_artifact_links_task_id_idx").on(table.taskId),
+    artifactIdIdx: index("task_artifact_links_artifact_id_idx").on(table.artifactId),
+  };
 });
 
 export const comments = mysqlTable("comments", {
@@ -173,6 +232,10 @@ export const comments = mysqlTable("comments", {
   agentId: varchar("agent_id", { length: 256 }).references(() => agents.id),
   content: varchar("content", { length: 4096 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    entityIdx: index("comments_entity_id_entity_type_idx").on(table.entityId, table.entityType),
+  };
 });
 
 export const labels = mysqlTable("labels", {
@@ -208,6 +271,10 @@ export const taskNotes = mysqlTable("task_notes", {
   agentId: varchar("agent_id", { length: 256 }).notNull().references(() => agents.id),
   content: varchar("content", { length: 8192 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    taskIdIdx: index("task_notes_task_id_idx").on(table.taskId),
+  };
 });
 
 export const repositoryLinks = mysqlTable("repository_links", {
@@ -218,6 +285,10 @@ export const repositoryLinks = mysqlTable("repository_links", {
   accessTokenEncrypted: varchar("access_token_encrypted", { length: 2048 }).notNull(),
   authEmail: varchar("auth_email", { length: 256 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    projectIdIdx: index("repository_links_project_id_idx").on(table.projectId),
+  };
 });
 
 export const remotePullRequests = mysqlTable("remote_pull_requests", {

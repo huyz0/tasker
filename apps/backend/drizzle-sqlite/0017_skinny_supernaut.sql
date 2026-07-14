@@ -1,0 +1,26 @@
+CREATE INDEX `agents_org_id_idx` ON `agents` (`org_id`);--> statement-breakpoint
+CREATE INDEX `agents_agent_role_id_idx` ON `agents` (`agent_role_id`);--> statement-breakpoint
+CREATE INDEX `artifacts_folder_id_idx` ON `artifacts` (`folder_id`);--> statement-breakpoint
+CREATE INDEX `comments_entity_id_entity_type_idx` ON `comments` (`entity_id`,`entity_type`);--> statement-breakpoint
+CREATE INDEX `folders_project_id_idx` ON `folders` (`project_id`);--> statement-breakpoint
+CREATE INDEX `invitations_org_id_idx` ON `invitations` (`org_id`);--> statement-breakpoint
+CREATE INDEX `organization_members_user_id_idx` ON `organization_members` (`user_id`);--> statement-breakpoint
+CREATE INDEX `project_templates_org_id_idx` ON `project_templates` (`org_id`);--> statement-breakpoint
+CREATE INDEX `projects_template_id_idx` ON `projects` (`template_id`);--> statement-breakpoint
+CREATE INDEX `projects_owner_id_idx` ON `projects` (`owner_id`);--> statement-breakpoint
+CREATE INDEX `repository_links_project_id_idx` ON `repository_links` (`project_id`);--> statement-breakpoint
+CREATE INDEX `task_artifact_links_task_id_idx` ON `task_artifact_links` (`task_id`);--> statement-breakpoint
+CREATE INDEX `task_artifact_links_artifact_id_idx` ON `task_artifact_links` (`artifact_id`);--> statement-breakpoint
+CREATE INDEX `task_assignments_task_id_idx` ON `task_assignments` (`task_id`);--> statement-breakpoint
+CREATE INDEX `task_assignments_agent_id_idx` ON `task_assignments` (`agent_id`);--> statement-breakpoint
+CREATE INDEX `task_assignments_user_id_idx` ON `task_assignments` (`user_id`);--> statement-breakpoint
+CREATE INDEX `task_notes_task_id_idx` ON `task_notes` (`task_id`);--> statement-breakpoint
+CREATE INDEX `task_reviewers_task_id_idx` ON `task_reviewers` (`task_id`);--> statement-breakpoint
+CREATE INDEX `task_reviewers_user_id_idx` ON `task_reviewers` (`user_id`);--> statement-breakpoint
+CREATE INDEX `task_status_transitions_task_type_id_idx` ON `task_status_transitions` (`task_type_id`);--> statement-breakpoint
+CREATE INDEX `task_statuses_task_type_id_idx` ON `task_statuses` (`task_type_id`);--> statement-breakpoint
+CREATE INDEX `task_types_org_id_idx` ON `task_types` (`org_id`);--> statement-breakpoint
+CREATE INDEX `task_types_project_id_idx` ON `task_types` (`project_id`);--> statement-breakpoint
+CREATE INDEX `task_types_parent_id_idx` ON `task_types` (`parent_id`);--> statement-breakpoint
+CREATE INDEX `tasks_project_id_idx` ON `tasks` (`project_id`);--> statement-breakpoint
+CREATE INDEX `tasks_task_type_id_idx` ON `tasks` (`task_type_id`);

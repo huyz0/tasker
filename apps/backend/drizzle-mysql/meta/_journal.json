@@ -36,6 +36,13 @@
       "when": 1784038035530,
       "tag": "0004_thick_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1784057548432,
+      "tag": "0005_jazzy_killmonger",
+      "breakpoints": true
     }
   ]
 }
