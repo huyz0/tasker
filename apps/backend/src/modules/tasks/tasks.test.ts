@@ -223,6 +223,25 @@ describe("Tasks Handler Integration Tests", () => {
       .where(and(eq(schemaSqlite.taskAssignments.taskId, taskResp.task.id), eq(schemaSqlite.taskAssignments.userId, userId)));
     expect(assignmentRows.length).toBe(1);
 
+    // Assigning the same agentId with a *different* userId must not be
+    // misdetected as a duplicate of an earlier agentId+userId assignment -
+    // both combinations are distinct rows.
+    const agentRoleId = "role-assign-both-" + Date.now();
+    const agentId = "agent-assign-both-" + Date.now();
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
+    const otherUserId = "user-assign-both-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: otherUserId, role: "member", joinedAt: new Date() });
+
+    await handler.assignTask({ taskId: taskResp.task.id, agentId, userId }, ctx);
+    await handler.assignTask({ taskId: taskResp.task.id, agentId, userId: otherUserId }, ctx);
+
+    const bothRows = await db.select().from(schemaSqlite.taskAssignments)
+      .where(and(eq(schemaSqlite.taskAssignments.taskId, taskResp.task.id), eq(schemaSqlite.taskAssignments.agentId, agentId)));
+    expect(bothRows.length).toBe(2);
+    expect(bothRows.map((r: any) => r.userId).sort()).toEqual([userId, otherUserId].sort());
+
     const listResp = await handler.listTasks({ projectId: projectId }, ctx);
     expect(listResp.tasks.length).toBeGreaterThan(0);
     expect(listResp.tasks.some((t: any) => t.title === "New Test Task")).toBe(true);

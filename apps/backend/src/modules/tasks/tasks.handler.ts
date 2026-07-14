@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and, not } from "drizzle-orm";
+import { eq, and, not, isNull } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUserId, assertOrgMember, assertOrgAdmin, getProjectOrgId, getTaskOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -411,9 +411,16 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
 
-      const dupCondition = parsed.agentId
-        ? and(eq((assignments as any).taskId, parsed.taskId), eq((assignments as any).agentId, parsed.agentId))
-        : and(eq((assignments as any).taskId, parsed.taskId), eq((assignments as any).userId, parsed.userId));
+      // Must match on the exact (agentId, userId) combination in the
+      // payload below, not just whichever of the two happens to be
+      // truthy - otherwise a second call with the same agentId but a
+      // different userId (or vice versa) is misdetected as a duplicate of
+      // the first and its half of the assignment is silently dropped.
+      const dupCondition = and(
+        eq((assignments as any).taskId, parsed.taskId),
+        parsed.agentId ? eq((assignments as any).agentId, parsed.agentId) : isNull((assignments as any).agentId),
+        parsed.userId ? eq((assignments as any).userId, parsed.userId) : isNull((assignments as any).userId),
+      );
       const existingAssignment = await db.select().from(assignments).where(dupCondition).limit(1);
       if (existingAssignment.length > 0) return { success: true };
 
