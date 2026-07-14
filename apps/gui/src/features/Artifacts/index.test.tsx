@@ -98,6 +98,27 @@ describe('ArtifactsBrowser', () => {
     await waitFor(() => expect(screen.getByText('Hello world')).toBeDefined());
   });
 
+  it('auto-loads later pages so folders and artifacts past the first page are not hidden', async () => {
+    mockListFolders
+      .mockResolvedValueOnce({ folders: [{ id: 'fld-1', name: 'Page One Folder', parentId: '' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ folders: [{ id: 'fld-2', name: 'Page Two Folder', parentId: '' }], page: {} });
+    mockListArtifacts
+      .mockResolvedValueOnce({ artifacts: [{ id: 'art-1', name: 'Page One Artifact', content: '' }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ artifacts: [{ id: 'art-2', name: 'Page Two Artifact', content: '' }], page: {} });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Page One Folder')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Page Two Folder')).toBeDefined());
+    expect(mockListFolders).toHaveBeenCalledWith({ projectId: 'proj-1', page: { cursor: 'cursor-2' } });
+
+    fireEvent.click(screen.getByText('Page One Folder'));
+
+    await waitFor(() => expect(screen.getByText('Page One Artifact')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Page Two Artifact')).toBeDefined());
+    expect(mockListArtifacts).toHaveBeenCalledWith({ folderId: 'fld-1', page: { cursor: 'cursor-2' } });
+  });
+
   it('archives a folder after confirmation', async () => {
     mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
     mockArchiveFolder.mockResolvedValue({});

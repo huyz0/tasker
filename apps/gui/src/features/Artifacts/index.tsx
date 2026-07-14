@@ -23,22 +23,35 @@ export function ArtifactsBrowser() {
   const [newArtifactName, setNewArtifactName] = useState('');
   const queryClient = useQueryClient();
 
-  // Fetch all folders for the project
+  // Fetch all folders for the project - loop through every page, not just
+  // the first, or folders past the default page size become unreachable.
   const { data: foldersData, isLoading: isLoadingFolders } = useQuery({
     queryKey: ['folders', activeProjectId],
     queryFn: async () => {
-      const resp = await artifactClient.listFolders({ projectId: activeProjectId });
-      return resp.folders;
+      const allFolders: Awaited<ReturnType<typeof artifactClient.listFolders>>['folders'] = [];
+      let cursor: string | undefined;
+      do {
+        const resp = await artifactClient.listFolders({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
+        allFolders.push(...resp.folders);
+        cursor = resp.page?.nextCursor || undefined;
+      } while (cursor);
+      return allFolders;
     }
   });
 
-  // Fetch artifacts for the selected folder
+  // Fetch artifacts for the selected folder, likewise across all pages.
   const { data: artifactsData, isLoading: isLoadingArtifacts } = useQuery({
     queryKey: ['artifacts', selectedFolderId],
     queryFn: async () => {
       if (!selectedFolderId) return [];
-      const resp = await artifactClient.listArtifacts({ folderId: selectedFolderId });
-      return resp.artifacts;
+      const allArtifacts: Awaited<ReturnType<typeof artifactClient.listArtifacts>>['artifacts'] = [];
+      let cursor: string | undefined;
+      do {
+        const resp = await artifactClient.listArtifacts({ folderId: selectedFolderId, page: cursor ? { cursor } : undefined });
+        allArtifacts.push(...resp.artifacts);
+        cursor = resp.page?.nextCursor || undefined;
+      } while (cursor);
+      return allArtifacts;
     },
     enabled: !!selectedFolderId,
   });
