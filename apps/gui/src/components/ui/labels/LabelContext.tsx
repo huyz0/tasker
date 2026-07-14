@@ -67,8 +67,16 @@ export function LabelProvider({ entityId, entityType, orgId, children }: LabelPr
     queryKey: availableKey,
     queryFn: async () => {
       if (!orgId) return [];
-      const resp = await labelClient.listLabels({ orgId });
-      return resp.labels;
+      // The picker must offer every label, not just the first page, or a
+      // label past the default page size becomes unselectable here.
+      const allLabels: LabelData[] = [];
+      let cursor: string | undefined;
+      do {
+        const resp = await labelClient.listLabels({ orgId, page: cursor ? { cursor } : undefined });
+        allLabels.push(...resp.labels);
+        cursor = resp.page?.nextCursor || undefined;
+      } while (cursor);
+      return allLabels;
     },
     enabled: !!orgId,
   });
