@@ -37,6 +37,7 @@ describe("Repositories Handler >", () => {
       if (url.toString() === "https://bitbucket.org/site/oauth2/access_token") {
         const body = new URLSearchParams(options?.body as string);
         if (body.get("code") === "expired-code") return new Response("", { status: 401 });
+        if (body.get("code") === "revoked-code") return new Response(JSON.stringify({ error: "invalid_grant", error_description: "code already used" }), { status: 200 });
         if (body.get("code") === "no-token-code") return new Response(JSON.stringify({ token_type: "bearer" }), { status: 200 });
         return new Response(JSON.stringify({ access_token: "mock_bb_token_" + body.get("code") }), { status: 200 });
       }
@@ -132,6 +133,11 @@ describe("Repositories Handler >", () => {
     // Bitbucket's token endpoint returns a non-2xx for an expired/already-used code.
     await expect(repHandler.addRepositoryLink({
       projectId, provider: "bitbucket", remoteName: "huyz0/oauth-fail-bb", oauthCode: "expired-code",
+    }, ctx1)).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // Bitbucket can also return 200 with an `error` field in the body.
+    await expect(repHandler.addRepositoryLink({
+      projectId, provider: "bitbucket", remoteName: "huyz0/oauth-fail-bb-3", oauthCode: "revoked-code",
     }, ctx1)).rejects.toMatchObject({ code: Code.InvalidArgument });
 
     // A 200 response with no `error` field but also no access_token (an
@@ -241,6 +247,46 @@ describe("Repositories Handler >", () => {
 
     const unrelatedPr = listResp.pullRequests.find((p: any) => p.title === "Unrelated PR with no task reference");
     expect(unrelatedPr.taskId).toBeFalsy();
+  });
+
+  test("syncPullRequests updates an existing PR's title, status, and task link on a later sync instead of only inserting", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "PR Updates", ownerId: "usr-2" }, ctx2)).project.id;
+    const taskHandler = createTaskManagementHandler(db, null);
+    const task = (await taskHandler.createTask({ projectId: pId, title: "Fix the flaky test" }, ctx2)).task;
+
+    let prState = { title: "WIP: fix the flaky test", state: "open" as "open" | "closed" };
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/pulls")) {
+        return new Response(JSON.stringify([
+          { number: 1, title: prState.title, state: prState.state, draft: false, html_url: "http://github/1" },
+        ]), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    await repHandler.addRepositoryLink({ projectId: pId, provider: "github", remoteName: "foo/pr-updates", oauthCode: "fake-code" }, ctx2);
+    await repHandler.syncPullRequests({ projectId: pId }, ctx2);
+
+    const firstSync = await repHandler.listPullRequests({ projectId: pId }, ctx2);
+    expect(firstSync.pullRequests).toHaveLength(1);
+    expect(firstSync.pullRequests[0].title).toBe("WIP: fix the flaky test");
+    expect(firstSync.pullRequests[0].status).toBe("open");
+    expect(firstSync.pullRequests[0].taskId).toBeFalsy();
+
+    // The PR is renamed to reference the task, and merged, before the next sync.
+    prState = { title: `${task.displayId}: fix the flaky test`, state: "closed" };
+    await repHandler.syncPullRequests({ projectId: pId }, ctx2);
+
+    const secondSync = await repHandler.listPullRequests({ projectId: pId }, ctx2);
+    expect(secondSync.pullRequests).toHaveLength(1);
+    const updatedPr = secondSync.pullRequests[0];
+    expect(updatedPr.id).toBe(firstSync.pullRequests[0].id);
+    expect(updatedPr.title).toBe(`${task.displayId}: fix the flaky test`);
+    expect(updatedPr.status).toBe("closed");
+    expect(updatedPr.taskId).toBe(task.id);
   });
 
   test("syncPullRequests prefers the longest displayId match, e.g. ENG-11 over ENG-1", async () => {
@@ -496,6 +542,46 @@ describe("Repositories Handler >", () => {
     await expect(
       repHandler.listDeployments({ buildId: "run-123", repositoryLinkId: link.id, commitSha: "abc123" }, makeAuthContext("usr-outsider"))
     ).rejects.toThrow();
+  });
+
+  test("listDeployments falls back to PENDING for a deployment whose status fetch itself fails, instead of failing the whole list", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P6c", ownerId: "usr-2" }, ctx2)).project.id;
+
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/deployments?sha=")) {
+        return new Response(JSON.stringify([
+          { id: 333, environment: "production", created_at: "2024-01-01T00:00:00Z" },
+        ]), { status: 200 });
+      }
+      if (url.toString().includes("/deployments/333/statuses")) {
+        // Simulates the status sub-request itself failing (e.g. a timeout)
+        // rather than returning a clean non-2xx.
+        throw new Error("network error fetching deployment status");
+      }
+      if (url.toString().includes("/actions/runs/run-status-fail")) {
+        return new Response(JSON.stringify({ head_sha: "sha-status-fail" }), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const link = (await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "github",
+      remoteName: "foo/deploy-status-fail",
+      oauthCode: "fake-code",
+    }, ctx2)).link;
+
+    const res = await repHandler.listDeployments({
+      buildId: "run-status-fail",
+      repositoryLinkId: link.id,
+      commitSha: "sha-status-fail",
+    }, ctx2);
+
+    expect(res.deployments).toHaveLength(1);
+    expect(res.deployments[0].status).toBe("PENDING");
   });
 
   test("listDeployments rejects a buildId that didn't actually produce the given commitSha", async () => {

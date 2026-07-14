@@ -344,10 +344,10 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         }
         // GitHub personal access tokens are used as a Bearer token, exactly
         // like an OAuth2 access token, so no authEmail is needed. Bitbucket's
-        // Atlassian API tokens require Basic auth, hence the email.
-        if (parsed.provider === "bitbucket" && !parsed.email) {
-          throw new ConnectError("email is required alongside apiToken for Bitbucket", Code.InvalidArgument);
-        }
+        // Atlassian API tokens require Basic auth, hence the email - already
+        // enforced by AddRepositoryLinkSchema's own refine (apiToken with a
+        // bitbucket provider requires email), so parsed.email is guaranteed
+        // present here for that combination.
         tokenToStore = parsed.apiToken;
         authEmail = parsed.provider === "bitbucket" ? parsed.email! : null;
       } else if (parsed.provider === "github") {
