@@ -25,6 +25,8 @@ var artifactsListCmd = &cobra.Command{
 		projectID, _ := cmd.Flags().GetString("project")
 		folderID, _ := cmd.Flags().GetString("folder")
 		isJson, _ := cmd.Flags().GetBool("json")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
 		}
@@ -32,7 +34,10 @@ var artifactsListCmd = &cobra.Command{
 		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 
 		if folderID != "" {
-			res, err := client.ListArtifacts(context.Background(), connect.NewRequest(&healthv1.ListArtifactsRequest{FolderId: folderID}))
+			res, err := client.ListArtifacts(context.Background(), connect.NewRequest(&healthv1.ListArtifactsRequest{
+				FolderId: folderID,
+				Page:     &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+			}))
 			if err != nil {
 				cmd.PrintErrf("Failed to list artifacts: %v\n", err)
 				return
@@ -53,7 +58,10 @@ var artifactsListCmd = &cobra.Command{
 			cmd.Println("Error: --project or --folder is required (or set TASKER_PROJECT_ID).")
 			return
 		}
-		res, err := client.ListFolders(context.Background(), connect.NewRequest(&healthv1.ListFoldersRequest{ProjectId: projectID}))
+		res, err := client.ListFolders(context.Background(), connect.NewRequest(&healthv1.ListFoldersRequest{
+			ProjectId: projectID,
+			Page:      &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list folders: %v\n", err)
 			return
@@ -83,22 +91,37 @@ var artifactsReadCmd = &cobra.Command{
 		}
 
 		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
-		res, err := client.ListArtifacts(context.Background(), connect.NewRequest(&healthv1.ListArtifactsRequest{FolderId: folderID}))
-		if err != nil {
-			cmd.PrintErrf("Failed to read artifact: %v\n", err)
-			return
-		}
 
-		for _, a := range res.Msg.Artifacts {
-			if a.Id == args[0] {
-				if isJson {
-					jsonString, _ := json.Marshal(a)
-					cmd.Println(string(jsonString))
-				} else {
-					cmd.Printf("# %s\n%s\n", a.Name, a.Content)
-				}
+		// Must page through every artifact in the folder, not just the first
+		// page, or an artifact past the default page size falsely reports as
+		// not found even though it exists.
+		var cursor string
+		for {
+			res, err := client.ListArtifacts(context.Background(), connect.NewRequest(&healthv1.ListArtifactsRequest{
+				FolderId: folderID,
+				Page:     &healthv1.PageRequest{Cursor: cursor},
+			}))
+			if err != nil {
+				cmd.PrintErrf("Failed to read artifact: %v\n", err)
 				return
 			}
+
+			for _, a := range res.Msg.Artifacts {
+				if a.Id == args[0] {
+					if isJson {
+						jsonString, _ := json.Marshal(a)
+						cmd.Println(string(jsonString))
+					} else {
+						cmd.Printf("# %s\n%s\n", a.Name, a.Content)
+					}
+					return
+				}
+			}
+
+			if res.Msg.Page == nil || res.Msg.Page.NextCursor == "" {
+				break
+			}
+			cursor = res.Msg.Page.NextCursor
 		}
 		cmd.PrintErrf("Artifact %s not found in folder %s\n", args[0], folderID)
 	},
@@ -298,6 +321,8 @@ func init() {
 
 	artifactsListCmd.Flags().String("project", "", "Project ID to list folders for (or set TASKER_PROJECT_ID)")
 	artifactsListCmd.Flags().String("folder", "", "Folder ID to list artifacts within")
+	artifactsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	artifactsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	artifactsReadCmd.Flags().String("folder", "", "Folder ID containing the artifact")
 	artifactsCreateCmd.Flags().String("folder", "", "Folder ID to create the artifact in")
 	artifactsCreateCmd.Flags().String("name", "", "Artifact name")
