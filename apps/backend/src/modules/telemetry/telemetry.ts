@@ -6,6 +6,9 @@ import { getRecentErrors } from '../../lib/errorRingBuffer';
 import { resolveSessionUserId } from '../auth/session';
 import { assertOrgAdminOfAny } from '../../lib/authz';
 import { config } from '../../config';
+import { logger } from '../../lib/logger';
+
+const VALID_LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'];
 
 // Caps how much of a client-supplied error report gets logged, so a
 // misbehaving/malicious client can't use this endpoint to write unbounded
@@ -107,5 +110,23 @@ export function createTelemetryRoutes(db: any) {
         googleClientIdConfigured: !!config.googleClientId,
         googleRedirectUri: config.googleRedirectUri,
       });
+    })
+    // Chasing a bug that only reproduces intermittently in a live
+    // environment often needs debug-level logs for a few minutes, not a
+    // permanent LOG_LEVEL change that requires a restart (and would then
+    // need reverting). This flips pino's level in place - takes effect on
+    // the very next log call, reverts just as easily.
+    .post('/api/debug/log-level', async ({ request, body }) => {
+      const denied = await requireDebugAccess(db, request);
+      if (denied) return denied;
+
+      const level = (body as any)?.level;
+      if (typeof level !== 'string' || !VALID_LOG_LEVELS.includes(level)) {
+        return problemDetails(400, 'Invalid log level', `level must be one of: ${VALID_LOG_LEVELS.join(', ')}`);
+      }
+
+      const previousLevel = logger.level;
+      logger.level = level;
+      return Response.json({ previousLevel, level });
     });
 }

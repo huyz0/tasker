@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { createTelemetryRoutes } from './telemetry';
 import { setErrorReporter, LoggerErrorReporter, type ErrorReporter } from '../../lib/errorReporter';
 import { resetErrorRingBuffer } from '../../lib/errorRingBuffer';
 import { setupIntegrationTest } from '../../test/setup';
 import * as schemaSqlite from '../../db/schema.sqlite';
 import { createSessionToken } from '../auth/session';
+import { logger } from '../../lib/logger';
 
 function postClientError(routes: ReturnType<typeof createTelemetryRoutes>, body: unknown) {
   return routes.handle(new Request('http://localhost/api/client-errors', {
@@ -193,5 +194,64 @@ describe('GET /api/debug/config', () => {
     expect(body).not.toHaveProperty('jwtSecret');
     expect(body).not.toHaveProperty('appEncryptionSecret');
     expect(body).not.toHaveProperty('googleClientSecret');
+  });
+});
+
+describe('POST /api/debug/log-level', () => {
+  const originalLevel = logger.level;
+  afterEach(() => {
+    logger.level = originalLevel;
+  });
+
+  async function makeAdminToken() {
+    const userId = 'user-debug-loglevel-admin-' + Date.now();
+    const orgId = 'org-debug-loglevel-' + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: 'Debug Org', slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: 'admin', joinedAt: new Date() });
+    return createSessionToken(userId);
+  }
+
+  function postLogLevel(routes: ReturnType<typeof createTelemetryRoutes>, body: unknown, token?: string) {
+    return routes.handle(new Request('http://localhost/api/debug/log-level', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+    }));
+  }
+
+  it('rejects an unauthenticated request', async () => {
+    const routes = createTelemetryRoutes(db);
+    const res = await postLogLevel(routes, { level: 'debug' });
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects a non-admin caller', async () => {
+    const userId = 'user-debug-loglevel-nonadmin-' + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    const token = createSessionToken(userId);
+
+    const routes = createTelemetryRoutes(db);
+    const res = await postLogLevel(routes, { level: 'debug' }, token);
+    expect(res.status).toBe(403);
+  });
+
+  it('rejects an invalid level', async () => {
+    const token = await makeAdminToken();
+    const routes = createTelemetryRoutes(db);
+    const res = await postLogLevel(routes, { level: 'not-a-real-level' }, token);
+    expect(res.status).toBe(400);
+  });
+
+  it('changes the live logger level and reports the previous one', async () => {
+    logger.level = 'info';
+    const token = await makeAdminToken();
+    const routes = createTelemetryRoutes(db);
+
+    const res = await postLogLevel(routes, { level: 'debug' }, token);
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body).toEqual({ previousLevel: 'info', level: 'debug' });
+    expect(logger.level).toBe('debug');
   });
 });
