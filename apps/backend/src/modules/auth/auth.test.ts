@@ -141,6 +141,27 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
     expect(res.status).toBe(400);
   });
 
+  it('should surface a 400 when Google reports an error on the callback (e.g. the user denied consent)', async () => {
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state, cookie } = extractLoginFlow(loginRes);
+
+    const res = await authRoutes.handle(new Request(`http://localhost/api/auth/google/callback?error=access_denied&state=${encodeURIComponent(state)}`, {
+      headers: { cookie },
+    }));
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain('access_denied');
+  });
+
+  it('should reject the callback when no code is provided', async () => {
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state, cookie } = extractLoginFlow(loginRes);
+
+    const res = await authRoutes.handle(new Request(`http://localhost/api/auth/google/callback?state=${encodeURIComponent(state)}`, {
+      headers: { cookie },
+    }));
+    expect(res.status).toBe(400);
+  });
+
   afterEach(() => {
     mock.restore();
   });
@@ -182,6 +203,84 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
     const userRows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.id, 'testuser123'));
     expect(userRows).toHaveLength(1);
     expect(userRows[0].email).toBe('test@example.com');
+
+    globalThis.fetch = originalFetch;
+  });
+
+  it('should return 500 (not crash or leak internals) when Google rejects the token exchange', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') {
+        return new Response('', { status: 401 });
+      }
+      return originalFetch(url, options);
+    }) as unknown as typeof fetch;
+
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state, cookie: stateCookie } = extractLoginFlow(loginRes);
+    const res = await authRoutes.handle(new Request(`http://localhost/api/auth/google/callback?code=bad-code&state=${encodeURIComponent(state)}`, {
+      headers: { cookie: stateCookie },
+    }));
+
+    expect(res.status).toBe(500);
+    expect(await res.text()).toBe('Authentication failed due to server error');
+
+    globalThis.fetch = originalFetch;
+  });
+
+  it('should return 500 when the token exchange succeeds but fetching the user profile fails', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') {
+        return new Response(JSON.stringify({ access_token: 'mock_access_token' }), { status: 200 });
+      }
+      if (urlStr === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        return new Response('', { status: 401 });
+      }
+      return originalFetch(url, options);
+    }) as unknown as typeof fetch;
+
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state, cookie: stateCookie } = extractLoginFlow(loginRes);
+    const res = await authRoutes.handle(new Request(`http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`, {
+      headers: { cookie: stateCookie },
+    }));
+
+    expect(res.status).toBe(500);
+
+    globalThis.fetch = originalFetch;
+  });
+
+  it('should update an existing user\'s name/avatar on a returning login instead of only inserting on first login', async () => {
+    await db.insert(schemaSqlite.users).values({
+      id: 'returning-user-1', email: 'returning@example.com', name: 'Old Name', avatarUrl: 'old-avatar.png', createdAt: new Date(),
+    });
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') {
+        return new Response(JSON.stringify({ access_token: 'mock_access_token' }), { status: 200 });
+      }
+      if (urlStr === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        return new Response(JSON.stringify({ id: 'returning-user-1', email: 'returning@example.com', name: 'New Name', picture: 'new-avatar.png' }), { status: 200 });
+      }
+      return originalFetch(url, options);
+    }) as unknown as typeof fetch;
+
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state, cookie: stateCookie } = extractLoginFlow(loginRes);
+    const res = await authRoutes.handle(new Request(`http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`, {
+      headers: { cookie: stateCookie },
+    }));
+    expect(res.status).toBe(302);
+
+    const userRows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.id, 'returning-user-1'));
+    expect(userRows).toHaveLength(1);
+    expect(userRows[0].name).toBe('New Name');
+    expect(userRows[0].avatarUrl).toBe('new-avatar.png');
 
     globalThis.fetch = originalFetch;
   });
