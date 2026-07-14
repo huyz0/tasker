@@ -95,7 +95,7 @@ const ListPullRequestsSchema = z.object({
 
 const ListBuildsSchema = z.object({
   repositoryLinkId: z.string().min(1),
-  page: z.any().optional()
+  page: z.object({ limit: z.number().optional() }).nullable().optional(),
 });
 
 const ListDeploymentsSchema = z.object({
@@ -157,8 +157,14 @@ interface NormalizedBuild {
   createdAt: string;
 }
 
-async function fetchGithubBuilds(remoteName: string, token: string): Promise<NormalizedBuild[]> {
-  const response = await fetch(`https://api.github.com/repos/${remoteName}/actions/runs?per_page=10`, {
+// GitHub/Bitbucket cap page size at 100; clamp so a caller-supplied limit
+// can't be used to request an unbounded page from the upstream provider.
+function clampBuildsPerPage(limit: number | undefined): number {
+  return Math.min(Math.max(limit || 10, 1), 100);
+}
+
+async function fetchGithubBuilds(remoteName: string, token: string, limit?: number): Promise<NormalizedBuild[]> {
+  const response = await fetch(`https://api.github.com/repos/${remoteName}/actions/runs?per_page=${clampBuildsPerPage(limit)}`, {
     headers: {
       "Authorization": `Bearer ${token}`,
       "Accept": "application/vnd.github.v3+json",
@@ -182,8 +188,8 @@ async function fetchGithubBuilds(remoteName: string, token: string): Promise<Nor
   });
 }
 
-async function fetchBitbucketBuilds(remoteName: string, token: string, authEmail?: string | null): Promise<NormalizedBuild[]> {
-  const response = await fetch(`https://api.bitbucket.org/2.0/repositories/${remoteName}/pipelines/?sort=-created_on&pagelen=10`, {
+async function fetchBitbucketBuilds(remoteName: string, token: string, authEmail?: string | null, limit?: number): Promise<NormalizedBuild[]> {
+  const response = await fetch(`https://api.bitbucket.org/2.0/repositories/${remoteName}/pipelines/?sort=-created_on&pagelen=${clampBuildsPerPage(limit)}`, {
     headers: { "Authorization": bitbucketAuthHeader(token, authEmail) }
   });
   if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching builds for ${remoteName}`);
@@ -576,8 +582,8 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       try {
         const token = decryptToken(link.accessTokenEncrypted);
         normalizedBuilds = link.provider === "github"
-          ? await fetchGithubBuilds(link.remoteName, token)
-          : await fetchBitbucketBuilds(link.remoteName, token, link.authEmail);
+          ? await fetchGithubBuilds(link.remoteName, token, parsed.page?.limit)
+          : await fetchBitbucketBuilds(link.remoteName, token, link.authEmail, parsed.page?.limit);
       } catch (e) {
         logger.error({ remoteName: link.remoteName, err: e }, "listBuilds.fetch_failed");
         throw e;

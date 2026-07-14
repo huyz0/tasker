@@ -381,6 +381,37 @@ describe("Repositories Handler >", () => {
     expect(res.builds.every((b: any) => b.repositoryLinkId === link.id)).toBe(true);
   });
 
+  test("listBuilds forwards page.limit to the provider's per_page param instead of a hardcoded 10", async () => {
+    const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P-gh-builds-limit", ownerId: "usr-2" }, ctx2)).project.id;
+
+    let requestedUrl = "";
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      if (url.toString() === "https://github.com/login/oauth/access_token") {
+        return new Response(JSON.stringify({ access_token: "mock_token" }), { status: 200 });
+      }
+      if (url.toString().includes("/actions/runs")) {
+        requestedUrl = url.toString();
+        return new Response(JSON.stringify({ workflow_runs: [] }), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const link = (await repHandler.addRepositoryLink({
+      projectId: pId,
+      provider: "github",
+      remoteName: "foo/gh-builds-limit",
+      oauthCode: "fake-code",
+    }, ctx2)).link;
+
+    await repHandler.listBuilds({ repositoryLinkId: link.id, page: { limit: 25 } }, ctx2);
+    expect(requestedUrl).toContain("per_page=25");
+
+    // A caller-supplied limit above what GitHub allows must still be clamped,
+    // not passed straight through.
+    await repHandler.listBuilds({ repositoryLinkId: link.id, page: { limit: 500 } }, ctx2);
+    expect(requestedUrl).toContain("per_page=100");
+  });
+
   test("listBuilds throws instead of silently returning an empty list on provider failure", async () => {
     const pId = (await pHandler.createProject({ orgId: "org-2", templateId: "tpl-2", name: "P5", ownerId: "usr-2" }, ctx2)).project.id;
 
