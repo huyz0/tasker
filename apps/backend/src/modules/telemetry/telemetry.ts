@@ -7,6 +7,7 @@ import { resolveSessionUserId } from '../auth/session';
 import { assertOrgAdminOfAny } from '../../lib/authz';
 import { config } from '../../config';
 import { logger } from '../../lib/logger';
+import { getBusinessEventCounts } from '../../lib/businessEvents';
 
 const VALID_LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'];
 
@@ -128,5 +129,16 @@ export function createTelemetryRoutes(db: any) {
       const previousLevel = logger.level;
       logger.level = level;
       return Response.json({ previousLevel, level });
+    })
+    // Volume visibility for real product activity (tasks created, projects
+    // created, ...), not just raw RPC traffic - counts only confirmed
+    // successful domain mutations (see publishDomainEvent in
+    // natsCorrelation.ts), so a spike here means real usage, not just a lot
+    // of failed/retried requests.
+    .get('/api/debug/business-events', async ({ request }) => {
+      const denied = await requireDebugAccess(db, request);
+      if (denied) return denied;
+
+      return Response.json({ eventCounts: getBusinessEventCounts() });
     });
 }

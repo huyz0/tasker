@@ -1,3 +1,4 @@
+import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -411,7 +412,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
 
       await insertRecord(db, links, payload, isStandalone, true);
 
-      if (nc) nc.publish("domain.repository.linked", Buffer.from(JSON.stringify(payload)));
+      publishDomainEvent(nc, "domain.repository.linked", payload);
       
       return { 
         link: { ...payload, createdAt: new Date().toISOString() } 
@@ -540,7 +541,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         }
       }
 
-      if (nc) nc.publish("domain.repository.sync_requested", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
+      publishDomainEvent(nc, "domain.repository.sync_requested", { projectId: parsed.projectId });
 
       return { success: failures.length === 0 };
     },

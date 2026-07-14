@@ -112,6 +112,18 @@ Every 5 minutes the backend logs a `rpc.latency_summary` line (see
 - useful for spotting which endpoint is actually slow without needing a
 dedicated metrics backend for local investigation.
 
+## Business event volume
+
+`rpc.latency_summary` tells you about traffic; it doesn't tell you about
+real product activity, since it counts every call including failed/rejected
+attempts. `GET /api/debug/business-events` (also logged periodically as
+`business_events.summary`) counts confirmed successful domain mutations
+instead - tasks actually created, projects actually created, and so on:
+
+```bash
+curl http://localhost:8080/api/debug/business-events -H "Authorization: Bearer <admin-token>"
+```
+
 ## Build identification
 
 The GUI's sidebar footer shows the build's git SHA (falls back to `dev` for

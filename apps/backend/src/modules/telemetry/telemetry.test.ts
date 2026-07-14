@@ -6,6 +6,8 @@ import { setupIntegrationTest } from '../../test/setup';
 import * as schemaSqlite from '../../db/schema.sqlite';
 import { createSessionToken } from '../auth/session';
 import { logger } from '../../lib/logger';
+import { resetBusinessEvents } from '../../lib/businessEvents';
+import { publishDomainEvent } from '../../lib/natsCorrelation';
 
 function postClientError(routes: ReturnType<typeof createTelemetryRoutes>, body: unknown) {
   return routes.handle(new Request('http://localhost/api/client-errors', {
@@ -253,5 +255,39 @@ describe('POST /api/debug/log-level', () => {
     const body: any = await res.json();
     expect(body).toEqual({ previousLevel: 'info', level: 'debug' });
     expect(logger.level).toBe('debug');
+  });
+});
+
+describe('GET /api/debug/business-events', () => {
+  beforeEach(() => {
+    resetBusinessEvents();
+  });
+
+  it('rejects an unauthenticated request', async () => {
+    const routes = createTelemetryRoutes(db);
+    const res = await routes.handle(new Request('http://localhost/api/debug/business-events'));
+    expect(res.status).toBe(401);
+  });
+
+  it('returns recorded event counts to an org admin', async () => {
+    const userId = 'user-debug-events-admin-' + Date.now();
+    const orgId = 'org-debug-events-' + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: 'Debug Org', slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: 'admin', joinedAt: new Date() });
+    const token = createSessionToken(userId);
+
+    publishDomainEvent(null, 'domain.task.created', { id: 'tsk-1' });
+    publishDomainEvent(null, 'domain.task.created', { id: 'tsk-2' });
+    publishDomainEvent(null, 'domain.project.created', { id: 'prj-1' });
+
+    const routes = createTelemetryRoutes(db);
+    const res = await routes.handle(new Request('http://localhost/api/debug/business-events', {
+      headers: { authorization: `Bearer ${token}` },
+    }));
+
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body.eventCounts).toEqual({ 'domain.task.created': 2, 'domain.project.created': 1 });
   });
 });

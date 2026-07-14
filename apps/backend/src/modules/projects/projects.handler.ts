@@ -1,3 +1,4 @@
+import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -134,7 +135,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
         };
         try {
           await insertRecord(db, ps, payload, isStandalone);
-          if (nc) nc.publish("domain.project.created", Buffer.from(JSON.stringify(payload)));
+          publishDomainEvent(nc, "domain.project.created", payload);
           return { project: payload };
         } catch (e) {
           if (!isProjectKeyConflict(e)) throw e;
@@ -170,7 +171,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
 
       await softDeleteById(db, ps, parsed.projectId);
 
-      if (nc) nc.publish("domain.project.archived", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
+      publishDomainEvent(nc, "domain.project.archived", { projectId: parsed.projectId });
       return { success: true };
     },
     async restoreProject(req: unknown, { values: contextValues }: { values: any }) {
@@ -189,7 +190,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
 
       await restoreById(db, ps, parsed.projectId);
 
-      if (nc) nc.publish("domain.project.restored", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
+      publishDomainEvent(nc, "domain.project.restored", { projectId: parsed.projectId });
       return { success: true };
     },
     async purgeProject(req: unknown, { values: contextValues }: { values: any }) {
@@ -233,7 +234,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
 
       await db.delete(ps).where(eq((ps as any).id, parsed.projectId));
 
-      if (nc) nc.publish("domain.project.purged", Buffer.from(JSON.stringify({ projectId: parsed.projectId })));
+      publishDomainEvent(nc, "domain.project.purged", { projectId: parsed.projectId });
       return { success: true };
     },
   };
@@ -277,7 +278,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
 
       await insertRecord(db, pts, payload, isStandalone);
 
-      if (nc) nc.publish("domain.project_template.created", Buffer.from(JSON.stringify(payload)));
+      publishDomainEvent(nc, "domain.project_template.created", payload);
       return { template: payload };
     },
     async listTemplates(req: any, { values: contextValues }: { values: any }) {

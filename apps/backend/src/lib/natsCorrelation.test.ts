@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'bun:test';
-import { withRequestCorrelation } from './natsCorrelation';
+import { describe, it, expect, beforeEach } from 'bun:test';
+import { withRequestCorrelation, publishDomainEvent } from './natsCorrelation';
 import { runWithRequestContext } from './requestContext';
+import { getBusinessEventCounts, resetBusinessEvents } from './businessEvents';
 
 function makeFakeNc() {
   const publishedMessages: { subject: string; data: any }[] = [];
@@ -54,5 +55,29 @@ describe('withRequestCorrelation', () => {
     });
 
     expect(publishedMessages[0]!.data.toString()).toBe('not json');
+  });
+});
+
+describe('publishDomainEvent', () => {
+  beforeEach(() => {
+    resetBusinessEvents();
+  });
+
+  it('records the business event and publishes to NATS when nc is connected', () => {
+    const { nc, publishedMessages } = makeFakeNc();
+    publishDomainEvent(nc, 'domain.task.created', { id: 'tsk-1' });
+
+    expect(getBusinessEventCounts()).toEqual({ 'domain.task.created': 1 });
+    expect(publishedMessages).toHaveLength(1);
+    expect(publishedMessages[0]!.subject).toBe('domain.task.created');
+    expect(JSON.parse(publishedMessages[0]!.data.toString())).toEqual({ id: 'tsk-1' });
+  });
+
+  it('still records the business event when nc is null (no NATS connection)', () => {
+    // STANDALONE local dev commonly runs without NATS - the whole point of
+    // this test is that business-event volume stays visible in exactly
+    // that environment, not just when a real NATS connection exists.
+    publishDomainEvent(null, 'domain.task.created', { id: 'tsk-1' });
+    expect(getBusinessEventCounts()).toEqual({ 'domain.task.created': 1 });
   });
 });

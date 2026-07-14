@@ -1,3 +1,4 @@
+import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import { eq, and, not } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -82,7 +83,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       await insertRecord(db, agents, payload, isStandalone);
 
-      if (nc) nc.publish("domain.agent.created", Buffer.from(JSON.stringify(payload)));
+      publishDomainEvent(nc, "domain.agent.created", payload);
       return { agent: payload };
     },
     async listAgents(req: any, { values: contextValues }: { values: any }) {
@@ -105,7 +106,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       await softDeleteById(db, agentsSchema, parsed.agentId);
 
-      if (nc) nc.publish("domain.agent.archived", Buffer.from(JSON.stringify({ agentId: parsed.agentId })));
+      publishDomainEvent(nc, "domain.agent.archived", { agentId: parsed.agentId });
       return { success: true };
     },
     async restoreAgent(req: unknown, { values: contextValues }: { values: any }) {
@@ -124,7 +125,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       await restoreById(db, agentsSchema, parsed.agentId);
 
-      if (nc) nc.publish("domain.agent.restored", Buffer.from(JSON.stringify({ agentId: parsed.agentId })));
+      publishDomainEvent(nc, "domain.agent.restored", { agentId: parsed.agentId });
       return { success: true };
     },
     async purgeAgent(req: unknown, { values: contextValues }: { values: any }) {
@@ -152,7 +153,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       await db.update(comments).set({ agentId: null }).where(eq((comments as any).agentId, parsed.agentId));
       await db.delete(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId));
 
-      if (nc) nc.publish("domain.agent.purged", Buffer.from(JSON.stringify({ agentId: parsed.agentId })));
+      publishDomainEvent(nc, "domain.agent.purged", { agentId: parsed.agentId });
       return { success: true };
     },
   };

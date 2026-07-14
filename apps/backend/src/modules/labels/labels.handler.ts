@@ -1,3 +1,4 @@
+import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -76,7 +77,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       }
 
       const labelResp = { ...payload };
-      if (nc) nc.publish("domain.label.created", Buffer.from(JSON.stringify(labelResp)));
+      publishDomainEvent(nc, "domain.label.created", labelResp);
       return { label: labelResp };
     },
 
@@ -136,7 +137,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
         return { success: true };
       }
 
-      if (nc) nc.publish("domain.label.attached", Buffer.from(JSON.stringify(parsed)));
+      publishDomainEvent(nc, "domain.label.attached", parsed);
       return { success: true };
     },
 
@@ -157,7 +158,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
           )
         );
 
-      if (nc) nc.publish("domain.label.detached", Buffer.from(JSON.stringify(parsed)));
+      publishDomainEvent(nc, "domain.label.detached", parsed);
       return { success: true };
     },
 

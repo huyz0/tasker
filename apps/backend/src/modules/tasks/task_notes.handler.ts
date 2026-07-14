@@ -1,3 +1,4 @@
+import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -47,7 +48,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       await insertRecord(db, notes, payload, isStandalone);
 
       const noteResp = { ...payload };
-      if (nc) nc.publish("domain.tasknote.created", Buffer.from(JSON.stringify(noteResp)));
+      publishDomainEvent(nc, "domain.tasknote.created", noteResp);
       return { taskNote: noteResp };
     },
     async listTaskNotes(req: any, { values: contextValues }: { values: any }) {

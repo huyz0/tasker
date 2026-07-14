@@ -26,6 +26,7 @@ import { runRetentionSweep } from "./lib/retentionSweep";
 import { config } from "./config";
 import { withRequestCorrelation } from "./lib/natsCorrelation";
 import { getRpcMethodStats } from "./lib/rpcMetrics";
+import { getBusinessEventCounts } from "./lib/businessEvents";
 import { createTelemetryRoutes } from "./modules/telemetry/telemetry";
 
 // Bypassing network stack with local function execution logic
@@ -166,4 +167,7 @@ const METRICS_LOG_INTERVAL_MS = 5 * 60 * 1000;
 setInterval(() => {
   const stats = getRpcMethodStats();
   if (stats.length > 0) logger.info({ rpcMethodStats: stats }, "rpc.latency_summary");
+
+  const eventCounts = getBusinessEventCounts();
+  if (Object.keys(eventCounts).length > 0) logger.info({ eventCounts }, "business_events.summary");
 }, METRICS_LOG_INTERVAL_MS);

@@ -1,3 +1,4 @@
+import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -86,7 +87,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       await insertRecord(db, folders, payload, isStandalone);
 
       const folderResp = { ...payload };
-      if (nc) nc.publish("domain.folder.created", Buffer.from(JSON.stringify(folderResp)));
+      publishDomainEvent(nc, "domain.folder.created", folderResp);
       return { folder: folderResp };
     },
 
@@ -109,7 +110,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       await insertRecord(db, artifacts, payload, isStandalone);
 
-      if (nc) nc.publish("domain.artifact.created", Buffer.from(JSON.stringify(payload)));
+      publishDomainEvent(nc, "domain.artifact.created", payload);
       return { artifact: payload };
     },
 
@@ -179,7 +180,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       await softDeleteById(db, arts, parsed.artifactId);
 
-      if (nc) nc.publish("domain.artifact.archived", Buffer.from(JSON.stringify({ artifactId: parsed.artifactId })));
+      publishDomainEvent(nc, "domain.artifact.archived", { artifactId: parsed.artifactId });
       return { success: true };
     },
     async restoreArtifact(req: unknown, { values: contextValues }: { values: any }) {
@@ -191,7 +192,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       await restoreById(db, arts, parsed.artifactId);
 
-      if (nc) nc.publish("domain.artifact.restored", Buffer.from(JSON.stringify({ artifactId: parsed.artifactId })));
+      publishDomainEvent(nc, "domain.artifact.restored", { artifactId: parsed.artifactId });
       return { success: true };
     },
     async archiveFolder(req: unknown, { values: contextValues }: { values: any }) {
@@ -203,7 +204,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       await softDeleteById(db, folders, parsed.folderId);
 
-      if (nc) nc.publish("domain.folder.archived", Buffer.from(JSON.stringify({ folderId: parsed.folderId })));
+      publishDomainEvent(nc, "domain.folder.archived", { folderId: parsed.folderId });
       return { success: true };
     },
     async restoreFolder(req: unknown, { values: contextValues }: { values: any }) {
@@ -215,7 +216,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       await restoreById(db, folders, parsed.folderId);
 
-      if (nc) nc.publish("domain.folder.restored", Buffer.from(JSON.stringify({ folderId: parsed.folderId })));
+      publishDomainEvent(nc, "domain.folder.restored", { folderId: parsed.folderId });
       return { success: true };
     },
     async purgeArtifact(req: unknown, { values: contextValues }: { values: any }) {
@@ -242,7 +243,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       await db.delete(entityLabels).where(and(eq((entityLabels as any).entityId, parsed.artifactId), eq((entityLabels as any).entityType, "artifact")));
       await db.delete(arts).where(eq((arts as any).id, parsed.artifactId));
 
-      if (nc) nc.publish("domain.artifact.purged", Buffer.from(JSON.stringify({ artifactId: parsed.artifactId })));
+      publishDomainEvent(nc, "domain.artifact.purged", { artifactId: parsed.artifactId });
       return { success: true };
     },
     async purgeFolder(req: unknown, { values: contextValues }: { values: any }) {
@@ -268,7 +269,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       await db.delete(folders).where(eq((folders as any).id, parsed.folderId));
 
-      if (nc) nc.publish("domain.folder.purged", Buffer.from(JSON.stringify({ folderId: parsed.folderId })));
+      publishDomainEvent(nc, "domain.folder.purged", { folderId: parsed.folderId });
       return { success: true };
     },
   };

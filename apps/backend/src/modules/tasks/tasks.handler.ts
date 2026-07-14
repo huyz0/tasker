@@ -1,3 +1,4 @@
+import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -158,7 +159,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
 
       const taskTypeResp = { ...payload, createdAt: new Date().toISOString() };
 
-      if (nc) nc.publish("domain.task_type.created", Buffer.from(JSON.stringify(payload)));
+      publishDomainEvent(nc, "domain.task_type.created", payload);
       return { taskType: taskTypeResp };
     },
     async listTaskTypes(req: unknown, { values: contextValues }: { values: any }) {
@@ -206,7 +207,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
 
       await insertRecord(db, statuses, payload, isStandalone, false);
 
-      if (nc) nc.publish("domain.task_status.created", Buffer.from(JSON.stringify(payload)));
+      publishDomainEvent(nc, "domain.task_status.created", payload);
       return { status: payload };
     },
     async createTaskStatusTransition(req: unknown, { values: contextValues }: { values: any }) {
@@ -245,7 +246,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
 
       await insertRecord(db, transitions, payload, isStandalone, false);
 
-      if (nc) nc.publish("domain.task_status_transition.created", Buffer.from(JSON.stringify(payload)));
+      publishDomainEvent(nc, "domain.task_status_transition.created", payload);
       return { transition: payload };
     },
   };
@@ -355,7 +356,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       await insertRecord(db, tasks, payload, isStandalone, true);
 
-      if (nc) nc.publish("domain.task.created", Buffer.from(JSON.stringify(payload)));
+      publishDomainEvent(nc, "domain.task.created", payload);
       return { task: payload };
     },
     async listTasks(req: any, { values: contextValues }: { values: any }) {
@@ -497,7 +498,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
       const task = result[0];
 
-      if (nc) nc.publish("domain.task.status_updated", Buffer.from(JSON.stringify(task)));
+      publishDomainEvent(nc, "domain.task.status_updated", task);
       return { task };
     },
     async deleteTask(req: unknown, { values: contextValues }: { values: any }) {
@@ -509,7 +510,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       await softDeleteById(db, tasks, parsed.taskId);
 
-      if (nc) nc.publish("domain.task.deleted", Buffer.from(JSON.stringify({ taskId: parsed.taskId })));
+      publishDomainEvent(nc, "domain.task.deleted", { taskId: parsed.taskId });
       return { success: true };
     },
     async restoreTask(req: unknown, { values: contextValues }: { values: any }) {
@@ -521,7 +522,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       await restoreById(db, tasks, parsed.taskId);
 
-      if (nc) nc.publish("domain.task.restored", Buffer.from(JSON.stringify({ taskId: parsed.taskId })));
+      publishDomainEvent(nc, "domain.task.restored", { taskId: parsed.taskId });
       return { success: true };
     },
     async purgeTask(req: unknown, { values: contextValues }: { values: any }) {
@@ -553,7 +554,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       await db.update(pullRequests).set({ taskId: null }).where(eq((pullRequests as any).taskId, parsed.taskId));
       await db.delete(tasks).where(eq((tasks as any).id, parsed.taskId));
 
-      if (nc) nc.publish("domain.task.purged", Buffer.from(JSON.stringify({ taskId: parsed.taskId })));
+      publishDomainEvent(nc, "domain.task.purged", { taskId: parsed.taskId });
       return { success: true };
     },
   };

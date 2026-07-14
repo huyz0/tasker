@@ -1,3 +1,4 @@
+import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
@@ -58,7 +59,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       await insertRecord(db, comments, payload, isStandalone);
 
       const commentResp = { ...payload, createdAt: new Date().toISOString() };
-      if (nc) nc.publish("domain.comment.created", Buffer.from(JSON.stringify(commentResp)));
+      publishDomainEvent(nc, "domain.comment.created", commentResp);
       return { comment: commentResp };
     },
     async listComments(req: any, { values: contextValues }: { values: any }) {

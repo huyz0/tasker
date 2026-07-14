@@ -1,3 +1,4 @@
+import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import { inArray, eq, and, not } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
@@ -87,9 +88,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const memberPayload = { orgId: newOrgId, userId, role: "admin" };
       await insertRecord(db, members, memberPayload, isStandalone, "joinedAt");
 
-      if (nc) {
-        nc.publish("domain.org.created", Buffer.from(JSON.stringify(orgPayload)));
-      }
+      publishDomainEvent(nc, "domain.org.created", orgPayload);
       return { organization: { ...orgPayload, role: "admin" } };
     },
     async inviteUser(req: unknown, { values: contextValues }: { values: any }) {
@@ -120,7 +119,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       await softDeleteById(db, orgs, parsed.orgId);
 
-      if (nc) nc.publish("domain.org.archived", Buffer.from(JSON.stringify({ orgId: parsed.orgId })));
+      publishDomainEvent(nc, "domain.org.archived", { orgId: parsed.orgId });
       return { success: true };
     },
     async restoreOrg(req: unknown, { values: contextValues }: { values: any }) {
@@ -140,7 +139,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
 
       await restoreById(db, orgs, parsed.orgId);
 
-      if (nc) nc.publish("domain.org.restored", Buffer.from(JSON.stringify({ orgId: parsed.orgId })));
+      publishDomainEvent(nc, "domain.org.restored", { orgId: parsed.orgId });
       return { success: true };
     },
     async purgeOrg(req: unknown, { values: contextValues }: { values: any }) {
@@ -191,7 +190,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       await db.delete(invitations).where(eq((invitations as any).orgId, parsed.orgId));
       await db.delete(orgs).where(eq((orgs as any).id, parsed.orgId));
 
-      if (nc) nc.publish("domain.org.purged", Buffer.from(JSON.stringify({ orgId: parsed.orgId })));
+      publishDomainEvent(nc, "domain.org.purged", { orgId: parsed.orgId });
       return { success: true };
     },
     async setOrgRetentionDays(req: unknown, { values: contextValues }: { values: any }) {
