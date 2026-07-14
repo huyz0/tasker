@@ -59,4 +59,34 @@ describe("Health Handler Integration Logic", () => {
     expect(res.natsStatus).toBe("connected");
     expect(res.natsLatencyMs).toBeUndefined();
   });
+
+  // The two tests below fake `db.execute` directly instead of standing up a
+  // real MySQL instance, exercising the non-STANDALONE branch (and its error
+  // path) that setupIntegrationTest's sqlite mode never reaches - the other
+  // tests in this file only ever run with STANDALONE=true.
+  test("ping reports mysql-ok via db.execute when not running in STANDALONE mode", async () => {
+    const previousStandalone = process.env.STANDALONE;
+    process.env.STANDALONE = "false";
+    try {
+      const fakeMysqlDb = { execute: async () => {} };
+      const handler = createHealthHandler(fakeMysqlDb, null);
+      const res = await handler.ping({});
+      expect(res.dbStatus).toBe("mysql-ok");
+    } finally {
+      process.env.STANDALONE = previousStandalone;
+    }
+  });
+
+  test("ping reports an error status (not a thrown exception) when the mysql connection check fails", async () => {
+    const previousStandalone = process.env.STANDALONE;
+    process.env.STANDALONE = "false";
+    try {
+      const fakeMysqlDb = { execute: async () => { throw new Error("connection refused"); } };
+      const handler = createHealthHandler(fakeMysqlDb, null);
+      const res = await handler.ping({});
+      expect(res.dbStatus).toBe("error: connection refused");
+    } finally {
+      process.env.STANDALONE = previousStandalone;
+    }
+  });
 });

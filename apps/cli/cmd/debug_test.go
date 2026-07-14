@@ -159,3 +159,22 @@ func TestRunDebugSessionServerUnreachable(t *testing.T) {
 		t.Error("expected an error when the backend is unreachable, got nil")
 	}
 }
+
+func TestRunDebugSessionMalformedServerResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Not valid JSON at all - simulates a proxy/gateway error page or a
+		// server that crashed before writing a real body.
+		w.Write([]byte("<html>502 Bad Gateway</html>"))
+	}))
+	defer srv.Close()
+
+	token := makeFakeToken("user-42", 9999999999999, "jti-abc")
+	var buf bytes.Buffer
+	err := runDebugSession(&buf, srv.Client(), srv.URL, token)
+	if err == nil {
+		t.Fatal("expected an error for a non-JSON server response, got nil")
+	}
+	if !strings.Contains(err.Error(), "unexpected response from backend") {
+		t.Errorf("expected a clear 'unexpected response' error, got: %v", err)
+	}
+}
