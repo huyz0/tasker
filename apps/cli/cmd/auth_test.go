@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
@@ -99,6 +102,38 @@ func TestLoginCommandMetadata(t *testing.T) {
 	}
 	if loginCmd.Run == nil {
 		t.Error("expected loginCmd.Run to be defined")
+	}
+}
+
+// If the local callback listener's port is already taken (e.g. another
+// `tasker auth login` already running), the command must report that
+// failure promptly instead of silently sitting through the full 5-minute
+// timeout as if it were just waiting on the browser.
+func TestLoginCommandReportsCallbackListenerBindFailure(t *testing.T) {
+	occupier, err := net.Listen("tcp", fmt.Sprintf(":%d", cliCallbackPort))
+	if err != nil {
+		t.Skipf("could not occupy port %d for this test: %v", cliCallbackPort, err)
+	}
+	defer occupier.Close()
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"auth", "login"})
+
+	done := make(chan struct{})
+	go func() {
+		_ = rootCmd.Execute()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		if !strings.Contains(b.String(), "Failed to start local callback listener") {
+			t.Fatalf("expected a bind-failure message, got: %s", b.String())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("login command did not report the bind failure promptly")
 	}
 }
 

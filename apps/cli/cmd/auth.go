@@ -74,7 +74,16 @@ var loginCmd = &cobra.Command{
 		mux.HandleFunc("/callback", newCallbackHandler(nonce, ch))
 
 		srv := &http.Server{Addr: fmt.Sprintf(":%d", cliCallbackPort), Handler: mux}
-		go srv.ListenAndServe()
+		// Surfaced separately from the callback channel so a bind failure
+		// (e.g. another `tasker auth login` already running, or something
+		// else holding the port) fails fast instead of silently sitting
+		// through the full 5-minute timeout with a listener that never started.
+		listenErrCh := make(chan error, 1)
+		go func() {
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				listenErrCh <- err
+			}
+		}()
 		defer srv.Close()
 
 		select {
@@ -89,6 +98,8 @@ var loginCmd = &cobra.Command{
 			}
 			path, _ := backend.CredentialsPath()
 			cmd.Printf("Success! Logged in. Credentials saved to %s\n", path)
+		case err := <-listenErrCh:
+			cmd.PrintErrf("Failed to start local callback listener on localhost:%d: %v\n", cliCallbackPort, err)
 		case <-time.After(5 * time.Minute):
 			cmd.Println("Timeout waiting for authentication.")
 		}
