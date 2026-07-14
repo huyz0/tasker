@@ -55,6 +55,18 @@ describe('Comment Compound Component', () => {
     }));
   });
 
+  test('Scenario 3: auto-loads later pages so comments past the first page are shown', async () => {
+    mockListComments
+      .mockResolvedValueOnce({ comments: [{ id: 'cmt-1', userId: 'user-1', content: 'Page one comment', createdAt: new Date().toISOString() }], page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ comments: [{ id: 'cmt-2', userId: 'user-1', content: 'Page two comment', createdAt: new Date().toISOString() }], page: {} });
+
+    renderWithProvider(<Comment.List />);
+
+    await waitFor(() => expect(screen.getByText('Page one comment')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Page two comment')).toBeInTheDocument());
+    expect(mockListComments).toHaveBeenCalledWith({ entityId: 'task-1', entityType: 'task', page: { cursor: 'cursor-2' } });
+  });
+
   test('Scenario 2: Agent comment renders with distinct styling', async () => {
     mockListComments.mockResolvedValue({
       comments: [

@@ -54,8 +54,16 @@ export function CommentProvider({ entityId, entityType, children }: CommentProvi
   const { data, isLoading: isLoadingList } = useQuery({
     queryKey,
     queryFn: async () => {
-      const resp = await commentClient.listComments({ entityId, entityType });
-      return resp.comments;
+      // Every comment must be visible, not just the first page, or the
+      // thread silently truncates once it grows past the default page size.
+      const allComments: CommentData[] = [];
+      let cursor: string | undefined;
+      do {
+        const resp = await commentClient.listComments({ entityId, entityType, page: cursor ? { cursor } : undefined });
+        allComments.push(...resp.comments);
+        cursor = resp.page?.nextCursor || undefined;
+      } while (cursor);
+      return allComments;
     },
   });
 
