@@ -280,6 +280,9 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
 
     expect(res.status).toBe(403);
     expect(res.headers.get('set-cookie')).toBeNull();
+    expect(res.headers.get('content-type')).toContain('application/problem+json');
+    const body = await res.json();
+    expect(body).toMatchObject({ title: 'Test login disabled', status: 403 });
 
     require('../../config').config.enableTestLogin = originalEnable;
   });

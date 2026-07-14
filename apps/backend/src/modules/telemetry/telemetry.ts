@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia';
 import { reportError } from '../../lib/errorReporter';
+import { problemDetails } from '../../lib/problemDetails';
 
 // Caps how much of a client-supplied error report gets logged, so a
 // misbehaving/malicious client can't use this endpoint to write unbounded
@@ -21,8 +22,7 @@ export function createTelemetryRoutes() {
     .post('/api/client-errors', async ({ body, set }) => {
       const payload = body as any;
       if (!payload || typeof payload.message !== 'string' || !payload.message.trim()) {
-        set.status = 400;
-        return { error: 'message is required' };
+        return problemDetails(400, 'Invalid client error report', 'message is required');
       }
       const severity = payload.severity === 'fatal' ? 'fatal' : 'error';
 

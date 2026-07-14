@@ -5,6 +5,7 @@ import * as schemaSqlite from '../../db/schema.sqlite';
 import { config } from '../../config';
 import { createSessionToken, resolveSessionUserId, SESSION_TTL_MS } from './session';
 import { logger } from '../../lib/logger';
+import { problemDetails } from '../../lib/problemDetails';
 
 function sessionCookie(userId: string): string {
   const secure = config.nodeEnv === 'production' ? '; Secure' : '';
@@ -221,7 +222,7 @@ export function createAuthRoutes(db: any) {
   })
   .get('/api/auth/test/inject', ({ query }) => {
     if (!config.enableTestLogin) {
-      return new Response('Test login disabled', { status: 403 });
+      return problemDetails(403, 'Test login disabled', 'ENABLE_TEST_LOGIN is not set on this server.');
     }
     const userId = (query.userId as string) || 'testuser123';
     return new Response('Mock session injected', {

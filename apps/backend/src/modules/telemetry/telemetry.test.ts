@@ -36,10 +36,13 @@ describe('POST /api/client-errors', () => {
     }
   });
 
-  it('rejects a report with no message', async () => {
+  it('rejects a report with no message using an RFC7807 problem-details body', async () => {
     const routes = createTelemetryRoutes();
     const res = await postClientError(routes, { severity: 'error' });
     expect(res.status).toBe(400);
+    expect(res.headers.get('content-type')).toContain('application/problem+json');
+    const body = await res.json();
+    expect(body).toMatchObject({ title: 'Invalid client error report', status: 400 });
   });
 
   it('defaults an invalid/missing severity to "error" rather than rejecting', async () => {
