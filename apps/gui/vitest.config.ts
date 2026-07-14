@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react';
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __BUILD_SHA__: JSON.stringify('test'),
+  },
   test: {
     exclude: ['e2e/**', 'tests/e2e/**', 'node_modules/**', 'dist/**', '.idea/**', '.git/**', '.cache/**'],
     coverage: {

@@ -108,6 +108,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <LogOut className="h-4 w-4" />
                 </button>
              </div>
+             <div className="px-3 pb-1 text-xs text-muted-foreground/70 font-mono">
+               build {__BUILD_SHA__.slice(0, 7)}
+             </div>
           </div>
         </div>
       </aside>
