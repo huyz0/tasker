@@ -3,7 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import * as schemaMysql from '../../db/schema.mysql';
 import * as schemaSqlite from '../../db/schema.sqlite';
 import { config } from '../../config';
-import { createSessionToken, parseSessionCookie, verifySessionToken, SESSION_TTL_MS } from './session';
+import { createSessionToken, resolveSessionUserId, SESSION_TTL_MS } from './session';
 import { logger } from '../../lib/logger';
 
 function sessionCookie(userId: string): string {
@@ -197,9 +197,15 @@ export function createAuthRoutes(db: any) {
     }
   })
   .get('/api/auth/session', ({ request }) => {
-    const token = parseSessionCookie(request.headers.get('cookie'));
-    const session = token ? verifySessionToken(token) : null;
-    return Response.json({ authenticated: !!session, userId: session?.userId ?? null });
+    // Every RPC checks the Authorization: Bearer header first, then falls
+    // back to the cookie (see resolveSessionUserId) - a CLI/agent client
+    // authenticating purely via bearer token (no cookie jar) must see the
+    // same "am I logged in" answer here that it gets from any real RPC.
+    const userId = resolveSessionUserId({
+      cookie: request.headers.get('cookie'),
+      authorization: request.headers.get('authorization'),
+    });
+    return Response.json({ authenticated: !!userId, userId });
   })
   // There was previously no way to end a browser session at all - the
   // cookie just sat there, valid, until it hit its 7-day Max-Age. Clearing

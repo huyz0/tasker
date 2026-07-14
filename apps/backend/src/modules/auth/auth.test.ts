@@ -27,6 +27,14 @@ describe('Auth session status', () => {
     }));
     expect(await res.json()).toEqual({ authenticated: true, userId: 'user-42' });
   });
+
+  it('reports the authenticated user for a Bearer token, same as every RPC, even with no cookie jar', async () => {
+    const token = createSessionToken('user-cli-42');
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
+      headers: { authorization: `Bearer ${token}` },
+    }));
+    expect(await res.json()).toEqual({ authenticated: true, userId: 'user-cli-42' });
+  });
 });
 
 describe('Auth logout', () => {
