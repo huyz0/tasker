@@ -2,7 +2,7 @@ import { expect, test, describe } from "bun:test";
 import { eq } from "drizzle-orm";
 import { setupIntegrationTest } from "../test/setup";
 import * as schemaSqlite from "../db/schema.sqlite";
-import { runRetentionSweep, DEFAULT_RETENTION_DAYS } from "./retentionSweep";
+import { runRetentionSweep, DEFAULT_RETENTION_DAYS, stillExpired } from "./retentionSweep";
 
 function daysAgo(days: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -151,5 +151,88 @@ describe("runRetentionSweep", () => {
     expect((await db.select().from(schemaSqlite.folders).where(eq(schemaSqlite.folders.id, folderId))).length).toBe(0);
     expect((await db.select().from(schemaSqlite.artifacts).where(eq(schemaSqlite.artifacts.id, artifactId))).length).toBe(0);
     expect((await db.select().from(schemaSqlite.agents).where(eq(schemaSqlite.agents.id, agentId))).length).toBe(0);
+  });
+
+  test("stillExpired reports false for a row whose deletedAt has since been cleared (restored)", async () => {
+    const { db } = await setupIntegrationTest();
+
+    const orgId = "org-race-" + Date.now();
+    const userId = "user-race-" + Date.now();
+    const templateId = "tmpl-race-" + Date.now();
+    const projectId = "proj-race-" + Date.now();
+    const taskId = "tsk-race-" + Date.now();
+
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Race Org", slug: "race-org-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "P", createdAt: new Date() });
+    await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: "T", status: "todo", createdAt: new Date(), deletedAt: daysAgo(DEFAULT_RETENTION_DAYS + 1) });
+
+    expect(await stillExpired(db, schemaSqlite.tasks, taskId)).toBe(true);
+
+    // Simulates a user restoring the task in the window between the sweep's
+    // initial batch fetch and the moment it's actually about to be purged.
+    await db.update(schemaSqlite.tasks).set({ deletedAt: null }).where(eq(schemaSqlite.tasks.id, taskId));
+
+    expect(await stillExpired(db, schemaSqlite.tasks, taskId)).toBe(false);
+  });
+
+  test("does not purge a task that was restored after the sweep's initial fetch but before it was actually purged", async () => {
+    const { db } = await setupIntegrationTest();
+
+    const orgId = "org-race2-" + Date.now();
+    const userId = "user-race2-" + Date.now();
+    const templateId = "tmpl-race2-" + Date.now();
+    const projectId = "proj-race2-" + Date.now();
+    const taskId = "tsk-race2-" + Date.now();
+
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Race Org 2", slug: "race-org2-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "P", createdAt: new Date() });
+    await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: "T", status: "todo", createdAt: new Date(), deletedAt: daysAgo(DEFAULT_RETENTION_DAYS + 1) });
+
+    // Wraps the real db so that the moment the sweep issues its initial
+    // "isNotNull(deletedAt)" batch fetch of tasks, a restore is raced in
+    // right after - simulating a user clicking "Restore" in the same window
+    // a background sweep is running.
+    let taskBatchFetchSeen = false;
+    const racingDb = new Proxy(db, {
+      get(target, prop, receiver) {
+        const value = Reflect.get(target, prop, receiver);
+        if (prop !== "select" || typeof value !== "function") return value;
+        return (...args: any[]) => {
+          const builder = value.apply(target, args);
+          const originalFrom = builder.from?.bind(builder);
+          if (!originalFrom) return builder;
+          builder.from = (table: any) => {
+            const fromResult = originalFrom(table);
+            if (table !== schemaSqlite.tasks || taskBatchFetchSeen) return fromResult;
+            const originalWhere = fromResult.where?.bind(fromResult);
+            if (!originalWhere) return fromResult;
+            fromResult.where = (...whereArgs: any[]) => {
+              taskBatchFetchSeen = true;
+              const result = originalWhere(...whereArgs);
+              return (async () => {
+                const rows = await result;
+                if (rows.some((r: any) => r.id === taskId)) {
+                  await db.update(schemaSqlite.tasks).set({ deletedAt: null }).where(eq(schemaSqlite.tasks.id, taskId));
+                }
+                return rows;
+              })();
+            };
+            return fromResult;
+          };
+          return builder;
+        };
+      },
+    });
+
+    const purged = await runRetentionSweep(racingDb);
+    expect(purged.tasks).toBe(0);
+
+    const rows = await db.select().from(schemaSqlite.tasks).where(eq(schemaSqlite.tasks.id, taskId));
+    expect(rows.length).toBe(1);
+    expect(rows[0].deletedAt).toBeNull();
   });
 });

@@ -35,6 +35,20 @@ async function getOrgRetentionDays(db: any, orgId: string): Promise<number> {
 }
 
 /**
+ * Re-checks that a row the sweep found expired earlier is still archived
+ * right before it's actually purged. The sweep fetches every expired row
+ * up front, then purges them one at a time with awaits in between - if a
+ * user restores that specific row during that window, this closes the race
+ * that would otherwise permanently destroy something they just un-archived.
+ * purge*Cascade's own existence check isn't enough, since a restored row
+ * still exists (only its deletedAt is cleared).
+ */
+export async function stillExpired(db: any, table: any, id: string): Promise<boolean> {
+  const rows = await db.select().from(table).where(eq(table.id, id)).limit(1);
+  return !!rows[0]?.deletedAt;
+}
+
+/**
  * Sweeps every archived row across all entities and permanently purges anything
  * whose owning org's retention period has elapsed since it was archived. Runs
  * top-down (orgs, then projects, then their contents) so that once a parent is
@@ -48,7 +62,7 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
 
   const deletedOrgs = await db.select().from(schema.organizations).where(isNotNull(schema.organizations.deletedAt));
   for (const org of deletedOrgs) {
-    if (isExpired(org.deletedAt, org.binRetentionDays ?? DEFAULT_RETENTION_DAYS)) {
+    if (isExpired(org.deletedAt, org.binRetentionDays ?? DEFAULT_RETENTION_DAYS) && await stillExpired(db, schema.organizations, org.id)) {
       await purgeOrgCascade(db, org.id);
       purged.organizations++;
     }
@@ -58,7 +72,7 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
   for (const project of deletedProjects) {
     try {
       const retentionDays = await getOrgRetentionDays(db, project.orgId);
-      if (isExpired(project.deletedAt, retentionDays)) {
+      if (isExpired(project.deletedAt, retentionDays) && await stillExpired(db, schema.projects, project.id)) {
         await purgeProjectCascade(db, project.id);
         purged.projects++;
       }
@@ -72,7 +86,7 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
     try {
       const orgId = await getProjectOrgId(db, task.projectId);
       const retentionDays = await getOrgRetentionDays(db, orgId);
-      if (isExpired(task.deletedAt, retentionDays)) {
+      if (isExpired(task.deletedAt, retentionDays) && await stillExpired(db, schema.tasks, task.id)) {
         await purgeTaskCascade(db, task.id);
         purged.tasks++;
       }
@@ -86,7 +100,7 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
     try {
       const orgId = await getProjectOrgId(db, folder.projectId);
       const retentionDays = await getOrgRetentionDays(db, orgId);
-      if (isExpired(folder.deletedAt, retentionDays)) {
+      if (isExpired(folder.deletedAt, retentionDays) && await stillExpired(db, schema.folders, folder.id)) {
         await purgeFolderCascade(db, folder.id);
         purged.folders++;
       }
@@ -100,7 +114,7 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
     try {
       const orgId = await getFolderOrgId(db, artifact.folderId);
       const retentionDays = await getOrgRetentionDays(db, orgId);
-      if (isExpired(artifact.deletedAt, retentionDays)) {
+      if (isExpired(artifact.deletedAt, retentionDays) && await stillExpired(db, schema.artifacts, artifact.id)) {
         await purgeArtifactCascade(db, artifact.id);
         purged.artifacts++;
       }
@@ -112,7 +126,7 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
   const deletedAgents = await db.select().from(schema.agents).where(isNotNull(schema.agents.deletedAt));
   for (const agent of deletedAgents) {
     const retentionDays = await getOrgRetentionDays(db, agent.orgId);
-    if (isExpired(agent.deletedAt, retentionDays)) {
+    if (isExpired(agent.deletedAt, retentionDays) && await stillExpired(db, schema.agents, agent.id)) {
       await purgeAgentCascade(db, agent.id);
       purged.agents++;
     }
