@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { AgentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { Bot, Zap } from 'lucide-react';
 
 const agentClient = createClient(AgentService, transport);
 
@@ -78,14 +79,14 @@ export function AgentsDashboard() {
              <div className="text-muted-foreground text-sm font-medium mb-1">Total Agents</div>
              <div className="text-3xl font-bold">{agentsData?.length || 0}</div>
            </div>
-           <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">🤖</div>
+           <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center"><Bot className="w-5 h-5" /></div>
          </div>
          <div className="p-4 border rounded-lg bg-card shadow-sm flex items-center justify-between">
            <div>
              <div className="text-muted-foreground text-sm font-medium mb-1">Active Workflows</div>
              <div className="text-3xl font-bold">0</div>
            </div>
-           <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">⚡</div>
+           <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center"><Zap className="w-5 h-5" /></div>
          </div>
       </div>
 
@@ -95,7 +96,7 @@ export function AgentsDashboard() {
              <h2 className="text-xl font-medium">AI Agent Instances</h2>
              <button
                onClick={() => setIsDeploying((v) => !v)}
-               className="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded font-medium"
+               className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
              >
                {isDeploying ? 'Cancel' : 'Deploy Agent'}
              </button>
@@ -130,7 +131,7 @@ export function AgentsDashboard() {
               <button
                 type="submit"
                 disabled={createAgentMutation.isPending || !newAgentName.trim() || !newAgentRoleId}
-                className="self-end px-3 py-1 bg-primary text-primary-foreground text-xs rounded font-medium disabled:opacity-50"
+                className="self-end px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium disabled:opacity-50"
               >
                 {createAgentMutation.isPending ? 'Deploying...' : 'Deploy'}
               </button>
@@ -170,7 +171,7 @@ export function AgentsDashboard() {
                 </div>
               ))
             ) : (
-               <div className="p-4 text-center text-sm text-muted-foreground">No agent instances deployed yet.</div>
+               <div className="p-4 text-center text-sm text-muted-foreground">No agent instances deployed yet - deploy one above.</div>
             )}
           </div>
         </div>

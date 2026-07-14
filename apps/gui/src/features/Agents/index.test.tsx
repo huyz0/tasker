@@ -79,7 +79,7 @@ describe('AgentsDashboard', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No agent instances deployed yet - deploy one above.')).toBeDefined());
     fireEvent.click(screen.getByText('Deploy Agent'));
 
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
@@ -95,7 +95,7 @@ describe('AgentsDashboard', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No agent instances deployed yet - deploy one above.')).toBeDefined());
     fireEvent.click(screen.getByText('Deploy Agent'));
 
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
