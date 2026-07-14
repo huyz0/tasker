@@ -1,5 +1,7 @@
-import { describe, it, expect, afterEach } from 'bun:test';
+import { describe, it, expect, afterEach, spyOn } from 'bun:test';
+import { ConnectError, Code } from '@connectrpc/connect';
 import { reportError, setErrorReporter, LoggerErrorReporter, type ErrorReporter } from './errorReporter';
+import { logger } from './logger';
 
 describe('errorReporter', () => {
   afterEach(() => {
@@ -31,5 +33,48 @@ describe('errorReporter', () => {
 
     expect(first).toHaveLength(1);
     expect(second).toHaveLength(1);
+  });
+});
+
+describe('LoggerErrorReporter', () => {
+  it('extracts errorCode/errorCodeName as structured fields for a ConnectError', () => {
+    const spy = spyOn(logger, 'error').mockImplementation(() => logger as any);
+    try {
+      new LoggerErrorReporter().report({
+        message: 'rpc.error',
+        err: new ConnectError('bad input', Code.InvalidArgument),
+        severity: 'error',
+      });
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      const [loggedObject] = spy.mock.calls[0]!;
+      expect((loggedObject as any).errorCode).toBe(Code.InvalidArgument);
+      expect((loggedObject as any).errorCodeName).toBe('InvalidArgument');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('does not add errorCode fields for a plain Error (no .code)', () => {
+    const spy = spyOn(logger, 'error').mockImplementation(() => logger as any);
+    try {
+      new LoggerErrorReporter().report({ message: 'rpc.error', err: new Error('boom'), severity: 'error' });
+
+      const [loggedObject] = spy.mock.calls[0]!;
+      expect((loggedObject as any).errorCode).toBeUndefined();
+      expect((loggedObject as any).errorCodeName).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('routes severity fatal through logger.fatal instead of logger.error', () => {
+    const spy = spyOn(logger, 'fatal').mockImplementation(() => logger as any);
+    try {
+      new LoggerErrorReporter().report({ message: 'crashed', err: new Error('boom'), severity: 'fatal' });
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
