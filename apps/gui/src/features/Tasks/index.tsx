@@ -8,6 +8,7 @@ import { TaskService, RepositoryService, TaskTypeService } from "shared-contract
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
+import { fetchAllPages } from '../../lib/fetchAllPages';
 
 const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
@@ -32,18 +33,12 @@ export function TasksWorkbench() {
 
   const { data: tasksData, isLoading } = useQuery({
     queryKey: ['tasks', activeProjectId],
-    queryFn: async () => {
-      // The Kanban board needs every task to render accurate columns/counts,
-      // not just the first page - loop until the server reports no more pages.
-      const allTasks: Awaited<ReturnType<typeof taskClient.listTasks>>['tasks'] = [];
-      let cursor: string | undefined;
-      do {
-        const resp = await taskClient.listTasks({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
-        allTasks.push(...resp.tasks);
-        cursor = resp.page?.nextCursor || undefined;
-      } while (cursor);
-      return allTasks;
-    }
+    // The Kanban board needs every task to render accurate columns/counts,
+    // not just the first page - loop until the server reports no more pages.
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await taskClient.listTasks({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
+      return { items: resp.tasks, nextCursor: resp.page?.nextCursor || undefined };
+    })
   });
 
   const expandedTask = tasksData?.find(t => t.id === expandedTaskId) ?? null;

@@ -5,6 +5,8 @@ import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { LabelService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 
+import { fetchAllPages } from '../../lib/fetchAllPages';
+
 const labelClient = createClient(LabelService, transport);
 
 export function LabelsManager() {
@@ -18,18 +20,12 @@ export function LabelsManager() {
 
   const { data: labelsData, isLoading } = useQuery({
     queryKey: ['labels', activeOrgId],
-    queryFn: async () => {
-      // Every label must be visible here (and in the label picker elsewhere),
-      // not just the first page - loop until the server reports no more.
-      const allLabels: Awaited<ReturnType<typeof labelClient.listLabels>>['labels'] = [];
-      let cursor: string | undefined;
-      do {
-        const resp = await labelClient.listLabels({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
-        allLabels.push(...resp.labels);
-        cursor = resp.page?.nextCursor || undefined;
-      } while (cursor);
-      return allLabels;
-    },
+    // Every label must be visible here (and in the label picker elsewhere),
+    // not just the first page - loop until the server reports no more.
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await labelClient.listLabels({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
+      return { items: resp.labels, nextCursor: resp.page?.nextCursor || undefined };
+    }),
     enabled: !!activeOrgId,
   });
 

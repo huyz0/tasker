@@ -5,6 +5,7 @@ import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { AgentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Bot, Zap } from 'lucide-react';
+import { fetchAllPages } from '../../lib/fetchAllPages';
 
 const agentClient = createClient(AgentService, transport);
 
@@ -20,18 +21,12 @@ export function AgentsDashboard() {
 
   const { data: agentsData, isLoading } = useQuery({
     queryKey: ['agents', activeOrgId],
-    queryFn: async () => {
-      // The dashboard needs every agent to render deploy/archive actions
-      // correctly, not just the first page - loop until no pages remain.
-      const allAgents: Awaited<ReturnType<typeof agentClient.listAgents>>['agents'] = [];
-      let cursor: string | undefined;
-      do {
-        const resp = await agentClient.listAgents({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
-        allAgents.push(...resp.agents);
-        cursor = resp.page?.nextCursor || undefined;
-      } while (cursor);
-      return allAgents;
-    }
+    // The dashboard needs every agent to render deploy/archive actions
+    // correctly, not just the first page - loop until no pages remain.
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await agentClient.listAgents({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
+      return { items: resp.agents, nextCursor: resp.page?.nextCursor || undefined };
+    })
   });
 
   const { data: rolesData } = useQuery({

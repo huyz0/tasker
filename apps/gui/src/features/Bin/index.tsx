@@ -10,25 +10,13 @@ import {
   AgentService,
   ArtifactService,
 } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { fetchAllPages } from '../../lib/fetchAllPages';
 
 const orgClient = createClient(OrgService, transport);
 const projectClient = createClient(ProjectService, transport);
 const taskClient = createClient(TaskService, transport);
 const agentClient = createClient(AgentService, transport);
 const artifactClient = createClient(ArtifactService, transport);
-
-// The Bin must show every archived item, not just the first page, or a
-// restore/purge action becomes permanently unreachable for anything past it.
-async function fetchAllPages<T>(fetchPage: (cursor: string | undefined) => Promise<{ items: T[]; nextCursor: string | undefined }>): Promise<T[]> {
-  const all: T[] = [];
-  let cursor: string | undefined;
-  do {
-    const { items, nextCursor } = await fetchPage(cursor);
-    all.push(...items);
-    cursor = nextCursor;
-  } while (cursor);
-  return all;
-}
 
 type EntityKind = 'organizations' | 'projects' | 'tasks' | 'agents' | 'folders' | 'artifacts';
 
