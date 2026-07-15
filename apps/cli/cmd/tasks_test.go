@@ -14,16 +14,75 @@ import (
 	"github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 )
 
+type fakeTaskCreateHandler struct {
+	v1connect.UnimplementedTaskServiceHandler
+	gotReq *healthv1.CreateTaskRequest
+}
+
+func (f *fakeTaskCreateHandler) CreateTask(
+	_ context.Context,
+	req *connect.Request[healthv1.CreateTaskRequest],
+) (*connect.Response[healthv1.CreateTaskResponse], error) {
+	f.gotReq = req.Msg
+	return connect.NewResponse(&healthv1.CreateTaskResponse{
+		Task: &healthv1.Task{
+			Id:          "task_1",
+			DisplayId:   "T-1",
+			ProjectId:   req.Msg.ProjectId,
+			Title:       req.Msg.Title,
+			Status:      req.Msg.Status,
+			Description: req.Msg.Description,
+			TaskTypeId:  req.Msg.TaskTypeId,
+		},
+	}), nil
+}
+
 func TestTasksCreateCommand(t *testing.T) {
+	handler := &fakeTaskCreateHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(handler))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
 	rootCmd.AddCommand(tasksCmd)
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
-	rootCmd.SetArgs([]string{"tasks", "create", "--title", "UnitTest", "--json"})
-	_ = rootCmd.Execute()
+	rootCmd.SetArgs([]string{
+		"tasks", "create",
+		"--project", "proj-1",
+		"--title", "UnitTest",
+		"--status", "todo",
+		"--description", "a task created by a unit test",
+		"--task-type", "tt-1",
+		"--json",
+	})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("expected task creation to succeed, got error: %v", err)
+	}
+
+	if handler.gotReq == nil {
+		t.Fatal("expected the backend to receive a CreateTask request")
+	}
+	if handler.gotReq.ProjectId != "proj-1" {
+		t.Errorf("expected project id proj-1 to be sent, got %q", handler.gotReq.ProjectId)
+	}
+	if handler.gotReq.Title != "UnitTest" {
+		t.Errorf("expected title UnitTest to be sent, got %q", handler.gotReq.Title)
+	}
+	if handler.gotReq.Status != "todo" {
+		t.Errorf("expected status todo to be sent, got %q", handler.gotReq.Status)
+	}
+	if handler.gotReq.TaskTypeId != "tt-1" {
+		t.Errorf("expected task type tt-1 to be sent, got %q", handler.gotReq.TaskTypeId)
+	}
 
 	output := b.String()
-	if len(output) == 0 {
-		t.Errorf("Expected JSON output, got empty")
+	if !strings.Contains(output, "task_1") {
+		t.Errorf("expected output to contain the created task's id, got %s", output)
+	}
+	if !strings.Contains(output, "T-1") {
+		t.Errorf("expected output to contain the created task's display id, got %s", output)
 	}
 }
 
