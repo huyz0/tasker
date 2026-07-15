@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
 )
@@ -36,11 +34,7 @@ var tasksListCmd = &cobra.Command{
 			return fmt.Errorf("--project is required (or set TASKER_PROJECT_ID)")
 		}
 
-		client := healthv1connect.NewTaskServiceClient(
-			http.DefaultClient,
-			backend.URL(),
-			backend.ClientOptions()...,
-		)
+		client := backend.NewTaskServiceClient()
 
 		req := connect.NewRequest(&healthv1.ListTasksRequest{
 			ProjectId: projectID,
@@ -241,11 +235,7 @@ var tasksUpdateStatusCmd = &cobra.Command{
 		status, _ := cmd.Flags().GetString("status")
 		isJson, _ := cmd.Flags().GetBool("json")
 
-		client := healthv1connect.NewTaskServiceClient(
-			http.DefaultClient,
-			backend.URL(),
-			backend.ClientOptions()...,
-		)
+		client := backend.NewTaskServiceClient()
 
 		req := connect.NewRequest(&healthv1.UpdateTaskStatusRequest{
 			TaskId: args[0],
@@ -275,11 +265,7 @@ var tasksDeleteCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
-		client := healthv1connect.NewTaskServiceClient(
-			http.DefaultClient,
-			backend.URL(),
-			backend.ClientOptions()...,
-		)
+		client := backend.NewTaskServiceClient()
 
 		req := connect.NewRequest(&healthv1.DeleteTaskRequest{
 			TaskId: args[0],
@@ -308,11 +294,7 @@ var tasksRestoreCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
-		client := healthv1connect.NewTaskServiceClient(
-			http.DefaultClient,
-			backend.URL(),
-			backend.ClientOptions()...,
-		)
+		client := backend.NewTaskServiceClient()
 
 		req := connect.NewRequest(&healthv1.RestoreTaskRequest{
 			TaskId: args[0],
@@ -341,11 +323,7 @@ var tasksPurgeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
-		client := healthv1connect.NewTaskServiceClient(
-			http.DefaultClient,
-			backend.URL(),
-			backend.ClientOptions()...,
-		)
+		client := backend.NewTaskServiceClient()
 
 		req := connect.NewRequest(&healthv1.PurgeTaskRequest{
 			TaskId: args[0],

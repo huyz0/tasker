@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
 )
@@ -27,11 +25,7 @@ var orgsListCmd = &cobra.Command{
 		filter, _ := cmd.Flags().GetString("filter")
 		sort, _ := cmd.Flags().GetString("sort")
 
-		client := healthv1connect.NewOrgServiceClient(
-			http.DefaultClient,
-			backend.URL(),
-			backend.ClientOptions()...,
-		)
+		client := backend.NewOrgServiceClient()
 
 		req := connect.NewRequest(&healthv1.ListOrgsRequest{
 			Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
