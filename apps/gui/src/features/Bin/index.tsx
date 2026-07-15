@@ -80,6 +80,7 @@ function ProjectsBin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', 'bin', activeOrgId] });
       queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
     },
   });
   const purgeMutation = useMutation({

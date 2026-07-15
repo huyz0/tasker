@@ -49,7 +49,7 @@ export function ProjectsWizard() {
     isFetchingNextPage,
     fetchNextPage,
   } = useInfiniteQuery({
-    queryKey: ['projects', activeOrgId],
+    queryKey: ['projects', 'paginated', activeOrgId],
     queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
       return projectClient.listProjects({ orgId: activeOrgId, page: { cursor: pageParam } });
     },
@@ -72,7 +72,7 @@ export function ProjectsWizard() {
       return resp.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
       setProjectName('');
     }
   });
@@ -109,7 +109,7 @@ export function ProjectsWizard() {
       await projectClient.archiveProject({ projectId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
       queryClient.invalidateQueries({ queryKey: ['projects', 'bin', activeOrgId] });
     },
   });

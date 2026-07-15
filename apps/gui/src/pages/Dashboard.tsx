@@ -48,25 +48,31 @@ export function Dashboard() {
     }
   });
 
+  // Distinct query keys from OrgProjectSwitcher's ['orgs'] / ['projects', orgId]
+  // are required here, not just cosmetic - that component's queries return a
+  // flattened array (it walks every page via fetchAllPages), while this one
+  // needs the raw single-page response for its page.totalCount. Sharing a key
+  // would let whichever query wins the cache silently feed its shape to the
+  // other's consumer.
   const { data: orgsResp, error: orgsError } = useQuery({
-    queryKey: ['orgs'],
+    queryKey: ['orgs', 'dashboardStats'],
     queryFn: async () => orgClient.listOrgs({}),
   });
 
   const { data: projectsResp, error: projectsError } = useQuery({
-    queryKey: ['projects', activeOrgId],
+    queryKey: ['projects', 'dashboardStats', activeOrgId],
     queryFn: async () => projectClient.listProjects({ orgId: activeOrgId }),
     enabled: !!activeOrgId,
   });
 
   const { data: agentsResp, error: agentsError } = useQuery({
-    queryKey: ['agents', activeOrgId],
+    queryKey: ['agents', 'dashboardStats', activeOrgId],
     queryFn: async () => agentClient.listAgents({ orgId: activeOrgId }),
     enabled: !!activeOrgId,
   });
 
   const { data: tasksResp, error: tasksError } = useQuery({
-    queryKey: ['tasks', activeProjectId],
+    queryKey: ['tasks', 'dashboardStats', activeProjectId],
     queryFn: async () => taskClient.listTasks({ projectId: activeProjectId }),
     enabled: !!activeProjectId,
   });

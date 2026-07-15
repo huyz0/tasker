@@ -17,7 +17,7 @@ export function OrgProjectSwitcher() {
   // Every org/project must be selectable here - it's the app's primary
   // navigation switcher, so anything past the first page would otherwise be
   // completely unreachable, not just hidden in a secondary view.
-  const { data: orgsData } = useQuery({
+  const { data: orgsData, isLoading: orgsLoading } = useQuery({
     queryKey: ['orgs'],
     queryFn: async () => {
       const allOrgs: Awaited<ReturnType<typeof orgClient.listOrgs>>['organizations'] = [];
@@ -72,7 +72,7 @@ export function OrgProjectSwitcher() {
         className="w-full rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/50"
       >
         {!orgs.some((o) => o.id === activeOrgId) && (
-          <option value={activeOrgId}>Loading organizations...</option>
+          <option value={activeOrgId}>{orgsLoading ? 'Loading organizations...' : 'No organizations'}</option>
         )}
         {orgs.map((org) => (
           <option key={org.id} value={org.id}>{org.name}</option>

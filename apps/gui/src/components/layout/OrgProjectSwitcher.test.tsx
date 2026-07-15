@@ -113,6 +113,16 @@ describe('OrgProjectSwitcher', () => {
     expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-2');
   });
 
+  it('shows a "No organizations" option once the query resolves with zero orgs, not a perpetual loading label', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+
+    renderSwitcher();
+
+    await waitFor(() => expect(screen.getByText('No organizations')).toBeDefined());
+    expect(screen.queryByText('Loading organizations...')).toBeNull();
+  });
+
   it('lets the user switch the active project', async () => {
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
