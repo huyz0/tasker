@@ -14,7 +14,10 @@ import * as schema from "../src/db/schema.sqlite";
 import { createSessionToken } from "../src/modules/auth/session";
 
 const TASK_COUNT = Number(process.env.SEED_TASK_COUNT) || 150;
-const STATUSES = ["todo", "in_progress", "done"] as const;
+// Must match tasks.handler.ts's KNOWN_STATUSES exactly - this bypasses the
+// handler's validation by writing to the DB directly, so a mismatch here
+// seeds tasks in a status the real API would never produce or accept.
+const STATUSES = ["todo", "in-progress", "done"] as const;
 
 async function main() {
   if (process.env.STANDALONE !== "true") {
