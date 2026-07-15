@@ -8,10 +8,21 @@ import crypto from "node:crypto";
 import { logger } from "../../lib/logger";
 import { requireUserId, assertOrgMember, assertOrgAdmin, getProjectOrgId, getRepositoryLinkOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
-import { config } from "../../config";
-
-const ALGORITHM = "aes-256-gcm";
-const ENCRYPTION_KEY = config.appEncryptionSecret;
+import { encryptToken, decryptToken } from "../../lib/crypto";
+import {
+  fetchGithubPullRequests,
+  fetchGithubBuilds,
+  fetchGithubBuildCommitSha,
+  fetchGithubDeployments,
+  type NormalizedBuild,
+  type NormalizedDeployment,
+} from "./providers/github";
+import {
+  fetchBitbucketPullRequests,
+  fetchBitbucketBuilds,
+  fetchBitbucketBuildCommitSha,
+  fetchBitbucketDeployments,
+} from "./providers/bitbucket";
 
 // Distinguishes a real DB-level unique-constraint violation (a concurrent
 // syncPullRequests call for the same link won the race for the same remote
@@ -20,44 +31,6 @@ const ENCRYPTION_KEY = config.appEncryptionSecret;
 function isRemotePrConflict(e: unknown): boolean {
   const msg = String((e as any)?.message ?? e);
   return msg.includes("remote_pull_requests_repo_remote_pr_idx") || msg.includes("UNIQUE constraint failed") || msg.includes("Duplicate entry");
-}
-
-function encryptToken(token: string): string {
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, 'utf8'), iv);
-    let encrypted = cipher.update(token, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    const authTag = cipher.getAuthTag().toString('hex');
-    return `${iv.toString('hex')}:${authTag}:${encrypted}`;
-}
-
-function decryptToken(encryptedString: string): string {
-    const parts = encryptedString.split(':');
-    if (parts.length !== 3) throw new Error("Invalid encrypted token format");
-    const ivHex = parts[0];
-    const authTagHex = parts[1];
-    const encryptedHex = parts[2];
-    
-    if (!ivHex || !authTagHex || !encryptedHex) throw new Error("Missing encrypted components");
-    
-    const iv = Buffer.from(ivHex, 'hex');
-    const authTag = Buffer.from(authTagHex, 'hex');
-    
-    const decipher = crypto.createDecipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, 'utf8'), iv);
-    decipher.setAuthTag(authTag);
-    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
-}
-
-// Direct-token links (authEmail set) use Basic auth per Atlassian's API-token
-// scheme; OAuth2-issued links (authEmail null) use the token as a Bearer
-// access token, per Bitbucket's standard OAuth2 flow.
-function bitbucketAuthHeader(token: string, authEmail?: string | null): string {
-  if (authEmail) {
-    return `Basic ${Buffer.from(`${authEmail}:${token}`).toString('base64')}`;
-  }
-  return `Bearer ${token}`;
 }
 
 const AddRepositoryLinkSchema = z.object({
@@ -105,224 +78,6 @@ const ListDeploymentsSchema = z.object({
   commitSha: z.string().min(1),
 });
 
-interface NormalizedPullRequest {
-  remoteId: string;
-  title: string;
-  status: string;
-  url: string;
-}
-
-async function fetchGithubPullRequests(remoteName: string, token: string): Promise<NormalizedPullRequest[]> {
-  const response = await fetch(`https://api.github.com/repos/${remoteName}/pulls?state=all&per_page=50`, {
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Accept": "application/vnd.github.v3+json",
-      "User-Agent": "Tasker-Agent"
-    }
-  });
-  if (!response.ok) throw new Error(`GitHub API returned ${response.status} while fetching pull requests for ${remoteName}`);
-
-  const prs = await response.json() as any[];
-  return prs.map((pr: any) => ({
-    remoteId: String(pr.number),
-    title: pr.title,
-    status: pr.merged_at ? 'merged' : (pr.state === 'closed' ? 'closed' : (pr.draft ? 'draft' : 'open')),
-    url: pr.html_url,
-  }));
-}
-
-async function fetchBitbucketPullRequests(remoteName: string, token: string, authEmail?: string | null): Promise<NormalizedPullRequest[]> {
-  // Bitbucket Cloud's pullrequests endpoint only returns OPEN PRs unless
-  // explicitly told otherwise - repeat the `state` param per value to mirror
-  // GitHub's state=all.
-  const response = await fetch(
-    `https://api.bitbucket.org/2.0/repositories/${remoteName}/pullrequests?state=OPEN&state=MERGED&state=DECLINED&state=SUPERSEDED&pagelen=50`,
-    { headers: { "Authorization": bitbucketAuthHeader(token, authEmail) } }
-  );
-  if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching pull requests for ${remoteName}`);
-
-  const data = await response.json() as any;
-  const prs = (data.values || []) as any[];
-  return prs.map((pr: any) => ({
-    remoteId: String(pr.id),
-    title: pr.title,
-    status: pr.state === 'MERGED' ? 'merged' : (pr.state === 'OPEN' ? (pr.draft ? 'draft' : 'open') : 'closed'),
-    url: pr.links?.html?.href,
-  }));
-}
-
-interface NormalizedBuild {
-  id: string;
-  status: string;
-  commitSha: string;
-  createdAt: string;
-}
-
-// GitHub/Bitbucket cap page size at 100; clamp so a caller-supplied limit
-// can't be used to request an unbounded page from the upstream provider.
-function clampBuildsPerPage(limit: number | undefined): number {
-  return Math.min(Math.max(limit || 10, 1), 100);
-}
-
-async function fetchGithubBuilds(remoteName: string, token: string, limit?: number): Promise<NormalizedBuild[]> {
-  const response = await fetch(`https://api.github.com/repos/${remoteName}/actions/runs?per_page=${clampBuildsPerPage(limit)}`, {
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Accept": "application/vnd.github.v3+json",
-      "User-Agent": "Tasker-Agent"
-    }
-  });
-  if (!response.ok) throw new Error(`GitHub API returned ${response.status} while fetching builds for ${remoteName}`);
-
-  const data = await response.json() as any;
-  return data.workflow_runs.map((run: any) => {
-    let status = 'PENDING';
-    if (run.status === 'completed') {
-      status = run.conclusion === 'success' ? 'SUCCESS' : 'FAILURE';
-    }
-    return {
-      id: String(run.id),
-      status,
-      commitSha: run.head_sha,
-      createdAt: run.created_at,
-    };
-  });
-}
-
-async function fetchBitbucketBuilds(remoteName: string, token: string, authEmail?: string | null, limit?: number): Promise<NormalizedBuild[]> {
-  const response = await fetch(`https://api.bitbucket.org/2.0/repositories/${remoteName}/pipelines/?sort=-created_on&pagelen=${clampBuildsPerPage(limit)}`, {
-    headers: { "Authorization": bitbucketAuthHeader(token, authEmail) }
-  });
-  if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching builds for ${remoteName}`);
-
-  const data = await response.json() as any;
-  const pipelines = (data.values || []) as any[];
-  return pipelines.map((pipeline: any) => {
-    let status = 'PENDING';
-    if (pipeline.state?.name === 'COMPLETED') {
-      status = pipeline.state?.result?.name === 'SUCCESSFUL' ? 'SUCCESS' : 'FAILURE';
-    }
-    return {
-      id: String(pipeline.uuid).replace(/[{}]/g, ''),
-      status,
-      commitSha: pipeline.target?.commit?.hash,
-      createdAt: pipeline.created_on,
-    };
-  });
-}
-
-// Fetches a single build by id so listDeployments can confirm the
-// caller-supplied buildId actually produced commitSha before echoing it back
-// - without this, a caller could pass any buildId (even one belonging to a
-// different commit or repository) and have it silently attached to
-// unrelated deployment records in the response.
-async function fetchGithubBuildCommitSha(remoteName: string, buildId: string, token: string): Promise<string | null> {
-  const response = await fetch(`https://api.github.com/repos/${remoteName}/actions/runs/${buildId}`, {
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Accept": "application/vnd.github.v3+json",
-      "User-Agent": "Tasker-Agent"
-    }
-  });
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`GitHub API returned ${response.status} while fetching build ${buildId} for ${remoteName}`);
-  const run = await response.json() as any;
-  return run.head_sha ?? null;
-}
-
-async function fetchBitbucketBuildCommitSha(remoteName: string, buildId: string, token: string, authEmail?: string | null): Promise<string | null> {
-  const response = await fetch(`https://api.bitbucket.org/2.0/repositories/${remoteName}/pipelines/${buildId}`, {
-    headers: { "Authorization": bitbucketAuthHeader(token, authEmail) }
-  });
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching build ${buildId} for ${remoteName}`);
-  const pipeline = await response.json() as any;
-  return pipeline.target?.commit?.hash ?? null;
-}
-
-interface NormalizedDeployment {
-  id: string;
-  environment: string;
-  status: string;
-  createdAt: string;
-}
-
-// GitHub's REST API has no way to fetch a deployment's latest status in the
-// same call as the deployments list, so resolving status for N deployments
-// unavoidably means N extra requests. `per_page=10` bounds the fan-out to a
-// small, fixed number rather than letting it grow with the repo's history,
-// and each of those N requests gets its own timeout so one slow/hanging
-// upstream call can't stall the whole listDeployments request indefinitely.
-const GITHUB_STATUS_FETCH_TIMEOUT_MS = 5000;
-
-async function fetchGithubDeployments(remoteName: string, commitSha: string, token: string): Promise<NormalizedDeployment[]> {
-  const headers = {
-    "Authorization": `Bearer ${token}`,
-    "Accept": "application/vnd.github.v3+json",
-    "User-Agent": "Tasker-Agent"
-  };
-
-  // GitHub deployments are keyed by commit sha, not by our workflow-run
-  // based build id - there's no other stable link between a CI run and
-  // a deployment, so this is the only correct way to associate them.
-  const response = await fetch(`https://api.github.com/repos/${remoteName}/deployments?sha=${commitSha}&per_page=10`, { headers, signal: AbortSignal.timeout(GITHUB_STATUS_FETCH_TIMEOUT_MS) });
-  if (!response.ok) throw new Error(`GitHub API returned ${response.status} while fetching deployments for ${remoteName}`);
-
-  const rawDeployments = await response.json() as any[];
-  return Promise.all(rawDeployments.map(async (deployment: any) => {
-    let status = 'PENDING';
-    try {
-      // Statuses are returned newest-first; the latest one is this
-      // deployment's current state.
-      const statusesResponse = await fetch(`https://api.github.com/repos/${remoteName}/deployments/${deployment.id}/statuses?per_page=1`, { headers, signal: AbortSignal.timeout(GITHUB_STATUS_FETCH_TIMEOUT_MS) });
-      if (statusesResponse.ok) {
-        const statuses = await statusesResponse.json() as any[];
-        const state = statuses[0]?.state;
-        if (state === 'success') status = 'SUCCESS';
-        else if (state === 'failure' || state === 'error') status = 'FAILURE';
-      }
-    } catch (e) {
-      // Includes a timed-out status fetch (AbortSignal.timeout throws a
-      // DOMException) - one deployment's status being unavailable
-      // shouldn't fail the whole list, it just stays 'PENDING'.
-      logger.error({ remoteName, deploymentId: deployment.id, err: e }, "listDeployments.status_fetch_failed");
-    }
-
-    return {
-      id: String(deployment.id),
-      environment: deployment.environment,
-      status,
-      createdAt: deployment.created_at,
-    };
-  }));
-}
-
-async function fetchBitbucketDeployments(remoteName: string, commitSha: string, token: string, authEmail?: string | null): Promise<NormalizedDeployment[]> {
-  const headers = { "Authorization": bitbucketAuthHeader(token, authEmail) };
-
-  // Bitbucket's deployments endpoint has no server-side commit-sha filter,
-  // unlike GitHub's - fetch recent deployments and filter client-side by the
-  // commit hash on each deployment's deployable.
-  const response = await fetch(`https://api.bitbucket.org/2.0/repositories/${remoteName}/deployments/?sort=-created_on&pagelen=25`, { headers });
-  if (!response.ok) throw new Error(`Bitbucket API returned ${response.status} while fetching deployments for ${remoteName}`);
-
-  const data = await response.json() as any;
-  const deployments = (data.values || []) as any[];
-  return deployments
-    .filter((deployment: any) => deployment.deployable?.commit?.hash === commitSha)
-    .map((deployment: any) => {
-      let status = 'PENDING';
-      if (deployment.state?.name === 'COMPLETED') {
-        status = deployment.state?.status === 'SUCCESSFUL' ? 'SUCCESS' : 'FAILURE';
-      }
-      return {
-        id: String(deployment.uuid).replace(/[{}]/g, ''),
-        environment: deployment.environment?.name,
-        status,
-        createdAt: deployment.created_on ?? new Date().toISOString(),
-      };
-    });
-}
 
 export const createRepositoriesHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
