@@ -160,6 +160,30 @@ func TestRunDebugSessionServerUnreachable(t *testing.T) {
 	}
 }
 
+// A non-200 response with a valid JSON error body (e.g. a 500 from a
+// middleware error handler) must be reported as a backend error, not
+// silently decoded as if it were a normal {"authenticated": false} status.
+func TestRunDebugSessionNon200ResponseWithJSONBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "internal server error"}`))
+	}))
+	defer srv.Close()
+
+	token := makeFakeToken("user-42", 9999999999999, "jti-abc")
+	var buf bytes.Buffer
+	err := runDebugSession(&buf, srv.Client(), srv.URL, token)
+	if err == nil {
+		t.Fatal("expected an error for a non-200 response, got nil")
+	}
+	if !strings.Contains(err.Error(), "500") {
+		t.Errorf("expected the error to mention the status code, got: %v", err)
+	}
+	if strings.Contains(buf.String(), "VALID") || strings.Contains(buf.String(), "INVALID") {
+		t.Errorf("expected no VALID/INVALID verdict to be printed on a backend error, got: %s", buf.String())
+	}
+}
+
 func TestRunDebugSessionMalformedServerResponse(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Not valid JSON at all - simulates a proxy/gateway error page or a

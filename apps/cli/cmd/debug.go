@@ -74,6 +74,11 @@ func checkSessionWithServer(httpClient *http.Client, serverURL string, token str
 	}
 	defer res.Body.Close()
 
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("backend returned status %d: %s", res.StatusCode, strings.TrimSpace(string(body)))
+	}
+
 	var status sessionStatusResponse
 	if err := json.NewDecoder(res.Body).Decode(&status); err != nil {
 		return nil, fmt.Errorf("unexpected response from backend: %w", err)
