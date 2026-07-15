@@ -4,6 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
+	"fmt"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -19,7 +20,7 @@ var labelsCmd = &cobra.Command{
 var labelsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new label in an organization",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		color, _ := cmd.Flags().GetString("color")
 		orgID, _ := cmd.Flags().GetString("org")
@@ -29,7 +30,7 @@ var labelsCreateCmd = &cobra.Command{
 		}
 		if name == "" || orgID == "" {
 			cmd.Println("Error: --org and --name are required.")
-			return
+			return fmt.Errorf("--org and --name are required")
 		}
 
 		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -40,7 +41,7 @@ var labelsCreateCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create label: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -49,13 +50,14 @@ var labelsCreateCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Label created: %s (id: %s)\n", res.Msg.Label.Name, res.Msg.Label.Id)
 		}
+		return nil
 	},
 }
 
 var labelsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List labels defined in an organization",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		orgID, _ := cmd.Flags().GetString("org")
 		isJson, _ := cmd.Flags().GetBool("json")
 		filter, _ := cmd.Flags().GetString("filter")
@@ -67,7 +69,7 @@ var labelsListCmd = &cobra.Command{
 		}
 		if orgID == "" {
 			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
-			return
+			return fmt.Errorf("--org is required (or set TASKER_ORG_ID)")
 		}
 
 		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -77,7 +79,7 @@ var labelsListCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list labels: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -89,6 +91,7 @@ var labelsListCmd = &cobra.Command{
 				cmd.Printf(" - %s (id: %s)\n", l.Name, l.Id)
 			}
 		}
+		return nil
 	},
 }
 
@@ -96,13 +99,13 @@ var labelsAttachCmd = &cobra.Command{
 	Use:   "attach [entity_id]",
 	Short: "Attach a label to a task or artifact",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		entityType, _ := cmd.Flags().GetString("entity-type")
 		labelID, _ := cmd.Flags().GetString("label")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if entityType == "" || labelID == "" {
 			cmd.Println("Error: --entity-type and --label are required.")
-			return
+			return fmt.Errorf("--entity-type and --label are required")
 		}
 
 		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -113,7 +116,7 @@ var labelsAttachCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to attach label: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -122,6 +125,7 @@ var labelsAttachCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Label %s attached to %s %s\n", labelID, entityType, args[0])
 		}
+		return nil
 	},
 }
 
@@ -129,13 +133,13 @@ var labelsDetachCmd = &cobra.Command{
 	Use:   "detach [entity_id]",
 	Short: "Detach a label from a task or artifact",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		entityType, _ := cmd.Flags().GetString("entity-type")
 		labelID, _ := cmd.Flags().GetString("label")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if entityType == "" || labelID == "" {
 			cmd.Println("Error: --entity-type and --label are required.")
-			return
+			return fmt.Errorf("--entity-type and --label are required")
 		}
 
 		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -146,7 +150,7 @@ var labelsDetachCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to detach label: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -155,6 +159,7 @@ var labelsDetachCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Label %s detached from %s %s\n", labelID, entityType, args[0])
 		}
+		return nil
 	},
 }
 
@@ -162,12 +167,12 @@ var labelsOnCmd = &cobra.Command{
 	Use:   "on [entity_id]",
 	Short: "List labels attached to a task or artifact",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		entityType, _ := cmd.Flags().GetString("entity-type")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if entityType == "" {
 			cmd.Println("Error: --entity-type is required.")
-			return
+			return fmt.Errorf("--entity-type is required")
 		}
 
 		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -177,7 +182,7 @@ var labelsOnCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list labels: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -189,6 +194,7 @@ var labelsOnCmd = &cobra.Command{
 				cmd.Printf(" - %s (id: %s)\n", l.Name, l.Id)
 			}
 		}
+		return nil
 	},
 }
 

@@ -129,8 +129,8 @@ func TestCommentAddCmdReportsErrorWithoutExitingProcess(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"comment", "add", "--entity", "task-123", "--type", "task", "--content", "x"})
-	if err := rootCmd.Execute(); err != nil {
-		t.Fatal(err)
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected rootCmd.Execute() to return an error on RPC failure")
 	}
 	if !strings.Contains(b.String(), "failed to add comment") {
 		t.Fatalf("expected an error message and for the process to still be alive, got %s", b.String())
@@ -148,8 +148,8 @@ func TestCommentListCmdReportsErrorWithoutExitingProcess(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"comment", "list", "--entity", "task-123", "--type", "task"})
-	if err := rootCmd.Execute(); err != nil {
-		t.Fatal(err)
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected rootCmd.Execute() to return an error on RPC failure")
 	}
 	if !strings.Contains(b.String(), "failed to list comments") {
 		t.Fatalf("expected an error message and for the process to still be alive, got %s", b.String())

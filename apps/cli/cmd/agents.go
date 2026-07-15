@@ -4,6 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
+	"errors"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -19,7 +20,7 @@ var agentsCmd = &cobra.Command{
 var agentsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List active agents in an organization",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		orgID, _ := cmd.Flags().GetString("org")
 		filter, _ := cmd.Flags().GetString("filter")
@@ -31,7 +32,7 @@ var agentsListCmd = &cobra.Command{
 		}
 		if orgID == "" {
 			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
-			return
+			return errors.New("Error: --org is required (or set TASKER_ORG_ID).")
 		}
 
 		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -41,7 +42,7 @@ var agentsListCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list agents: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -53,13 +54,14 @@ var agentsListCmd = &cobra.Command{
 				cmd.Printf(" - %s [Role: %s] (%s)\n", a.Name, a.AgentRoleId, a.Id)
 			}
 		}
+		return nil
 	},
 }
 
 var agentsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new agent instance with specific role",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		role, _ := cmd.Flags().GetString("role")
 		name, _ := cmd.Flags().GetString("name")
 		orgID, _ := cmd.Flags().GetString("org")
@@ -69,7 +71,7 @@ var agentsCreateCmd = &cobra.Command{
 		}
 		if role == "" || orgID == "" {
 			cmd.Println("Error: --org and --role are required.")
-			return
+			return errors.New("Error: --org and --role are required.")
 		}
 
 		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -80,7 +82,7 @@ var agentsCreateCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create agent: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -89,13 +91,14 @@ var agentsCreateCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Spawned new agent '%s' (id: %s) with role %s\n", res.Msg.Agent.Name, res.Msg.Agent.Id, res.Msg.Agent.AgentRoleId)
 		}
+		return nil
 	},
 }
 
 var agentsListRolesCmd = &cobra.Command{
 	Use:   "list-roles",
 	Short: "List all agent role personas",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		filter, _ := cmd.Flags().GetString("filter")
 		sort, _ := cmd.Flags().GetString("sort")
@@ -108,7 +111,7 @@ var agentsListRolesCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list agent roles: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -120,20 +123,21 @@ var agentsListRolesCmd = &cobra.Command{
 				cmd.Printf(" - %s (id: %s)\n", r.Name, r.Id)
 			}
 		}
+		return nil
 	},
 }
 
 var agentsCreateRoleCmd = &cobra.Command{
 	Use:   "create-role",
 	Short: "Create a new agent role persona (system prompt, capabilities)",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		systemPrompt, _ := cmd.Flags().GetString("system-prompt")
 		capabilities, _ := cmd.Flags().GetString("capabilities")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if name == "" {
 			cmd.Println("Error: --name is required.")
-			return
+			return errors.New("Error: --name is required.")
 		}
 
 		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -144,7 +148,7 @@ var agentsCreateRoleCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create agent role: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -153,6 +157,7 @@ var agentsCreateRoleCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Agent role created: %s (id: %s)\n", res.Msg.Role.Name, res.Msg.Role.Id)
 		}
+		return nil
 	},
 }
 
@@ -160,14 +165,15 @@ var agentsDeleteCmd = &cobra.Command{
 	Use:   "delete [agent_id]",
 	Short: "Move an agent to the bin",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		_, err := client.ArchiveAgent(context.Background(), connect.NewRequest(&healthv1.ArchiveAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete agent: %v\n", err)
-			return
+			return err
 		}
 		cmd.Printf("Agent %s moved to bin\n", args[0])
+		return nil
 	},
 }
 
@@ -175,14 +181,15 @@ var agentsRestoreCmd = &cobra.Command{
 	Use:   "restore [agent_id]",
 	Short: "Restore an agent from the bin",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		_, err := client.RestoreAgent(context.Background(), connect.NewRequest(&healthv1.RestoreAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore agent: %v\n", err)
-			return
+			return err
 		}
 		cmd.Printf("Agent %s restored\n", args[0])
+		return nil
 	},
 }
 
@@ -190,14 +197,15 @@ var agentsPurgeCmd = &cobra.Command{
 	Use:   "purge [agent_id]",
 	Short: "Permanently delete an already-binned, unassigned agent",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		_, err := client.PurgeAgent(context.Background(), connect.NewRequest(&healthv1.PurgeAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge agent: %v\n", err)
-			return
+			return err
 		}
 		cmd.Printf("Agent %s permanently deleted\n", args[0])
+		return nil
 	},
 }
 

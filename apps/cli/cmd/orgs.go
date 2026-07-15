@@ -4,6 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
+	"errors"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -19,7 +20,7 @@ var orgsCmd = &cobra.Command{
 var orgsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List organizations with pagination, name filtering, and sorting",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
 		filter, _ := cmd.Flags().GetString("filter")
@@ -37,26 +38,27 @@ var orgsListCmd = &cobra.Command{
 		res, err := client.ListOrgs(context.Background(), req)
 		if err != nil {
 			cmd.PrintErrf("Failed to list orgs: %v\n", err)
-			return
+			return err
 		}
 
 		for _, org := range res.Msg.Organizations {
 			cmd.Printf("- %s (Slug: %s)\n", org.Name, org.Slug)
 		}
+		return nil
 	},
 }
 
 var orgsSeedCmd = &cobra.Command{
 	Use:   "seed",
 	Short: "Bootstrap a new organization (or sub-organization) - typically the first setup step",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		slug, _ := cmd.Flags().GetString("slug")
 		parentOrgID, _ := cmd.Flags().GetString("parent")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if name == "" || slug == "" {
 			cmd.Println("Error: --name and --slug are required.")
-			return
+			return errors.New("Error: --name and --slug are required.")
 		}
 
 		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -67,7 +69,7 @@ var orgsSeedCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to seed organization: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -76,6 +78,7 @@ var orgsSeedCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Organization seeded: %s (id: %s, slug: %s)\n", res.Msg.Organization.Name, res.Msg.Organization.Id, res.Msg.Organization.Slug)
 		}
+		return nil
 	},
 }
 
@@ -83,11 +86,11 @@ var orgsInviteCmd = &cobra.Command{
 	Use:   "invite [org_id]",
 	Short: "Invite a user to an organization by email",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		email, _ := cmd.Flags().GetString("email")
 		if email == "" {
 			cmd.Println("Error: --email is required.")
-			return
+			return errors.New("Error: --email is required.")
 		}
 
 		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -97,9 +100,10 @@ var orgsInviteCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to invite user: %v\n", err)
-			return
+			return err
 		}
 		cmd.Printf("Invited %s to organization %s\n", email, args[0])
+		return nil
 	},
 }
 
@@ -107,14 +111,15 @@ var orgsDeleteCmd = &cobra.Command{
 	Use:   "delete [org_id]",
 	Short: "Move an organization to the bin (requires org admin)",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		_, err := client.ArchiveOrg(context.Background(), connect.NewRequest(&healthv1.ArchiveOrgRequest{OrgId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete organization: %v\n", err)
-			return
+			return err
 		}
 		cmd.Printf("Organization %s moved to bin\n", args[0])
+		return nil
 	},
 }
 
@@ -122,14 +127,15 @@ var orgsRestoreCmd = &cobra.Command{
 	Use:   "restore [org_id]",
 	Short: "Restore an organization from the bin (requires org admin)",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		_, err := client.RestoreOrg(context.Background(), connect.NewRequest(&healthv1.RestoreOrgRequest{OrgId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore organization: %v\n", err)
-			return
+			return err
 		}
 		cmd.Printf("Organization %s restored\n", args[0])
+		return nil
 	},
 }
 
@@ -137,14 +143,15 @@ var orgsPurgeCmd = &cobra.Command{
 	Use:   "purge [org_id]",
 	Short: "Permanently delete an already-binned, empty organization (requires org admin)",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		_, err := client.PurgeOrg(context.Background(), connect.NewRequest(&healthv1.PurgeOrgRequest{OrgId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge organization: %v\n", err)
-			return
+			return err
 		}
 		cmd.Printf("Organization %s permanently deleted\n", args[0])
+		return nil
 	},
 }
 
@@ -152,19 +159,20 @@ var orgsSetRetentionCmd = &cobra.Command{
 	Use:   "set-retention [org_id]",
 	Short: "Set how many days archived items stay in the bin before auto-purge (requires org admin)",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		days, _ := cmd.Flags().GetInt32("days")
 		if days < 1 {
 			cmd.Println("Error: --days must be at least 1.")
-			return
+			return errors.New("Error: --days must be at least 1.")
 		}
 		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		_, err := client.SetOrgRetentionDays(context.Background(), connect.NewRequest(&healthv1.SetOrgRetentionDaysRequest{OrgId: args[0], BinRetentionDays: days}))
 		if err != nil {
 			cmd.PrintErrf("Failed to set retention: %v\n", err)
-			return
+			return err
 		}
 		cmd.Printf("Organization %s bin retention set to %d days\n", args[0], days)
+		return nil
 	},
 }
 

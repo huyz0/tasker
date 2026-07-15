@@ -129,6 +129,34 @@ describe('Dashboard', () => {
     await waitFor(() => expect(mockPing).toHaveBeenCalled());
   });
 
+  it('shows a failed-to-load indicator when the organizations query errors', async () => {
+    mockListOrgs.mockRejectedValue(new Error('orgs unavailable'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Organizations').nextElementSibling?.textContent).toBe('Failed to load'));
+  });
+
+  it('shows a failed-to-load indicator when the projects query errors', async () => {
+    mockListProjects.mockRejectedValue(new Error('projects unavailable'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Projects').nextElementSibling?.textContent).toBe('Failed to load'));
+  });
+
+  it('shows a failed-to-load indicator when the agents query errors', async () => {
+    mockListAgents.mockRejectedValue(new Error('agents unavailable'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Agents').nextElementSibling?.textContent).toBe('Failed to load'));
+  });
+
+  it('shows a failed-to-load indicator when the tasks query errors', async () => {
+    mockListTasks.mockRejectedValue(new Error('tasks unavailable'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Tasks').nextElementSibling?.textContent).toBe('Failed to load'));
+  });
+
   it('defaults a task with no status to the todo bucket', async () => {
     mockListTasks.mockResolvedValue({
       tasks: [{ id: 't1' }],

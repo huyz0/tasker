@@ -100,8 +100,8 @@ func TestLoginCommandMetadata(t *testing.T) {
 	if loginCmd.Short == "" {
 		t.Error("expected loginCmd to have a short description")
 	}
-	if loginCmd.Run == nil {
-		t.Error("expected loginCmd.Run to be defined")
+	if loginCmd.RunE == nil {
+		t.Error("expected loginCmd.RunE to be defined")
 	}
 }
 

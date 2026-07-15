@@ -4,6 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
+	"errors"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -19,7 +20,7 @@ var repoCmd = &cobra.Command{
 var repoListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List repository links for a project",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		projectID, _ := cmd.Flags().GetString("project")
 		limit, _ := cmd.Flags().GetInt32("limit")
@@ -29,7 +30,7 @@ var repoListCmd = &cobra.Command{
 		}
 		if projectID == "" {
 			cmd.Println("Error: --project is required (or set TASKER_PROJECT_ID).")
-			return
+			return errors.New("Error: --project is required (or set TASKER_PROJECT_ID).")
 		}
 
 		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -39,7 +40,7 @@ var repoListCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list repository links: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -51,13 +52,14 @@ var repoListCmd = &cobra.Command{
 				cmd.Printf(" - %s: %s (id: %s)\n", l.Provider, l.RemoteName, l.Id)
 			}
 		}
+		return nil
 	},
 }
 
 var repoLinkCmd = &cobra.Command{
 	Use:   "link",
 	Short: "Link a new repository to a project, via an OAuth authorization code or a direct API token",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		provider, _ := cmd.Flags().GetString("provider")
 		remote, _ := cmd.Flags().GetString("remote")
 		projectID, _ := cmd.Flags().GetString("project")
@@ -70,15 +72,15 @@ var repoLinkCmd = &cobra.Command{
 		}
 		if provider == "" || remote == "" || projectID == "" {
 			cmd.Println("Error: --project, --provider, and --remote are all required.")
-			return
+			return errors.New("Error: --project, --provider, and --remote are all required.")
 		}
 		if oauthCode == "" && apiToken == "" {
 			cmd.Println("Error: provide either --oauth-code, or --api-token (add --email too for Bitbucket).")
-			return
+			return errors.New("Error: provide either --oauth-code, or --api-token (add --email too for Bitbucket).")
 		}
 		if oauthCode == "" && provider == "bitbucket" && email == "" {
 			cmd.Println("Error: --email is required alongside --api-token for Bitbucket.")
-			return
+			return errors.New("Error: --email is required alongside --api-token for Bitbucket.")
 		}
 
 		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -92,7 +94,7 @@ var repoLinkCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to link repository: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -101,13 +103,14 @@ var repoLinkCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Successfully linked %s repository: %s (id: %s)\n", res.Msg.Link.Provider, res.Msg.Link.RemoteName, res.Msg.Link.Id)
 		}
+		return nil
 	},
 }
 
 var repoSyncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "Sync pull requests from linked repositories",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		projectID, _ := cmd.Flags().GetString("project")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if projectID == "" {
@@ -115,14 +118,14 @@ var repoSyncCmd = &cobra.Command{
 		}
 		if projectID == "" {
 			cmd.Println("Error: --project is required (or set TASKER_PROJECT_ID).")
-			return
+			return errors.New("Error: --project is required (or set TASKER_PROJECT_ID).")
 		}
 
 		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		res, err := client.SyncPullRequests(context.Background(), connect.NewRequest(&healthv1.SyncPullRequestsRequest{ProjectId: projectID}))
 		if err != nil {
 			cmd.PrintErrf("Failed to sync pull requests: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -133,13 +136,14 @@ var repoSyncCmd = &cobra.Command{
 		} else {
 			cmd.Println("Pull request sync completed with some provider failures; check backend logs.")
 		}
+		return nil
 	},
 }
 
 var repoPrsCmd = &cobra.Command{
 	Use:   "prs",
 	Short: "List synced pull requests for a project",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		projectID, _ := cmd.Flags().GetString("project")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if projectID == "" {
@@ -147,14 +151,14 @@ var repoPrsCmd = &cobra.Command{
 		}
 		if projectID == "" {
 			cmd.Println("Error: --project is required (or set TASKER_PROJECT_ID).")
-			return
+			return errors.New("Error: --project is required (or set TASKER_PROJECT_ID).")
 		}
 
 		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		res, err := client.ListPullRequests(context.Background(), connect.NewRequest(&healthv1.ListPullRequestsRequest{ProjectId: projectID}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list pull requests: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -166,6 +170,7 @@ var repoPrsCmd = &cobra.Command{
 				cmd.Printf(" - #%s: %s (%s)\n", pr.RemotePrId, pr.Title, pr.Status)
 			}
 		}
+		return nil
 	},
 }
 
@@ -173,7 +178,7 @@ var repoBuildsCmd = &cobra.Command{
 	Use:   "builds [repository_link_id]",
 	Short: "List CI builds for a repository link",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
@@ -185,7 +190,7 @@ var repoBuildsCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list builds: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -197,6 +202,7 @@ var repoBuildsCmd = &cobra.Command{
 				cmd.Printf(" - %s: %s\n", b.CommitSha, b.Status)
 			}
 		}
+		return nil
 	},
 }
 
@@ -204,13 +210,13 @@ var repoDeploymentsCmd = &cobra.Command{
 	Use:   "deployments [build_id]",
 	Short: "List deployments for a build's commit (GitHub deployments are keyed by commit sha, not by CI run)",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		repositoryLinkID, _ := cmd.Flags().GetString("link")
 		commitSha, _ := cmd.Flags().GetString("commit")
 		if repositoryLinkID == "" || commitSha == "" {
 			cmd.Println("Error: --link and --commit are both required (run `repo builds` first to find a build's commit sha).")
-			return
+			return errors.New("Error: --link and --commit are both required (run `repo builds` first to find a build's commit sha).")
 		}
 
 		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -221,7 +227,7 @@ var repoDeploymentsCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list deployments: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -233,6 +239,7 @@ var repoDeploymentsCmd = &cobra.Command{
 				cmd.Printf(" - %s: %s\n", d.Environment, d.Status)
 			}
 		}
+		return nil
 	},
 }
 

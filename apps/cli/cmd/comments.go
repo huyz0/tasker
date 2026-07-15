@@ -26,7 +26,7 @@ var commentCmd = &cobra.Command{
 var commentAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new comment",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client := v1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 
 		req := connect.NewRequest(&healthv1.CreateCommentRequest{
@@ -38,17 +38,18 @@ var commentAddCmd = &cobra.Command{
 		res, err := client.CreateComment(context.Background(), req)
 		if err != nil {
 			cmd.PrintErrf("failed to add comment: %v\n", err)
-			return
+			return err
 		}
 
 		cmd.Printf("Comment added successfully! ID: %s\n", res.Msg.Comment.Id)
+		return nil
 	},
 }
 
 var commentListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List comments for an entity",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
 		client := v1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -62,18 +63,19 @@ var commentListCmd = &cobra.Command{
 		res, err := client.ListComments(context.Background(), req)
 		if err != nil {
 			cmd.PrintErrf("failed to list comments: %v\n", err)
-			return
+			return err
 		}
 
 		if len(res.Msg.Comments) == 0 {
 			cmd.Println("No comments found.")
-			return
+			return nil
 		}
 
 		cmd.Printf("Comments for %s (%s):\n", entityId, entityType)
 		for _, c := range res.Msg.Comments {
 			cmd.Printf("- [%s] %s\n", c.Id, c.Content)
 		}
+		return nil
 	},
 }
 

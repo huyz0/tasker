@@ -86,10 +86,18 @@ describe("Repositories Handler >", () => {
       oauthCode: "fake-oauth-code-123",
     }, ctx1);
 
-    expect(addResp.link).toBeDefined();
+    expect(addResp.link.id).toMatch(/^replink-/);
     expect(addResp.link.projectId).toBe(projectId);
     expect(addResp.link.provider).toBe("github");
     expect(addResp.link.remoteName).toBe("huyz0/tasker");
+    expect(addResp.link.authEmail).toBeNull();
+    expect(addResp.link.createdAt).toBeTruthy();
+    // addRepositoryLink's response echoes back the *encrypted* token (unlike
+    // listRepositoryLinks, which masks it entirely) - assert it's present but
+    // never the raw OAuth token/its mock_token_ fixture value, so a future
+    // change accidentally storing/returning the plaintext token is caught.
+    expect(addResp.link.accessTokenEncrypted).toBeTruthy();
+    expect(addResp.link.accessTokenEncrypted).not.toContain("mock_token");
     const linkId = addResp.link.id;
 
     // 3. Verify it was encrypted in DB (by reading raw DB instead of handler)
@@ -167,8 +175,11 @@ describe("Repositories Handler >", () => {
     }, ctx2);
 
     const listResp = await repHandler.listRepositoryLinks({ projectId: pId }, ctx2);
-    expect(listResp.links).toBeDefined();
     expect(listResp.links.length).toBe(1);
+    expect(listResp.links[0].provider).toBe("bitbucket");
+    expect(listResp.links[0].remoteName).toBe("huyz0/test2");
+    expect(listResp.links[0].projectId).toBe(pId);
+    expect(listResp.links[0].id).toMatch(/^replink-/);
     expect(listResp.links[0].accessTokenEncrypted).toBeUndefined(); // Crucial security feature
 
     await expect(repHandler.listRepositoryLinks({ projectId: pId }, makeAuthContext("usr-outsider"))).rejects.toThrow();

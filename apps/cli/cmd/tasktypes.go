@@ -4,6 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
+	"errors"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -19,7 +20,7 @@ var taskTypesCmd = &cobra.Command{
 var taskTypesCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a task type for an organization (optionally scoped to a project)",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		orgID, _ := cmd.Flags().GetString("org")
 		projectID, _ := cmd.Flags().GetString("project")
@@ -33,7 +34,7 @@ var taskTypesCreateCmd = &cobra.Command{
 		}
 		if name == "" || orgID == "" {
 			cmd.Println("Error: --org and --name are required.")
-			return
+			return errors.New("--org and --name are required")
 		}
 
 		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -45,7 +46,7 @@ var taskTypesCreateCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create task type: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -54,13 +55,14 @@ var taskTypesCreateCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Task type created: %s (id: %s)\n", res.Msg.TaskType.Name, res.Msg.TaskType.Id)
 		}
+		return nil
 	},
 }
 
 var taskTypesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List task types for an organization",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		orgID, _ := cmd.Flags().GetString("org")
 		filter, _ := cmd.Flags().GetString("filter")
 		sort, _ := cmd.Flags().GetString("sort")
@@ -72,7 +74,7 @@ var taskTypesListCmd = &cobra.Command{
 		}
 		if orgID == "" {
 			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
-			return
+			return errors.New("--org is required (or set TASKER_ORG_ID)")
 		}
 
 		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -82,7 +84,7 @@ var taskTypesListCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list task types: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -93,6 +95,7 @@ var taskTypesListCmd = &cobra.Command{
 				cmd.Printf("  - %s (id: %s)\n", t.Name, t.Id)
 			}
 		}
+		return nil
 	},
 }
 
@@ -100,14 +103,14 @@ var taskTypesGetCmd = &cobra.Command{
 	Use:   "get [task_type_id]",
 	Short: "Show a task type along with its configured statuses and transitions",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		res, err := client.GetTaskType(context.Background(), connect.NewRequest(&healthv1.GetTaskTypeRequest{Id: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to get task type: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -127,6 +130,7 @@ var taskTypesGetCmd = &cobra.Command{
 				cmd.Printf("  - %s -> %s\n", t.FromStatusId, t.ToStatusId)
 			}
 		}
+		return nil
 	},
 }
 
@@ -134,12 +138,12 @@ var taskTypesCreateStatusCmd = &cobra.Command{
 	Use:   "create-status [task_type_id]",
 	Short: "Add a status to a task type's enum",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if name == "" {
 			cmd.Println("Error: --name is required.")
-			return
+			return errors.New("--name is required")
 		}
 
 		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -149,7 +153,7 @@ var taskTypesCreateStatusCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create task status: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -158,6 +162,7 @@ var taskTypesCreateStatusCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Status created: %s (id: %s)\n", res.Msg.Status.Name, res.Msg.Status.Id)
 		}
+		return nil
 	},
 }
 
@@ -165,13 +170,13 @@ var taskTypesCreateTransitionCmd = &cobra.Command{
 	Use:   "create-transition [task_type_id]",
 	Short: "Allow a status transition (edge) in a task type's state machine",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fromStatusID, _ := cmd.Flags().GetString("from")
 		toStatusID, _ := cmd.Flags().GetString("to")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if fromStatusID == "" || toStatusID == "" {
 			cmd.Println("Error: --from and --to status IDs are required.")
-			return
+			return errors.New("--from and --to status IDs are required")
 		}
 
 		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -182,7 +187,7 @@ var taskTypesCreateTransitionCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create status transition: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -191,6 +196,7 @@ var taskTypesCreateTransitionCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Transition allowed: %s -> %s\n", res.Msg.Transition.FromStatusId, res.Msg.Transition.ToStatusId)
 		}
+		return nil
 	},
 }
 

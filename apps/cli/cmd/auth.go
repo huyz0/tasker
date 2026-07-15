@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -57,11 +58,11 @@ const cliCallbackPort = 3952
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Login to the Tasker system via Google",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		nonce, err := generateNonce()
 		if err != nil {
 			cmd.PrintErrf("Failed to start login: %v\n", err)
-			return
+			return err
 		}
 
 		loginURL := fmt.Sprintf("%s/api/auth/google/login?cli=true&cliNonce=%s", backend.URL(), nonce)
@@ -90,54 +91,58 @@ var loginCmd = &cobra.Command{
 		case token := <-ch:
 			if token == "" {
 				cmd.PrintErrln("Authentication failed: no token received.")
-				return
+				return errors.New("authentication failed: no token received")
 			}
 			if err := backend.SaveCredentials(token); err != nil {
 				cmd.PrintErrf("Logged in, but failed to save credentials: %v\n", err)
-				return
+				return err
 			}
 			path, _ := backend.CredentialsPath()
 			cmd.Printf("Success! Logged in. Credentials saved to %s\n", path)
 		case err := <-listenErrCh:
 			cmd.PrintErrf("Failed to start local callback listener on localhost:%d: %v\n", cliCallbackPort, err)
+			return err
 		case <-time.After(5 * time.Minute):
 			cmd.Println("Timeout waiting for authentication.")
+			return errors.New("timeout waiting for authentication")
 		}
+		return nil
 	},
 }
 
 var logoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Remove the saved session credentials",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := backend.ClearCredentials(); err != nil {
 			cmd.PrintErrf("Failed to log out: %v\n", err)
-			return
+			return err
 		}
 		cmd.Println("Logged out.")
+		return nil
 	},
 }
 
 var whoamiCmd = &cobra.Command{
 	Use:   "whoami",
 	Short: "Show the currently authenticated user",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		token, err := backend.LoadCredentials()
 		if err != nil {
 			cmd.PrintErrf("Failed to read saved credentials: %v\n", err)
-			return
+			return err
 		}
 		if token == "" {
 			cmd.Println("Not logged in. Run `tasker auth login` first.")
-			return
+			return nil
 		}
 
 		client := healthv1connect.NewAuthServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		res, err := client.GetIdentity(context.Background(), connect.NewRequest(&healthv1.GetIdentityRequest{}))
 		if err != nil {
 			cmd.PrintErrf("Failed to fetch identity: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -146,6 +151,7 @@ var whoamiCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Logged in as %s (%s)\n", res.Msg.User.Name, res.Msg.User.Email)
 		}
+		return nil
 	},
 }
 

@@ -4,6 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
+	"fmt"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -19,7 +20,7 @@ var tasksCmd = &cobra.Command{
 var tasksListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List tasks within a project",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 		projectID, _ := cmd.Flags().GetString("project")
 		filter, _ := cmd.Flags().GetString("filter")
@@ -31,7 +32,7 @@ var tasksListCmd = &cobra.Command{
 		}
 		if projectID == "" {
 			cmd.Println("Error: --project is required (or set TASKER_PROJECT_ID).")
-			return
+			return fmt.Errorf("--project is required (or set TASKER_PROJECT_ID)")
 		}
 
 		client := healthv1connect.NewTaskServiceClient(
@@ -48,7 +49,7 @@ var tasksListCmd = &cobra.Command{
 		res, err := client.ListTasks(context.Background(), req)
 		if err != nil {
 			cmd.PrintErrf("Failed to list tasks: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -60,13 +61,14 @@ var tasksListCmd = &cobra.Command{
 				cmd.Printf("- %s [%s]: %s (id: %s)\n", task.DisplayId, task.Status, task.Title, task.Id)
 			}
 		}
+		return nil
 	},
 }
 
 var tasksCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new task in a project",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		title, _ := cmd.Flags().GetString("title")
 		status, _ := cmd.Flags().GetString("status")
 		description, _ := cmd.Flags().GetString("description")
@@ -78,7 +80,7 @@ var tasksCreateCmd = &cobra.Command{
 		}
 		if title == "" || projectID == "" {
 			cmd.Println("Error: --project and --title flags are required.")
-			return
+			return fmt.Errorf("--project and --title flags are required")
 		}
 
 		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -91,7 +93,7 @@ var tasksCreateCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create task: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -100,6 +102,7 @@ var tasksCreateCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Task created: %s [%s] (id: %s)\n", res.Msg.Task.Title, res.Msg.Task.DisplayId, res.Msg.Task.Id)
 		}
+		return nil
 	},
 }
 
@@ -107,13 +110,13 @@ var tasksAssignCmd = &cobra.Command{
 	Use:   "assign [task_id]",
 	Short: "Assign a task to an agent or user",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		agentID, _ := cmd.Flags().GetString("agent")
 		userID, _ := cmd.Flags().GetString("user")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if agentID == "" && userID == "" {
 			cmd.Println("Error: one of --agent or --user is required.")
-			return
+			return fmt.Errorf("one of --agent or --user is required")
 		}
 
 		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -124,7 +127,7 @@ var tasksAssignCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to assign task: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -133,6 +136,7 @@ var tasksAssignCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Task %s assigned\n", args[0])
 		}
+		return nil
 	},
 }
 
@@ -140,12 +144,12 @@ var tasksReviewerAddCmd = &cobra.Command{
 	Use:   "reviewer-add [task_id]",
 	Short: "Add a reviewer to a task",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		userID, _ := cmd.Flags().GetString("user")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if userID == "" {
 			cmd.Println("Error: --user is required.")
-			return
+			return fmt.Errorf("--user is required")
 		}
 
 		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -155,7 +159,7 @@ var tasksReviewerAddCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to add reviewer: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -164,6 +168,7 @@ var tasksReviewerAddCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Reviewer %s added to task %s\n", userID, args[0])
 		}
+		return nil
 	},
 }
 
@@ -171,12 +176,12 @@ var tasksReviewerRemoveCmd = &cobra.Command{
 	Use:   "reviewer-remove [task_id]",
 	Short: "Remove a reviewer from a task",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		userID, _ := cmd.Flags().GetString("user")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if userID == "" {
 			cmd.Println("Error: --user is required.")
-			return
+			return fmt.Errorf("--user is required")
 		}
 
 		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -186,7 +191,7 @@ var tasksReviewerRemoveCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to remove reviewer: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -195,6 +200,7 @@ var tasksReviewerRemoveCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Reviewer %s removed from task %s\n", userID, args[0])
 		}
+		return nil
 	},
 }
 
@@ -202,7 +208,7 @@ var tasksReviewersCmd = &cobra.Command{
 	Use:   "reviewers [task_id]",
 	Short: "List a task's reviewers",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -211,7 +217,7 @@ var tasksReviewersCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list reviewers: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -222,6 +228,7 @@ var tasksReviewersCmd = &cobra.Command{
 				cmd.Printf("  - %s\n", r.UserId)
 			}
 		}
+		return nil
 	},
 }
 
@@ -229,7 +236,7 @@ var tasksUpdateStatusCmd = &cobra.Command{
 	Use:   "update-status [task_id]",
 	Short: "Update a task's status",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		status, _ := cmd.Flags().GetString("status")
 		isJson, _ := cmd.Flags().GetBool("json")
 
@@ -247,7 +254,7 @@ var tasksUpdateStatusCmd = &cobra.Command{
 		res, err := client.UpdateTaskStatus(context.Background(), req)
 		if err != nil {
 			cmd.PrintErrf("Failed to update task status: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -256,6 +263,7 @@ var tasksUpdateStatusCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Task %s status updated to %s\n", res.Msg.Task.Id, res.Msg.Task.Status)
 		}
+		return nil
 	},
 }
 
@@ -263,7 +271,7 @@ var tasksDeleteCmd = &cobra.Command{
 	Use:   "delete [task_id]",
 	Short: "Move a task to the bin (soft delete; requires org admin)",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := healthv1connect.NewTaskServiceClient(
@@ -279,7 +287,7 @@ var tasksDeleteCmd = &cobra.Command{
 		_, err := client.DeleteTask(context.Background(), req)
 		if err != nil {
 			cmd.PrintErrf("Failed to delete task: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -288,6 +296,7 @@ var tasksDeleteCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Task %s moved to bin\n", args[0])
 		}
+		return nil
 	},
 }
 
@@ -295,7 +304,7 @@ var tasksRestoreCmd = &cobra.Command{
 	Use:   "restore [task_id]",
 	Short: "Restore a task from the bin (requires org admin)",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := healthv1connect.NewTaskServiceClient(
@@ -311,7 +320,7 @@ var tasksRestoreCmd = &cobra.Command{
 		_, err := client.RestoreTask(context.Background(), req)
 		if err != nil {
 			cmd.PrintErrf("Failed to restore task: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -320,6 +329,7 @@ var tasksRestoreCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Task %s restored\n", args[0])
 		}
+		return nil
 	},
 }
 
@@ -327,7 +337,7 @@ var tasksPurgeCmd = &cobra.Command{
 	Use:   "purge [task_id]",
 	Short: "Permanently delete an already-binned task and its dependent records (requires org admin)",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := healthv1connect.NewTaskServiceClient(
@@ -343,7 +353,7 @@ var tasksPurgeCmd = &cobra.Command{
 		_, err := client.PurgeTask(context.Background(), req)
 		if err != nil {
 			cmd.PrintErrf("Failed to purge task: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -352,6 +362,7 @@ var tasksPurgeCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Task %s permanently deleted\n", args[0])
 		}
+		return nil
 	},
 }
 
@@ -359,14 +370,14 @@ var tasksCommentAddCmd = &cobra.Command{
 	Use:   "comment-add [task_id]",
 	Short: "Add a comment to a task",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		content, _ := cmd.Flags().GetString("content")
 		userID, _ := cmd.Flags().GetString("user")
 		agentID, _ := cmd.Flags().GetString("agent")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if content == "" {
 			cmd.Println("Error: --content is required.")
-			return
+			return fmt.Errorf("--content is required")
 		}
 
 		client := healthv1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -379,7 +390,7 @@ var tasksCommentAddCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to add comment: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -388,6 +399,7 @@ var tasksCommentAddCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Comment added to task %s (id: %s)\n", args[0], res.Msg.Comment.Id)
 		}
+		return nil
 	},
 }
 
@@ -395,7 +407,7 @@ var tasksCommentsCmd = &cobra.Command{
 	Use:   "comments [task_id]",
 	Short: "List comments on a task",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := healthv1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -405,7 +417,7 @@ var tasksCommentsCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list comments: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -417,6 +429,7 @@ var tasksCommentsCmd = &cobra.Command{
 				cmd.Printf(" - [%s] %s\n", c.CreatedAt, c.Content)
 			}
 		}
+		return nil
 	},
 }
 
@@ -424,13 +437,13 @@ var tasksNoteAddCmd = &cobra.Command{
 	Use:   "note-add [task_id]",
 	Short: "Add an AI agent note to a task",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		content, _ := cmd.Flags().GetString("content")
 		agentID, _ := cmd.Flags().GetString("agent")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if content == "" || agentID == "" {
 			cmd.Println("Error: --agent and --content are required.")
-			return
+			return fmt.Errorf("--agent and --content are required")
 		}
 
 		client := healthv1connect.NewTaskNoteServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -441,7 +454,7 @@ var tasksNoteAddCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to add note: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -450,6 +463,7 @@ var tasksNoteAddCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Note added to task %s (id: %s)\n", args[0], res.Msg.TaskNote.Id)
 		}
+		return nil
 	},
 }
 
@@ -457,7 +471,7 @@ var tasksNotesCmd = &cobra.Command{
 	Use:   "notes [task_id]",
 	Short: "List AI agent notes on a task",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := healthv1connect.NewTaskNoteServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -466,7 +480,7 @@ var tasksNotesCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list notes: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -478,6 +492,7 @@ var tasksNotesCmd = &cobra.Command{
 				cmd.Printf(" - [agent %s] %s\n", n.AgentId, n.Content)
 			}
 		}
+		return nil
 	},
 }
 

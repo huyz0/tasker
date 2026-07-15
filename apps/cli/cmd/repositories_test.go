@@ -200,8 +200,8 @@ func TestRepoLinkCmdRequiresOauthCodeOrApiTokenWithEmail(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"repo", "link", "--project", "proj-1", "--provider", "bitbucket", "--remote", "team/repo", "--oauth-code", "", "--api-token", "tok-without-email", "--email", ""})
-	if err := rootCmd.Execute(); err != nil {
-		t.Fatal(err)
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected rootCmd.Execute() to return an error for missing email")
 	}
 	out := b.String()
 	if !strings.Contains(out, "Error:") {
@@ -256,8 +256,8 @@ func TestRepoDeploymentsCmdRequiresLinkAndCommit(t *testing.T) {
 	repoDeploymentsCmd.Flags().Set("link", "")
 	repoDeploymentsCmd.Flags().Set("commit", "")
 	rootCmd.SetArgs([]string{"repo", "deployments", "run-123"})
-	if err := rootCmd.Execute(); err != nil {
-		t.Fatal(err)
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected rootCmd.Execute() to return an error for missing --link/--commit")
 	}
 	out := b.String()
 	if !strings.Contains(out, "--link and --commit are both required") {

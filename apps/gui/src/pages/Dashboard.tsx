@@ -17,12 +17,16 @@ const STATUS_LABELS: Record<string, string> = {
   done: 'Done',
 };
 
-function StatCard({ label, value, icon }: { label: string; value: number | string; icon: string }) {
+function StatCard({ label, value, icon, error }: { label: string; value: number | string; icon: string; error?: Error | null }) {
   return (
     <div className="p-4 border rounded-lg bg-card shadow-sm flex items-center justify-between">
       <div>
         <div className="text-muted-foreground text-sm font-medium mb-1">{label}</div>
-        <div className="text-3xl font-bold">{value}</div>
+        {error ? (
+          <div className="text-destructive text-xs font-medium" title={error.message}>Failed to load</div>
+        ) : (
+          <div className="text-3xl font-bold">{value}</div>
+        )}
       </div>
       <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg">{icon}</div>
     </div>
@@ -44,24 +48,24 @@ export function Dashboard() {
     }
   });
 
-  const { data: orgsResp } = useQuery({
+  const { data: orgsResp, error: orgsError } = useQuery({
     queryKey: ['orgs'],
     queryFn: async () => orgClient.listOrgs({}),
   });
 
-  const { data: projectsResp } = useQuery({
+  const { data: projectsResp, error: projectsError } = useQuery({
     queryKey: ['projects', activeOrgId],
     queryFn: async () => projectClient.listProjects({ orgId: activeOrgId }),
     enabled: !!activeOrgId,
   });
 
-  const { data: agentsResp } = useQuery({
+  const { data: agentsResp, error: agentsError } = useQuery({
     queryKey: ['agents', activeOrgId],
     queryFn: async () => agentClient.listAgents({ orgId: activeOrgId }),
     enabled: !!activeOrgId,
   });
 
-  const { data: tasksResp } = useQuery({
+  const { data: tasksResp, error: tasksError } = useQuery({
     queryKey: ['tasks', activeProjectId],
     queryFn: async () => taskClient.listTasks({ projectId: activeProjectId }),
     enabled: !!activeProjectId,
@@ -82,10 +86,10 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Organizations" value={orgsResp?.page?.totalCount ?? '—'} icon="🏢" />
-        <StatCard label="Projects" value={activeOrgId ? (projectsResp?.page?.totalCount ?? '—') : '—'} icon="📁" />
-        <StatCard label="Agents" value={activeOrgId ? (agentsResp?.page?.totalCount ?? '—') : '—'} icon="🤖" />
-        <StatCard label="Tasks" value={activeProjectId ? (tasksResp?.page?.totalCount ?? '—') : '—'} icon="✅" />
+        <StatCard label="Organizations" value={orgsResp?.page?.totalCount ?? '—'} icon="🏢" error={orgsError as Error | null} />
+        <StatCard label="Projects" value={activeOrgId ? (projectsResp?.page?.totalCount ?? '—') : '—'} icon="📁" error={activeOrgId ? (projectsError as Error | null) : null} />
+        <StatCard label="Agents" value={activeOrgId ? (agentsResp?.page?.totalCount ?? '—') : '—'} icon="🤖" error={activeOrgId ? (agentsError as Error | null) : null} />
+        <StatCard label="Tasks" value={activeProjectId ? (tasksResp?.page?.totalCount ?? '—') : '—'} icon="✅" error={activeProjectId ? (tasksError as Error | null) : null} />
       </div>
 
       {activeProjectId && tasks && tasks.length > 0 && (

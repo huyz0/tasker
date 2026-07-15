@@ -4,6 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
+	"errors"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -15,7 +16,7 @@ var searchCmd = &cobra.Command{
 	Use:   "search [query]",
 	Short: "Search tasks and artifacts across an organization",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		orgID, _ := cmd.Flags().GetString("org")
 		isJson, _ := cmd.Flags().GetBool("json")
 		limit, _ := cmd.Flags().GetInt32("limit")
@@ -25,7 +26,7 @@ var searchCmd = &cobra.Command{
 		}
 		if orgID == "" {
 			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
-			return
+			return errors.New("--org is required (or set TASKER_ORG_ID)")
 		}
 
 		client := healthv1connect.NewSearchServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -36,7 +37,7 @@ var searchCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to search: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -45,7 +46,7 @@ var searchCmd = &cobra.Command{
 		} else {
 			if len(res.Msg.Results) == 0 {
 				cmd.Println("No results found.")
-				return
+				return nil
 			}
 			for _, r := range res.Msg.Results {
 				cmd.Printf("[%s] %s (id: %s)\n", r.Type, r.Title, r.Id)
@@ -57,6 +58,7 @@ var searchCmd = &cobra.Command{
 				cmd.Printf("More results available; re-run with --cursor %s\n", res.Msg.Page.NextCursor)
 			}
 		}
+		return nil
 	},
 }
 

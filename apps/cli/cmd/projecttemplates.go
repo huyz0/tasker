@@ -4,6 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
+	"errors"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -19,7 +20,7 @@ var projectTemplatesCmd = &cobra.Command{
 var projectTemplatesCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a project template for an organization",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		description, _ := cmd.Flags().GetString("description")
 		orgID, _ := cmd.Flags().GetString("org")
@@ -30,7 +31,7 @@ var projectTemplatesCreateCmd = &cobra.Command{
 		}
 		if name == "" || orgID == "" {
 			cmd.Println("Error: --org and --name are required.")
-			return
+			return errors.New("--org and --name are required")
 		}
 
 		client := healthv1connect.NewProjectTemplateServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -42,7 +43,7 @@ var projectTemplatesCreateCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create project template: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -51,6 +52,7 @@ var projectTemplatesCreateCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Project template created: %s (id: %s)\n", res.Msg.Template.Name, res.Msg.Template.Id)
 		}
+		return nil
 	},
 }
 
@@ -58,14 +60,14 @@ var projectTemplatesGetCmd = &cobra.Command{
 	Use:   "get [template_id]",
 	Short: "Show a project template",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
 		client := healthv1connect.NewProjectTemplateServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
 		res, err := client.GetTemplate(context.Background(), connect.NewRequest(&healthv1.GetProjectTemplateRequest{Id: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to get project template: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -77,13 +79,14 @@ var projectTemplatesGetCmd = &cobra.Command{
 				cmd.Printf("Root task type: %s\n", res.Msg.Template.RootTaskTypeId)
 			}
 		}
+		return nil
 	},
 }
 
 var projectTemplatesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List project templates for an organization",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		orgID, _ := cmd.Flags().GetString("org")
 		isJson, _ := cmd.Flags().GetBool("json")
 		limit, _ := cmd.Flags().GetInt32("limit")
@@ -93,7 +96,7 @@ var projectTemplatesListCmd = &cobra.Command{
 		}
 		if orgID == "" {
 			cmd.Println("Error: --org is required.")
-			return
+			return errors.New("--org is required")
 		}
 
 		client := healthv1connect.NewProjectTemplateServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
@@ -103,7 +106,7 @@ var projectTemplatesListCmd = &cobra.Command{
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list project templates: %v\n", err)
-			return
+			return err
 		}
 
 		if isJson {
@@ -114,6 +117,7 @@ var projectTemplatesListCmd = &cobra.Command{
 				cmd.Printf("  - %s (id: %s)\n", t.Name, t.Id)
 			}
 		}
+		return nil
 	},
 }
 
