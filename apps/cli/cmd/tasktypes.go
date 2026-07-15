@@ -1,15 +1,14 @@
 package cmd
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"errors"
+
+	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 var taskTypesCmd = &cobra.Command{
@@ -37,7 +36,7 @@ var taskTypesCreateCmd = &cobra.Command{
 			return errors.New("--org and --name are required")
 		}
 
-		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskTypeServiceClient()
 		res, err := client.CreateTaskType(context.Background(), connect.NewRequest(&healthv1.CreateTaskTypeRequest{
 			OrgId:     orgID,
 			ProjectId: projectID,
@@ -77,7 +76,7 @@ var taskTypesListCmd = &cobra.Command{
 			return errors.New("--org is required (or set TASKER_ORG_ID)")
 		}
 
-		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskTypeServiceClient()
 		res, err := client.ListTaskTypes(context.Background(), connect.NewRequest(&healthv1.ListTaskTypesRequest{
 			OrgId: orgID,
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
@@ -106,7 +105,7 @@ var taskTypesGetCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
-		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskTypeServiceClient()
 		res, err := client.GetTaskType(context.Background(), connect.NewRequest(&healthv1.GetTaskTypeRequest{Id: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to get task type: %v\n", err)
@@ -146,7 +145,7 @@ var taskTypesCreateStatusCmd = &cobra.Command{
 			return errors.New("--name is required")
 		}
 
-		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskTypeServiceClient()
 		res, err := client.CreateTaskStatus(context.Background(), connect.NewRequest(&healthv1.CreateTaskStatusRequest{
 			TaskTypeId: args[0],
 			Name:       name,
@@ -179,7 +178,7 @@ var taskTypesCreateTransitionCmd = &cobra.Command{
 			return errors.New("--from and --to status IDs are required")
 		}
 
-		client := healthv1connect.NewTaskTypeServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskTypeServiceClient()
 		res, err := client.CreateTaskStatusTransition(context.Background(), connect.NewRequest(&healthv1.CreateTaskStatusTransitionRequest{
 			TaskTypeId:   args[0],
 			FromStatusId: fromStatusID,

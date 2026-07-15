@@ -1,15 +1,14 @@
 package cmd
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"errors"
+
+	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 var agentsCmd = &cobra.Command{
@@ -35,7 +34,7 @@ var agentsListCmd = &cobra.Command{
 			return errors.New("Error: --org is required (or set TASKER_ORG_ID).")
 		}
 
-		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewAgentServiceClient()
 		res, err := client.ListAgents(context.Background(), connect.NewRequest(&healthv1.ListAgentsRequest{
 			OrgId: orgID,
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
@@ -74,7 +73,7 @@ var agentsCreateCmd = &cobra.Command{
 			return errors.New("Error: --org and --role are required.")
 		}
 
-		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewAgentServiceClient()
 		res, err := client.CreateAgent(context.Background(), connect.NewRequest(&healthv1.CreateAgentRequest{
 			OrgId:       orgID,
 			AgentRoleId: role,
@@ -105,7 +104,7 @@ var agentsListRolesCmd = &cobra.Command{
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
 
-		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewAgentServiceClient()
 		res, err := client.ListAgentRoles(context.Background(), connect.NewRequest(&healthv1.ListAgentRolesRequest{
 			Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
@@ -140,7 +139,7 @@ var agentsCreateRoleCmd = &cobra.Command{
 			return errors.New("Error: --name is required.")
 		}
 
-		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewAgentServiceClient()
 		res, err := client.CreateAgentRole(context.Background(), connect.NewRequest(&healthv1.CreateAgentRoleRequest{
 			Name:         name,
 			SystemPrompt: systemPrompt,
@@ -166,7 +165,7 @@ var agentsDeleteCmd = &cobra.Command{
 	Short: "Move an agent to the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewAgentServiceClient()
 		_, err := client.ArchiveAgent(context.Background(), connect.NewRequest(&healthv1.ArchiveAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete agent: %v\n", err)
@@ -182,7 +181,7 @@ var agentsRestoreCmd = &cobra.Command{
 	Short: "Restore an agent from the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewAgentServiceClient()
 		_, err := client.RestoreAgent(context.Background(), connect.NewRequest(&healthv1.RestoreAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore agent: %v\n", err)
@@ -198,7 +197,7 @@ var agentsPurgeCmd = &cobra.Command{
 	Short: "Permanently delete an already-binned, unassigned agent",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewAgentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewAgentServiceClient()
 		_, err := client.PurgeAgent(context.Background(), connect.NewRequest(&healthv1.PurgeAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge agent: %v\n", err)

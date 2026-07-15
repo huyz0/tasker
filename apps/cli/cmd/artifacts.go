@@ -1,18 +1,18 @@
 package cmd
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
-	"github.com/huyz0/tasker/apps/cli/internal/backend"
-	"github.com/spf13/cobra"
 	"net/http"
 	"os"
+
+	"connectrpc.com/connect"
+	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
+	"github.com/spf13/cobra"
 )
 
 var artifactsCmd = &cobra.Command{
@@ -33,7 +33,7 @@ var artifactsListCmd = &cobra.Command{
 			projectID = backend.DefaultProjectID()
 		}
 
-		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewArtifactServiceClient()
 
 		if folderID != "" {
 			res, err := client.ListArtifacts(context.Background(), connect.NewRequest(&healthv1.ListArtifactsRequest{
@@ -93,7 +93,7 @@ var artifactsReadCmd = &cobra.Command{
 			return errors.New("Error: --folder is required (the folder containing the artifact).")
 		}
 
-		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewArtifactServiceClient()
 
 		// Must page through every artifact in the folder, not just the first
 		// page, or an artifact past the default page size falsely reports as
@@ -162,7 +162,7 @@ var artifactsCreateCmd = &cobra.Command{
 			contentType = "text/markdown"
 		}
 
-		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewArtifactServiceClient()
 		res, err := client.CreateArtifact(context.Background(), connect.NewRequest(&healthv1.CreateArtifactRequest{
 			FolderId:    folderID,
 			Name:        name,
@@ -201,7 +201,7 @@ var foldersCreateCmd = &cobra.Command{
 			return errors.New("Error: --project and --name are required.")
 		}
 
-		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewArtifactServiceClient()
 		res, err := client.CreateFolder(context.Background(), connect.NewRequest(&healthv1.CreateFolderRequest{
 			ProjectId: projectID,
 			ParentId:  parentID,
@@ -227,7 +227,7 @@ var artifactsDeleteCmd = &cobra.Command{
 	Short: "Move an artifact to the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewArtifactServiceClient()
 		_, err := client.ArchiveArtifact(context.Background(), connect.NewRequest(&healthv1.ArchiveArtifactRequest{ArtifactId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete artifact: %v\n", err)
@@ -243,7 +243,7 @@ var artifactsRestoreCmd = &cobra.Command{
 	Short: "Restore an artifact from the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewArtifactServiceClient()
 		_, err := client.RestoreArtifact(context.Background(), connect.NewRequest(&healthv1.RestoreArtifactRequest{ArtifactId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore artifact: %v\n", err)
@@ -259,7 +259,7 @@ var foldersDeleteCmd = &cobra.Command{
 	Short: "Move a folder to the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewArtifactServiceClient()
 		_, err := client.ArchiveFolder(context.Background(), connect.NewRequest(&healthv1.ArchiveFolderRequest{FolderId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete folder: %v\n", err)
@@ -275,7 +275,7 @@ var foldersRestoreCmd = &cobra.Command{
 	Short: "Restore a folder from the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewArtifactServiceClient()
 		_, err := client.RestoreFolder(context.Background(), connect.NewRequest(&healthv1.RestoreFolderRequest{FolderId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore folder: %v\n", err)
@@ -291,7 +291,7 @@ var artifactsPurgeCmd = &cobra.Command{
 	Short: "Permanently delete an already-binned, unlinked artifact",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewArtifactServiceClient()
 		_, err := client.PurgeArtifact(context.Background(), connect.NewRequest(&healthv1.PurgeArtifactRequest{ArtifactId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge artifact: %v\n", err)
@@ -307,7 +307,7 @@ var foldersPurgeCmd = &cobra.Command{
 	Short: "Permanently delete an already-binned, empty folder",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewArtifactServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewArtifactServiceClient()
 		_, err := client.PurgeFolder(context.Background(), connect.NewRequest(&healthv1.PurgeFolderRequest{FolderId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge folder: %v\n", err)

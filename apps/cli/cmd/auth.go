@@ -12,7 +12,6 @@ import (
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
 )
@@ -138,7 +137,7 @@ var whoamiCmd = &cobra.Command{
 			return nil
 		}
 
-		client := healthv1connect.NewAuthServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewAuthServiceClient()
 		res, err := client.GetIdentity(context.Background(), connect.NewRequest(&healthv1.GetIdentityRequest{}))
 		if err != nil {
 			cmd.PrintErrf("Failed to fetch identity: %v\n", err)

@@ -1,15 +1,14 @@
 package cmd
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 var projectsCmd = &cobra.Command{
@@ -35,7 +34,7 @@ var projectsListCmd = &cobra.Command{
 			return fmt.Errorf("--org is required (or set TASKER_ORG_ID)")
 		}
 
-		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewProjectServiceClient()
 		res, err := client.ListProjects(context.Background(), connect.NewRequest(&healthv1.ListProjectsRequest{
 			OrgId: orgID,
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
@@ -65,7 +64,7 @@ var projectsGetCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
-		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewProjectServiceClient()
 		res, err := client.GetProject(context.Background(), connect.NewRequest(&healthv1.GetProjectRequest{Id: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to get project: %v\n", err)
@@ -99,7 +98,7 @@ var projectsCreateCmd = &cobra.Command{
 			return fmt.Errorf("--org, --template and --title flags are required")
 		}
 
-		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewProjectServiceClient()
 		res, err := client.CreateProject(context.Background(), connect.NewRequest(&healthv1.CreateProjectRequest{
 			OrgId:      orgID,
 			TemplateId: template,
@@ -126,7 +125,7 @@ var projectsDeleteCmd = &cobra.Command{
 	Short: "Move a project to the bin (requires org admin)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewProjectServiceClient()
 		_, err := client.ArchiveProject(context.Background(), connect.NewRequest(&healthv1.ArchiveProjectRequest{ProjectId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete project: %v\n", err)
@@ -142,7 +141,7 @@ var projectsRestoreCmd = &cobra.Command{
 	Short: "Restore a project from the bin (requires org admin)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewProjectServiceClient()
 		_, err := client.RestoreProject(context.Background(), connect.NewRequest(&healthv1.RestoreProjectRequest{ProjectId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore project: %v\n", err)
@@ -158,7 +157,7 @@ var projectsPurgeCmd = &cobra.Command{
 	Short: "Permanently delete an already-binned, empty project (requires org admin)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewProjectServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewProjectServiceClient()
 		_, err := client.PurgeProject(context.Background(), connect.NewRequest(&healthv1.PurgeProjectRequest{ProjectId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge project: %v\n", err)

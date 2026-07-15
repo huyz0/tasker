@@ -1,15 +1,14 @@
 package cmd
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 var labelsCmd = &cobra.Command{
@@ -33,7 +32,7 @@ var labelsCreateCmd = &cobra.Command{
 			return fmt.Errorf("--org and --name are required")
 		}
 
-		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewLabelServiceClient()
 		res, err := client.CreateLabel(context.Background(), connect.NewRequest(&healthv1.CreateLabelRequest{
 			OrgId: orgID,
 			Name:  name,
@@ -72,7 +71,7 @@ var labelsListCmd = &cobra.Command{
 			return fmt.Errorf("--org is required (or set TASKER_ORG_ID)")
 		}
 
-		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewLabelServiceClient()
 		res, err := client.ListLabels(context.Background(), connect.NewRequest(&healthv1.ListLabelsRequest{
 			OrgId: orgID,
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
@@ -108,7 +107,7 @@ var labelsAttachCmd = &cobra.Command{
 			return fmt.Errorf("--entity-type and --label are required")
 		}
 
-		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewLabelServiceClient()
 		res, err := client.AttachLabel(context.Background(), connect.NewRequest(&healthv1.AttachLabelRequest{
 			EntityId:   args[0],
 			EntityType: entityType,
@@ -142,7 +141,7 @@ var labelsDetachCmd = &cobra.Command{
 			return fmt.Errorf("--entity-type and --label are required")
 		}
 
-		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewLabelServiceClient()
 		res, err := client.DetachLabel(context.Background(), connect.NewRequest(&healthv1.DetachLabelRequest{
 			EntityId:   args[0],
 			EntityType: entityType,
@@ -175,7 +174,7 @@ var labelsOnCmd = &cobra.Command{
 			return fmt.Errorf("--entity-type is required")
 		}
 
-		client := healthv1connect.NewLabelServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewLabelServiceClient()
 		res, err := client.ListEntityLabels(context.Background(), connect.NewRequest(&healthv1.ListEntityLabelsRequest{
 			EntityId:   args[0],
 			EntityType: entityType,

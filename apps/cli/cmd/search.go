@@ -1,15 +1,14 @@
 package cmd
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"errors"
+
+	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 var searchCmd = &cobra.Command{
@@ -29,7 +28,7 @@ var searchCmd = &cobra.Command{
 			return errors.New("--org is required (or set TASKER_ORG_ID)")
 		}
 
-		client := healthv1connect.NewSearchServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewSearchServiceClient()
 		res, err := client.UniversalSearch(context.Background(), connect.NewRequest(&healthv1.UniversalSearchRequest{
 			Query: args[0],
 			OrgId: orgID,

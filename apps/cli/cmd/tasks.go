@@ -1,15 +1,16 @@
 package cmd
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
+	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 var tasksCmd = &cobra.Command{
@@ -83,7 +84,7 @@ var tasksCreateCmd = &cobra.Command{
 			return fmt.Errorf("--project and --title flags are required")
 		}
 
-		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskServiceClient()
 		res, err := client.CreateTask(context.Background(), connect.NewRequest(&healthv1.CreateTaskRequest{
 			ProjectId:   projectID,
 			Title:       title,
@@ -119,7 +120,7 @@ var tasksAssignCmd = &cobra.Command{
 			return fmt.Errorf("one of --agent or --user is required")
 		}
 
-		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskServiceClient()
 		res, err := client.AssignTask(context.Background(), connect.NewRequest(&healthv1.AssignTaskRequest{
 			TaskId:  args[0],
 			AgentId: agentID,
@@ -152,7 +153,7 @@ var tasksReviewerAddCmd = &cobra.Command{
 			return fmt.Errorf("--user is required")
 		}
 
-		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskServiceClient()
 		res, err := client.AddTaskReviewer(context.Background(), connect.NewRequest(&healthv1.AddTaskReviewerRequest{
 			TaskId: args[0],
 			UserId: userID,
@@ -184,7 +185,7 @@ var tasksReviewerRemoveCmd = &cobra.Command{
 			return fmt.Errorf("--user is required")
 		}
 
-		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskServiceClient()
 		res, err := client.RemoveTaskReviewer(context.Background(), connect.NewRequest(&healthv1.RemoveTaskReviewerRequest{
 			TaskId: args[0],
 			UserId: userID,
@@ -211,7 +212,7 @@ var tasksReviewersCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
-		client := healthv1connect.NewTaskServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskServiceClient()
 		res, err := client.ListTaskReviewers(context.Background(), connect.NewRequest(&healthv1.ListTaskReviewersRequest{
 			TaskId: args[0],
 		}))
@@ -380,7 +381,7 @@ var tasksCommentAddCmd = &cobra.Command{
 			return fmt.Errorf("--content is required")
 		}
 
-		client := healthv1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewCommentServiceClient()
 		res, err := client.CreateComment(context.Background(), connect.NewRequest(&healthv1.CreateCommentRequest{
 			EntityId:   args[0],
 			EntityType: "task",
@@ -410,7 +411,7 @@ var tasksCommentsCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
-		client := healthv1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewCommentServiceClient()
 		res, err := client.ListComments(context.Background(), connect.NewRequest(&healthv1.ListCommentsRequest{
 			EntityId:   args[0],
 			EntityType: "task",
@@ -446,7 +447,7 @@ var tasksNoteAddCmd = &cobra.Command{
 			return fmt.Errorf("--agent and --content are required")
 		}
 
-		client := healthv1connect.NewTaskNoteServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskNoteServiceClient()
 		res, err := client.CreateTaskNote(context.Background(), connect.NewRequest(&healthv1.CreateTaskNoteRequest{
 			TaskId:  args[0],
 			AgentId: agentID,
@@ -474,7 +475,7 @@ var tasksNotesCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
-		client := healthv1connect.NewTaskNoteServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewTaskNoteServiceClient()
 		res, err := client.ListTaskNotes(context.Background(), connect.NewRequest(&healthv1.ListTaskNotesRequest{
 			TaskId: args[0],
 		}))

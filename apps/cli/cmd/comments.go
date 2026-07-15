@@ -2,13 +2,11 @@ package cmd
 
 import (
 	"context"
-	"net/http"
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	"github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 )
 
@@ -27,7 +25,7 @@ var commentAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new comment",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := v1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewCommentServiceClient()
 
 		req := connect.NewRequest(&healthv1.CreateCommentRequest{
 			EntityId:   entityId,
@@ -52,7 +50,7 @@ var commentListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
-		client := v1connect.NewCommentServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewCommentServiceClient()
 
 		req := connect.NewRequest(&healthv1.ListCommentsRequest{
 			EntityId:   entityId,

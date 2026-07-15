@@ -7,6 +7,8 @@ import { transport } from "../../lib/connectTransport";
 import { ArtifactService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Label } from '../../components/ui/labels';
 import { Folder, FolderOpen, FileText, X } from 'lucide-react';
+import { fetchAllPages } from '../../lib/fetchAllPages';
+import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 
 const artifactClient = createClient(ArtifactService, transport);
 
@@ -19,25 +21,17 @@ export function ArtifactsBrowser() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedArtifact, setSelectedArtifact] = useState<any | null>(null);
   const [isAddingFolder, setIsAddingFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
   const [isAddingArtifact, setIsAddingArtifact] = useState(false);
-  const [newArtifactName, setNewArtifactName] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch all folders for the project - loop through every page, not just
   // the first, or folders past the default page size become unreachable.
   const { data: foldersData, isLoading: isLoadingFolders } = useQuery({
     queryKey: ['folders', activeProjectId],
-    queryFn: async () => {
-      const allFolders: Awaited<ReturnType<typeof artifactClient.listFolders>>['folders'] = [];
-      let cursor: string | undefined;
-      do {
-        const resp = await artifactClient.listFolders({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
-        allFolders.push(...resp.folders);
-        cursor = resp.page?.nextCursor || undefined;
-      } while (cursor);
-      return allFolders;
-    }
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await artifactClient.listFolders({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
+      return { items: resp.folders, nextCursor: resp.page?.nextCursor || undefined };
+    })
   });
 
   // Fetch artifacts for the selected folder, likewise across all pages.
@@ -45,14 +39,10 @@ export function ArtifactsBrowser() {
     queryKey: ['artifacts', selectedFolderId],
     queryFn: async () => {
       if (!selectedFolderId) return [];
-      const allArtifacts: Awaited<ReturnType<typeof artifactClient.listArtifacts>>['artifacts'] = [];
-      let cursor: string | undefined;
-      do {
+      return fetchAllPages(async (cursor) => {
         const resp = await artifactClient.listArtifacts({ folderId: selectedFolderId, page: cursor ? { cursor } : undefined });
-        allArtifacts.push(...resp.artifacts);
-        cursor = resp.page?.nextCursor || undefined;
-      } while (cursor);
-      return allArtifacts;
+        return { items: resp.artifacts, nextCursor: resp.page?.nextCursor || undefined };
+      });
     },
     enabled: !!selectedFolderId,
   });
@@ -85,7 +75,6 @@ export function ArtifactsBrowser() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['folders', activeProjectId] });
-      setNewFolderName('');
       setIsAddingFolder(false);
     },
   });
@@ -96,7 +85,6 @@ export function ArtifactsBrowser() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artifacts', selectedFolderId] });
-      setNewArtifactName('');
       setIsAddingArtifact(false);
     },
   });
@@ -119,26 +107,12 @@ export function ArtifactsBrowser() {
         </div>
         <div className="p-2 space-y-1 text-sm overflow-y-auto">
           {isAddingFolder && (
-            <form
-              className="flex gap-1 px-1 pb-1"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (newFolderName.trim()) createFolderMutation.mutate(newFolderName.trim());
-              }}
-            >
-              <input
-                autoFocus
-                type="text"
-                placeholder="Folder name"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onBlur={() => { if (!newFolderName.trim()) setIsAddingFolder(false); }}
-                className="border p-1 rounded text-xs flex-1 bg-background"
-              />
-              <button type="submit" disabled={createFolderMutation.isPending || !newFolderName.trim()} className="text-xs px-2 rounded bg-primary text-primary-foreground disabled:opacity-50">
-                Add
-              </button>
-            </form>
+            <InlineCreateForm
+              placeholder="Folder name"
+              isSubmitting={createFolderMutation.isPending}
+              onSubmit={(name) => createFolderMutation.mutate(name)}
+              onCancel={() => setIsAddingFolder(false)}
+            />
           )}
           {isLoadingFolders && <p className="p-2 text-muted-foreground text-xs">Loading folders...</p>}
           {!isLoadingFolders && rootFolders.length === 0 && !isAddingFolder && (
@@ -153,14 +127,12 @@ export function ArtifactsBrowser() {
                 onClick={() => {
                   setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id);
                   setIsAddingArtifact(false);
-                  setNewArtifactName('');
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id);
                     setIsAddingArtifact(false);
-                    setNewArtifactName('');
                   }
                 }}
                 className={`px-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center justify-between gap-2 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-sm ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
@@ -219,26 +191,13 @@ export function ArtifactsBrowser() {
                     <div className="text-xs text-muted-foreground/50 px-2 py-1 italic">Empty folder</div>
                   )}
                   {isAddingArtifact ? (
-                    <form
+                    <InlineCreateForm
                       className="flex gap-1 px-1"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (newArtifactName.trim()) createArtifactMutation.mutate({ folderId: folder.id, name: newArtifactName.trim() });
-                      }}
-                    >
-                      <input
-                        autoFocus
-                        type="text"
-                        placeholder="Artifact name"
-                        value={newArtifactName}
-                        onChange={(e) => setNewArtifactName(e.target.value)}
-                        onBlur={() => { if (!newArtifactName.trim()) setIsAddingArtifact(false); }}
-                        className="border p-1 rounded text-xs flex-1 bg-background"
-                      />
-                      <button type="submit" disabled={createArtifactMutation.isPending || !newArtifactName.trim()} className="text-xs px-2 rounded bg-primary text-primary-foreground disabled:opacity-50">
-                        Add
-                      </button>
-                    </form>
+                      placeholder="Artifact name"
+                      isSubmitting={createArtifactMutation.isPending}
+                      onSubmit={(name) => createArtifactMutation.mutate({ folderId: folder.id, name })}
+                      onCancel={() => setIsAddingArtifact(false)}
+                    />
                   ) : (
                     <button
                       onClick={() => setIsAddingArtifact(true)}

@@ -1,15 +1,14 @@
 package cmd
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"errors"
+
+	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 var projectTemplatesCmd = &cobra.Command{
@@ -34,7 +33,7 @@ var projectTemplatesCreateCmd = &cobra.Command{
 			return errors.New("--org and --name are required")
 		}
 
-		client := healthv1connect.NewProjectTemplateServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewProjectTemplateServiceClient()
 		res, err := client.CreateTemplate(context.Background(), connect.NewRequest(&healthv1.CreateProjectTemplateRequest{
 			OrgId:          orgID,
 			Name:           name,
@@ -63,7 +62,7 @@ var projectTemplatesGetCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
 
-		client := healthv1connect.NewProjectTemplateServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewProjectTemplateServiceClient()
 		res, err := client.GetTemplate(context.Background(), connect.NewRequest(&healthv1.GetProjectTemplateRequest{Id: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to get project template: %v\n", err)
@@ -99,7 +98,7 @@ var projectTemplatesListCmd = &cobra.Command{
 			return errors.New("--org is required")
 		}
 
-		client := healthv1connect.NewProjectTemplateServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewProjectTemplateServiceClient()
 		res, err := client.ListTemplates(context.Background(), connect.NewRequest(&healthv1.ListProjectTemplatesRequest{
 			OrgId: orgID,
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor},

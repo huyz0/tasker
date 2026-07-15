@@ -1,15 +1,16 @@
 package cmd
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+
+	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 var orgsCmd = &cobra.Command{
@@ -61,7 +62,7 @@ var orgsSeedCmd = &cobra.Command{
 			return errors.New("Error: --name and --slug are required.")
 		}
 
-		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewOrgServiceClient()
 		res, err := client.SeedOrg(context.Background(), connect.NewRequest(&healthv1.SeedOrgRequest{
 			Name:        name,
 			Slug:        slug,
@@ -93,7 +94,7 @@ var orgsInviteCmd = &cobra.Command{
 			return errors.New("Error: --email is required.")
 		}
 
-		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewOrgServiceClient()
 		_, err := client.InviteUser(context.Background(), connect.NewRequest(&healthv1.InviteUserRequest{
 			OrgId: args[0],
 			Email: email,
@@ -112,7 +113,7 @@ var orgsDeleteCmd = &cobra.Command{
 	Short: "Move an organization to the bin (requires org admin)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewOrgServiceClient()
 		_, err := client.ArchiveOrg(context.Background(), connect.NewRequest(&healthv1.ArchiveOrgRequest{OrgId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete organization: %v\n", err)
@@ -128,7 +129,7 @@ var orgsRestoreCmd = &cobra.Command{
 	Short: "Restore an organization from the bin (requires org admin)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewOrgServiceClient()
 		_, err := client.RestoreOrg(context.Background(), connect.NewRequest(&healthv1.RestoreOrgRequest{OrgId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore organization: %v\n", err)
@@ -144,7 +145,7 @@ var orgsPurgeCmd = &cobra.Command{
 	Short: "Permanently delete an already-binned, empty organization (requires org admin)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewOrgServiceClient()
 		_, err := client.PurgeOrg(context.Background(), connect.NewRequest(&healthv1.PurgeOrgRequest{OrgId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge organization: %v\n", err)
@@ -165,7 +166,7 @@ var orgsSetRetentionCmd = &cobra.Command{
 			cmd.Println("Error: --days must be at least 1.")
 			return errors.New("Error: --days must be at least 1.")
 		}
-		client := healthv1connect.NewOrgServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewOrgServiceClient()
 		_, err := client.SetOrgRetentionDays(context.Background(), connect.NewRequest(&healthv1.SetOrgRetentionDaysRequest{OrgId: args[0], BinRetentionDays: days}))
 		if err != nil {
 			cmd.PrintErrf("Failed to set retention: %v\n", err)

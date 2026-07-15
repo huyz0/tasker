@@ -1,15 +1,14 @@
 package cmd
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"errors"
+
+	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
-	healthv1connect "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 var repoCmd = &cobra.Command{
@@ -33,7 +32,7 @@ var repoListCmd = &cobra.Command{
 			return errors.New("Error: --project is required (or set TASKER_PROJECT_ID).")
 		}
 
-		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewRepositoryServiceClient()
 		res, err := client.ListRepositoryLinks(context.Background(), connect.NewRequest(&healthv1.ListRepositoryLinksRequest{
 			ProjectId: projectID,
 			Page:      &healthv1.PageRequest{Limit: limit, Cursor: cursor},
@@ -83,7 +82,7 @@ var repoLinkCmd = &cobra.Command{
 			return errors.New("Error: --email is required alongside --api-token for Bitbucket.")
 		}
 
-		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewRepositoryServiceClient()
 		res, err := client.AddRepositoryLink(context.Background(), connect.NewRequest(&healthv1.AddRepositoryLinkRequest{
 			ProjectId:  projectID,
 			Provider:   provider,
@@ -121,7 +120,7 @@ var repoSyncCmd = &cobra.Command{
 			return errors.New("Error: --project is required (or set TASKER_PROJECT_ID).")
 		}
 
-		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewRepositoryServiceClient()
 		res, err := client.SyncPullRequests(context.Background(), connect.NewRequest(&healthv1.SyncPullRequestsRequest{ProjectId: projectID}))
 		if err != nil {
 			cmd.PrintErrf("Failed to sync pull requests: %v\n", err)
@@ -154,7 +153,7 @@ var repoPrsCmd = &cobra.Command{
 			return errors.New("Error: --project is required (or set TASKER_PROJECT_ID).")
 		}
 
-		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewRepositoryServiceClient()
 		res, err := client.ListPullRequests(context.Background(), connect.NewRequest(&healthv1.ListPullRequestsRequest{ProjectId: projectID}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list pull requests: %v\n", err)
@@ -183,7 +182,7 @@ var repoBuildsCmd = &cobra.Command{
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
 
-		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewRepositoryServiceClient()
 		res, err := client.ListBuilds(context.Background(), connect.NewRequest(&healthv1.ListBuildsRequest{
 			RepositoryLinkId: args[0],
 			Page:             &healthv1.PageRequest{Limit: limit, Cursor: cursor},
@@ -219,7 +218,7 @@ var repoDeploymentsCmd = &cobra.Command{
 			return errors.New("Error: --link and --commit are both required (run `repo builds` first to find a build's commit sha).")
 		}
 
-		client := healthv1connect.NewRepositoryServiceClient(http.DefaultClient, backend.URL(), backend.ClientOptions()...)
+		client := backend.NewRepositoryServiceClient()
 		res, err := client.ListDeployments(context.Background(), connect.NewRequest(&healthv1.ListDeploymentsRequest{
 			BuildId:          args[0],
 			RepositoryLinkId: repositoryLinkID,
