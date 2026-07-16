@@ -31,7 +31,8 @@ export function ArtifactsBrowser() {
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await artifactClient.listFolders({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
       return { items: resp.folders, nextCursor: resp.page?.nextCursor || undefined };
-    })
+    }),
+    enabled: !!activeProjectId,
   });
 
   // Fetch artifacts for the selected folder, likewise across all pages.

@@ -9,6 +9,7 @@ import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
 import { fetchAllPages } from '../../lib/fetchAllPages';
+import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 
 const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
@@ -29,7 +30,19 @@ export function TasksWorkbench() {
   useEffect(() => setActivePageTitle('Tasks Workbench'), [setActivePageTitle]);
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [addingToColumnId, setAddingToColumnId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const createTaskMutation = useMutation({
+    mutationFn: async (variables: { title: string; status: string }) => {
+      const resp = await taskClient.createTask({ projectId: activeProjectId, title: variables.title, status: variables.status });
+      return resp.task;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] });
+      setAddingToColumnId(null);
+    },
+  });
 
   const { data: tasksData, isLoading } = useQuery({
     queryKey: ['tasks', activeProjectId],
@@ -38,7 +51,8 @@ export function TasksWorkbench() {
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await taskClient.listTasks({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
       return { items: resp.tasks, nextCursor: resp.page?.nextCursor || undefined };
-    })
+    }),
+    enabled: !!activeProjectId,
   });
 
   const expandedTask = tasksData?.find(t => t.id === expandedTaskId) ?? null;
@@ -144,7 +158,11 @@ export function TasksWorkbench() {
              <div key={col.id} className="w-80 flex-shrink-0 flex flex-col bg-muted/30 rounded-lg p-3">
                <div className="flex items-center justify-between mb-3 font-medium text-sm">
                  <span className="flex items-center gap-2">{col.display} <span className="text-xs bg-muted text-muted-foreground px-2 rounded-full">{col.count}</span></span>
-                 <button aria-label={`Add task to ${col.display}`} className="text-muted-foreground hover:text-foreground">+</button>
+                 <button
+                   aria-label={`Add task to ${col.display}`}
+                   onClick={() => setAddingToColumnId(col.id)}
+                   className="text-muted-foreground hover:text-foreground"
+                 >+</button>
                </div>
                <div className="flex flex-col gap-3 flex-1 overflow-y-auto">
                  {col.items.map(task => (
@@ -179,11 +197,30 @@ export function TasksWorkbench() {
                       </div>
                    </div>
                  ))}
-                 <button aria-label={`Add task to ${col.display}`} className="w-full mt-2 py-2 text-muted-foreground bg-background rounded-md border border-dashed hover:border-solid text-sm shadow-sm">+</button>
+                 {addingToColumnId === col.id ? (
+                   <InlineCreateForm
+                     placeholder="Task title"
+                     isSubmitting={createTaskMutation.isPending}
+                     onSubmit={(title) => createTaskMutation.mutate({ title, status: col.id })}
+                     onCancel={() => setAddingToColumnId(null)}
+                     className="flex flex-col gap-2 mt-2"
+                     inputClassName="border p-2 rounded-md text-sm bg-background"
+                     buttonClassName="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+                   />
+                 ) : (
+                   <button
+                     aria-label={`Add task to ${col.display}`}
+                     onClick={() => setAddingToColumnId(col.id)}
+                     className="w-full mt-2 py-2 text-muted-foreground bg-background rounded-md border border-dashed hover:border-solid text-sm shadow-sm"
+                   >+</button>
+                 )}
                </div>
              </div>
           ))}
         </div>
+        {createTaskMutation.isError && (
+          <p className="text-sm text-destructive">Failed to create task: {(createTaskMutation.error as Error).message}</p>
+        )}
       </div>
 
       {/* Slide out detail panel */}
