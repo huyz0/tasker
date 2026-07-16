@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { TaskService, RepositoryService, TaskTypeService, TaskNoteService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
@@ -113,6 +114,11 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
 
 // Fallback status set for tasks with no taskTypeId, or whose task type has
 // no custom statuses configured - matches the backend's KNOWN_STATUSES.
+// Fixed-width ID/Status columns keep those cells snug around their content;
+// Title takes the remaining space and Pull Requests gets enough room for a
+// couple of badges before wrapping.
+const TABLE_COLUMN_WIDTHS = '110px minmax(200px, 1fr) 140px minmax(180px, 260px)';
+
 const DEFAULT_STATUS_OPTIONS = [
   { id: 'todo', display: 'Todo' },
   { id: 'in-progress', display: 'In Progress' },
@@ -128,6 +134,9 @@ export function TasksWorkbench() {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [addingToColumnId, setAddingToColumnId] = useState<string | null>(null);
   const [isEditingTask, setIsEditingTask] = useState(false);
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [sort, setSort] = useState<{ key: 'displayId' | 'title' | 'status'; dir: 'asc' | 'desc' } | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const queryClient = useQueryClient();
@@ -263,6 +272,34 @@ export function TasksWorkbench() {
     ? statusesByTaskType.get(expandedTask.taskTypeId)!.map(name => ({ id: name, display: name }))
     : DEFAULT_STATUS_OPTIONS;
 
+  const statusDisplay = (statusId: string) => columnDefs.find(c => c.id === statusId)!.display;
+
+  const sortedTasks = useMemo(() => {
+    const items = tasksData ?? [];
+    if (!sort) return items;
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...items].sort((a, b) => {
+      const va = sort.key === 'status' ? statusDisplay(a.status || 'todo') : a[sort.key];
+      const vb = sort.key === 'status' ? statusDisplay(b.status || 'todo') : b[sort.key];
+      return va.localeCompare(vb) * dir;
+    });
+  }, [tasksData, sort, columnDefs]);
+
+  const toggleSort = (key: 'displayId' | 'title' | 'status') => {
+    setSort(prev => {
+      if (!prev || prev.key !== key) return { key, dir: 'asc' };
+      if (prev.dir === 'asc') return { key, dir: 'desc' };
+      return null;
+    });
+  };
+
+  const rowVirtualizer = useVirtualizer({
+    count: sortedTasks.length,
+    getScrollElement: () => tableScrollRef.current,
+    estimateSize: () => 45,
+    overscan: 10,
+  });
+
   return (
     <div className="h-full flex flex-col gap-6">
       <div className="flex justify-between items-end">
@@ -270,9 +307,97 @@ export function TasksWorkbench() {
           <h1 className="text-3xl font-semibold tracking-tight">Tasks Workbench</h1>
           <p className="text-muted-foreground mt-1">Detailed task workbench for humans and autonomous agents.</p>
         </div>
-        <button className="px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium">Filter Tasks</button>
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-md border overflow-hidden text-sm font-medium">
+            <button
+              onClick={() => setViewMode('card')}
+              aria-pressed={viewMode === 'card'}
+              className={`px-3 py-2 ${viewMode === 'card' ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
+            >
+              Board
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              aria-pressed={viewMode === 'table'}
+              className={`px-3 py-2 border-l ${viewMode === 'table' ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
+            >
+              Table
+            </button>
+          </div>
+          <button className="px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium">Filter Tasks</button>
+        </div>
       </div>
 
+      {viewMode === 'table' ? (
+        <div className="h-[calc(100vh-260px)] overflow-hidden border rounded-lg flex flex-col" role="table" aria-label="Tasks">
+          <div
+            role="row"
+            className="grid bg-muted/30 text-left text-xs text-muted-foreground uppercase tracking-wide shrink-0"
+            style={{ gridTemplateColumns: TABLE_COLUMN_WIDTHS }}
+          >
+            {(['displayId', 'title', 'status'] as const).map(key => (
+              <button
+                key={key}
+                role="columnheader"
+                onClick={() => toggleSort(key)}
+                className="px-4 py-2 font-medium text-left flex items-center gap-1 hover:text-foreground"
+              >
+                {key === 'displayId' ? 'ID' : key === 'title' ? 'Title' : 'Status'}
+                {sort?.key === key && <span>{sort.dir === 'asc' ? '▲' : '▼'}</span>}
+              </button>
+            ))}
+            <div role="columnheader" className="px-4 py-2 font-medium">Pull Requests</div>
+          </div>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground w-full text-center py-10">Loading tasks...</p>
+          ) : sortedTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground w-full text-center py-10">No tasks yet.</p>
+          ) : (
+            <div ref={tableScrollRef} className="flex-1 overflow-auto">
+              <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+                {rowVirtualizer.getVirtualItems().map(virtualRow => {
+                  const task = sortedTasks[virtualRow.index];
+                  return (
+                    <div
+                      key={task.id}
+                      role="row"
+                      tabIndex={0}
+                      onClick={() => setExpandedTaskId(task.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setExpandedTaskId(task.id);
+                        }
+                      }}
+                      className="grid items-center border-t hover:bg-muted/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 absolute top-0 left-0 w-full"
+                      style={{ gridTemplateColumns: TABLE_COLUMN_WIDTHS, height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
+                    >
+                      <div role="cell" className="px-4 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">{task.displayId}</div>
+                      <div role="cell" className="px-4 py-2 truncate">{task.title}</div>
+                      <div role="cell" className="px-4 py-2">
+                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                          {statusDisplay(task.status || 'todo')}
+                        </span>
+                      </div>
+                      <div role="cell" className="px-4 py-2">
+                        {(pullRequestsByTaskId.get(task.id)?.length ?? 0) > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {pullRequestsByTaskId.get(task.id)!.map(pr => (
+                              <PullRequestBadge key={pr.id} pr={{ remotePrId: `#${pr.remotePrId}`, title: pr.title, status: pr.status, url: pr.url }} />
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="flex gap-4 overflow-x-auto pb-4 h-full">
           {isLoading ? (
             <p className="text-sm text-muted-foreground w-full text-center py-10">Loading tasks...</p>
@@ -340,6 +465,7 @@ export function TasksWorkbench() {
              </div>
           ))}
         </div>
+      )}
       {createTaskMutation.isError && (
         <p className="text-sm text-destructive">Failed to create task: {(createTaskMutation.error as Error).message}</p>
       )}

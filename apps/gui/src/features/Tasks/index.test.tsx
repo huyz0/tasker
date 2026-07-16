@@ -538,4 +538,149 @@ describe('TasksWorkbench', () => {
 
     await waitFor(() => expect(screen.getByText(/Failed to create task/)).toBeInTheDocument());
   });
+
+  it('switches to table view and shows tasks as rows', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    expect(screen.getByText('ENG-1')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Title' })).toBeInTheDocument();
+  });
+
+  it('shows an empty state in table view when there are no tasks', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getAllByLabelText('Add task to Todo')[0]).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    await waitFor(() => expect(screen.getByText('No tasks yet.')).toBeInTheDocument());
+  });
+
+  it('opens a task detail overlay from a table row, including via keyboard', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
+    ] });
+    mockListPullRequests.mockResolvedValue({
+      pullRequests: [{ id: 'pr-1', taskId: 'task-1', remotePrId: '42', title: 'ENG-1: fix bug', status: 'open', url: 'http://example.com/pr/42' }],
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    expect(screen.getByText('#42')).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByText('ENG-1'), { key: 'Enter' });
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeInTheDocument());
+  });
+
+  it('opens a task detail overlay from a table row via mouse click', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+    fireEvent.click(screen.getByText('ENG-1'));
+
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeInTheDocument());
+  });
+
+  it('opens a task detail overlay from a table row via keyboard space', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+    fireEvent.keyDown(screen.getByText('ENG-1'), { key: ' ' });
+
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeInTheDocument());
+  });
+
+  it('ignores non-activation keys on a table row', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+    fireEvent.keyDown(screen.getByText('ENG-1'), { key: 'Tab' });
+
+    expect(screen.queryByText('Task Details')).toBeNull();
+  });
+
+  it('defaults a table row with no status to todo', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'No status task', description: '', displayId: 'ENG-1' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('No status task')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    expect(screen.getByText('Todo')).toBeInTheDocument();
+  });
+
+  it('sorts table rows by title, toggling asc/desc/none', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Zebra task', status: 'todo', description: '', displayId: 'ENG-1' },
+      { id: 'task-2', title: 'Apple task', status: 'todo', description: '', displayId: 'ENG-2' },
+    ] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Zebra task')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    const getTitles = () => screen.getAllByRole('row').slice(1).map(r => within(r).getAllByRole('cell')[1].textContent);
+    expect(getTitles()).toEqual(['Zebra task', 'Apple task']);
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
+    expect(getTitles()).toEqual(['Apple task', 'Zebra task']);
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
+    expect(getTitles()).toEqual(['Zebra task', 'Apple task']);
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
+    expect(getTitles()).toEqual(['Zebra task', 'Apple task']);
+  });
+
+  it('switching the sort column resets to ascending', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-2' },
+      { id: 'task-2', title: 'Write docs', status: 'in-progress', description: '', displayId: 'ENG-1' },
+    ] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /^ID/ }));
+    const getIds = () => screen.getAllByRole('row').slice(1).map(r => within(r).getAllByRole('cell')[0].textContent);
+    expect(getIds()).toEqual(['ENG-1', 'ENG-2']);
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /Status/ }));
+    expect(screen.getAllByRole('row').slice(1).map(r => within(r).getAllByRole('cell')[2].textContent)).toEqual(['In Progress', 'Todo']);
+  });
+
+  it('shows a loading state in table view', async () => {
+    let resolveList: (v: any) => void = () => {};
+    mockListTasks.mockReturnValue(new Promise((resolve) => { resolveList = resolve; }));
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+    await waitFor(() => expect(screen.getByText('Loading tasks...')).toBeInTheDocument());
+    resolveList({ tasks: [] });
+  });
+
+  it('switches back to board view from table view', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+    expect(screen.getByText('ENG-1')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Board' }));
+    await waitFor(() => expect(screen.queryByRole('columnheader', { name: 'Title' })).toBeNull());
+    expect(screen.getByText('Fix bug')).toBeInTheDocument();
+  });
 });
