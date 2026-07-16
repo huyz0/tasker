@@ -85,7 +85,7 @@ describe('Comment Compound Component', () => {
 
     const agentComment = screen.getByText(/Agent agent-alpha/).closest('div.p-4');
     expect(agentComment).toHaveClass('border-primary/20');
-    expect(screen.getByText(/🤖/)).toBeInTheDocument();
+    expect(agentComment?.querySelector('svg')).toBeInTheDocument();
   });
 
   test('renders "Unknown" as the author when a comment has neither a userId nor an agentId', async () => {

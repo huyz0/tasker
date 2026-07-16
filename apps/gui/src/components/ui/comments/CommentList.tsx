@@ -4,6 +4,10 @@ import { CommentItem } from './CommentItem';
 export function CommentList({ emptyMessage = "No comments yet. Start the conversation!" }: { emptyMessage?: string }) {
   const { state } = useComments();
 
+  if (state.isLoadingComments) {
+    return <p className="text-sm text-muted-foreground text-center py-4">Loading comments...</p>;
+  }
+
   return (
     <div className="flex flex-col space-y-4">
       {state.comments.map((c) => (

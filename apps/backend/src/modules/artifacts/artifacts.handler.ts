@@ -22,7 +22,10 @@ const CreateArtifactSchema = z.object({
   // For images, content is base64-encoded and contentType is the image's
   // MIME type (e.g. "image/png") - up to ~10MB of raw image data.
   content: z.string().max(15_000_000).optional().default(""),
-  contentType: z.string().min(1).max(128).optional().default("text/markdown"),
+  // Proto3 can't distinguish an omitted string field from an empty one - the
+  // CLI/GUI always send contentType: "" when the caller didn't pick one - so
+  // "" must be treated the same as "not provided" for the default to apply.
+  contentType: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(128).optional().default("text/markdown")),
 });
 
 const LinkTaskArtifactSchema = z.object({

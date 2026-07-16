@@ -16,6 +16,7 @@ export interface CommentData {
 
 export interface CommentState {
   comments: CommentData[];
+  isLoadingComments: boolean;
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
@@ -78,7 +79,8 @@ export function CommentProvider({ entityId, entityType, children }: CommentProvi
   const value = useMemo<CommentContextValue>(() => ({
     state: {
       comments: data ?? [],
-      isLoading: isLoadingList || addCommentMutation.isPending,
+      isLoadingComments: isLoadingList,
+      isLoading: addCommentMutation.isPending,
       isError: addCommentMutation.isError,
       error: addCommentMutation.error as Error | null,
     },
