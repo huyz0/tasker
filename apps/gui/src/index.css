@@ -116,4 +116,16 @@
     outline-offset: 2px;
     border-radius: var(--radius-sm);
   }
+
+  /* Native <select>/<option> popups don't inherit background-color from
+     Tailwind classes on the <select> itself - browsers render the open
+     dropdown list against their own default (often white) background while
+     still inheriting the inherited text color, so every dark-themed select
+     in the app showed near-invisible light-on-light option text. */
+  select,
+  option,
+  optgroup {
+    background-color: var(--color-popover);
+    color: var(--color-popover-foreground);
+  }
 }
