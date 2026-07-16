@@ -279,6 +279,58 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.queryByText('Task Details')).toBeNull());
   });
 
+  it('closes the detail overlay when pressing Escape', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByText('Task Details')).toBeNull());
+  });
+
+  it('does not close on unrelated key presses while the overlay is open', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+    fireEvent.keyDown(window, { key: 'Tab' });
+
+    expect(screen.getByText('Task Details')).toBeInTheDocument();
+  });
+
+  it('closes the detail overlay when clicking the backdrop', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+    fireEvent.click(screen.getByText('Task Details').closest('.fixed.inset-0')!);
+
+    await waitFor(() => expect(screen.queryByText('Task Details')).toBeNull());
+  });
+
+  it('does not close the overlay when clicking inside the panel', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+    fireEvent.click(screen.getByText('Task Details'));
+
+    expect(screen.getByText('Task Details')).toBeInTheDocument();
+  });
+
   it('edits a task title and description through the GUI', async () => {
     mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: 'Old desc' }] });
     mockUpdateTask.mockResolvedValue({ task: { id: 'task-1', title: 'Fix the bug', status: 'todo', description: 'New desc' } });

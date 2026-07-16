@@ -158,6 +158,17 @@ export function TasksWorkbench() {
 
   useEffect(() => setIsEditingTask(false), [expandedTaskId]);
 
+  // Focused-overlay UX (matches Jira/Linear's task-detail pattern): Escape
+  // closes it from anywhere, not just via the visible close button.
+  useEffect(() => {
+    if (!expandedTaskId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setExpandedTaskId(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [expandedTaskId]);
+
   // Task types can define their own custom status sets/state machines
   // (see tasks.handler.ts's validateStatusForTaskType) - fetch each distinct
   // task type actually in use so the board can render columns for them
@@ -253,17 +264,16 @@ export function TasksWorkbench() {
     : DEFAULT_STATUS_OPTIONS;
 
   return (
-    <div className="flex h-full gap-6">
-      <div className="flex-1 flex flex-col gap-6">
-        <div className="flex justify-between items-end">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Tasks Workbench</h1>
-            <p className="text-muted-foreground mt-1">Detailed task workbench for humans and autonomous agents.</p>
-          </div>
-          <button className="px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium">Filter Tasks</button>
+    <div className="h-full flex flex-col gap-6">
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Tasks Workbench</h1>
+          <p className="text-muted-foreground mt-1">Detailed task workbench for humans and autonomous agents.</p>
         </div>
-        
-        <div className="flex gap-4 overflow-x-auto pb-4 h-full">
+        <button className="px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium">Filter Tasks</button>
+      </div>
+
+      <div className="flex gap-4 overflow-x-auto pb-4 h-full">
           {isLoading ? (
             <p className="text-sm text-muted-foreground w-full text-center py-10">Loading tasks...</p>
           ) : columns.map(col => (
@@ -330,15 +340,23 @@ export function TasksWorkbench() {
              </div>
           ))}
         </div>
-        {createTaskMutation.isError && (
-          <p className="text-sm text-destructive">Failed to create task: {(createTaskMutation.error as Error).message}</p>
-        )}
-      </div>
+      {createTaskMutation.isError && (
+        <p className="text-sm text-destructive">Failed to create task: {(createTaskMutation.error as Error).message}</p>
+      )}
 
-      {/* Slide out detail panel */}
+      {/* Focused task-detail overlay (Jira/Linear pattern): takes over most
+          of the screen instead of a cramped permanent side panel, so there's
+          room for description, labels, agent notes, and comments at once. */}
       {expandedTask && (
-        <div className="w-80 flex-shrink-0 border-l bg-card flex flex-col pt-0 shadow-xl overflow-hidden animate-in slide-in-from-right-4">
-           <div className="p-4 border-b flex justify-between items-center">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:p-8 animate-in fade-in"
+          onClick={() => setExpandedTaskId(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-4xl h-full max-h-[90vh] bg-card border rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95"
+          >
+           <div className="p-4 border-b flex justify-between items-center shrink-0">
              <h2 className="font-semibold">Task Details</h2>
              <div className="flex items-center gap-3">
                {!isEditingTask && (
@@ -368,9 +386,10 @@ export function TasksWorkbench() {
              </div>
            </div>
            {deleteTaskMutation.isError && (
-             <p className="text-sm text-destructive px-4 pt-2">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
+             <p className="text-sm text-destructive px-4 pt-2 shrink-0">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
            )}
-           <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
+           <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
              <div className="text-sm text-primary font-medium mb-1">{expandedTask.displayId}</div>
              {isEditingTask ? (
                <form
@@ -418,9 +437,27 @@ export function TasksWorkbench() {
              ) : (
                <h3 className="text-xl font-bold mb-4">{expandedTask.title}</h3>
              )}
-             <div className="space-y-3 text-sm text-muted-foreground mb-6">
+             {!isEditingTask && (
+               <div className="prose prose-sm dark:prose-invert max-w-none">
+                  {expandedTask.description ? (
+                    <MarkdownRenderer content={expandedTask.description} />
+                  ) : (
+                    <p className="text-muted-foreground italic">No description provided.</p>
+                  )}
+               </div>
+             )}
+             <div className="mt-8">
+               <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>
+               <Comment.Provider entityId={expandedTask.id} entityType="task">
+                 <Comment.List />
+                 <Comment.Composer />
+               </Comment.Provider>
+             </div>
+           </div>
+           <div className="w-full md:w-72 shrink-0 border-t md:border-t-0 md:border-l p-6 overflow-y-auto custom-scrollbar space-y-6 bg-muted/20">
+             <div className="space-y-3 text-sm text-muted-foreground">
                 <div className="flex justify-between items-center">
-                  <span className="w-24">Status:</span>
+                  <span className="w-20">Status:</span>
                   <select
                     value={expandedTask.status || 'todo'}
                     disabled={updateStatusMutation.isPending}
@@ -435,19 +472,10 @@ export function TasksWorkbench() {
                 {updateStatusMutation.isError && (
                   <p className="text-destructive text-xs">Failed to update status: {(updateStatusMutation.error as Error).message}</p>
                 )}
-                <div className="flex justify-between"><span className="w-24">Assignee:</span> <span className="text-foreground">Unassigned</span></div>
+                <div className="flex justify-between"><span className="w-20">Assignee:</span> <span className="text-foreground">Unassigned</span></div>
              </div>
-             {!isEditingTask && (
-               <div className="prose prose-sm dark:prose-invert max-w-none">
-                  {expandedTask.description ? (
-                    <MarkdownRenderer content={expandedTask.description} />
-                  ) : (
-                    <p className="text-muted-foreground italic">No description provided.</p>
-                  )}
-               </div>
-             )}
-             <div className="mt-6">
-               <h3 className="text-lg font-semibold tracking-tight mb-3">Labels</h3>
+             <div>
+               <h3 className="text-sm font-semibold tracking-tight mb-3">Labels</h3>
                <Label.Provider entityId={expandedTask.id} entityType="task" orgId={activeOrgId}>
                  <Label.Chips />
                  <div className="mt-3">
@@ -455,18 +483,13 @@ export function TasksWorkbench() {
                  </div>
                </Label.Provider>
              </div>
-             <div className="mt-8">
-               <h3 className="text-lg font-semibold tracking-tight mb-4">Agent Notes</h3>
+             <div>
+               <h3 className="text-sm font-semibold tracking-tight mb-3">Agent Notes</h3>
                <TaskNotesPanel taskId={expandedTask.id} />
              </div>
-             <div className="mt-8">
-               <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>
-               <Comment.Provider entityId={expandedTask.id} entityType="task">
-                 <Comment.List />
-                 <Comment.Composer />
-               </Comment.Provider>
-             </div>
            </div>
+           </div>
+          </div>
         </div>
       )}
     </div>
