@@ -135,6 +135,13 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pullRequests', projectId] }),
   });
 
+  const removeLinkMutation = useMutation({
+    mutationFn: async (repositoryLinkId: string) => {
+      await repositoryClient.removeRepositoryLink({ repositoryLinkId });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['repositoryLinks', projectId] }),
+  });
+
   const addLinkMutation = useMutation({
     mutationFn: async () => {
       await repositoryClient.addRepositoryLink({
@@ -180,6 +187,17 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                   >
                     {syncMutation.isPending ? 'Syncing...' : 'Sync PRs'}
                   </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Unlink ${link.provider}: ${link.remoteName}? This cannot be undone.`)) {
+                        removeLinkMutation.mutate(link.id);
+                      }
+                    }}
+                    disabled={removeLinkMutation.isPending}
+                    className="text-xs text-muted-foreground hover:text-destructive px-2 py-1 disabled:opacity-50"
+                  >
+                    Unlink
+                  </button>
                 </div>
               </div>
               {expandedLinkId === link.id && <BuildsPanel repositoryLinkId={link.id} />}
@@ -190,6 +208,9 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
 
       {syncMutation.isError && (
         <p className="text-sm text-destructive mb-4">Failed to sync pull requests: {(syncMutation.error as Error).message}</p>
+      )}
+      {removeLinkMutation.isError && (
+        <p className="text-sm text-destructive mb-4">Failed to unlink repository: {(removeLinkMutation.error as Error).message}</p>
       )}
 
       {data && data.length > 0 && (

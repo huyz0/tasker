@@ -15,6 +15,15 @@ const CreateTaskNoteSchema = z.object({
   content: z.string().min(1, "content is required").max(8192),
 });
 
+const UpdateTaskNoteSchema = z.object({
+  taskNoteId: z.string().min(1, "taskNoteId is required"),
+  content: z.string().min(1, "content is required").max(8192),
+});
+
+const DeleteTaskNoteSchema = z.object({
+  taskNoteId: z.string().min(1, "taskNoteId is required"),
+});
+
 // --- Handler Factory ---
 
 export const createTaskNotesHandler = (db: any, nc: any = null) => {
@@ -50,6 +59,37 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       const noteResp = { ...payload };
       publishDomainEvent(nc, "domain.tasknote.created", noteResp);
       return { taskNote: noteResp };
+    },
+    async updateTaskNote(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateTaskNoteSchema.parse(req);
+
+      const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
+      const existing = await db.select().from(notes).where(eq((notes as any).id, parsed.taskNoteId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("task note not found", Code.NotFound);
+      const orgId = await getTaskOrgId(db, existing[0].taskId);
+      await assertOrgMember(db, userId, orgId);
+
+      await db.update(notes).set({ content: parsed.content }).where(eq((notes as any).id, parsed.taskNoteId));
+
+      const updated = { ...existing[0], content: parsed.content };
+      publishDomainEvent(nc, "domain.tasknote.updated", updated);
+      return { taskNote: updated };
+    },
+    async deleteTaskNote(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = DeleteTaskNoteSchema.parse(req);
+
+      const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
+      const existing = await db.select().from(notes).where(eq((notes as any).id, parsed.taskNoteId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("task note not found", Code.NotFound);
+      const orgId = await getTaskOrgId(db, existing[0].taskId);
+      await assertOrgMember(db, userId, orgId);
+
+      await db.delete(notes).where(eq((notes as any).id, parsed.taskNoteId));
+
+      publishDomainEvent(nc, "domain.tasknote.deleted", { taskNoteId: parsed.taskNoteId });
+      return { success: true };
     },
     async listTaskNotes(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

@@ -115,9 +115,43 @@ model SetOrgRetentionDaysResponse {
   @field(1) success: boolean;
 }
 
+model UpdateOrgRequest {
+  @field(1) orgId: string;
+  @field(2) name?: string;
+  @field(3) slug?: string;
+}
+model UpdateOrgResponse {
+  @field(1) organization: Organization;
+}
+
+model OrgMember {
+  @field(1) userId: string;
+  @field(2) email: string;
+  @field(3) name: string;
+  @field(4) role: string;
+}
+
+model ListOrgMembersRequest {
+  @field(1) orgId: string;
+  @field(2) page?: PageRequest;
+}
+model ListOrgMembersResponse {
+  @field(1) members: OrgMember[];
+  @field(2) page?: PageResponse;
+}
+
+model RemoveOrgMemberRequest {
+  @field(1) orgId: string;
+  @field(2) userId: string;
+}
+model RemoveOrgMemberResponse {
+  @field(1) success: boolean;
+}
+
 interface OrgService {
   listOrgs(request: ListOrgsRequest): ListOrgsResponse;
   seedOrg(request: SeedOrgRequest): SeedOrgResponse;
+  updateOrg(request: UpdateOrgRequest): UpdateOrgResponse;
   archiveOrg(request: ArchiveOrgRequest): ArchiveOrgResponse;
   restoreOrg(request: RestoreOrgRequest): RestoreOrgResponse;
   purgeOrg(request: PurgeOrgRequest): PurgeOrgResponse;
@@ -126,6 +160,8 @@ interface OrgService {
   ): SetOrgRetentionDaysResponse;
 
   inviteUser(request: InviteUserRequest): InviteUserResponse;
+  listOrgMembers(request: ListOrgMembersRequest): ListOrgMembersResponse;
+  removeOrgMember(request: RemoveOrgMemberRequest): RemoveOrgMemberResponse;
 }
 
 model InviteUserRequest {
@@ -209,9 +245,19 @@ model CreateTaskStatusTransitionResponse {
   @field(1) transition: TaskStatusTransition;
 }
 
+model UpdateTaskTypeRequest {
+  @field(1) id: string;
+  @field(2) name?: string;
+  @field(3) parentId?: string;
+}
+model UpdateTaskTypeResponse {
+  @field(1) taskType: TaskType;
+}
+
 interface TaskTypeService {
   getTaskType(request: GetTaskTypeRequest): GetTaskTypeResponse;
   createTaskType(request: CreateTaskTypeRequest): CreateTaskTypeResponse;
+  updateTaskType(request: UpdateTaskTypeRequest): UpdateTaskTypeResponse;
   listTaskTypes(request: ListTaskTypesRequest): ListTaskTypesResponse;
   createTaskStatus(request: CreateTaskStatusRequest): CreateTaskStatusResponse;
   createTaskStatusTransition(
@@ -267,11 +313,24 @@ model ListProjectTemplatesResponse {
   @field(2) page?: PageResponse;
 }
 
+model UpdateProjectTemplateRequest {
+  @field(1) id: string;
+  @field(2) name?: string;
+  @field(3) description?: string;
+  @field(4) rootTaskTypeId?: string;
+}
+model UpdateProjectTemplateResponse {
+  @field(1) template: ProjectTemplate;
+}
+
 interface ProjectTemplateService {
   getTemplate(request: GetProjectTemplateRequest): GetProjectTemplateResponse;
   createTemplate(
     request: CreateProjectTemplateRequest,
   ): CreateProjectTemplateResponse;
+  updateTemplate(
+    request: UpdateProjectTemplateRequest,
+  ): UpdateProjectTemplateResponse;
   listTemplates(
     request: ListProjectTemplatesRequest,
   ): ListProjectTemplatesResponse;
@@ -325,9 +384,18 @@ model PurgeProjectResponse {
   @field(1) success: boolean;
 }
 
+model UpdateProjectRequest {
+  @field(1) projectId: string;
+  @field(2) name: string;
+}
+model UpdateProjectResponse {
+  @field(1) project: Project;
+}
+
 interface ProjectService {
   getProject(request: GetProjectRequest): GetProjectResponse;
   createProject(request: CreateProjectRequest): CreateProjectResponse;
+  updateProject(request: UpdateProjectRequest): UpdateProjectResponse;
   listProjects(request: ListProjectsRequest): ListProjectsResponse;
   archiveProject(request: ArchiveProjectRequest): ArchiveProjectResponse;
   restoreProject(request: RestoreProjectRequest): RestoreProjectResponse;
@@ -371,6 +439,16 @@ model ListAgentRolesResponse {
   @field(2) page?: PageResponse;
 }
 
+model UpdateAgentRoleRequest {
+  @field(1) id: string;
+  @field(2) name?: string;
+  @field(3) systemPrompt?: string;
+  @field(4) capabilities?: string;
+}
+model UpdateAgentRoleResponse {
+  @field(1) role: AgentRole;
+}
+
 model CreateAgentRequest {
   @field(1) orgId: string;
   @field(2) agentRoleId: string;
@@ -378,6 +456,15 @@ model CreateAgentRequest {
 }
 
 model CreateAgentResponse {
+  @field(1) agent: Agent;
+}
+
+model UpdateAgentRequest {
+  @field(1) agentId: string;
+  @field(2) name?: string;
+  @field(3) agentRoleId?: string;
+}
+model UpdateAgentResponse {
   @field(1) agent: Agent;
 }
 
@@ -417,8 +504,10 @@ model PurgeAgentResponse {
 
 interface AgentService {
   createAgentRole(request: CreateAgentRoleRequest): CreateAgentRoleResponse;
+  updateAgentRole(request: UpdateAgentRoleRequest): UpdateAgentRoleResponse;
   listAgentRoles(request: ListAgentRolesRequest): ListAgentRolesResponse;
   createAgent(request: CreateAgentRequest): CreateAgentResponse;
+  updateAgent(request: UpdateAgentRequest): UpdateAgentResponse;
   listAgents(request: ListAgentsRequest): ListAgentsResponse;
   archiveAgent(request: ArchiveAgentRequest): ArchiveAgentResponse;
   restoreAgent(request: RestoreAgentRequest): RestoreAgentResponse;
@@ -512,6 +601,17 @@ model UpdateTaskStatusResponse {
   @field(1) task: Task;
 }
 
+model UpdateTaskRequest {
+  @field(1) taskId: string;
+  @field(2) title?: string;
+  @field(3) description?: string;
+  @field(4) taskTypeId?: string;
+}
+
+model UpdateTaskResponse {
+  @field(1) task: Task;
+}
+
 model DeleteTaskRequest {
   @field(1) taskId: string;
 }
@@ -540,6 +640,7 @@ interface TaskService {
   createTask(request: CreateTaskRequest): CreateTaskResponse;
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
   listTasks(request: ListTasksRequest): ListTasksResponse;
+  updateTask(request: UpdateTaskRequest): UpdateTaskResponse;
   updateTaskStatus(request: UpdateTaskStatusRequest): UpdateTaskStatusResponse;
   deleteTask(request: DeleteTaskRequest): DeleteTaskResponse;
   restoreTask(request: RestoreTaskRequest): RestoreTaskResponse;
@@ -585,6 +686,14 @@ model CreateFolderRequest {
   @field(3) name: string;
 }
 model CreateFolderResponse {
+  @field(1) folder: Folder;
+}
+
+model UpdateFolderRequest {
+  @field(1) folderId: string;
+  @field(2) name: string;
+}
+model UpdateFolderResponse {
   @field(1) folder: Folder;
 }
 
@@ -682,6 +791,7 @@ model PurgeFolderResponse {
 
 interface ArtifactService {
   createFolder(request: CreateFolderRequest): CreateFolderResponse;
+  updateFolder(request: UpdateFolderRequest): UpdateFolderResponse;
   createArtifact(request: CreateArtifactRequest): CreateArtifactResponse;
   updateArtifactContent(
     request: UpdateArtifactContentRequest,
@@ -736,8 +846,33 @@ model ListCommentsResponse {
   @field(2) page?: PageResponse;
 }
 
+model UpdateCommentRequest {
+  @field(1) commentId: string;
+  @field(2) content: string;
+
+  // Caller's userId/agentId, used to authorize that only the original author
+  // may edit or delete a comment - same attribution pattern as createComment.
+  @field(3) userId: string; // Optional
+
+  @field(4) agentId: string; // Optional
+}
+model UpdateCommentResponse {
+  @field(1) comment: Comment;
+}
+
+model DeleteCommentRequest {
+  @field(1) commentId: string;
+  @field(2) userId: string; // Optional
+  @field(3) agentId: string; // Optional
+}
+model DeleteCommentResponse {
+  @field(1) success: boolean;
+}
+
 interface CommentService {
   createComment(request: CreateCommentRequest): CreateCommentResponse;
+  updateComment(request: UpdateCommentRequest): UpdateCommentResponse;
+  deleteComment(request: DeleteCommentRequest): DeleteCommentResponse;
   listComments(request: ListCommentsRequest): ListCommentsResponse;
 }
 
@@ -770,8 +905,25 @@ model ListTaskNotesResponse {
   @field(2) page?: PageResponse;
 }
 
+model UpdateTaskNoteRequest {
+  @field(1) taskNoteId: string;
+  @field(2) content: string;
+}
+model UpdateTaskNoteResponse {
+  @field(1) taskNote: TaskNote;
+}
+
+model DeleteTaskNoteRequest {
+  @field(1) taskNoteId: string;
+}
+model DeleteTaskNoteResponse {
+  @field(1) success: boolean;
+}
+
 interface TaskNoteService {
   createTaskNote(request: CreateTaskNoteRequest): CreateTaskNoteResponse;
+  updateTaskNote(request: UpdateTaskNoteRequest): UpdateTaskNoteResponse;
+  deleteTaskNote(request: DeleteTaskNoteRequest): DeleteTaskNoteResponse;
   listTaskNotes(request: ListTaskNotesRequest): ListTaskNotesResponse;
 }
 
@@ -828,8 +980,18 @@ model ListEntityLabelsResponse {
   @field(1) labels: Label[];
 }
 
+model UpdateLabelRequest {
+  @field(1) labelId: string;
+  @field(2) name?: string;
+  @field(3) color?: string;
+}
+model UpdateLabelResponse {
+  @field(1) label: Label;
+}
+
 interface LabelService {
   createLabel(request: CreateLabelRequest): CreateLabelResponse;
+  updateLabel(request: UpdateLabelRequest): UpdateLabelResponse;
   listLabels(request: ListLabelsRequest): ListLabelsResponse;
   attachLabel(request: AttachLabelRequest): AttachLabelResponse;
   detachLabel(request: DetachLabelRequest): DetachLabelResponse;
@@ -868,6 +1030,13 @@ model AddRepositoryLinkRequest {
 }
 model AddRepositoryLinkResponse {
   @field(1) link: RepositoryLink;
+}
+
+model RemoveRepositoryLinkRequest {
+  @field(1) repositoryLinkId: string;
+}
+model RemoveRepositoryLinkResponse {
+  @field(1) success: boolean;
 }
 
 model ListRepositoryLinksRequest {
@@ -936,6 +1105,9 @@ interface RepositoryService {
   listRepositoryLinks(
     request: ListRepositoryLinksRequest,
   ): ListRepositoryLinksResponse;
+  removeRepositoryLink(
+    request: RemoveRepositoryLinkRequest,
+  ): RemoveRepositoryLinkResponse;
   syncPullRequests(request: SyncPullRequestsRequest): SyncPullRequestsResponse;
   listPullRequests(request: ListPullRequestsRequest): ListPullRequestsResponse;
   listBuilds(request: ListBuildsRequest): ListBuildsResponse;

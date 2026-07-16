@@ -15,10 +15,27 @@ const CreateAgentRoleSchema = z.object({
   capabilities: z.string().min(1, "capabilities is required").max(2048),
 });
 
+const UpdateAgentRoleSchema = z.object({
+  id: z.string().min(1, "id is required"),
+  name: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(256).optional()),
+  systemPrompt: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(4096).optional()),
+  capabilities: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(2048).optional()),
+}).refine((v) => v.name !== undefined || v.systemPrompt !== undefined || v.capabilities !== undefined, {
+  message: "at least one of name, systemPrompt, or capabilities must be provided",
+});
+
 const CreateAgentSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   agentRoleId: z.string().min(1, "agentRoleId is required"),
   name: z.string().min(1, "name is required").max(256),
+});
+
+const UpdateAgentSchema = z.object({
+  agentId: z.string().min(1, "agentId is required"),
+  name: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(256).optional()),
+  agentRoleId: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).optional()),
+}).refine((v) => v.name !== undefined || v.agentRoleId !== undefined, {
+  message: "at least one of name or agentRoleId must be provided",
 });
 
 const ArchiveAgentSchema = z.object({
@@ -55,6 +72,26 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       return { role: payload };
     },
+    async updateAgentRole(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      await assertOrgAdminOfAny(db, userId);
+      const parsed = UpdateAgentRoleSchema.parse(req);
+
+      const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
+      const existing = await db.select().from(roles).where(eq((roles as any).id, parsed.id)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("agent role not found", Code.NotFound);
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.name !== undefined) updates.name = parsed.name;
+      if (parsed.systemPrompt !== undefined) updates.systemPrompt = parsed.systemPrompt;
+      if (parsed.capabilities !== undefined) updates.capabilities = parsed.capabilities;
+
+      await db.update(roles).set(updates).where(eq((roles as any).id, parsed.id));
+
+      const updated = { ...existing[0], ...updates };
+      publishDomainEvent(nc, "domain.agent_role.updated", updated);
+      return { role: updated };
+    },
     async listAgentRoles(req: any, { values: contextValues }: { values: any }) {
       requireUserId(contextValues);
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
@@ -85,6 +122,31 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       publishDomainEvent(nc, "domain.agent.created", payload);
       return { agent: payload };
+    },
+    async updateAgent(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateAgentSchema.parse(req);
+
+      const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+      const existing = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("agent not found", Code.NotFound);
+      await assertOrgAdmin(db, userId, existing[0].orgId);
+
+      if (parsed.agentRoleId) {
+        const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
+        const roleRows = await db.select().from(roles).where(eq((roles as any).id, parsed.agentRoleId)).limit(1);
+        if (!roleRows || roleRows.length === 0) throw new ConnectError("agent role not found", Code.NotFound);
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.name !== undefined) updates.name = parsed.name;
+      if (parsed.agentRoleId !== undefined) updates.agentRoleId = parsed.agentRoleId;
+
+      await db.update(agentsSchema).set(updates).where(eq((agentsSchema as any).id, parsed.agentId));
+
+      const updated = { ...existing[0], ...updates };
+      publishDomainEvent(nc, "domain.agent.updated", updated);
+      return { agent: updated };
     },
     async listAgents(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

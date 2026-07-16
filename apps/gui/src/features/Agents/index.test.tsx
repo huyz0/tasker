@@ -2,11 +2,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListAgents, mockListAgentRoles, mockCreateAgent, mockArchiveAgent } = vi.hoisted(() => ({
+const { mockListAgents, mockListAgentRoles, mockCreateAgent, mockArchiveAgent, mockUpdateAgent, mockUpdateAgentRole } = vi.hoisted(() => ({
   mockListAgents: vi.fn(),
   mockListAgentRoles: vi.fn(),
   mockCreateAgent: vi.fn(),
   mockArchiveAgent: vi.fn(),
+  mockUpdateAgent: vi.fn(),
+  mockUpdateAgentRole: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -18,6 +20,8 @@ vi.mock('@connectrpc/connect', () => ({
     listAgentRoles: mockListAgentRoles,
     createAgent: mockCreateAgent,
     archiveAgent: mockArchiveAgent,
+    updateAgent: mockUpdateAgent,
+    updateAgentRole: mockUpdateAgentRole,
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
@@ -48,6 +52,8 @@ describe('AgentsDashboard', () => {
     mockListAgentRoles.mockReset();
     mockCreateAgent.mockReset();
     mockArchiveAgent.mockReset();
+    mockUpdateAgent.mockReset();
+    mockUpdateAgentRole.mockReset();
     mockListAgentRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'Researcher', systemPrompt: '', capabilities: '' }] });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
@@ -58,7 +64,7 @@ describe('AgentsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
-    expect(screen.getByText('Researcher')).toBeDefined();
+    expect(screen.getAllByText('Researcher').length).toBeGreaterThan(0);
   });
 
   it('auto-loads later pages so agents past the first page are not hidden', async () => {
@@ -201,5 +207,110 @@ describe('AgentsDashboard', () => {
 
     fireEvent.click(screen.getByText('Cancel'));
     expect(screen.queryByPlaceholderText('Agent name')).toBeNull();
+  });
+
+  it('renames an agent and reassigns its role', async () => {
+    mockListAgentRoles.mockResolvedValue({ roles: [
+      { id: 'role-1', name: 'Researcher', systemPrompt: '', capabilities: '' },
+      { id: 'role-2', name: 'Writer', systemPrompt: '', capabilities: '' },
+    ] });
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1', name: 'Agent Smith', agentRoleId: 'role-1' }] });
+    mockUpdateAgent.mockResolvedValue({ agent: { id: 'agent-1', name: 'Agent Smith Renamed', agentRoleId: 'role-2' } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
+    const editButtons = screen.getAllByText('Edit');
+    fireEvent.click(editButtons[0]);
+
+    const nameInput = screen.getByDisplayValue('Agent Smith');
+    fireEvent.change(nameInput, { target: { value: 'Agent Smith Renamed' } });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'role-2' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockUpdateAgent).toHaveBeenCalledWith({ agentId: 'agent-1', name: 'Agent Smith Renamed', agentRoleId: 'role-2' }));
+  });
+
+  it('cancels editing an agent without saving', async () => {
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1', name: 'Agent Smith', agentRoleId: 'role-1' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
+    fireEvent.click(screen.getAllByText('Edit')[0]);
+    expect(screen.getByDisplayValue('Agent Smith')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.getByText('Agent Smith')).toBeInTheDocument();
+    expect(mockUpdateAgent).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when updating an agent fails', async () => {
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1', name: 'Agent Smith', agentRoleId: 'role-1' }] });
+    mockUpdateAgent.mockRejectedValue(new Error('agent not found'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
+    fireEvent.click(screen.getAllByText('Edit')[0]);
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to update agent/)).toBeInTheDocument());
+  });
+
+  it('renders "No agent roles yet." when there are none', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockListAgentRoles.mockResolvedValue({ roles: [] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('No agent roles yet.')).toBeInTheDocument());
+  });
+
+  it('edits an agent role', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockUpdateAgentRole.mockResolvedValue({ role: { id: 'role-1', name: 'Renamed Role', systemPrompt: 'prompt', capabilities: '{}' } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Researcher')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Edit'));
+
+    const nameInput = screen.getByPlaceholderText('Role name');
+    fireEvent.change(nameInput, { target: { value: 'Renamed Role' } });
+    fireEvent.change(screen.getByPlaceholderText('System prompt'), { target: { value: 'prompt' } });
+    fireEvent.change(screen.getByPlaceholderText('Capabilities (JSON)'), { target: { value: '{}' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockUpdateAgentRole).toHaveBeenCalledWith({ id: 'role-1', name: 'Renamed Role', systemPrompt: 'prompt', capabilities: '{}' }));
+  });
+
+  it('cancels editing an agent role without saving', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Researcher')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Edit'));
+    expect(screen.getByPlaceholderText('Role name')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.getByText('Researcher')).toBeInTheDocument();
+    expect(mockUpdateAgentRole).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when updating an agent role fails', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockUpdateAgentRole.mockRejectedValue(new Error('role not found'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Researcher')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.change(screen.getByPlaceholderText('System prompt'), { target: { value: 'prompt' } });
+    fireEvent.change(screen.getByPlaceholderText('Capabilities (JSON)'), { target: { value: '{}' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to update role/)).toBeInTheDocument());
   });
 });

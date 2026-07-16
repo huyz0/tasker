@@ -25,6 +25,8 @@ export interface CommentState {
 
 export interface CommentActions {
   addComment: (content: string) => Promise<void>;
+  editComment: (commentId: string, content: string) => Promise<void>;
+  deleteComment: (commentId: string) => Promise<void>;
 }
 
 export interface CommentContextValue {
@@ -77,20 +79,41 @@ export function CommentProvider({ entityId, entityType, children }: CommentProvi
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
+  const editCommentMutation = useMutation({
+    mutationFn: async (variables: { commentId: string; content: string }) => {
+      const resp = await commentClient.updateComment({ ...variables, userId: '', agentId: '' });
+      return resp.comment;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      await commentClient.deleteComment({ commentId, userId: '', agentId: '' });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
   const value = useMemo<CommentContextValue>(() => ({
     state: {
       comments: data ?? [],
       isLoadingComments: isLoadingList,
       isLoading: addCommentMutation.isPending,
-      isError: addCommentMutation.isError,
-      error: addCommentMutation.error as Error | null,
+      isError: addCommentMutation.isError || editCommentMutation.isError || deleteCommentMutation.isError,
+      error: (addCommentMutation.error || editCommentMutation.error || deleteCommentMutation.error) as Error | null,
     },
     actions: {
       addComment: async (content: string) => {
         await addCommentMutation.mutateAsync(content);
       },
+      editComment: async (commentId: string, content: string) => {
+        await editCommentMutation.mutateAsync({ commentId, content });
+      },
+      deleteComment: async (commentId: string) => {
+        await deleteCommentMutation.mutateAsync(commentId);
+      },
     },
-  }), [data, isLoadingList, addCommentMutation]);
+  }), [data, isLoadingList, addCommentMutation, editCommentMutation, deleteCommentMutation]);
 
   return (
     <CommentContext.Provider value={value}>

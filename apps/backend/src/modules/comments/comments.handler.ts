@@ -42,6 +42,35 @@ const CreateCommentSchema = z.object({
   content: z.string().min(1, "content is required").max(4096),
 });
 
+const UpdateCommentSchema = z.object({
+  commentId: z.string().min(1, "commentId is required"),
+  content: z.string().min(1, "content is required").max(4096),
+  userId: z.string().nullable().optional(),
+  agentId: z.string().nullable().optional(),
+});
+
+const DeleteCommentSchema = z.object({
+  commentId: z.string().min(1, "commentId is required"),
+  userId: z.string().nullable().optional(),
+  agentId: z.string().nullable().optional(),
+});
+
+/**
+ * A comment may only be edited/deleted by whoever authored it - the
+ * authenticated userId for a user comment, or the caller-supplied agentId
+ * for an agent-authored one (agents have no session of their own, so this
+ * trusts the caller-supplied agentId the same way createComment already
+ * does for attribution).
+ */
+function assertCommentAuthor(comment: any, callerUserId: string, requestAgentId?: string | null) {
+  const isAuthor = comment.agentId
+    ? comment.agentId === requestAgentId
+    : comment.userId === callerUserId;
+  if (!isAuthor) {
+    throw new ConnectError("only the comment's author can edit or delete it", Code.PermissionDenied);
+  }
+}
+
 // --- Handler Factory ---
 
 export const createCommentsHandler = (db: any, nc: any = null) => {
@@ -87,6 +116,44 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       const commentResp = { ...withName, createdAt: new Date().toISOString() };
       publishDomainEvent(nc, "domain.comment.created", commentResp);
       return { comment: commentResp };
+    },
+    async updateComment(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateCommentSchema.parse(req);
+
+      const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
+      const existing = await db.select().from(comments).where(eq((comments as any).id, parsed.commentId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("comment not found", Code.NotFound);
+      const orgId = existing[0].entityType === "task"
+        ? await getTaskOrgId(db, existing[0].entityId)
+        : await getArtifactOrgId(db, existing[0].entityId);
+      await assertOrgMember(db, userId, orgId);
+      assertCommentAuthor(existing[0], userId, parsed.agentId);
+
+      await db.update(comments).set({ content: parsed.content }).where(eq((comments as any).id, parsed.commentId));
+
+      const [withName] = await attachAuthorNames(db, isStandalone, [{ ...existing[0], content: parsed.content }]);
+      const commentResp = { ...withName, createdAt: withName.createdAt instanceof Date ? withName.createdAt.toISOString() : withName.createdAt };
+      publishDomainEvent(nc, "domain.comment.updated", commentResp);
+      return { comment: commentResp };
+    },
+    async deleteComment(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = DeleteCommentSchema.parse(req);
+
+      const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
+      const existing = await db.select().from(comments).where(eq((comments as any).id, parsed.commentId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("comment not found", Code.NotFound);
+      const orgId = existing[0].entityType === "task"
+        ? await getTaskOrgId(db, existing[0].entityId)
+        : await getArtifactOrgId(db, existing[0].entityId);
+      await assertOrgMember(db, userId, orgId);
+      assertCommentAuthor(existing[0], userId, parsed.agentId);
+
+      await db.delete(comments).where(eq((comments as any).id, parsed.commentId));
+
+      publishDomainEvent(nc, "domain.comment.deleted", { commentId: parsed.commentId });
+      return { success: true };
     },
     async listComments(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

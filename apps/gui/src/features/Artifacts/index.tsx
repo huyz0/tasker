@@ -24,6 +24,8 @@ export function ArtifactsBrowser() {
   const [isAddingArtifact, setIsAddingArtifact] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
   const [editedContent, setEditedContent] = useState('');
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [editFolderName, setEditFolderName] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch all folders for the project - loop through every page, not just
@@ -58,6 +60,16 @@ export function ArtifactsBrowser() {
       queryClient.invalidateQueries({ queryKey: ['folders', activeProjectId] });
       queryClient.invalidateQueries({ queryKey: ['folders', 'bin', activeProjectId] });
       if (selectedFolderId === folderId) setSelectedFolderId(null);
+    },
+  });
+
+  const updateFolderMutation = useMutation({
+    mutationFn: async (variables: { folderId: string; name: string }) => {
+      await artifactClient.updateFolder(variables);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['folders', activeProjectId] });
+      setEditingFolderId(null);
     },
   });
 
@@ -141,6 +153,24 @@ export function ArtifactsBrowser() {
 
           {rootFolders.map(folder => (
             <div key={folder.id}>
+              {editingFolderId === folder.id ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (editFolderName.trim()) updateFolderMutation.mutate({ folderId: folder.id, name: editFolderName.trim() });
+                  }}
+                  className="px-2 py-1 flex items-center gap-1"
+                >
+                  <input
+                    autoFocus
+                    value={editFolderName}
+                    onChange={(e) => setEditFolderName(e.target.value)}
+                    className="flex-1 text-sm bg-transparent border-b outline-none"
+                  />
+                  <button type="submit" disabled={!editFolderName.trim() || updateFolderMutation.isPending} className="text-xs text-primary disabled:opacity-50">Save</button>
+                  <button type="button" onClick={() => setEditingFolderId(null)} className="text-xs text-muted-foreground">Cancel</button>
+                </form>
+              ) : (
               <div
                 role="button"
                 tabIndex={0}
@@ -158,20 +188,34 @@ export function ArtifactsBrowser() {
                 className={`px-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center justify-between gap-2 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-sm ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
               >
                 <span className="flex items-center gap-2">{selectedFolderId === folder.id ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />} {folder.name}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (window.confirm(`Move "${folder.name}" to the bin? You can restore it later.`)) {
-                      archiveFolderMutation.mutate(folder.id);
-                    }
-                  }}
-                  disabled={archiveFolderMutation.isPending}
-                  aria-label={`Delete folder ${folder.name}`}
-                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                <span className="flex items-center gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingFolderId(folder.id);
+                      setEditFolderName(folder.name);
+                    }}
+                    aria-label={`Rename folder ${folder.name}`}
+                    className="text-muted-foreground hover:text-foreground text-xs"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Move "${folder.name}" to the bin? You can restore it later.`)) {
+                        archiveFolderMutation.mutate(folder.id);
+                      }
+                    }}
+                    disabled={archiveFolderMutation.isPending}
+                    aria-label={`Delete folder ${folder.name}`}
+                    className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
               </div>
+              )}
 
               {/* Show artifacts if this folder is selected */}
               {selectedFolderId === folder.id && (

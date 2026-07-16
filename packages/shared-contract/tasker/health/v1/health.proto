@@ -102,14 +102,50 @@ message InviteUserResponse {
   bool success = 1;
 }
 
+message UpdateOrgRequest {
+  string orgId = 1;
+  optional string name = 2;
+  optional string slug = 3;
+}
+message UpdateOrgResponse {
+  Organization organization = 1;
+}
+
+message OrgMember {
+  string userId = 1;
+  string email = 2;
+  string name = 3;
+  string role = 4;
+}
+
+message ListOrgMembersRequest {
+  string orgId = 1;
+  PageRequest page = 2;
+}
+message ListOrgMembersResponse {
+  repeated OrgMember members = 1;
+  PageResponse page = 2;
+}
+
+message RemoveOrgMemberRequest {
+  string orgId = 1;
+  string userId = 2;
+}
+message RemoveOrgMemberResponse {
+  bool success = 1;
+}
+
 service OrgService {
   rpc ListOrgs(ListOrgsRequest) returns (ListOrgsResponse);
   rpc SeedOrg(SeedOrgRequest) returns (SeedOrgResponse);
+  rpc UpdateOrg(UpdateOrgRequest) returns (UpdateOrgResponse);
   rpc ArchiveOrg(ArchiveOrgRequest) returns (ArchiveOrgResponse);
   rpc RestoreOrg(RestoreOrgRequest) returns (RestoreOrgResponse);
   rpc PurgeOrg(PurgeOrgRequest) returns (PurgeOrgResponse);
   rpc SetOrgRetentionDays(SetOrgRetentionDaysRequest) returns (SetOrgRetentionDaysResponse);
   rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
+  rpc ListOrgMembers(ListOrgMembersRequest) returns (ListOrgMembersResponse);
+  rpc RemoveOrgMember(RemoveOrgMemberRequest) returns (RemoveOrgMemberResponse);
 }
 
 message TaskType {
@@ -184,9 +220,19 @@ message CreateTaskStatusTransitionResponse {
   TaskStatusTransition transition = 1;
 }
 
+message UpdateTaskTypeRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string parentId = 3;
+}
+message UpdateTaskTypeResponse {
+  TaskType taskType = 1;
+}
+
 service TaskTypeService {
   rpc GetTaskType(GetTaskTypeRequest) returns (GetTaskTypeResponse);
   rpc CreateTaskType(CreateTaskTypeRequest) returns (CreateTaskTypeResponse);
+  rpc UpdateTaskType(UpdateTaskTypeRequest) returns (UpdateTaskTypeResponse);
   rpc ListTaskTypes(ListTaskTypesRequest) returns (ListTaskTypesResponse);
   rpc CreateTaskStatus(CreateTaskStatusRequest) returns (CreateTaskStatusResponse);
   rpc CreateTaskStatusTransition(CreateTaskStatusTransitionRequest) returns (CreateTaskStatusTransitionResponse);
@@ -239,9 +285,20 @@ message ListProjectTemplatesResponse {
   PageResponse page = 2;
 }
 
+message UpdateProjectTemplateRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string rootTaskTypeId = 4;
+}
+message UpdateProjectTemplateResponse {
+  ProjectTemplate template = 1;
+}
+
 service ProjectTemplateService {
   rpc GetTemplate(GetProjectTemplateRequest) returns (GetProjectTemplateResponse);
   rpc CreateTemplate(CreateProjectTemplateRequest) returns (CreateProjectTemplateResponse);
+  rpc UpdateTemplate(UpdateProjectTemplateRequest) returns (UpdateProjectTemplateResponse);
   rpc ListTemplates(ListProjectTemplatesRequest) returns (ListProjectTemplatesResponse);
 }
 
@@ -296,9 +353,18 @@ message PurgeProjectResponse {
   bool success = 1;
 }
 
+message UpdateProjectRequest {
+  string projectId = 1;
+  string name = 2;
+}
+message UpdateProjectResponse {
+  Project project = 1;
+}
+
 service ProjectService {
   rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  rpc UpdateProject(UpdateProjectRequest) returns (UpdateProjectResponse);
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
   rpc ArchiveProject(ArchiveProjectRequest) returns (ArchiveProjectResponse);
   rpc RestoreProject(RestoreProjectRequest) returns (RestoreProjectResponse);
@@ -339,6 +405,16 @@ message ListAgentRolesResponse {
   PageResponse page = 2;
 }
 
+message UpdateAgentRoleRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string system_prompt = 3;
+  optional string capabilities = 4;
+}
+message UpdateAgentRoleResponse {
+  AgentRole role = 1;
+}
+
 message CreateAgentRequest {
   string org_id = 1;
   string agent_role_id = 2;
@@ -349,10 +425,21 @@ message CreateAgentResponse {
   Agent agent = 1;
 }
 
+message UpdateAgentRequest {
+  string agentId = 1;
+  optional string name = 2;
+  optional string agent_role_id = 3;
+}
+message UpdateAgentResponse {
+  Agent agent = 1;
+}
+
 service AgentService {
   rpc CreateAgentRole(CreateAgentRoleRequest) returns (CreateAgentRoleResponse);
+  rpc UpdateAgentRole(UpdateAgentRoleRequest) returns (UpdateAgentRoleResponse);
   rpc ListAgentRoles(ListAgentRolesRequest) returns (ListAgentRolesResponse);
   rpc CreateAgent(CreateAgentRequest) returns (CreateAgentResponse);
+  rpc UpdateAgent(UpdateAgentRequest) returns (UpdateAgentResponse);
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
   rpc ArchiveAgent(ArchiveAgentRequest) returns (ArchiveAgentResponse);
   rpc RestoreAgent(RestoreAgentRequest) returns (RestoreAgentResponse);
@@ -486,6 +573,16 @@ message UpdateTaskStatusResponse {
   Task task = 1;
 }
 
+message UpdateTaskRequest {
+  string taskId = 1;
+  optional string title = 2;
+  optional string description = 3;
+  optional string taskTypeId = 4;
+}
+message UpdateTaskResponse {
+  Task task = 1;
+}
+
 message DeleteTaskRequest {
   string taskId = 1;
 }
@@ -514,6 +611,7 @@ service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+  rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
   rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse);
   rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
   rpc RestoreTask(RestoreTaskRequest) returns (RestoreTaskResponse);
@@ -554,6 +652,14 @@ message CreateFolderRequest {
 }
 
 message CreateFolderResponse {
+  Folder folder = 1;
+}
+
+message UpdateFolderRequest {
+  string folderId = 1;
+  string name = 2;
+}
+message UpdateFolderResponse {
   Folder folder = 1;
 }
 
@@ -654,6 +760,7 @@ message PurgeFolderResponse {
 
 service ArtifactService {
   rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
+  rpc UpdateFolder(UpdateFolderRequest) returns (UpdateFolderResponse);
   rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
   rpc UpdateArtifactContent(UpdateArtifactContentRequest) returns (UpdateArtifactContentResponse);
   rpc LinkTaskArtifact(LinkTaskArtifactRequest) returns (LinkTaskArtifactResponse);
@@ -701,8 +808,29 @@ message ListCommentsResponse {
   PageResponse page = 2;
 }
 
+message UpdateCommentRequest {
+  string commentId = 1;
+  string content = 2;
+  string userId = 3;
+  string agentId = 4;
+}
+message UpdateCommentResponse {
+  Comment comment = 1;
+}
+
+message DeleteCommentRequest {
+  string commentId = 1;
+  string userId = 2;
+  string agentId = 3;
+}
+message DeleteCommentResponse {
+  bool success = 1;
+}
+
 service CommentService {
   rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+  rpc UpdateComment(UpdateCommentRequest) returns (UpdateCommentResponse);
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
   rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
 }
 
@@ -733,8 +861,25 @@ message ListTaskNotesResponse {
   PageResponse page = 2;
 }
 
+message UpdateTaskNoteRequest {
+  string taskNoteId = 1;
+  string content = 2;
+}
+message UpdateTaskNoteResponse {
+  TaskNote taskNote = 1;
+}
+
+message DeleteTaskNoteRequest {
+  string taskNoteId = 1;
+}
+message DeleteTaskNoteResponse {
+  bool success = 1;
+}
+
 service TaskNoteService {
   rpc CreateTaskNote(CreateTaskNoteRequest) returns (CreateTaskNoteResponse);
+  rpc UpdateTaskNote(UpdateTaskNoteRequest) returns (UpdateTaskNoteResponse);
+  rpc DeleteTaskNote(DeleteTaskNoteRequest) returns (DeleteTaskNoteResponse);
   rpc ListTaskNotes(ListTaskNotesRequest) returns (ListTaskNotesResponse);
 }
 
@@ -794,8 +939,18 @@ message ListEntityLabelsResponse {
   repeated Label labels = 1;
 }
 
+message UpdateLabelRequest {
+  string labelId = 1;
+  optional string name = 2;
+  optional string color = 3;
+}
+message UpdateLabelResponse {
+  Label label = 1;
+}
+
 service LabelService {
   rpc CreateLabel(CreateLabelRequest) returns (CreateLabelResponse);
+  rpc UpdateLabel(UpdateLabelRequest) returns (UpdateLabelResponse);
   rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse);
   rpc AttachLabel(AttachLabelRequest) returns (AttachLabelResponse);
   rpc DetachLabel(DetachLabelRequest) returns (DetachLabelResponse);
@@ -833,6 +988,13 @@ message AddRepositoryLinkRequest {
 
 message AddRepositoryLinkResponse {
   RepositoryLink link = 1;
+}
+
+message RemoveRepositoryLinkRequest {
+  string repositoryLinkId = 1;
+}
+message RemoveRepositoryLinkResponse {
+  bool success = 1;
 }
 
 message ListRepositoryLinksRequest {
@@ -899,6 +1061,7 @@ message ListDeploymentsResponse {
 
 service RepositoryService {
   rpc AddRepositoryLink(AddRepositoryLinkRequest) returns (AddRepositoryLinkResponse);
+  rpc RemoveRepositoryLink(RemoveRepositoryLinkRequest) returns (RemoveRepositoryLinkResponse);
   rpc ListRepositoryLinks(ListRepositoryLinksRequest) returns (ListRepositoryLinksResponse);
   rpc SyncPullRequests(SyncPullRequestsRequest) returns (SyncPullRequestsResponse);
   rpc ListPullRequests(ListPullRequestsRequest) returns (ListPullRequestsResponse);

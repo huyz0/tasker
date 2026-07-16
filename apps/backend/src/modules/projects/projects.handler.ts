@@ -67,6 +67,18 @@ const CreateTemplateSchema = z.object({
   rootTaskTypeId: z.string().nullable().optional(),
 });
 
+const UpdateProjectSchema = z.object({
+  projectId: z.string().min(1, "projectId is required"),
+  name: z.string().min(1, "name is required").max(256),
+});
+
+const UpdateTemplateSchema = z.object({
+  id: z.string().min(1, "id is required"),
+  name: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(256).optional()),
+  description: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(1024).optional()),
+  rootTaskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().nullable().optional()),
+});
+
 const ArchiveProjectSchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
 });
@@ -160,6 +172,20 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
         })),
         page: { nextCursor, totalCount },
       };
+    },
+    async updateProject(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateProjectSchema.parse(req);
+      const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
+      const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
+      if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
+      await assertOrgMember(db, userId, result[0].orgId);
+
+      await db.update(ps).set({ name: parsed.name }).where(eq((ps as any).id, parsed.projectId));
+
+      const updated = { ...result[0], name: parsed.name };
+      publishDomainEvent(nc, "domain.project.updated", updated);
+      return { project: updated };
     },
     async archiveProject(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
@@ -280,6 +306,34 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
 
       publishDomainEvent(nc, "domain.project_template.created", payload);
       return { template: payload };
+    },
+    async updateTemplate(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateTemplateSchema.parse(req);
+      const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
+      const result = await db.select().from(pts).where(eq((pts as any).id, parsed.id)).limit(1);
+      if (!result || result.length === 0) throw new ConnectError("template not found", Code.NotFound);
+      await assertOrgMember(db, userId, result[0].orgId);
+
+      if (parsed.rootTaskTypeId) {
+        const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+        const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.rootTaskTypeId)).limit(1);
+        if (!typeRows || typeRows.length === 0) throw new ConnectError("root task type not found", Code.NotFound);
+        if (typeRows[0].orgId !== result[0].orgId) {
+          throw new ConnectError("root task type belongs to a different organization", Code.InvalidArgument);
+        }
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.name !== undefined) updates.name = parsed.name;
+      if (parsed.description !== undefined) updates.description = parsed.description;
+      if (parsed.rootTaskTypeId !== undefined) updates.rootTaskTypeId = parsed.rootTaskTypeId;
+
+      await db.update(pts).set(updates).where(eq((pts as any).id, parsed.id));
+
+      const updated = { ...result[0], ...updates };
+      publishDomainEvent(nc, "domain.project_template.updated", updated);
+      return { template: updated };
     },
     async listTemplates(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

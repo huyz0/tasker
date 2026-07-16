@@ -3,18 +3,29 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OrganizationsDashboard } from './index';
 
-const { mockListOrgs, mockSeedOrg, mockArchiveOrg, mockSetOrgRetentionDays } = vi.hoisted(() => ({
+const { mockListOrgs, mockSeedOrg, mockArchiveOrg, mockSetOrgRetentionDays, mockUpdateOrg, mockListOrgMembers, mockRemoveOrgMember } = vi.hoisted(() => ({
   mockListOrgs: vi.fn(),
   mockSeedOrg: vi.fn(),
   mockArchiveOrg: vi.fn(),
   mockSetOrgRetentionDays: vi.fn(),
+  mockUpdateOrg: vi.fn(),
+  mockListOrgMembers: vi.fn(),
+  mockRemoveOrgMember: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
   createConnectTransport: vi.fn(() => ({})),
 }));
 vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn(() => ({ listOrgs: mockListOrgs, seedOrg: mockSeedOrg, archiveOrg: mockArchiveOrg, setOrgRetentionDays: mockSetOrgRetentionDays })),
+  createClient: vi.fn(() => ({
+    listOrgs: mockListOrgs,
+    seedOrg: mockSeedOrg,
+    archiveOrg: mockArchiveOrg,
+    setOrgRetentionDays: mockSetOrgRetentionDays,
+    updateOrg: mockUpdateOrg,
+    listOrgMembers: mockListOrgMembers,
+    removeOrgMember: mockRemoveOrgMember,
+  })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ OrgService: {} }));
 
@@ -45,6 +56,10 @@ describe('OrganizationsDashboard', () => {
     mockArchiveOrg.mockReset();
     mockSetOrgRetentionDays.mockReset();
     mockSetActiveOrgId.mockReset();
+    mockUpdateOrg.mockReset();
+    mockListOrgMembers.mockReset();
+    mockListOrgMembers.mockResolvedValue({ members: [] });
+    mockRemoveOrgMember.mockReset();
   });
 
   it('renders the header correctly', () => {
@@ -374,5 +389,100 @@ describe('OrganizationsDashboard', () => {
     await waitFor(() => expect(screen.getByText('Child Co')).toBeDefined());
     fireEvent.keyDown(screen.getByText('Child Co'), { key: ' ' });
     expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-child');
+  });
+
+  it('renames an org through the GUI', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockUpdateOrg.mockResolvedValue({ organization: { id: 'org-1', name: 'Renamed Co', slug: 'renamed-co' } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+
+    const nameInput = screen.getByDisplayValue('Root Co');
+    const slugInput = screen.getByDisplayValue('root-co');
+    fireEvent.change(nameInput, { target: { value: 'Renamed Co' } });
+    fireEvent.change(slugInput, { target: { value: 'renamed-co' } });
+    fireEvent.click(screen.getAllByText('Save')[0]);
+
+    await waitFor(() => expect(mockUpdateOrg).toHaveBeenCalledWith({ orgId: 'org-1', name: 'Renamed Co', slug: 'renamed-co' }));
+  });
+
+  it('cancels editing an org without saving', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    expect(screen.getByDisplayValue('Root Co')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.getByText('Root Co')).toBeInTheDocument();
+    expect(mockUpdateOrg).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when renaming an org fails', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockUpdateOrg.mockRejectedValue(new Error('slug already exists'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getAllByText('Save')[0]);
+
+    await waitFor(() => expect(screen.getByText(/Failed to update organization/)).toBeInTheDocument());
+  });
+
+  it('lists org members and removes one after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
+    mockRemoveOrgMember.mockResolvedValue({ success: true });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Remove'));
+
+    await waitFor(() => expect(mockRemoveOrgMember).toHaveBeenCalledWith({ orgId: 'org-1', userId: 'user-1' }));
+  });
+
+  it('shows "No members found." when the org has no members', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: [] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('No members found.')).toBeInTheDocument());
+  });
+
+  it('does not remove a member when confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Remove'));
+
+    expect(mockRemoveOrgMember).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when removing a member fails', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
+    mockRemoveOrgMember.mockRejectedValue(new Error('cannot remove yourself'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Remove'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to remove member/)).toBeInTheDocument());
   });
 });

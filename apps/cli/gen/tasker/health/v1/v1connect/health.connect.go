@@ -67,6 +67,8 @@ const (
 	OrgServiceListOrgsProcedure = "/tasker.health.v1.OrgService/ListOrgs"
 	// OrgServiceSeedOrgProcedure is the fully-qualified name of the OrgService's SeedOrg RPC.
 	OrgServiceSeedOrgProcedure = "/tasker.health.v1.OrgService/SeedOrg"
+	// OrgServiceUpdateOrgProcedure is the fully-qualified name of the OrgService's UpdateOrg RPC.
+	OrgServiceUpdateOrgProcedure = "/tasker.health.v1.OrgService/UpdateOrg"
 	// OrgServiceArchiveOrgProcedure is the fully-qualified name of the OrgService's ArchiveOrg RPC.
 	OrgServiceArchiveOrgProcedure = "/tasker.health.v1.OrgService/ArchiveOrg"
 	// OrgServiceRestoreOrgProcedure is the fully-qualified name of the OrgService's RestoreOrg RPC.
@@ -78,12 +80,21 @@ const (
 	OrgServiceSetOrgRetentionDaysProcedure = "/tasker.health.v1.OrgService/SetOrgRetentionDays"
 	// OrgServiceInviteUserProcedure is the fully-qualified name of the OrgService's InviteUser RPC.
 	OrgServiceInviteUserProcedure = "/tasker.health.v1.OrgService/InviteUser"
+	// OrgServiceListOrgMembersProcedure is the fully-qualified name of the OrgService's ListOrgMembers
+	// RPC.
+	OrgServiceListOrgMembersProcedure = "/tasker.health.v1.OrgService/ListOrgMembers"
+	// OrgServiceRemoveOrgMemberProcedure is the fully-qualified name of the OrgService's
+	// RemoveOrgMember RPC.
+	OrgServiceRemoveOrgMemberProcedure = "/tasker.health.v1.OrgService/RemoveOrgMember"
 	// TaskTypeServiceGetTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
 	// GetTaskType RPC.
 	TaskTypeServiceGetTaskTypeProcedure = "/tasker.health.v1.TaskTypeService/GetTaskType"
 	// TaskTypeServiceCreateTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
 	// CreateTaskType RPC.
 	TaskTypeServiceCreateTaskTypeProcedure = "/tasker.health.v1.TaskTypeService/CreateTaskType"
+	// TaskTypeServiceUpdateTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
+	// UpdateTaskType RPC.
+	TaskTypeServiceUpdateTaskTypeProcedure = "/tasker.health.v1.TaskTypeService/UpdateTaskType"
 	// TaskTypeServiceListTaskTypesProcedure is the fully-qualified name of the TaskTypeService's
 	// ListTaskTypes RPC.
 	TaskTypeServiceListTaskTypesProcedure = "/tasker.health.v1.TaskTypeService/ListTaskTypes"
@@ -99,6 +110,9 @@ const (
 	// ProjectTemplateServiceCreateTemplateProcedure is the fully-qualified name of the
 	// ProjectTemplateService's CreateTemplate RPC.
 	ProjectTemplateServiceCreateTemplateProcedure = "/tasker.health.v1.ProjectTemplateService/CreateTemplate"
+	// ProjectTemplateServiceUpdateTemplateProcedure is the fully-qualified name of the
+	// ProjectTemplateService's UpdateTemplate RPC.
+	ProjectTemplateServiceUpdateTemplateProcedure = "/tasker.health.v1.ProjectTemplateService/UpdateTemplate"
 	// ProjectTemplateServiceListTemplatesProcedure is the fully-qualified name of the
 	// ProjectTemplateService's ListTemplates RPC.
 	ProjectTemplateServiceListTemplatesProcedure = "/tasker.health.v1.ProjectTemplateService/ListTemplates"
@@ -108,6 +122,9 @@ const (
 	// ProjectServiceCreateProjectProcedure is the fully-qualified name of the ProjectService's
 	// CreateProject RPC.
 	ProjectServiceCreateProjectProcedure = "/tasker.health.v1.ProjectService/CreateProject"
+	// ProjectServiceUpdateProjectProcedure is the fully-qualified name of the ProjectService's
+	// UpdateProject RPC.
+	ProjectServiceUpdateProjectProcedure = "/tasker.health.v1.ProjectService/UpdateProject"
 	// ProjectServiceListProjectsProcedure is the fully-qualified name of the ProjectService's
 	// ListProjects RPC.
 	ProjectServiceListProjectsProcedure = "/tasker.health.v1.ProjectService/ListProjects"
@@ -123,12 +140,18 @@ const (
 	// AgentServiceCreateAgentRoleProcedure is the fully-qualified name of the AgentService's
 	// CreateAgentRole RPC.
 	AgentServiceCreateAgentRoleProcedure = "/tasker.health.v1.AgentService/CreateAgentRole"
+	// AgentServiceUpdateAgentRoleProcedure is the fully-qualified name of the AgentService's
+	// UpdateAgentRole RPC.
+	AgentServiceUpdateAgentRoleProcedure = "/tasker.health.v1.AgentService/UpdateAgentRole"
 	// AgentServiceListAgentRolesProcedure is the fully-qualified name of the AgentService's
 	// ListAgentRoles RPC.
 	AgentServiceListAgentRolesProcedure = "/tasker.health.v1.AgentService/ListAgentRoles"
 	// AgentServiceCreateAgentProcedure is the fully-qualified name of the AgentService's CreateAgent
 	// RPC.
 	AgentServiceCreateAgentProcedure = "/tasker.health.v1.AgentService/CreateAgent"
+	// AgentServiceUpdateAgentProcedure is the fully-qualified name of the AgentService's UpdateAgent
+	// RPC.
+	AgentServiceUpdateAgentProcedure = "/tasker.health.v1.AgentService/UpdateAgent"
 	// AgentServiceListAgentsProcedure is the fully-qualified name of the AgentService's ListAgents RPC.
 	AgentServiceListAgentsProcedure = "/tasker.health.v1.AgentService/ListAgents"
 	// AgentServiceArchiveAgentProcedure is the fully-qualified name of the AgentService's ArchiveAgent
@@ -145,6 +168,8 @@ const (
 	TaskServiceAssignTaskProcedure = "/tasker.health.v1.TaskService/AssignTask"
 	// TaskServiceListTasksProcedure is the fully-qualified name of the TaskService's ListTasks RPC.
 	TaskServiceListTasksProcedure = "/tasker.health.v1.TaskService/ListTasks"
+	// TaskServiceUpdateTaskProcedure is the fully-qualified name of the TaskService's UpdateTask RPC.
+	TaskServiceUpdateTaskProcedure = "/tasker.health.v1.TaskService/UpdateTask"
 	// TaskServiceUpdateTaskStatusProcedure is the fully-qualified name of the TaskService's
 	// UpdateTaskStatus RPC.
 	TaskServiceUpdateTaskStatusProcedure = "/tasker.health.v1.TaskService/UpdateTaskStatus"
@@ -166,6 +191,9 @@ const (
 	// ArtifactServiceCreateFolderProcedure is the fully-qualified name of the ArtifactService's
 	// CreateFolder RPC.
 	ArtifactServiceCreateFolderProcedure = "/tasker.health.v1.ArtifactService/CreateFolder"
+	// ArtifactServiceUpdateFolderProcedure is the fully-qualified name of the ArtifactService's
+	// UpdateFolder RPC.
+	ArtifactServiceUpdateFolderProcedure = "/tasker.health.v1.ArtifactService/UpdateFolder"
 	// ArtifactServiceCreateArtifactProcedure is the fully-qualified name of the ArtifactService's
 	// CreateArtifact RPC.
 	ArtifactServiceCreateArtifactProcedure = "/tasker.health.v1.ArtifactService/CreateArtifact"
@@ -202,18 +230,33 @@ const (
 	// CommentServiceCreateCommentProcedure is the fully-qualified name of the CommentService's
 	// CreateComment RPC.
 	CommentServiceCreateCommentProcedure = "/tasker.health.v1.CommentService/CreateComment"
+	// CommentServiceUpdateCommentProcedure is the fully-qualified name of the CommentService's
+	// UpdateComment RPC.
+	CommentServiceUpdateCommentProcedure = "/tasker.health.v1.CommentService/UpdateComment"
+	// CommentServiceDeleteCommentProcedure is the fully-qualified name of the CommentService's
+	// DeleteComment RPC.
+	CommentServiceDeleteCommentProcedure = "/tasker.health.v1.CommentService/DeleteComment"
 	// CommentServiceListCommentsProcedure is the fully-qualified name of the CommentService's
 	// ListComments RPC.
 	CommentServiceListCommentsProcedure = "/tasker.health.v1.CommentService/ListComments"
 	// TaskNoteServiceCreateTaskNoteProcedure is the fully-qualified name of the TaskNoteService's
 	// CreateTaskNote RPC.
 	TaskNoteServiceCreateTaskNoteProcedure = "/tasker.health.v1.TaskNoteService/CreateTaskNote"
+	// TaskNoteServiceUpdateTaskNoteProcedure is the fully-qualified name of the TaskNoteService's
+	// UpdateTaskNote RPC.
+	TaskNoteServiceUpdateTaskNoteProcedure = "/tasker.health.v1.TaskNoteService/UpdateTaskNote"
+	// TaskNoteServiceDeleteTaskNoteProcedure is the fully-qualified name of the TaskNoteService's
+	// DeleteTaskNote RPC.
+	TaskNoteServiceDeleteTaskNoteProcedure = "/tasker.health.v1.TaskNoteService/DeleteTaskNote"
 	// TaskNoteServiceListTaskNotesProcedure is the fully-qualified name of the TaskNoteService's
 	// ListTaskNotes RPC.
 	TaskNoteServiceListTaskNotesProcedure = "/tasker.health.v1.TaskNoteService/ListTaskNotes"
 	// LabelServiceCreateLabelProcedure is the fully-qualified name of the LabelService's CreateLabel
 	// RPC.
 	LabelServiceCreateLabelProcedure = "/tasker.health.v1.LabelService/CreateLabel"
+	// LabelServiceUpdateLabelProcedure is the fully-qualified name of the LabelService's UpdateLabel
+	// RPC.
+	LabelServiceUpdateLabelProcedure = "/tasker.health.v1.LabelService/UpdateLabel"
 	// LabelServiceListLabelsProcedure is the fully-qualified name of the LabelService's ListLabels RPC.
 	LabelServiceListLabelsProcedure = "/tasker.health.v1.LabelService/ListLabels"
 	// LabelServiceAttachLabelProcedure is the fully-qualified name of the LabelService's AttachLabel
@@ -228,6 +271,9 @@ const (
 	// RepositoryServiceAddRepositoryLinkProcedure is the fully-qualified name of the
 	// RepositoryService's AddRepositoryLink RPC.
 	RepositoryServiceAddRepositoryLinkProcedure = "/tasker.health.v1.RepositoryService/AddRepositoryLink"
+	// RepositoryServiceRemoveRepositoryLinkProcedure is the fully-qualified name of the
+	// RepositoryService's RemoveRepositoryLink RPC.
+	RepositoryServiceRemoveRepositoryLinkProcedure = "/tasker.health.v1.RepositoryService/RemoveRepositoryLink"
 	// RepositoryServiceListRepositoryLinksProcedure is the fully-qualified name of the
 	// RepositoryService's ListRepositoryLinks RPC.
 	RepositoryServiceListRepositoryLinksProcedure = "/tasker.health.v1.RepositoryService/ListRepositoryLinks"
@@ -257,32 +303,40 @@ var (
 	orgServiceServiceDescriptor                               = v1.File_tasker_health_v1_health_proto.Services().ByName("OrgService")
 	orgServiceListOrgsMethodDescriptor                        = orgServiceServiceDescriptor.Methods().ByName("ListOrgs")
 	orgServiceSeedOrgMethodDescriptor                         = orgServiceServiceDescriptor.Methods().ByName("SeedOrg")
+	orgServiceUpdateOrgMethodDescriptor                       = orgServiceServiceDescriptor.Methods().ByName("UpdateOrg")
 	orgServiceArchiveOrgMethodDescriptor                      = orgServiceServiceDescriptor.Methods().ByName("ArchiveOrg")
 	orgServiceRestoreOrgMethodDescriptor                      = orgServiceServiceDescriptor.Methods().ByName("RestoreOrg")
 	orgServicePurgeOrgMethodDescriptor                        = orgServiceServiceDescriptor.Methods().ByName("PurgeOrg")
 	orgServiceSetOrgRetentionDaysMethodDescriptor             = orgServiceServiceDescriptor.Methods().ByName("SetOrgRetentionDays")
 	orgServiceInviteUserMethodDescriptor                      = orgServiceServiceDescriptor.Methods().ByName("InviteUser")
+	orgServiceListOrgMembersMethodDescriptor                  = orgServiceServiceDescriptor.Methods().ByName("ListOrgMembers")
+	orgServiceRemoveOrgMemberMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("RemoveOrgMember")
 	taskTypeServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskTypeService")
 	taskTypeServiceGetTaskTypeMethodDescriptor                = taskTypeServiceServiceDescriptor.Methods().ByName("GetTaskType")
 	taskTypeServiceCreateTaskTypeMethodDescriptor             = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskType")
+	taskTypeServiceUpdateTaskTypeMethodDescriptor             = taskTypeServiceServiceDescriptor.Methods().ByName("UpdateTaskType")
 	taskTypeServiceListTaskTypesMethodDescriptor              = taskTypeServiceServiceDescriptor.Methods().ByName("ListTaskTypes")
 	taskTypeServiceCreateTaskStatusMethodDescriptor           = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskStatus")
 	taskTypeServiceCreateTaskStatusTransitionMethodDescriptor = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskStatusTransition")
 	projectTemplateServiceServiceDescriptor                   = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectTemplateService")
 	projectTemplateServiceGetTemplateMethodDescriptor         = projectTemplateServiceServiceDescriptor.Methods().ByName("GetTemplate")
 	projectTemplateServiceCreateTemplateMethodDescriptor      = projectTemplateServiceServiceDescriptor.Methods().ByName("CreateTemplate")
+	projectTemplateServiceUpdateTemplateMethodDescriptor      = projectTemplateServiceServiceDescriptor.Methods().ByName("UpdateTemplate")
 	projectTemplateServiceListTemplatesMethodDescriptor       = projectTemplateServiceServiceDescriptor.Methods().ByName("ListTemplates")
 	projectServiceServiceDescriptor                           = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectService")
 	projectServiceGetProjectMethodDescriptor                  = projectServiceServiceDescriptor.Methods().ByName("GetProject")
 	projectServiceCreateProjectMethodDescriptor               = projectServiceServiceDescriptor.Methods().ByName("CreateProject")
+	projectServiceUpdateProjectMethodDescriptor               = projectServiceServiceDescriptor.Methods().ByName("UpdateProject")
 	projectServiceListProjectsMethodDescriptor                = projectServiceServiceDescriptor.Methods().ByName("ListProjects")
 	projectServiceArchiveProjectMethodDescriptor              = projectServiceServiceDescriptor.Methods().ByName("ArchiveProject")
 	projectServiceRestoreProjectMethodDescriptor              = projectServiceServiceDescriptor.Methods().ByName("RestoreProject")
 	projectServicePurgeProjectMethodDescriptor                = projectServiceServiceDescriptor.Methods().ByName("PurgeProject")
 	agentServiceServiceDescriptor                             = v1.File_tasker_health_v1_health_proto.Services().ByName("AgentService")
 	agentServiceCreateAgentRoleMethodDescriptor               = agentServiceServiceDescriptor.Methods().ByName("CreateAgentRole")
+	agentServiceUpdateAgentRoleMethodDescriptor               = agentServiceServiceDescriptor.Methods().ByName("UpdateAgentRole")
 	agentServiceListAgentRolesMethodDescriptor                = agentServiceServiceDescriptor.Methods().ByName("ListAgentRoles")
 	agentServiceCreateAgentMethodDescriptor                   = agentServiceServiceDescriptor.Methods().ByName("CreateAgent")
+	agentServiceUpdateAgentMethodDescriptor                   = agentServiceServiceDescriptor.Methods().ByName("UpdateAgent")
 	agentServiceListAgentsMethodDescriptor                    = agentServiceServiceDescriptor.Methods().ByName("ListAgents")
 	agentServiceArchiveAgentMethodDescriptor                  = agentServiceServiceDescriptor.Methods().ByName("ArchiveAgent")
 	agentServiceRestoreAgentMethodDescriptor                  = agentServiceServiceDescriptor.Methods().ByName("RestoreAgent")
@@ -291,6 +345,7 @@ var (
 	taskServiceCreateTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("CreateTask")
 	taskServiceAssignTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
 	taskServiceListTasksMethodDescriptor                      = taskServiceServiceDescriptor.Methods().ByName("ListTasks")
+	taskServiceUpdateTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("UpdateTask")
 	taskServiceUpdateTaskStatusMethodDescriptor               = taskServiceServiceDescriptor.Methods().ByName("UpdateTaskStatus")
 	taskServiceDeleteTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("DeleteTask")
 	taskServiceRestoreTaskMethodDescriptor                    = taskServiceServiceDescriptor.Methods().ByName("RestoreTask")
@@ -300,6 +355,7 @@ var (
 	taskServiceListTaskReviewersMethodDescriptor              = taskServiceServiceDescriptor.Methods().ByName("ListTaskReviewers")
 	artifactServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
 	artifactServiceCreateFolderMethodDescriptor               = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
+	artifactServiceUpdateFolderMethodDescriptor               = artifactServiceServiceDescriptor.Methods().ByName("UpdateFolder")
 	artifactServiceCreateArtifactMethodDescriptor             = artifactServiceServiceDescriptor.Methods().ByName("CreateArtifact")
 	artifactServiceUpdateArtifactContentMethodDescriptor      = artifactServiceServiceDescriptor.Methods().ByName("UpdateArtifactContent")
 	artifactServiceLinkTaskArtifactMethodDescriptor           = artifactServiceServiceDescriptor.Methods().ByName("LinkTaskArtifact")
@@ -313,18 +369,24 @@ var (
 	artifactServicePurgeFolderMethodDescriptor                = artifactServiceServiceDescriptor.Methods().ByName("PurgeFolder")
 	commentServiceServiceDescriptor                           = v1.File_tasker_health_v1_health_proto.Services().ByName("CommentService")
 	commentServiceCreateCommentMethodDescriptor               = commentServiceServiceDescriptor.Methods().ByName("CreateComment")
+	commentServiceUpdateCommentMethodDescriptor               = commentServiceServiceDescriptor.Methods().ByName("UpdateComment")
+	commentServiceDeleteCommentMethodDescriptor               = commentServiceServiceDescriptor.Methods().ByName("DeleteComment")
 	commentServiceListCommentsMethodDescriptor                = commentServiceServiceDescriptor.Methods().ByName("ListComments")
 	taskNoteServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskNoteService")
 	taskNoteServiceCreateTaskNoteMethodDescriptor             = taskNoteServiceServiceDescriptor.Methods().ByName("CreateTaskNote")
+	taskNoteServiceUpdateTaskNoteMethodDescriptor             = taskNoteServiceServiceDescriptor.Methods().ByName("UpdateTaskNote")
+	taskNoteServiceDeleteTaskNoteMethodDescriptor             = taskNoteServiceServiceDescriptor.Methods().ByName("DeleteTaskNote")
 	taskNoteServiceListTaskNotesMethodDescriptor              = taskNoteServiceServiceDescriptor.Methods().ByName("ListTaskNotes")
 	labelServiceServiceDescriptor                             = v1.File_tasker_health_v1_health_proto.Services().ByName("LabelService")
 	labelServiceCreateLabelMethodDescriptor                   = labelServiceServiceDescriptor.Methods().ByName("CreateLabel")
+	labelServiceUpdateLabelMethodDescriptor                   = labelServiceServiceDescriptor.Methods().ByName("UpdateLabel")
 	labelServiceListLabelsMethodDescriptor                    = labelServiceServiceDescriptor.Methods().ByName("ListLabels")
 	labelServiceAttachLabelMethodDescriptor                   = labelServiceServiceDescriptor.Methods().ByName("AttachLabel")
 	labelServiceDetachLabelMethodDescriptor                   = labelServiceServiceDescriptor.Methods().ByName("DetachLabel")
 	labelServiceListEntityLabelsMethodDescriptor              = labelServiceServiceDescriptor.Methods().ByName("ListEntityLabels")
 	repositoryServiceServiceDescriptor                        = v1.File_tasker_health_v1_health_proto.Services().ByName("RepositoryService")
 	repositoryServiceAddRepositoryLinkMethodDescriptor        = repositoryServiceServiceDescriptor.Methods().ByName("AddRepositoryLink")
+	repositoryServiceRemoveRepositoryLinkMethodDescriptor     = repositoryServiceServiceDescriptor.Methods().ByName("RemoveRepositoryLink")
 	repositoryServiceListRepositoryLinksMethodDescriptor      = repositoryServiceServiceDescriptor.Methods().ByName("ListRepositoryLinks")
 	repositoryServiceSyncPullRequestsMethodDescriptor         = repositoryServiceServiceDescriptor.Methods().ByName("SyncPullRequests")
 	repositoryServiceListPullRequestsMethodDescriptor         = repositoryServiceServiceDescriptor.Methods().ByName("ListPullRequests")
@@ -474,11 +536,14 @@ func (UnimplementedAuthServiceHandler) GetIdentity(context.Context, *connect.Req
 type OrgServiceClient interface {
 	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
 	SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error)
+	UpdateOrg(context.Context, *connect.Request[v1.UpdateOrgRequest]) (*connect.Response[v1.UpdateOrgResponse], error)
 	ArchiveOrg(context.Context, *connect.Request[v1.ArchiveOrgRequest]) (*connect.Response[v1.ArchiveOrgResponse], error)
 	RestoreOrg(context.Context, *connect.Request[v1.RestoreOrgRequest]) (*connect.Response[v1.RestoreOrgResponse], error)
 	PurgeOrg(context.Context, *connect.Request[v1.PurgeOrgRequest]) (*connect.Response[v1.PurgeOrgResponse], error)
 	SetOrgRetentionDays(context.Context, *connect.Request[v1.SetOrgRetentionDaysRequest]) (*connect.Response[v1.SetOrgRetentionDaysResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
+	ListOrgMembers(context.Context, *connect.Request[v1.ListOrgMembersRequest]) (*connect.Response[v1.ListOrgMembersResponse], error)
+	RemoveOrgMember(context.Context, *connect.Request[v1.RemoveOrgMemberRequest]) (*connect.Response[v1.RemoveOrgMemberResponse], error)
 }
 
 // NewOrgServiceClient constructs a client for the tasker.health.v1.OrgService service. By default,
@@ -501,6 +566,12 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			httpClient,
 			baseURL+OrgServiceSeedOrgProcedure,
 			connect.WithSchema(orgServiceSeedOrgMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateOrg: connect.NewClient[v1.UpdateOrgRequest, v1.UpdateOrgResponse](
+			httpClient,
+			baseURL+OrgServiceUpdateOrgProcedure,
+			connect.WithSchema(orgServiceUpdateOrgMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		archiveOrg: connect.NewClient[v1.ArchiveOrgRequest, v1.ArchiveOrgResponse](
@@ -533,6 +604,18 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(orgServiceInviteUserMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listOrgMembers: connect.NewClient[v1.ListOrgMembersRequest, v1.ListOrgMembersResponse](
+			httpClient,
+			baseURL+OrgServiceListOrgMembersProcedure,
+			connect.WithSchema(orgServiceListOrgMembersMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		removeOrgMember: connect.NewClient[v1.RemoveOrgMemberRequest, v1.RemoveOrgMemberResponse](
+			httpClient,
+			baseURL+OrgServiceRemoveOrgMemberProcedure,
+			connect.WithSchema(orgServiceRemoveOrgMemberMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -540,11 +623,14 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 type orgServiceClient struct {
 	listOrgs            *connect.Client[v1.ListOrgsRequest, v1.ListOrgsResponse]
 	seedOrg             *connect.Client[v1.SeedOrgRequest, v1.SeedOrgResponse]
+	updateOrg           *connect.Client[v1.UpdateOrgRequest, v1.UpdateOrgResponse]
 	archiveOrg          *connect.Client[v1.ArchiveOrgRequest, v1.ArchiveOrgResponse]
 	restoreOrg          *connect.Client[v1.RestoreOrgRequest, v1.RestoreOrgResponse]
 	purgeOrg            *connect.Client[v1.PurgeOrgRequest, v1.PurgeOrgResponse]
 	setOrgRetentionDays *connect.Client[v1.SetOrgRetentionDaysRequest, v1.SetOrgRetentionDaysResponse]
 	inviteUser          *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
+	listOrgMembers      *connect.Client[v1.ListOrgMembersRequest, v1.ListOrgMembersResponse]
+	removeOrgMember     *connect.Client[v1.RemoveOrgMemberRequest, v1.RemoveOrgMemberResponse]
 }
 
 // ListOrgs calls tasker.health.v1.OrgService.ListOrgs.
@@ -555,6 +641,11 @@ func (c *orgServiceClient) ListOrgs(ctx context.Context, req *connect.Request[v1
 // SeedOrg calls tasker.health.v1.OrgService.SeedOrg.
 func (c *orgServiceClient) SeedOrg(ctx context.Context, req *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error) {
 	return c.seedOrg.CallUnary(ctx, req)
+}
+
+// UpdateOrg calls tasker.health.v1.OrgService.UpdateOrg.
+func (c *orgServiceClient) UpdateOrg(ctx context.Context, req *connect.Request[v1.UpdateOrgRequest]) (*connect.Response[v1.UpdateOrgResponse], error) {
+	return c.updateOrg.CallUnary(ctx, req)
 }
 
 // ArchiveOrg calls tasker.health.v1.OrgService.ArchiveOrg.
@@ -582,15 +673,28 @@ func (c *orgServiceClient) InviteUser(ctx context.Context, req *connect.Request[
 	return c.inviteUser.CallUnary(ctx, req)
 }
 
+// ListOrgMembers calls tasker.health.v1.OrgService.ListOrgMembers.
+func (c *orgServiceClient) ListOrgMembers(ctx context.Context, req *connect.Request[v1.ListOrgMembersRequest]) (*connect.Response[v1.ListOrgMembersResponse], error) {
+	return c.listOrgMembers.CallUnary(ctx, req)
+}
+
+// RemoveOrgMember calls tasker.health.v1.OrgService.RemoveOrgMember.
+func (c *orgServiceClient) RemoveOrgMember(ctx context.Context, req *connect.Request[v1.RemoveOrgMemberRequest]) (*connect.Response[v1.RemoveOrgMemberResponse], error) {
+	return c.removeOrgMember.CallUnary(ctx, req)
+}
+
 // OrgServiceHandler is an implementation of the tasker.health.v1.OrgService service.
 type OrgServiceHandler interface {
 	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
 	SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error)
+	UpdateOrg(context.Context, *connect.Request[v1.UpdateOrgRequest]) (*connect.Response[v1.UpdateOrgResponse], error)
 	ArchiveOrg(context.Context, *connect.Request[v1.ArchiveOrgRequest]) (*connect.Response[v1.ArchiveOrgResponse], error)
 	RestoreOrg(context.Context, *connect.Request[v1.RestoreOrgRequest]) (*connect.Response[v1.RestoreOrgResponse], error)
 	PurgeOrg(context.Context, *connect.Request[v1.PurgeOrgRequest]) (*connect.Response[v1.PurgeOrgResponse], error)
 	SetOrgRetentionDays(context.Context, *connect.Request[v1.SetOrgRetentionDaysRequest]) (*connect.Response[v1.SetOrgRetentionDaysResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
+	ListOrgMembers(context.Context, *connect.Request[v1.ListOrgMembersRequest]) (*connect.Response[v1.ListOrgMembersResponse], error)
+	RemoveOrgMember(context.Context, *connect.Request[v1.RemoveOrgMemberRequest]) (*connect.Response[v1.RemoveOrgMemberResponse], error)
 }
 
 // NewOrgServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -609,6 +713,12 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 		OrgServiceSeedOrgProcedure,
 		svc.SeedOrg,
 		connect.WithSchema(orgServiceSeedOrgMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceUpdateOrgHandler := connect.NewUnaryHandler(
+		OrgServiceUpdateOrgProcedure,
+		svc.UpdateOrg,
+		connect.WithSchema(orgServiceUpdateOrgMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	orgServiceArchiveOrgHandler := connect.NewUnaryHandler(
@@ -641,12 +751,26 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(orgServiceInviteUserMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	orgServiceListOrgMembersHandler := connect.NewUnaryHandler(
+		OrgServiceListOrgMembersProcedure,
+		svc.ListOrgMembers,
+		connect.WithSchema(orgServiceListOrgMembersMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceRemoveOrgMemberHandler := connect.NewUnaryHandler(
+		OrgServiceRemoveOrgMemberProcedure,
+		svc.RemoveOrgMember,
+		connect.WithSchema(orgServiceRemoveOrgMemberMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.OrgService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrgServiceListOrgsProcedure:
 			orgServiceListOrgsHandler.ServeHTTP(w, r)
 		case OrgServiceSeedOrgProcedure:
 			orgServiceSeedOrgHandler.ServeHTTP(w, r)
+		case OrgServiceUpdateOrgProcedure:
+			orgServiceUpdateOrgHandler.ServeHTTP(w, r)
 		case OrgServiceArchiveOrgProcedure:
 			orgServiceArchiveOrgHandler.ServeHTTP(w, r)
 		case OrgServiceRestoreOrgProcedure:
@@ -657,6 +781,10 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 			orgServiceSetOrgRetentionDaysHandler.ServeHTTP(w, r)
 		case OrgServiceInviteUserProcedure:
 			orgServiceInviteUserHandler.ServeHTTP(w, r)
+		case OrgServiceListOrgMembersProcedure:
+			orgServiceListOrgMembersHandler.ServeHTTP(w, r)
+		case OrgServiceRemoveOrgMemberProcedure:
+			orgServiceRemoveOrgMemberHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -672,6 +800,10 @@ func (UnimplementedOrgServiceHandler) ListOrgs(context.Context, *connect.Request
 
 func (UnimplementedOrgServiceHandler) SeedOrg(context.Context, *connect.Request[v1.SeedOrgRequest]) (*connect.Response[v1.SeedOrgResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.SeedOrg is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) UpdateOrg(context.Context, *connect.Request[v1.UpdateOrgRequest]) (*connect.Response[v1.UpdateOrgResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.UpdateOrg is not implemented"))
 }
 
 func (UnimplementedOrgServiceHandler) ArchiveOrg(context.Context, *connect.Request[v1.ArchiveOrgRequest]) (*connect.Response[v1.ArchiveOrgResponse], error) {
@@ -694,10 +826,19 @@ func (UnimplementedOrgServiceHandler) InviteUser(context.Context, *connect.Reque
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.InviteUser is not implemented"))
 }
 
+func (UnimplementedOrgServiceHandler) ListOrgMembers(context.Context, *connect.Request[v1.ListOrgMembersRequest]) (*connect.Response[v1.ListOrgMembersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.ListOrgMembers is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) RemoveOrgMember(context.Context, *connect.Request[v1.RemoveOrgMemberRequest]) (*connect.Response[v1.RemoveOrgMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.RemoveOrgMember is not implemented"))
+}
+
 // TaskTypeServiceClient is a client for the tasker.health.v1.TaskTypeService service.
 type TaskTypeServiceClient interface {
 	GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error)
 	CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error)
+	UpdateTaskType(context.Context, *connect.Request[v1.UpdateTaskTypeRequest]) (*connect.Response[v1.UpdateTaskTypeResponse], error)
 	ListTaskTypes(context.Context, *connect.Request[v1.ListTaskTypesRequest]) (*connect.Response[v1.ListTaskTypesResponse], error)
 	CreateTaskStatus(context.Context, *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error)
 	CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error)
@@ -725,6 +866,12 @@ func NewTaskTypeServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(taskTypeServiceCreateTaskTypeMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		updateTaskType: connect.NewClient[v1.UpdateTaskTypeRequest, v1.UpdateTaskTypeResponse](
+			httpClient,
+			baseURL+TaskTypeServiceUpdateTaskTypeProcedure,
+			connect.WithSchema(taskTypeServiceUpdateTaskTypeMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		listTaskTypes: connect.NewClient[v1.ListTaskTypesRequest, v1.ListTaskTypesResponse](
 			httpClient,
 			baseURL+TaskTypeServiceListTaskTypesProcedure,
@@ -750,6 +897,7 @@ func NewTaskTypeServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 type taskTypeServiceClient struct {
 	getTaskType                *connect.Client[v1.GetTaskTypeRequest, v1.GetTaskTypeResponse]
 	createTaskType             *connect.Client[v1.CreateTaskTypeRequest, v1.CreateTaskTypeResponse]
+	updateTaskType             *connect.Client[v1.UpdateTaskTypeRequest, v1.UpdateTaskTypeResponse]
 	listTaskTypes              *connect.Client[v1.ListTaskTypesRequest, v1.ListTaskTypesResponse]
 	createTaskStatus           *connect.Client[v1.CreateTaskStatusRequest, v1.CreateTaskStatusResponse]
 	createTaskStatusTransition *connect.Client[v1.CreateTaskStatusTransitionRequest, v1.CreateTaskStatusTransitionResponse]
@@ -763,6 +911,11 @@ func (c *taskTypeServiceClient) GetTaskType(ctx context.Context, req *connect.Re
 // CreateTaskType calls tasker.health.v1.TaskTypeService.CreateTaskType.
 func (c *taskTypeServiceClient) CreateTaskType(ctx context.Context, req *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error) {
 	return c.createTaskType.CallUnary(ctx, req)
+}
+
+// UpdateTaskType calls tasker.health.v1.TaskTypeService.UpdateTaskType.
+func (c *taskTypeServiceClient) UpdateTaskType(ctx context.Context, req *connect.Request[v1.UpdateTaskTypeRequest]) (*connect.Response[v1.UpdateTaskTypeResponse], error) {
+	return c.updateTaskType.CallUnary(ctx, req)
 }
 
 // ListTaskTypes calls tasker.health.v1.TaskTypeService.ListTaskTypes.
@@ -784,6 +937,7 @@ func (c *taskTypeServiceClient) CreateTaskStatusTransition(ctx context.Context, 
 type TaskTypeServiceHandler interface {
 	GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error)
 	CreateTaskType(context.Context, *connect.Request[v1.CreateTaskTypeRequest]) (*connect.Response[v1.CreateTaskTypeResponse], error)
+	UpdateTaskType(context.Context, *connect.Request[v1.UpdateTaskTypeRequest]) (*connect.Response[v1.UpdateTaskTypeResponse], error)
 	ListTaskTypes(context.Context, *connect.Request[v1.ListTaskTypesRequest]) (*connect.Response[v1.ListTaskTypesResponse], error)
 	CreateTaskStatus(context.Context, *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error)
 	CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error)
@@ -805,6 +959,12 @@ func NewTaskTypeServiceHandler(svc TaskTypeServiceHandler, opts ...connect.Handl
 		TaskTypeServiceCreateTaskTypeProcedure,
 		svc.CreateTaskType,
 		connect.WithSchema(taskTypeServiceCreateTaskTypeMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskTypeServiceUpdateTaskTypeHandler := connect.NewUnaryHandler(
+		TaskTypeServiceUpdateTaskTypeProcedure,
+		svc.UpdateTaskType,
+		connect.WithSchema(taskTypeServiceUpdateTaskTypeMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	taskTypeServiceListTaskTypesHandler := connect.NewUnaryHandler(
@@ -831,6 +991,8 @@ func NewTaskTypeServiceHandler(svc TaskTypeServiceHandler, opts ...connect.Handl
 			taskTypeServiceGetTaskTypeHandler.ServeHTTP(w, r)
 		case TaskTypeServiceCreateTaskTypeProcedure:
 			taskTypeServiceCreateTaskTypeHandler.ServeHTTP(w, r)
+		case TaskTypeServiceUpdateTaskTypeProcedure:
+			taskTypeServiceUpdateTaskTypeHandler.ServeHTTP(w, r)
 		case TaskTypeServiceListTaskTypesProcedure:
 			taskTypeServiceListTaskTypesHandler.ServeHTTP(w, r)
 		case TaskTypeServiceCreateTaskStatusProcedure:
@@ -854,6 +1016,10 @@ func (UnimplementedTaskTypeServiceHandler) CreateTaskType(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.CreateTaskType is not implemented"))
 }
 
+func (UnimplementedTaskTypeServiceHandler) UpdateTaskType(context.Context, *connect.Request[v1.UpdateTaskTypeRequest]) (*connect.Response[v1.UpdateTaskTypeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.UpdateTaskType is not implemented"))
+}
+
 func (UnimplementedTaskTypeServiceHandler) ListTaskTypes(context.Context, *connect.Request[v1.ListTaskTypesRequest]) (*connect.Response[v1.ListTaskTypesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.ListTaskTypes is not implemented"))
 }
@@ -870,6 +1036,7 @@ func (UnimplementedTaskTypeServiceHandler) CreateTaskStatusTransition(context.Co
 type ProjectTemplateServiceClient interface {
 	GetTemplate(context.Context, *connect.Request[v1.GetProjectTemplateRequest]) (*connect.Response[v1.GetProjectTemplateResponse], error)
 	CreateTemplate(context.Context, *connect.Request[v1.CreateProjectTemplateRequest]) (*connect.Response[v1.CreateProjectTemplateResponse], error)
+	UpdateTemplate(context.Context, *connect.Request[v1.UpdateProjectTemplateRequest]) (*connect.Response[v1.UpdateProjectTemplateResponse], error)
 	ListTemplates(context.Context, *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error)
 }
 
@@ -895,6 +1062,12 @@ func NewProjectTemplateServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(projectTemplateServiceCreateTemplateMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		updateTemplate: connect.NewClient[v1.UpdateProjectTemplateRequest, v1.UpdateProjectTemplateResponse](
+			httpClient,
+			baseURL+ProjectTemplateServiceUpdateTemplateProcedure,
+			connect.WithSchema(projectTemplateServiceUpdateTemplateMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		listTemplates: connect.NewClient[v1.ListProjectTemplatesRequest, v1.ListProjectTemplatesResponse](
 			httpClient,
 			baseURL+ProjectTemplateServiceListTemplatesProcedure,
@@ -908,6 +1081,7 @@ func NewProjectTemplateServiceClient(httpClient connect.HTTPClient, baseURL stri
 type projectTemplateServiceClient struct {
 	getTemplate    *connect.Client[v1.GetProjectTemplateRequest, v1.GetProjectTemplateResponse]
 	createTemplate *connect.Client[v1.CreateProjectTemplateRequest, v1.CreateProjectTemplateResponse]
+	updateTemplate *connect.Client[v1.UpdateProjectTemplateRequest, v1.UpdateProjectTemplateResponse]
 	listTemplates  *connect.Client[v1.ListProjectTemplatesRequest, v1.ListProjectTemplatesResponse]
 }
 
@@ -921,6 +1095,11 @@ func (c *projectTemplateServiceClient) CreateTemplate(ctx context.Context, req *
 	return c.createTemplate.CallUnary(ctx, req)
 }
 
+// UpdateTemplate calls tasker.health.v1.ProjectTemplateService.UpdateTemplate.
+func (c *projectTemplateServiceClient) UpdateTemplate(ctx context.Context, req *connect.Request[v1.UpdateProjectTemplateRequest]) (*connect.Response[v1.UpdateProjectTemplateResponse], error) {
+	return c.updateTemplate.CallUnary(ctx, req)
+}
+
 // ListTemplates calls tasker.health.v1.ProjectTemplateService.ListTemplates.
 func (c *projectTemplateServiceClient) ListTemplates(ctx context.Context, req *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error) {
 	return c.listTemplates.CallUnary(ctx, req)
@@ -931,6 +1110,7 @@ func (c *projectTemplateServiceClient) ListTemplates(ctx context.Context, req *c
 type ProjectTemplateServiceHandler interface {
 	GetTemplate(context.Context, *connect.Request[v1.GetProjectTemplateRequest]) (*connect.Response[v1.GetProjectTemplateResponse], error)
 	CreateTemplate(context.Context, *connect.Request[v1.CreateProjectTemplateRequest]) (*connect.Response[v1.CreateProjectTemplateResponse], error)
+	UpdateTemplate(context.Context, *connect.Request[v1.UpdateProjectTemplateRequest]) (*connect.Response[v1.UpdateProjectTemplateResponse], error)
 	ListTemplates(context.Context, *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error)
 }
 
@@ -952,6 +1132,12 @@ func NewProjectTemplateServiceHandler(svc ProjectTemplateServiceHandler, opts ..
 		connect.WithSchema(projectTemplateServiceCreateTemplateMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectTemplateServiceUpdateTemplateHandler := connect.NewUnaryHandler(
+		ProjectTemplateServiceUpdateTemplateProcedure,
+		svc.UpdateTemplate,
+		connect.WithSchema(projectTemplateServiceUpdateTemplateMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	projectTemplateServiceListTemplatesHandler := connect.NewUnaryHandler(
 		ProjectTemplateServiceListTemplatesProcedure,
 		svc.ListTemplates,
@@ -964,6 +1150,8 @@ func NewProjectTemplateServiceHandler(svc ProjectTemplateServiceHandler, opts ..
 			projectTemplateServiceGetTemplateHandler.ServeHTTP(w, r)
 		case ProjectTemplateServiceCreateTemplateProcedure:
 			projectTemplateServiceCreateTemplateHandler.ServeHTTP(w, r)
+		case ProjectTemplateServiceUpdateTemplateProcedure:
+			projectTemplateServiceUpdateTemplateHandler.ServeHTTP(w, r)
 		case ProjectTemplateServiceListTemplatesProcedure:
 			projectTemplateServiceListTemplatesHandler.ServeHTTP(w, r)
 		default:
@@ -983,6 +1171,10 @@ func (UnimplementedProjectTemplateServiceHandler) CreateTemplate(context.Context
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectTemplateService.CreateTemplate is not implemented"))
 }
 
+func (UnimplementedProjectTemplateServiceHandler) UpdateTemplate(context.Context, *connect.Request[v1.UpdateProjectTemplateRequest]) (*connect.Response[v1.UpdateProjectTemplateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectTemplateService.UpdateTemplate is not implemented"))
+}
+
 func (UnimplementedProjectTemplateServiceHandler) ListTemplates(context.Context, *connect.Request[v1.ListProjectTemplatesRequest]) (*connect.Response[v1.ListProjectTemplatesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectTemplateService.ListTemplates is not implemented"))
 }
@@ -991,6 +1183,7 @@ func (UnimplementedProjectTemplateServiceHandler) ListTemplates(context.Context,
 type ProjectServiceClient interface {
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
+	UpdateProject(context.Context, *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	ArchiveProject(context.Context, *connect.Request[v1.ArchiveProjectRequest]) (*connect.Response[v1.ArchiveProjectResponse], error)
 	RestoreProject(context.Context, *connect.Request[v1.RestoreProjectRequest]) (*connect.Response[v1.RestoreProjectResponse], error)
@@ -1017,6 +1210,12 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+ProjectServiceCreateProjectProcedure,
 			connect.WithSchema(projectServiceCreateProjectMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateProject: connect.NewClient[v1.UpdateProjectRequest, v1.UpdateProjectResponse](
+			httpClient,
+			baseURL+ProjectServiceUpdateProjectProcedure,
+			connect.WithSchema(projectServiceUpdateProjectMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listProjects: connect.NewClient[v1.ListProjectsRequest, v1.ListProjectsResponse](
@@ -1050,6 +1249,7 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 type projectServiceClient struct {
 	getProject     *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
 	createProject  *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
+	updateProject  *connect.Client[v1.UpdateProjectRequest, v1.UpdateProjectResponse]
 	listProjects   *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
 	archiveProject *connect.Client[v1.ArchiveProjectRequest, v1.ArchiveProjectResponse]
 	restoreProject *connect.Client[v1.RestoreProjectRequest, v1.RestoreProjectResponse]
@@ -1064,6 +1264,11 @@ func (c *projectServiceClient) GetProject(ctx context.Context, req *connect.Requ
 // CreateProject calls tasker.health.v1.ProjectService.CreateProject.
 func (c *projectServiceClient) CreateProject(ctx context.Context, req *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error) {
 	return c.createProject.CallUnary(ctx, req)
+}
+
+// UpdateProject calls tasker.health.v1.ProjectService.UpdateProject.
+func (c *projectServiceClient) UpdateProject(ctx context.Context, req *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error) {
+	return c.updateProject.CallUnary(ctx, req)
 }
 
 // ListProjects calls tasker.health.v1.ProjectService.ListProjects.
@@ -1090,6 +1295,7 @@ func (c *projectServiceClient) PurgeProject(ctx context.Context, req *connect.Re
 type ProjectServiceHandler interface {
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
+	UpdateProject(context.Context, *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	ArchiveProject(context.Context, *connect.Request[v1.ArchiveProjectRequest]) (*connect.Response[v1.ArchiveProjectResponse], error)
 	RestoreProject(context.Context, *connect.Request[v1.RestoreProjectRequest]) (*connect.Response[v1.RestoreProjectResponse], error)
@@ -1112,6 +1318,12 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		ProjectServiceCreateProjectProcedure,
 		svc.CreateProject,
 		connect.WithSchema(projectServiceCreateProjectMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	projectServiceUpdateProjectHandler := connect.NewUnaryHandler(
+		ProjectServiceUpdateProjectProcedure,
+		svc.UpdateProject,
+		connect.WithSchema(projectServiceUpdateProjectMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	projectServiceListProjectsHandler := connect.NewUnaryHandler(
@@ -1144,6 +1356,8 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 			projectServiceGetProjectHandler.ServeHTTP(w, r)
 		case ProjectServiceCreateProjectProcedure:
 			projectServiceCreateProjectHandler.ServeHTTP(w, r)
+		case ProjectServiceUpdateProjectProcedure:
+			projectServiceUpdateProjectHandler.ServeHTTP(w, r)
 		case ProjectServiceListProjectsProcedure:
 			projectServiceListProjectsHandler.ServeHTTP(w, r)
 		case ProjectServiceArchiveProjectProcedure:
@@ -1169,6 +1383,10 @@ func (UnimplementedProjectServiceHandler) CreateProject(context.Context, *connec
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.CreateProject is not implemented"))
 }
 
+func (UnimplementedProjectServiceHandler) UpdateProject(context.Context, *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.UpdateProject is not implemented"))
+}
+
 func (UnimplementedProjectServiceHandler) ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ProjectService.ListProjects is not implemented"))
 }
@@ -1188,8 +1406,10 @@ func (UnimplementedProjectServiceHandler) PurgeProject(context.Context, *connect
 // AgentServiceClient is a client for the tasker.health.v1.AgentService service.
 type AgentServiceClient interface {
 	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
+	UpdateAgentRole(context.Context, *connect.Request[v1.UpdateAgentRoleRequest]) (*connect.Response[v1.UpdateAgentRoleResponse], error)
 	ListAgentRoles(context.Context, *connect.Request[v1.ListAgentRolesRequest]) (*connect.Response[v1.ListAgentRolesResponse], error)
 	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error)
+	UpdateAgent(context.Context, *connect.Request[v1.UpdateAgentRequest]) (*connect.Response[v1.UpdateAgentResponse], error)
 	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error)
 	ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error)
 	RestoreAgent(context.Context, *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error)
@@ -1212,6 +1432,12 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(agentServiceCreateAgentRoleMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		updateAgentRole: connect.NewClient[v1.UpdateAgentRoleRequest, v1.UpdateAgentRoleResponse](
+			httpClient,
+			baseURL+AgentServiceUpdateAgentRoleProcedure,
+			connect.WithSchema(agentServiceUpdateAgentRoleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		listAgentRoles: connect.NewClient[v1.ListAgentRolesRequest, v1.ListAgentRolesResponse](
 			httpClient,
 			baseURL+AgentServiceListAgentRolesProcedure,
@@ -1222,6 +1448,12 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+AgentServiceCreateAgentProcedure,
 			connect.WithSchema(agentServiceCreateAgentMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateAgent: connect.NewClient[v1.UpdateAgentRequest, v1.UpdateAgentResponse](
+			httpClient,
+			baseURL+AgentServiceUpdateAgentProcedure,
+			connect.WithSchema(agentServiceUpdateAgentMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listAgents: connect.NewClient[v1.ListAgentsRequest, v1.ListAgentsResponse](
@@ -1254,8 +1486,10 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 // agentServiceClient implements AgentServiceClient.
 type agentServiceClient struct {
 	createAgentRole *connect.Client[v1.CreateAgentRoleRequest, v1.CreateAgentRoleResponse]
+	updateAgentRole *connect.Client[v1.UpdateAgentRoleRequest, v1.UpdateAgentRoleResponse]
 	listAgentRoles  *connect.Client[v1.ListAgentRolesRequest, v1.ListAgentRolesResponse]
 	createAgent     *connect.Client[v1.CreateAgentRequest, v1.CreateAgentResponse]
+	updateAgent     *connect.Client[v1.UpdateAgentRequest, v1.UpdateAgentResponse]
 	listAgents      *connect.Client[v1.ListAgentsRequest, v1.ListAgentsResponse]
 	archiveAgent    *connect.Client[v1.ArchiveAgentRequest, v1.ArchiveAgentResponse]
 	restoreAgent    *connect.Client[v1.RestoreAgentRequest, v1.RestoreAgentResponse]
@@ -1267,6 +1501,11 @@ func (c *agentServiceClient) CreateAgentRole(ctx context.Context, req *connect.R
 	return c.createAgentRole.CallUnary(ctx, req)
 }
 
+// UpdateAgentRole calls tasker.health.v1.AgentService.UpdateAgentRole.
+func (c *agentServiceClient) UpdateAgentRole(ctx context.Context, req *connect.Request[v1.UpdateAgentRoleRequest]) (*connect.Response[v1.UpdateAgentRoleResponse], error) {
+	return c.updateAgentRole.CallUnary(ctx, req)
+}
+
 // ListAgentRoles calls tasker.health.v1.AgentService.ListAgentRoles.
 func (c *agentServiceClient) ListAgentRoles(ctx context.Context, req *connect.Request[v1.ListAgentRolesRequest]) (*connect.Response[v1.ListAgentRolesResponse], error) {
 	return c.listAgentRoles.CallUnary(ctx, req)
@@ -1275,6 +1514,11 @@ func (c *agentServiceClient) ListAgentRoles(ctx context.Context, req *connect.Re
 // CreateAgent calls tasker.health.v1.AgentService.CreateAgent.
 func (c *agentServiceClient) CreateAgent(ctx context.Context, req *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error) {
 	return c.createAgent.CallUnary(ctx, req)
+}
+
+// UpdateAgent calls tasker.health.v1.AgentService.UpdateAgent.
+func (c *agentServiceClient) UpdateAgent(ctx context.Context, req *connect.Request[v1.UpdateAgentRequest]) (*connect.Response[v1.UpdateAgentResponse], error) {
+	return c.updateAgent.CallUnary(ctx, req)
 }
 
 // ListAgents calls tasker.health.v1.AgentService.ListAgents.
@@ -1300,8 +1544,10 @@ func (c *agentServiceClient) PurgeAgent(ctx context.Context, req *connect.Reques
 // AgentServiceHandler is an implementation of the tasker.health.v1.AgentService service.
 type AgentServiceHandler interface {
 	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
+	UpdateAgentRole(context.Context, *connect.Request[v1.UpdateAgentRoleRequest]) (*connect.Response[v1.UpdateAgentRoleResponse], error)
 	ListAgentRoles(context.Context, *connect.Request[v1.ListAgentRolesRequest]) (*connect.Response[v1.ListAgentRolesResponse], error)
 	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error)
+	UpdateAgent(context.Context, *connect.Request[v1.UpdateAgentRequest]) (*connect.Response[v1.UpdateAgentResponse], error)
 	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error)
 	ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error)
 	RestoreAgent(context.Context, *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error)
@@ -1320,6 +1566,12 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(agentServiceCreateAgentRoleMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	agentServiceUpdateAgentRoleHandler := connect.NewUnaryHandler(
+		AgentServiceUpdateAgentRoleProcedure,
+		svc.UpdateAgentRole,
+		connect.WithSchema(agentServiceUpdateAgentRoleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	agentServiceListAgentRolesHandler := connect.NewUnaryHandler(
 		AgentServiceListAgentRolesProcedure,
 		svc.ListAgentRoles,
@@ -1330,6 +1582,12 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 		AgentServiceCreateAgentProcedure,
 		svc.CreateAgent,
 		connect.WithSchema(agentServiceCreateAgentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	agentServiceUpdateAgentHandler := connect.NewUnaryHandler(
+		AgentServiceUpdateAgentProcedure,
+		svc.UpdateAgent,
+		connect.WithSchema(agentServiceUpdateAgentMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	agentServiceListAgentsHandler := connect.NewUnaryHandler(
@@ -1360,10 +1618,14 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 		switch r.URL.Path {
 		case AgentServiceCreateAgentRoleProcedure:
 			agentServiceCreateAgentRoleHandler.ServeHTTP(w, r)
+		case AgentServiceUpdateAgentRoleProcedure:
+			agentServiceUpdateAgentRoleHandler.ServeHTTP(w, r)
 		case AgentServiceListAgentRolesProcedure:
 			agentServiceListAgentRolesHandler.ServeHTTP(w, r)
 		case AgentServiceCreateAgentProcedure:
 			agentServiceCreateAgentHandler.ServeHTTP(w, r)
+		case AgentServiceUpdateAgentProcedure:
+			agentServiceUpdateAgentHandler.ServeHTTP(w, r)
 		case AgentServiceListAgentsProcedure:
 			agentServiceListAgentsHandler.ServeHTTP(w, r)
 		case AgentServiceArchiveAgentProcedure:
@@ -1385,12 +1647,20 @@ func (UnimplementedAgentServiceHandler) CreateAgentRole(context.Context, *connec
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.CreateAgentRole is not implemented"))
 }
 
+func (UnimplementedAgentServiceHandler) UpdateAgentRole(context.Context, *connect.Request[v1.UpdateAgentRoleRequest]) (*connect.Response[v1.UpdateAgentRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.UpdateAgentRole is not implemented"))
+}
+
 func (UnimplementedAgentServiceHandler) ListAgentRoles(context.Context, *connect.Request[v1.ListAgentRolesRequest]) (*connect.Response[v1.ListAgentRolesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.ListAgentRoles is not implemented"))
 }
 
 func (UnimplementedAgentServiceHandler) CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.CreateAgent is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) UpdateAgent(context.Context, *connect.Request[v1.UpdateAgentRequest]) (*connect.Response[v1.UpdateAgentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.UpdateAgent is not implemented"))
 }
 
 func (UnimplementedAgentServiceHandler) ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error) {
@@ -1414,6 +1684,7 @@ type TaskServiceClient interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
 	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
+	UpdateTask(context.Context, *connect.Request[v1.UpdateTaskRequest]) (*connect.Response[v1.UpdateTaskResponse], error)
 	UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error)
 	DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error)
 	RestoreTask(context.Context, *connect.Request[v1.RestoreTaskRequest]) (*connect.Response[v1.RestoreTaskResponse], error)
@@ -1449,6 +1720,12 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+TaskServiceListTasksProcedure,
 			connect.WithSchema(taskServiceListTasksMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateTask: connect.NewClient[v1.UpdateTaskRequest, v1.UpdateTaskResponse](
+			httpClient,
+			baseURL+TaskServiceUpdateTaskProcedure,
+			connect.WithSchema(taskServiceUpdateTaskMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		updateTaskStatus: connect.NewClient[v1.UpdateTaskStatusRequest, v1.UpdateTaskStatusResponse](
@@ -1501,6 +1778,7 @@ type taskServiceClient struct {
 	createTask         *connect.Client[v1.CreateTaskRequest, v1.CreateTaskResponse]
 	assignTask         *connect.Client[v1.AssignTaskRequest, v1.AssignTaskResponse]
 	listTasks          *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
+	updateTask         *connect.Client[v1.UpdateTaskRequest, v1.UpdateTaskResponse]
 	updateTaskStatus   *connect.Client[v1.UpdateTaskStatusRequest, v1.UpdateTaskStatusResponse]
 	deleteTask         *connect.Client[v1.DeleteTaskRequest, v1.DeleteTaskResponse]
 	restoreTask        *connect.Client[v1.RestoreTaskRequest, v1.RestoreTaskResponse]
@@ -1523,6 +1801,11 @@ func (c *taskServiceClient) AssignTask(ctx context.Context, req *connect.Request
 // ListTasks calls tasker.health.v1.TaskService.ListTasks.
 func (c *taskServiceClient) ListTasks(ctx context.Context, req *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error) {
 	return c.listTasks.CallUnary(ctx, req)
+}
+
+// UpdateTask calls tasker.health.v1.TaskService.UpdateTask.
+func (c *taskServiceClient) UpdateTask(ctx context.Context, req *connect.Request[v1.UpdateTaskRequest]) (*connect.Response[v1.UpdateTaskResponse], error) {
+	return c.updateTask.CallUnary(ctx, req)
 }
 
 // UpdateTaskStatus calls tasker.health.v1.TaskService.UpdateTaskStatus.
@@ -1565,6 +1848,7 @@ type TaskServiceHandler interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
 	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
+	UpdateTask(context.Context, *connect.Request[v1.UpdateTaskRequest]) (*connect.Response[v1.UpdateTaskResponse], error)
 	UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error)
 	DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error)
 	RestoreTask(context.Context, *connect.Request[v1.RestoreTaskRequest]) (*connect.Response[v1.RestoreTaskResponse], error)
@@ -1596,6 +1880,12 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		TaskServiceListTasksProcedure,
 		svc.ListTasks,
 		connect.WithSchema(taskServiceListTasksMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceUpdateTaskHandler := connect.NewUnaryHandler(
+		TaskServiceUpdateTaskProcedure,
+		svc.UpdateTask,
+		connect.WithSchema(taskServiceUpdateTaskMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	taskServiceUpdateTaskStatusHandler := connect.NewUnaryHandler(
@@ -1648,6 +1938,8 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceAssignTaskHandler.ServeHTTP(w, r)
 		case TaskServiceListTasksProcedure:
 			taskServiceListTasksHandler.ServeHTTP(w, r)
+		case TaskServiceUpdateTaskProcedure:
+			taskServiceUpdateTaskHandler.ServeHTTP(w, r)
 		case TaskServiceUpdateTaskStatusProcedure:
 			taskServiceUpdateTaskStatusHandler.ServeHTTP(w, r)
 		case TaskServiceDeleteTaskProcedure:
@@ -1683,6 +1975,10 @@ func (UnimplementedTaskServiceHandler) ListTasks(context.Context, *connect.Reque
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListTasks is not implemented"))
 }
 
+func (UnimplementedTaskServiceHandler) UpdateTask(context.Context, *connect.Request[v1.UpdateTaskRequest]) (*connect.Response[v1.UpdateTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.UpdateTask is not implemented"))
+}
+
 func (UnimplementedTaskServiceHandler) UpdateTaskStatus(context.Context, *connect.Request[v1.UpdateTaskStatusRequest]) (*connect.Response[v1.UpdateTaskStatusResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.UpdateTaskStatus is not implemented"))
 }
@@ -1714,6 +2010,7 @@ func (UnimplementedTaskServiceHandler) ListTaskReviewers(context.Context, *conne
 // ArtifactServiceClient is a client for the tasker.health.v1.ArtifactService service.
 type ArtifactServiceClient interface {
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error)
+	UpdateFolder(context.Context, *connect.Request[v1.UpdateFolderRequest]) (*connect.Response[v1.UpdateFolderResponse], error)
 	CreateArtifact(context.Context, *connect.Request[v1.CreateArtifactRequest]) (*connect.Response[v1.CreateArtifactResponse], error)
 	UpdateArtifactContent(context.Context, *connect.Request[v1.UpdateArtifactContentRequest]) (*connect.Response[v1.UpdateArtifactContentResponse], error)
 	LinkTaskArtifact(context.Context, *connect.Request[v1.LinkTaskArtifactRequest]) (*connect.Response[v1.LinkTaskArtifactResponse], error)
@@ -1741,6 +2038,12 @@ func NewArtifactServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			httpClient,
 			baseURL+ArtifactServiceCreateFolderProcedure,
 			connect.WithSchema(artifactServiceCreateFolderMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateFolder: connect.NewClient[v1.UpdateFolderRequest, v1.UpdateFolderResponse](
+			httpClient,
+			baseURL+ArtifactServiceUpdateFolderProcedure,
+			connect.WithSchema(artifactServiceUpdateFolderMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		createArtifact: connect.NewClient[v1.CreateArtifactRequest, v1.CreateArtifactResponse](
@@ -1815,6 +2118,7 @@ func NewArtifactServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 // artifactServiceClient implements ArtifactServiceClient.
 type artifactServiceClient struct {
 	createFolder          *connect.Client[v1.CreateFolderRequest, v1.CreateFolderResponse]
+	updateFolder          *connect.Client[v1.UpdateFolderRequest, v1.UpdateFolderResponse]
 	createArtifact        *connect.Client[v1.CreateArtifactRequest, v1.CreateArtifactResponse]
 	updateArtifactContent *connect.Client[v1.UpdateArtifactContentRequest, v1.UpdateArtifactContentResponse]
 	linkTaskArtifact      *connect.Client[v1.LinkTaskArtifactRequest, v1.LinkTaskArtifactResponse]
@@ -1831,6 +2135,11 @@ type artifactServiceClient struct {
 // CreateFolder calls tasker.health.v1.ArtifactService.CreateFolder.
 func (c *artifactServiceClient) CreateFolder(ctx context.Context, req *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error) {
 	return c.createFolder.CallUnary(ctx, req)
+}
+
+// UpdateFolder calls tasker.health.v1.ArtifactService.UpdateFolder.
+func (c *artifactServiceClient) UpdateFolder(ctx context.Context, req *connect.Request[v1.UpdateFolderRequest]) (*connect.Response[v1.UpdateFolderResponse], error) {
+	return c.updateFolder.CallUnary(ctx, req)
 }
 
 // CreateArtifact calls tasker.health.v1.ArtifactService.CreateArtifact.
@@ -1891,6 +2200,7 @@ func (c *artifactServiceClient) PurgeFolder(ctx context.Context, req *connect.Re
 // ArtifactServiceHandler is an implementation of the tasker.health.v1.ArtifactService service.
 type ArtifactServiceHandler interface {
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error)
+	UpdateFolder(context.Context, *connect.Request[v1.UpdateFolderRequest]) (*connect.Response[v1.UpdateFolderResponse], error)
 	CreateArtifact(context.Context, *connect.Request[v1.CreateArtifactRequest]) (*connect.Response[v1.CreateArtifactResponse], error)
 	UpdateArtifactContent(context.Context, *connect.Request[v1.UpdateArtifactContentRequest]) (*connect.Response[v1.UpdateArtifactContentResponse], error)
 	LinkTaskArtifact(context.Context, *connect.Request[v1.LinkTaskArtifactRequest]) (*connect.Response[v1.LinkTaskArtifactResponse], error)
@@ -1914,6 +2224,12 @@ func NewArtifactServiceHandler(svc ArtifactServiceHandler, opts ...connect.Handl
 		ArtifactServiceCreateFolderProcedure,
 		svc.CreateFolder,
 		connect.WithSchema(artifactServiceCreateFolderMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	artifactServiceUpdateFolderHandler := connect.NewUnaryHandler(
+		ArtifactServiceUpdateFolderProcedure,
+		svc.UpdateFolder,
+		connect.WithSchema(artifactServiceUpdateFolderMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	artifactServiceCreateArtifactHandler := connect.NewUnaryHandler(
@@ -1986,6 +2302,8 @@ func NewArtifactServiceHandler(svc ArtifactServiceHandler, opts ...connect.Handl
 		switch r.URL.Path {
 		case ArtifactServiceCreateFolderProcedure:
 			artifactServiceCreateFolderHandler.ServeHTTP(w, r)
+		case ArtifactServiceUpdateFolderProcedure:
+			artifactServiceUpdateFolderHandler.ServeHTTP(w, r)
 		case ArtifactServiceCreateArtifactProcedure:
 			artifactServiceCreateArtifactHandler.ServeHTTP(w, r)
 		case ArtifactServiceUpdateArtifactContentProcedure:
@@ -2019,6 +2337,10 @@ type UnimplementedArtifactServiceHandler struct{}
 
 func (UnimplementedArtifactServiceHandler) CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.CreateFolder is not implemented"))
+}
+
+func (UnimplementedArtifactServiceHandler) UpdateFolder(context.Context, *connect.Request[v1.UpdateFolderRequest]) (*connect.Response[v1.UpdateFolderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.UpdateFolder is not implemented"))
 }
 
 func (UnimplementedArtifactServiceHandler) CreateArtifact(context.Context, *connect.Request[v1.CreateArtifactRequest]) (*connect.Response[v1.CreateArtifactResponse], error) {
@@ -2068,6 +2390,8 @@ func (UnimplementedArtifactServiceHandler) PurgeFolder(context.Context, *connect
 // CommentServiceClient is a client for the tasker.health.v1.CommentService service.
 type CommentServiceClient interface {
 	CreateComment(context.Context, *connect.Request[v1.CreateCommentRequest]) (*connect.Response[v1.CreateCommentResponse], error)
+	UpdateComment(context.Context, *connect.Request[v1.UpdateCommentRequest]) (*connect.Response[v1.UpdateCommentResponse], error)
+	DeleteComment(context.Context, *connect.Request[v1.DeleteCommentRequest]) (*connect.Response[v1.DeleteCommentResponse], error)
 	ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error)
 }
 
@@ -2087,6 +2411,18 @@ func NewCommentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(commentServiceCreateCommentMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		updateComment: connect.NewClient[v1.UpdateCommentRequest, v1.UpdateCommentResponse](
+			httpClient,
+			baseURL+CommentServiceUpdateCommentProcedure,
+			connect.WithSchema(commentServiceUpdateCommentMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deleteComment: connect.NewClient[v1.DeleteCommentRequest, v1.DeleteCommentResponse](
+			httpClient,
+			baseURL+CommentServiceDeleteCommentProcedure,
+			connect.WithSchema(commentServiceDeleteCommentMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		listComments: connect.NewClient[v1.ListCommentsRequest, v1.ListCommentsResponse](
 			httpClient,
 			baseURL+CommentServiceListCommentsProcedure,
@@ -2099,12 +2435,24 @@ func NewCommentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 // commentServiceClient implements CommentServiceClient.
 type commentServiceClient struct {
 	createComment *connect.Client[v1.CreateCommentRequest, v1.CreateCommentResponse]
+	updateComment *connect.Client[v1.UpdateCommentRequest, v1.UpdateCommentResponse]
+	deleteComment *connect.Client[v1.DeleteCommentRequest, v1.DeleteCommentResponse]
 	listComments  *connect.Client[v1.ListCommentsRequest, v1.ListCommentsResponse]
 }
 
 // CreateComment calls tasker.health.v1.CommentService.CreateComment.
 func (c *commentServiceClient) CreateComment(ctx context.Context, req *connect.Request[v1.CreateCommentRequest]) (*connect.Response[v1.CreateCommentResponse], error) {
 	return c.createComment.CallUnary(ctx, req)
+}
+
+// UpdateComment calls tasker.health.v1.CommentService.UpdateComment.
+func (c *commentServiceClient) UpdateComment(ctx context.Context, req *connect.Request[v1.UpdateCommentRequest]) (*connect.Response[v1.UpdateCommentResponse], error) {
+	return c.updateComment.CallUnary(ctx, req)
+}
+
+// DeleteComment calls tasker.health.v1.CommentService.DeleteComment.
+func (c *commentServiceClient) DeleteComment(ctx context.Context, req *connect.Request[v1.DeleteCommentRequest]) (*connect.Response[v1.DeleteCommentResponse], error) {
+	return c.deleteComment.CallUnary(ctx, req)
 }
 
 // ListComments calls tasker.health.v1.CommentService.ListComments.
@@ -2115,6 +2463,8 @@ func (c *commentServiceClient) ListComments(ctx context.Context, req *connect.Re
 // CommentServiceHandler is an implementation of the tasker.health.v1.CommentService service.
 type CommentServiceHandler interface {
 	CreateComment(context.Context, *connect.Request[v1.CreateCommentRequest]) (*connect.Response[v1.CreateCommentResponse], error)
+	UpdateComment(context.Context, *connect.Request[v1.UpdateCommentRequest]) (*connect.Response[v1.UpdateCommentResponse], error)
+	DeleteComment(context.Context, *connect.Request[v1.DeleteCommentRequest]) (*connect.Response[v1.DeleteCommentResponse], error)
 	ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error)
 }
 
@@ -2130,6 +2480,18 @@ func NewCommentServiceHandler(svc CommentServiceHandler, opts ...connect.Handler
 		connect.WithSchema(commentServiceCreateCommentMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	commentServiceUpdateCommentHandler := connect.NewUnaryHandler(
+		CommentServiceUpdateCommentProcedure,
+		svc.UpdateComment,
+		connect.WithSchema(commentServiceUpdateCommentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	commentServiceDeleteCommentHandler := connect.NewUnaryHandler(
+		CommentServiceDeleteCommentProcedure,
+		svc.DeleteComment,
+		connect.WithSchema(commentServiceDeleteCommentMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	commentServiceListCommentsHandler := connect.NewUnaryHandler(
 		CommentServiceListCommentsProcedure,
 		svc.ListComments,
@@ -2140,6 +2502,10 @@ func NewCommentServiceHandler(svc CommentServiceHandler, opts ...connect.Handler
 		switch r.URL.Path {
 		case CommentServiceCreateCommentProcedure:
 			commentServiceCreateCommentHandler.ServeHTTP(w, r)
+		case CommentServiceUpdateCommentProcedure:
+			commentServiceUpdateCommentHandler.ServeHTTP(w, r)
+		case CommentServiceDeleteCommentProcedure:
+			commentServiceDeleteCommentHandler.ServeHTTP(w, r)
 		case CommentServiceListCommentsProcedure:
 			commentServiceListCommentsHandler.ServeHTTP(w, r)
 		default:
@@ -2155,6 +2521,14 @@ func (UnimplementedCommentServiceHandler) CreateComment(context.Context, *connec
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.CommentService.CreateComment is not implemented"))
 }
 
+func (UnimplementedCommentServiceHandler) UpdateComment(context.Context, *connect.Request[v1.UpdateCommentRequest]) (*connect.Response[v1.UpdateCommentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.CommentService.UpdateComment is not implemented"))
+}
+
+func (UnimplementedCommentServiceHandler) DeleteComment(context.Context, *connect.Request[v1.DeleteCommentRequest]) (*connect.Response[v1.DeleteCommentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.CommentService.DeleteComment is not implemented"))
+}
+
 func (UnimplementedCommentServiceHandler) ListComments(context.Context, *connect.Request[v1.ListCommentsRequest]) (*connect.Response[v1.ListCommentsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.CommentService.ListComments is not implemented"))
 }
@@ -2162,6 +2536,8 @@ func (UnimplementedCommentServiceHandler) ListComments(context.Context, *connect
 // TaskNoteServiceClient is a client for the tasker.health.v1.TaskNoteService service.
 type TaskNoteServiceClient interface {
 	CreateTaskNote(context.Context, *connect.Request[v1.CreateTaskNoteRequest]) (*connect.Response[v1.CreateTaskNoteResponse], error)
+	UpdateTaskNote(context.Context, *connect.Request[v1.UpdateTaskNoteRequest]) (*connect.Response[v1.UpdateTaskNoteResponse], error)
+	DeleteTaskNote(context.Context, *connect.Request[v1.DeleteTaskNoteRequest]) (*connect.Response[v1.DeleteTaskNoteResponse], error)
 	ListTaskNotes(context.Context, *connect.Request[v1.ListTaskNotesRequest]) (*connect.Response[v1.ListTaskNotesResponse], error)
 }
 
@@ -2181,6 +2557,18 @@ func NewTaskNoteServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(taskNoteServiceCreateTaskNoteMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		updateTaskNote: connect.NewClient[v1.UpdateTaskNoteRequest, v1.UpdateTaskNoteResponse](
+			httpClient,
+			baseURL+TaskNoteServiceUpdateTaskNoteProcedure,
+			connect.WithSchema(taskNoteServiceUpdateTaskNoteMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deleteTaskNote: connect.NewClient[v1.DeleteTaskNoteRequest, v1.DeleteTaskNoteResponse](
+			httpClient,
+			baseURL+TaskNoteServiceDeleteTaskNoteProcedure,
+			connect.WithSchema(taskNoteServiceDeleteTaskNoteMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		listTaskNotes: connect.NewClient[v1.ListTaskNotesRequest, v1.ListTaskNotesResponse](
 			httpClient,
 			baseURL+TaskNoteServiceListTaskNotesProcedure,
@@ -2193,12 +2581,24 @@ func NewTaskNoteServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 // taskNoteServiceClient implements TaskNoteServiceClient.
 type taskNoteServiceClient struct {
 	createTaskNote *connect.Client[v1.CreateTaskNoteRequest, v1.CreateTaskNoteResponse]
+	updateTaskNote *connect.Client[v1.UpdateTaskNoteRequest, v1.UpdateTaskNoteResponse]
+	deleteTaskNote *connect.Client[v1.DeleteTaskNoteRequest, v1.DeleteTaskNoteResponse]
 	listTaskNotes  *connect.Client[v1.ListTaskNotesRequest, v1.ListTaskNotesResponse]
 }
 
 // CreateTaskNote calls tasker.health.v1.TaskNoteService.CreateTaskNote.
 func (c *taskNoteServiceClient) CreateTaskNote(ctx context.Context, req *connect.Request[v1.CreateTaskNoteRequest]) (*connect.Response[v1.CreateTaskNoteResponse], error) {
 	return c.createTaskNote.CallUnary(ctx, req)
+}
+
+// UpdateTaskNote calls tasker.health.v1.TaskNoteService.UpdateTaskNote.
+func (c *taskNoteServiceClient) UpdateTaskNote(ctx context.Context, req *connect.Request[v1.UpdateTaskNoteRequest]) (*connect.Response[v1.UpdateTaskNoteResponse], error) {
+	return c.updateTaskNote.CallUnary(ctx, req)
+}
+
+// DeleteTaskNote calls tasker.health.v1.TaskNoteService.DeleteTaskNote.
+func (c *taskNoteServiceClient) DeleteTaskNote(ctx context.Context, req *connect.Request[v1.DeleteTaskNoteRequest]) (*connect.Response[v1.DeleteTaskNoteResponse], error) {
+	return c.deleteTaskNote.CallUnary(ctx, req)
 }
 
 // ListTaskNotes calls tasker.health.v1.TaskNoteService.ListTaskNotes.
@@ -2209,6 +2609,8 @@ func (c *taskNoteServiceClient) ListTaskNotes(ctx context.Context, req *connect.
 // TaskNoteServiceHandler is an implementation of the tasker.health.v1.TaskNoteService service.
 type TaskNoteServiceHandler interface {
 	CreateTaskNote(context.Context, *connect.Request[v1.CreateTaskNoteRequest]) (*connect.Response[v1.CreateTaskNoteResponse], error)
+	UpdateTaskNote(context.Context, *connect.Request[v1.UpdateTaskNoteRequest]) (*connect.Response[v1.UpdateTaskNoteResponse], error)
+	DeleteTaskNote(context.Context, *connect.Request[v1.DeleteTaskNoteRequest]) (*connect.Response[v1.DeleteTaskNoteResponse], error)
 	ListTaskNotes(context.Context, *connect.Request[v1.ListTaskNotesRequest]) (*connect.Response[v1.ListTaskNotesResponse], error)
 }
 
@@ -2224,6 +2626,18 @@ func NewTaskNoteServiceHandler(svc TaskNoteServiceHandler, opts ...connect.Handl
 		connect.WithSchema(taskNoteServiceCreateTaskNoteMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskNoteServiceUpdateTaskNoteHandler := connect.NewUnaryHandler(
+		TaskNoteServiceUpdateTaskNoteProcedure,
+		svc.UpdateTaskNote,
+		connect.WithSchema(taskNoteServiceUpdateTaskNoteMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskNoteServiceDeleteTaskNoteHandler := connect.NewUnaryHandler(
+		TaskNoteServiceDeleteTaskNoteProcedure,
+		svc.DeleteTaskNote,
+		connect.WithSchema(taskNoteServiceDeleteTaskNoteMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	taskNoteServiceListTaskNotesHandler := connect.NewUnaryHandler(
 		TaskNoteServiceListTaskNotesProcedure,
 		svc.ListTaskNotes,
@@ -2234,6 +2648,10 @@ func NewTaskNoteServiceHandler(svc TaskNoteServiceHandler, opts ...connect.Handl
 		switch r.URL.Path {
 		case TaskNoteServiceCreateTaskNoteProcedure:
 			taskNoteServiceCreateTaskNoteHandler.ServeHTTP(w, r)
+		case TaskNoteServiceUpdateTaskNoteProcedure:
+			taskNoteServiceUpdateTaskNoteHandler.ServeHTTP(w, r)
+		case TaskNoteServiceDeleteTaskNoteProcedure:
+			taskNoteServiceDeleteTaskNoteHandler.ServeHTTP(w, r)
 		case TaskNoteServiceListTaskNotesProcedure:
 			taskNoteServiceListTaskNotesHandler.ServeHTTP(w, r)
 		default:
@@ -2249,6 +2667,14 @@ func (UnimplementedTaskNoteServiceHandler) CreateTaskNote(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskNoteService.CreateTaskNote is not implemented"))
 }
 
+func (UnimplementedTaskNoteServiceHandler) UpdateTaskNote(context.Context, *connect.Request[v1.UpdateTaskNoteRequest]) (*connect.Response[v1.UpdateTaskNoteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskNoteService.UpdateTaskNote is not implemented"))
+}
+
+func (UnimplementedTaskNoteServiceHandler) DeleteTaskNote(context.Context, *connect.Request[v1.DeleteTaskNoteRequest]) (*connect.Response[v1.DeleteTaskNoteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskNoteService.DeleteTaskNote is not implemented"))
+}
+
 func (UnimplementedTaskNoteServiceHandler) ListTaskNotes(context.Context, *connect.Request[v1.ListTaskNotesRequest]) (*connect.Response[v1.ListTaskNotesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskNoteService.ListTaskNotes is not implemented"))
 }
@@ -2256,6 +2682,7 @@ func (UnimplementedTaskNoteServiceHandler) ListTaskNotes(context.Context, *conne
 // LabelServiceClient is a client for the tasker.health.v1.LabelService service.
 type LabelServiceClient interface {
 	CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error)
+	UpdateLabel(context.Context, *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error)
 	ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error)
 	AttachLabel(context.Context, *connect.Request[v1.AttachLabelRequest]) (*connect.Response[v1.AttachLabelResponse], error)
 	DetachLabel(context.Context, *connect.Request[v1.DetachLabelRequest]) (*connect.Response[v1.DetachLabelResponse], error)
@@ -2276,6 +2703,12 @@ func NewLabelServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+LabelServiceCreateLabelProcedure,
 			connect.WithSchema(labelServiceCreateLabelMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateLabel: connect.NewClient[v1.UpdateLabelRequest, v1.UpdateLabelResponse](
+			httpClient,
+			baseURL+LabelServiceUpdateLabelProcedure,
+			connect.WithSchema(labelServiceUpdateLabelMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listLabels: connect.NewClient[v1.ListLabelsRequest, v1.ListLabelsResponse](
@@ -2308,6 +2741,7 @@ func NewLabelServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 // labelServiceClient implements LabelServiceClient.
 type labelServiceClient struct {
 	createLabel      *connect.Client[v1.CreateLabelRequest, v1.CreateLabelResponse]
+	updateLabel      *connect.Client[v1.UpdateLabelRequest, v1.UpdateLabelResponse]
 	listLabels       *connect.Client[v1.ListLabelsRequest, v1.ListLabelsResponse]
 	attachLabel      *connect.Client[v1.AttachLabelRequest, v1.AttachLabelResponse]
 	detachLabel      *connect.Client[v1.DetachLabelRequest, v1.DetachLabelResponse]
@@ -2317,6 +2751,11 @@ type labelServiceClient struct {
 // CreateLabel calls tasker.health.v1.LabelService.CreateLabel.
 func (c *labelServiceClient) CreateLabel(ctx context.Context, req *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error) {
 	return c.createLabel.CallUnary(ctx, req)
+}
+
+// UpdateLabel calls tasker.health.v1.LabelService.UpdateLabel.
+func (c *labelServiceClient) UpdateLabel(ctx context.Context, req *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error) {
+	return c.updateLabel.CallUnary(ctx, req)
 }
 
 // ListLabels calls tasker.health.v1.LabelService.ListLabels.
@@ -2342,6 +2781,7 @@ func (c *labelServiceClient) ListEntityLabels(ctx context.Context, req *connect.
 // LabelServiceHandler is an implementation of the tasker.health.v1.LabelService service.
 type LabelServiceHandler interface {
 	CreateLabel(context.Context, *connect.Request[v1.CreateLabelRequest]) (*connect.Response[v1.CreateLabelResponse], error)
+	UpdateLabel(context.Context, *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error)
 	ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error)
 	AttachLabel(context.Context, *connect.Request[v1.AttachLabelRequest]) (*connect.Response[v1.AttachLabelResponse], error)
 	DetachLabel(context.Context, *connect.Request[v1.DetachLabelRequest]) (*connect.Response[v1.DetachLabelResponse], error)
@@ -2358,6 +2798,12 @@ func NewLabelServiceHandler(svc LabelServiceHandler, opts ...connect.HandlerOpti
 		LabelServiceCreateLabelProcedure,
 		svc.CreateLabel,
 		connect.WithSchema(labelServiceCreateLabelMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	labelServiceUpdateLabelHandler := connect.NewUnaryHandler(
+		LabelServiceUpdateLabelProcedure,
+		svc.UpdateLabel,
+		connect.WithSchema(labelServiceUpdateLabelMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	labelServiceListLabelsHandler := connect.NewUnaryHandler(
@@ -2388,6 +2834,8 @@ func NewLabelServiceHandler(svc LabelServiceHandler, opts ...connect.HandlerOpti
 		switch r.URL.Path {
 		case LabelServiceCreateLabelProcedure:
 			labelServiceCreateLabelHandler.ServeHTTP(w, r)
+		case LabelServiceUpdateLabelProcedure:
+			labelServiceUpdateLabelHandler.ServeHTTP(w, r)
 		case LabelServiceListLabelsProcedure:
 			labelServiceListLabelsHandler.ServeHTTP(w, r)
 		case LabelServiceAttachLabelProcedure:
@@ -2409,6 +2857,10 @@ func (UnimplementedLabelServiceHandler) CreateLabel(context.Context, *connect.Re
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.LabelService.CreateLabel is not implemented"))
 }
 
+func (UnimplementedLabelServiceHandler) UpdateLabel(context.Context, *connect.Request[v1.UpdateLabelRequest]) (*connect.Response[v1.UpdateLabelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.LabelService.UpdateLabel is not implemented"))
+}
+
 func (UnimplementedLabelServiceHandler) ListLabels(context.Context, *connect.Request[v1.ListLabelsRequest]) (*connect.Response[v1.ListLabelsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.LabelService.ListLabels is not implemented"))
 }
@@ -2428,6 +2880,7 @@ func (UnimplementedLabelServiceHandler) ListEntityLabels(context.Context, *conne
 // RepositoryServiceClient is a client for the tasker.health.v1.RepositoryService service.
 type RepositoryServiceClient interface {
 	AddRepositoryLink(context.Context, *connect.Request[v1.AddRepositoryLinkRequest]) (*connect.Response[v1.AddRepositoryLinkResponse], error)
+	RemoveRepositoryLink(context.Context, *connect.Request[v1.RemoveRepositoryLinkRequest]) (*connect.Response[v1.RemoveRepositoryLinkResponse], error)
 	ListRepositoryLinks(context.Context, *connect.Request[v1.ListRepositoryLinksRequest]) (*connect.Response[v1.ListRepositoryLinksResponse], error)
 	SyncPullRequests(context.Context, *connect.Request[v1.SyncPullRequestsRequest]) (*connect.Response[v1.SyncPullRequestsResponse], error)
 	ListPullRequests(context.Context, *connect.Request[v1.ListPullRequestsRequest]) (*connect.Response[v1.ListPullRequestsResponse], error)
@@ -2449,6 +2902,12 @@ func NewRepositoryServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+RepositoryServiceAddRepositoryLinkProcedure,
 			connect.WithSchema(repositoryServiceAddRepositoryLinkMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		removeRepositoryLink: connect.NewClient[v1.RemoveRepositoryLinkRequest, v1.RemoveRepositoryLinkResponse](
+			httpClient,
+			baseURL+RepositoryServiceRemoveRepositoryLinkProcedure,
+			connect.WithSchema(repositoryServiceRemoveRepositoryLinkMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listRepositoryLinks: connect.NewClient[v1.ListRepositoryLinksRequest, v1.ListRepositoryLinksResponse](
@@ -2486,17 +2945,23 @@ func NewRepositoryServiceClient(httpClient connect.HTTPClient, baseURL string, o
 
 // repositoryServiceClient implements RepositoryServiceClient.
 type repositoryServiceClient struct {
-	addRepositoryLink   *connect.Client[v1.AddRepositoryLinkRequest, v1.AddRepositoryLinkResponse]
-	listRepositoryLinks *connect.Client[v1.ListRepositoryLinksRequest, v1.ListRepositoryLinksResponse]
-	syncPullRequests    *connect.Client[v1.SyncPullRequestsRequest, v1.SyncPullRequestsResponse]
-	listPullRequests    *connect.Client[v1.ListPullRequestsRequest, v1.ListPullRequestsResponse]
-	listBuilds          *connect.Client[v1.ListBuildsRequest, v1.ListBuildsResponse]
-	listDeployments     *connect.Client[v1.ListDeploymentsRequest, v1.ListDeploymentsResponse]
+	addRepositoryLink    *connect.Client[v1.AddRepositoryLinkRequest, v1.AddRepositoryLinkResponse]
+	removeRepositoryLink *connect.Client[v1.RemoveRepositoryLinkRequest, v1.RemoveRepositoryLinkResponse]
+	listRepositoryLinks  *connect.Client[v1.ListRepositoryLinksRequest, v1.ListRepositoryLinksResponse]
+	syncPullRequests     *connect.Client[v1.SyncPullRequestsRequest, v1.SyncPullRequestsResponse]
+	listPullRequests     *connect.Client[v1.ListPullRequestsRequest, v1.ListPullRequestsResponse]
+	listBuilds           *connect.Client[v1.ListBuildsRequest, v1.ListBuildsResponse]
+	listDeployments      *connect.Client[v1.ListDeploymentsRequest, v1.ListDeploymentsResponse]
 }
 
 // AddRepositoryLink calls tasker.health.v1.RepositoryService.AddRepositoryLink.
 func (c *repositoryServiceClient) AddRepositoryLink(ctx context.Context, req *connect.Request[v1.AddRepositoryLinkRequest]) (*connect.Response[v1.AddRepositoryLinkResponse], error) {
 	return c.addRepositoryLink.CallUnary(ctx, req)
+}
+
+// RemoveRepositoryLink calls tasker.health.v1.RepositoryService.RemoveRepositoryLink.
+func (c *repositoryServiceClient) RemoveRepositoryLink(ctx context.Context, req *connect.Request[v1.RemoveRepositoryLinkRequest]) (*connect.Response[v1.RemoveRepositoryLinkResponse], error) {
+	return c.removeRepositoryLink.CallUnary(ctx, req)
 }
 
 // ListRepositoryLinks calls tasker.health.v1.RepositoryService.ListRepositoryLinks.
@@ -2527,6 +2992,7 @@ func (c *repositoryServiceClient) ListDeployments(ctx context.Context, req *conn
 // RepositoryServiceHandler is an implementation of the tasker.health.v1.RepositoryService service.
 type RepositoryServiceHandler interface {
 	AddRepositoryLink(context.Context, *connect.Request[v1.AddRepositoryLinkRequest]) (*connect.Response[v1.AddRepositoryLinkResponse], error)
+	RemoveRepositoryLink(context.Context, *connect.Request[v1.RemoveRepositoryLinkRequest]) (*connect.Response[v1.RemoveRepositoryLinkResponse], error)
 	ListRepositoryLinks(context.Context, *connect.Request[v1.ListRepositoryLinksRequest]) (*connect.Response[v1.ListRepositoryLinksResponse], error)
 	SyncPullRequests(context.Context, *connect.Request[v1.SyncPullRequestsRequest]) (*connect.Response[v1.SyncPullRequestsResponse], error)
 	ListPullRequests(context.Context, *connect.Request[v1.ListPullRequestsRequest]) (*connect.Response[v1.ListPullRequestsResponse], error)
@@ -2544,6 +3010,12 @@ func NewRepositoryServiceHandler(svc RepositoryServiceHandler, opts ...connect.H
 		RepositoryServiceAddRepositoryLinkProcedure,
 		svc.AddRepositoryLink,
 		connect.WithSchema(repositoryServiceAddRepositoryLinkMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	repositoryServiceRemoveRepositoryLinkHandler := connect.NewUnaryHandler(
+		RepositoryServiceRemoveRepositoryLinkProcedure,
+		svc.RemoveRepositoryLink,
+		connect.WithSchema(repositoryServiceRemoveRepositoryLinkMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	repositoryServiceListRepositoryLinksHandler := connect.NewUnaryHandler(
@@ -2580,6 +3052,8 @@ func NewRepositoryServiceHandler(svc RepositoryServiceHandler, opts ...connect.H
 		switch r.URL.Path {
 		case RepositoryServiceAddRepositoryLinkProcedure:
 			repositoryServiceAddRepositoryLinkHandler.ServeHTTP(w, r)
+		case RepositoryServiceRemoveRepositoryLinkProcedure:
+			repositoryServiceRemoveRepositoryLinkHandler.ServeHTTP(w, r)
 		case RepositoryServiceListRepositoryLinksProcedure:
 			repositoryServiceListRepositoryLinksHandler.ServeHTTP(w, r)
 		case RepositoryServiceSyncPullRequestsProcedure:
@@ -2601,6 +3075,10 @@ type UnimplementedRepositoryServiceHandler struct{}
 
 func (UnimplementedRepositoryServiceHandler) AddRepositoryLink(context.Context, *connect.Request[v1.AddRepositoryLinkRequest]) (*connect.Response[v1.AddRepositoryLinkResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RepositoryService.AddRepositoryLink is not implemented"))
+}
+
+func (UnimplementedRepositoryServiceHandler) RemoveRepositoryLink(context.Context, *connect.Request[v1.RemoveRepositoryLinkRequest]) (*connect.Response[v1.RemoveRepositoryLinkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RepositoryService.RemoveRepositoryLink is not implemented"))
 }
 
 func (UnimplementedRepositoryServiceHandler) ListRepositoryLinks(context.Context, *connect.Request[v1.ListRepositoryLinksRequest]) (*connect.Response[v1.ListRepositoryLinksResponse], error) {

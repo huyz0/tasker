@@ -17,6 +17,9 @@ export function LabelsManager() {
 
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#3b82f6');
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [editLabelName, setEditLabelName] = useState('');
+  const [editLabelColor, setEditLabelColor] = useState('#3b82f6');
 
   const { data: labelsData, isLoading } = useQuery({
     queryKey: ['labels', activeOrgId],
@@ -36,6 +39,16 @@ export function LabelsManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['labels', activeOrgId] });
       setNewLabelName('');
+    },
+  });
+
+  const updateLabelMutation = useMutation({
+    mutationFn: async (variables: { labelId: string; name: string; color: string }) => {
+      await labelClient.updateLabel(variables);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['labels', activeOrgId] });
+      setEditingLabelId(null);
     },
   });
 
@@ -86,17 +99,59 @@ export function LabelsManager() {
         ) : labelsData && labelsData.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {labelsData.map((label) => (
-              <span
-                key={label.id}
-                className="inline-flex items-center gap-2 text-sm px-3 py-1 rounded-full border"
-                style={label.color ? { borderColor: label.color, color: label.color } : undefined}
-              >
-                {label.name}
-              </span>
+              editingLabelId === label.id ? (
+                <form
+                  key={label.id}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (editLabelName.trim()) {
+                      updateLabelMutation.mutate({ labelId: label.id, name: editLabelName.trim(), color: editLabelColor });
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 text-sm px-2 py-1 rounded-full border"
+                >
+                  <input
+                    type="color"
+                    value={editLabelColor}
+                    onChange={(e) => setEditLabelColor(e.target.value)}
+                    className="h-5 w-5 rounded border cursor-pointer bg-transparent"
+                    aria-label="Label color"
+                  />
+                  <input
+                    autoFocus
+                    value={editLabelName}
+                    onChange={(e) => setEditLabelName(e.target.value)}
+                    className="bg-transparent border-b outline-none w-24"
+                  />
+                  <button type="submit" disabled={!editLabelName.trim() || updateLabelMutation.isPending} className="text-xs text-primary disabled:opacity-50">Save</button>
+                  <button type="button" onClick={() => setEditingLabelId(null)} className="text-xs text-muted-foreground">Cancel</button>
+                </form>
+              ) : (
+                <span
+                  key={label.id}
+                  className="inline-flex items-center gap-2 text-sm px-3 py-1 rounded-full border"
+                  style={label.color ? { borderColor: label.color, color: label.color } : undefined}
+                >
+                  {label.name}
+                  <button
+                    onClick={() => {
+                      setEditingLabelId(label.id);
+                      setEditLabelName(label.name);
+                      setEditLabelColor(label.color || '#3b82f6');
+                    }}
+                    className="text-muted-foreground hover:text-foreground text-xs"
+                  >
+                    Edit
+                  </button>
+                </span>
+              )
             ))}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">No labels created yet - create one above.</p>
+        )}
+        {updateLabelMutation.isError && (
+          <p className="text-sm text-destructive mt-3">Failed to update label: {(updateLabelMutation.error as Error).message}</p>
         )}
       </div>
     </div>

@@ -23,6 +23,13 @@ export function ProjectsWizard() {
   const [newTemplateDescription, setNewTemplateDescription] = useState('');
   const [isAddingTaskType, setIsAddingTaskType] = useState(false);
   const [newTaskTypeName, setNewTaskTypeName] = useState('');
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [editTemplateName, setEditTemplateName] = useState('');
+  const [editTemplateDescription, setEditTemplateDescription] = useState('');
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editProjectName, setEditProjectName] = useState('');
+  const [editingTaskTypeId, setEditingTaskTypeId] = useState<string | null>(null);
+  const [editTaskTypeName, setEditTaskTypeName] = useState('');
 
   const queryClient = useQueryClient();
   useEffect(() => setActivePageTitle('Projects'), [setActivePageTitle]);
@@ -97,6 +104,27 @@ export function ProjectsWizard() {
     },
   });
 
+  const updateTemplateMutation = useMutation({
+    mutationFn: async (variables: { id: string; name: string; description: string }) => {
+      await templateClient.updateTemplate({ id: variables.id, name: variables.name, description: variables.description });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates', activeOrgId] });
+      setEditingTemplateId(null);
+    },
+  });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: async (variables: { projectId: string; name: string }) => {
+      await projectClient.updateProject({ projectId: variables.projectId, name: variables.name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+      setEditingProjectId(null);
+    },
+  });
+
   const createTaskTypeMutation = useMutation({
     mutationFn: async () => {
       await taskTypeClient.createTaskType({ orgId: activeOrgId, name: newTaskTypeName.trim() });
@@ -105,6 +133,16 @@ export function ProjectsWizard() {
       queryClient.invalidateQueries({ queryKey: ['taskTypes', activeOrgId] });
       setNewTaskTypeName('');
       setIsAddingTaskType(false);
+    },
+  });
+
+  const updateTaskTypeMutation = useMutation({
+    mutationFn: async (variables: { id: string; name: string }) => {
+      await taskTypeClient.updateTaskType(variables);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['taskTypes', activeOrgId] });
+      setEditingTaskTypeId(null);
     },
   });
 
@@ -189,19 +227,77 @@ export function ProjectsWizard() {
         ) : templatesData && templatesData.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {templatesData.map(t => (
-              <div key={t.id} className="border rounded-lg bg-card p-6 shadow-sm hover:border-primary cursor-pointer transition-all flex flex-col h-full">
+              <div key={t.id} className="border rounded-lg bg-card p-6 shadow-sm hover:border-primary transition-all flex flex-col h-full">
                  <div className="w-10 h-10 mb-4 rounded bg-primary/10 flex items-center justify-center text-primary">
                    <Package className="w-5 h-5" />
                  </div>
-                 <h3 className="font-semibold text-lg">{t.name}</h3>
-                 <p className="text-sm text-muted-foreground mt-1 mb-6 flex-grow">{t.description}</p>
-                 <button
-                   onClick={() => createProjectMutation.mutate(t.id)}
-                   disabled={createProjectMutation.isPending || !projectName.trim()}
-                   className="w-full px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
-                 >
-                   {createProjectMutation.isPending ? 'Creating...' : 'Use Template'}
-                 </button>
+                 {editingTemplateId === t.id ? (
+                   <form
+                     onSubmit={(e) => {
+                       e.preventDefault();
+                       if (editTemplateName.trim()) {
+                         updateTemplateMutation.mutate({ id: t.id, name: editTemplateName.trim(), description: editTemplateDescription.trim() });
+                       }
+                     }}
+                     className="flex flex-col gap-2 mb-4"
+                   >
+                     <input
+                       autoFocus
+                       value={editTemplateName}
+                       onChange={(e) => setEditTemplateName(e.target.value)}
+                       className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                     />
+                     <textarea
+                       value={editTemplateDescription}
+                       onChange={(e) => setEditTemplateDescription(e.target.value)}
+                       rows={2}
+                       className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                     />
+                     {updateTemplateMutation.isError && (
+                       <p className="text-sm text-destructive">Failed to update template: {(updateTemplateMutation.error as Error).message}</p>
+                     )}
+                     <div className="flex gap-2">
+                       <button
+                         type="submit"
+                         disabled={!editTemplateName.trim() || updateTemplateMutation.isPending}
+                         className="flex-1 px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium"
+                       >
+                         {updateTemplateMutation.isPending ? 'Saving...' : 'Save'}
+                       </button>
+                       <button
+                         type="button"
+                         onClick={() => setEditingTemplateId(null)}
+                         className="flex-1 px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
+                       >
+                         Cancel
+                       </button>
+                     </div>
+                   </form>
+                 ) : (
+                   <>
+                     <div className="flex items-start justify-between gap-2">
+                       <h3 className="font-semibold text-lg">{t.name}</h3>
+                       <button
+                         onClick={() => {
+                           setEditingTemplateId(t.id);
+                           setEditTemplateName(t.name);
+                           setEditTemplateDescription(t.description);
+                         }}
+                         className="text-xs text-muted-foreground hover:text-foreground shrink-0"
+                       >
+                         Edit
+                       </button>
+                     </div>
+                     <p className="text-sm text-muted-foreground mt-1 mb-6 flex-grow">{t.description}</p>
+                     <button
+                       onClick={() => createProjectMutation.mutate(t.id)}
+                       disabled={createProjectMutation.isPending || !projectName.trim()}
+                       className="w-full px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+                     >
+                       {createProjectMutation.isPending ? 'Creating...' : 'Use Template'}
+                     </button>
+                   </>
+                 )}
               </div>
             ))}
           </div>
@@ -248,13 +344,44 @@ export function ProjectsWizard() {
         {createTaskTypeMutation.isError && (
           <p className="text-sm text-destructive mb-4">Failed to create task type: {(createTaskTypeMutation.error as Error).message}</p>
         )}
+        {updateTaskTypeMutation.isError && (
+          <p className="text-sm text-destructive mb-4">Failed to update task type: {(updateTaskTypeMutation.error as Error).message}</p>
+        )}
 
         {isLoadingTaskTypes ? (
           <p className="text-sm text-muted-foreground">Loading task types...</p>
         ) : taskTypesData && taskTypesData.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {taskTypesData.map(tt => (
-              <span key={tt.id} className="text-xs bg-muted px-2 py-1 rounded-full">{tt.name}</span>
+              editingTaskTypeId === tt.id ? (
+                <form
+                  key={tt.id}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (editTaskTypeName.trim()) updateTaskTypeMutation.mutate({ id: tt.id, name: editTaskTypeName.trim() });
+                  }}
+                  className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-full"
+                >
+                  <input
+                    autoFocus
+                    value={editTaskTypeName}
+                    onChange={(e) => setEditTaskTypeName(e.target.value)}
+                    className="bg-transparent border-b outline-none w-24"
+                  />
+                  <button type="submit" disabled={!editTaskTypeName.trim() || updateTaskTypeMutation.isPending} className="text-primary disabled:opacity-50">Save</button>
+                  <button type="button" onClick={() => setEditingTaskTypeId(null)} className="text-muted-foreground">Cancel</button>
+                </form>
+              ) : (
+                <span key={tt.id} className="inline-flex items-center gap-2 text-xs bg-muted px-2 py-1 rounded-full">
+                  {tt.name}
+                  <button
+                    onClick={() => { setEditingTaskTypeId(tt.id); setEditTaskTypeName(tt.name); }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Edit
+                  </button>
+                </span>
+              )
             ))}
           </div>
         ) : (
@@ -271,22 +398,66 @@ export function ProjectsWizard() {
             {projectsData.map(p => (
               <div key={p.id} className="border rounded-lg bg-card p-6 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h3 className="font-semibold text-lg">{p.name} <span className="text-xs font-mono text-muted-foreground">[{p.key}]</span></h3>
-                    <p className="text-xs text-muted-foreground mt-1">ID: {p.id}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`Move "${p.name}" to the bin? You can restore it later.`)) {
-                        archiveProjectMutation.mutate(p.id);
-                      }
-                    }}
-                    disabled={archiveProjectMutation.isPending}
-                    className="text-muted-foreground hover:text-destructive text-sm disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
+                  {editingProjectId === p.id ? (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (editProjectName.trim()) updateProjectMutation.mutate({ projectId: p.id, name: editProjectName.trim() });
+                      }}
+                      className="flex items-center gap-2 flex-1"
+                    >
+                      <input
+                        autoFocus
+                        value={editProjectName}
+                        onChange={(e) => setEditProjectName(e.target.value)}
+                        className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!editProjectName.trim() || updateProjectMutation.isPending}
+                        className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium"
+                      >
+                        {updateProjectMutation.isPending ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingProjectId(null)}
+                        className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  ) : (
+                    <div>
+                      <h3 className="font-semibold text-lg">{p.name} <span className="text-xs font-mono text-muted-foreground">[{p.key}]</span></h3>
+                      <p className="text-xs text-muted-foreground mt-1">ID: {p.id}</p>
+                    </div>
+                  )}
+                  {editingProjectId !== p.id && (
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => { setEditingProjectId(p.id); setEditProjectName(p.name); }}
+                        className="text-muted-foreground hover:text-foreground text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Move "${p.name}" to the bin? You can restore it later.`)) {
+                            archiveProjectMutation.mutate(p.id);
+                          }
+                        }}
+                        disabled={archiveProjectMutation.isPending}
+                        className="text-muted-foreground hover:text-destructive text-sm disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
+                {updateProjectMutation.isError && (
+                  <p className="text-sm text-destructive mb-4">Failed to update project: {(updateProjectMutation.error as Error).message}</p>
+                )}
                 <RepositoryIntegrationConfig projectId={p.id} />
               </div>
             ))}

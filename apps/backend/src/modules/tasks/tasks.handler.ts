@@ -25,6 +25,12 @@ const ListTaskTypesSchema = z.object({
   page: z.any().optional(),
 });
 
+const UpdateTaskTypeSchema = z.object({
+  id: z.string().min(1, "id is required"),
+  name: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(256).optional()),
+  parentId: z.preprocess((v) => (v === "" ? undefined : v), z.string().nullable().optional()),
+});
+
 const CreateTaskSchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
   title: z.string().min(1, "title is required").max(512),
@@ -77,6 +83,13 @@ const KNOWN_STATUSES = ["todo", "in-progress", "done"] as const;
 const UpdateTaskStatusSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   status: z.string().min(1, "status is required").max(256),
+});
+
+const UpdateTaskSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+  title: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(512).optional()),
+  description: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(4096).optional()),
+  taskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().nullable().optional()),
 });
 
 const DeleteTaskSchema = z.object({
@@ -181,6 +194,37 @@ export const createTasksHandler = (db: any, nc: any = null) => {
         })),
         page: { nextCursor, totalCount },
       };
+    },
+    async updateTaskType(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateTaskTypeSchema.parse(req);
+
+      const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+      const existing = await db.select().from(types).where(eq((types as any).id, parsed.id)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("task type not found", Code.NotFound);
+      await assertOrgMember(db, userId, existing[0].orgId);
+
+      if (parsed.parentId) {
+        if (parsed.parentId === parsed.id) {
+          throw new ConnectError("a task type cannot be its own parent", Code.InvalidArgument);
+        }
+        const parentRows = await db.select().from(types).where(eq((types as any).id, parsed.parentId)).limit(1);
+        if (!parentRows || parentRows.length === 0) throw new ConnectError("parent task type not found", Code.NotFound);
+        if (parentRows[0].orgId !== existing[0].orgId) {
+          throw new ConnectError("parent task type belongs to a different organization", Code.InvalidArgument);
+        }
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.name !== undefined) updates.name = parsed.name;
+      if (parsed.parentId !== undefined) updates.parentId = parsed.parentId;
+
+      await db.update(types).set(updates).where(eq((types as any).id, parsed.id));
+
+      const updated = { ...existing[0], ...updates };
+      const taskTypeResp = { ...updated, createdAt: updated.createdAt instanceof Date ? updated.createdAt.toISOString() : updated.createdAt };
+      publishDomainEvent(nc, "domain.task_type.updated", updated);
+      return { taskType: taskTypeResp };
     },
     async createTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
@@ -480,6 +524,36 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const reviewers = isStandalone ? schemaSqlite.taskReviewers : schemaMysql.taskReviewers;
       const rows = await db.select().from(reviewers).where(eq((reviewers as any).taskId, parsed.taskId));
       return { reviewers: rows };
+    },
+    async updateTask(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateTaskSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgMember(db, userId, orgId);
+
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const existing = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("task not found", Code.NotFound);
+
+      if (parsed.taskTypeId) {
+        const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+        const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
+        if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
+        if (typeRows[0].orgId !== orgId) throw new ConnectError("task type belongs to a different organization", Code.InvalidArgument);
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.title !== undefined) updates.title = parsed.title;
+      if (parsed.description !== undefined) updates.description = parsed.description;
+      if (parsed.taskTypeId !== undefined) updates.taskTypeId = parsed.taskTypeId;
+
+      await db.update(tasks).set(updates).where(eq((tasks as any).id, parsed.taskId));
+
+      const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
+      const task = result[0];
+
+      publishDomainEvent(nc, "domain.task.updated", task);
+      return { task };
     },
     async updateTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

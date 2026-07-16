@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
-import { useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { OrgService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
@@ -19,6 +19,9 @@ export function OrganizationsDashboard() {
   const [newOrgName, setNewOrgName] = useState('');
   const [newOrgParentId, setNewOrgParentId] = useState('');
   const [showNewOrgForm, setShowNewOrgForm] = useState(false);
+  const [editingOrgId, setEditingOrgId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editSlug, setEditSlug] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => setActivePageTitle('Organizations & Settings'), [setActivePageTitle]);
@@ -89,6 +92,22 @@ export function OrganizationsDashboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgs'] }),
   });
 
+  const updateOrgMutation = useMutation({
+    mutationFn: async (variables: { orgId: string; name: string; slug: string }) => {
+      await orgClient.updateOrg({ orgId: variables.orgId, name: variables.name, slug: variables.slug });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orgs'] });
+      setEditingOrgId(null);
+    },
+  });
+
+  const startEditing = (org: { id: string; name: string; slug: string }) => {
+    setEditingOrgId(org.id);
+    setEditName(org.name);
+    setEditSlug(org.slug);
+  };
+
   const activeOrg = orgsData?.find((o) => o.id === activeOrgId);
   const [retentionDaysInput, setRetentionDaysInput] = useState('');
   useEffect(() => {
@@ -101,6 +120,103 @@ export function OrganizationsDashboard() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgs'] }),
   });
+
+  const { data: membersData, isLoading: isLoadingMembers } = useQuery({
+    queryKey: ['orgMembers', activeOrgId],
+    queryFn: async () => {
+      const resp = await orgClient.listOrgMembers({ orgId: activeOrgId });
+      return resp.members;
+    },
+    enabled: !!activeOrgId,
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      await orgClient.removeOrgMember({ orgId: activeOrgId, userId });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgMembers', activeOrgId] }),
+  });
+
+  const renderOrgRow = (org: { id: string; name: string; slug: string }, isChild: boolean) => {
+    if (editingOrgId === org.id) {
+      return (
+        <form
+          key={org.id}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (editName.trim() && editSlug.trim()) {
+              updateOrgMutation.mutate({ orgId: org.id, name: editName.trim(), slug: editSlug.trim() });
+            }
+          }}
+          className={`p-3 text-sm flex items-center gap-2 border-t ${isChild ? 'pl-10' : ''}`}
+        >
+          <input
+            autoFocus
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder="Name"
+            className="flex-1 rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <input
+            value={editSlug}
+            onChange={(e) => setEditSlug(e.target.value)}
+            placeholder="Slug"
+            className="flex-1 rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <button
+            type="submit"
+            disabled={!editName.trim() || !editSlug.trim() || updateOrgMutation.isPending}
+            className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium"
+          >
+            {updateOrgMutation.isPending ? 'Saving...' : 'Save'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditingOrgId(null)}
+            className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
+          >
+            Cancel
+          </button>
+        </form>
+      );
+    }
+    return (
+      <div
+        key={org.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => setActiveOrgId(org.id)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveOrgId(org.id); } }}
+        className={`p-3 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 border-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${isChild ? 'pl-10' : ''} ${activeOrgId === org.id ? 'bg-primary/5' : ''}`}
+      >
+        <span className="min-w-[200px] flex items-center gap-2">
+          <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">{org.name.charAt(0).toUpperCase()}</span>
+          {org.name} {activeOrgId === org.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
+        </span>
+        <span className="flex items-center gap-3">
+          <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{org.slug}</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); startEditing(org); }}
+            className="text-muted-foreground hover:text-foreground text-xs"
+          >
+            Edit
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm(`Move "${org.name}" to the bin? You can restore it later.`)) {
+                archiveOrgMutation.mutate(org.id);
+              }
+            }}
+            disabled={archiveOrgMutation.isPending}
+            className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+          >
+            Delete
+          </button>
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -173,6 +289,9 @@ export function OrganizationsDashboard() {
           {archiveOrgMutation.isError && (
             <p className="text-sm text-destructive mb-4">Failed to delete organization: {(archiveOrgMutation.error as Error).message}</p>
           )}
+          {updateOrgMutation.isError && (
+            <p className="text-sm text-destructive mb-4">Failed to update organization: {(updateOrgMutation.error as Error).message}</p>
+          )}
           <div className="border rounded-md divide-y">
              <div className="p-3 text-sm flex justify-between items-center bg-muted/30">
                <span className="font-medium min-w-[200px]">Name</span>
@@ -183,63 +302,8 @@ export function OrganizationsDashboard() {
              ) : orgsData && orgsData.length > 0 ? (
                rootOrgs.map(org => (
                  <div key={org.id}>
-                   <div
-                     role="button"
-                     tabIndex={0}
-                     onClick={() => setActiveOrgId(org.id)}
-                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveOrgId(org.id); } }}
-                     className={`p-3 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${activeOrgId === org.id ? 'bg-primary/5' : ''}`}
-                   >
-                     <span className="min-w-[200px] flex items-center gap-2">
-                       <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">{org.name.charAt(0).toUpperCase()}</span>
-                       {org.name} {activeOrgId === org.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
-                     </span>
-                     <span className="flex items-center gap-3">
-                       <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{org.slug}</span>
-                       <button
-                         onClick={(e) => {
-                           e.stopPropagation();
-                           if (window.confirm(`Move "${org.name}" to the bin? You can restore it later.`)) {
-                             archiveOrgMutation.mutate(org.id);
-                           }
-                         }}
-                         disabled={archiveOrgMutation.isPending}
-                         className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
-                       >
-                         Delete
-                       </button>
-                     </span>
-                   </div>
-                   {(childOrgsByParent.get(org.id) ?? []).map((child) => (
-                     <div
-                       key={child.id}
-                       role="button"
-                       tabIndex={0}
-                       onClick={() => setActiveOrgId(child.id)}
-                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveOrgId(child.id); } }}
-                       className={`p-3 pl-10 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 border-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${activeOrgId === child.id ? 'bg-primary/5' : ''}`}
-                     >
-                       <span className="min-w-[200px] flex items-center gap-2">
-                         <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">{child.name.charAt(0).toUpperCase()}</span>
-                         {child.name} {activeOrgId === child.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full">Active</span>}
-                       </span>
-                       <span className="flex items-center gap-3">
-                         <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{child.slug}</span>
-                         <button
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             if (window.confirm(`Move "${child.name}" to the bin? You can restore it later.`)) {
-                               archiveOrgMutation.mutate(child.id);
-                             }
-                           }}
-                           disabled={archiveOrgMutation.isPending}
-                           className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
-                         >
-                           Delete
-                         </button>
-                       </span>
-                     </div>
-                   ))}
+                   {renderOrgRow(org, false)}
+                   {(childOrgsByParent.get(org.id) ?? []).map((child) => renderOrgRow(child, true))}
                  </div>
                ))
              ) : (
@@ -289,6 +353,39 @@ export function OrganizationsDashboard() {
               )}
               {setRetentionMutation.isError && (
                 <p className="text-sm text-destructive mt-2">Failed to update retention: {(setRetentionMutation.error as Error).message}</p>
+              )}
+            </div>
+          )}
+
+          {activeOrg && (
+            <div className="mt-6 pt-6 border-t">
+              <h3 className="font-medium mb-2">Members</h3>
+              {isLoadingMembers ? (
+                <p className="text-sm text-muted-foreground">Loading members...</p>
+              ) : membersData && membersData.length > 0 ? (
+                <div className="border rounded-md divide-y">
+                  {membersData.map((m) => (
+                    <div key={m.userId} className="p-3 text-sm flex justify-between items-center">
+                      <span>{m.name || m.email || m.userId} <span className="text-xs text-muted-foreground">({m.role})</span></span>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Remove ${m.name || m.email} from "${activeOrg.name}"?`)) {
+                            removeMemberMutation.mutate(m.userId);
+                          }
+                        }}
+                        disabled={removeMemberMutation.isPending}
+                        className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No members found.</p>
+              )}
+              {removeMemberMutation.isError && (
+                <p className="text-sm text-destructive mt-2">Failed to remove member: {(removeMemberMutation.error as Error).message}</p>
               )}
             </div>
           )}

@@ -15,6 +15,14 @@ const CreateLabelSchema = z.object({
   color: z.string().max(32, "color must be at most 32 characters").nullable().optional(),
 });
 
+const UpdateLabelSchema = z.object({
+  labelId: z.string().min(1, "labelId is required"),
+  name: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(128).optional()),
+  color: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(32).nullable().optional()),
+}).refine((v) => v.name !== undefined || v.color !== undefined, {
+  message: "at least one of name or color must be provided",
+});
+
 const EntityRefSchema = z.object({
   entityId: z.string().min(1, "entityId is required"),
   entityType: z.enum(["task", "artifact"]),
@@ -79,6 +87,31 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       const labelResp = { ...payload };
       publishDomainEvent(nc, "domain.label.created", labelResp);
       return { label: labelResp };
+    },
+
+    async updateLabel(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateLabelSchema.parse(req);
+
+      const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
+      const existing = await db.select().from(labels).where(eq((labels as any).id, parsed.labelId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("label not found", Code.NotFound);
+      await assertOrgMember(db, userId, existing[0].orgId);
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.name !== undefined) updates.name = parsed.name;
+      if (parsed.color !== undefined) updates.color = parsed.color;
+
+      try {
+        await db.update(labels).set(updates).where(eq((labels as any).id, parsed.labelId));
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("a label with this name already exists in this organization", Code.AlreadyExists);
+      }
+
+      const updated = { ...existing[0], ...updates };
+      publishDomainEvent(nc, "domain.label.updated", updated);
+      return { label: updated };
     },
 
     async listLabels(req: any, { values: contextValues }: { values: any }) {

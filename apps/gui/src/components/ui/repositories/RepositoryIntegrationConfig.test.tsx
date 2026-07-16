@@ -3,13 +3,14 @@ import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { RepositoryIntegrationConfig } from './RepositoryIntegrationConfig';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListRepositoryLinks, mockListPullRequests, mockSyncPullRequests, mockListBuilds, mockListDeployments, mockAddRepositoryLink } = vi.hoisted(() => ({
+const { mockListRepositoryLinks, mockListPullRequests, mockSyncPullRequests, mockListBuilds, mockListDeployments, mockAddRepositoryLink, mockRemoveRepositoryLink } = vi.hoisted(() => ({
   mockListRepositoryLinks: vi.fn(),
   mockListPullRequests: vi.fn(),
   mockSyncPullRequests: vi.fn(),
   mockListBuilds: vi.fn(),
   mockListDeployments: vi.fn(),
   mockAddRepositoryLink: vi.fn(),
+  mockRemoveRepositoryLink: vi.fn(),
 }));
 
 // Mock the ConnectRPC client
@@ -21,6 +22,7 @@ vi.mock('@connectrpc/connect', () => ({
     listBuilds: mockListBuilds,
     listDeployments: mockListDeployments,
     addRepositoryLink: mockAddRepositoryLink,
+    removeRepositoryLink: mockRemoveRepositoryLink,
   }),
 }));
 
@@ -45,6 +47,7 @@ describe('RepositoryIntegrationConfig', () => {
     mockListBuilds.mockReset();
     mockListDeployments.mockReset();
     mockAddRepositoryLink.mockReset();
+    mockRemoveRepositoryLink.mockReset();
   });
 
   test('renders loading and then data', async () => {
@@ -329,5 +332,46 @@ describe('RepositoryIntegrationConfig', () => {
     expect(locationStub.href).toContain('https://bitbucket.org/site/oauth2/authorize');
 
     Object.defineProperty(window, 'location', { writable: true, configurable: true, value: originalLocation });
+  });
+
+  test('unlinks a repository after confirmation', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockRemoveRepositoryLink.mockResolvedValue({ success: true });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText(/huyz0\/tasker/)).toBeDefined());
+    fireEvent.click(screen.getByText('Unlink'));
+
+    await waitFor(() => expect(mockRemoveRepositoryLink).toHaveBeenCalledWith({ repositoryLinkId: 'link-1' }));
+  });
+
+  test('does not unlink a repository when confirmation is cancelled', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText(/huyz0\/tasker/)).toBeDefined());
+    fireEvent.click(screen.getByText('Unlink'));
+
+    expect(mockRemoveRepositoryLink).not.toHaveBeenCalled();
+  });
+
+  test('shows an error message when unlinking a repository fails', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockRemoveRepositoryLink.mockRejectedValue(new Error('link not found'));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText(/huyz0\/tasker/)).toBeDefined());
+    fireEvent.click(screen.getByText('Unlink'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to unlink repository/)).toBeInTheDocument());
   });
 });

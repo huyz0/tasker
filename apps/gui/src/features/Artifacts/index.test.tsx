@@ -11,6 +11,8 @@ const {
   mockCreateArtifact,
   mockListEntityLabels,
   mockListLabels,
+  mockUpdateFolder,
+  mockUpdateArtifactContent,
 } = vi.hoisted(() => ({
   mockListFolders: vi.fn(),
   mockListArtifacts: vi.fn(),
@@ -20,6 +22,8 @@ const {
   mockCreateArtifact: vi.fn(),
   mockListEntityLabels: vi.fn(),
   mockListLabels: vi.fn(),
+  mockUpdateFolder: vi.fn(),
+  mockUpdateArtifactContent: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -41,6 +45,8 @@ vi.mock('@connectrpc/connect', () => ({
       archiveArtifact: mockArchiveArtifact,
       createFolder: mockCreateFolder,
       createArtifact: mockCreateArtifact,
+      updateFolder: mockUpdateFolder,
+      updateArtifactContent: mockUpdateArtifactContent,
     };
   }),
 }));
@@ -76,6 +82,8 @@ describe('ArtifactsBrowser', () => {
     mockArchiveArtifact.mockReset();
     mockCreateFolder.mockReset();
     mockCreateArtifact.mockReset();
+    mockUpdateFolder.mockReset();
+    mockUpdateArtifactContent.mockReset();
     mockListEntityLabels.mockReset();
     mockListEntityLabels.mockResolvedValue({ labels: [] });
     mockListLabels.mockReset();
@@ -143,6 +151,112 @@ describe('ArtifactsBrowser', () => {
 
     await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalled());
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['folders', 'bin', 'proj-1'] });
+  });
+
+  it('renames a folder through the GUI', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockUpdateFolder.mockResolvedValue({ folder: { id: 'fld-1', name: 'documents', parentId: '' } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByLabelText('Rename folder docs'));
+
+    const nameInput = screen.getByDisplayValue('docs');
+    fireEvent.change(nameInput, { target: { value: 'documents' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockUpdateFolder).toHaveBeenCalledWith({ folderId: 'fld-1', name: 'documents' }));
+  });
+
+  it('cancels renaming a folder without saving', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByLabelText('Rename folder docs'));
+    expect(screen.getByDisplayValue('docs')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.getByText('docs')).toBeInTheDocument();
+    expect(mockUpdateFolder).not.toHaveBeenCalled();
+  });
+
+  it('edits an artifact\'s content through the GUI', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }] });
+    mockUpdateArtifactContent.mockResolvedValue({ artifact: { id: 'art-1', name: 'readme.md', content: 'Updated content', contentType: 'text/markdown' } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+    fireEvent.click(screen.getByText('readme.md'));
+
+    await waitFor(() => expect(screen.getByText('Hello world')).toBeDefined());
+    fireEvent.click(screen.getAllByText('Edit').at(-1)!);
+
+    const textarea = screen.getByDisplayValue('Hello world');
+    fireEvent.change(textarea, { target: { value: 'Updated content' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockUpdateArtifactContent).toHaveBeenCalledWith({ artifactId: 'art-1', content: 'Updated content' }));
+  });
+
+  it('cancels editing artifact content without saving', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+    fireEvent.click(screen.getByText('readme.md'));
+
+    await waitFor(() => expect(screen.getByText('Hello world')).toBeDefined());
+    fireEvent.click(screen.getAllByText('Edit').at(-1)!);
+    expect(screen.getByDisplayValue('Hello world')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.getByText('Hello world')).toBeInTheDocument();
+    expect(mockUpdateArtifactContent).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when updating artifact content fails', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }] });
+    mockUpdateArtifactContent.mockRejectedValue(new Error('artifact not found'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+    fireEvent.click(screen.getByText('readme.md'));
+
+    await waitFor(() => expect(screen.getByText('Hello world')).toBeDefined());
+    fireEvent.click(screen.getAllByText('Edit').at(-1)!);
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to save/)).toBeInTheDocument());
+  });
+
+  it('does not show an Edit control for image artifacts', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'photo.png', content: 'base64data', contentType: 'image/png' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('photo.png')).toBeDefined());
+    fireEvent.click(screen.getByText('photo.png'));
+
+    await waitFor(() => expect(screen.getByText('photo.png', { selector: 'div' })).toBeInTheDocument());
+    expect(screen.getAllByText('Edit')).toHaveLength(1);
   });
 
   it('shows an empty-folder message when a selected folder has no artifacts', async () => {

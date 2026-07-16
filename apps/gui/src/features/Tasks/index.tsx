@@ -4,7 +4,7 @@ import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBa
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { TaskService, RepositoryService, TaskTypeService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { TaskService, RepositoryService, TaskTypeService, TaskNoteService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
@@ -14,6 +14,102 @@ import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
 const taskTypeClient = createClient(TaskTypeService, transport);
+const taskNoteClient = createClient(TaskNoteService, transport);
+
+function TaskNotesPanel({ taskId }: { taskId: string }) {
+  const queryClient = useQueryClient();
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editNoteContent, setEditNoteContent] = useState('');
+  const queryKey = ['taskNotes', taskId];
+
+  const { data: notesData, isLoading } = useQuery({
+    queryKey,
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await taskNoteClient.listTaskNotes({ taskId, page: cursor ? { cursor } : undefined });
+      return { items: resp.taskNotes, nextCursor: resp.page?.nextCursor || undefined };
+    }),
+  });
+
+  const updateNoteMutation = useMutation({
+    mutationFn: async (variables: { taskNoteId: string; content: string }) => {
+      await taskNoteClient.updateTaskNote(variables);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      setEditingNoteId(null);
+    },
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (taskNoteId: string) => {
+      await taskNoteClient.deleteTaskNote({ taskNoteId });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading notes...</p>;
+  if (!notesData || notesData.length === 0) return <p className="text-sm text-muted-foreground italic">No agent notes yet.</p>;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {notesData.map(note => (
+        editingNoteId === note.id ? (
+          <form
+            key={note.id}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (editNoteContent.trim()) updateNoteMutation.mutate({ taskNoteId: note.id, content: editNoteContent.trim() });
+            }}
+            className="flex flex-col gap-2 p-3 rounded-lg bg-muted/50 border"
+          >
+            <textarea
+              autoFocus
+              value={editNoteContent}
+              onChange={(e) => setEditNoteContent(e.target.value)}
+              rows={3}
+              className="text-sm rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            {updateNoteMutation.isError && (
+              <p className="text-xs text-destructive">Failed to update note: {(updateNoteMutation.error as Error).message}</p>
+            )}
+            <div className="flex gap-2 self-end">
+              <button type="submit" disabled={!editNoteContent.trim() || updateNoteMutation.isPending} className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium">Save</button>
+              <button type="button" onClick={() => setEditingNoteId(null)} className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium">Cancel</button>
+            </div>
+          </form>
+        ) : (
+          <div key={note.id} className="p-3 rounded-lg bg-muted/50 border flex flex-col gap-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-xs text-muted-foreground">Agent {note.agentId}</span>
+              <span className="flex items-center gap-2">
+                <button
+                  onClick={() => { setEditingNoteId(note.id); setEditNoteContent(note.content); }}
+                  className="text-muted-foreground hover:text-foreground text-xs"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Delete this note? This cannot be undone.')) {
+                      deleteNoteMutation.mutate(note.id);
+                    }
+                  }}
+                  className="text-muted-foreground hover:text-destructive text-xs"
+                >
+                  Delete
+                </button>
+              </span>
+            </div>
+            <p className="text-sm">{note.content}</p>
+          </div>
+        )
+      ))}
+      {deleteNoteMutation.isError && (
+        <p className="text-xs text-destructive">Failed to delete note: {(deleteNoteMutation.error as Error).message}</p>
+      )}
+    </div>
+  );
+}
 
 // Fallback status set for tasks with no taskTypeId, or whose task type has
 // no custom statuses configured - matches the backend's KNOWN_STATUSES.
@@ -31,6 +127,9 @@ export function TasksWorkbench() {
 
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [addingToColumnId, setAddingToColumnId] = useState<string | null>(null);
+  const [isEditingTask, setIsEditingTask] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const queryClient = useQueryClient();
 
   const createTaskMutation = useMutation({
@@ -56,6 +155,8 @@ export function TasksWorkbench() {
   });
 
   const expandedTask = tasksData?.find(t => t.id === expandedTaskId) ?? null;
+
+  useEffect(() => setIsEditingTask(false), [expandedTaskId]);
 
   // Task types can define their own custom status sets/state machines
   // (see tasks.handler.ts's validateStatusForTaskType) - fetch each distinct
@@ -119,6 +220,17 @@ export function TasksWorkbench() {
       return resp.task;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] }),
+  });
+
+  const updateTaskMutation = useMutation({
+    mutationFn: async (variables: { taskId: string; title: string; description: string }) => {
+      const resp = await taskClient.updateTask(variables);
+      return resp.task;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] });
+      setIsEditingTask(false);
+    },
   });
 
   const deleteTaskMutation = useMutation({
@@ -229,6 +341,18 @@ export function TasksWorkbench() {
            <div className="p-4 border-b flex justify-between items-center">
              <h2 className="font-semibold">Task Details</h2>
              <div className="flex items-center gap-3">
+               {!isEditingTask && (
+                 <button
+                   onClick={() => {
+                     setIsEditingTask(true);
+                     setEditTitle(expandedTask.title);
+                     setEditDescription(expandedTask.description || '');
+                   }}
+                   className="text-muted-foreground hover:text-foreground text-sm font-medium"
+                 >
+                   Edit
+                 </button>
+               )}
                <button
                  onClick={() => {
                    if (window.confirm(`Move "${expandedTask.title}" to the bin? You can restore it later.`)) {
@@ -248,7 +372,52 @@ export function TasksWorkbench() {
            )}
            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
              <div className="text-sm text-primary font-medium mb-1">{expandedTask.displayId}</div>
-             <h3 className="text-xl font-bold mb-4">{expandedTask.title}</h3>
+             {isEditingTask ? (
+               <form
+                 onSubmit={(e) => {
+                   e.preventDefault();
+                   if (editTitle.trim()) {
+                     updateTaskMutation.mutate({ taskId: expandedTask.id, title: editTitle.trim(), description: editDescription });
+                   }
+                 }}
+                 className="flex flex-col gap-2 mb-4"
+               >
+                 <input
+                   autoFocus
+                   value={editTitle}
+                   onChange={(e) => setEditTitle(e.target.value)}
+                   className="text-xl font-bold rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
+                 />
+                 <textarea
+                   value={editDescription}
+                   onChange={(e) => setEditDescription(e.target.value)}
+                   rows={4}
+                   placeholder="Description (Markdown supported)"
+                   className="text-sm rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
+                 />
+                 {updateTaskMutation.isError && (
+                   <p className="text-destructive text-xs">Failed to update task: {(updateTaskMutation.error as Error).message}</p>
+                 )}
+                 <div className="flex gap-2">
+                   <button
+                     type="submit"
+                     disabled={!editTitle.trim() || updateTaskMutation.isPending}
+                     className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium"
+                   >
+                     {updateTaskMutation.isPending ? 'Saving...' : 'Save'}
+                   </button>
+                   <button
+                     type="button"
+                     onClick={() => setIsEditingTask(false)}
+                     className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
+                   >
+                     Cancel
+                   </button>
+                 </div>
+               </form>
+             ) : (
+               <h3 className="text-xl font-bold mb-4">{expandedTask.title}</h3>
+             )}
              <div className="space-y-3 text-sm text-muted-foreground mb-6">
                 <div className="flex justify-between items-center">
                   <span className="w-24">Status:</span>
@@ -268,13 +437,15 @@ export function TasksWorkbench() {
                 )}
                 <div className="flex justify-between"><span className="w-24">Assignee:</span> <span className="text-foreground">Unassigned</span></div>
              </div>
-             <div className="prose prose-sm dark:prose-invert max-w-none">
-                {expandedTask.description ? (
-                  <MarkdownRenderer content={expandedTask.description} />
-                ) : (
-                  <p className="text-muted-foreground italic">No description provided.</p>
-                )}
-             </div>
+             {!isEditingTask && (
+               <div className="prose prose-sm dark:prose-invert max-w-none">
+                  {expandedTask.description ? (
+                    <MarkdownRenderer content={expandedTask.description} />
+                  ) : (
+                    <p className="text-muted-foreground italic">No description provided.</p>
+                  )}
+               </div>
+             )}
              <div className="mt-6">
                <h3 className="text-lg font-semibold tracking-tight mb-3">Labels</h3>
                <Label.Provider entityId={expandedTask.id} entityType="task" orgId={activeOrgId}>
@@ -283,6 +454,10 @@ export function TasksWorkbench() {
                    <Label.Picker />
                  </div>
                </Label.Provider>
+             </div>
+             <div className="mt-8">
+               <h3 className="text-lg font-semibold tracking-tight mb-4">Agent Notes</h3>
+               <TaskNotesPanel taskId={expandedTask.id} />
              </div>
              <div className="mt-8">
                <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>

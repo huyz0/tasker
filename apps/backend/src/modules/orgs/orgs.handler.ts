@@ -4,7 +4,7 @@ import { inArray, eq, and, not } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUserId, assertOrgAdmin } from "../../lib/authz";
+import { requireUserId, assertOrgAdmin, assertOrgMember } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -35,6 +35,23 @@ const PurgeOrgSchema = z.object({
 const SetOrgRetentionDaysSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   binRetentionDays: z.number().int().min(1, "binRetentionDays must be at least 1").max(3650, "binRetentionDays must be at most 3650 (10 years)"),
+});
+
+const UpdateOrgSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+  name: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(256).optional()),
+  slug: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(256).optional()),
+}).refine((v) => v.name !== undefined || v.slug !== undefined, {
+  message: "at least one of name or slug must be provided",
+});
+
+const ListOrgMembersSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+});
+
+const RemoveOrgMemberSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+  userId: z.string().min(1, "userId is required"),
 });
 
 // --- Handler Factory ---
@@ -90,6 +107,73 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
 
       publishDomainEvent(nc, "domain.org.created", orgPayload);
       return { organization: { ...orgPayload, role: "admin" } };
+    },
+    async updateOrg(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateOrgSchema.parse(req);
+      await assertOrgAdmin(db, userId, parsed.orgId);
+
+      const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+      const existing = await db.select().from(orgs).where(eq((orgs as any).id, parsed.orgId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("organization not found", Code.NotFound);
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.name !== undefined) updates.name = parsed.name;
+      if (parsed.slug !== undefined) updates.slug = parsed.slug;
+
+      try {
+        await db.update(orgs).set(updates).where(eq((orgs as any).id, parsed.orgId));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("UNIQUE constraint failed") || msg.includes("Duplicate entry")) {
+          throw new ConnectError("an organization with this slug already exists", Code.AlreadyExists);
+        }
+        throw err;
+      }
+
+      const updated = { ...existing[0], ...updates };
+      publishDomainEvent(nc, "domain.org.updated", updated);
+      return { organization: updated };
+    },
+    async listOrgMembers(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ListOrgMembersSchema.parse(req);
+      await assertOrgMember(db, userId, parsed.orgId);
+
+      const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
+      const users = isStandalone ? schemaSqlite.users : schemaMysql.users;
+
+      const memberRows = await db.select().from(members).where(eq((members as any).orgId, parsed.orgId));
+      const userIds = memberRows.map((m: any) => m.userId);
+      const userRows = userIds.length
+        ? await db.select().from(users).where(inArray((users as any).id, userIds))
+        : [];
+      const userById = new Map<string, any>(userRows.map((u: any) => [u.id, u]));
+
+      return {
+        members: memberRows.map((m: any) => ({
+          userId: m.userId,
+          email: userById.get(m.userId)?.email ?? "",
+          name: userById.get(m.userId)?.name ?? "",
+          role: m.role,
+        })),
+        page: {},
+      };
+    },
+    async removeOrgMember(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = RemoveOrgMemberSchema.parse(req);
+      await assertOrgAdmin(db, userId, parsed.orgId);
+
+      if (parsed.userId === userId) {
+        throw new ConnectError("cannot remove yourself from the organization", Code.InvalidArgument);
+      }
+
+      const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
+      await db.delete(members).where(and(eq((members as any).orgId, parsed.orgId), eq((members as any).userId, parsed.userId)));
+
+      publishDomainEvent(nc, "domain.org.member_removed", { orgId: parsed.orgId, userId: parsed.userId });
+      return { success: true };
     },
     async inviteUser(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

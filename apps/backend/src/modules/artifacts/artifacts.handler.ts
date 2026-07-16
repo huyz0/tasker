@@ -15,6 +15,11 @@ const CreateFolderSchema = z.object({
   name: z.string().min(1, "name is required").max(256),
 });
 
+const UpdateFolderSchema = z.object({
+  folderId: z.string().min(1, "folderId is required"),
+  name: z.string().min(1, "name is required").max(256),
+});
+
 const CreateArtifactSchema = z.object({
   folderId: z.string().min(1, "folderId is required"),
   name: z.string().min(1, "name is required").max(256),
@@ -98,6 +103,23 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const folderResp = { ...payload };
       publishDomainEvent(nc, "domain.folder.created", folderResp);
       return { folder: folderResp };
+    },
+
+    async updateFolder(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateFolderSchema.parse(req);
+      const orgId = await getFolderOrgId(db, parsed.folderId);
+      await assertOrgMember(db, userId, orgId);
+
+      const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
+      const existing = await db.select().from(folders).where(eq((folders as any).id, parsed.folderId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("folder not found", Code.NotFound);
+
+      await db.update(folders).set({ name: parsed.name }).where(eq((folders as any).id, parsed.folderId));
+
+      const updated = { ...existing[0], name: parsed.name };
+      publishDomainEvent(nc, "domain.folder.updated", updated);
+      return { folder: updated };
     },
 
     async createArtifact(req: unknown, { values: contextValues }: { values: any }) {

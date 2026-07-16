@@ -33,6 +33,10 @@ function isRemotePrConflict(e: unknown): boolean {
   return msg.includes("remote_pull_requests_repo_remote_pr_idx") || msg.includes("UNIQUE constraint failed") || msg.includes("Duplicate entry");
 }
 
+const RemoveRepositoryLinkSchema = z.object({
+  repositoryLinkId: z.string().min(1, "repositoryLinkId is required"),
+});
+
 const AddRepositoryLinkSchema = z.object({
   projectId: z.string().min(1),
   provider: z.string().min(1),
@@ -185,6 +189,22 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       };
     },
     
+    async removeRepositoryLink(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = RemoveRepositoryLinkSchema.parse(req);
+      const orgId = await getRepositoryLinkOrgId(db, parsed.repositoryLinkId);
+      await assertOrgAdmin(db, userId, orgId);
+
+      const links = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
+      const pullRequests = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
+
+      await db.delete(pullRequests).where(eq((pullRequests as any).repositoryLinkId, parsed.repositoryLinkId));
+      await db.delete(links).where(eq((links as any).id, parsed.repositoryLinkId));
+
+      publishDomainEvent(nc, "domain.repository.unlinked", { repositoryLinkId: parsed.repositoryLinkId });
+      return { success: true };
+    },
+
     async listRepositoryLinks(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = ListRepositoryLinksSchema.parse(req);

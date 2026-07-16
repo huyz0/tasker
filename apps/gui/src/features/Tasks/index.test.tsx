@@ -1,16 +1,21 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests, mockGetTaskType } = vi.hoisted(() => ({
+const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockUpdateTask, mockCreateTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests, mockGetTaskType, mockListTaskNotes, mockUpdateTaskNote, mockDeleteTaskNote } = vi.hoisted(() => ({
   mockListTasks: vi.fn(),
   mockUpdateTaskStatus: vi.fn(),
   mockDeleteTask: vi.fn(),
+  mockUpdateTask: vi.fn(),
+  mockCreateTask: vi.fn(),
   mockListComments: vi.fn(),
   mockListEntityLabels: vi.fn(),
   mockListLabels: vi.fn(),
   mockListPullRequests: vi.fn(),
   mockGetTaskType: vi.fn(),
+  mockListTaskNotes: vi.fn(),
+  mockUpdateTaskNote: vi.fn(),
+  mockDeleteTaskNote: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -28,7 +33,8 @@ vi.mock('@connectrpc/connect', () => ({
     };
     if (service === 'RepositoryService') return { listPullRequests: mockListPullRequests };
     if (service === 'TaskTypeService') return { getTaskType: mockGetTaskType };
-    return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask };
+    if (service === 'TaskNoteService') return { listTaskNotes: mockListTaskNotes, updateTaskNote: mockUpdateTaskNote, deleteTaskNote: mockDeleteTaskNote };
+    return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask, updateTask: mockUpdateTask, createTask: mockCreateTask };
   }),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
@@ -37,6 +43,7 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   LabelService: 'LabelService',
   RepositoryService: 'RepositoryService',
   TaskTypeService: 'TaskTypeService',
+  TaskNoteService: 'TaskNoteService',
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
@@ -62,6 +69,10 @@ describe('TasksWorkbench', () => {
     mockListTasks.mockReset();
     mockUpdateTaskStatus.mockReset();
     mockDeleteTask.mockReset();
+    mockUpdateTask.mockReset();
+    mockCreateTask.mockReset();
+    mockUpdateTaskNote.mockReset();
+    mockDeleteTaskNote.mockReset();
     mockListComments.mockReset();
     mockListComments.mockResolvedValue({ comments: [] });
     mockListEntityLabels.mockReset();
@@ -70,6 +81,8 @@ describe('TasksWorkbench', () => {
     mockListLabels.mockResolvedValue({ labels: [] });
     mockListPullRequests.mockReset();
     mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockListTaskNotes.mockReset();
+    mockListTaskNotes.mockResolvedValue({ taskNotes: [] });
     mockGetTaskType.mockReset();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
@@ -264,5 +277,213 @@ describe('TasksWorkbench', () => {
     fireEvent.click(screen.getByLabelText('Close task details'));
 
     await waitFor(() => expect(screen.queryByText('Task Details')).toBeNull());
+  });
+
+  it('edits a task title and description through the GUI', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: 'Old desc' }] });
+    mockUpdateTask.mockResolvedValue({ task: { id: 'task-1', title: 'Fix the bug', status: 'todo', description: 'New desc' } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+
+    const titleInput = screen.getByDisplayValue('Fix bug');
+    fireEvent.change(titleInput, { target: { value: 'Fix the bug' } });
+    fireEvent.change(screen.getByDisplayValue('Old desc'), { target: { value: 'New desc' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockUpdateTask).toHaveBeenCalledWith({ taskId: 'task-1', title: 'Fix the bug', description: 'New desc' }));
+  });
+
+  it('cancels editing a task without saving', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    expect(screen.getByDisplayValue('Fix bug')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.getAllByText('Fix bug').length).toBeGreaterThan(0);
+    expect(mockUpdateTask).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when updating a task fails', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockUpdateTask.mockRejectedValue(new Error('task not found'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to update task/)).toBeInTheDocument());
+  });
+
+  it('resets edit mode when a different task is expanded', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '' },
+      { id: 'task-2', title: 'Write docs', status: 'todo', description: '' },
+    ] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    expect(screen.getByDisplayValue('Fix bug')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Write docs'));
+    await waitFor(() => expect(screen.queryByDisplayValue('Fix bug')).toBeNull());
+  });
+
+  it('shows agent notes for a task and edits one', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    mockUpdateTaskNote.mockResolvedValue({ taskNote: { id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Updated finding' } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
+    const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
+    fireEvent.click(within(noteCard).getByText('Edit'));
+
+    const noteInput = screen.getByDisplayValue('Investigated root cause');
+    fireEvent.change(noteInput, { target: { value: 'Updated finding' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockUpdateTaskNote).toHaveBeenCalledWith({ taskNoteId: 'note-1', content: 'Updated finding' }));
+  });
+
+  it('deletes an agent note after confirmation', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    mockDeleteTaskNote.mockResolvedValue({ success: true });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
+    const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
+    fireEvent.click(within(noteCard).getByText('Delete'));
+
+    await waitFor(() => expect(mockDeleteTaskNote).toHaveBeenCalledWith({ taskNoteId: 'note-1' }));
+  });
+
+  it('shows "No agent notes yet." when a task has no notes', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('No agent notes yet.')).toBeInTheDocument());
+  });
+
+  it('shows an error message when updating an agent note fails', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    mockUpdateTaskNote.mockRejectedValue(new Error('note not found'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
+    const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
+    fireEvent.click(within(noteCard).getByText('Edit'));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to update note/)).toBeInTheDocument());
+  });
+
+  it('cancels editing an agent note without saving', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
+    const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
+    fireEvent.click(within(noteCard).getByText('Edit'));
+    expect(screen.getByDisplayValue('Investigated root cause')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.getByText('Investigated root cause')).toBeInTheDocument();
+    expect(mockUpdateTaskNote).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when deleting an agent note fails', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    mockDeleteTaskNote.mockRejectedValue(new Error('note not found'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
+    const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
+    fireEvent.click(within(noteCard).getByText('Delete'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to delete note/)).toBeInTheDocument());
+  });
+
+  it('creates a task via the column\'s bottom Add button', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [] });
+    mockCreateTask.mockResolvedValue({ task: { id: 'task-new', title: 'New task', status: 'todo', description: '' } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getAllByLabelText('Add task to Todo')[0]).toBeDefined());
+    const addButtons = screen.getAllByLabelText('Add task to Todo');
+    fireEvent.click(addButtons[addButtons.length - 1]);
+
+    const input = screen.getByPlaceholderText('Task title');
+    fireEvent.change(input, { target: { value: 'New task' } });
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(mockCreateTask).toHaveBeenCalledWith({ projectId: 'proj-1', title: 'New task', status: 'todo' }));
+  });
+
+  it('cancels the inline task-create form on blur when empty', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getAllByLabelText('Add task to Todo')[0]).toBeDefined());
+    const addButtons = screen.getAllByLabelText('Add task to Todo');
+    fireEvent.click(addButtons[addButtons.length - 1]);
+
+    const input = screen.getByPlaceholderText('Task title');
+    expect(input).toBeInTheDocument();
+    fireEvent.blur(input);
+    expect(screen.queryByPlaceholderText('Task title')).toBeNull();
+  });
+
+  it('shows an error message when creating a task fails', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [] });
+    mockCreateTask.mockRejectedValue(new Error('title is required'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getAllByLabelText('Add task to Todo')[0]).toBeDefined());
+    const addButtons = screen.getAllByLabelText('Add task to Todo');
+    fireEvent.click(addButtons[addButtons.length - 1]);
+
+    const input = screen.getByPlaceholderText('Task title');
+    fireEvent.change(input, { target: { value: 'New task' } });
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => expect(screen.getByText(/Failed to create task/)).toBeInTheDocument());
   });
 });
