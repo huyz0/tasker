@@ -62,14 +62,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar Navigation */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 border-r bg-card transition-transform md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-full flex-col">
-          <div className="flex h-14 items-center justify-between px-6 border-b md:h-[60px] font-semibold text-lg gap-2">
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-primary" />
-              Tasker
-            </div>
-            <div className="hidden md:flex flex-1 justify-end ml-4">
-               <GlobalSearch />
-            </div>
+          <div className="flex h-14 items-center px-6 border-b md:h-[60px] font-semibold text-lg gap-2">
+            <Activity className="h-5 w-5 text-primary" />
+            Tasker
+          </div>
+          <div className="hidden md:block px-4 py-3 border-b">
+            <GlobalSearch />
           </div>
           <OrgProjectSwitcher />
           <nav className="flex-1 space-y-1 p-4">

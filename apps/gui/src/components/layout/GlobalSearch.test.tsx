@@ -145,11 +145,11 @@ describe('GlobalSearch', () => {
   });
 
   it('closes the dialog when clicking the backdrop overlay', () => {
-    const { container } = renderSearch();
+    renderSearch();
     fireEvent.click(screen.getByText('Search tasks, artifacts...'));
     expect(screen.getByPlaceholderText('Type a command or search...')).toBeInTheDocument();
 
-    const overlay = container.querySelector('.fixed.inset-0')!;
+    const overlay = document.body.querySelector('.fixed.inset-0')!;
     fireEvent.click(overlay);
 
     expect(screen.queryByPlaceholderText('Type a command or search...')).not.toBeInTheDocument();

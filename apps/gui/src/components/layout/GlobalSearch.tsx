@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
@@ -45,7 +46,7 @@ export function GlobalSearch() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 hover:bg-muted/80 px-3 py-1.5 rounded-md border border-border transition-colors w-64 justify-between"
+        className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 hover:bg-muted/80 px-3 py-1.5 rounded-md border border-border transition-colors w-full min-w-0 justify-between"
       >
         <span className="flex items-center gap-2">
           <Search className="w-4 h-4" />
@@ -58,7 +59,7 @@ export function GlobalSearch() {
     );
   }
 
-  return (
+  return createPortal(
     <>
       <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
       <div className="fixed left-[50%] top-[20%] z-50 w-full max-w-lg translate-x-[-50%] rounded-xl border bg-card text-card-foreground shadow-2xl overflow-hidden">
@@ -76,7 +77,7 @@ export function GlobalSearch() {
           </button>
         </div>
         
-        <div className="max-h-[300px] overflow-y-auto p-2">
+        <div className="max-h-[300px] min-h-[52px] overflow-y-auto p-2">
           {isLoading && <p className="p-4 text-center text-sm text-muted-foreground">Searching...</p>}
           {!isLoading && data && data.length === 0 && debouncedQuery && (
             <p className="p-4 text-center text-sm text-muted-foreground">No results found.</p>
@@ -109,6 +110,7 @@ export function GlobalSearch() {
           )}
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
