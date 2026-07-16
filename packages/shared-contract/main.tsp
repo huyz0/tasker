@@ -599,6 +599,15 @@ model CreateArtifactResponse {
   @field(1) artifact: Artifact;
 }
 
+model UpdateArtifactContentRequest {
+  @field(1) artifactId: string;
+  @field(2) content: string;
+  @field(3) contentType?: string;
+}
+model UpdateArtifactContentResponse {
+  @field(1) artifact: Artifact;
+}
+
 model LinkTaskArtifactRequest {
   @field(1) taskId: string;
   @field(2) artifactId: string;
@@ -674,6 +683,9 @@ model PurgeFolderResponse {
 interface ArtifactService {
   createFolder(request: CreateFolderRequest): CreateFolderResponse;
   createArtifact(request: CreateArtifactRequest): CreateArtifactResponse;
+  updateArtifactContent(
+    request: UpdateArtifactContentRequest,
+  ): UpdateArtifactContentResponse;
   linkTaskArtifact(request: LinkTaskArtifactRequest): LinkTaskArtifactResponse;
   listArtifacts(request: ListArtifactsRequest): ListArtifactsResponse;
   listFolders(request: ListFoldersRequest): ListFoldersResponse;
@@ -695,6 +707,11 @@ model Comment {
   @field(5) agentId: string;
   @field(6) content: string;
   @field(7) createdAt: string;
+
+  // Resolved display name of the user/agent that authored this comment - null
+  // if the author record was since deleted. Never trust userId/agentId alone
+  // for display; they're internal ids.
+  @field(8) authorName?: string;
 }
 
 model CreateCommentRequest {

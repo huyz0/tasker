@@ -4,7 +4,13 @@ import { Bot } from 'lucide-react';
 
 export function CommentItem({ comment }: { comment: CommentData }) {
   const isAgent = Boolean(comment.agentId);
-  const author = isAgent ? `Agent ${comment.agentId}` : comment.userId ? `User ${comment.userId}` : 'Unknown';
+  const author = comment.authorName
+    ? comment.authorName
+    : isAgent
+      ? `Agent ${comment.agentId}`
+      : comment.userId
+        ? `User ${comment.userId}`
+        : 'Unknown';
 
   return (
     <div

@@ -169,6 +169,9 @@ const (
 	// ArtifactServiceCreateArtifactProcedure is the fully-qualified name of the ArtifactService's
 	// CreateArtifact RPC.
 	ArtifactServiceCreateArtifactProcedure = "/tasker.health.v1.ArtifactService/CreateArtifact"
+	// ArtifactServiceUpdateArtifactContentProcedure is the fully-qualified name of the
+	// ArtifactService's UpdateArtifactContent RPC.
+	ArtifactServiceUpdateArtifactContentProcedure = "/tasker.health.v1.ArtifactService/UpdateArtifactContent"
 	// ArtifactServiceLinkTaskArtifactProcedure is the fully-qualified name of the ArtifactService's
 	// LinkTaskArtifact RPC.
 	ArtifactServiceLinkTaskArtifactProcedure = "/tasker.health.v1.ArtifactService/LinkTaskArtifact"
@@ -298,6 +301,7 @@ var (
 	artifactServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
 	artifactServiceCreateFolderMethodDescriptor               = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
 	artifactServiceCreateArtifactMethodDescriptor             = artifactServiceServiceDescriptor.Methods().ByName("CreateArtifact")
+	artifactServiceUpdateArtifactContentMethodDescriptor      = artifactServiceServiceDescriptor.Methods().ByName("UpdateArtifactContent")
 	artifactServiceLinkTaskArtifactMethodDescriptor           = artifactServiceServiceDescriptor.Methods().ByName("LinkTaskArtifact")
 	artifactServiceListArtifactsMethodDescriptor              = artifactServiceServiceDescriptor.Methods().ByName("ListArtifacts")
 	artifactServiceListFoldersMethodDescriptor                = artifactServiceServiceDescriptor.Methods().ByName("ListFolders")
@@ -1711,6 +1715,7 @@ func (UnimplementedTaskServiceHandler) ListTaskReviewers(context.Context, *conne
 type ArtifactServiceClient interface {
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error)
 	CreateArtifact(context.Context, *connect.Request[v1.CreateArtifactRequest]) (*connect.Response[v1.CreateArtifactResponse], error)
+	UpdateArtifactContent(context.Context, *connect.Request[v1.UpdateArtifactContentRequest]) (*connect.Response[v1.UpdateArtifactContentResponse], error)
 	LinkTaskArtifact(context.Context, *connect.Request[v1.LinkTaskArtifactRequest]) (*connect.Response[v1.LinkTaskArtifactResponse], error)
 	ListArtifacts(context.Context, *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error)
 	ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error)
@@ -1742,6 +1747,12 @@ func NewArtifactServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			httpClient,
 			baseURL+ArtifactServiceCreateArtifactProcedure,
 			connect.WithSchema(artifactServiceCreateArtifactMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateArtifactContent: connect.NewClient[v1.UpdateArtifactContentRequest, v1.UpdateArtifactContentResponse](
+			httpClient,
+			baseURL+ArtifactServiceUpdateArtifactContentProcedure,
+			connect.WithSchema(artifactServiceUpdateArtifactContentMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		linkTaskArtifact: connect.NewClient[v1.LinkTaskArtifactRequest, v1.LinkTaskArtifactResponse](
@@ -1803,17 +1814,18 @@ func NewArtifactServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 
 // artifactServiceClient implements ArtifactServiceClient.
 type artifactServiceClient struct {
-	createFolder     *connect.Client[v1.CreateFolderRequest, v1.CreateFolderResponse]
-	createArtifact   *connect.Client[v1.CreateArtifactRequest, v1.CreateArtifactResponse]
-	linkTaskArtifact *connect.Client[v1.LinkTaskArtifactRequest, v1.LinkTaskArtifactResponse]
-	listArtifacts    *connect.Client[v1.ListArtifactsRequest, v1.ListArtifactsResponse]
-	listFolders      *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
-	archiveArtifact  *connect.Client[v1.ArchiveArtifactRequest, v1.ArchiveArtifactResponse]
-	restoreArtifact  *connect.Client[v1.RestoreArtifactRequest, v1.RestoreArtifactResponse]
-	archiveFolder    *connect.Client[v1.ArchiveFolderRequest, v1.ArchiveFolderResponse]
-	restoreFolder    *connect.Client[v1.RestoreFolderRequest, v1.RestoreFolderResponse]
-	purgeArtifact    *connect.Client[v1.PurgeArtifactRequest, v1.PurgeArtifactResponse]
-	purgeFolder      *connect.Client[v1.PurgeFolderRequest, v1.PurgeFolderResponse]
+	createFolder          *connect.Client[v1.CreateFolderRequest, v1.CreateFolderResponse]
+	createArtifact        *connect.Client[v1.CreateArtifactRequest, v1.CreateArtifactResponse]
+	updateArtifactContent *connect.Client[v1.UpdateArtifactContentRequest, v1.UpdateArtifactContentResponse]
+	linkTaskArtifact      *connect.Client[v1.LinkTaskArtifactRequest, v1.LinkTaskArtifactResponse]
+	listArtifacts         *connect.Client[v1.ListArtifactsRequest, v1.ListArtifactsResponse]
+	listFolders           *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
+	archiveArtifact       *connect.Client[v1.ArchiveArtifactRequest, v1.ArchiveArtifactResponse]
+	restoreArtifact       *connect.Client[v1.RestoreArtifactRequest, v1.RestoreArtifactResponse]
+	archiveFolder         *connect.Client[v1.ArchiveFolderRequest, v1.ArchiveFolderResponse]
+	restoreFolder         *connect.Client[v1.RestoreFolderRequest, v1.RestoreFolderResponse]
+	purgeArtifact         *connect.Client[v1.PurgeArtifactRequest, v1.PurgeArtifactResponse]
+	purgeFolder           *connect.Client[v1.PurgeFolderRequest, v1.PurgeFolderResponse]
 }
 
 // CreateFolder calls tasker.health.v1.ArtifactService.CreateFolder.
@@ -1824,6 +1836,11 @@ func (c *artifactServiceClient) CreateFolder(ctx context.Context, req *connect.R
 // CreateArtifact calls tasker.health.v1.ArtifactService.CreateArtifact.
 func (c *artifactServiceClient) CreateArtifact(ctx context.Context, req *connect.Request[v1.CreateArtifactRequest]) (*connect.Response[v1.CreateArtifactResponse], error) {
 	return c.createArtifact.CallUnary(ctx, req)
+}
+
+// UpdateArtifactContent calls tasker.health.v1.ArtifactService.UpdateArtifactContent.
+func (c *artifactServiceClient) UpdateArtifactContent(ctx context.Context, req *connect.Request[v1.UpdateArtifactContentRequest]) (*connect.Response[v1.UpdateArtifactContentResponse], error) {
+	return c.updateArtifactContent.CallUnary(ctx, req)
 }
 
 // LinkTaskArtifact calls tasker.health.v1.ArtifactService.LinkTaskArtifact.
@@ -1875,6 +1892,7 @@ func (c *artifactServiceClient) PurgeFolder(ctx context.Context, req *connect.Re
 type ArtifactServiceHandler interface {
 	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.CreateFolderResponse], error)
 	CreateArtifact(context.Context, *connect.Request[v1.CreateArtifactRequest]) (*connect.Response[v1.CreateArtifactResponse], error)
+	UpdateArtifactContent(context.Context, *connect.Request[v1.UpdateArtifactContentRequest]) (*connect.Response[v1.UpdateArtifactContentResponse], error)
 	LinkTaskArtifact(context.Context, *connect.Request[v1.LinkTaskArtifactRequest]) (*connect.Response[v1.LinkTaskArtifactResponse], error)
 	ListArtifacts(context.Context, *connect.Request[v1.ListArtifactsRequest]) (*connect.Response[v1.ListArtifactsResponse], error)
 	ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error)
@@ -1902,6 +1920,12 @@ func NewArtifactServiceHandler(svc ArtifactServiceHandler, opts ...connect.Handl
 		ArtifactServiceCreateArtifactProcedure,
 		svc.CreateArtifact,
 		connect.WithSchema(artifactServiceCreateArtifactMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	artifactServiceUpdateArtifactContentHandler := connect.NewUnaryHandler(
+		ArtifactServiceUpdateArtifactContentProcedure,
+		svc.UpdateArtifactContent,
+		connect.WithSchema(artifactServiceUpdateArtifactContentMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	artifactServiceLinkTaskArtifactHandler := connect.NewUnaryHandler(
@@ -1964,6 +1988,8 @@ func NewArtifactServiceHandler(svc ArtifactServiceHandler, opts ...connect.Handl
 			artifactServiceCreateFolderHandler.ServeHTTP(w, r)
 		case ArtifactServiceCreateArtifactProcedure:
 			artifactServiceCreateArtifactHandler.ServeHTTP(w, r)
+		case ArtifactServiceUpdateArtifactContentProcedure:
+			artifactServiceUpdateArtifactContentHandler.ServeHTTP(w, r)
 		case ArtifactServiceLinkTaskArtifactProcedure:
 			artifactServiceLinkTaskArtifactHandler.ServeHTTP(w, r)
 		case ArtifactServiceListArtifactsProcedure:
@@ -1997,6 +2023,10 @@ func (UnimplementedArtifactServiceHandler) CreateFolder(context.Context, *connec
 
 func (UnimplementedArtifactServiceHandler) CreateArtifact(context.Context, *connect.Request[v1.CreateArtifactRequest]) (*connect.Response[v1.CreateArtifactResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.CreateArtifact is not implemented"))
+}
+
+func (UnimplementedArtifactServiceHandler) UpdateArtifactContent(context.Context, *connect.Request[v1.UpdateArtifactContentRequest]) (*connect.Response[v1.UpdateArtifactContentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ArtifactService.UpdateArtifactContent is not implemented"))
 }
 
 func (UnimplementedArtifactServiceHandler) LinkTaskArtifact(context.Context, *connect.Request[v1.LinkTaskArtifactRequest]) (*connect.Response[v1.LinkTaskArtifactResponse], error) {

@@ -28,6 +28,12 @@ const CreateArtifactSchema = z.object({
   contentType: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(128).optional().default("text/markdown")),
 });
 
+const UpdateArtifactContentSchema = z.object({
+  artifactId: z.string().min(1, "artifactId is required"),
+  content: z.string().max(15_000_000),
+  contentType: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(128).optional()),
+});
+
 const LinkTaskArtifactSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   artifactId: z.string().min(1, "artifactId is required"),
@@ -115,6 +121,27 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       publishDomainEvent(nc, "domain.artifact.created", payload);
       return { artifact: payload };
+    },
+
+    async updateArtifactContent(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateArtifactContentSchema.parse(req);
+      const orgId = await getArtifactOrgId(db, parsed.artifactId);
+      await assertOrgMember(db, userId, orgId);
+
+      const artifacts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+      const existing = await db.select().from(artifacts).where(eq((artifacts as any).id, parsed.artifactId)).limit(1);
+      if (!existing || existing.length === 0) throw new ConnectError("artifact not found", Code.NotFound);
+
+      const updates = {
+        content: parsed.content,
+        contentType: parsed.contentType ?? existing[0].contentType,
+      };
+      await db.update(artifacts).set(updates).where(eq((artifacts as any).id, parsed.artifactId));
+
+      const artifactResp = { ...existing[0], ...updates };
+      publishDomainEvent(nc, "domain.artifact.content_updated", artifactResp);
+      return { artifact: artifactResp };
     },
 
     async linkTaskArtifact(req: unknown, { values: contextValues }: { values: any }) {

@@ -10,6 +10,7 @@ export interface CommentData {
   id: string;
   userId?: string;
   agentId?: string;
+  authorName?: string;
   content: string;
   createdAt: string;
 }

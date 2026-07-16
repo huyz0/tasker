@@ -22,6 +22,8 @@ export function ArtifactsBrowser() {
   const [selectedArtifact, setSelectedArtifact] = useState<any | null>(null);
   const [isAddingFolder, setIsAddingFolder] = useState(false);
   const [isAddingArtifact, setIsAddingArtifact] = useState(false);
+  const [isEditingContent, setIsEditingContent] = useState(false);
+  const [editedContent, setEditedContent] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch all folders for the project - loop through every page, not just
@@ -89,6 +91,23 @@ export function ArtifactsBrowser() {
       setIsAddingArtifact(false);
     },
   });
+
+  const updateContentMutation = useMutation({
+    mutationFn: async ({ artifactId, content }: { artifactId: string; content: string }) => {
+      const resp = await artifactClient.updateArtifactContent({ artifactId, content });
+      return resp.artifact;
+    },
+    onSuccess: (artifact) => {
+      queryClient.invalidateQueries({ queryKey: ['artifacts', selectedFolderId] });
+      setSelectedArtifact(artifact);
+      setIsEditingContent(false);
+    },
+  });
+
+  const selectArtifact = (artifact: any) => {
+    setSelectedArtifact(artifact);
+    setIsEditingContent(false);
+  };
 
   const rootFolders = foldersData?.filter(f => !f.parentId) || [];
 
@@ -163,11 +182,11 @@ export function ArtifactsBrowser() {
                       key={artifact.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => setSelectedArtifact(artifact)}
+                      onClick={() => selectArtifact(artifact)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          setSelectedArtifact(artifact);
+                          selectArtifact(artifact);
                         }
                       }}
                       className={`px-2 py-1 hover:bg-muted cursor-pointer flex items-center justify-between gap-2 rounded-sm text-xs group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${selectedArtifact?.id === artifact.id ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}
@@ -218,12 +237,50 @@ export function ArtifactsBrowser() {
       <div className="flex-1 flex flex-col bg-card border rounded-lg overflow-hidden shadow-sm">
         {selectedArtifact ? (
           <>
-            <div className="flex bg-muted/30 border-b overflow-x-auto text-sm">
+            <div className="flex items-center justify-between bg-muted/30 border-b overflow-x-auto text-sm">
                <div className="px-4 py-2 border-r bg-card border-t border-t-primary cursor-pointer flex items-center gap-2">
                  <FileText className="w-3.5 h-3.5 text-primary" /> {selectedArtifact.name}
                </div>
+               {!selectedArtifact.contentType?.startsWith("image/") && (
+                 isEditingContent ? (
+                   <div className="flex items-center gap-2 pr-3">
+                     <button
+                       onClick={() => updateContentMutation.mutate({ artifactId: selectedArtifact.id, content: editedContent })}
+                       disabled={updateContentMutation.isPending}
+                       className="text-xs px-3 py-1 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+                     >
+                       {updateContentMutation.isPending ? 'Saving...' : 'Save'}
+                     </button>
+                     <button
+                       onClick={() => setIsEditingContent(false)}
+                       disabled={updateContentMutation.isPending}
+                       className="text-xs px-3 py-1 rounded-md hover:bg-muted"
+                     >
+                       Cancel
+                     </button>
+                   </div>
+                 ) : (
+                   <button
+                     onClick={() => { setEditedContent(selectedArtifact.content || ''); setIsEditingContent(true); }}
+                     className="text-xs px-3 py-1 mr-3 rounded-md hover:bg-muted text-muted-foreground"
+                   >
+                     Edit
+                   </button>
+                 )
+               )}
             </div>
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+               {updateContentMutation.isError && (
+                 <p className="text-sm text-destructive mb-3">Failed to save: {(updateContentMutation.error as Error).message}</p>
+               )}
+               {isEditingContent ? (
+                 <textarea
+                   autoFocus
+                   value={editedContent}
+                   onChange={(e) => setEditedContent(e.target.value)}
+                   className="w-full h-full min-h-[300px] rounded-md border bg-background p-3 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/50"
+                 />
+               ) : (
                <div className="prose prose-sm dark:prose-invert max-w-none">
                  {!selectedArtifact.content ? (
                    <p className="text-muted-foreground italic">This artifact has no content.</p>
@@ -237,6 +294,7 @@ export function ArtifactsBrowser() {
                    <MarkdownRenderer content={selectedArtifact.content} />
                  )}
                </div>
+               )}
                <div className="mt-6 not-prose">
                  <h3 className="text-sm font-semibold tracking-tight mb-3">Labels</h3>
                  <Label.Provider entityId={selectedArtifact.id} entityType="artifact" orgId={activeOrgId}>

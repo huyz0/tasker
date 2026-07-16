@@ -156,6 +156,38 @@ describe("Artifacts Handler", () => {
     ).rejects.toThrow();
   });
 
+  // --- updateArtifactContent ---
+
+  it("should update an artifact's content", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc", content: "old" }, ctx);
+    const res = await handler.updateArtifactContent({ artifactId: created.artifact.id, content: "new content" }, ctx);
+    expect(res.artifact.content).toBe("new content");
+    expect(res.artifact.contentType).toBe("text/markdown");
+  });
+
+  it("should update an artifact's contentType alongside its content", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc", content: "old" }, ctx);
+    const res = await handler.updateArtifactContent({ artifactId: created.artifact.id, content: "# New", contentType: "text/plain" }, ctx);
+    expect(res.artifact.content).toBe("# New");
+    expect(res.artifact.contentType).toBe("text/plain");
+  });
+
+  it("should reject updateArtifactContent for a nonexistent artifact", async () => {
+    expect(
+      handler.updateArtifactContent({ artifactId: "art-does-not-exist", content: "x" }, ctx)
+    ).rejects.toThrow();
+  });
+
+  it("should reject updateArtifactContent from a user outside the artifact's org", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx);
+    await expect(
+      handler.updateArtifactContent({ artifactId: created.artifact.id, content: "x" }, makeAuthContext("user-outsider"))
+    ).rejects.toThrow();
+  });
+
   // --- linkTaskArtifact ---
 
   it("should link task and artifact in the same org", async () => {

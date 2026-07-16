@@ -2,10 +2,35 @@ import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import { requireUserId, assertOrgMember, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
+
+// Resolves each comment's userId/agentId to a display name in two batched
+// queries (not one query per comment) so a long thread doesn't turn into an
+// N+1 fan-out. Falls back to null (GUI shows the raw id) if the referenced
+// user/agent was since deleted.
+async function attachAuthorNames(db: any, isStandalone: boolean, items: any[]): Promise<any[]> {
+  const userIds = [...new Set(items.filter((c) => c.userId).map((c) => c.userId))];
+  const agentIds = [...new Set(items.filter((c) => c.agentId).map((c) => c.agentId))];
+
+  const users = isStandalone ? schemaSqlite.users : schemaMysql.users;
+  const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+
+  const [userRows, agentRows] = await Promise.all([
+    userIds.length ? db.select().from(users).where(inArray((users as any).id, userIds)) : [],
+    agentIds.length ? db.select().from(agents).where(inArray((agents as any).id, agentIds)) : [],
+  ]);
+
+  const userNameById = new Map(userRows.map((u: any) => [u.id, u.name || u.email]));
+  const agentNameById = new Map(agentRows.map((a: any) => [a.id, a.name]));
+
+  return items.map((c) => ({
+    ...c,
+    authorName: c.agentId ? (agentNameById.get(c.agentId) ?? null) : c.userId ? (userNameById.get(c.userId) ?? null) : null,
+  }));
+}
 
 // --- Zod Request Schema ---
 
@@ -58,7 +83,8 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
 
       await insertRecord(db, comments, payload, isStandalone);
 
-      const commentResp = { ...payload, createdAt: new Date().toISOString() };
+      const [withName] = await attachAuthorNames(db, isStandalone, [payload]);
+      const commentResp = { ...withName, createdAt: new Date().toISOString() };
       publishDomainEvent(nc, "domain.comment.created", commentResp);
       return { comment: commentResp };
     },
@@ -73,8 +99,10 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       const cmts = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, cmts, and(eq((cmts as any).entityId, req.entityId), eq((cmts as any).entityType, req.entityType)), req.page);
 
+      const withNames = await attachAuthorNames(db, isStandalone, items);
+
       return {
-        comments: items.map((c: any) => ({
+        comments: withNames.map((c: any) => ({
           ...c,
           createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
         })),

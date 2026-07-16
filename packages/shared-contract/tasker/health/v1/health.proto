@@ -569,6 +569,16 @@ message CreateArtifactResponse {
   Artifact artifact = 1;
 }
 
+message UpdateArtifactContentRequest {
+  string artifactId = 1;
+  string content = 2;
+  optional string contentType = 3;
+}
+
+message UpdateArtifactContentResponse {
+  Artifact artifact = 1;
+}
+
 message LinkTaskArtifactRequest {
   string taskId = 1;
   string artifactId = 2;
@@ -645,6 +655,7 @@ message PurgeFolderResponse {
 service ArtifactService {
   rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
   rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
+  rpc UpdateArtifactContent(UpdateArtifactContentRequest) returns (UpdateArtifactContentResponse);
   rpc LinkTaskArtifact(LinkTaskArtifactRequest) returns (LinkTaskArtifactResponse);
   rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse);
   rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse);
@@ -664,6 +675,7 @@ message Comment {
   string agentId = 5;
   string content = 6;
   string createdAt = 7;
+  optional string authorName = 8;
 }
 
 message CreateCommentRequest {
