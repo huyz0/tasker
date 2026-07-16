@@ -32,7 +32,8 @@ export function ProjectsWizard() {
     queryFn: async () => {
       const resp = await taskTypeClient.listTaskTypes({ orgId: activeOrgId });
       return resp.taskTypes;
-    }
+    },
+    enabled: !!activeOrgId,
   });
 
   const { data: templatesData, isLoading: isLoadingTemplates } = useQuery({
@@ -40,7 +41,8 @@ export function ProjectsWizard() {
     queryFn: async () => {
       const resp = await templateClient.listTemplates({ orgId: activeOrgId });
       return resp.templates;
-    }
+    },
+    enabled: !!activeOrgId,
   });
 
   const {
@@ -55,6 +57,7 @@ export function ProjectsWizard() {
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
+    enabled: !!activeOrgId,
   });
 
   const projectsData = projectsPages?.pages.flatMap((page) => page.projects);
@@ -73,6 +76,7 @@ export function ProjectsWizard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
       setProjectName('');
     }
   });
@@ -111,6 +115,7 @@ export function ProjectsWizard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
       queryClient.invalidateQueries({ queryKey: ['projects', 'bin', activeOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
     },
   });
 

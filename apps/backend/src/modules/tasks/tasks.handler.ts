@@ -164,6 +164,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
     },
     async listTaskTypes(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
+      if (!(req as any)?.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       const parsed = ListTaskTypesSchema.parse(req);
       await assertOrgMember(db, userId, parsed.orgId);
 

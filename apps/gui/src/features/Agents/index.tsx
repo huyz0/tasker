@@ -26,7 +26,8 @@ export function AgentsDashboard() {
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await agentClient.listAgents({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
       return { items: resp.agents, nextCursor: resp.page?.nextCursor || undefined };
-    })
+    }),
+    enabled: !!activeOrgId,
   });
 
   const { data: rolesData } = useQuery({

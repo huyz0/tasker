@@ -112,8 +112,14 @@ export function OrganizationsDashboard() {
         <div className="col-span-1 border rounded-lg bg-card p-4 shadow-sm">
           <ul className="space-y-2">
             <li className="font-medium bg-muted p-2 rounded">Organizations</li>
-            <li className="p-2 text-muted-foreground hover:bg-muted/50 rounded cursor-pointer">Roles & Permissions</li>
-            <li className="p-2 text-muted-foreground hover:bg-muted/50 rounded cursor-pointer">Security</li>
+            <li className="p-2 text-muted-foreground/50 rounded flex items-center justify-between" aria-disabled="true">
+              Roles & Permissions
+              <span className="text-xs bg-muted px-2 py-0.5 rounded-full">Coming soon</span>
+            </li>
+            <li className="p-2 text-muted-foreground/50 rounded flex items-center justify-between" aria-disabled="true">
+              Security
+              <span className="text-xs bg-muted px-2 py-0.5 rounded-full">Coming soon</span>
+            </li>
           </ul>
         </div>
         <div className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
