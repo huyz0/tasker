@@ -72,16 +72,20 @@ describe('OrganizationsDashboard', () => {
     expect(screen.getByText('Manage hierarchical organizational structure and teams.')).toBeDefined();
   });
 
-  it('scrolls to the Members section when "Roles & Permissions" is clicked', async () => {
+  it('switches to the Roles & Permissions section and back to Organizations', async () => {
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: [] });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeInTheDocument());
-    const scrollIntoView = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoView;
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    expect(screen.getByText('Your Organizations')).toBeInTheDocument();
 
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+    await waitFor(() => expect(screen.getByText('No members found.')).toBeInTheDocument());
+    expect(screen.queryByText('Your Organizations')).toBeNull();
+
+    fireEvent.click(screen.getByText('Organizations'));
+    expect(screen.getByText('Your Organizations')).toBeInTheDocument();
   });
 
   it('renders loading state for orgs', () => {
@@ -293,6 +297,23 @@ describe('OrganizationsDashboard', () => {
     await waitFor(() => expect(mockArchiveOrg).toHaveBeenCalledWith({ orgId: 'org-child' }));
   });
 
+  it('collapses and expands a parent org, hiding and reshowing its children', async () => {
+    mockListOrgs.mockResolvedValue({
+      organizations: [
+        { id: 'org-root', name: 'Root Co', slug: 'root-co' },
+        { id: 'org-child', name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' },
+      ],
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Child Co')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Collapse Root Co'));
+    expect(screen.queryByText('Child Co')).toBeNull();
+
+    fireEvent.click(screen.getByLabelText('Expand Root Co'));
+    expect(screen.getByText('Child Co')).toBeInTheDocument();
+  });
+
   it('selects a root org via click and via keyboard', async () => {
     mockListOrgs.mockResolvedValue({
       organizations: [
@@ -458,6 +479,7 @@ describe('OrganizationsDashboard', () => {
     mockRemoveOrgMember.mockResolvedValue({ success: true });
 
     renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -470,6 +492,7 @@ describe('OrganizationsDashboard', () => {
     mockListOrgMembers.mockResolvedValue({ members: [] });
 
     renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
 
     await waitFor(() => expect(screen.getByText('No members found.')).toBeInTheDocument());
   });
@@ -480,6 +503,7 @@ describe('OrganizationsDashboard', () => {
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
 
     renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -494,6 +518,7 @@ describe('OrganizationsDashboard', () => {
     mockRemoveOrgMember.mockRejectedValue(new Error('cannot remove yourself'));
 
     renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -507,6 +532,7 @@ describe('OrganizationsDashboard', () => {
     mockUpdateOrgMemberRole.mockResolvedValue({ member: { userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' } });
 
     renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.change(screen.getByLabelText('Role for Alice'), { target: { value: 'admin' } });
@@ -519,9 +545,10 @@ describe('OrganizationsDashboard', () => {
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'owner' }] });
 
     renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
-    expect(screen.getByText('Owner')).toBeInTheDocument();
+    expect(screen.getByText('Owner', { selector: 'span' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Role for Alice')).toBeNull();
   });
 
@@ -533,6 +560,7 @@ describe('OrganizationsDashboard', () => {
     ] });
 
     renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
 
     await waitFor(() => expect(screen.getByText('noname@b.com')).toBeInTheDocument());
     expect(screen.getByText('user-3')).toBeInTheDocument();
@@ -546,6 +574,7 @@ describe('OrganizationsDashboard', () => {
     mockUpdateOrgMemberRole.mockRejectedValue(new Error('owner role required'));
 
     renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.change(screen.getByLabelText('Role for Alice'), { target: { value: 'viewer' } });
