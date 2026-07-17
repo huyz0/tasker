@@ -4,10 +4,15 @@ import { inArray, eq, and, not } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUserId, assertOrgAdmin, assertOrgMember } from "../../lib/authz";
+import { requireUserId, assertOrgAdmin, assertOrgMember, getOrgMemberRole, countOrgOwners } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
+
+// Ownership isn't handed out through an invite - only an existing owner can
+// grant it via updateOrgMemberRole - so 'owner' is deliberately excluded here.
+const InvitableRole = z.enum(['admin', 'member', 'viewer']);
+const OrgRole = z.enum(['owner', 'admin', 'member', 'viewer']);
 
 const SeedOrgSchema = z.object({
   name: z.string().min(1, "name is required").max(256),
@@ -18,6 +23,7 @@ const SeedOrgSchema = z.object({
 const InviteUserSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   email: z.string().email("valid email is required"),
+  role: InvitableRole.default('member'),
 });
 
 const ArchiveOrgSchema = z.object({
@@ -52,6 +58,12 @@ const ListOrgMembersSchema = z.object({
 const RemoveOrgMemberSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   userId: z.string().min(1, "userId is required"),
+});
+
+const UpdateOrgMemberRoleSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+  userId: z.string().min(1, "userId is required"),
+  role: OrgRole,
 });
 
 // --- Handler Factory ---
@@ -102,11 +114,14 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const orgPayload = { id: newOrgId, name: parsed.name, slug: parsed.slug, parentOrgId: parsed.parentOrgId || null };
 
       await insertRecord(db, orgs, orgPayload, isStandalone);
-      const memberPayload = { orgId: newOrgId, userId, role: "admin" };
+      // The founding member becomes owner (not just admin) - every org must
+      // always have at least one owner, and there's no simpler moment to
+      // guarantee that than at creation.
+      const memberPayload = { orgId: newOrgId, userId, role: "owner" };
       await insertRecord(db, members, memberPayload, isStandalone, "joinedAt");
 
       publishDomainEvent(nc, "domain.org.created", orgPayload);
-      return { organization: { ...orgPayload, role: "admin" } };
+      return { organization: { ...orgPayload, role: "owner" } };
     },
     async updateOrg(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
@@ -169,11 +184,52 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         throw new ConnectError("cannot remove yourself from the organization", Code.InvalidArgument);
       }
 
+      const targetRole = await getOrgMemberRole(db, parsed.userId, parsed.orgId);
+      if (targetRole === "owner" && (await countOrgOwners(db, parsed.orgId)) <= 1) {
+        throw new ConnectError("cannot remove the organization's last owner", Code.FailedPrecondition);
+      }
+
       const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
       await db.delete(members).where(and(eq((members as any).orgId, parsed.orgId), eq((members as any).userId, parsed.userId)));
 
       publishDomainEvent(nc, "domain.org.member_removed", { orgId: parsed.orgId, userId: parsed.userId });
       return { success: true };
+    },
+    async updateOrgMemberRole(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = UpdateOrgMemberRoleSchema.parse(req);
+      await assertOrgAdmin(db, userId, parsed.orgId);
+
+      const actorRole = await getOrgMemberRole(db, userId, parsed.orgId);
+      const targetRole = await getOrgMemberRole(db, parsed.userId, parsed.orgId);
+      if (!targetRole) {
+        throw new ConnectError("user is not a member of this organization", Code.NotFound);
+      }
+
+      // Only an owner can grant ownership or touch another owner's role -
+      // a plain admin can manage admin/member/viewer but not the owner tier.
+      if (actorRole !== "owner" && (parsed.role === "owner" || targetRole === "owner")) {
+        throw new ConnectError("owner role required to change an owner's role or grant ownership", Code.PermissionDenied);
+      }
+
+      if (targetRole === "owner" && parsed.role !== "owner" && (await countOrgOwners(db, parsed.orgId)) <= 1) {
+        throw new ConnectError("cannot demote the organization's last owner", Code.FailedPrecondition);
+      }
+
+      const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
+      const users = isStandalone ? schemaSqlite.users : schemaMysql.users;
+      await db.update(members).set({ role: parsed.role }).where(and(eq((members as any).orgId, parsed.orgId), eq((members as any).userId, parsed.userId)));
+
+      const userRows = await db.select().from(users).where(eq((users as any).id, parsed.userId)).limit(1);
+      publishDomainEvent(nc, "domain.org.member_role_updated", { orgId: parsed.orgId, userId: parsed.userId, role: parsed.role });
+      return {
+        member: {
+          userId: parsed.userId,
+          email: userRows[0]?.email ?? "",
+          name: userRows[0]?.name ?? "",
+          role: parsed.role,
+        },
+      };
     },
     async inviteUser(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
@@ -191,6 +247,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         orgId: parsed.orgId,
         email: parsed.email,
         invitedBy: userId,
+        role: parsed.role,
       };
       await insertRecord(db, invs, payload, isStandalone);
       return { success: true };

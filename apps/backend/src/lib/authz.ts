@@ -1,5 +1,5 @@
 import { ConnectError, Code } from '@connectrpc/connect';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, inArray } from 'drizzle-orm';
 import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
 import { currentUserIdKey } from '../modules/auth/session';
@@ -33,16 +33,43 @@ export async function assertOrgMember(db: any, userId: string, orgId: string): P
   }
 }
 
-export async function assertOrgAdmin(db: any, userId: string, orgId: string): Promise<void> {
+// 'owner' is a superset of 'admin' - every admin-gated action is also
+// permitted for the org's owner(s), so admin checks below accept either.
+const ADMIN_ROLES = ['owner', 'admin'];
+
+/** Returns the caller's role in the org, or null if they aren't a member. */
+export async function getOrgMemberRole(db: any, userId: string, orgId: string): Promise<string | null> {
   const members = isStandalone() ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
   const rows = await db
     .select()
     .from(members)
     .where(and(eq(members.orgId, orgId), eq(members.userId, userId)))
     .limit(1);
+  return rows && rows.length > 0 ? rows[0].role : null;
+}
 
-  if (!rows || rows.length === 0 || rows[0].role !== 'admin') {
+/** Counts how many members currently hold the 'owner' role in this org. */
+export async function countOrgOwners(db: any, orgId: string): Promise<number> {
+  const members = isStandalone() ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
+  const rows = await db
+    .select()
+    .from(members)
+    .where(and(eq(members.orgId, orgId), eq(members.role, 'owner')));
+  return rows.length;
+}
+
+export async function assertOrgAdmin(db: any, userId: string, orgId: string): Promise<void> {
+  const role = await getOrgMemberRole(db, userId, orgId);
+  if (!role || !ADMIN_ROLES.includes(role)) {
     throw new ConnectError('Admin role required in this organization', Code.PermissionDenied);
+  }
+}
+
+/** Requires the caller hold the 'owner' role specifically - not just 'admin'. */
+export async function assertOrgOwner(db: any, userId: string, orgId: string): Promise<void> {
+  const role = await getOrgMemberRole(db, userId, orgId);
+  if (role !== 'owner') {
+    throw new ConnectError('Owner role required in this organization', Code.PermissionDenied);
   }
 }
 
@@ -50,15 +77,16 @@ export async function assertOrgAdmin(db: any, userId: string, orgId: string): Pr
  * agentRoles has no orgId column - it's a deliberately global, shared
  * catalog (every org's agents can reuse the same personas) - so there's no
  * single org to check admin-of. This instead requires the caller be an
- * admin of at least one organization, so an authenticated account with no
- * real standing anywhere can't write into a catalog every org shares.
+ * admin (or owner) of at least one organization, so an authenticated
+ * account with no real standing anywhere can't write into a catalog every
+ * org shares.
  */
 export async function assertOrgAdminOfAny(db: any, userId: string): Promise<void> {
   const members = isStandalone() ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
   const rows = await db
     .select()
     .from(members)
-    .where(and(eq(members.userId, userId), eq(members.role, 'admin')))
+    .where(and(eq(members.userId, userId), inArray(members.role, ADMIN_ROLES)))
     .limit(1);
 
   if (!rows || rows.length === 0) {

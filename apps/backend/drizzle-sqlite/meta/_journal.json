@@ -127,6 +127,20 @@
       "when": 1784057542634,
       "tag": "0017_skinny_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1784259388525,
+      "tag": "0018_add_roles_owner_viewer",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1784259407121,
+      "tag": "0019_backfill_org_owners",
+      "breakpoints": true
     }
   ]
 }

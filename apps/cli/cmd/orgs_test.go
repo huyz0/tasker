@@ -16,7 +16,9 @@ import (
 
 type fakeOrgHandler struct {
 	v1connect.UnimplementedOrgServiceHandler
-	invitedEmail string
+	invitedEmail    string
+	invitedRole     string
+	updatedRoleArgs *healthv1.UpdateOrgMemberRoleRequest
 }
 
 func (f *fakeOrgHandler) SeedOrg(
@@ -38,7 +40,20 @@ func (f *fakeOrgHandler) InviteUser(
 	req *connect.Request[healthv1.InviteUserRequest],
 ) (*connect.Response[healthv1.InviteUserResponse], error) {
 	f.invitedEmail = req.Msg.Email
+	if req.Msg.Role != nil {
+		f.invitedRole = *req.Msg.Role
+	}
 	return connect.NewResponse(&healthv1.InviteUserResponse{Success: true}), nil
+}
+
+func (f *fakeOrgHandler) UpdateOrgMemberRole(
+	_ context.Context,
+	req *connect.Request[healthv1.UpdateOrgMemberRoleRequest],
+) (*connect.Response[healthv1.UpdateOrgMemberRoleResponse], error) {
+	f.updatedRoleArgs = req.Msg
+	return connect.NewResponse(&healthv1.UpdateOrgMemberRoleResponse{
+		Member: &healthv1.OrgMember{UserId: req.Msg.UserId, Role: req.Msg.Role},
+	}), nil
 }
 
 func (f *fakeOrgHandler) ListOrgs(
@@ -91,6 +106,52 @@ func TestOrgsInviteCmd(t *testing.T) {
 	}
 	if !strings.Contains(b.String(), "newuser@example.com") {
 		t.Fatalf("expected output to mention the invited email, got %s", b.String())
+	}
+}
+
+func TestOrgsInviteCmdWithRole(t *testing.T) {
+	fake := &fakeOrgHandler{}
+	withOrgServer(t, fake)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"orgs", "invite", "org_1", "--email", "viewer@example.com", "--role", "viewer"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.invitedRole != "viewer" {
+		t.Fatalf("expected invited role to be viewer, got %q", fake.invitedRole)
+	}
+}
+
+func TestOrgsSetMemberRoleCmd(t *testing.T) {
+	fake := &fakeOrgHandler{}
+	withOrgServer(t, fake)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"orgs", "set-role", "org_1", "user_1", "--role", "admin"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.updatedRoleArgs == nil || fake.updatedRoleArgs.OrgId != "org_1" || fake.updatedRoleArgs.UserId != "user_1" || fake.updatedRoleArgs.Role != "admin" {
+		t.Fatalf("expected updateOrgMemberRole to be called with org_1/user_1/admin, got %+v", fake.updatedRoleArgs)
+	}
+	if !strings.Contains(b.String(), "admin") {
+		t.Fatalf("expected output to mention the new role, got %s", b.String())
+	}
+}
+
+func TestOrgsSetMemberRoleCmdRequiresRole(t *testing.T) {
+	fake := &fakeOrgHandler{}
+	withOrgServer(t, fake)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"orgs", "set-role", "org_1", "user_1", "--role", ""})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error when --role is omitted")
 	}
 }
 

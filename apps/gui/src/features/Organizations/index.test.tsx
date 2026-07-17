@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OrganizationsDashboard } from './index';
 
-const { mockListOrgs, mockSeedOrg, mockArchiveOrg, mockSetOrgRetentionDays, mockUpdateOrg, mockListOrgMembers, mockRemoveOrgMember } = vi.hoisted(() => ({
+const { mockListOrgs, mockSeedOrg, mockArchiveOrg, mockSetOrgRetentionDays, mockUpdateOrg, mockListOrgMembers, mockRemoveOrgMember, mockUpdateOrgMemberRole } = vi.hoisted(() => ({
   mockListOrgs: vi.fn(),
   mockSeedOrg: vi.fn(),
   mockArchiveOrg: vi.fn(),
@@ -11,6 +11,7 @@ const { mockListOrgs, mockSeedOrg, mockArchiveOrg, mockSetOrgRetentionDays, mock
   mockUpdateOrg: vi.fn(),
   mockListOrgMembers: vi.fn(),
   mockRemoveOrgMember: vi.fn(),
+  mockUpdateOrgMemberRole: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -25,6 +26,7 @@ vi.mock('@connectrpc/connect', () => ({
     updateOrg: mockUpdateOrg,
     listOrgMembers: mockListOrgMembers,
     removeOrgMember: mockRemoveOrgMember,
+    updateOrgMemberRole: mockUpdateOrgMemberRole,
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ OrgService: {} }));
@@ -60,6 +62,7 @@ describe('OrganizationsDashboard', () => {
     mockListOrgMembers.mockReset();
     mockListOrgMembers.mockResolvedValue({ members: [] });
     mockRemoveOrgMember.mockReset();
+    mockUpdateOrgMemberRole.mockReset();
   });
 
   it('renders the header correctly', () => {
@@ -67,6 +70,18 @@ describe('OrganizationsDashboard', () => {
     renderPage();
     expect(screen.getByText('Organizations & Settings')).toBeDefined();
     expect(screen.getByText('Manage hierarchical organizational structure and teams.')).toBeDefined();
+  });
+
+  it('scrolls to the Members section when "Roles & Permissions" is clicked', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Root Co')).toBeInTheDocument());
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
   });
 
   it('renders loading state for orgs', () => {
@@ -484,5 +499,57 @@ describe('OrganizationsDashboard', () => {
     fireEvent.click(screen.getByText('Remove'));
 
     await waitFor(() => expect(screen.getByText(/Failed to remove member/)).toBeInTheDocument());
+  });
+
+  it('changes a member\'s role via the role dropdown', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'member' }] });
+    mockUpdateOrgMemberRole.mockResolvedValue({ member: { userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('Role for Alice'), { target: { value: 'admin' } });
+
+    await waitFor(() => expect(mockUpdateOrgMemberRole).toHaveBeenCalledWith({ orgId: 'org-1', userId: 'user-1', role: 'admin' }));
+  });
+
+  it('shows a plain "Owner" label instead of a role dropdown for an owner', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'owner' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
+    expect(screen.getByText('Owner')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Role for Alice')).toBeNull();
+  });
+
+  it('falls back to email, then userId, when a member has no name', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: [
+      { userId: 'user-2', email: 'noname@b.com', role: 'member' },
+      { userId: 'user-3', role: 'viewer' },
+    ] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('noname@b.com')).toBeInTheDocument());
+    expect(screen.getByText('user-3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Role for noname@b.com')).toBeInTheDocument();
+    expect(screen.getByLabelText('Role for user-3')).toBeInTheDocument();
+  });
+
+  it('shows an error message when updating a member role fails', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'member' }] });
+    mockUpdateOrgMemberRole.mockRejectedValue(new Error('owner role required'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('Role for Alice'), { target: { value: 'viewer' } });
+
+    await waitFor(() => expect(screen.getByText(/Failed to update role/)).toBeInTheDocument());
   });
 });

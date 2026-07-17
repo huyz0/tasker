@@ -87,7 +87,7 @@ async function completeLogin(db: any, profile: GoogleProfile): Promise<void> {
       .where(and(eq((members as any).orgId, invite.orgId), eq((members as any).userId, profile.id)))
       .limit(1);
     if (alreadyMember.length === 0) {
-      await db.insert(members).values({ orgId: invite.orgId, userId: profile.id, role: 'member', joinedAt: new Date() });
+      await db.insert(members).values({ orgId: invite.orgId, userId: profile.id, role: invite.role || 'member', joinedAt: new Date() });
     }
     await db.delete(invitations).where(eq((invitations as any).id, invite.id));
   }

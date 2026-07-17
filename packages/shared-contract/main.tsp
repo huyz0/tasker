@@ -148,6 +148,15 @@ model RemoveOrgMemberResponse {
   @field(1) success: boolean;
 }
 
+model UpdateOrgMemberRoleRequest {
+  @field(1) orgId: string;
+  @field(2) userId: string;
+  @field(3) role: string;
+}
+model UpdateOrgMemberRoleResponse {
+  @field(1) member: OrgMember;
+}
+
 interface OrgService {
   listOrgs(request: ListOrgsRequest): ListOrgsResponse;
   seedOrg(request: SeedOrgRequest): SeedOrgResponse;
@@ -162,11 +171,18 @@ interface OrgService {
   inviteUser(request: InviteUserRequest): InviteUserResponse;
   listOrgMembers(request: ListOrgMembersRequest): ListOrgMembersResponse;
   removeOrgMember(request: RemoveOrgMemberRequest): RemoveOrgMemberResponse;
+  updateOrgMemberRole(
+    request: UpdateOrgMemberRoleRequest,
+  ): UpdateOrgMemberRoleResponse;
 }
 
 model InviteUserRequest {
   @field(1) orgId: string;
   @field(2) email: string;
+
+  // Role the invitee gets on accept - "admin" | "member" | "viewer"
+  // (never "owner"). Defaults to "member" server-side if omitted.
+  @field(3) role?: string;
 }
 
 model InviteUserResponse {

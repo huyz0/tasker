@@ -29,7 +29,7 @@ export const organizations = mysqlTable("organizations", {
 export const organizationMembers = mysqlTable("organization_members", {
   orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
   userId: varchar("user_id", { length: 256 }).notNull().references(() => users.id),
-  role: mysqlEnum("role", ['admin', 'member']).notNull().default('member'),
+  role: mysqlEnum("role", ['owner', 'admin', 'member', 'viewer']).notNull().default('member'),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
 }, (table) => {
   return {
@@ -79,6 +79,9 @@ export const invitations = mysqlTable("invitations", {
   orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
   email: varchar("email", { length: 256 }).notNull(),
   invitedBy: varchar("invited_by", { length: 256 }).notNull().references(() => users.id),
+  // The role the invitee gets on accept - never 'owner': ownership isn't
+  // handed out through an email invite.
+  role: mysqlEnum("role", ['admin', 'member', 'viewer']).notNull().default('member'),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => {
   return {

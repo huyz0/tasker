@@ -97,6 +97,7 @@ message SeedOrgResponse {
 message InviteUserRequest {
   string orgId = 1;
   string email = 2;
+  optional string role = 3;
 }
 message InviteUserResponse {
   bool success = 1;
@@ -135,6 +136,15 @@ message RemoveOrgMemberResponse {
   bool success = 1;
 }
 
+message UpdateOrgMemberRoleRequest {
+  string orgId = 1;
+  string userId = 2;
+  string role = 3;
+}
+message UpdateOrgMemberRoleResponse {
+  OrgMember member = 1;
+}
+
 service OrgService {
   rpc ListOrgs(ListOrgsRequest) returns (ListOrgsResponse);
   rpc SeedOrg(SeedOrgRequest) returns (SeedOrgResponse);
@@ -146,6 +156,7 @@ service OrgService {
   rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
   rpc ListOrgMembers(ListOrgMembersRequest) returns (ListOrgMembersResponse);
   rpc RemoveOrgMember(RemoveOrgMemberRequest) returns (RemoveOrgMemberResponse);
+  rpc UpdateOrgMemberRole(UpdateOrgMemberRoleRequest) returns (UpdateOrgMemberRoleResponse);
 }
 
 message TaskType {

@@ -86,6 +86,9 @@ const (
 	// OrgServiceRemoveOrgMemberProcedure is the fully-qualified name of the OrgService's
 	// RemoveOrgMember RPC.
 	OrgServiceRemoveOrgMemberProcedure = "/tasker.health.v1.OrgService/RemoveOrgMember"
+	// OrgServiceUpdateOrgMemberRoleProcedure is the fully-qualified name of the OrgService's
+	// UpdateOrgMemberRole RPC.
+	OrgServiceUpdateOrgMemberRoleProcedure = "/tasker.health.v1.OrgService/UpdateOrgMemberRole"
 	// TaskTypeServiceGetTaskTypeProcedure is the fully-qualified name of the TaskTypeService's
 	// GetTaskType RPC.
 	TaskTypeServiceGetTaskTypeProcedure = "/tasker.health.v1.TaskTypeService/GetTaskType"
@@ -311,6 +314,7 @@ var (
 	orgServiceInviteUserMethodDescriptor                      = orgServiceServiceDescriptor.Methods().ByName("InviteUser")
 	orgServiceListOrgMembersMethodDescriptor                  = orgServiceServiceDescriptor.Methods().ByName("ListOrgMembers")
 	orgServiceRemoveOrgMemberMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("RemoveOrgMember")
+	orgServiceUpdateOrgMemberRoleMethodDescriptor             = orgServiceServiceDescriptor.Methods().ByName("UpdateOrgMemberRole")
 	taskTypeServiceServiceDescriptor                          = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskTypeService")
 	taskTypeServiceGetTaskTypeMethodDescriptor                = taskTypeServiceServiceDescriptor.Methods().ByName("GetTaskType")
 	taskTypeServiceCreateTaskTypeMethodDescriptor             = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskType")
@@ -544,6 +548,7 @@ type OrgServiceClient interface {
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 	ListOrgMembers(context.Context, *connect.Request[v1.ListOrgMembersRequest]) (*connect.Response[v1.ListOrgMembersResponse], error)
 	RemoveOrgMember(context.Context, *connect.Request[v1.RemoveOrgMemberRequest]) (*connect.Response[v1.RemoveOrgMemberResponse], error)
+	UpdateOrgMemberRole(context.Context, *connect.Request[v1.UpdateOrgMemberRoleRequest]) (*connect.Response[v1.UpdateOrgMemberRoleResponse], error)
 }
 
 // NewOrgServiceClient constructs a client for the tasker.health.v1.OrgService service. By default,
@@ -616,6 +621,12 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(orgServiceRemoveOrgMemberMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		updateOrgMemberRole: connect.NewClient[v1.UpdateOrgMemberRoleRequest, v1.UpdateOrgMemberRoleResponse](
+			httpClient,
+			baseURL+OrgServiceUpdateOrgMemberRoleProcedure,
+			connect.WithSchema(orgServiceUpdateOrgMemberRoleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -631,6 +642,7 @@ type orgServiceClient struct {
 	inviteUser          *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
 	listOrgMembers      *connect.Client[v1.ListOrgMembersRequest, v1.ListOrgMembersResponse]
 	removeOrgMember     *connect.Client[v1.RemoveOrgMemberRequest, v1.RemoveOrgMemberResponse]
+	updateOrgMemberRole *connect.Client[v1.UpdateOrgMemberRoleRequest, v1.UpdateOrgMemberRoleResponse]
 }
 
 // ListOrgs calls tasker.health.v1.OrgService.ListOrgs.
@@ -683,6 +695,11 @@ func (c *orgServiceClient) RemoveOrgMember(ctx context.Context, req *connect.Req
 	return c.removeOrgMember.CallUnary(ctx, req)
 }
 
+// UpdateOrgMemberRole calls tasker.health.v1.OrgService.UpdateOrgMemberRole.
+func (c *orgServiceClient) UpdateOrgMemberRole(ctx context.Context, req *connect.Request[v1.UpdateOrgMemberRoleRequest]) (*connect.Response[v1.UpdateOrgMemberRoleResponse], error) {
+	return c.updateOrgMemberRole.CallUnary(ctx, req)
+}
+
 // OrgServiceHandler is an implementation of the tasker.health.v1.OrgService service.
 type OrgServiceHandler interface {
 	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
@@ -695,6 +712,7 @@ type OrgServiceHandler interface {
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
 	ListOrgMembers(context.Context, *connect.Request[v1.ListOrgMembersRequest]) (*connect.Response[v1.ListOrgMembersResponse], error)
 	RemoveOrgMember(context.Context, *connect.Request[v1.RemoveOrgMemberRequest]) (*connect.Response[v1.RemoveOrgMemberResponse], error)
+	UpdateOrgMemberRole(context.Context, *connect.Request[v1.UpdateOrgMemberRoleRequest]) (*connect.Response[v1.UpdateOrgMemberRoleResponse], error)
 }
 
 // NewOrgServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -763,6 +781,12 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(orgServiceRemoveOrgMemberMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	orgServiceUpdateOrgMemberRoleHandler := connect.NewUnaryHandler(
+		OrgServiceUpdateOrgMemberRoleProcedure,
+		svc.UpdateOrgMemberRole,
+		connect.WithSchema(orgServiceUpdateOrgMemberRoleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.OrgService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrgServiceListOrgsProcedure:
@@ -785,6 +809,8 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 			orgServiceListOrgMembersHandler.ServeHTTP(w, r)
 		case OrgServiceRemoveOrgMemberProcedure:
 			orgServiceRemoveOrgMemberHandler.ServeHTTP(w, r)
+		case OrgServiceUpdateOrgMemberRoleProcedure:
+			orgServiceUpdateOrgMemberRoleHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -832,6 +858,10 @@ func (UnimplementedOrgServiceHandler) ListOrgMembers(context.Context, *connect.R
 
 func (UnimplementedOrgServiceHandler) RemoveOrgMember(context.Context, *connect.Request[v1.RemoveOrgMemberRequest]) (*connect.Response[v1.RemoveOrgMemberResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.RemoveOrgMember is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) UpdateOrgMemberRole(context.Context, *connect.Request[v1.UpdateOrgMemberRoleRequest]) (*connect.Response[v1.UpdateOrgMemberRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.UpdateOrgMemberRole is not implemented"))
 }
 
 // TaskTypeServiceClient is a client for the tasker.health.v1.TaskTypeService service.

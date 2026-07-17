@@ -1,11 +1,15 @@
 import { describe, it, expect } from "bun:test";
+import { eq, and } from "drizzle-orm";
 import { setupIntegrationTest } from "../test/setup";
 import * as schemaSqlite from "../db/schema.sqlite";
 import {
   requireUserId,
   assertOrgMember,
   assertOrgAdmin,
+  assertOrgOwner,
   assertOrgAdminOfAny,
+  getOrgMemberRole,
+  countOrgOwners,
   getProjectOrgId,
   getTaskOrgId,
   getFolderOrgId,
@@ -84,6 +88,51 @@ describe("assertOrgMember / assertOrgAdmin / assertOrgAdminOfAny", () => {
 
     await expect(assertOrgAdminOfAny(db, userId)).resolves.toBeUndefined();
     await expect(assertOrgAdminOfAny(db, "user-with-no-orgs-" + Date.now())).rejects.toThrow(ConnectError);
+  });
+
+  it("assertOrgAdmin and assertOrgAdminOfAny accept 'owner' as well as 'admin' - owner is a superset", async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedProjectHierarchy(db);
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "owner", joinedAt: new Date() });
+
+    await expect(assertOrgAdmin(db, userId, orgId)).resolves.toBeUndefined();
+    await expect(assertOrgAdminOfAny(db, userId)).resolves.toBeUndefined();
+  });
+
+  it("assertOrgOwner passes only for 'owner', rejecting a plain admin", async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedProjectHierarchy(db);
+    const adminId = userId + "-admin";
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "owner", joinedAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: adminId, role: "admin", joinedAt: new Date() });
+
+    await expect(assertOrgOwner(db, userId, orgId)).resolves.toBeUndefined();
+    await expect(assertOrgOwner(db, adminId, orgId)).rejects.toThrow(ConnectError);
+  });
+
+  it("getOrgMemberRole returns the role for a member and null for a non-member", async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedProjectHierarchy(db);
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "viewer", joinedAt: new Date() });
+
+    expect(await getOrgMemberRole(db, userId, orgId)).toBe("viewer");
+    expect(await getOrgMemberRole(db, "not-a-member", orgId)).toBeNull();
+  });
+
+  it("countOrgOwners counts only 'owner' rows for the given org", async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedProjectHierarchy(db);
+    const secondOwnerId = userId + "-owner2";
+    await db.insert(schemaSqlite.users).values({ id: secondOwnerId, email: `${secondOwnerId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "owner", joinedAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: secondOwnerId, role: "member", joinedAt: new Date() });
+
+    expect(await countOrgOwners(db, orgId)).toBe(1);
+
+    await db.update(schemaSqlite.organizationMembers).set({ role: "owner" })
+      .where(and(eq(schemaSqlite.organizationMembers.orgId, orgId), eq(schemaSqlite.organizationMembers.userId, secondOwnerId)));
+    expect(await countOrgOwners(db, orgId)).toBe(2);
   });
 });
 

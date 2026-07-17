@@ -8,6 +8,11 @@ import { PaginationControls } from '../../components/PaginationControls';
 
 const orgClient = createClient(OrgService, transport);
 
+// An admin can promote/demote among these three; only an existing owner can
+// grant or revoke the "owner" role itself (see updateOrgMemberRole on the
+// backend) - the GUI mirrors that by never offering "Owner" as a pick here.
+const ASSIGNABLE_ROLES = ['admin', 'member', 'viewer'];
+
 function slugify(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `org-${Date.now()}`;
 }
@@ -137,6 +142,13 @@ export function OrganizationsDashboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgMembers', activeOrgId] }),
   });
 
+  const updateMemberRoleMutation = useMutation({
+    mutationFn: async (variables: { userId: string; role: string }) => {
+      await orgClient.updateOrgMemberRole({ orgId: activeOrgId, userId: variables.userId, role: variables.role });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgMembers', activeOrgId] }),
+  });
+
   const renderOrgRow = (org: { id: string; name: string; slug: string }, isChild: boolean) => {
     if (editingOrgId === org.id) {
       return (
@@ -228,9 +240,13 @@ export function OrganizationsDashboard() {
         <div className="col-span-1 border rounded-lg bg-card p-4 shadow-sm">
           <ul className="space-y-2">
             <li className="font-medium bg-muted p-2 rounded">Organizations</li>
-            <li className="p-2 text-muted-foreground/50 rounded flex items-center justify-between" aria-disabled="true">
-              Roles & Permissions
-              <span className="text-xs bg-muted px-2 py-0.5 rounded-full">Coming soon</span>
+            <li>
+              <button
+                onClick={() => document.getElementById('org-members-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="w-full text-left p-2 rounded hover:bg-muted/50 text-sm"
+              >
+                Roles & Permissions
+              </button>
             </li>
             <li className="p-2 text-muted-foreground/50 rounded flex items-center justify-between" aria-disabled="true">
               Security
@@ -358,26 +374,46 @@ export function OrganizationsDashboard() {
           )}
 
           {activeOrg && (
-            <div className="mt-6 pt-6 border-t">
+            <div id="org-members-section" className="mt-6 pt-6 border-t">
               <h3 className="font-medium mb-2">Members</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Assign each member a role: Owner (full control, always at least one required), Admin (manage members and org settings), Member (normal contributor), or Viewer (read-only).
+              </p>
               {isLoadingMembers ? (
                 <p className="text-sm text-muted-foreground">Loading members...</p>
               ) : membersData && membersData.length > 0 ? (
                 <div className="border rounded-md divide-y">
                   {membersData.map((m) => (
-                    <div key={m.userId} className="p-3 text-sm flex justify-between items-center">
-                      <span>{m.name || m.email || m.userId} <span className="text-xs text-muted-foreground">({m.role})</span></span>
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Remove ${m.name || m.email} from "${activeOrg.name}"?`)) {
-                            removeMemberMutation.mutate(m.userId);
-                          }
-                        }}
-                        disabled={removeMemberMutation.isPending}
-                        className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
-                      >
-                        Remove
-                      </button>
+                    <div key={m.userId} className="p-3 text-sm flex justify-between items-center gap-2">
+                      <span className="truncate">{m.name || m.email || m.userId}</span>
+                      <span className="flex items-center gap-3 shrink-0">
+                        {m.role === 'owner' ? (
+                          <span className="text-xs text-muted-foreground px-2 py-1">Owner</span>
+                        ) : (
+                          <select
+                            aria-label={`Role for ${m.name || m.email || m.userId}`}
+                            value={m.role}
+                            disabled={updateMemberRoleMutation.isPending}
+                            onChange={(e) => updateMemberRoleMutation.mutate({ userId: m.userId, role: e.target.value })}
+                            className="text-xs rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
+                          >
+                            {ASSIGNABLE_ROLES.map((role) => (
+                              <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
+                            ))}
+                          </select>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Remove ${m.name || m.email} from "${activeOrg.name}"?`)) {
+                              removeMemberMutation.mutate(m.userId);
+                            }
+                          }}
+                          disabled={removeMemberMutation.isPending}
+                          className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -386,6 +422,9 @@ export function OrganizationsDashboard() {
               )}
               {removeMemberMutation.isError && (
                 <p className="text-sm text-destructive mt-2">Failed to remove member: {(removeMemberMutation.error as Error).message}</p>
+              )}
+              {updateMemberRoleMutation.isError && (
+                <p className="text-sm text-destructive mt-2">Failed to update role: {(updateMemberRoleMutation.error as Error).message}</p>
               )}
             </div>
           )}

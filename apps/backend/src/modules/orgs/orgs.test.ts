@@ -284,4 +284,107 @@ describe("Organizations Handler Integration Logic", () => {
     const rows = await db.select().from(schemaSqlite.organizations).where(eq(schemaSqlite.organizations.id, org.organization.id));
     expect(rows[0].binRetentionDays).toBe(7);
   });
+
+  test("seedOrg makes the founding member an owner, not just an admin", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const ownerId = "user-founder-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@foo.com`, createdAt: new Date() });
+
+    const org = await handler.seedOrg({ name: "Founded Org", slug: "founded-org-" + Date.now() }, makeAuthContext(ownerId));
+    expect(org.organization.role).toBe("owner");
+
+    const rows = await db.select().from(schemaSqlite.organizationMembers)
+      .where(and(eq(schemaSqlite.organizationMembers.orgId, org.organization.id), eq(schemaSqlite.organizationMembers.userId, ownerId)));
+    expect(rows[0].role).toBe("owner");
+  });
+
+  test("inviteUser stores the requested role, defaulting to member, and never allows 'owner'", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const ownerId = "user-invite-role-owner-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@foo.com`, createdAt: new Date() });
+    const org = await handler.seedOrg({ name: "Invite Role Org", slug: "invite-role-org-" + Date.now() }, makeAuthContext(ownerId));
+
+    await handler.inviteUser({ orgId: org.organization.id, email: "default-role@foo.com" }, makeAuthContext(ownerId));
+    const defaultInv = await db.select().from(schemaSqlite.invitations)
+      .where(and(eq(schemaSqlite.invitations.orgId, org.organization.id), eq(schemaSqlite.invitations.email, "default-role@foo.com")));
+    expect(defaultInv[0].role).toBe("member");
+
+    await handler.inviteUser({ orgId: org.organization.id, email: "viewer@foo.com", role: "viewer" }, makeAuthContext(ownerId));
+    const viewerInv = await db.select().from(schemaSqlite.invitations)
+      .where(and(eq(schemaSqlite.invitations.orgId, org.organization.id), eq(schemaSqlite.invitations.email, "viewer@foo.com")));
+    expect(viewerInv[0].role).toBe("viewer");
+
+    await expect(handler.inviteUser({ orgId: org.organization.id, email: "x@foo.com", role: "owner" }, makeAuthContext(ownerId))).rejects.toThrow();
+  });
+
+  test("removeOrgMember rejects removing the organization's last owner", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const ownerId = "user-last-owner-" + Date.now();
+    const otherOwnerId = "user-other-owner-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@foo.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherOwnerId, email: `${otherOwnerId}@foo.com`, createdAt: new Date() });
+    const org = await handler.seedOrg({ name: "Last Owner Org", slug: "last-owner-org-" + Date.now() }, makeAuthContext(ownerId));
+
+    // Cannot remove the sole owner.
+    await expect(handler.removeOrgMember({ orgId: org.organization.id, userId: ownerId }, makeAuthContext(otherOwnerId))).rejects.toThrow();
+
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: org.organization.id, userId: otherOwnerId, role: "owner", joinedAt: new Date() });
+    // Now that a second owner exists, the first can be removed.
+    const res = await handler.removeOrgMember({ orgId: org.organization.id, userId: ownerId }, makeAuthContext(otherOwnerId));
+    expect(res.success).toBe(true);
+  });
+
+  test("updateOrgMemberRole lets an admin change member/viewer roles but not touch ownership", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const ownerId = "user-role-owner-" + Date.now();
+    const adminId = "user-role-admin-" + Date.now();
+    const memberId = "user-role-member-" + Date.now();
+    for (const id of [ownerId, adminId, memberId]) {
+      await db.insert(schemaSqlite.users).values({ id, email: `${id}@foo.com`, name: id, createdAt: new Date() });
+    }
+    const org = await handler.seedOrg({ name: "Role Org", slug: "role-org-" + Date.now() }, makeAuthContext(ownerId));
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: org.organization.id, userId: adminId, role: "admin", joinedAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: org.organization.id, userId: memberId, role: "member", joinedAt: new Date() });
+
+    // A non-admin/owner cannot change anyone's role.
+    await expect(handler.updateOrgMemberRole({ orgId: org.organization.id, userId: memberId, role: "viewer" }, makeAuthContext(memberId))).rejects.toThrow();
+
+    // An admin can promote/demote among admin/member/viewer.
+    const viewerRes = await handler.updateOrgMemberRole({ orgId: org.organization.id, userId: memberId, role: "viewer" }, makeAuthContext(adminId));
+    expect(viewerRes.member.role).toBe("viewer");
+
+    // An admin cannot grant ownership.
+    await expect(handler.updateOrgMemberRole({ orgId: org.organization.id, userId: memberId, role: "owner" }, makeAuthContext(adminId))).rejects.toThrow();
+
+    // An admin cannot change an existing owner's role.
+    await expect(handler.updateOrgMemberRole({ orgId: org.organization.id, userId: ownerId, role: "admin" }, makeAuthContext(adminId))).rejects.toThrow();
+
+    // Changing the role of a non-member is rejected.
+    await expect(handler.updateOrgMemberRole({ orgId: org.organization.id, userId: "no-such-user", role: "member" }, makeAuthContext(adminId))).rejects.toThrow();
+  });
+
+  test("updateOrgMemberRole lets an owner grant/revoke ownership, but never demotes the last owner", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const ownerId = "user-grant-owner-" + Date.now();
+    const memberId = "user-grant-member-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@foo.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@foo.com`, createdAt: new Date() });
+    const org = await handler.seedOrg({ name: "Grant Owner Org", slug: "grant-owner-org-" + Date.now() }, makeAuthContext(ownerId));
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: org.organization.id, userId: memberId, role: "member", joinedAt: new Date() });
+
+    // Only an owner can be demoted safely once a second owner exists.
+    const grantRes = await handler.updateOrgMemberRole({ orgId: org.organization.id, userId: memberId, role: "owner" }, makeAuthContext(ownerId));
+    expect(grantRes.member.role).toBe("owner");
+
+    const demoteRes = await handler.updateOrgMemberRole({ orgId: org.organization.id, userId: ownerId, role: "admin" }, makeAuthContext(memberId));
+    expect(demoteRes.member.role).toBe("admin");
+
+    // memberId is now the sole owner - cannot be demoted.
+    await expect(handler.updateOrgMemberRole({ orgId: org.organization.id, userId: memberId, role: "admin" }, makeAuthContext(memberId))).rejects.toThrow();
+  });
 });

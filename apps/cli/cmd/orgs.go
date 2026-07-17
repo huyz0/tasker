@@ -83,21 +83,49 @@ var orgsInviteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		email, _ := cmd.Flags().GetString("email")
+		role, _ := cmd.Flags().GetString("role")
 		if email == "" {
 			cmd.Println("Error: --email is required.")
 			return errors.New("Error: --email is required.")
 		}
 
+		req := &healthv1.InviteUserRequest{OrgId: args[0], Email: email}
+		if role != "" {
+			req.Role = &role
+		}
 		client := backend.NewOrgServiceClient()
-		_, err := client.InviteUser(context.Background(), connect.NewRequest(&healthv1.InviteUserRequest{
-			OrgId: args[0],
-			Email: email,
-		}))
+		_, err := client.InviteUser(context.Background(), connect.NewRequest(req))
 		if err != nil {
 			cmd.PrintErrf("Failed to invite user: %v\n", err)
 			return err
 		}
 		cmd.Printf("Invited %s to organization %s\n", email, args[0])
+		return nil
+	},
+}
+
+var orgsSetMemberRoleCmd = &cobra.Command{
+	Use:   "set-role [org_id] [user_id]",
+	Short: "Change a member's role in an organization (owner|admin|member|viewer, requires org admin)",
+	Args:  cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		role, _ := cmd.Flags().GetString("role")
+		if role == "" {
+			cmd.Println("Error: --role is required.")
+			return errors.New("Error: --role is required.")
+		}
+
+		client := backend.NewOrgServiceClient()
+		res, err := client.UpdateOrgMemberRole(context.Background(), connect.NewRequest(&healthv1.UpdateOrgMemberRoleRequest{
+			OrgId:  args[0],
+			UserId: args[1],
+			Role:   role,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to update member role: %v\n", err)
+			return err
+		}
+		cmd.Printf("Set %s's role to %s in organization %s\n", args[1], res.Msg.Member.Role, args[0])
 		return nil
 	},
 }
@@ -176,6 +204,7 @@ func init() {
 	orgsCmd.AddCommand(orgsListCmd)
 	orgsCmd.AddCommand(orgsSeedCmd)
 	orgsCmd.AddCommand(orgsInviteCmd)
+	orgsCmd.AddCommand(orgsSetMemberRoleCmd)
 	orgsCmd.AddCommand(orgsDeleteCmd)
 	orgsCmd.AddCommand(orgsRestoreCmd)
 	orgsCmd.AddCommand(orgsPurgeCmd)
@@ -190,4 +219,6 @@ func init() {
 	orgsSeedCmd.Flags().String("slug", "", "Organization slug (unique, URL-safe)")
 	orgsSeedCmd.Flags().String("parent", "", "Optional parent organization ID, to create a sub-organization")
 	orgsInviteCmd.Flags().String("email", "", "Email address to invite")
+	orgsInviteCmd.Flags().String("role", "", "Role the invitee gets on accept: admin, member, or viewer (defaults to member)")
+	orgsSetMemberRoleCmd.Flags().String("role", "", "New role: owner, admin, member, or viewer")
 }

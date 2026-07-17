@@ -26,10 +26,13 @@ export const organizations = sqliteTable("organizations", {
   }
 });
 
+// Valid values: 'owner' | 'admin' | 'member' | 'viewer' (see lib/authz.ts).
+// SQLite doesn't have native enums like MySQL - membership is validated at
+// the app layer (zod) instead, same as the invitations.role column below.
 export const organizationMembers = sqliteTable("organization_members", {
   orgId: text("org_id").notNull().references(() => organizations.id),
   userId: text("user_id").notNull().references(() => users.id),
-  role: text("role").notNull().default('member'), // SQLite doesn't have native enums like MySQL
+  role: text("role").notNull().default('member'),
   joinedAt: integer("joined_at", { mode: "timestamp" }).notNull(),
 }, (table) => {
   return {
@@ -81,6 +84,9 @@ export const invitations = sqliteTable("invitations", {
   orgId: text("org_id").notNull().references(() => organizations.id),
   email: text("email").notNull(),
   invitedBy: text("invited_by").notNull().references(() => users.id),
+  // The role the invitee gets on accept - 'admin' | 'member' | 'viewer'
+  // (never 'owner': ownership isn't handed out through an email invite).
+  role: text("role").notNull().default('member'),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 }, (table) => {
   return {
