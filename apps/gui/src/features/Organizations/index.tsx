@@ -293,10 +293,6 @@ export function OrganizationsDashboard() {
                 Roles & Permissions
               </button>
             </li>
-            <li className="p-2 text-muted-foreground/50 rounded flex items-center justify-between" aria-disabled="true">
-              Security
-              <span className="text-xs bg-muted px-2 py-0.5 rounded-full">Coming soon</span>
-            </li>
           </ul>
         </div>
         <div className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
