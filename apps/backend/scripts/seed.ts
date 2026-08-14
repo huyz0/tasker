@@ -33,11 +33,18 @@ async function main() {
   const db = await setupDatabase("sqlite");
   const now = new Date();
 
-  const userId = `usr-seed-${crypto.randomUUID()}`;
-  await db.insert(schema.users).values({ id: userId, email: "seed@tasker.local", name: "Seed User", createdAt: now });
+  // Every run produces an independent org, so running the seed twice against
+  // the same database adds a second fixture set rather than colliding with the
+  // first. The user's email has to vary with it: `users.email` is unique, and a
+  // fixed address made the second run die on
+  // `UNIQUE constraint failed: users.email` after having already written part
+  // of its data.
+  const runId = crypto.randomUUID().slice(0, 8);
+  const userId = `usr-seed-${runId}`;
+  await db.insert(schema.users).values({ id: userId, email: `seed-${runId}@tasker.local`, name: "Seed User", createdAt: now });
 
-  const orgId = `org-seed-${crypto.randomUUID()}`;
-  await db.insert(schema.organizations).values({ id: orgId, name: "Seed Org", slug: `seed-org-${Date.now()}`, createdAt: now });
+  const orgId = `org-seed-${runId}`;
+  await db.insert(schema.organizations).values({ id: orgId, name: `Seed Org ${runId}`, slug: `seed-org-${runId}`, createdAt: now });
   await db.insert(schema.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: now });
 
   // The GUI's dev session is a different user than the one seeded above, so

@@ -169,6 +169,29 @@ describe('ArtifactsBrowser', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['folders', 'bin', 'proj-1'] });
   });
 
+  it('invalidates artifact lists by prefix after archiving, so a stale folder id cannot skip the refetch', async () => {
+    // Regression: these invalidations used to be keyed ['artifacts',
+    // selectedFolderId], read from a mutation-level onSuccess closure that lags
+    // a render behind component state - so the open folder's list could keep
+    // showing an artifact that had just been archived.
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+    mockArchiveArtifact.mockResolvedValue({});
+
+    const { queryClient } = renderPage();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+    fireEvent.click(screen.getByLabelText('Delete artifact readme.md'));
+
+    await waitFor(() => expect(mockArchiveArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
+    // The prefix matches every artifacts list, the Bin's included, whatever
+    // folder id happened to be captured.
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['artifacts'] });
+  });
+
   it('renames a folder through the GUI', async () => {
     mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
     mockUpdateFolder.mockResolvedValue({ folder: { id: 'fld-1', name: 'documents', parentId: '' } });

@@ -1,3 +1,9 @@
+# The single source of truth for toolchain versions. `.moon/toolchain.yml` used
+# to duplicate these and had drifted years out of date (node 22.14.0, bun
+# 1.0.30, go 1.22.0); moon 2 ignores its deprecated platform keys entirely -
+# removing it changed no task's behaviour - so it is gone rather than kept in
+# manual sync. Every project is `language: system`, so commands resolve through
+# proto's shims and these pins are what actually run.
 node = "24.12.0"
 bun = "1.3.11"
 # Pinned so a proto-managed moon resolves a version here. Without it, anything

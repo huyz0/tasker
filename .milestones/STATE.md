@@ -108,14 +108,19 @@ Three things a next session should know:
    so out of the pre-commit hook), because it needs a booted backend, a seeded
    database and installed browsers. CI runs it explicitly after seeding one.
 
+A follow-up pass then cleared the residuals this close had left open: the seed
+is re-runnable against one database, `bun run test` no longer wipes the local
+dev data (it opened with `rm -rf .data`), artifact list invalidations no longer
+read a stale folder id from a mutation closure, knip runs as its own CI job
+rather than only inside `moon check`, and the inert `.moon/toolchain.yml` is
+gone so `.prototools` is the sole home of the version pins. Note that
+`moon setup` is still a no-op — moon 2 ignores that file's deprecated platform
+keys — and toolchains come from proto's `auto-install`.
+
 Not done here, and deliberately: the branch is unmerged and no pull request was
 opened, so exit criterion 3 is verified as configuration (all four suites are
 declared on `pull_request` and the exact commands pass locally) rather than as
-an observed CI run. The first PR will confirm it. Two smaller things were seen
-and left alone as out of scope — `bun run seed` still fails on a second run
-against the same database (`UNIQUE constraint failed: users.email`), and moon 2
-ignores `.moon/toolchain.yml`'s deprecated platform keys, so `moon setup` is a
-no-op and toolchains come from proto's auto-install.
+an observed CI run. The first PR will confirm it.
 
 M02, M03 and M05 all have their dependencies satisfied now and can run in
 parallel on separate branches. M02 is the cheap unblocking one.

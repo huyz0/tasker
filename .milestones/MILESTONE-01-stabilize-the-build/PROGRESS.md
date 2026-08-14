@@ -398,3 +398,42 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   Also corrected the milestone's own Verification block, which named
   `moon run setup-hooks` and `moon run dev` — both of which fail against a
   workspace with no default project.
+
+## M01 — post-close follow-ups
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: apps/backend/scripts/seed.ts, apps/backend/package.json,
+  apps/gui/src/features/Artifacts/index.tsx and its test,
+  .moon/toolchain.yml (removed), .prototools, .github/workflows/ci.yml
+- **Verified**: `moon check --all` → 19 tasks completed; `bunx knip` → exit 0;
+  backend suite 326 pass / 7 skip / 0 fail; `moon run gui:e2e` → 13 passed
+  against a seeded backend; the seed run twice in a row against one database
+  now produces two independent orgs instead of dying on a unique constraint.
+- **Notes**: Clearing the residuals the close deliberately left open, plus one
+  found while doing it.
+  1. **Seed is re-runnable.** The seeded user's email was the fixed string
+     `seed@tasker.local` while its id was random, so a second run failed on
+     `UNIQUE constraint failed: users.email` *after* writing part of its data.
+     One `runId` now threads through the user, its email and the org.
+  2. **`bun run test` no longer deletes the developer's database.** The backend
+     test script opened with `rm -rf .data && mkdir -p .data` — so running the
+     suite silently destroyed the local dev data, which is exactly how the e2e
+     run failed while verifying this batch. Tests use `:memory:`, and since T05
+     `db.ts` creates the directory itself, so the wipe protected nothing.
+  3. **Artifact list invalidations no longer depend on a stale closure.** Three
+     `invalidateQueries(['artifacts', selectedFolderId])` calls sat in
+     mutation-level `onSuccess` bodies, which lag a render behind component
+     state — the same hazard `deleteFolder` was already working around, so the
+     open folder's list could keep showing an artifact that had just been
+     archived. Now keyed on the `['artifacts']` prefix, which React Query
+     matches against every artifacts list including the Bin's, with a
+     regression test.
+  4. **knip runs in CI.** It only ever gated `moon check`, i.e. the pre-commit
+     hook, so a pull request authored without the hook installed could add dead
+     code and merge. Now its own job.
+  5. **`.moon/toolchain.yml` deleted.** Confirmed inert first — removing it
+     changed no task's behaviour and `moon setup` behaves identically — so
+     rather than hand-syncing a second copy of the version pins, `.prototools`
+     is now the only place they live, and says so.
+  Still open, and still the user's call: the branch is unmerged and no pull
+  request was opened, so exit criterion 3 remains verified as configuration.

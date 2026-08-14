@@ -127,8 +127,13 @@ export function ArtifactsBrowser() {
       await artifactClient.archiveArtifact({ artifactId: targetArtifactId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['artifacts', selectedFolderId] });
-      queryClient.invalidateQueries({ queryKey: ['artifacts', 'bin', activeProjectId] });
+      // Keyed on 'artifacts' alone, not ['artifacts', selectedFolderId]: a
+      // mutation-level onSuccess closure lags a render behind component state
+      // (the same hazard deleteFolder works around), so the folder id captured
+      // here can be the previously selected one - or null - and the list the
+      // user is looking at would never refetch. React Query matches query keys
+      // by prefix, so this invalidates every artifacts list, bin included.
+      queryClient.invalidateQueries({ queryKey: ['artifacts'] });
       queryClient.invalidateQueries({ queryKey: ['artifactLocate'] });
     },
   });
@@ -159,7 +164,7 @@ export function ArtifactsBrowser() {
       await artifactClient.createArtifact({ folderId, name });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['artifacts', selectedFolderId] });
+      queryClient.invalidateQueries({ queryKey: ['artifacts'] });
       setIsAddingArtifact(false);
     },
   });
@@ -170,7 +175,7 @@ export function ArtifactsBrowser() {
       return resp.artifact;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['artifacts', selectedFolderId] });
+      queryClient.invalidateQueries({ queryKey: ['artifacts'] });
       queryClient.invalidateQueries({ queryKey: ['artifactLocate'] });
       setIsEditingContent(false);
     },
