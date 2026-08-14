@@ -29,7 +29,7 @@ vi.mock('use-debounce', () => ({
   useDebounce: (value: string) => [value, { flush: vi.fn(), cancel: vi.fn() }],
 }));
 
-import { GlobalSearch } from './GlobalSearch';
+import { GlobalSearch, resultRoute } from './GlobalSearch';
 
 function renderSearch() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -126,8 +126,32 @@ describe('GlobalSearch', () => {
     await waitFor(() => expect(screen.getByText('Fix login bug')).toBeInTheDocument());
 
     fireEvent.click(screen.getByText('Fix login bug'));
+    expect(mockNavigate).toHaveBeenCalledWith(resultRoute({ type: 'task', id: 'tsk-1' }));
     expect(mockNavigate).toHaveBeenCalledWith('/tasks/tsk-1');
     expect(screen.queryByPlaceholderText('Type a command or search...')).not.toBeInTheDocument();
+  });
+
+  it('hides a result whose type this build has no route for, instead of offering a dead click', async () => {
+    mockUniversalSearch.mockResolvedValue({
+      results: [
+        { id: 'tsk-1', type: 'task', title: 'Fix login bug', snippet: '' },
+        { id: 'prj-1', type: 'project', title: 'Some future type', snippet: '' },
+      ],
+    });
+    renderSearch();
+
+    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    fireEvent.change(screen.getByPlaceholderText('Type a command or search...'), { target: { value: 'query' } });
+
+    await waitFor(() => expect(screen.getByText('Fix login bug')).toBeInTheDocument());
+    expect(screen.queryByText('Some future type')).not.toBeInTheDocument();
+  });
+
+  it('maps every result type the backend emits to a route, and nothing else', () => {
+    // universalSearch pushes exactly these two types (search.handler.ts).
+    expect(resultRoute({ type: 'task', id: 'tsk-1' })).toBe('/tasks/tsk-1');
+    expect(resultRoute({ type: 'artifact', id: 'art-1' })).toBe('/artifacts/art-1');
+    expect(resultRoute({ type: 'project', id: 'prj-1' })).toBeNull();
   });
 
   it('navigates to an artifact result on click', async () => {

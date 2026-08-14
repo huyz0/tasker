@@ -11,6 +11,19 @@ import { useLayoutStore } from '../../store/layout';
 
 const searchClient = createClient(SearchService, transport);
 
+// The only result types the backend's universalSearch emits, each mapped to
+// the route that actually renders that entity. Keeping the mapping in one
+// place is what lets a test prove every rendered result has somewhere to go:
+// a result with no route here is never rendered, so no click is ever dead.
+const ROUTE_BY_RESULT_TYPE: Record<string, (id: string) => string> = {
+  task: (id) => `/tasks/${id}`,
+  artifact: (id) => `/artifacts/${id}`,
+};
+
+export function resultRoute(result: { type: string; id: string }): string | null {
+  return ROUTE_BY_RESULT_TYPE[result.type]?.(result.id) ?? null;
+}
+
 export function GlobalSearch() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -37,7 +50,9 @@ export function GlobalSearch() {
     queryFn: async () => {
       if (!debouncedQuery) return [];
       const resp = await searchClient.universalSearch({ query: debouncedQuery, orgId: activeOrgId });
-      return resp.results;
+      // Drop anything this build has no route for rather than offering the
+      // user a result that does nothing when clicked.
+      return resp.results.filter((r) => resultRoute(r) !== null);
     },
     enabled: debouncedQuery.length > 0 && isOpen,
   });
@@ -89,9 +104,7 @@ export function GlobalSearch() {
                   key={result.id}
                   onClick={() => {
                     setIsOpen(false);
-                    // Navigate to appropriate route
-                    if (result.type === 'task') navigate(`/tasks/${result.id}`);
-                    if (result.type === 'artifact') navigate(`/artifacts/${result.id}`);
+                    navigate(resultRoute(result)!);
                   }}
                   className="flex w-full items-start gap-3 rounded-md p-2 hover:bg-accent hover:text-accent-foreground text-left"
                 >

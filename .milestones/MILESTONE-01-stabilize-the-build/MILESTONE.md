@@ -66,7 +66,7 @@ performance work (M07), any change to the specs' claims (M02).
       - Files: `apps/gui/src/pages/NotFound.tsx`, `apps/gui/src/App.tsx`
       - Verify: `/nonsense` renders the Not Found view, not an empty pane.
 
-- [ ] **M01-T03** — Confirm every `GlobalSearch` result navigates to a view that
+- [x] **M01-T03** — Confirm every `GlobalSearch` result navigates to a view that
       renders the searched entity; add a test asserting navigation target
       resolves to a matched route.
       - Files: `apps/gui/src/components/layout/GlobalSearch.tsx`, its test

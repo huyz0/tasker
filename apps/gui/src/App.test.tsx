@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import App from './App';
+import { resultRoute } from './components/layout/GlobalSearch';
 
 // -------------------------------------------------------------------
 // Mock @tanstack/react-query so we control what useQuery returns.
@@ -21,6 +22,7 @@ const mockUseInfiniteQuery = vi.fn(() => ({ data: undefined, isLoading: false, i
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (opts: unknown) => mockUseQuery(opts as { queryKey: unknown[] }),
+  useQueries: () => [],
   useMutation: () => mockUseMutation(),
   useQueryClient: () => mockUseQueryClient(),
   useInfiniteQuery: () => mockUseInfiniteQuery(),
@@ -153,6 +155,27 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: 'Back to dashboard' })).toBeInTheDocument();
     // Still inside the shell, so the sidebar is there to navigate away with.
     expect(screen.getByRole('link', { name: 'Organizations' })).toBeInTheDocument();
+  });
+
+  // M01-T03: asserting `navigate` was called with some string only proves the
+  // search picked a target. These mount the app at that exact target and check
+  // the entity's own view renders there — a dead link would land on Not Found.
+  describe('global search navigation targets', () => {
+    it('resolves a task result to the tasks workbench', () => {
+      healthQueryResult = { data: undefined, error: null, isLoading: false };
+      renderApp(resultRoute({ type: 'task', id: 'tsk-1' })!);
+
+      expect(screen.getByRole('heading', { name: 'Tasks Workbench' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Page not found' })).toBeNull();
+    });
+
+    it('resolves an artifact result to the artifacts browser', () => {
+      healthQueryResult = { data: undefined, error: null, isLoading: false };
+      renderApp(resultRoute({ type: 'artifact', id: 'art-1' })!);
+
+      expect(screen.getByText('Artifacts Explorer')).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Page not found' })).toBeNull();
+    });
   });
 
   it('can route to generic placeholder views', () => {

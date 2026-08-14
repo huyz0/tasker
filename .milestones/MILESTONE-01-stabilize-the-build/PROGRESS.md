@@ -39,3 +39,21 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   names the missed path, which makes a typo self-explanatory. `/login` is
   matched by the outer route first and is unaffected.
 - **Next**: M01-T03
+
+## M01-T03 — Every search result lands on a rendered entity
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: apps/gui/src/components/layout/GlobalSearch.tsx,
+  GlobalSearch.test.tsx, apps/gui/src/App.test.tsx
+- **Verified**: `bun run test` — 379 pass (37 files); coverage 99.62% statements
+  / 95.59% branches; typecheck and lint clean. The Verify line is covered by
+  mounting the app at `resultRoute({type:'task'})` and asserting the Tasks
+  Workbench heading renders and Not Found does not — the same for artifacts.
+- **Notes**: Confirmed against `search.handler.ts` that `universalSearch` emits
+  exactly two result types, `task` and `artifact`; both now have routes (T01).
+  Replaced the two inline `if (result.type === …) navigate(…)` lines with an
+  exported `resultRoute` over a single `ROUTE_BY_RESULT_TYPE` map, and results
+  with no route are filtered out of the list rather than rendered as a dead
+  click. That is what makes "every rendered result navigates somewhere real"
+  true by construction instead of by inspection.
+- **Next**: M01-T04
