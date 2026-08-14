@@ -1,13 +1,13 @@
 ---
 id: M01
 title: Stabilize the Build
-status: in-progress
+status: done
 goal: Every feature that already exists works end to end from a clean clone, and CI fails when one of them breaks.
 depends_on: []
 surfaces: [gui, backend, cli, infra]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-15
-completed_at: null
+completed_at: 2026-08-15
 ---
 
 # M01 — Stabilize the Build
@@ -31,18 +31,18 @@ existing ones honest.
 
 ## 3. Exit Criteria
 
-- [ ] A clean clone reaches a working GUI with a live session via the documented
+- [x] A clean clone reaches a working GUI with a live session via the documented
       command, with no manual environment setup beyond copying `.env.example`.
-- [ ] No URL reachable from the UI renders an empty content area; unknown routes
+- [x] No URL reachable from the UI renders an empty content area; unknown routes
       render a Not Found view with a route back.
-- [ ] `moon run gui:test`, `gui:e2e`, `backend:test`, `cli:test` all execute in CI
+- [x] `moon run gui:test`, `gui:e2e`, `backend:test`, `cli:test` all execute in CI
       on every pull request and block merge on failure.
-- [ ] The health probe performs zero writes; running it 1,000 times leaves the
+- [x] The health probe performs zero writes; running it 1,000 times leaves the
       database byte-identical apart from access timestamps.
-- [ ] `moon setup` followed by `moon check --all` succeeds on a machine with only
+- [x] `moon setup` followed by `moon check --all` succeeds on a machine with only
       `moon` installed.
-- [ ] `bunx knip` reports zero unused dependencies and zero unused files.
-- [ ] Exactly one lockfile per ecosystem exists in the repository.
+- [x] `bunx knip` reports zero unused dependencies and zero unused files.
+- [x] Exactly one lockfile per ecosystem exists in the repository.
 
 ## 4. Scope
 
@@ -143,11 +143,11 @@ performance work (M07), any change to the specs' claims (M02).
 
 ```bash
 moon setup
-moon run setup-hooks
-cp apps/backend/.env.example apps/backend/.env
-moon check --all
+moon run :setup-hooks   # `:task` form - the workspace root is not a default project
+moon check --all        # installs node_modules on first run via shared-contract:install-deps
 bunx knip
-moon run dev            # then click through every sidebar entry and a search result
+moon run :dev           # then click through every sidebar entry and a search result
+# .env is optional: `moon run :dev` needs no environment setup at all.
 ```
 
 ## 7. Risks

@@ -1,8 +1,8 @@
 ---
-active_milestone: M01
+active_milestone: M02
 active_task: null
 last_updated: 2026-08-15
-last_commit: null
+last_commit: 1c16ceb
 blocked: false
 blocker: null
 ---
@@ -15,10 +15,13 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M01 — Stabilize the Build
-- **Task**: all 13 delivered; verifying exit criteria
-- **Branch**: `feature/m01-stabilize-the-build`
-- **Command to continue**: `/milestone-deliver M01`
+- **Milestone**: M02 — Specification Truth
+- **Task**: not started
+- **Branch**: `feature/m02-specification-truth` (create on first task)
+- **Command to continue**: `/milestone-deliver M02`
+
+M01 is done and lives on `feature/m01-stabilize-the-build`, which has not been
+merged to `main` — open that PR before or alongside starting M02.
 
 ## How to resume
 
@@ -35,7 +38,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 
 | ID  | Milestone                      | Status | Depends on | Tasks | Done |
 |-----|--------------------------------|--------|------------|-------|------|
-| M01 | Stabilize the Build            | in-progress | —     | 14    | 14   |
+| M01 | Stabilize the Build            | done   | —          | 14    | 14   |
 | M02 | Specification Truth            | todo   | M01        | 7     | 0    |
 | M03 | IAM Correctness & Scale        | todo   | M01        | 14    | 0    |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
@@ -78,4 +81,41 @@ anything.
 
 ## Handoff notes
 
-_Nothing yet. The first `/milestone-deliver` run writes here._
+**2026-08-15 — M01 Stabilize the Build closed (14/14 tasks, 7/7 exit criteria).**
+
+What changed, in one pass: the GUI's task and artifact detail views are driven
+by the URL, unknown routes render a Not Found view, and every global-search
+result resolves to a route that renders its entity. The health probe no longer
+writes to the database it reports on (1,000 pings leave the file
+byte-identical), and a migration clears the rows earlier builds left. CI now
+runs the GUI suite behind its 95% coverage gate plus a real Playwright job
+against a seeded backend; the Go toolchain is pinned to what `go.mod`
+requires; `knip` gates unused files, dependencies and exports; backend fixtures
+fail loudly instead of swallowing errors; and the pre-commit hook is one
+documented command away from active.
+
+Three things a next session should know:
+
+1. **A clean clone now bootstraps itself** — every JS-consuming task depends on
+   `shared-contract:install-deps`. That task is deliberately anchored to
+   `packages/shared-contract`, not the workspace root: moon derives the ROOT
+   project's id from the checkout directory name, so a `root:`/`tasker:` target
+   breaks in a clone named anything else. Do not "tidy" it back to the root.
+2. **Use the `:task` form for root tasks** — `moon run :dev`,
+   `moon run :setup-hooks`. Plain `moon run dev` fails with "No default project
+   has been configured"; that is why the README changed.
+3. **`gui:e2e` is `type: run` on purpose**, keeping it out of `moon check` (and
+   so out of the pre-commit hook), because it needs a booted backend, a seeded
+   database and installed browsers. CI runs it explicitly after seeding one.
+
+Not done here, and deliberately: the branch is unmerged and no pull request was
+opened, so exit criterion 3 is verified as configuration (all four suites are
+declared on `pull_request` and the exact commands pass locally) rather than as
+an observed CI run. The first PR will confirm it. Two smaller things were seen
+and left alone as out of scope — `bun run seed` still fails on a second run
+against the same database (`UNIQUE constraint failed: users.email`), and moon 2
+ignores `.moon/toolchain.yml`'s deprecated platform keys, so `moon setup` is a
+no-op and toolchains come from proto's auto-install.
+
+M02, M03 and M05 all have their dependencies satisfied now and can run in
+parallel on separate branches. M02 is the cheap unblocking one.

@@ -371,3 +371,30 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
      with the live one is a trap for the next reader. Brought into step, with a
      comment saying which file actually governs.
 - **Next**: milestone close
+
+## M01 — exit criteria
+- **Status**: done
+- **Date**: 2026-08-15
+- **Verified**: each criterion run, not inferred.
+  1. **Clean clone → working GUI with a live session.** Fresh clone, zero
+     `node_modules`, no `.env`: `moon run :dev` → deps installed automatically,
+     `gui:200`, test-login `inject:200`, `ENABLE_TEST_LOGIN=true` in the log.
+  2. **No blank pane; unknown routes land somewhere.** The Playwright
+     navigation spec walks all eight sidebar destinations plus an unknown URL
+     in a real browser and clicks back to the dashboard — 13 passed.
+  3. **gui:test / gui:e2e / backend:test / cli:test gate every PR.** The
+     workflow parses and declares all four on `pull_request`, and each exact
+     command passes locally. *Residual: no PR was opened from this session, so
+     this is verified as configuration, not as an observed CI run.*
+  4. **Health probe writes nothing.** 1,000 pings against a real SQLite file:
+     `search_index` 0 → 0 rows and the file hash identical before and after
+     (14125041559201206706), every ping still reporting `sqlite+fts5-ok`.
+  5. **`moon setup` then `moon check --all` on a clean machine.** Fresh clone
+     with no `node_modules` → 19 tasks completed, no failures.
+  6. **knip clean.** `bunx knip` → exit 0, no output.
+  7. **One lockfile per ecosystem.** `bun.lock` and `apps/cli/go.sum`, nothing
+     else — no `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml` or
+     `bun.lockb` anywhere outside `node_modules`.
+  Also corrected the milestone's own Verification block, which named
+  `moon run setup-hooks` and `moon run dev` — both of which fail against a
+  workspace with no default project.
