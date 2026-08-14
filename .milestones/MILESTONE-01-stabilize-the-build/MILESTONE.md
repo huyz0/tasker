@@ -77,7 +77,7 @@ performance work (M07), any change to the specs' claims (M02).
       - Files: `apps/backend/src/modules/health/health.handler.ts`, a cleanup migration
       - Verify: `SELECT count(*) FROM search_index` is unchanged after 100 pings.
 
-- [ ] **M01-T05** — Make the documented dev command produce a logged-in app:
+- [x] **M01-T05** — Make the documented dev command produce a logged-in app:
       set `ENABLE_TEST_LOGIN` in `scripts/dev.sh`, commit `.env.example` for both
       apps, and correct the README's setup section.
       - Files: `scripts/dev.sh`, `apps/backend/.env.example`,

@@ -81,3 +81,36 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   `DELETE FROM` and `'rebuild'`, so `'delete-all'` is the supported way to empty
   it, and the probe was the index's only ever writer so clearing it is correct.
 - **Next**: M01-T05
+
+## M01-T05 — `moon run dev` produces a logged-in app
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: scripts/dev.sh, apps/backend/.env.example (new),
+  apps/gui/.env.example (new), README.md, apps/gui/README.md,
+  apps/backend/src/db/db.ts, apps/backend/scripts/seed.ts
+- **Verified**: Ran the real thing, not a proxy. Before: `/api/auth/test/inject`
+  returned `403 {"title":"Test login disabled"}`. After, from a wiped `.data/`:
+  `bash scripts/dev.sh` → GUI 200, inject 200 with a `session` cookie, and as
+  the GUI's own dev user `ListOrgs`/`ListProjects`/`ListAgents` all 200 and
+  `ListTasks` returns 50 rows of `totalCount: 150`. Zero 403s in the run log.
+  Backend suite still 326 pass / 7 skip / 0 fail; lint unchanged from baseline.
+- **Notes**: Three separate things stood between a fresh clone and a working
+  app, not the one the task named:
+  1. `ENABLE_TEST_LOGIN` was never set, so every dev session bootstrap 403'd.
+     `dev.sh` now defaults it (`${ENABLE_TEST_LOGIN:-true}`) rather than forcing
+     it, so `ENABLE_TEST_LOGIN=false moon run dev` still works. It cannot leak
+     into production — the backend refuses to boot with it under
+     `NODE_ENV=production`.
+  2. A fresh clone has no `apps/backend/.data/`, and SQLite will not create a
+     database file's parent directory: the very first `moon run dev` died with
+     `SQLITE_CANTOPEN` before listening. Fixed in `db.ts` rather than the dev
+     script, so tests and the standalone binary get the same guarantee.
+  3. `bun run seed` created its own user, so the seeded data was invisible to
+     the browser session until someone pasted the printed token by hand. The
+     seed now also makes the GUI's `dev-user` a member of the seeded org.
+  Divergence from the task's file list: it named only `dev.sh`, the two
+  `.env.example`s and `README.md`; `db.ts` and `seed.ts` were needed to make the
+  stated outcome actually hold.
+  Left alone (out of scope): `bun run seed` still fails on a second run against
+  the same database, on `UNIQUE constraint failed: users.email`.
+- **Next**: M01-T06

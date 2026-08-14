@@ -125,9 +125,27 @@ required):
 moon run dev
 ```
 
+That is the whole setup: **no `.env` file is needed to get a working app**. The
+command starts the backend with `ENABLE_TEST_LOGIN=true`, so the GUI mints a
+local dev session for itself and the dashboard loads signed in. Opening
+http://localhost:5173 gives you a working app with no OAuth credentials and no
+manual login step.
+
 This tails both processes' logs in one terminal, prefixed `[backend]` /
 `[gui]`; Ctrl-C stops both. The backend listens on `:8080`, the GUI dev
 server on `:5173`.
+
+To change any of that - point at MySQL, configure real Google/GitHub OAuth,
+turn login enforcement on - copy the committed examples and edit them:
+
+```bash
+cp apps/backend/.env.example apps/backend/.env
+cp apps/gui/.env.example apps/gui/.env
+```
+
+Both files document every variable the app reads, with the local-dev default
+for each. `ENABLE_TEST_LOGIN` is a local-development convenience only: the
+backend refuses to start with it enabled when `NODE_ENV=production`.
 
 To populate the local database with a realistic amount of data (an org,
 project, ~150 tasks, agents, labels) instead of starting from empty - useful

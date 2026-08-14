@@ -1,6 +1,8 @@
 import { drizzle as drizzleMysql } from "drizzle-orm/mysql2";
 import { drizzle as drizzleSqlite } from "drizzle-orm/bun-sqlite";
 import { Database } from "bun:sqlite";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import mysql from "mysql2/promise";
 import * as schemaMysql from "./schema.mysql";
 import * as schemaSqlite from "./schema.sqlite";
@@ -10,6 +12,14 @@ import { migrate as migrateMysql } from "drizzle-orm/mysql2/migrator";
 
 export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlitePath: string = ".data/local.sqlite") {
   if (driver === "sqlite") {
+    // A fresh clone has no .data/ directory, and SQLite will not create the
+    // parent of a database file - it fails with SQLITE_CANTOPEN, so the very
+    // first `moon run dev` died before listening. Create it here rather than
+    // in the dev script so every entry point (dev, tests, the standalone
+    // binary) gets a usable database on first run.
+    if (sqlitePath !== ":memory:") {
+      mkdirSync(dirname(sqlitePath), { recursive: true });
+    }
     const sqlite = new Database(sqlitePath);
     
     // Automatic Migration & FTS5 Proof Of Concept Initialization

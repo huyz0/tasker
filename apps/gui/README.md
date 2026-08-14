@@ -38,7 +38,11 @@ bun run build
 
 ## Environment variables
 
+Copy `.env.example` to `.env` to set any of these; none are required for local
+development.
+
 | Variable | Purpose |
 | --- | --- |
+| `VITE_REQUIRE_AUTH` | `"true"` redirects to `/login` when there is no session. Unset (the local-dev default) leaves login enforcement off. |
 | `VITE_GITHUB_CLIENT_ID` | GitHub OAuth consumer ID used by the "Connect GitHub via OAuth" button on the repository link form. |
 | `VITE_BITBUCKET_CLIENT_ID` | Bitbucket OAuth consumer ID used by the "Connect Bitbucket via OAuth" button. Not needed for the direct-API-token Bitbucket linking option, which posts credentials straight to the backend. |
