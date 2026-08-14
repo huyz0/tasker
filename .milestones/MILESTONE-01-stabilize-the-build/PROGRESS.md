@@ -298,3 +298,34 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   best-effort teardown of a temp directory, not a fixture, and should not fail
   a test.
 - **Next**: M01-T13
+
+## M01-T13 — Pre-commit hook active by default
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: moon.yml, apps/gui/moon.yml, README.md
+- **Verified**: In a real throwaway clone of this branch, not a simulation.
+  Baseline first: committing in the fresh clone produced no hook output at all
+  (`core.hooksPath` empty). Then `moon run :setup-hooks` → `core.hooksPath`
+  becomes `.githooks`, and the next commit printed "Running pre-commit CI
+  checks", ran `moon check --all` to **18 tasks completed / All Local Checks
+  Passed**, and landed the commit. `moon check --all` in this repo also passes:
+  18 completed, 16 cached.
+- **Notes**: `git config core.hooksPath` rather than copying files into
+  `.git/hooks`, so a later change to the committed hook takes effect on pull.
+  The documented command is `moon run :setup-hooks`, not the plain
+  `moon run setup-hooks` the task text suggested: this workspace has no default
+  project, so the unscoped form fails with "No default project has been
+  configured". The `:task` form is moon's idiom for it and is what the README
+  now says.
+  Turning the hook on immediately exposed that `moon check --all` had become
+  unrunnable: `moon check` runs every build- and test-type task, which since
+  T07 included `gui:e2e` — so committing would have required a booted backend,
+  a seeded database and installed browsers. Marked `gui:e2e` (and
+  `setup-hooks`) `type: run`, which keeps them out of `check` while leaving
+  `moon run gui:e2e` exactly as CI invokes it. Without this the hook fails on
+  every commit, and M01's own `moon check --all` exit criterion could not pass.
+  One honest note for the exit criteria: the fresh clone still needed
+  `bun install` before `moon check --all` could pass, since this workspace uses
+  `language: system` and no moon toolchain, so moon does not install JS
+  dependencies for you.
+- **Next**: milestone close

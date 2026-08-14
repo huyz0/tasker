@@ -8,6 +8,19 @@ tasks:
       cache: false
       persistent: true
 
+  # A fresh clone has core.hooksPath unset, so git ignores .githooks/ entirely
+  # and the pre-commit checks never run for anyone who has not wired them up by
+  # hand. Point git at the committed hooks directory instead of copying files
+  # into .git/hooks, so an updated hook takes effect on pull.
+  setup-hooks:
+    # A one-time local setup action, not a check - `type: run` keeps it out of
+    # `moon check`, which the hook itself invokes.
+    type: 'run'
+    command: 'git config core.hooksPath .githooks'
+    options:
+      cache: false
+      runInCI: false
+
   # Fails the build on unused files, dependencies and exports. Part of the root
   # project's task set, so `moon check --all` includes it.
   knip:

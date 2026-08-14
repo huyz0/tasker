@@ -98,8 +98,14 @@ Once Moon is installed, navigate to the project root and run:
 
 ```bash
 moon setup
+moon run :setup-hooks
 ```
 Moon will automatically read `.prototools` and locally download the exact, pinned versions of Node.js, Bun, and Go required for this project natively into `~/.proto`.
+
+`moon run :setup-hooks` points git at the repository's committed `.githooks/`
+directory, so the pre-commit checks run from your first commit. Git ignores
+that directory until `core.hooksPath` is set, and it is per-clone
+configuration, so this is a one-time step after cloning.
 
 ### 3. Running Tasks
 You do not need to manually `cd` into directories to run scripts. Moon handles aggressive caching and dependencies automatically:

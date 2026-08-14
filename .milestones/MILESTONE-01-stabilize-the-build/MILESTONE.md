@@ -122,7 +122,7 @@ performance work (M07), any change to the specs' claims (M02).
       - Files: `apps/backend/src/test/setup.ts`, affected `*.test.ts`
       - Verify: a deliberately broken fixture fails the test with a clear error.
 
-- [ ] **M01-T13** — Make the pre-commit hook active by default: add a
+- [x] **M01-T13** — Make the pre-commit hook active by default: add a
       `moon run setup-hooks` task that sets `core.hooksPath`, and call it from
       `moon setup` documentation.
       - Files: `moon.yml`, `README.md`

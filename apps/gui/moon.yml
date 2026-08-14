@@ -27,7 +27,12 @@ tasks:
   # Drives a real browser against a real backend, so its result depends on
   # state moon cannot see (a running server and its database) - caching a pass
   # would mean skipping the run that actually proves anything.
+  #
+  # `type: run` keeps it out of `moon check`, which is what the pre-commit hook
+  # invokes: a commit must not require a booted backend and installed browsers.
+  # The CI job runs it explicitly (`moon run gui:e2e`) after seeding one.
   e2e:
+    type: 'run'
     command: 'bun run test:e2e'
     inputs:
       - 'src/**/*'
