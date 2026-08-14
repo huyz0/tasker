@@ -144,10 +144,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+      # Read the version from go.mod rather than naming a floating '1.26':
+      # a minor-version wildcard silently drifts to whatever Go released last,
+      # so CI stops testing the toolchain `moon setup` gives developers.
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.26'
+          go-version-file: apps/cli/go.mod
           cache-dependency-path: apps/cli/go.sum
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

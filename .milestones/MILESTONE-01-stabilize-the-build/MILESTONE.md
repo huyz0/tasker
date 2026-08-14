@@ -101,7 +101,7 @@ performance work (M07), any change to the specs' claims (M02).
       - Files: `apps/gui/e2e/*` (removed)
       - Verify: no spec file exists outside the configured `testDir`.
 
-- [ ] **M01-T09** — Align the Go toolchain: pin `.prototools` to the version
+- [x] **M01-T09** — Align the Go toolchain: pin `.prototools` to the version
       `apps/cli/go.mod` requires and make CI use the pinned version rather than a
       floating minor.
       - Files: `.prototools`, `.github/workflows/ci.yml`

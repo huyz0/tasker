@@ -190,3 +190,26 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   ("Todo 15"), so the old text match could never have matched exactly; the test
   keys off each column's `Add task to <column>` control instead.
 - **Next**: M01-T09
+
+## M01-T09 — Align the Go toolchain
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: .prototools, .github/workflows/ci.yml
+- **Verified**: `moon setup && moon run cli:build` — exit 0, binary built on
+  go1.26.1 from `proto`'s shim (`which go` → `~/.proto/shims/go`,
+  `go version` → `go1.26.1`). Also ran the CLI job's full command,
+  `moon run cli:format cli:vet cli:test cli:build` — 4 tasks completed, tests
+  ok at 58.4% coverage.
+- **Notes**: The pin was not merely imprecise, it was *below* the floor:
+  `.prototools` said 1.26.0 while `apps/cli/go.mod` declares `go 1.26.1`, so
+  the pinned toolchain was older than the module's own minimum. Pinned to
+  1.26.1 with a comment naming go.mod as the constraint. CI now uses
+  `go-version-file: apps/cli/go.mod` instead of `go-version: '1.26'` — the same
+  version by construction, and it cannot drift when go.mod moves.
+  Worth flagging for the exit criteria: `moon setup` is currently a no-op here
+  ("Unable to setup, no toolchains are configured!") because the workspace has
+  no `toolchain.yml`; tool installation actually happens through proto's
+  `auto-install`. It exits 0, so the Verify line holds, but the exit criterion
+  about a machine with only `moon` installed leans on proto's auto-install
+  rather than on `moon setup` doing anything.
+- **Next**: M01-T10
