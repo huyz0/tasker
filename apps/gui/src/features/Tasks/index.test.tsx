@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockUpdateTask, mockCreateTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests, mockGetTaskType, mockListTaskNotes, mockUpdateTaskNote, mockDeleteTaskNote } = vi.hoisted(() => ({
   mockListTasks: vi.fn(),
@@ -55,11 +56,27 @@ vi.mock('../../store/layout', () => ({
 
 import { TasksWorkbench } from './index';
 
-function renderPage() {
+// The open task is a route param, so every render needs the same `/tasks` and
+// `/tasks/:taskId` pair the app mounts. `initialEntry` lets a test start on a
+// deep link; `locationRef` lets it assert where a click navigated to.
+const locationRef = { current: '' };
+
+function LocationProbe() {
+  locationRef.current = useLocation().pathname;
+  return null;
+}
+
+function renderPage(initialEntry = '/tasks') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <TasksWorkbench />
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/tasks" element={<TasksWorkbench />} />
+          <Route path="/tasks/:taskId" element={<TasksWorkbench />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }
@@ -682,5 +699,51 @@ describe('TasksWorkbench', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Board' }));
     await waitFor(() => expect(screen.queryByRole('columnheader', { name: 'Title' })).toBeNull());
     expect(screen.getByText('Fix bug')).toBeInTheDocument();
+  });
+
+  describe('URL-driven task detail', () => {
+    const task = { id: 'task-1', title: 'Fix bug', status: 'todo', description: 'A broken thing', displayId: 'ENG-1' };
+
+    it('opens the detail overlay straight from /tasks/:taskId without any click', async () => {
+      mockListTasks.mockResolvedValue({ tasks: [task] });
+
+      renderPage('/tasks/task-1');
+
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
+      // level 3 is the overlay's title; the board card renders an h4.
+      expect(screen.getByRole('heading', { level: 3, name: 'Fix bug' })).toBeInTheDocument();
+    });
+
+    it('pushes the task id onto the URL when a card is opened', async () => {
+      mockListTasks.mockResolvedValue({ tasks: [task] });
+
+      renderPage();
+
+      await waitFor(() => expect(screen.getByText('Fix bug')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Fix bug'));
+
+      await waitFor(() => expect(locationRef.current).toBe('/tasks/task-1'));
+    });
+
+    it('returns to /tasks when the overlay is closed', async () => {
+      mockListTasks.mockResolvedValue({ tasks: [task] });
+
+      renderPage('/tasks/task-1');
+
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'Close task details' }));
+
+      await waitFor(() => expect(locationRef.current).toBe('/tasks'));
+      expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
+    });
+
+    it('leaves the overlay closed on a plain /tasks URL', async () => {
+      mockListTasks.mockResolvedValue({ tasks: [task] });
+
+      renderPage();
+
+      await waitFor(() => expect(screen.getByText('Fix bug')).toBeInTheDocument());
+      expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
+    });
   });
 });

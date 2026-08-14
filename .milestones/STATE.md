@@ -1,6 +1,6 @@
 ---
 active_milestone: M01
-active_task: null
+active_task: M01-T02
 last_updated: 2026-08-15
 last_commit: null
 blocked: false
@@ -16,8 +16,8 @@ blocker: null
 ## Now
 
 - **Milestone**: M01 — Stabilize the Build
-- **Task**: not started
-- **Branch**: `feature/m01-stabilize-the-build` (create on first task)
+- **Task**: M01-T02 — NotFound view mounted on `*` inside the shell
+- **Branch**: `feature/m01-stabilize-the-build`
 - **Command to continue**: `/milestone-deliver M01`
 
 ## How to resume
@@ -35,7 +35,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 
 | ID  | Milestone                      | Status | Depends on | Tasks | Done |
 |-----|--------------------------------|--------|------------|-------|------|
-| M01 | Stabilize the Build            | todo   | —          | 13    | 0    |
+| M01 | Stabilize the Build            | in-progress | —     | 13    | 1    |
 | M02 | Specification Truth            | todo   | M01        | 7     | 0    |
 | M03 | IAM Correctness & Scale        | todo   | M01        | 14    | 0    |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |

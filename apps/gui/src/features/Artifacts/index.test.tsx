@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 const {
   mockListFolders,
@@ -64,11 +65,26 @@ vi.mock('../../store/layout', () => ({
 
 import { ArtifactsBrowser } from './index';
 
-function renderPage() {
+// The open artifact is a route param, so every render needs the same
+// `/artifacts` and `/artifacts/:artifactId` pair the app mounts.
+const locationRef = { current: '' };
+
+function LocationProbe() {
+  locationRef.current = useLocation().pathname;
+  return null;
+}
+
+function renderPage(initialEntry = '/artifacts') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utils = render(
     <QueryClientProvider client={queryClient}>
-      <ArtifactsBrowser />
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/artifacts" element={<ArtifactsBrowser />} />
+          <Route path="/artifacts/:artifactId" element={<ArtifactsBrowser />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>
   );
   return { ...utils, queryClient };
@@ -500,5 +516,95 @@ describe('ArtifactsBrowser', () => {
     fireEvent.keyDown(screen.getByText('readme.md'), { key: 'Enter' });
 
     await waitFor(() => expect(screen.getByText('Hello there')).toBeDefined());
+  });
+
+  describe('URL-driven artifact detail', () => {
+    it('opens the artifact straight from /artifacts/:artifactId, expanding its folder', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+
+      renderPage('/artifacts/art-1');
+
+      // No click anywhere: the folder expands and the content renders because
+      // the id came in on the URL.
+      await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+      expect(screen.getByText('readme.md')).toBeInTheDocument();
+    });
+
+    it('finds the artifact in a later folder when the deep link gives no folder', async () => {
+      mockListFolders.mockResolvedValue({
+        folders: [{ id: 'fld-1', name: 'docs', parentId: '' }, { id: 'fld-2', name: 'specs', parentId: '' }],
+      });
+      mockListArtifacts.mockImplementation(async ({ folderId }: { folderId: string }) =>
+        folderId === 'fld-2'
+          ? { artifacts: [{ id: 'art-9', name: 'design.md', content: 'Second folder content' }] }
+          : { artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] }
+      );
+
+      renderPage('/artifacts/art-9');
+
+      await waitFor(() => expect(screen.getByText('Second folder content')).toBeInTheDocument());
+    });
+
+    it('pushes the artifact id onto the URL when one is selected', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+
+      renderPage();
+
+      await waitFor(() => expect(screen.getByText('docs')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('docs'));
+      await waitFor(() => expect(screen.getByText('readme.md')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('readme.md'));
+
+      await waitFor(() => expect(locationRef.current).toBe('/artifacts/art-1'));
+    });
+
+    it('shows the placeholder on a plain /artifacts URL', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+
+      renderPage();
+
+      await waitFor(() => expect(screen.getByText('docs')).toBeInTheDocument());
+      expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
+    });
+
+    it('falls back to the placeholder when the deep-linked artifact exists nowhere', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+
+      renderPage('/artifacts/art-does-not-exist');
+
+      await waitFor(() => expect(mockListArtifacts).toHaveBeenCalledWith({ folderId: 'fld-1', page: undefined }));
+      expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
+    });
+
+    it('closes the open artifact when its folder is deleted', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+      mockArchiveFolder.mockResolvedValue({});
+
+      renderPage('/artifacts/art-1');
+
+      await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: 'Delete folder docs' }));
+
+      await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalledWith({ folderId: 'fld-1' }));
+      await waitFor(() => expect(locationRef.current).toBe('/artifacts'));
+    });
+
+    it('closes the open artifact when its folder is collapsed', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+
+      renderPage('/artifacts/art-1');
+
+      await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('docs'));
+
+      await waitFor(() => expect(locationRef.current).toBe('/artifacts'));
+      expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
+    });
   });
 });

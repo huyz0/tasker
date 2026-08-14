@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,8 +19,13 @@ export function ArtifactsBrowser() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Artifacts'), [setActivePageTitle]);
 
+  // The open artifact lives in the URL (`/artifacts/:artifactId`) rather than
+  // in local state, so a shared link, a browser reload and the back button all
+  // land on the same document instead of the empty-editor placeholder.
+  const { artifactId = null } = useParams<{ artifactId: string }>();
+  const navigate = useNavigate();
+
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [selectedArtifact, setSelectedArtifact] = useState<any | null>(null);
   const [isAddingFolder, setIsAddingFolder] = useState(false);
   const [isAddingArtifact, setIsAddingArtifact] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
@@ -52,16 +58,59 @@ export function ArtifactsBrowser() {
     enabled: !!selectedFolderId,
   });
 
+  // A deep link carries the artifact id but not its folder, and the contract
+  // exposes no GetArtifact RPC - walk the project's folders until the artifact
+  // turns up, then expand that folder so the tree matches the open document.
+  const { data: locatedArtifact } = useQuery({
+    queryKey: ['artifactLocate', activeProjectId, artifactId],
+    queryFn: async () => {
+      for (const folder of foldersData ?? []) {
+        const artifacts = await fetchAllPages(async (cursor) => {
+          const resp = await artifactClient.listArtifacts({ folderId: folder.id, page: cursor ? { cursor } : undefined });
+          return { items: resp.artifacts, nextCursor: resp.page?.nextCursor || undefined };
+        });
+        const match = artifacts.find(a => a.id === artifactId);
+        if (match) return { artifact: match, folderId: folder.id };
+      }
+      return null;
+    },
+    enabled: !!artifactId && !!foldersData && !artifactsData?.some(a => a.id === artifactId),
+  });
+
+  useEffect(() => {
+    if (locatedArtifact && selectedFolderId !== locatedArtifact.folderId) {
+      setSelectedFolderId(locatedArtifact.folderId);
+    }
+  }, [locatedArtifact, selectedFolderId]);
+
+  const selectedArtifact = artifactId
+    ? (artifactsData?.find(a => a.id === artifactId) ?? locatedArtifact?.artifact ?? null)
+    : null;
+
   const archiveFolderMutation = useMutation({
     mutationFn: async (folderId: string) => {
       await artifactClient.archiveFolder({ folderId });
     },
-    onSuccess: (_data, folderId) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['folders', activeProjectId] });
       queryClient.invalidateQueries({ queryKey: ['folders', 'bin', activeProjectId] });
-      if (selectedFolderId === folderId) setSelectedFolderId(null);
+      queryClient.invalidateQueries({ queryKey: ['artifactLocate'] });
     },
   });
+
+  // Whether the folder being deleted is the open one has to be decided here,
+  // at click time: a mutation-level `onSuccess` closure lags a render behind
+  // the component's state and would still see the previous selection.
+  const deleteFolder = (folderId: string) => {
+    const wasOpen = selectedFolderId === folderId;
+    archiveFolderMutation.mutate(folderId, {
+      onSuccess: () => {
+        if (!wasOpen) return;
+        setSelectedFolderId(null);
+        if (artifactId) navigate('/artifacts');
+      },
+    });
+  };
 
   const updateFolderMutation = useMutation({
     mutationFn: async (variables: { folderId: string; name: string }) => {
@@ -74,15 +123,26 @@ export function ArtifactsBrowser() {
   });
 
   const archiveArtifactMutation = useMutation({
-    mutationFn: async (artifactId: string) => {
-      await artifactClient.archiveArtifact({ artifactId });
+    mutationFn: async (targetArtifactId: string) => {
+      await artifactClient.archiveArtifact({ artifactId: targetArtifactId });
     },
-    onSuccess: (_data, artifactId) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artifacts', selectedFolderId] });
       queryClient.invalidateQueries({ queryKey: ['artifacts', 'bin', activeProjectId] });
-      if (selectedArtifact?.id === artifactId) setSelectedArtifact(null);
+      queryClient.invalidateQueries({ queryKey: ['artifactLocate'] });
     },
   });
+
+  // Same reason as deleteFolder: the open-artifact check has to be made at
+  // click time, not inside the mutation-level callback.
+  const deleteArtifact = (targetArtifactId: string) => {
+    const wasOpen = artifactId === targetArtifactId;
+    archiveArtifactMutation.mutate(targetArtifactId, {
+      onSuccess: () => {
+        if (wasOpen) navigate('/artifacts');
+      },
+    });
+  };
 
   const createFolderMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -109,16 +169,25 @@ export function ArtifactsBrowser() {
       const resp = await artifactClient.updateArtifactContent({ artifactId, content });
       return resp.artifact;
     },
-    onSuccess: (artifact) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artifacts', selectedFolderId] });
-      setSelectedArtifact(artifact);
+      queryClient.invalidateQueries({ queryKey: ['artifactLocate'] });
       setIsEditingContent(false);
     },
   });
 
-  const selectArtifact = (artifact: any) => {
-    setSelectedArtifact(artifact);
+  const selectArtifact = (artifact: { id: string }) => {
     setIsEditingContent(false);
+    navigate(`/artifacts/${artifact.id}`);
+  };
+
+  const toggleFolder = (folderId: string) => {
+    const collapsing = selectedFolderId === folderId;
+    setSelectedFolderId(collapsing ? null : folderId);
+    setIsAddingArtifact(false);
+    // Collapsing the folder holding the open artifact closes the artifact too;
+    // otherwise the deep-link lookup would immediately re-expand the folder.
+    if (collapsing && artifactId) navigate('/artifacts');
   };
 
   const rootFolders = foldersData?.filter(f => !f.parentId) || [];
@@ -174,15 +243,11 @@ export function ArtifactsBrowser() {
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => {
-                  setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id);
-                  setIsAddingArtifact(false);
-                }}
+                onClick={() => toggleFolder(folder.id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id);
-                    setIsAddingArtifact(false);
+                    toggleFolder(folder.id);
                   }
                 }}
                 className={`px-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center justify-between gap-2 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-sm ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
@@ -204,7 +269,7 @@ export function ArtifactsBrowser() {
                     onClick={(e) => {
                       e.stopPropagation();
                       if (window.confirm(`Move "${folder.name}" to the bin? You can restore it later.`)) {
-                        archiveFolderMutation.mutate(folder.id);
+                        deleteFolder(folder.id);
                       }
                     }}
                     disabled={archiveFolderMutation.isPending}
@@ -240,7 +305,7 @@ export function ArtifactsBrowser() {
                         onClick={(e) => {
                           e.stopPropagation();
                           if (window.confirm(`Move "${artifact.name}" to the bin? You can restore it later.`)) {
-                            archiveArtifactMutation.mutate(artifact.id);
+                            deleteArtifact(artifact.id);
                           }
                         }}
                         disabled={archiveArtifactMutation.isPending}

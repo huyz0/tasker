@@ -27,8 +27,12 @@ function App() {
                 <Route path="/organizations" element={<OrganizationsDashboard />} />
                 <Route path="/projects" element={<ProjectsWizard />} />
                 <Route path="/tasks" element={<TasksWorkbench />} />
+                {/* The open task is part of the URL, not local state, so a
+                    direct link or a reload reopens the same detail view. */}
+                <Route path="/tasks/:taskId" element={<TasksWorkbench />} />
                 <Route path="/agents" element={<AgentsDashboard />} />
                 <Route path="/artifacts" element={<ArtifactsBrowser />} />
+                <Route path="/artifacts/:artifactId" element={<ArtifactsBrowser />} />
                 <Route path="/labels" element={<LabelsManager />} />
                 <Route path="/bin" element={<BinDashboard />} />
                 <Route path="/settings" element={<GenericPlaceholder title="Settings" description="Global application preferences." />} />

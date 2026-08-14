@@ -1,12 +1,12 @@
 ---
 id: M01
 title: Stabilize the Build
-status: todo
+status: in-progress
 goal: Every feature that already exists works end to end from a clean clone, and CI fails when one of them breaks.
 depends_on: []
 surfaces: [gui, backend, cli, infra]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-15
 completed_at: null
 ---
 
@@ -54,7 +54,7 @@ performance work (M07), any change to the specs' claims (M02).
 
 ## 5. Task Breakdown
 
-- [ ] **M01-T01** — Add `/tasks/:taskId` and `/artifacts/:artifactId` routes that
+- [x] **M01-T01** — Add `/tasks/:taskId` and `/artifacts/:artifactId` routes that
       open the corresponding detail view, driven by the URL rather than local state.
       - Files: `apps/gui/src/App.tsx`, `apps/gui/src/features/Tasks/index.tsx`,
         `apps/gui/src/features/Artifacts/index.tsx`

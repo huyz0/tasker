@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -131,7 +132,13 @@ export function TasksWorkbench() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Tasks Workbench'), [setActivePageTitle]);
 
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  // The open task lives in the URL (`/tasks/:taskId`) rather than in local
+  // state, so a shared link, a browser reload and the back button all land on
+  // the same detail view instead of an empty board.
+  const { taskId: expandedTaskId = null } = useParams<{ taskId: string }>();
+  const navigate = useNavigate();
+  const setExpandedTaskId = (id: string | null) => navigate(id ? `/tasks/${id}` : '/tasks');
+
   const [addingToColumnId, setAddingToColumnId] = useState<string | null>(null);
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
