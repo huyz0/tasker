@@ -84,7 +84,7 @@ performance work (M07), any change to the specs' claims (M02).
         `apps/gui/.env.example`, `README.md`
       - Verify: fresh clone → `moon run dev` → dashboard loads with data, no console 403.
 
-- [ ] **M01-T06** — Add `gui:test` to the GUI CI job so the existing suite and its
+- [x] **M01-T06** — Add `gui:test` to the GUI CI job so the existing suite and its
       95% coverage threshold gate merges.
       - Files: `.github/workflows/ci.yml`
       - Verify: a deliberately broken assertion fails CI.

@@ -52,8 +52,10 @@ jobs:
           # Install shared contract first so it can compile
           cd packages/shared-contract && bun install && cd ../..
           cd apps/gui && bun install
+      # gui:test is `vitest run --coverage`, so this gates merges on both the
+      # suite passing and the 95% coverage thresholds in vitest.config.ts.
       - name: Build & Test (Cached)
-        run: moon run gui:lint gui:typecheck gui:build
+        run: moon run gui:lint gui:typecheck gui:test gui:build
 
   backend:
     name: Backend (Bun)

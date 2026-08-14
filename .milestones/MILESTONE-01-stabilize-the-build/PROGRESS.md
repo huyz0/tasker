@@ -114,3 +114,24 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   Left alone (out of scope): `bun run seed` still fails on a second run against
   the same database, on `UNIQUE constraint failed: users.email`.
 - **Next**: M01-T06
+
+## M01-T06 — GUI tests and the coverage gate run in CI
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: .github/workflows/ci.yml
+- **Verified**: `act` is not available here, so the workflow itself cannot be
+  executed locally; instead the exact command the job now runs was executed
+  directly, twice broken on purpose:
+  - green: `moon run gui:lint gui:typecheck gui:test gui:build` — 4 tasks
+    completed, exit 0.
+  - broken assertion (renamed the heading NotFound.test.tsx asserts on):
+    `Tests 1 failed | 378 passed`, `Task gui:test failed to run`, exit 1.
+  - broken coverage (thresholds raised to 100): `ERROR: Coverage for lines
+    (99.91%) does not meet global threshold (100%)`, exit 1.
+  Both deliberate breaks were reverted and the command re-run green.
+- **Notes**: `gui:test` maps to `vitest run --coverage`, so adding the single
+  task to the job gates merges on the suite *and* on the 95% thresholds in
+  `vitest.config.ts` — proving the second one mattered, since a passing suite
+  with sinking coverage would otherwise still merge. Installed moon 2.4.6 via
+  `proto install moon` to run any of this; it was not present on this machine.
+- **Next**: M01-T07
