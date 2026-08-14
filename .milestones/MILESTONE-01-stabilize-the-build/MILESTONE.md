@@ -61,7 +61,7 @@ performance work (M07), any change to the specs' claims (M02).
       - Verify: navigating directly to a task URL opens that task's detail;
         reloading the page keeps it open.
 
-- [ ] **M01-T02** — Add a `NotFound` view mounted on `*` inside the shell so no
+- [x] **M01-T02** — Add a `NotFound` view mounted on `*` inside the shell so no
       route renders blank, with a link back to the dashboard.
       - Files: `apps/gui/src/pages/NotFound.tsx`, `apps/gui/src/App.tsx`
       - Verify: `/nonsense` renders the Not Found view, not an empty pane.

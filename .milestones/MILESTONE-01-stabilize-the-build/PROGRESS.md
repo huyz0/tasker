@@ -24,3 +24,18 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   still affects the `['artifacts', selectedFolderId]` invalidations elsewhere in
   the file; left alone as out of scope for this task.
 - **Next**: M01-T02
+
+## M01-T02 — Not Found view on the catch-all route
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: apps/gui/src/pages/NotFound.tsx (new), NotFound.test.tsx (new),
+  NotFound.stories.tsx (new), apps/gui/src/App.tsx, apps/gui/src/App.test.tsx
+- **Verified**: `bun run test` — 375 pass (37 files). The Verify line is a test:
+  rendering the app at `/nonsense` shows the "Page not found" heading and the
+  "Back to dashboard" link, with the sidebar still mounted around it. Coverage
+  99.62% statements / 95.6% branches, `bunx tsc --noEmit` and lint clean.
+- **Notes**: The catch-all sits inside the shell, so an unknown URL keeps the
+  sidebar and gets a route back rather than an empty content area. The view
+  names the missed path, which makes a typo self-explanatory. `/login` is
+  matched by the outer route first and is unaffected.
+- **Next**: M01-T03

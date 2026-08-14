@@ -72,8 +72,8 @@ describe('App', () => {
     vi.clearAllMocks();
   });
 
-  const renderApp = () => render(
-    <MemoryRouter>
+  const renderApp = (path = '/') => render(
+    <MemoryRouter initialEntries={[path]}>
       <App />
     </MemoryRouter>
   );
@@ -143,6 +143,16 @@ describe('App', () => {
     const toggleBtn = screen.getByRole('button', { name: 'Toggle Sidebar' });
     fireEvent.click(toggleBtn);
     expect(toggleBtn).toBeDefined();
+  });
+
+  it('renders the Not Found view on an unknown URL rather than an empty pane', () => {
+    healthQueryResult = { data: undefined, error: null, isLoading: false };
+    renderApp('/nonsense');
+
+    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to dashboard' })).toBeInTheDocument();
+    // Still inside the shell, so the sidebar is there to navigate away with.
+    expect(screen.getByRole('link', { name: 'Organizations' })).toBeInTheDocument();
   });
 
   it('can route to generic placeholder views', () => {
