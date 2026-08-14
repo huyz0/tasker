@@ -435,5 +435,18 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
      changed no task's behaviour and `moon setup` behaves identically — so
      rather than hand-syncing a second copy of the version pins, `.prototools`
      is now the only place they live, and says so.
-  Still open, and still the user's call: the branch is unmerged and no pull
-  request was opened, so exit criterion 3 remains verified as configuration.
+  6. **`gui:e2e` was silently skipped in CI.** Found only once main was pushed
+     and CI actually ran: the E2E job exited with "No tasks found. Unable to
+     execute action pipeline. For targets gui:e2e". `type: run` — added in T13
+     to keep e2e out of `moon check` and so out of the pre-commit hook — also
+     implies `runInCI: false`, so moon filtered the target out whenever `CI` was
+     set. Every local run passed because `CI` was unset. Now `runInCI: true` is
+     explicit, keeping both properties: `moon task gui:e2e` reports
+     `Runs in CI: Yes`, `moon check gui` still runs 5 tasks without e2e, and
+     `CI=true moon run gui:e2e` → 13 passed.
+     This is exactly what exit criterion 3 was hedged about: a workflow that
+     parses and declares the right jobs is not the same as one observed to run
+     them.
+
+  Exit criterion 3 is now observed, not inferred: main was pushed and CI ran the
+  suites for real (see the M01 close addendum in STATE.md).

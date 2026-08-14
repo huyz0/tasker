@@ -49,6 +49,10 @@ tasks:
       - 'package.json'
     options:
       cache: false
+      # `type: run` implies runInCI: false, which made `moon run gui:e2e` in the
+      # CI job exit with "No tasks found" - the target is filtered out when CI
+      # is set. The type is here to keep e2e out of `moon check`, not out of CI.
+      runInCI: true
 
   build:
     deps:
