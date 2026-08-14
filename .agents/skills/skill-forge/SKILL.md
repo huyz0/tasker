@@ -104,7 +104,7 @@ HARNESS <MODE>
   Validator:  ✓ PASS — 0 errors, 3 warnings
 
   Findings:
-    ! epic-run/SKILL.md 5,102 chars — move the design phase to references/
+    ! milestone-deliver/SKILL.md 6,140 chars — move a phase to references/
     ! standards-manage and auto-memorize both claim "capture a project rule"
 
   Changed:  <files, or "none">

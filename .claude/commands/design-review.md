@@ -1,5 +1,5 @@
 ---
-description: Design Review
+description: Judges rendered UI against the design system, Web Interface Guidelines and WCAG by reading screenshots, not source.
 argument-hint: "Route to review (e.g. `/tasks`), or `direct` plus a brief to set aesthetic direction before building."
 ---
 

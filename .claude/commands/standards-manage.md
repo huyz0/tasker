@@ -1,5 +1,5 @@
 ---
-description: Standards Manage
+description: Discovers tribal knowledge from the codebase, writes it as a token-efficient standard in .specs/standards/, and keeps index.yml consistent.
 argument-hint: "Optional mode (`discover`, `create`, `index`) and topic. Defaults to `discover`."
 ---
 

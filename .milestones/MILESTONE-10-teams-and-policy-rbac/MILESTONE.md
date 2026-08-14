@@ -63,7 +63,7 @@ SCIM provisioning, delegated administration.
 
 - [ ] **M10-T01** — Write the ADR choosing policy-based RBAC over fixed tiers,
       naming the permission vocabulary and the scope hierarchy.
-      - Files: `.epics/adr/ADR-0011-rbac-model.md`
+      - Files: `.specs/adr/ADR-0011-rbac-model.md`
       - Verify: the ADR enumerates every permission key.
 
 - [ ] **M10-T02** — Add `roles`, `permissions`, `role_permissions`, `teams`,

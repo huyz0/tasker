@@ -81,6 +81,46 @@ anything.
 
 ## Handoff notes
 
+**2026-08-15 — Epic lifecycle retired; harness cut to 16 skills.**
+
+A per-skill audit asked whether each one earns its place. The command layer had
+been skipped in the previous review — the invocable surface is skills *and*
+commands, and only 19 of 44 had been examined.
+
+1. **The epic system is gone.** All 8 epics were created 2026-03-30 to
+   2026-04-27; milestones arrived 2026-08-15 and no epic ran again. Its only
+   live references were five milestone tasks pointing at `.epics/adr/`, a
+   directory `git log` proves never existed. `epic-run` and `epic-archive` are
+   deleted; their design and four-lens review discipline is
+   `milestone-deliver/references/heavy-task.md`, reached from step 12.
+2. **ADRs have a real home**: `.specs/adr/`, with a format README. Decisions
+   outlive the work item, so they sit beside the specs. Reviews and UX go to
+   `.milestones/<MILESTONE>/{reviews,design}/`. `work-ledger.yml` is v3 with no
+   `epics` type.
+3. **`epic-prioritize` → `milestone-prioritize`.** Same 8-advisor council; it now
+   reads the milestone registry and feeds `/milestone-plan`. Reports go to
+   `.milestones/council/`.
+4. **`tdd` is a protocol, not a skill.** It never produced an artifact and you
+   never run it *instead of* a task. `.agents/protocols/tdd.md` now binds every
+   implementation path automatically. `/tdd` is gone.
+5. **`epic-standard.md` moved to `.archive/EPIC-FORMAT.md`** — it documents a
+   format nothing generates. It is out of `index.yml`.
+6. **Command descriptions route now.** All 25 read like "Milestone Deliver" —
+   their own name in title case. The generator takes the skill's description
+   instead, trimmed to the "what" half because Claude Code loads skill *and*
+   command entries and copying both pays twice.
+
+Tier 0 is **5,482 chars ≈ 1,370 tokens** — up from 1,043, deliberately. The old
+figure was cheap because 400 of its chars said nothing. It also corrects an
+earlier entry that reported 943 tokens by counting only skills.
+
+New validator rules: two workflows resolving to the same skill *and* mode
+(`/epic-prioritize` and `/epic-prioritize-auto` were byte-identical for a
+session), and a command description that only restates its name. Both were
+verified by injection.
+
+Verified: `moon check --all` 22 tasks · validator 0/0 · 160 markdown files clean.
+
 **2026-08-15 — Harness reviewed for token cost, consistency and scope.**
 
 1. **Routing moved into the always-on layer.** `AGENTS.md` §3 now carries a

@@ -59,7 +59,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
 - [ ] **M06-T02** — Decide the component-library question in an ADR: adopt Radix
       primitives (as `tech-stack.md` originally claimed) or formalise the
       hand-rolled set. Whichever is chosen, `tech-stack.md` must match.
-      - Files: `.epics/adr/ADR-0009-component-primitives.md`
+      - Files: `.specs/adr/ADR-0009-component-primitives.md`
       - Verify: the ADR is referenced by the dialog implementation.
 
 - [ ] **M06-T03** — Build the accessible `Dialog` primitive and migrate the task

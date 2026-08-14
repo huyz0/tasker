@@ -57,7 +57,7 @@ Budgets, enforced:
   at that limit, so a longer skill is silently broken on one of the three hosts.
 - **Warn** over 6,000 characters — half the hard limit, which leaves room to grow
   before a skill breaks on a host without warning. The body should carry the
-  common path; anything that runs once per epic or once per milestone, rather
+  common path; anything that runs once per milestone, rather
   than once per task, belongs in `references/`.
 
 ## Rules

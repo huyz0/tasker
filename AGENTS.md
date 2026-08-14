@@ -52,6 +52,7 @@ This repository uses a declarative agentic ecosystem. Do not rely on assumptions
   | `.milestones/**` | `milestone-standard` |
   | `package.json`, `go.mod`, lockfiles | `dependency-standard` |
   | `.agents/**` | `.agents/protocols/skill-authoring.md` |
+  | implementing anything at all | `.agents/protocols/tdd.md` (always, and it does not count toward the two) |
 
   Everything lives in `.specs/standards/<id>.md`. If nothing in the table matches, the task probably needs no standard — do not load one to feel thorough.
 
@@ -67,8 +68,8 @@ This repository uses a declarative agentic ecosystem. Do not rely on assumptions
 
 Do not jump blindly into implementation for new features.
 
-- **TDD & Test Plans**: Always follow Test-Driven Development. For larger features, ensure a `TEST-PLAN.md` exists and binds your implementation.
-- **Follow the Blueprint**: If an epic has an architecture design or UX mockup defined in `.epics/`, your implementation must strictly reflect those boundaries.
+- **TDD**: the failing test comes first, always. Full rules: `.agents/protocols/tdd.md`. For a task that needs a design before code, `.agents/skills/milestone-deliver/references/heavy-task.md` says what to produce and what gate it passes.
+- **Follow the Blueprint**: if a decision is recorded in `.specs/adr/` or a UX design exists for the milestone, the implementation reflects those boundaries. Deviating is allowed; deviating silently is not.
 
 ## 5. Environment & Execution
 

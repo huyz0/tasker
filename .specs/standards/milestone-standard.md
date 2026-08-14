@@ -1,9 +1,10 @@
 # Milestone Standard
 
-A **milestone** is the unit of delivery above an epic. An epic answers "what
-feature are we building"; a milestone answers "what state is the product in
-when this is done". Milestones are the durable, git-committed plan that lets a
-fresh agent session resume delivery with no conversational context.
+A **milestone** answers "what state is the product in when this is done".
+Milestones are the durable, git-committed plan that lets a fresh agent session
+resume delivery with no conversational context — the thing a feature-shaped work
+item never carried, and the reason milestones replaced the epic lifecycle in
+August 2026.
 
 ## 1. Storage & Organization
 
@@ -105,10 +106,15 @@ an interrupted session recoverable: the journal always names the task in flight.
 - **Branch**: `feature/m<NN>-<kebab-title>`, one per milestone, per
   `git-workflow-standard.md`.
 
-## 6. Relationship to Epics
+## 6. Heavy Tasks
 
-A milestone MAY spawn epics for work that needs the full design/review
-lifecycle (`/epic-run` → `/epic-run` → `/epic-run`). Small,
-well-understood tasks are implemented directly by `/milestone-deliver` without
-an epic. When a milestone spawns an epic, list the epic id under the task and
-treat the epic's completion as the task's verification.
+Most tasks are implemented directly. A task that needs a recorded decision, a UX
+pass or a test plan before code follows
+`.agents/skills/milestone-deliver/references/heavy-task.md`, which produces those
+artifacts at the ledger's paths and runs a four-lens review before the box is
+checked.
+
+This replaced the epic lifecycle. An epic wrapped design artifacts *and* a second
+copy of task tracking; the tracking already lives in `MILESTONE.md` and
+`PROGRESS.md`, so only the artifacts and the gates were kept. Completed epics are
+in `.archive/epics/`, and `.archive/EPICS-HISTORY.md` summarises them.

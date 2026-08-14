@@ -1,5 +1,5 @@
 ---
-description: Auto Milestone Delivery
+description: Autonomous — delivers the next unchecked task of a delivery milestone in .milestones/, then records progress and commits so a fresh session can resume.
 argument-hint: "Optional milestone id (e.g. `M03`). Defaults to `active_milestone` in `.milestones/STATE.md`."
 ---
 

@@ -5,7 +5,7 @@ committed state of that work.
 
 ## Why this exists
 
-Epics describe features. Milestones describe **the state of the product**, and
+Milestones describe **the state of the product**, and
 they carry the progress record that lets a brand-new agent session — with no
 memory of any prior conversation — pick up exactly where the last one stopped.
 Everything needed to resume is a file in git.

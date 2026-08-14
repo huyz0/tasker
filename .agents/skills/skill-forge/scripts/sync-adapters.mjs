@@ -64,13 +64,31 @@ for (const file of mds(WORKFLOWS).sort()) {
   const autonomous = /AUTONOMOUS/i.test(body);
   const takesArg = /\*\*Argument\*\*:\s*(.+)/.exec(body)?.[1]?.trim();
 
+  // The command palette is what a human browses, and it used to read
+  // "Milestone Deliver" — the workflow's title, which restates its own name and
+  // routes nothing. The skill's description is the one written to be routed on,
+  // so take it from there.
+  //
+  // Only the "what it does" half, though. Claude Code loads skill *and* command
+  // descriptions, so copying the whole thing pays twice for the same text — the
+  // trailing "Use when …" trigger is what the model routes on and it is already
+  // in the skill entry. A palette you are deliberately browsing needs the what.
+  const skillPath = `${SKILLS}/${target}/SKILL.md`;
+  const skillDesc = existsSync(abs(skillPath)) ? frontmatter(read(skillPath)).fm.description : null;
+  const what = skillDesc?.split(/(?<=\.)\s+(?=Use\b)/)[0]?.trim();
+  const description = what
+    ? autonomous
+      ? `Autonomous — ${what[0].toLowerCase()}${what.slice(1)}`
+      : what
+    : (fm.description ?? target);
+
   const mode = autonomous
     ? 'exactly in **AUTONOMOUS** mode: do not ask questions. Follow the stopping\nrules in `.agents/protocols/autonomy.md` — never mark work complete whose\nverification has not actually passed, and stop rather than continue past two\nconsecutive failures on the same unit.'
     : 'exactly in **INTERACTIVE** mode: use AskUserQuestion to confirm before each\nirreversible step, one question at a time.';
 
   const lines = [
     '---',
-    `description: ${fm.description ?? target}`,
+    `description: ${description}`,
     ...(takesArg ? [`argument-hint: "${takesArg.replace(/"/g, "'")}"`] : []),
     '---',
     '',

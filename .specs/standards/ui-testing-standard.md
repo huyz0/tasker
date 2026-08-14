@@ -44,7 +44,7 @@ Testing individual UI primitives or features in isolation.
 Unit tests cannot reliably verify that a CSS layout didn't break.
 
 - **Strategy**: Define a Visual Testing scope for Critical Paths (e.g. Auth flow, Dashboard rendering).
-- **Execution**: Future epics will integrate Playwright for true E2E rendering against a staging datastore, executing snapshot matches on full layouts.
+- **Execution**: Playwright runs the critical paths against a seeded backend (`moon run gui:e2e`, and a CI job). Screenshots across breakpoints and themes come from `apps/gui/scripts/screenshot.mjs`, driven by `/design-review`.
 - **Immediate Requirement**: Component authors should document all complex visual states (Empty, Loading, Error, Data) via Storybook, establishing the foundation for Chromatic/Playwright visual regression in the pipeline.
 
 ## 4. Setup Implementation

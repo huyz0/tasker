@@ -56,7 +56,7 @@ All foundational context is stored entirely within the `.specs/` directory.
 These files explicitly govern *what* we are building and the overarching architecture:
 
 - [🌍 **Mission & Vision**](.specs/product/mission.md): The core product objectives and target user personas.
-- [🛣️ **Roadmap**](.specs/product/roadmap.md): Currently active milestones, planned epics, and timelines.
+- [🛣️ **Roadmap**](.specs/product/roadmap.md): Currently active milestones, planned work, and timelines.
 - [🏛️ **Architecture**](.specs/product/architecture.md): High-level system design (C4/DDD boundaries) and ADRs.
 - [🛠️ **Tech Stack**](.specs/product/tech-stack.md): The exhaustive, hardcoded list of approved frameworks and tools (preventing agent hallucinations).
 - [📓 **Work Ledger**](.specs/product/work-ledger.yml): The strategic tracking router deciding if artifacts live locally or on external trackers (Jira/Linear).
@@ -65,7 +65,7 @@ These files explicitly govern *what* we are building and the overarching archite
 
 These standalone rulebooks are injected seamlessly into our automated agent workflows via the `context-inject` skill, ensuring generated code is consistently flawless.
 
-- **System Design**: [`api-standard.md`](.specs/standards/api-standard.md) | [`epic-standard.md`](.specs/standards/epic-standard.md)
+- **System Design**: [`api-standard.md`](.specs/standards/api-standard.md) | [`milestone-standard.md`](.specs/standards/milestone-standard.md)
 - **Frontend & Design**: [`frontend-standard.md`](.specs/standards/frontend-standard.md) | [`ui-ux-standard.md`](.specs/standards/ui-ux-standard.md)
 - **Core Engineering**: [`coding-standard.md`](.specs/standards/coding-standard.md) | [`security-standard.md`](.specs/standards/security-standard.md) | [`git-workflow-standard.md`](.specs/standards/git-workflow-standard.md)
 - **Quality & Telemetry**: [`test-plan-standard.md`](.specs/standards/test-plan-standard.md) | [`testing-standard.md`](.specs/standards/testing-standard.md) | [`observability-standard.md`](.specs/standards/observability-standard.md)
@@ -76,7 +76,7 @@ These standalone rulebooks are injected seamlessly into our automated agent work
 
 ## 🤖 The Agentic Development System
 
-This project is built to execute the "Autonomous Epic Journey". Developers use lightweight `/slash-commands` to orchestrate specialized AI personas (Skills) that take features completely from Ideation -> Architecture Design -> Code Implementation -> Security Review.
+Delivery runs through milestones. Developers use lightweight `/slash-commands` to orchestrate specialized AI personas (Skills) that carry a task from decision through implementation to review, committing the progress record alongside the code so any session can resume.
 
 To deeply understand how these isolated skills chain together, how they discover your newly written rules, and how they utilize token-efficient Context Injection:
 👉 **[Read the Full Agentic System Overview](AGENTIC_SYSTEM.md)**
@@ -196,4 +196,4 @@ Beyond the `.specs/` configuration layer, the functional execution environment i
 - `/packages/`: Contains shared foundational libraries and universal strict API contract definitions.
 - `/.agents/`: The agent harness — skills, workflows, and shared protocols. Canonical for every host; `.claude/` is generated from it.
 - `/.milestones/`: The delivery plan and its committed progress — the state that lets any session resume the work.
-- `/.archive/`: Completed epics, test plans and council reports, compressed out of the working set. `.epics/` reappears when the next epic starts.
+- `/.archive/`: The retired epic system — 19 completed epics, their test plans and council reports, plus `EPIC-FORMAT.md` describing how to read them.

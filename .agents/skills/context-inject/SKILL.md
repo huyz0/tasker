@@ -32,7 +32,7 @@ is constrained by this project rather than by its training defaults.
 
 1. **Classify the task** into one of:
    - `coding` — implementing, fixing, refactoring. Default.
-   - `planning` — shaping, epic definition, roadmap, architecture.
+   - `planning` — shaping, milestone planning, roadmap, architecture.
    - `review` — code, security, QA, architecture review.
    - `authoring` — writing a skill, workflow or plan document.
 
@@ -72,5 +72,5 @@ INJECTED
   Standards: api-standard, security-standard
   Product:   none (coding task)
   Priority:  All RPC errors return Problem Details; org scope is checked in the handler, not the query.
-  Related:   /tdd
+  Related:   /milestone-deliver
 ```

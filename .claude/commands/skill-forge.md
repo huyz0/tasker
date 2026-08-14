@@ -1,5 +1,5 @@
 ---
-description: Skill Forge
+description: Creates, audits, compresses and evolves the agent harness itself — skills, workflows, protocols and host adapters.
 argument-hint: "Optional mode (`audit`, `new`, `optimize`, `sync`, `evolve`) and target. Defaults to `audit`."
 ---
 

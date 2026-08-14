@@ -68,7 +68,7 @@ a later milestone and must be referenced, not built, here.
       oxlint in place of ESLint+Prettier; `LIKE` search in place of FTS5 until M07;
       no OpenSearch before measured need; Pino counters in place of OTel until M11;
       hand-rolled components in place of Shadcn/Radix (with the M06 revisit).
-      - Files: `.epics/adr/ADR-0003…ADR-0007.md`
+      - Files: `.specs/adr/ADR-0003…ADR-0007.md`
       - Verify: `architecture.md` links each ADR.
 
 - [ ] **M02-T04** — Add a `spec-drift` script comparing declared dependencies

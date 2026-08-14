@@ -56,7 +56,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
 
 - [ ] **M04-T01** — Design the token model and record it as an ADR: prefix format,
       hashing (never store plaintext), scope vocabulary, expiry policy.
-      - Files: `.epics/adr/ADR-0008-agent-tokens.md`
+      - Files: `.specs/adr/ADR-0008-agent-tokens.md`
       - Verify: the ADR names the hash algorithm and the scope list.
 
 - [ ] **M04-T02** — Add the `api_tokens` table to both dialects with migrations:
@@ -114,7 +114,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
 
 - [ ] **M04-T12** — Security review of the whole surface via `/security-review`,
       with findings resolved.
-      - Verify: review recorded under `.epics/` reviews with no open criticals.
+      - Verify: review recorded under `.milestones/MILESTONE-04-agent-identity/reviews/` with no open criticals.
 
 ## 6. Verification
 

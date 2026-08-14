@@ -41,13 +41,9 @@ standards:
     title: Milestone Delivery Standards
     description: Format, progress journalling, and git protocol for the delivery milestones in .milestones/ that let a fresh agent session resume work.
     file: milestone-standard.md
-  - id: epic-standard
-    title: Epic Management Standards
-    description: Guidelines for defining, formatting, and storing epics in the project.
-    file: epic-standard.md
   - id: test-plan-standard
     title: Test Plan & Case Management Standards
-    description: Robust guidelines for defining test plans, scenarios, and test cases linked to epics.
+    description: Guidelines for test plans, Given/When/Then scenarios, and cases bound to a milestone task.
     file: test-plan-standard.md
   - id: dependency-standard
     title: Dependency Standards

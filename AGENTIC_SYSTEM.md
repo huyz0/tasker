@@ -135,10 +135,19 @@ session **where the work stands** — that is `.milestones/`.
 
 Format: [`.specs/standards/milestone-standard.md`](.specs/standards/milestone-standard.md).
 
-**Epics vs milestones**: a milestone task large enough to need architecture, UX
-and a test plan spawns an epic and runs `/epic-run`; the epic's completion is that
-task's verification. Everything else is implemented directly. `/epic-prioritize`
-decides what the next epic should be when that is not obvious.
+**Heavy tasks**: a task large enough to need a recorded decision, a UX pass or a
+test plan before code follows
+`.agents/skills/milestone-deliver/references/heavy-task.md`, which produces those
+artifacts and runs a four-lens review before the box is checked. Everything else
+is implemented directly.
+
+This replaced an epic lifecycle that ran between March and April 2026 and never
+ran again. An epic wrapped design artifacts *and* a second copy of task
+tracking — and the tracking already lives in `MILESTONE.md` and `PROGRESS.md`.
+Its only live references by August were five milestone tasks pointing at
+`.epics/adr/`, a directory that never existed. The 19 completed epics are in
+`.archive/`. `/milestone-prioritize` runs the eight-advisor council that decides
+what the plan should tackle next.
 
 ---
 

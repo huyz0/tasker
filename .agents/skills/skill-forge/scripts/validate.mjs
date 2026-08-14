@@ -199,13 +199,41 @@ for (const file of mds(WORKFLOWS_DIR).sort()) {
   if (body.length > 900) warn(rel, `workflow body is ${body.length} chars — a workflow forwards, it does not instruct`);
 }
 
+// Two commands that resolve to the same skill *and* the same mode are the same
+// command twice. `/epic-prioritize` and `/epic-prioritize-auto` were byte
+// identical apart from their names for a whole session before anyone noticed.
+{
+  const seen = new Map();
+  for (const file of mds(WORKFLOWS_DIR).sort()) {
+    const text = read(`${WORKFLOWS_DIR}/${file}`);
+    const skill = text.match(/\.agents\/skills\/([a-z0-9-]+)\/SKILL\.md/)?.[1];
+    if (!skill) continue;
+    const mode = /AUTONOMOUS/i.test(text) ? 'auto' : 'interactive';
+    const key = `${skill}:${mode}`;
+    if (seen.has(key)) {
+      err(`${WORKFLOWS_DIR}/${file}`, `duplicates ${seen.get(key)} — same skill, same mode, two commands`);
+    } else {
+      seen.set(key, file);
+    }
+  }
+}
+
 // ── 3. Host adapter parity ───────────────────────────────────────────────────
 for (const file of mds(WORKFLOWS_DIR)) {
   const rel = `${CLAUDE_COMMANDS}/${file}`;
   if (!has(rel)) err(rel, `no Claude Code command for workflow ${file} — run skill-forge sync`);
 }
+const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 for (const file of mds(CLAUDE_COMMANDS)) {
   if (!has(`${WORKFLOWS_DIR}/${file}`)) err(`${CLAUDE_COMMANDS}/${file}`, 'orphan adapter — no matching workflow');
+  // A description that restates the command's own name routes nothing. Every
+  // command in this repository read like "Milestone Deliver" until the
+  // generator was pointed at the skill's description instead of the workflow's
+  // title — and the palette is the surface a human actually browses.
+  const desc = parseFrontmatter(read(`${CLAUDE_COMMANDS}/${file}`)).fm?.description ?? '';
+  if (normalize(desc).replace(/^autonomous/, '') === normalize(file.replace(/\.md$/, '').replace(/-auto$/, ''))) {
+    err(`${CLAUDE_COMMANDS}/${file}`, `description "${desc}" only restates the command name — run skill-forge sync`);
+  }
 }
 for (const name of skillNames) {
   const rel = `${CLAUDE_SKILLS}/${name}/SKILL.md`;

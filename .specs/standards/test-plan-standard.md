@@ -13,7 +13,7 @@ Requires:
 
 - `status`: `draft`, `review`, `active`, `obsolete`.
 - `title`: Human-readable name.
-- `epic_link`: ID of Epic validated (e.g., `EPIC-0001`).
+- `milestone`: id of the milestone whose task this plan binds (e.g. `M04`).
 - `author`: Person/Team.
 - `created_at`: YYYY-MM-DD.
 

@@ -37,7 +37,7 @@ Exit codes from the script:
 
 1. **Identify targets:** Determine which Markdown file(s) or glob pattern(s) to validate.
    - Default: `**/*.md` (entire project)
-   - Epic-scoped: pass the epic folder, e.g. `.epics/EPIC-0001-my-feature/**/*.md`
+   - Milestone-scoped: pass the milestone folder, e.g. `.milestones/MILESTONE-04-*/**/*.md`
    - Single file: pass the exact relative path
 
 2. **Run the script:**
@@ -46,10 +46,10 @@ Exit codes from the script:
    node .agents/skills/markdown-lint/scripts/lint-markdown.mjs [glob-or-file...]
    ```
 
-   Example — validate all files in an epic:
+   Example — validate every file in a milestone:
 
    ```bash
-   node .agents/skills/markdown-lint/scripts/lint-markdown.mjs ".epics/EPIC-0001-*/**/*.md"
+   node .agents/skills/markdown-lint/scripts/lint-markdown.mjs ".milestones/MILESTONE-04-*/**/*.md"
    ```
 
    Example — validate a single spec file:

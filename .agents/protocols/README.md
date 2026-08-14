@@ -13,7 +13,8 @@ it only when that skill actually runs.
 | `context-budget.md` | The skill reads many files or spawns sub-agents. |
 | `response-style.md` | Always — it governs how any agent writes to the user. |
 | `skill-authoring.md` | Creating, auditing or editing a skill. |
+| `tdd.md` | The skill writes or changes behaviour. |
 | `verification-gates.md` | The skill has a checkpoint that can fail. |
-| `work-ledger.md` | The skill reads or writes an SDD artifact (epic, plan, review, milestone). |
+| `work-ledger.md` | The skill reads or writes an SDD artifact (milestone, ADR, test plan, review). |
 
 Do not copy a protocol's text into a skill. Reference it.

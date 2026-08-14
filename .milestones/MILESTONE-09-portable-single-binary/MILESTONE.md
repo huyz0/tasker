@@ -67,7 +67,7 @@ SPA fallback, CLI flags, the smoke test, cross-platform release artifacts.
 - [ ] **M09-T04** — Decide the in-process transport question in an ADR: implement
       a real Connect transport that bypasses the socket, or delete
       `localInProcessTransportRouter` and drop the claim from the specs.
-      - Files: `.epics/adr/ADR-0010-standalone-transport.md`, `apps/backend/src/index.ts`
+      - Files: `.specs/adr/ADR-0010-standalone-transport.md`, `apps/backend/src/index.ts`
       - Verify: no unreferenced stub remains.
 
 - [ ] **M09-T05** — Add `--port`, `--db`, `--open` and `--seed` flags with Zod

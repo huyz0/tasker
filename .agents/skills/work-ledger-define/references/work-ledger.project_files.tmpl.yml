@@ -1,38 +1,55 @@
-version: 2
+version: 3
 
-epics:
-  type: project_files # Instead of git, we use 'project_files' for local markdown, or 'jira', 'linear' for external.
+# TEMPLATE. Copied to `.specs/product/work-ledger.yml` by /work-ledger-define.
+#
+# Where every SDD artifact lives, and whether it lives in git or in an external
+# tracker. Resolved by `.agents/protocols/work-ledger.md` before any read or
+# write — nothing hardcodes a path.
+#
+# v3 removed the `epics` type. Delivery runs through `.milestones/`, which
+# carries the session-resume contract epics never had; the design artifacts that
+# used to justify an epic wrapper (ADRs, UX, test plans, reviews) now hang off
+# the milestone task that needs them, or off `.specs/` when they outlive it.
+
+milestones:
+  type: project_files
   config:
     project_files:
-      path: .epics/
-      name_template: EPIC.md
+      path: .milestones/
+      name_template: MILESTONE.md
+      state_file: .milestones/STATE.md
+      progress_template: PROGRESS.md
+
+# Decisions outlive the work that prompted them, so they sit beside the other
+# specs rather than inside an artifact that gets archived.
+architecture_design:
+  type: project_files
+  config:
+    project_files:
+      path: .specs/adr/
+      name_template: ADR-{4_digit_id}-{kebab_title}.md
 
 test_plan:
   type: project_files
   config:
     project_files:
-      path: .test-plans/
+      path: .test-plans/TEST-PLAN-{4_digit_id}-{kebab_title}/
       name_template: TEST-PLAN.md
-
-architecture_design:
-  type: project_files
-  config:
-    project_files:
-      path: .epics/{epic_id}/architecture/
-      name_template: ARCHITECTURE.md
 
 ux_design:
   type: project_files
   config:
     project_files:
-      path: .epics/{epic_id}/designs/
+      path: .milestones/{milestone_id}/design/
       name_template: UX-DESIGN.md
 
+# Reviews are versioned, never overwritten: the trace of what was rejected and
+# why is the audit trail.
 reviews:
   type: project_files
   config:
     project_files:
-      path: .epics/{epic_id}/reviews/
+      path: .milestones/{milestone_id}/reviews/
       name_templates:
         architecture: ARCH-REVIEW-v{N}.md
         ux: UX-REVIEW-v{N}.md
