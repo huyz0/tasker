@@ -1,4 +1,5 @@
 import { expect, test, describe } from "bun:test";
+import { Database } from "bun:sqlite";
 import { setupIntegrationTest } from "../../test/setup";
 import { createHealthHandler } from "./health.handler";
 
@@ -58,6 +59,36 @@ describe("Health Handler Integration Logic", () => {
     const res = await handler.ping({});
     expect(res.natsStatus).toBe("connected");
     expect(res.natsLatencyMs).toBeUndefined();
+  });
+
+  test("ping performs no writes: the search_index row count is unchanged after 100 pings", async () => {
+    const { db } = await setupIntegrationTest();
+    const handler = createHealthHandler(db);
+    const countRows = () =>
+      (db.session.client.query(`SELECT count(*) AS n FROM search_index`).get() as { n: number }).n;
+
+    const before = countRows();
+    for (let i = 0; i < 100; i++) {
+      expect((await handler.ping({})).dbStatus).toBe("sqlite+fts5-ok");
+    }
+
+    expect(countRows()).toBe(before);
+  });
+
+  test("the cleanup migration empties the probe rows earlier builds left behind", async () => {
+    // search_index is created outside drizzle (db.ts) and excluded from
+    // drizzle-kit's tablesFilter, so the migration is hand-written SQL - run
+    // the actual file rather than a paraphrase of it.
+    const sqlite = new Database(":memory:");
+    sqlite.query(`CREATE VIRTUAL TABLE search_index USING fts5(title, body, content="")`).run();
+    for (let i = 0; i < 5; i++) {
+      sqlite.query(`INSERT INTO search_index(title, body) VALUES ('Test', 'Searching for bun')`).run();
+    }
+    expect((sqlite.query(`SELECT count(*) AS n FROM search_index`).get() as { n: number }).n).toBe(5);
+
+    sqlite.run(await Bun.file(`${import.meta.dir}/../../../drizzle-sqlite/0020_purge_health_probe_rows.sql`).text());
+
+    expect((sqlite.query(`SELECT count(*) AS n FROM search_index`).get() as { n: number }).n).toBe(0);
   });
 
   // The two tests below fake `db.execute` directly instead of standing up a

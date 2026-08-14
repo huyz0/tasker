@@ -141,6 +141,13 @@
       "when": 1784259407121,
       "tag": "0019_backfill_org_owners",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1786665600000,
+      "tag": "0020_purge_health_probe_rows",
+      "breakpoints": true
     }
   ]
 }

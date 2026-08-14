@@ -72,7 +72,7 @@ performance work (M07), any change to the specs' claims (M02).
       - Files: `apps/gui/src/components/layout/GlobalSearch.tsx`, its test
       - Verify: clicking a task result opens that task.
 
-- [ ] **M01-T04** — Make `ping()` read-only: query the FTS table (or `SELECT 1`)
+- [x] **M01-T04** — Make `ping()` read-only: query the FTS table (or `SELECT 1`)
       instead of inserting a probe row, and delete any probe rows a prior build left.
       - Files: `apps/backend/src/modules/health/health.handler.ts`, a cleanup migration
       - Verify: `SELECT count(*) FROM search_index` is unchanged after 100 pings.

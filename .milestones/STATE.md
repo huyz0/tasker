@@ -1,6 +1,6 @@
 ---
 active_milestone: M01
-active_task: M01-T04
+active_task: M01-T05
 last_updated: 2026-08-15
 last_commit: null
 blocked: false
@@ -16,7 +16,7 @@ blocker: null
 ## Now
 
 - **Milestone**: M01 — Stabilize the Build
-- **Task**: M01-T04 — Make the health probe read-only
+- **Task**: M01-T05 — Documented dev command produces a logged-in app
 - **Branch**: `feature/m01-stabilize-the-build`
 - **Command to continue**: `/milestone-deliver M01`
 
@@ -35,7 +35,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 
 | ID  | Milestone                      | Status | Depends on | Tasks | Done |
 |-----|--------------------------------|--------|------------|-------|------|
-| M01 | Stabilize the Build            | in-progress | —     | 13    | 3    |
+| M01 | Stabilize the Build            | in-progress | —     | 13    | 4    |
 | M02 | Specification Truth            | todo   | M01        | 7     | 0    |
 | M03 | IAM Correctness & Scale        | todo   | M01        | 14    | 0    |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |

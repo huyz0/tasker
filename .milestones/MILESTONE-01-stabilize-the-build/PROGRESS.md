@@ -57,3 +57,27 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   click. That is what makes "every rendered result navigates somewhere real"
   true by construction instead of by inspection.
 - **Next**: M01-T04
+
+## M01-T04 — Read-only health probe
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: apps/backend/src/modules/health/health.handler.ts,
+  apps/backend/drizzle-sqlite/0020_purge_health_probe_rows.sql,
+  apps/backend/drizzle-sqlite/meta/_journal.json,
+  apps/backend/src/modules/health/health.test.ts
+- **Verified**: `bun run test` (backend) — 326 pass, 7 skip, 0 fail across 33
+  files; lint unchanged from baseline (the same 5 pre-existing warnings, none
+  in touched files). The Verify line is now a test: it reads
+  `SELECT count(*) FROM search_index`, pings 100 times asserting
+  `sqlite+fts5-ok` each time, and asserts the count is identical afterwards.
+- **Notes**: The probe now runs `SELECT count(*) … WHERE search_index MATCH
+  'health'`, which proves the same thing the INSERT did (fts5 loaded, index
+  queryable) without writing. `count(*)` always returns exactly one row, so the
+  `sqlite-error` branch still means something rather than becoming dead code.
+  The cleanup migration is hand-written because `search_index` is created
+  outside drizzle (db.ts) and excluded by drizzle-kit's `tablesFilter`; a second
+  test runs the migration file itself against a seeded contentless table. Probed
+  SQLite first to confirm the mechanics: a contentless fts5 table rejects
+  `DELETE FROM` and `'rebuild'`, so `'delete-all'` is the supported way to empty
+  it, and the probe was the index's only ever writer so clearing it is correct.
+- **Next**: M01-T05

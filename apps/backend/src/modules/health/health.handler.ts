@@ -12,11 +12,18 @@ export const createHealthHandler = (db: any, nc: any = null) => {
         const isStandalone = process.env.STANDALONE === "true";
 
         if (isStandalone) {
-          // Basic FTS5 verification for standalone builds
+          // Read-only FTS5 verification for standalone builds. This probe used
+          // to INSERT a row on every ping, so a health check mutated the very
+          // database it was reporting on and the index grew without bound.
+          // Running a MATCH query proves just as much - the fts5 module is
+          // loaded and the index is queryable - and writes nothing. count(*)
+          // always yields exactly one row, so a missing or malformed result is
+          // still a real failure signal rather than a dead branch.
           const sqliteDb = db.session.client;
-          sqliteDb.query(`INSERT INTO search_index(title, body) VALUES ('Test', 'Searching for bun')`).run();
-          const result = sqliteDb.query(`SELECT * FROM search_index WHERE search_index MATCH 'bun'`).all();
-          dbStatus = result.length > 0 ? "sqlite+fts5-ok" : "sqlite-error";
+          const [row] = sqliteDb
+            .query(`SELECT count(*) AS matches FROM search_index WHERE search_index MATCH 'health'`)
+            .all() as { matches: number }[];
+          dbStatus = typeof row?.matches === "number" ? "sqlite+fts5-ok" : "sqlite-error";
         } else {
           await db.execute(sql`SELECT 1`);
           dbStatus = "mysql-ok";
