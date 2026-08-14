@@ -167,3 +167,26 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   `gui:e2e` is `cache: false` on purpose: its result depends on a live server
   and database that moon cannot fingerprint.
 - **Next**: M01-T08
+
+## M01-T08 — Remove the unreachable specs, keep what they meant
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: apps/gui/e2e/{agents,organizations,projects,tasks}.spec.ts
+  (removed), apps/gui/tests/e2e/navigation.spec.ts (new)
+- **Verified**: `find apps/gui -name '*.spec.ts' -not -path '*/node_modules/*'
+  -not -path '*/tests/e2e/*'` returns nothing — the Verify line exactly. The
+  ported suite runs for real: `moon run gui:e2e` → **13 passed, exit 0**
+  against the seeded backend.
+- **Notes**: Read each of the four before deleting, rather than assuming stale.
+  Two assertions no longer described the app and were dropped: Organizations
+  expected an "Admin User" string and Projects a "Software Development"
+  template, neither of which exists anywhere in the GUI. The rest was real
+  intent worth keeping — every sidebar destination renders its own view — so it
+  is now one table-driven `navigation.spec.ts` covering all eight routes, plus
+  the agents visualiser panel and the Kanban columns from the old specs. Added
+  an unknown-URL case, which puts M01's "no reachable URL renders an empty
+  content area" exit criterion under a real browser.
+  One porting fix along the way: the column label element carries its count
+  ("Todo 15"), so the old text match could never have matched exactly; the test
+  keys off each column's `Add task to <column>` control instead.
+- **Next**: M01-T09

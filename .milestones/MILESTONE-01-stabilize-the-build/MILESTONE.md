@@ -96,7 +96,7 @@ performance work (M07), any change to the specs' claims (M02).
         `.github/workflows/ci.yml`
       - Verify: E2E job runs and passes on a pull request.
 
-- [ ] **M01-T08** — Delete the four unreachable specs in `apps/gui/e2e/`; port any
+- [x] **M01-T08** — Delete the four unreachable specs in `apps/gui/e2e/`; port any
       still-valid intent into `apps/gui/tests/e2e/`.
       - Files: `apps/gui/e2e/*` (removed)
       - Verify: no spec file exists outside the configured `testDir`.
