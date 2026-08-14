@@ -33,6 +33,10 @@ standards:
     title: Observability & Error Handling
     description: Telemetry, JSON structured logging, and standardized HTTP Problem Detail errors.
     file: observability-standard.md
+  - id: milestone-standard
+    title: Milestone Delivery Standards
+    description: Format, progress journalling, and git protocol for the delivery milestones in .milestones/ that let a fresh agent session resume work.
+    file: milestone-standard.md
   - id: epic-standard
     title: Epic Management Standards
     description: Guidelines for defining, formatting, and storing epics in the project.

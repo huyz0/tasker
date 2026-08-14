@@ -6,11 +6,12 @@ Our system embraces the paradigm of Large Language Models (LLMs) and specialized
 
 ## System Overview
 
-The agentic operation is divided into three primary components:
+The agentic operation is divided into four primary components:
 
 1. **Specifications (`.specs/`)**: The declarative source of truth for product vision, technical stack, and coding/quality standards.
-2. **Workflows (`.agents/workflows/`)**: Step-by-step orchestrations that guide agents (and humans) through specific multi-step development lifecycles.
-3. **Skills (`.agents/skills/`)**: Distinct, specialized, and highly-focused capabilities granted to agents to execute tasks.
+2. **Milestones (`.milestones/`)**: The delivery plan and its committed progress — the layer that carries state *between* sessions.
+3. **Workflows (`.agents/workflows/`)**: Step-by-step orchestrations that guide agents (and humans) through specific multi-step development lifecycles.
+4. **Skills (`.agents/skills/`)**: Distinct, specialized, and highly-focused capabilities granted to agents to execute tasks.
 
 ```mermaid
 graph TD
@@ -30,6 +31,12 @@ graph TD
         Arch[("Architecture\nADRs")]
     end
     
+    subgraph "Delivery State (.milestones/)"
+        State[("STATE.md\nactive milestone + task")]
+        Plan[/"MILESTONE.md\ngoal, exit criteria, tasks"/]
+        Journal[/"PROGRESS.md\nappend-only journal"/]
+    end
+
     subgraph "Execution Output"
         Epics[/"Epics\n(.epics/)"/]
         TestPlans[/"Test Plans\n(.test-plans/)"/]
@@ -39,7 +46,12 @@ graph TD
     Skill -->|Reads Context| Specs
     Skill -->|Reads Context| Product
     Skill -->|Reads Context| Arch
-    
+
+    Skill -->|Resumes From| State
+    State --> Plan
+    Skill -->|Records Progress| Journal
+    Journal -->|Same commit as code| Code
+
     Skill -->|Generates / Updates| Epics
     Skill -->|Generates / Updates| TestPlans
     Skill -->|Writes / Refactors| Code
@@ -62,6 +74,55 @@ The `.specs/` directory holds the project's declarative facts. Agents read this 
 
 ---
 
+## 1b. Milestones (`.milestones/`) — The Resume Layer
+
+Skills and specs tell an agent *how* to work and *what the rules are*. Neither
+tells a brand-new session **where the work currently stands**. That is what
+`.milestones/` is for.
+
+An epic describes a feature. A **milestone** describes a verifiable end state of
+the product, and carries the progress record that survives the end of a session.
+Because every part of it is a file in git, a fresh agent — with no memory of any
+prior conversation — can resume exactly where the last one stopped.
+
+```
+.milestones/
+├── STATE.md                          # entry point: active milestone, task in flight, ledger
+├── MILESTONE-01-stabilize-the-build/
+│   ├── MILESTONE.md                  # goal, exit criteria, tasks with stable ids
+│   └── PROGRESS.md                   # append-only journal, one entry per task attempt
+└── …
+```
+
+**Commands**
+
+| Command | Purpose |
+|---|---|
+| `/milestone-status` | Read-only orientation. Reports the active milestone, the task in flight, what the last session did, and detected drift. |
+| `/milestone-deliver [M0N]` | Deliver the next task interactively, confirming before each step. |
+| `/milestone-deliver-auto [M0N]` | Deliver autonomously — implement, verify, record, commit, continue. |
+| `/milestone-plan` | Add, split, re-scope or re-sequence milestones when new information arrives. |
+
+**The resume contract**, enforced by the `milestone-deliver` skill:
+
+1. **Atomic task commits** — code, tests, the checked box, the journal entry and
+   the `STATE.md` update land in one commit. Never split them.
+2. **Journal before work** — the entry is written with status `in-progress`
+   before implementation starts, so an interrupted session leaves a record of
+   precisely what was underway.
+3. **Never end dirty** — uncommitted work is invisible to the next session, so
+   partial work is committed as `WIP` rather than left on disk.
+
+The format is governed by `.specs/standards/milestone-standard.md`, and the
+storage path is resolved from `work-ledger.yml` like every other artifact type.
+
+**Relationship to epics**: a milestone task that needs the full design and
+review lifecycle spawns an epic and runs the `/epic-*` chain; the epic's
+completion is that task's verification. Small, well-understood tasks are
+implemented directly by `/milestone-deliver` without the ceremony.
+
+---
+
 ## 2. Workflows (`.agents/workflows/`)
 
 Workflows are human-readable (and agent-executable) orchestrations of large processes. Every workflow exists as a structurally distinct `.md` file mapping to a `/slash-command` (e.g., `/epic-implement`).
@@ -71,6 +132,7 @@ Workflows are human-readable (and agent-executable) orchestrations of large proc
 Rather than chaining complex steps, a Workflow in this architecture acts primarily as an explicit **1:1 forwarder** to a specific Skill. It serves as an optimization for Antigravity, providing a dedicated slash command that intentionally triggers an isolated capability (e.g., typing `/epic-implement` directly forwards the execution context to the `epic-implement` Skill).
 
 **Key Workflows:**
+- **Delivery**: `/milestone-status`, `/milestone-deliver`, `/milestone-deliver-auto`, `/milestone-plan`
 - **Product Planning**: `/product-plan`
 - **Epic Lifecycle**: 
   - *Interactive Mode* (requires human-in-the-loop QA via terminal): `/epic-define`, `/epic-design`, `/epic-implement`, `/epic-implement-review`
@@ -90,6 +152,7 @@ These files use strict markdown structure to provide bulletproof framing for LLM
 
 ### Core Skill Categories
 
+- **Delivery Tracking**: Carrying state across sessions. `/milestone-status` orients a fresh session, `/milestone-deliver` executes the next task and commits the progress record, and `/milestone-plan` keeps the plan accurate as reality changes.
 - **Planning & Shaping**: Building structural foundations. `/product-plan` establishes base product docs, `/spec-shape` shapes technical approaches for complex features, and `/qa-plan-define` structures strict Given/When/Then test plans.
 - **Epic Management**: Creating, parsing, and progressing features inside `.epics/`.
 - **Design & Architecture**: Shaping technical specs and boundaries via `/architecture-create`.

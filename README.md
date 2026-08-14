@@ -28,6 +28,26 @@ Instead of hiding tribal knowledge in developer heads, this repository is 100% d
 
 ## 🧭 Project Navigation
 
+### 🚦 Where the work stands
+
+Delivery runs on **milestones** — each one a verifiable end state for the
+product, with its plan and its committed progress in [`.milestones/`](.milestones/README.md).
+
+👉 **[`.milestones/STATE.md`](.milestones/STATE.md)** is the single entry point:
+the active milestone, the task in flight, and what the last session did. It is
+committed to git, so a brand-new agent session can resume with no prior context.
+
+```bash
+/milestone-status              # where are we?
+/milestone-deliver M01         # deliver the next task, with confirmation
+/milestone-deliver-auto M01    # deliver autonomously until done or blocked
+```
+
+The roadmap in [`.specs/product/roadmap.md`](.specs/product/roadmap.md) maps
+every remaining capability to the milestone that owns it.
+
+### Foundational context
+
 All foundational context is stored entirely within the `.specs/` directory.
 
 ### Core Product Documents (`.specs/product/`)
@@ -134,5 +154,6 @@ Beyond the `.specs/` configuration layer, the functional execution environment i
 - `/apps/`: Contains the specific application interfaces - [`cli`](apps/cli/README.md), [`gui`](apps/gui/README.md), [`backend`](apps/backend/README.md).
 - `/packages/`: Contains shared foundational libraries and universal strict API contract definitions.
 - `/.agents/`: Houses the operational logic for our autonomous AI developer system (Skills and Workflows).
+- `/.milestones/`: The delivery plan and its committed progress — the state that lets any session resume the work.
 - `/.epics/`: Contains explicitly version-controlled feature packages (`EPIC.md`) currently in motion.
 - `/.test-plans/`: Houses all rigid, contractual `Given/When/Then` behavioral expectations generated during planning phases.

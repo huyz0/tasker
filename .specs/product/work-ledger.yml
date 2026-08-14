@@ -1,5 +1,14 @@
 version: 2
 
+milestones:
+  type: project_files # Delivery milestones - the plan layer above epics.
+  config:
+    project_files:
+      path: .milestones/
+      name_template: MILESTONE.md
+      state_file: .milestones/STATE.md
+      progress_template: PROGRESS.md
+
 epics:
   type: project_files # Instead of git, we use 'project_files' for local markdown, or 'jira', 'linear' for external.
   config:
