@@ -107,7 +107,7 @@ performance work (M07), any change to the specs' claims (M02).
       - Files: `.prototools`, `.github/workflows/ci.yml`
       - Verify: `moon setup && moon run cli:build` succeeds from clean.
 
-- [ ] **M01-T10** — Remove `apps/gui/package-lock.json` and add a lockfile rule to
+- [x] **M01-T10** — Remove `apps/gui/package-lock.json` and add a lockfile rule to
       `dependency-standard.md` naming `bun.lock` as the only permitted JS lockfile.
       - Files: `apps/gui/package-lock.json` (removed), `.specs/standards/dependency-standard.md`
       - Verify: `find . -name 'package-lock.json' -not -path '*/node_modules/*'` is empty.

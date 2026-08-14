@@ -14,7 +14,14 @@
 
 ## 3. Management
 
-- **Lockfiles**: MUST commit (`package-lock.json`, `bun.lockb`, `go.sum`).
+- **Lockfiles**: MUST commit exactly one lockfile per ecosystem, at the
+  repository root for JS/TS:
+  - **JS/TS**: `bun.lock` is the ONLY permitted lockfile. `package-lock.json`,
+    `yarn.lock`, `pnpm-lock.yaml` and `bun.lockb` are FORBIDDEN and MUST NOT
+    exist anywhere outside `node_modules/` — including inside a workspace
+    package. A second lockfile records a second, unverified resolution of the
+    same dependency graph, and nothing in the build ever reads it.
+  - **Go**: `go.sum`, alongside `go.mod`.
 - **Toolchain**: Enforce single package manager per ecosystem (Bun for TS/JS, Go modules). NO mixing.
 - **Pruning**: MUST remove unused dependencies (`knip`, `go mod tidy`).
 

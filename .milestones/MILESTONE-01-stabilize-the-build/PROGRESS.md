@@ -213,3 +213,22 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   about a machine with only `moon` installed leans on proto's auto-install
   rather than on `moon setup` doing anything.
 - **Next**: M01-T10
+
+## M01-T10 — One lockfile per ecosystem
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: apps/gui/package-lock.json (removed),
+  .specs/standards/dependency-standard.md
+- **Verified**: `find . -name 'package-lock.json' -not -path '*/node_modules/*'`
+  returns nothing — the Verify line exactly. Widened the same search to
+  `yarn.lock`, `pnpm-lock.yaml` and `bun.lockb`: also nothing, so `bun.lock` at
+  the root is now the only JS lockfile in the repository. `moon run gui:build
+  --force` (cache bypassed) still succeeds without it.
+- **Notes**: The standard was not silent on this, it was *wrong* — it told
+  contributors to commit `package-lock.json` and `bun.lockb`, neither of which
+  this repo uses, which is presumably how the stray file survived. Rewrote the
+  Lockfiles rule to name `bun.lock` as the only permitted JS/TS lockfile, list
+  the forbidden ones explicitly, and say why a second lockfile is harmful: it
+  records a second unverified resolution of the same graph that no build step
+  ever reads.
+- **Next**: M01-T11
