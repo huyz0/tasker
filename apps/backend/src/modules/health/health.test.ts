@@ -3,15 +3,12 @@ import { Database } from "bun:sqlite";
 import { setupIntegrationTest } from "../../test/setup";
 import { createHealthHandler } from "./health.handler";
 
+// The ping probe queries sqlite's fts5 `search_index` table; setupDatabase
+// creates it on every connection, so these tests need no fixture for it.
 describe("Health Handler Integration Logic", () => {
   test("ping returns successful status and database connectivity", async () => {
     const { db } = await setupIntegrationTest();
     
-    // Health handler relies on sqlite's fts5 search_index virtual table existing
-    try {
-        db.session.client.query(`CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(title, body);`).run();
-    } catch {}
-
     const handler = createHealthHandler(db);
 
     const res = await handler.ping({});
@@ -29,10 +26,6 @@ describe("Health Handler Integration Logic", () => {
 
   test("ping reports natsStatus based on the connection passed in", async () => {
     const { db } = await setupIntegrationTest();
-    try {
-        db.session.client.query(`CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(title, body);`).run();
-    } catch {}
-
     const noNatsHandler = createHealthHandler(db, null);
     expect((await noNatsHandler.ping({})).natsStatus).toBe("disconnected");
 
@@ -50,10 +43,6 @@ describe("Health Handler Integration Logic", () => {
 
   test("ping omits natsLatencyMs when the NATS connection has no flush method", async () => {
     const { db } = await setupIntegrationTest();
-    try {
-        db.session.client.query(`CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(title, body);`).run();
-    } catch {}
-
     const liveNc = { isClosed: () => false };
     const handler = createHealthHandler(db, liveNc);
     const res = await handler.ping({});

@@ -117,7 +117,7 @@ performance work (M07), any change to the specs' claims (M02).
       - Files: `package.json`, `knip.json`, `moon.yml`
       - Verify: `bunx knip` exits zero.
 
-- [ ] **M01-T12** — Replace `try { … } catch {}` fixture blocks in backend tests
+- [x] **M01-T12** — Replace `try { … } catch {}` fixture blocks in backend tests
       with shared seeding helpers that fail loudly.
       - Files: `apps/backend/src/test/setup.ts`, affected `*.test.ts`
       - Verify: a deliberately broken fixture fails the test with a clear error.

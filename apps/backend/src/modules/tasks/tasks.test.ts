@@ -1,7 +1,7 @@
 import { expect, test, describe } from "bun:test";
 import { Code } from "@connectrpc/connect";
 import { eq, and } from "drizzle-orm";
-import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
+import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin, seedProject } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createTasksHandler } from "./tasks.handler";
 
@@ -11,16 +11,7 @@ describe("Tasks Handler Integration Tests", () => {
 
     const orgId = "org-handlertt-" + Date.now().toString();
     const userId = "user-handlertt-" + Date.now().toString();
-    try {
-        await db.insert(schemaSqlite.organizations).values({
-          id: orgId,
-          name: "Test Org Handler TT",
-          slug: "test-org-handlertt-" + Date.now().toString(),
-          createdAt: new Date(),
-        });
-        await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
-        await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
-    } catch {}
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org Handler TT" });
     const ctx = makeAuthContext(userId);
 
     const handler = createTasksHandler(db, nc);
@@ -148,34 +139,8 @@ describe("Tasks Handler Integration Tests", () => {
     const templateId = "tmpl-taskman-" + Date.now().toString();
     const projectId = "proj-taskman-" + Date.now().toString();
 
-    try {
-        await db.insert(schemaSqlite.users).values({
-          id: userId,
-          email: "taskman@test.com",
-          createdAt: new Date(),
-        });
-        await db.insert(schemaSqlite.organizations).values({
-          id: orgId,
-          name: "Test Org TaskMan",
-          slug: "test-org-taskman-" + Date.now().toString(),
-          createdAt: new Date(),
-        });
-        await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
-        await db.insert(schemaSqlite.projectTemplates).values({
-          id: templateId,
-          orgId: orgId,
-          name: "Test Temp",
-          createdAt: new Date(),
-        });
-        await db.insert(schemaSqlite.projects).values({
-          id: projectId,
-          orgId: orgId,
-          templateId: templateId,
-          ownerId: userId,
-          name: "Test Proj",
-          createdAt: new Date(),
-        });
-    } catch {}
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org TaskMan" });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "Test Proj" });
     const ctx = makeAuthContext(userId);
 
     const { createTaskManagementHandler } = require("./tasks.handler");

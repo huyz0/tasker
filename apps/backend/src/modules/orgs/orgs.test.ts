@@ -1,6 +1,6 @@
 import { expect, test, describe } from "bun:test";
 import { eq, and } from "drizzle-orm";
-import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
+import { setupIntegrationTest, makeAuthContext, seedUser } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createOrgsHandler } from "./orgs.handler";
 
@@ -10,9 +10,7 @@ describe("Organizations Handler Integration Logic", () => {
     const handler = createOrgsHandler(db, nc);
 
     const userId = "user-1";
-    try {
-        await db.insert(schemaSqlite.users).values({ id: userId, email: "z" + Date.now().toString() + "@foo.com", name: "Z", createdAt: new Date() });
-    } catch {}
+    await seedUser(db, userId, { name: "Z" });
     const ctx = makeAuthContext(userId);
 
     const req = { name: "Test Org Z", slug: "test-org-z" + Date.now().toString() };

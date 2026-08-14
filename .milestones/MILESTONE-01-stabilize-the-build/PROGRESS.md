@@ -271,3 +271,30 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   build input — a filename that has never existed here, so dependency changes
   never invalidated the GUI build cache. Both fixed.
 - **Next**: M01-T12
+
+## M01-T12 — Fixtures that fail loudly
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: apps/backend/src/test/setup.ts,
+  apps/backend/src/modules/{agents/agents,orgs/orgs,tasks/tasks,health/health}.test.ts
+- **Verified**: The Verify line, run for real. Broke `seedOrgWithAdmin` to
+  violate a constraint (`name: null`) and ran the agents suite: **1 fail**, with
+  `error: test fixture "organization org-agents-1786719911228" failed: NOT NULL
+  constraint failed: organizations.name` and a stack pointing at the fixture
+  helper — the failure names what broke and where. Reverted; full backend suite
+  back to 326 pass / 7 skip / 0 fail, lint unchanged at the 5 pre-existing
+  warnings.
+- **Notes**: Six silent blocks across four files. Four became shared helpers in
+  `test/setup.ts` — `seedUser`, `seedOrgWithAdmin`, `seedProject` — each insert
+  wrapped in a `fixture()` that rethrows with the fixture's name. The other two
+  (health) were deleted outright rather than converted: they re-created the
+  `search_index` table that `setupDatabase` already creates on every
+  connection, so they were `IF NOT EXISTS` no-ops whose `catch {}` existed to
+  hide that. Replaced with a comment saying where the table comes from.
+  Honest caveat found while verifying: drizzle silently drops unknown keys in
+  `.values()`, so a *renamed column* still does not throw — the loud failure
+  covers constraint violations and genuine SQL errors, not every drift.
+  Left alone deliberately: `logger.test.ts`'s `try { rmSync(…) } catch {}` is
+  best-effort teardown of a temp directory, not a fixture, and should not fail
+  a test.
+- **Next**: M01-T13

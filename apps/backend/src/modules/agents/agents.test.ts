@@ -1,6 +1,6 @@
 import { expect, test, describe } from "bun:test";
 import { eq } from "drizzle-orm";
-import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
+import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createAgentsHandler } from "./agents.handler";
 
@@ -10,16 +10,7 @@ describe("Agents Handler Integration Tests", () => {
 
     const orgId = "org-agents-" + Date.now().toString();
     const userId = "user-agents-" + Date.now().toString();
-    try {
-        await db.insert(schemaSqlite.organizations).values({
-          id: orgId,
-          name: "Test Org Agents",
-          slug: "test-org-agents-" + Date.now().toString(),
-          createdAt: new Date(),
-        });
-        await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
-        await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
-    } catch {}
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org Agents" });
     const ctx = makeAuthContext(userId);
 
     const handler = createAgentsHandler(db, nc);
