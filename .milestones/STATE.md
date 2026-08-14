@@ -117,10 +117,19 @@ gone so `.prototools` is the sole home of the version pins. Note that
 `moon setup` is still a no-op — moon 2 ignores that file's deprecated platform
 keys — and toolchains come from proto's `auto-install`.
 
-Not done here, and deliberately: the branch is unmerged and no pull request was
-opened, so exit criterion 3 is verified as configuration (all four suites are
-declared on `pull_request` and the exact commands pass locally) rather than as
-an observed CI run. The first PR will confirm it.
+Exit criterion 3 is now **observed**, not inferred: `main` was fast-forwarded to
+this work and pushed, and CI ran all six jobs green — Shared Contract, Workspace
+(knip), GUI, GUI E2E (Playwright), Backend, CLI. The first run was red and worth
+recording: `gui:e2e` exited "No tasks found", because `type: run` (which keeps
+e2e out of `moon check`, and so out of the pre-commit hook) also implies
+`runInCI: false`. Every local run had passed because `CI` was unset. `runInCI`
+is now explicit. A workflow that declares the right jobs is not the same as one
+observed to run them — which is why that criterion was hedged.
+
+The separate **Real Integration Tests** workflow (`integration.yml`) still fails
+on every push, as it has since at least July: it needs `GITHUB_TEST_TOKEN` /
+`GITHUB_TEST_REPO` secrets to hit a real GitHub sandbox. Pre-existing and
+untouched by M01.
 
 M02, M03 and M05 all have their dependencies satisfied now and can run in
 parallel on separate branches. M02 is the cheap unblocking one.
