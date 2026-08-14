@@ -44,6 +44,9 @@ tasks:
       - 'index.html'
       - 'vite.config.*'
       - 'package.json'
-      - 'bun.lockb'
+      # The workspace's single lockfile lives at the repo root (see
+      # dependency-standard.md); this used to name a bun.lockb that never
+      # existed here, so dependency changes did not invalidate the build.
+      - '/bun.lock'
     outputs:
       - 'dist'

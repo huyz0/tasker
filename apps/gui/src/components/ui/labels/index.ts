@@ -1,4 +1,4 @@
-import { LabelProvider, useLabels } from './LabelContext';
+import { LabelProvider } from './LabelContext';
 import { LabelChips } from './LabelChips';
 import { LabelPicker } from './LabelPicker';
 
@@ -7,6 +7,3 @@ export const Label = {
   Chips: LabelChips,
   Picker: LabelPicker,
 };
-
-export { useLabels };
-export type { LabelData, LabelState, LabelActions } from './LabelContext';

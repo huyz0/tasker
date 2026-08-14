@@ -1,0 +1,34 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "apps/backend": {
+      "entry": [
+        "drizzle.mysql.config.ts",
+        "drizzle.sqlite.config.ts",
+        "src/**/*.test.ts"
+      ],
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
+    },
+    "apps/gui": {
+      "entry": [
+        "src/**/*.stories.tsx",
+        "src/**/*.test.{ts,tsx}",
+        "tests/e2e/**/*.spec.ts",
+        ".storybook/{main,preview}.{ts,tsx}"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "tests/**/*.ts"]
+    },
+    "packages/shared-contract": {
+      "entry": [],
+      "project": []
+    }
+  },
+  "ignore": [".agents/**"],
+  "ignoreDependencies": [
+    "@typespec/compiler",
+    "@typespec/protobuf",
+    "@bufbuild/buf",
+    "@bufbuild/protoc-gen-es",
+    "tailwindcss"
+  ]
+}

@@ -8,6 +8,17 @@ tasks:
       cache: false
       persistent: true
 
+  # Fails the build on unused files, dependencies and exports. Part of the root
+  # project's task set, so `moon check --all` includes it.
+  knip:
+    command: 'bunx knip'
+    inputs:
+      - 'knip.json'
+      - 'package.json'
+      - 'apps/**/*.{ts,tsx}'
+      - 'apps/**/package.json'
+      - 'packages/**/package.json'
+
   run-local-ci:
     command: 'bash -c "if .agents/skills/local-ci-run/scripts/check.sh >/dev/null 2>&1; then .agents/skills/local-ci-run/scripts/run.sh push; else echo \"⚠️ gh cli or act plugin not installed. Skipping local CI.\"; fi"'
     inputs:

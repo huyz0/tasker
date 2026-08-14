@@ -6,14 +6,14 @@ import { LabelService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb'
 
 const labelClient = createClient(LabelService, transport);
 
-export interface LabelData {
+interface LabelData {
   id: string;
   orgId?: string;
   name: string;
   color?: string;
 }
 
-export interface LabelState {
+interface LabelState {
   attached: LabelData[];
   available: LabelData[];
   isLoading: boolean;
@@ -21,7 +21,7 @@ export interface LabelState {
   error: Error | null;
 }
 
-export interface LabelActions {
+interface LabelActions {
   attachLabel: (labelId: string) => Promise<void>;
   detachLabel: (labelId: string) => Promise<void>;
   createLabel: (name: string, color?: string) => Promise<void>;

@@ -1,10 +1,5 @@
 import React from 'react';
 
-export interface PaginationParams {
-  limit?: number;
-  cursor?: string;
-}
-
 export interface PaginationControlsProps {
   nextCursor?: string;
   onNextPage: (cursor: string) => void;

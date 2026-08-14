@@ -1,11 +1,6 @@
 import { SQL, and, lt, gt, or, eq, desc, asc, isNull, sql } from "drizzle-orm";
 import { SQLiteColumn } from "drizzle-orm/sqlite-core";
 
-export interface PaginationParams {
-  limit?: number;
-  cursor?: string;
-}
-
 export type SortDirection = "asc" | "desc";
 
 /**
@@ -94,7 +89,7 @@ export function buildCursorPaginationWhere(
   );
 }
 
-export function buildPaginationOrderBy(
+function buildPaginationOrderBy(
   sortCol: SQLiteColumn,
   idCol: SQLiteColumn,
   direction: SortDirection = "desc",
@@ -141,7 +136,7 @@ function escapeLikePattern(raw: string): string {
  * combining it with an existing base condition. filterColumn is optional because
  * not every entity has an obvious free-text column to filter on.
  */
-export function applyFilter(baseCondition: SQL | undefined, filterColumn: any, filterValue: string | undefined): SQL | undefined {
+function applyFilter(baseCondition: SQL | undefined, filterColumn: any, filterValue: string | undefined): SQL | undefined {
   if (!filterValue || !filterColumn) return baseCondition;
   const filterClause = sql`${filterColumn} LIKE ${`%${escapeLikePattern(filterValue)}%`} ESCAPE '\\'`;
   return baseCondition ? and(baseCondition, filterClause) : filterClause;
@@ -159,7 +154,7 @@ export interface ParsedSort {
  * empty or doesn't match a whitelisted field, so callers can fall back to the
  * default createdAt/id ordering.
  */
-export function parseSort(sortableColumns: Record<string, any> | undefined, sortValue: string | undefined): ParsedSort | null {
+function parseSort(sortableColumns: Record<string, any> | undefined, sortValue: string | undefined): ParsedSort | null {
   if (!sortValue || !sortableColumns) return null;
   const [field, direction] = sortValue.split(":");
   const column = field ? sortableColumns[field] : undefined;

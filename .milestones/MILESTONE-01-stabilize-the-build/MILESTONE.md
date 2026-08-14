@@ -112,7 +112,7 @@ performance work (M07), any change to the specs' claims (M02).
       - Files: `apps/gui/package-lock.json` (removed), `.specs/standards/dependency-standard.md`
       - Verify: `find . -name 'package-lock.json' -not -path '*/node_modules/*'` is empty.
 
-- [ ] **M01-T11** — Install `knip`, add a `moon run :knip` task wired into
+- [x] **M01-T11** — Install `knip`, add a `moon run :knip` task wired into
       `moon check`, and remove every dependency it reports as unused.
       - Files: `package.json`, `knip.json`, `moon.yml`
       - Verify: `bunx knip` exits zero.

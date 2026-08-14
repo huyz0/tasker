@@ -14,7 +14,7 @@ export const makeAuthContext = (userId: string | null) => {
   return { values: contextValues } as any;
 };
 
-export class MockNatsPublishSpy {
+class MockNatsPublishSpy {
   public publishedMessages: { subject: string; data: any }[] = [];
 
   publish(subject: string, data: any) {

@@ -15,7 +15,7 @@ export interface CommentData {
   createdAt: string;
 }
 
-export interface CommentState {
+interface CommentState {
   comments: CommentData[];
   isLoadingComments: boolean;
   isLoading: boolean;
@@ -23,7 +23,7 @@ export interface CommentState {
   error: Error | null;
 }
 
-export interface CommentActions {
+interface CommentActions {
   addComment: (content: string) => Promise<void>;
   editComment: (commentId: string, content: string) => Promise<void>;
   deleteComment: (commentId: string) => Promise<void>;

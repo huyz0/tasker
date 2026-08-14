@@ -9,7 +9,7 @@ export interface RequestContext {
 // request's execution - not just the request-logging interceptor's own
 // begin/end lines - automatically carries requestId/userId, without every
 // call site having to thread them through manually.
-export const requestContextStore = new AsyncLocalStorage<RequestContext>();
+const requestContextStore = new AsyncLocalStorage<RequestContext>();
 
 export function runWithRequestContext<T>(context: RequestContext, fn: () => T): T {
   return requestContextStore.run(context, fn);

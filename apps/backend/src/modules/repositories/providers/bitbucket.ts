@@ -4,7 +4,7 @@ import { clampBuildsPerPage } from "./github";
 // Direct-token links (authEmail set) use Basic auth per Atlassian's API-token
 // scheme; OAuth2-issued links (authEmail null) use the token as a Bearer
 // access token, per Bitbucket's standard OAuth2 flow.
-export function bitbucketAuthHeader(token: string, authEmail?: string | null): string {
+function bitbucketAuthHeader(token: string, authEmail?: string | null): string {
   if (authEmail) {
     return `Basic ${Buffer.from(`${authEmail}:${token}`).toString('base64')}`;
   }
