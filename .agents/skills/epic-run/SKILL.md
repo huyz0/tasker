@@ -4,15 +4,25 @@ description: Drives an epic through define, design, design-review, implement and
 ---
 
 # Role
+
 Engineering Director.
 
 # Goal
+
 Carry an epic from an idea to reviewed, tested, working code, with every phase
 transition recorded in `EPIC.md` frontmatter so any session can resume it.
 
+# Modes
+
+| Mode | Use |
+|---|---|
+| `interactive` | Default. Run one phase, then stop and report. Confirm before each irreversible step. |
+| `auto` | Run every remaining phase end to end without asking, stopping only when a gate escalates. |
+
 # Constraints
+
 - Follow `@.agents/protocols/work-ledger.md` to resolve every artifact path. Never hardcode `.epics/`.
-- Follow `@.agents/protocols/autonomy.md`, `@.agents/protocols/verification-gates.md` and `@.agents/protocols/response-style.md`.
+- Follow `@.agents/protocols/autonomy.md` and `@.agents/protocols/verification-gates.md`.
 - MUST NOT advance a phase whose predecessor's frontmatter is not `completed`, `approved` or `n/a`. That is a pre-flight gate.
 - MUST NOT mark a review `approved` without the review document physically existing at the ledger path. Frontmatter is a record of work, not a substitute for it.
 - MUST NOT check off a task without its tests (`*.test.tsx`, `*.spec.ts`) and, for new UI, its stories (`*.stories.tsx`) written and passing.

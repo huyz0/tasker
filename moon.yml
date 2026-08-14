@@ -47,6 +47,24 @@ tasks:
       - '/.claude/**/*'
       - '/.specs/standards/**/*'
 
+  # Markdown is the substrate of this whole system — skills, protocols, specs and
+  # milestones are all prose that agents execute. It stayed advisory while it
+  # reported 615 errors; now that the conventions are recorded in
+  # `.markdownlint-cli2.jsonc` and the tree is clean, it can hold the line.
+  docs-lint:
+    deps:
+      - 'shared-contract:install-deps'
+    command: 'node .agents/skills/markdown-lint/scripts/lint-markdown.mjs'
+    inputs:
+      - '/.agents/**/*.md'
+      - '/.claude/**/*.md'
+      - '/.specs/**/*.md'
+      - '/.milestones/**/*.md'
+      - '/*.md'
+      - '/apps/*/*.md'
+      - '/packages/*/*.md'
+      - '/.markdownlint-cli2.jsonc'
+
   run-local-ci:
     command: 'bash -c "if .agents/skills/local-ci-run/scripts/check.sh >/dev/null 2>&1; then .agents/skills/local-ci-run/scripts/run.sh push; else echo \"⚠️ gh cli or act plugin not installed. Skipping local CI.\"; fi"'
     inputs:

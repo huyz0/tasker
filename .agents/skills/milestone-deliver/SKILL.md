@@ -4,19 +4,25 @@ description: Delivers the next unchecked task of a delivery milestone in .milest
 ---
 
 # Role
+
 Delivery Engineer.
 
-# Execution Mode
-- **Interactive**: Confirm with `AskUserQuestion` before starting each task and before committing. Never check off a task without confirmation.
-- **Autonomous (`-auto`)**: Implement, verify, record and commit each task without asking. Continue until the milestone is done, a task is blocked, or verification fails twice on the same task.
+# Modes
+
+| Mode | Use |
+|---|---|
+| `interactive` | Default. Confirm before starting each task and before each commit. Never check off a task without confirmation. |
+| `auto` | Implement, verify, record and commit each task without asking. Continue until the milestone is done, a task blocks, or verification fails twice on the same task. |
 
 # Goal
+
 Move a milestone toward `done` one task at a time, leaving the repository in a
 state that any other session can resume from with no conversational context.
 
 # Constraints
+
 - Follow `@.agents/protocols/work-ledger.md` to resolve the milestones path and state file.
-- Follow `@.agents/protocols/autonomy.md`, `@.agents/protocols/verification-gates.md` and `@.agents/protocols/response-style.md`.
+- Follow `@.agents/protocols/autonomy.md` and `@.agents/protocols/verification-gates.md`.
 - ALWAYS read `.specs/standards/milestone-standard.md` before writing to any milestone file.
 - MUST NOT start a milestone whose `depends_on` milestones are not all `status: done`. Report the blocking milestone and stop.
 - MUST NOT check off a task (`- [x]`) until its **Verify** line has actually been executed and passed. Reporting an unverified task as done is forbidden.
@@ -42,38 +48,39 @@ state that any other session can resume from with no conversational context.
 
 ## Phase 2: Select the task
 
-7. **Pick the target**: the in-flight task from step 6, or the first `- [ ]` task in document order.
-8. **If no unchecked tasks remain**, go to Phase 5 (Close the milestone).
-9. **Interactive only**: Ask the user to confirm the task, and whether they have file-path or approach constraints.
+1. **Pick the target**: the in-flight task from step 6, or the first `- [ ]` task in document order.
+2. **If no unchecked tasks remain**, go to Phase 5 (Close the milestone).
+3. **Interactive only**: Ask the user to confirm the task, and whether they have file-path or approach constraints.
 
 ## Phase 3: Prepare
 
-10. **Branch**: Ensure the current branch is `feature/m<NN>-<kebab-title>`. Create it from the default branch if it does not exist. Never commit directly to the default branch.
-11. **Inject standards**: Invoke `context-inject` selecting at most 2 standards relevant to this task's surface, chosen from `.specs/standards/index.yml`. Backend work reads `api-standard`; UI reads `frontend-standard` or `ui-ux-standard`; anything touching authorization reads `security-standard`.
-12. **Open the journal**: Append an entry for this task to `PROGRESS.md` with `**Status**: in-progress`, today's date, and the intended approach in one sentence. Create `PROGRESS.md` from the template in `milestone-standard.md` if it does not exist.
-13. **Update state**: Set `active_task` in `STATE.md` and set the milestone's `status` to `in-progress` and `started_at` if this is its first task.
+ 1. **Branch**: Ensure the current branch is `feature/m<NN>-<kebab-title>`. Create it from the default branch if it does not exist. Never commit directly to the default branch.
+ 2. **Inject standards**: Invoke `context-inject` selecting at most 2 standards relevant to this task's surface, chosen from `.specs/standards/index.yml`. Backend work reads `api-standard`; UI reads `frontend-standard` or `ui-ux-standard`; anything touching authorization reads `security-standard`.
+ 3. **Open the journal**: Append an entry for this task to `PROGRESS.md` with `**Status**: in-progress`, today's date, and the intended approach in one sentence. Create `PROGRESS.md` from the template in `milestone-standard.md` if it does not exist.
+ 4. **Update state**: Set `active_task` in `STATE.md` and set the milestone's `status` to `in-progress` and `started_at` if this is its first task.
 
 ## Phase 4: Deliver
 
-14. **Implement** the task's stated outcome, touching the files it names. If the real change needs different files, that is fine — record the divergence in the journal entry.
-15. **Write tests** covering the new behaviour, and stories for new UI components.
-16. **Verify**: Execute the task's **Verify** line. If it is an observation rather than a command, perform it and state what was observed.
-17. **On failure**: fix and re-verify. After two consecutive failures, stop: set `blocked: true` and `blocker` in `STATE.md`, mark the journal entry `blocked` with the failing output, commit, and report. Do not proceed to another task.
-18. **Record**: Update the journal entry to `**Status**: done` with what changed, what was run, and the result. Check the task box `- [x]`. Update `STATE.md`'s ledger counts and `active_task` to the next task.
-19. **Commit**: Stage the code, tests, `MILESTONE.md`, `PROGRESS.md` and `STATE.md` together. Commit with the conventional message and the task id.
+ 1. **Implement** the task's stated outcome, touching the files it names. If the real change needs different files, that is fine — record the divergence in the journal entry.
+ 2. **Write tests** covering the new behaviour, and stories for new UI components.
+ 3. **Verify**: Execute the task's **Verify** line. If it is an observation rather than a command, perform it and state what was observed.
+ 4. **On failure**: fix and re-verify. After two consecutive failures, stop: set `blocked: true` and `blocker` in `STATE.md`, mark the journal entry `blocked` with the failing output, commit, and report. Do not proceed to another task.
+ 5. **Record**: Update the journal entry to `**Status**: done` with what changed, what was run, and the result. Check the task box `- [x]`. Update `STATE.md`'s ledger counts and `active_task` to the next task.
+ 6. **Commit**: Stage the code, tests, `MILESTONE.md`, `PROGRESS.md` and `STATE.md` together. Commit with the conventional message and the task id.
     - Interactive: confirm the message with the user first.
-20. **Continue**:
+ 7. **Continue**:
     - Interactive: ask whether to continue to the next task or stop.
     - Autonomous: return to Phase 2.
 
 ## Phase 5: Close the milestone
 
-21. **Close it** by following `references/close-milestone.md`. It runs once per
+ 1. **Close it** by following `references/close-milestone.md`. It runs once per
     milestone, so read it only when there are no unchecked tasks left.
 
 # Output Format
 
 ## Task completion
+
 ```
 ✓ [M03-T06] Paginate listOrgMembers
   Changed:  modules/orgs/orgs.handler.ts, db/query-builder.ts, orgs.test.ts
@@ -84,6 +91,7 @@ state that any other session can resume from with no conversational context.
 ```
 
 ## Blocked
+
 ```
 ⚠ BLOCKED at [M03-T06]
   Failure:  <the actual failing output, not a paraphrase>

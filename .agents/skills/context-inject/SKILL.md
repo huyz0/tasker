@@ -4,20 +4,29 @@ description: Loads only the project standards and product foundations that a tas
 ---
 
 # Role
+
 Just-In-Time Context Loader.
 
 # Goal
+
 Put the smallest set of binding rules in context before work starts, so the agent
 is constrained by this project rather than by its training defaults.
 
+# Modes
+
+| Mode | Use |
+|---|---|
+| `interactive` | Default. Ask only when the task's domain is genuinely ambiguous. |
+| `auto` | Never ask. Select at most 2 standards from the task surface and inject them. |
+
 # Constraints
+
 - MUST select a **maximum of 2 standards**. More than two produces lost-in-the-middle behaviour and defeats the purpose.
-- MUST read `.specs/standards/index.yml` — never the standards themselves — to decide what is relevant.
+- MUST route from the `AGENTS.md` §3 table first — it is already in context and costs nothing. Read `index.yml` only when the surface is not in the table, and never read a standard to decide whether it applies.
 - MUST NOT load product foundations for a review or an implementation task. They bind planning, not code.
 - MUST NOT wrap injected content in banners, preambles or summaries of what is about to be read.
 - MUST report which files were injected. Silent injection is unauditable.
-- In autonomous mode NEVER ask; select automatically. In interactive mode ask only when the domain is genuinely ambiguous.
-- Follow `@.agents/protocols/context-budget.md` — reference paths in plans and skills, inline content only in conversation.
+- Follow `@.agents/protocols/context-budget.md` — reference paths in plans and skills, inline content only in conversation, and never pass either to a sub-agent that can select for itself.
 
 # Instructions
 
@@ -27,18 +36,11 @@ is constrained by this project rather than by its training defaults.
    - `review` — code, security, QA, architecture review.
    - `authoring` — writing a skill, workflow or plan document.
 
-2. **Select standards.** Read `.specs/standards/index.yml` and match its
-   descriptions against the task's surface. At most 2:
-
-   | Surface | Standards |
-   |---|---|
-   | Backend / RPC / handlers | `api-standard`, `observability-standard` |
-   | UI components, layout | `frontend-standard`, `ui-ux-standard` |
-   | Anything touching authz, tokens, tenancy | `security-standard` |
-   | Tests, coverage, fixtures | `testing-standard`, `ui-testing-standard` |
-   | Commits, branches, PRs | `git-workflow-standard` |
-   | Milestone files | `milestone-standard` |
-   | Packages, versions, lockfiles | `dependency-standard` |
+2. **Select standards.** The routing table in `AGENTS.md` §3 is the source of
+   truth and it is already in context — do not restate it here and do not read
+   `index.yml` when the table answers the question. Read `index.yml` only when
+   the surface is not in the table, and then match on its descriptions. At most 2
+   either way.
 
 3. **Select product foundations** — `planning` tasks only, from `.specs/product/`:
    `architecture.md` for system design, `tech-stack.md` for tooling choices,
@@ -46,10 +48,12 @@ is constrained by this project rather than by its training defaults.
 
 4. **Inject by scenario.**
    - `coding` and `review`: read the files and inline their content, densely:
+
      ```
      @<path>
      <content>
      ```
+
      Close with `**Priority**:` and a one-line summary of the binding rule.
    - `planning` and `authoring`: emit **path references only** (`@.specs/standards/api-standard.md`).
      A plan or skill that inlines a standard forks it; a reference cannot drift.

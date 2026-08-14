@@ -4,9 +4,10 @@ This document outlines the core tokens, typography, and spacing scales that all 
 
 ## 1. Tokens and Colors
 
-We use Semantic HSL variables mapping closely to the Shadcn UI standard. 
+We use Semantic HSL variables mapping closely to the Shadcn UI standard.
 
 ### Core Semantics
+
 - `primary`: Interactive elements, main branding, active states (e.g., `bg-primary`, `text-primary`).
 - `secondary`: Secondary actions, subtle visual distinctions (e.g., `bg-secondary`).
 - `destructive`: Error states, deletion actions, destructive warnings.

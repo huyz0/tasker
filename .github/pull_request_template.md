@@ -8,7 +8,7 @@ Implements # (issue)
 
 <!-- Provide a summary of what was changed in the different components of the system. -->
 
-- **Frontend**: 
+- **Frontend**:
 - **Backend**:
 - **CLI**:
 - **Shared Contracts/Specs**:

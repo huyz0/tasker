@@ -4,9 +4,11 @@ description: Creates, audits, compresses and evolves the agent harness itself �
 ---
 
 # Role
+
 Harness Engineer.
 
 # Goal
+
 Keep `.agents/` a comprehensive, portable, token-efficient system in which every
 skill is discoverable at tier 0, complete at tier 1, and provably consistent.
 
@@ -21,6 +23,7 @@ skill is discoverable at tier 0, complete at tier 1, and provably consistent.
 | `evolve` | Find and fix the harness's own weaknesses, then re-audit. |
 
 # Constraints
+
 - ALWAYS read `@.agents/protocols/skill-authoring.md` before writing any skill file. It is the contract the validator enforces.
 - MUST run `scripts/validate.mjs` after every change and report the real output. A skill is not done because it looks right.
 - MUST NOT hand-edit anything under `.claude/`. It is generated — fix `.agents/` and re-run `sync`.
@@ -29,7 +32,6 @@ skill is discoverable at tier 0, complete at tier 1, and provably consistent.
 - MUST NOT delete a skill without saying which skill now owns its behaviour.
 - NEVER let a fix be "raise the budget". Over-budget means content belongs in `references/`.
 - Follow `@.agents/protocols/autonomy.md` for interactive vs autonomous behaviour.
-- Follow `@.agents/protocols/response-style.md` when reporting.
 
 # Instructions
 
@@ -41,7 +43,11 @@ skill is discoverable at tier 0, complete at tier 1, and provably consistent.
 
 ## Phase 2: Act
 
+Steps are numbered across the whole skill, not per mode, so a reference to
+"step 13" means one thing.
+
 ### audit
+
 3. Report the validator output verbatim, then add what it cannot see: skills
    whose descriptions overlap (two skills competing for one trigger), skills no
    workflow or document ever mentions, and protocols with a single consumer
@@ -50,6 +56,7 @@ skill is discoverable at tier 0, complete at tier 1, and provably consistent.
    one host, an overlapping description misroutes silently. Stop.
 
 ### new
+
 5. Apply the quality gate in the authoring protocol. If any of the three answers
    fails, say which one and stop — propose documentation instead.
 6. Gather the objective, boundaries, ordered steps, and the report shape.
@@ -58,10 +65,12 @@ skill is discoverable at tier 0, complete at tier 1, and provably consistent.
    the body under the tier-1 budget. Detail that does not fit goes to
    `references/`, referenced by name from the body.
 8. Write `.agents/workflows/<name>.md` — a forwarder, not a second copy of the
-   instructions. Add `<name>-auto.md` only if the skill has an autonomous mode.
+   instructions. Add `<name>-auto.md` only if the skill has an autonomous mode,
+   and declare that mode in the skill's `# Modes` table.
 9. Run `sync`, then re-run the validator. Both must be clean.
 
 ### optimize
+
 10. Read the target skill. Identify, in order: text a protocol already owns,
     detail that belongs in `references/`, filler and preamble, and restatements
     of another skill's procedure.
@@ -70,10 +79,12 @@ skill is discoverable at tier 0, complete at tier 1, and provably consistent.
 12. Re-run the validator and report the before/after body size.
 
 ### sync
+
 13. Run `node .agents/skills/skill-forge/scripts/sync-adapters.mjs`. Report what
     changed. Use `--check` to verify parity without writing.
 
 ### evolve
+
 14. Run the audit, then read the last three `PROGRESS.md` entries of the active
     milestone and the most recent session's friction: steps an agent had to
     rediscover, rules it broke, paths it guessed.

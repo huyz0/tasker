@@ -81,6 +81,36 @@ anything.
 
 ## Handoff notes
 
+**2026-08-15 — Harness reviewed for token cost, consistency and scope.**
+
+1. **Routing moved into the always-on layer.** `AGENTS.md` §3 now carries a
+   surface → standards table. Selecting the two binding standards no longer
+   costs an `index.yml` read or a skill invocation; `/context-inject` is for the
+   ambiguous case only. Tier 0 fell 4,069 → 3,773 chars (≈943 tokens for 19
+   skills).
+2. **Scope is explicit.** `context-budget.md` now defines what a *task*, a
+   *session* and a *sub-agent* each load and drop. Sub-agents get paths and
+   their own brief — never the orchestrator's accumulated context.
+3. **Consistency is enforced, not asked for.** The validator now fails on
+   `# Execution Mode` (the section is `# Modes`), an `-auto` workflow against a
+   skill with no `# Modes` table, `AskUserQuestion` without the autonomy
+   protocol, and a second lockfile inside a skill.
+4. **`markdown-lint` was quietly broken twice.** Its default `**/*.md` skipped
+   every dot-directory, so "lint everything" checked 7 files and ignored
+   `.agents/`, `.specs/` and `.milestones/`; and it claimed in a comment to
+   honour a project config it never read. Both fixed. It also shipped its own
+   `bun.lock` and 22MB of `node_modules` — a second lockfile
+   `dependency-standard.md` forbids. Its three dependencies now come from the
+   workspace root and are declared in `knip.json`'s `ignoreDependencies`,
+   because knip cannot see `.agents/**`.
+5. **`moon run :docs-lint` is now a gate**, in `moon check --all` and CI. The
+   whole tree is clean (160 files). Conventions that differ from markdownlint's
+   defaults are recorded with reasons in `.markdownlint-cli2.jsonc` — notably
+   MD025 (skills use sibling `#` sections by design) and MD029 (skill steps are
+   numbered across the file, so `--fix` must not restart them per section).
+
+Verified: `moon check --all` 22 tasks pass · validator 0 errors 0 warnings.
+
 **2026-08-15 — UI/UX design harness added (outside the milestone plan).**
 
 Researched the 2026 design-skill landscape (Vercel Web Interface Guidelines,

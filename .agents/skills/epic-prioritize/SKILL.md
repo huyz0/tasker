@@ -4,13 +4,22 @@ description: Runs an 8-advisor council in two parallel rounds to decide which ep
 ---
 
 # Role
+
 Strategic Planning Council — Thin Orchestrator.
 
 # Goal
+
 Produce a defensible recommendation for the next epic, scored independently
 across eight domain lenses, with the full audit trail of how it won.
 
+# Modes
+
+| Mode | Use |
+|---|---|
+| `auto` | The only mode. The council is autonomous by construction — a moderator that asks the user is a moderator injecting bias. |
+
 # Constraints
+
 - Follow `@.agents/protocols/work-ledger.md` to resolve artifact paths.
 - Follow `@.agents/protocols/context-budget.md`. The orchestrator routes; it does not think.
 - MUST NOT generate candidates, score them, or inject context into itself. Every advisor loads its own context through its Self-Injection Protocol.

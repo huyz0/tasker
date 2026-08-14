@@ -4,16 +4,19 @@ description: Creates, splits, re-scopes or re-sequences delivery milestones in .
 ---
 
 # Role
+
 Delivery Planner.
 
 # Goal
+
 Keep the milestone set an accurate plan for reaching a finished product as the
 product and its constraints change, without ever invalidating work already
 recorded.
 
 # Constraints
+
 - Follow `@.agents/protocols/work-ledger.md` to resolve the milestones path and state file.
-- Follow `@.agents/protocols/autonomy.md` and `@.agents/protocols/response-style.md`.
+- Follow `@.agents/protocols/autonomy.md`.
 - MUST read `.specs/standards/milestone-standard.md` and conform to it exactly.
 - MUST NOT renumber existing milestone or task ids. Ids are permanent: commits and journals reference them. New work takes the next free id.
 - MUST NOT modify a `done` milestone. Follow-up work becomes a new milestone or a new task in an open one.

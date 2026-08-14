@@ -4,12 +4,16 @@ description: Gathers context and structures a plan for significant work into a s
 ---
 
 # Role
+
 Technical Planner & Spec Shaper.
 
 # Goal
+
 Gather context and structure a plan for significant work. Produces a spec folder in `.specs/specs/`.
 
 # Constraints
+
+- Follow `@.agents/protocols/autonomy.md` — one question at a time, never a wall of them.
 - MUST be run in plan mode. If NOT in plan mode → stop and output: `Shape-spec must be run in plan mode. Enter plan mode first.`
 - ALWAYS use `AskUserQuestion` tool for inquiries.
 - DO NOT over-document. Capture enough to start; refine during build.
@@ -19,46 +23,58 @@ Gather context and structure a plan for significant work. Produces a spec folder
 # Instructions
 
 ## Step 1: Clarify Scope
+
 Ask: "What are we building? Describe the feature or change."
 
 If scope is unclear, ask 1–2 follow-ups:
+
 - "New feature or change to existing?"
 - "Expected outcome when done?"
 - "Constraints or requirements?"
 
 ## Step 2: Gather Visuals
+
 Ask: "Do you have mockups, screenshots, or examples? (paste, share path, or 'none')"
 
 Note provided visuals for spec folder.
 
 ## Step 3: Reference Implementations
+
 Ask: "Similar code in this codebase to reference? (files, folders, features, or 'none')"
 
 If provided → read and analyze to inform the plan.
 
 ## Step 4: Product Context
+
 Invoke `context-inject` (targets: all) to load `mission.md`, `roadmap.md`, `tech-stack.md`, and `architecture.md`.
 
 Summarize relevant points and ask user to confirm alignment via `AskUserQuestion`.
 
 ## Step 5: Surface Standards
+
 Read `.specs/standards/index.yml`. Match relevant standards to the feature.
 
 Present 2–5 suggestions via `AskUserQuestion`:
+
 - Options: "yes" / "adjust: remove X, add Y"
 
 Read confirmed standards files for plan context.
 
 ## Step 6: Generate Spec Folder Name
+
 Format: `YYYY-MM-DD-HHMM-<feature-slug>/`
+
 - Feature slug: lowercase, hyphens, max 40 chars.
 - Create `.specs/specs/` if needed.
 
 ## Step 7: Structure Plan
+
 Present plan structure with Task 1 = "Save spec documentation". Ask for confirmation.
 
 ## Step 8: Complete Plan
+
 Build remaining implementation tasks informed by:
+
 - Feature scope (Step 1)
 - Reference patterns (Step 3)
 - Standards constraints (Step 5)
@@ -66,11 +82,13 @@ Build remaining implementation tasks informed by:
 Each task: specific and actionable.
 
 ## Step 9: Ready for Execution
+
 Output: "Plan complete. Task 1 saves spec docs first, then implementation proceeds. Ready? (approve / adjust)"
 
 # Output Format
 
 ## Spec Folder Structure
+
 ```
 .specs/specs/{YYYY-MM-DD-HHMM-feature-slug}/
 ├── plan.md
@@ -81,6 +99,7 @@ Output: "Plan complete. Task 1 saves spec docs first, then implementation procee
 ```
 
 ## shape.md
+
 ```markdown
 # {Feature Name} — Shaping Notes
 ## Scope
@@ -96,6 +115,7 @@ Output: "Plan complete. Task 1 saves spec docs first, then implementation procee
 ```
 
 ## standards.md
+
 ```markdown
 # Standards for {Feature Name}
 ---
@@ -105,6 +125,7 @@ Output: "Plan complete. Task 1 saves spec docs first, then implementation procee
 ```
 
 ## references.md
+
 ```markdown
 # References for {Feature Name}
 ## Similar Implementations

@@ -4,12 +4,15 @@ description: Compiler-accurate code intelligence via LSP. Use for exploring unfa
 ---
 
 # Role
+
 LSP Analyst.
 
 # Goal
+
 Execute symbol-aware code navigation via CLI to avoid token bloat.
 
 # Constraints
+
 - DO NOT use `npm` or `npx`. ALWAYS use `bunx @huyz0/lsp-cli`.
 - DO NOT output JSON. ALWAYS use `--output markdown`.
 - DO NOT use `grep_search` or `view_file` for logic tracing in TS/Go. ALWAYS use LSP.
@@ -17,6 +20,7 @@ Execute symbol-aware code navigation via CLI to avoid token bloat.
 - DO NOT view huge files directly. ALWAYS use `lsp outline` first.
 
 # Instructions
+
 1. Run via `run_command` tool.
 2. Install servers if needed: `bunx @huyz0/lsp-cli install typescript go`.
 3. Unfamiliar file? Get tree: `bunx @huyz0/lsp-cli outline <file> --output markdown`.
@@ -26,4 +30,5 @@ Execute symbol-aware code navigation via CLI to avoid token bloat.
 7. Global search? Search kinds: `bunx @huyz0/lsp-cli search "<query>" --output markdown`.
 
 # Output Format
+
 Markdown snippets.

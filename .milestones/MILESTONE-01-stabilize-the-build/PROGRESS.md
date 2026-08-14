@@ -3,6 +3,7 @@
 Append-only. Newest entry at the bottom. One entry per task attempt.
 
 ## M01-T01 — URL-driven task and artifact detail routes
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: apps/gui/src/App.tsx, apps/gui/src/features/Tasks/index.tsx,
@@ -26,6 +27,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T02
 
 ## M01-T02 — Not Found view on the catch-all route
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: apps/gui/src/pages/NotFound.tsx (new), NotFound.test.tsx (new),
@@ -41,6 +43,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T03
 
 ## M01-T03 — Every search result lands on a rendered entity
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: apps/gui/src/components/layout/GlobalSearch.tsx,
@@ -59,6 +62,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T04
 
 ## M01-T04 — Read-only health probe
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: apps/backend/src/modules/health/health.handler.ts,
@@ -83,6 +87,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T05
 
 ## M01-T05 — `moon run dev` produces a logged-in app
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: scripts/dev.sh, apps/backend/.env.example (new),
@@ -116,6 +121,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T06
 
 ## M01-T06 — GUI tests and the coverage gate run in CI
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: .github/workflows/ci.yml
@@ -137,6 +143,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T07
 
 ## M01-T07 — E2E runs in CI
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: apps/gui/playwright.config.ts, apps/gui/moon.yml,
@@ -169,6 +176,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T08
 
 ## M01-T08 — Remove the unreachable specs, keep what they meant
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: apps/gui/e2e/{agents,organizations,projects,tasks}.spec.ts
@@ -192,6 +200,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T09
 
 ## M01-T09 — Align the Go toolchain
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: .prototools, .github/workflows/ci.yml
@@ -215,6 +224,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T10
 
 ## M01-T10 — One lockfile per ecosystem
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: apps/gui/package-lock.json (removed),
@@ -234,6 +244,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T11
 
 ## M01-T11 — knip gates unused code and dependencies
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: package.json, knip.json (new), moon.yml, apps/gui/moon.yml,
@@ -273,6 +284,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T12
 
 ## M01-T12 — Fixtures that fail loudly
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: apps/backend/src/test/setup.ts,
@@ -300,6 +312,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T13
 
 ## M01-T13 — Pre-commit hook active by default
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: moon.yml, apps/gui/moon.yml, README.md
@@ -331,6 +344,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: M01-T14
 
 ## M01-T14 — A clean clone bootstraps its own dependencies
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: packages/shared-contract/moon.yml, moon.yml, apps/gui/moon.yml,
@@ -373,6 +387,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
 - **Next**: milestone close
 
 ## M01 — exit criteria
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Verified**: each criterion run, not inferred.
@@ -400,6 +415,7 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   workspace with no default project.
 
 ## M01 — post-close follow-ups
+
 - **Status**: done
 - **Date**: 2026-08-15
 - **Changed**: apps/backend/scripts/seed.ts, apps/backend/package.json,

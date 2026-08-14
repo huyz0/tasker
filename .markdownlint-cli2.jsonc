@@ -1,0 +1,42 @@
+// Markdown conventions for this repository, used by the `markdown-lint` skill.
+//
+// Without this, the linter reported 85 MD025 violations against the skill
+// schema that `.agents/protocols/skill-authoring.md` *requires* — two of our
+// own gates contradicting each other. A linter that cannot be satisfied is a
+// linter nobody runs, so the config states which defaults do not apply here and
+// why, rather than the rules being quietly ignored.
+{
+  "config": {
+    // Skills use `# Role` / `# Goal` / `# Constraints` as sibling top-level
+    // sections. That is the schema the validator enforces, not an accident.
+    "MD025": false,
+    // Prose here is wrapped for review, not for a column limit.
+    "MD013": false,
+    // Output-format blocks are illustrative shapes, not runnable code, so
+    // demanding a language tag on every fence adds noise without meaning.
+    "MD040": false,
+    // The same heading legitimately recurs under different parents — several
+    // skills document a `## review` and a `## direct` mode side by side.
+    "MD024": { "siblings_only": true },
+    // Tables are written with padded delimiters (`| --- | --- |`).
+    "MD060": { "style": "padded" },
+    // `<details>` blocks in council reports and review traces are intentional.
+    "MD033": false,
+    // Skill steps are numbered across the whole skill, not restarted per mode
+    // subsection, so "step 13" is unambiguous. `--fix` renumbers them per block
+    // and silently breaks those cross-references.
+    "MD029": false,
+    // Generated host adapters open with a provenance comment and forwarding
+    // prose; their title is the frontmatter `name`. Issue and PR templates open
+    // at `##` by GitHub convention.
+    "MD041": false
+  },
+  "globs": ["**/*.md"],
+  "ignores": [
+    "node_modules/**",
+    "**/node_modules/**",
+    ".archive/**",
+    "apps/*/node_modules/**",
+    "packages/*/node_modules/**"
+  ]
+}

@@ -1,15 +1,18 @@
 ---
 name: markdown-lint
-description: Deterministically lints Markdown files and validates embedded Mermaid code blocks using a Node.js script (markdownlint + @a24z/mermaid-parser). Use when an LLM has generated or modified Markdown artifacts and you need a machine-verifiable pass/fail check before accepting the output.
+description: Lints Markdown and validates embedded Mermaid blocks deterministically via a bundled script. Use after generating or editing any Markdown artifact, when a machine-verifiable pass/fail is needed rather than a reading.
 ---
 
 # Role
+
 Deterministic Markdown Quality Gate enforcing structural lint rules and Mermaid diagram syntax correctness.
 
 # Goal
+
 Run the bundled Node.js linting script against one or more Markdown files and surface all lint violations and invalid Mermaid blocks as structured output so the caller can decide to fix or reject the content.
 
 # Constraints
+
 - DO NOT modify source files; this skill is read-only validation only.
 - DO NOT skip the Mermaid validation phase even when lint phase passes.
 - DO NOT rely solely on LLM judgement — always execute the script for a deterministic result.
@@ -19,28 +22,38 @@ Run the bundled Node.js linting script against one or more Markdown files and su
 - ALWAYS exit with a non-zero status code when any error is found so CI/CD pipelines fail correctly.
 
 # Context
-The script at `.agents/skills/markdown-lint/scripts/lint-markdown.mjs` auto-installs its own dependencies (`markdownlint-cli2`, `@a24z/mermaid-parser`, `glob`) on first run via `bun install`. No manual setup is required.
+
+The script at `.agents/skills/markdown-lint/scripts/lint-markdown.mjs` resolves `markdownlint-cli2`, `@a24z/mermaid-parser` and `glob` from the workspace root, so `bun install` at the root is the only setup. It used to install them into a private `node_modules` under the skill, which produced a second committed lockfile that no build read and `knip` could not audit.
+
+Rules come from `.markdownlint-cli2.jsonc` at the repository root. That file records which markdownlint defaults do not apply here and why — notably `MD025`, because the skill schema uses sibling `#` sections by design, and `MD029`, because skill steps are numbered across the whole file so `--fix` must not restart them per section.
 
 Exit codes from the script:
+
 - `0` – all checks passed
 - `1` – lint or Mermaid errors found (content must be fixed)
 - `2` – script execution error (runtime/dependency failure)
 
 # Instructions
+
 1. **Identify targets:** Determine which Markdown file(s) or glob pattern(s) to validate.
    - Default: `**/*.md` (entire project)
    - Epic-scoped: pass the epic folder, e.g. `.epics/EPIC-0001-my-feature/**/*.md`
    - Single file: pass the exact relative path
 
 2. **Run the script:**
+
    ```bash
    node .agents/skills/markdown-lint/scripts/lint-markdown.mjs [glob-or-file...]
    ```
+
    Example — validate all files in an epic:
+
    ```bash
    node .agents/skills/markdown-lint/scripts/lint-markdown.mjs ".epics/EPIC-0001-*/**/*.md"
    ```
+
    Example — validate a single spec file:
+
    ```bash
    node .agents/skills/markdown-lint/scripts/lint-markdown.mjs ".specs/product/ARCHITECTURE.md"
    ```
@@ -58,6 +71,7 @@ Exit codes from the script:
 5. **Report summary:** Emit a structured summary block (see Output Format).
 
 # Output Format
+
 ```
 ## Markdown Lint Report
 

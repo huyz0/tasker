@@ -9,12 +9,14 @@ One reference, two phases. **Design review** judges artifacts before code exists
   Scan the target directory for the highest existing `v{N}` and write `N+1`.
   Never overwrite a review — the trace is the audit trail.
 - Every review document carries frontmatter:
+
   ```yaml
   ---
   timestamp: [ISO 8601]
   decision: [approved|rejected]
   ---
   ```
+
 - Update the matching `EPIC.md` field to `approved` or `rejected`. A phase marked
   `n/a` in `designs` must be `n/a` in `design_reviews` too.
 - Load at most two standards via `context-inject`, chosen from the diff or the

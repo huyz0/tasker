@@ -12,11 +12,12 @@
  *   1 – lint / mermaid errors found
  *   2 – script / runtime error
  *
- * Dependencies are installed on first run into the skill's own node_modules
- * so they never pollute the host project. No manual setup required.
+ * Dependencies come from the workspace root. They used to be installed into a
+ * private node_modules under this skill, which produced a second committed
+ * bun.lock — a second, unverified resolution that no build reads and `knip`
+ * cannot audit, and which `dependency-standard.md` forbids outright.
  */
 
-import { execSync }        from 'child_process';
 import { createRequire }   from 'module';
 import { readFileSync, existsSync } from 'fs';
 import { resolve, relative, dirname } from 'path';
@@ -24,7 +25,7 @@ import { fileURLToPath }   from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
-const SKILL_DIR  = resolve(__dirname, '..'); // .agents/skills/markdown-lint/
+const REPO_ROOT  = resolve(__dirname, '../../../..'); // repository root
 
 // ─── ANSI colour helpers ──────────────────────────────────────────────────────
 const C = {
@@ -35,45 +36,49 @@ const C = {
   bold:   s => `\x1b[1m${s}\x1b[0m`,
 };
 
-// ─── Ensure dependencies are installed ───────────────────────────────────────
-const SENTINEL = resolve(SKILL_DIR, 'node_modules', '.install-done');
-if (!existsSync(SENTINEL)) {
-  process.stderr.write(C.yellow('First run: installing dependencies into skill directory…\n'));
-  execSync(
-    `bun install --cwd "${SKILL_DIR}"`,
-    { stdio: 'inherit', cwd: SKILL_DIR }
-  );
-  execSync(`touch "${SENTINEL}"`);
-  process.stderr.write(C.green('Dependencies installed.\n\n'));
+// ─── Resolve packages from the workspace root ────────────────────────────────
+const rootRequire = createRequire(resolve(REPO_ROOT, 'package.json'));
+
+function resolveRoot(pkg) {
+  try {
+    return `file://${rootRequire.resolve(pkg)}`;
+  } catch {
+    console.error(
+      `${C.red('SETUP')}  ${pkg} is not installed. Run \`bun install\` at the repository root.`
+    );
+    process.exit(2);
+  }
 }
 
-// ─── Resolve package paths from skill-local node_modules ─────────────────────
-const skillRequire = createRequire(resolve(SKILL_DIR, 'package.json'));
-
-function resolveLocal(pkg) {
-  return `file://${skillRequire.resolve(pkg)}`;
-}
-
-// markdownlint-cli2 exports `lint` under the /markdownlint/promise sub-path
-const mlPromisePath = resolve(
-  SKILL_DIR,
-  'node_modules',
-  'markdownlint-cli2',
-  'export-markdownlint-promise.mjs'
+// markdownlint-cli2 does not declare this file in `exports`, so resolve the
+// package entry and walk to it rather than asking for the sub-path.
+const mlDir = dirname(rootRequire.resolve('markdownlint-cli2'));
+const { lint: markdownlintPromise } = await import(
+  `file://${resolve(mlDir, 'export-markdownlint-promise.mjs')}`
 );
-const { lint: markdownlintPromise } = await import(`file://${mlPromisePath}`);
-
-const { validate: validateMermaid } = await import(resolveLocal('@a24z/mermaid-parser'));
-const { globSync }                  = await import(resolveLocal('glob'));
+const { validate: validateMermaid } = await import(resolveRoot('@a24z/mermaid-parser'));
+const { globSync }                  = await import(resolveRoot('glob'));
 
 // ─── Collect target files ─────────────────────────────────────────────────────
 const args        = process.argv.slice(2).filter(a => !a.startsWith('--'));
 const patterns    = args.length ? args : ['**/*.md'];
 const cwd         = process.cwd();
-const IGNORE      = ['**/node_modules/**', '**/.git/**'];
+// `.archive/` is history: its epics and reviews are a record of what was
+// written at the time, not documents anyone will edit to satisfy a linter.
+const IGNORE      = [
+  '**/node_modules/**',
+  '**/.git/**',
+  '.archive/**',
+  '**/dist/**',
+  '**/coverage/**',
+  '**/playwright-report/**',
+];
 
+// `dot: true` matters more than it looks: without it glob skips every
+// dot-directory, so the default `**/*.md` silently checked 7 files and ignored
+// `.agents/`, `.specs/` and `.milestones/` entirely — the whole point of the skill.
 const files = patterns.flatMap(p =>
-  globSync(p, { cwd, ignore: IGNORE, absolute: true })
+  globSync(p, { cwd, ignore: IGNORE, absolute: true, dot: true })
 );
 
 if (files.length === 0) {
@@ -87,12 +92,30 @@ console.log(C.cyan(`Checking ${files.length} file(s)…\n`));
 // ─── 1. Markdown linting (markdownlint-cli2 lint API) ────────────────────────
 let lintErrorCount = 0;
 
+// The repository states its own conventions in `.markdownlint-cli2.jsonc` —
+// notably that skills use sibling `# ` sections, which MD025 would otherwise
+// flag 85 times. This script previously claimed in a comment to honour a
+// project config and did not, so every run reported the schema as an error.
+function repoConfig() {
+  for (const name of ['.markdownlint-cli2.jsonc', '.markdownlint-cli2.json', '.markdownlint.json']) {
+    const file = resolve(REPO_ROOT, name);
+    if (!existsSync(file)) continue;
+    try {
+      // Strip `//` comments; JSONC allows them, JSON.parse does not.
+      const raw = readFileSync(file, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+      const parsed = JSON.parse(raw);
+      return parsed.config ?? parsed;
+    } catch (err) {
+      console.error(`${C.yellow('CONFIG')} ${name} is not parseable (${err.message}) — using defaults`);
+    }
+  }
+  return null;
+}
+
 try {
-  // `lint` accepts an options object identical to the markdownlint-cli2 config
   const lintResult = await markdownlintPromise({
     files,
-    config: {
-      // Sensible defaults; override with a .markdownlint.json in the project root
+    config: repoConfig() ?? {
       default: true,
       MD013: false,  // line-length     — too noisy for long prose
       MD033: false,  // inline HTML     — often intentional in project docs

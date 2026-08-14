@@ -47,9 +47,11 @@ work builds on what exists rather than beside it.]
 ## Runner-Up Candidates
 
 ### 2. [Title] — Score: X.XX
+
 [One sentence on why it ranked second.]
 
 ### 3. [Title] — Score: X.XX
+
 [One sentence.]
 
 [Continue for all candidates.]

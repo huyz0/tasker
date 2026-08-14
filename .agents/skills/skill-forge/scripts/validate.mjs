@@ -165,6 +165,21 @@ for (const name of skillNames) {
   const wf = `${WORKFLOWS_DIR}/${name}.md`;
   const wfAuto = `${WORKFLOWS_DIR}/${name}-auto.md`;
   if (!has(wf) && !has(wfAuto)) err(rel, `no workflow forwards to this skill (expected ${wf})`);
+
+  // One heading for one concept. `# Execution Mode` and `# Modes` coexisted,
+  // which is the kind of drift that makes a set of skills read as a pile.
+  if (/^# Execution Mode$/m.test(body)) err(rel, 'uses "# Execution Mode" — the section is called "# Modes"');
+
+  // A workflow promising autonomous execution against a skill that never
+  // defines what autonomous means is a promise nothing keeps.
+  if (has(wfAuto) && !/^# Modes$/m.test(body)) {
+    err(rel, `${wfAuto} offers an autonomous variant, but the skill declares no "# Modes" section`);
+  }
+
+  // Asking questions is exactly the behaviour autonomy.md governs.
+  if (/AskUserQuestion/.test(body) && !body.includes(`${PROTOCOLS_DIR}/autonomy.md`)) {
+    err(rel, `uses AskUserQuestion without following ${PROTOCOLS_DIR}/autonomy.md`);
+  }
 }
 
 // ── 2. Workflows ─────────────────────────────────────────────────────────────
@@ -205,10 +220,29 @@ for (const name of dirs(CLAUDE_SKILLS)) {
 }
 
 // ── 4. Protocols ─────────────────────────────────────────────────────────────
+// A protocol may be consumed by a skill *or* by the always-on layer — response
+// style applies to every reply, so it belongs in AGENTS.md rather than repeated
+// across nineteen skills.
 const protocolFiles = mds(PROTOCOLS_DIR).filter((f) => f !== 'README.md');
-const allText = [...skillNames.map((n) => read(`${SKILLS_DIR}/${n}/SKILL.md`)), read(`${PROTOCOLS_DIR}/README.md`)].join('\n');
+const consumers = [
+  ...skillNames.map((n) => `${SKILLS_DIR}/${n}/SKILL.md`),
+  `${PROTOCOLS_DIR}/README.md`,
+  'AGENTS.md',
+  ...mds('.agents/rules').map((f) => `.agents/rules/${f}`),
+].filter(has);
+const allText = consumers.map(read).join('\n');
 for (const file of protocolFiles) {
-  if (!allText.includes(`${PROTOCOLS_DIR}/${file}`)) warn(`${PROTOCOLS_DIR}/${file}`, 'no skill references this protocol');
+  if (!allText.includes(`${PROTOCOLS_DIR}/${file}`)) warn(`${PROTOCOLS_DIR}/${file}`, 'nothing references this protocol');
+}
+
+// A second lockfile is a second, unverified resolution that no build reads and
+// `knip` cannot audit — forbidden by dependency-standard.md, including inside
+// the harness.
+for (const name of skillNames) {
+  for (const lock of ['bun.lock', 'bun.lockb', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml']) {
+    const rel = `${SKILLS_DIR}/${name}/${lock}`;
+    if (has(rel)) err(rel, 'second lockfile — dependency-standard.md permits only the root bun.lock');
+  }
 }
 
 // ── 5. Standards index ───────────────────────────────────────────────────────

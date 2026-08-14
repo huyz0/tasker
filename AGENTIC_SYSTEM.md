@@ -149,12 +149,25 @@ failures. Instead:
 
 1. `/standards-manage` mines the codebase for tribal knowledge, writes it as dense
    imperative bullets in `.specs/standards/`, and keeps `index.yml` exact.
-2. `index.yml` is a scannable catalogue — id, title, one-line description, file.
-3. `/context-inject` reads only the index, picks **at most two** standards for the
-   task's surface, and loads those. In conversation it inlines them; in a plan or
-   a skill it emits path references, because an inlined standard forks it.
+2. The **routing table in `AGENTS.md` §3** maps a surface to at most two
+   standards. It lives in the always-on layer on purpose: routing that requires
+   reading a catalogue is routing that costs a file read, and routing that
+   requires invoking a skill is routing that costs a turn. Neither is necessary
+   for the common case.
+3. `index.yml` remains the catalogue for surfaces the table does not name, and
+   `/context-inject` handles the genuinely ambiguous case. In conversation it
+   inlines the standards; in a plan or a skill it emits path references, because
+   an inlined standard forks it.
 
 The two-standard cap is deliberate. More context is not more compliance.
+
+**Scope is per task, not per session.** A standard loaded for the previous task
+does not bind the next one — re-select. Only `AGENTS.md` and
+`.milestones/STATE.md` persist across a session, and a sub-agent gets paths and
+its own brief, never the orchestrator's accumulated context. The failure mode is
+additive loading: each step adds and nothing removes, so by the tenth step the
+model reasons inside a window mostly full of rules that stopped applying at step
+three. Full rules: `.agents/protocols/context-budget.md`.
 
 ---
 
@@ -178,7 +191,16 @@ pre-commit hook and CI. It fails on:
 - a workflow delegating to a skill that does not exist, or a skill no workflow reaches;
 - an adapter that is missing, orphaned, or has drifted into a copy;
 - a standard on disk that is missing from `index.yml`, or indexed but absent;
-- shared protocol text copied into a skill instead of referenced.
+- shared protocol text copied into a skill instead of referenced;
+- a heading that drifted (`# Execution Mode` where the schema says `# Modes`);
+- an `-auto` workflow against a skill that never defines what autonomous means;
+- `AskUserQuestion` used without following the autonomy protocol;
+- a second lockfile inside a skill — `markdown-lint` shipped one for months.
+
+`moon run :docs-lint` is the companion gate: every Markdown file in the harness,
+the specs and the milestones, plus the Mermaid inside them. Conventions that
+differ from markdownlint's defaults are recorded with their reasons in
+`.markdownlint-cli2.jsonc` rather than silently ignored.
 
 | Mode | Does |
 | --- | --- |

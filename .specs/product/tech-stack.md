@@ -3,6 +3,7 @@
 > Note: For architectural decision records (ADRs), system context, NFRs, and structural intents (DDD, CQRS), please see [architecture.md](./architecture.md).
 
 ## Frontend
+
 - **Build Tool**: Vite
 - **Framework**: React with Server-Side Rendering (SSR)
 - **UI Design System**: Shadcn (built on Radix UI)
@@ -13,6 +14,7 @@
 - **Language**: TypeScript
 
 ## Backend
+
 - **Runtime**: Bun
 - **Language**: TypeScript
 - **Protocol**: gRPC over HTTPS (via Connect-RPC for Streaming). For single-bundle, local execution, this dynamically bypasses the network stack to use lightweight, zero-latency **in-process function calls**, whilst strictly honoring the exact same TypeSpec/Connect-RPC message contracts.
@@ -21,6 +23,7 @@
 - **Configuration**: Zod runtime schema validation over `.env` / `process.env` files for unified Cloud/Portable environments.
 
 ## CLI (Command Line Interface)
+
 - **Architecture**: Dual-Surface (Human DX vs Agent DX)
 - **Language**: Go (Golang) - chosen for fast startup, standalone static binaries, and cross-platform compatibility.
 - **Framework**: Cobra & Viper (for command parsing, routing, and robust configuration management).
@@ -30,47 +33,57 @@
 - **Distribution**: GoReleaser for automated multi-platform binary compilation and release.
 
 ## Database
+
 - **Primary Storage**: MySQL
 - **Search & Analytics**: OpenSearch
 - **Local/Embedded Option**: Abstractions provided to swap out the primary database and search engines specifically for `bun:sqlite` combined with the FTS5 extension. This provides natively embedded transactional integrity and full-text search within the Bun runtime, perfectly supporting single-package, zero-config local deployments.
 
 ## Other Tools & Interfacing
+
 - **API Contract**: TypeSpec
 - **CLI & Human Interfaces**: Real-time web GUI and a dedicated Command Line Interface (CLI) built in Go, providing fast, statically compiled binaries for operators and AI agents.
 - **AI Agent Skills**: Dynamically loadable and packageable tools/scripts that agents can execute to interact with the system. They are designed to be frictionlessly installable and runnable on-the-fly using commands like `npx skills <skill-name>` or `npx skills`.
 - **System Context Integration**: Model Context Protocol (MCP) Config
 
 ## Observability & Telemetry
+
 - **Standard**: OpenTelemetry (OTel) for distributed tracing, metrics, and structured logging.
 - **Exporting**: Instrumentation is agnostic of the observability backend. The system can be configured via environment variables (e.g., `OTEL_EXPORTER_OTLP_ENDPOINT`) to publish telemetry via OTLP to well-known observability servers (such as Prometheus, Grafana Tempo, Datadog, or Jaeger) in production.
 - **Local/Portable Execution**: When running as a single-bundle portable deployment (local mode), the OTel SDK gracefully defaults to a no-op or stdout console exporter. This ensures the standalone executable runs smoothly without connectivity errors or requiring local observability infrastructure.
 
 ## Monorepo & Build System
+
 - **Build System & Caching**: Moonrepo (fast polyglot task runner with aggressive local and CI caching).
 - **Toolchain Manager**: Proto (ensures deterministic, automatically managed versions of Node.js, Bun, and Go across all developer and agent environments).
 
 ## Quality & Continuous Integration
+
 ### Static Analysis & Quality
+
 - **ESLint**: With plugins for React, TypeScript, and Tailwind CSS.
 - **Prettier**: Consistent formatting across the codebase.
 - **Knip**: Detects unused files and dependencies (critical for AI context).
 - **Typedoc**: Automated documentation from TypeScript.
 
 ### Testing Suite
+
 - **Vitest**: Fast, Vite-native unit and integration testing.
 - **Playwright**: E2E and visual regression testing (excellent for React Flow/Shadcn).
 - **Storybook Test Runner**: Functional testing for UI components.
 - **MSW (Mock Service Worker)**: API mocking for consistent testing.
 
 ### API & Data Contracts
+
 - **Zod / ArkType**: Runtime validation to enforce TypeSpec contracts.
 - **Drizzle ORM**: Type-safe MySQL migrations and database access for Bun.
 
 ### Continuous Quality & Security
+
 - **Husky & lint-staged**: Git hooks for automated quality checks.
 - **Trivy / Snyk**: Dependency vulnerability scanning.
 - **Checkly / Monitoring**: Production uptime for gRPC over HTTPS.
 
 ### Design & CSS
+
 - **Chromatic**: Automated visual regression and UI/UX designer review.
 - **Stylelint**: Enforces Tailwind best practices and CSS quality.

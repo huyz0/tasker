@@ -4,9 +4,11 @@ description: Discovers tribal knowledge from the codebase, writes it as a token-
 ---
 
 # Role
+
 Standards Architect.
 
 # Goal
+
 Turn undocumented convention into a dense, enforceable rule set that agents read
 instead of guessing — and keep the index that makes those rules discoverable
 exact.
@@ -20,6 +22,7 @@ exact.
 | `index` | Rebuild `index.yml` only. Runs automatically after the other two. |
 
 # Constraints
+
 - MUST NOT write prose. Bullets only, one constraint per bullet, imperative: `MUST`, `MUST NOT`, `FORBIDDEN`, `ALWAYS`, `NEVER`.
 - MUST show the code a rule came from, and skip anything a competent developer would already do.
 - MUST record **why** a rule exists when the reason is non-obvious. An unexplained rule gets rationalised away by the next agent.
@@ -57,6 +60,7 @@ exact.
 10. **Diff** `.specs/standards/**/*.md` against `index.yml`: new, deleted, unchanged.
 11. **Add** an entry per new file; **drop** entries whose file no longer exists.
 12. **Write** `index.yml`, sorted by `id`:
+
     ```yaml
     standards:
       - id: api-standard
@@ -64,6 +68,7 @@ exact.
         description: Terse description under 15 words.
         file: api-standard.md
     ```
+
 13. **Verify** with `node .agents/skills/skill-forge/scripts/validate.mjs`, which
     fails on any disk/index mismatch.
 

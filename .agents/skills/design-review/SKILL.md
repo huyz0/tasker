@@ -1,12 +1,14 @@
 ---
 name: design-review
-description: Judges UI against the design system, the Web Interface Guidelines and WCAG — by actually looking at rendered screenshots across breakpoints and themes, not by reading the source. Use before shipping a screen, when UI looks generic or off, or to set aesthetic direction before building new UI.
+description: Judges rendered UI against the design system, Web Interface Guidelines and WCAG by reading screenshots, not source. Use before shipping a screen, when UI looks generic, or to set aesthetic direction before building.
 ---
 
 # Role
+
 Design Lead.
 
 # Goal
+
 Close the gap between what the code says and what a person sees, with findings
 that name a file, a line and a fix.
 
@@ -18,6 +20,7 @@ that name a file, a line and a fix.
 | `direct` | Set the aesthetic direction *before* new UI is built. |
 
 # Constraints
+
 - MUST run the deterministic gate first: `moon run gui:design-lint`. Never spend judgement on what a regex already decides.
 - MUST look at the rendered result. Reading JSX and reporting on appearance is guessing — capture screenshots and read the PNGs.
 - MUST cover **375px and dark mode** in every review. Mobile-first is a rule in `.specs/standards/ui-ux-standard.md`, and dark mode is where token mistakes surface.
@@ -26,7 +29,6 @@ that name a file, a line and a fix.
 - MUST NOT report a colour-contrast opinion — `design-lint --only contrast` measures it.
 - MUST treat a console error surfaced during capture as a finding. A page that looks right while throwing is not right.
 - NEVER let "it renders" stand in for "it works": check the empty, loading, error and permission-denied states, which is where generated UI is thinnest.
-- Follow `@.agents/protocols/response-style.md` and `@.agents/protocols/verification-gates.md`.
 
 # Instructions
 
@@ -58,12 +60,12 @@ that name a file, a line and a fix.
 
 ## direct
 
-8. Read `references/anti-slop.md` in full before proposing anything.
-9. Produce a compact direction: palette as 4–6 named tokens, type roles, a
+1. Read `references/anti-slop.md` in full before proposing anything.
+2. Produce a compact direction: palette as 4–6 named tokens, type roles, a
    layout concept, and **one signature element** the screen is remembered by.
-10. Critique it against the brief before building: if any part is what you would
+3. Critique it against the brief before building: if any part is what you would
     have produced for any similar screen, revise it and say what changed and why.
-11. Only then write code, deriving every value from the direction. Hand off to
+4. Only then write code, deriving every value from the direction. Hand off to
     `review` once it renders.
 
 # Output Format

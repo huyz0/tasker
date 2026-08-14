@@ -53,7 +53,7 @@ jobs:
       - name: Unused code and dependencies
         run: moon run :knip
       - name: Agent harness contract
-        run: moon run :skills-check
+        run: moon run :skills-check :docs-lint
 
   gui:
     name: GUI (React/Vite)

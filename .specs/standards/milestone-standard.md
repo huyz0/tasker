@@ -34,24 +34,30 @@ Required:
 ## 3. Structure of `MILESTONE.md`
 
 ### 1. Goal
+
 One paragraph stating the end state in terms a non-implementer can verify.
 A goal describes a *condition of the product*, never a list of activities.
 
 ### 2. Why Now
+
 The dependency or value argument for this position in the sequence.
 
 ### 3. Exit Criteria
+
 A checklist of externally verifiable conditions. Each item MUST be checkable
 by running a command or performing an observable action. A milestone is
 `done` only when every box is checked. Exit criteria are NOT the task list —
 they are the acceptance test for the whole milestone.
 
 ### 4. Scope
+
 - **In Scope**: Explicit inclusions.
 - **Out of Scope**: Explicit exclusions, each naming the milestone that owns it.
 
 ### 5. Task Breakdown
+
 Actionable `- [ ]` checklist. Every task MUST carry:
+
 - A stable id `M<NN>-T<NN>` — referenced by commits and the progress journal.
 - A single-sentence outcome.
 - **Files**: the primary paths expected to change.
@@ -61,9 +67,11 @@ Task ids are immutable once written. To drop a task, mark it
 `- [~]` and record the reason in `PROGRESS.md`; never renumber.
 
 ### 6. Verification
+
 The commands that prove the exit criteria, in order.
 
 ### 7. Risks
+
 Known hazards and the rollback position.
 
 ## 4. Progress Journal (`PROGRESS.md`)

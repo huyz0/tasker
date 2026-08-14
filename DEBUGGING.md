@@ -81,6 +81,7 @@ paste this output into a bug report.
 
 `tasker debug session [token]` decodes a session token's claims locally
 (userId, jti, expiry) and asks the backend whether it's still actually valid
+
 - catches both expiry and revocation (see `sessionInterceptor` in
 `index.ts`), neither of which a local decode alone can tell you:
 
@@ -109,6 +110,7 @@ local dev) there's no separate DB process - the file lives at
 
 Every 5 minutes the backend logs a `rpc.latency_summary` line (see
 `rpcMetrics.ts`) with p50/p99/error-count per RPC method, sorted worst-first
+
 - useful for spotting which endpoint is actually slow without needing a
 dedicated metrics backend for local investigation.
 

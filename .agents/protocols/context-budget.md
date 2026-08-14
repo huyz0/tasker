@@ -21,10 +21,30 @@ Consequences, which the skill validator enforces:
 - Tier 2 content is **referenced, never inlined**. Copying a reference into a body
   defeats the tiering and creates a second copy that drifts.
 
+## Scope: task, session, sub-agent
+
+Relevance is not a property of the repository. It is a property of the unit of
+work, and the three units have different lifetimes.
+
+| Scope | Loads | Drops |
+|---|---|---|
+| **Task** | ≤2 standards from the `AGENTS.md` routing table, plus the protocols the running skill names | When the task ends. Re-select for the next one; do not carry them forward |
+| **Session** | `AGENTS.md` and `.milestones/STATE.md` | Nothing else persists. A session that accumulates context degrades over its own length |
+| **Sub-agent** | Only what its own job needs, as **paths** | Its window is separate — nothing you loaded is free to pass on |
+
+The failure mode is additive loading: each step adds context and nothing removes
+it, so by the tenth step the model is reasoning inside a window mostly full of
+rules that stopped applying at step three.
+
 ## Delegation
 
 - NEVER read a sub-agent definition file — the runtime loads it from `subagent_type`.
 - NEVER inline a large file into a sub-agent prompt. Give it the path; it reads from disk.
+- Give a sub-agent the **narrowest** brief that still lets it decide: its own
+  task, the paths it needs, and its output contract. Not the conversation, not
+  your reasoning, not the standards you happened to load.
+- A sub-agent that needs the same two standards should re-select them from the
+  routing table itself. Selection is cheap; a pasted standard is not.
 - The orchestrator routes. It does not execute the work it delegated.
 - Prefer frontmatter and status fields over full document bodies when checking state.
 

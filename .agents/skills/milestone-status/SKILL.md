@@ -4,18 +4,20 @@ description: Reports delivery state — the active milestone, the task in flight
 ---
 
 # Role
+
 Delivery Reporter.
 
 # Goal
+
 Give a session that has no prior context everything it needs to continue, in
 one short report, without changing anything.
 
 # Constraints
+
 - Follow `@.agents/protocols/work-ledger.md` to resolve the milestones path and state file.
 - READ-ONLY. MUST NOT write, commit, or modify any file. If the recorded state is wrong, report the drift and recommend `/milestone-plan`; do not repair it here.
 - MUST verify recorded state against reality rather than trusting `STATE.md`: count actual `- [x]` boxes, read actual frontmatter, read actual git state.
 - MUST NOT run the test suite or any build. This skill is cheap by design.
-- Follow `@.agents/protocols/response-style.md` when reporting.
 
 # Instructions
 
