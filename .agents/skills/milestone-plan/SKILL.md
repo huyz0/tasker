@@ -12,7 +12,8 @@ product and its constraints change, without ever invalidating work already
 recorded.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- Follow `@.agents/protocols/work-ledger.md` to resolve the milestones path and state file.
+- Follow `@.agents/protocols/autonomy.md` and `@.agents/protocols/response-style.md`.
 - MUST read `.specs/standards/milestone-standard.md` and conform to it exactly.
 - MUST NOT renumber existing milestone or task ids. Ids are permanent: commits and journals reference them. New work takes the next free id.
 - MUST NOT modify a `done` milestone. Follow-up work becomes a new milestone or a new task in an open one.

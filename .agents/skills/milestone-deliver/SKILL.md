@@ -15,8 +15,8 @@ Move a milestone toward `done` one task at a time, leaving the repository in a
 state that any other session can resume from with no conversational context.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
-- ALWAYS read `.specs/product/work-ledger.yml` to resolve the milestones path and state file.
+- Follow `@.agents/protocols/work-ledger.md` to resolve the milestones path and state file.
+- Follow `@.agents/protocols/autonomy.md`, `@.agents/protocols/verification-gates.md` and `@.agents/protocols/response-style.md`.
 - ALWAYS read `.specs/standards/milestone-standard.md` before writing to any milestone file.
 - MUST NOT start a milestone whose `depends_on` milestones are not all `status: done`. Report the blocking milestone and stop.
 - MUST NOT check off a task (`- [x]`) until its **Verify** line has actually been executed and passed. Reporting an unverified task as done is forbidden.
@@ -26,7 +26,6 @@ state that any other session can resume from with no conversational context.
 - MUST make one commit per task containing code, tests, the checked box, the journal entry, and the `STATE.md` update together.
 - ALWAYS use Conventional Commits with the task id appended: `fix(iam): paginate listOrgMembers [M03-T06]`.
 - NEVER renumber or delete a task id. To drop a task, mark it `- [~]` and record why in the journal.
-- ALWAYS invoke `caveman` skill for interactive text responses to minimize tokens.
 
 # Instructions
 
@@ -50,7 +49,7 @@ state that any other session can resume from with no conversational context.
 ## Phase 3: Prepare
 
 10. **Branch**: Ensure the current branch is `feature/m<NN>-<kebab-title>`. Create it from the default branch if it does not exist. Never commit directly to the default branch.
-11. **Inject standards**: Invoke `standards-inject` selecting at most 2 standards relevant to this task's surface, chosen from `.specs/standards/index.yml`. Backend work reads `api-standard`; UI reads `frontend-standard` or `ui-ux-standard`; anything touching authorization reads `security-standard`.
+11. **Inject standards**: Invoke `context-inject` selecting at most 2 standards relevant to this task's surface, chosen from `.specs/standards/index.yml`. Backend work reads `api-standard`; UI reads `frontend-standard` or `ui-ux-standard`; anything touching authorization reads `security-standard`.
 12. **Open the journal**: Append an entry for this task to `PROGRESS.md` with `**Status**: in-progress`, today's date, and the intended approach in one sentence. Create `PROGRESS.md` from the template in `milestone-standard.md` if it does not exist.
 13. **Update state**: Set `active_task` in `STATE.md` and set the milestone's `status` to `in-progress` and `started_at` if this is its first task.
 
@@ -69,11 +68,8 @@ state that any other session can resume from with no conversational context.
 
 ## Phase 5: Close the milestone
 
-21. **Verify exit criteria**: Run the milestone's **Verification** block. Check each exit-criteria box only when its condition is demonstrably met. If any cannot be met, add a new task (next free id) describing the remaining work and return to Phase 2.
-22. **Run local CI**: `moon check --all`. It must pass.
-23. **Finalize**: Set `status: done`, `exit_criteria_met: true`, `completed_at` in `MILESTONE.md`. Update the ledger row in `STATE.md`, set `active_milestone` to the next milestone whose dependencies are now satisfied, and write a handoff note summarising what landed.
-24. **Commit** with `chore(m<NN>): close milestone <NN> — <title>`.
-25. **Report**: State what shipped, what the next milestone is, and the exact command to continue.
+21. **Close it** by following `references/close-milestone.md`. It runs once per
+    milestone, so read it only when there are no unchecked tasks left.
 
 # Output Format
 
@@ -97,11 +93,4 @@ state that any other session can resume from with no conversational context.
   Resume:   /milestone-deliver M03 once resolved
 ```
 
-## Milestone closed
-```
-✓ MILESTONE M03 — IAM Correctness & Scale — DONE
-  Tasks:    14/14
-  Exit:     8/8 criteria verified
-  Next:     M04 — Agent Identity & M2M Tokens
-  Continue: /milestone-deliver M04
-```
+The milestone-closed report is in `references/close-milestone.md`.

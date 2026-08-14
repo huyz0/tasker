@@ -8,8 +8,8 @@ echo "======================================"
 if command -v moon >/dev/null 2>&1; then
   MOON_CMD="moon"
 else
-  # Fallback to npx executing local or global moon
-  MOON_CMD="npx --no-install moon"
+  # Fallback to bunx. npm/npx are forbidden repo-wide (see AGENTS.md).
+  MOON_CMD="bunx moon"
 fi
 
 echo "Running checks via moon (this will be instant if cached)..."

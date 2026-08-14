@@ -11,11 +11,11 @@ Give a session that has no prior context everything it needs to continue, in
 one short report, without changing anything.
 
 # Constraints
-- MUST exit immediately with "Please define workflow: Run /work-ledger-define" if `.specs/product/work-ledger.yml` is missing.
+- Follow `@.agents/protocols/work-ledger.md` to resolve the milestones path and state file.
 - READ-ONLY. MUST NOT write, commit, or modify any file. If the recorded state is wrong, report the drift and recommend `/milestone-plan`; do not repair it here.
 - MUST verify recorded state against reality rather than trusting `STATE.md`: count actual `- [x]` boxes, read actual frontmatter, read actual git state.
 - MUST NOT run the test suite or any build. This skill is cheap by design.
-- ALWAYS invoke `caveman` skill for text responses to minimize tokens.
+- Follow `@.agents/protocols/response-style.md` when reporting.
 
 # Instructions
 

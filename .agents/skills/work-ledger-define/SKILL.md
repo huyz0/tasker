@@ -17,3 +17,14 @@ Interactively define `.specs/product/work-ledger.yml` to instruct agents where t
 1. **Target:** Ask the developer if they track Epics, Test Plans, Architecture, and Reviews in `project_files` (using markdown files) or `externally` (Jira, Linear, Confluence). Wait for answer.
 2. **Setup:** If `project_files`, copy `.agents/skills/work-ledger-define/references/work-ledger.project_files.tmpl.yml` to `.specs/product/work-ledger.yml`. If `externally`, ask for the URLs/system names and generate a custom `.specs/product/work-ledger.yml`.
 3. **Completion:** Confirm the workflow definition has been saved.
+
+# Output Format
+
+```
+WORK LEDGER DEFINED
+
+  Mode:    project_files
+  Written: .specs/product/work-ledger.yml
+  Types:   milestones, epics, test_plan, architecture_design, ux_design, reviews
+  Next:    /milestone-status
+```

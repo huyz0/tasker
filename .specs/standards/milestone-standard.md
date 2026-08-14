@@ -100,7 +100,7 @@ an interrupted session recoverable: the journal always names the task in flight.
 ## 6. Relationship to Epics
 
 A milestone MAY spawn epics for work that needs the full design/review
-lifecycle (`/epic-define` → `/epic-design` → `/epic-implement`). Small,
+lifecycle (`/epic-run` → `/epic-run` → `/epic-run`). Small,
 well-understood tasks are implemented directly by `/milestone-deliver` without
 an epic. When a milestone spawns an epic, list the epic id under the task and
 treat the epic's completion as the task's verification.

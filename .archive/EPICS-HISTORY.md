@@ -63,3 +63,16 @@
 ## EPIC-0016-core-ui-ux-implementation: Core Application UI/UX Implementation
 - **Status**: Done
 - **Path**: .archive/epics/EPIC-0016-core-ui-ux-implementation
+
+## EPIC-0017-universal-search: Universal Search Functionality
+- **Status**: Done
+- **Path**: .archive/epics/EPIC-0017-universal-search
+
+## EPIC-0018-frontend-cli-integration: Frontend and CLI Integration Refactoring
+- **Status**: Done
+- **Path**: .archive/epics/EPIC-0018-frontend-cli-integration
+
+## EPIC-0020-cicd-build-deployment-tracking: CI/CD Build and Deployment Tracking
+- **Status**: Done
+- **Path**: .archive/epics/EPIC-0020-cicd-build-deployment-tracking
+

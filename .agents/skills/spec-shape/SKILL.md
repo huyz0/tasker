@@ -37,7 +37,7 @@ Ask: "Similar code in this codebase to reference? (files, folders, features, or 
 If provided → read and analyze to inform the plan.
 
 ## Step 4: Product Context
-Invoke `product-inject` (targets: all) to load `mission.md`, `roadmap.md`, `tech-stack.md`, and `architecture.md`.
+Invoke `context-inject` (targets: all) to load `mission.md`, `roadmap.md`, `tech-stack.md`, and `architecture.md`.
 
 Summarize relevant points and ask user to confirm alignment via `AskUserQuestion`.
 

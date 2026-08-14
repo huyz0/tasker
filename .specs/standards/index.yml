@@ -9,6 +9,10 @@ standards:
     title: Testing & QA Standards
     description: Requirements for Test-Driven Development (TDD) workflows and 80-90% coverage targets.
     file: testing-standard.md
+  - id: ui-testing-standard
+    title: UI Testing Standards
+    description: Rules for Playwright end-to-end specs, selectors, and Storybook coverage.
+    file: ui-testing-standard.md
   - id: ui-ux-standard
     title: UI/UX Standards
     description: Standards for accessible, consistent, and responsive design systems.

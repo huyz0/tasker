@@ -59,7 +59,7 @@ These files explicitly govern *what* we are building and the overarching archite
 - [📓 **Work Ledger**](.specs/product/work-ledger.yml): The strategic tracking router deciding if artifacts live locally or on external trackers (Jira/Linear).
 
 ### Engineering Standards (`.specs/standards/`)
-These standalone rulebooks are injected seamlessly into our automated agent workflows via the `standards-inject` skill, ensuring generated code is consistently flawless.
+These standalone rulebooks are injected seamlessly into our automated agent workflows via the `context-inject` skill, ensuring generated code is consistently flawless.
 - **System Design**: [`api-standard.md`](.specs/standards/api-standard.md) | [`epic-standard.md`](.specs/standards/epic-standard.md)
 - **Frontend & Design**: [`frontend-standard.md`](.specs/standards/frontend-standard.md) | [`ui-ux-standard.md`](.specs/standards/ui-ux-standard.md)
 - **Core Engineering**: [`coding-standard.md`](.specs/standards/coding-standard.md) | [`security-standard.md`](.specs/standards/security-standard.md) | [`git-workflow-standard.md`](.specs/standards/git-workflow-standard.md)
@@ -185,7 +185,6 @@ Beyond the `.specs/` configuration layer, the functional execution environment i
 
 - `/apps/`: Contains the specific application interfaces - [`cli`](apps/cli/README.md), [`gui`](apps/gui/README.md), [`backend`](apps/backend/README.md).
 - `/packages/`: Contains shared foundational libraries and universal strict API contract definitions.
-- `/.agents/`: Houses the operational logic for our autonomous AI developer system (Skills and Workflows).
+- `/.agents/`: The agent harness — skills, workflows, and shared protocols. Canonical for every host; `.claude/` is generated from it.
 - `/.milestones/`: The delivery plan and its committed progress — the state that lets any session resume the work.
-- `/.epics/`: Contains explicitly version-controlled feature packages (`EPIC.md`) currently in motion.
-- `/.test-plans/`: Houses all rigid, contractual `Given/When/Then` behavioral expectations generated during planning phases.
+- `/.archive/`: Completed epics, test plans and council reports, compressed out of the working set. `.epics/` reappears when the next epic starts.

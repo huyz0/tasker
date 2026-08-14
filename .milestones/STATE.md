@@ -81,6 +81,37 @@ anything.
 
 ## Handoff notes
 
+**2026-08-15 — Agent harness consolidated (outside the milestone plan).**
+
+The harness in `.agents/` was rebuilt against four reference systems (agent-os,
+oh-my-claudecode, metaswarm, get-shit-done) and the verified skill conventions of
+Codex, Antigravity and Claude Code. No milestone task was touched.
+
+What a next session needs to know:
+
+1. **Slash commands changed.** `/epic-define`, `/epic-design`,
+   `/epic-design-review`, `/epic-implement`, `/epic-implement-review` and
+   `/epic-end-to-end` are now one skill, `/epic-run` (`/epic-run-auto` runs every
+   phase). `/standards-create`, `/standards-discover` and `/standards-index` are
+   `/standards-manage`. `/standards-inject` and `/product-inject` are
+   `/context-inject`. `/skill-manage` is `/skill-forge`. `/caveman` is gone — its
+   rules are always-on in `.agents/protocols/response-style.md`.
+2. **`.claude/` is generated.** Never hand-edit it. Run
+   `node .agents/skills/skill-forge/scripts/sync-adapters.mjs` after any change
+   under `.agents/`. All 18 skills and 23 workflows now have adapters; before
+   this, only three did.
+3. **`moon check --all` now includes `tasker:skills-check`**, which fails on dead
+   path references, host-limit overruns, adapter drift and standards-index drift.
+   It is also a CI step in the Workspace job.
+4. **`.epics/` and `.test-plans/` are empty and no longer exist.** All three
+   remaining epics were `done` with every review approved, so they and the nine
+   test plans were archived to `.archive/`. The directories reappear when
+   `/epic-run` starts the next epic.
+
+Pre-existing and untouched: `markdown-lint` reports 487 errors repo-wide (was 615
+across the same files), almost all `MD060` table style in the epic-prioritize
+advisor references. It is not part of `moon check`.
+
 **2026-08-15 — M01 Stabilize the Build closed (14/14 tasks, 7/7 exit criteria).**
 
 What changed, in one pass: the GUI's task and artifact detail views are driven

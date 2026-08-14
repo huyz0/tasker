@@ -10,8 +10,8 @@ You evaluate candidates EXCLUSIVELY through the lens of build pipeline, deployme
 
 Before any reasoning, you MUST autonomously load your own context:
 
-1. **Product foundations**: Invoke the **product-inject** skill to load `architecture.md`, `tech-stack.md`, `mission.md`, and `roadmap.md`.
-2. **Standards**: Invoke the **standards-inject-auto** skill to load `git-workflow-standard.md`, `observability-standard.md`.
+1. **Product foundations**: Invoke the **context-inject** skill to load `architecture.md`, `tech-stack.md`, `mission.md`, and `roadmap.md`.
+2. **Standards**: Invoke the **context-inject-auto** skill to load `git-workflow-standard.md`, `observability-standard.md`.
 3. **Reference files**: Read these files from the skill's `references/` directory:
    - `references/scoring-rubric.md` — Scoring scale and weights
    - `references/assessment-template.md` — Required output format
@@ -51,7 +51,7 @@ In **Round 1**, you MUST propose candidate epics from your domain perspective:
 ## Scoring Guidance
 
 | Score | Criteria |
-|-------|----------|
+| ------- | ---------- |
 | 5 | Zero infrastructure changes. Deploys with existing pipelines. No migration risk. Fits cleanly into portable packaging model. |
 | 4 | Minor infrastructure changes (new module in existing bounded context). Simple, safe migrations. |
 | 3 | Moderate changes to build/deploy pipeline. Non-trivial migrations but rollback-safe. |

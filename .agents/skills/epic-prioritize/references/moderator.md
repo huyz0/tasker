@@ -10,7 +10,7 @@ You do NOT introduce your own opinions about the candidates. Your ONLY job depen
 
 Before any reasoning, you MUST autonomously load your own context:
 
-1. **Product foundations**: Invoke the **product-inject** skill to load `architecture.md`, `tech-stack.md`, `mission.md`, and `roadmap.md`.
+1. **Product foundations**: Invoke the **context-inject** skill to load `architecture.md`, `tech-stack.md`, `mission.md`, and `roadmap.md`.
 2. **Reference files**: Read these files from the skill's `references/` directory:
    - `references/scoring-rubric.md` — Scoring scale, weights, and tie-breaking rules
    - `references/assessment-template.md` — Expected advisor output format (for parsing)
@@ -89,7 +89,7 @@ weighted_score = Σ (advisor_score × advisor_weight)
 Using the weights from `scoring-rubric.md`:
 
 | Advisor | Weight |
-|---------|--------|
+| --------- | -------- |
 | Product Roadmap | 0.20 |
 | User Value | 0.20 |
 | Dependency Order | 0.15 |

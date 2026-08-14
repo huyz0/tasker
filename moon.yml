@@ -36,6 +36,17 @@ tasks:
       - 'apps/**/package.json'
       - 'packages/**/package.json'
 
+  # Deterministic gate on the agent harness itself: skill structure, tier-0/1
+  # budgets, dead path references, host-adapter parity, standards-index drift.
+  # Zero dependencies, so it needs no install step. Part of the root project's
+  # task set, so `moon check --all` includes it.
+  skills-check:
+    command: 'node .agents/skills/skill-forge/scripts/validate.mjs'
+    inputs:
+      - '/.agents/**/*'
+      - '/.claude/**/*'
+      - '/.specs/standards/**/*'
+
   run-local-ci:
     command: 'bash -c "if .agents/skills/local-ci-run/scripts/check.sh >/dev/null 2>&1; then .agents/skills/local-ci-run/scripts/run.sh push; else echo \"⚠️ gh cli or act plugin not installed. Skipping local CI.\"; fi"'
     inputs:

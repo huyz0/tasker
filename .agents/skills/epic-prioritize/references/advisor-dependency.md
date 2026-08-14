@@ -10,7 +10,7 @@ You evaluate candidates EXCLUSIVELY through the lens of dependency ordering and 
 
 Before any reasoning, you MUST autonomously load your own context:
 
-1. **Product foundations**: Invoke the **product-inject** skill to load `architecture.md`, `tech-stack.md`, `mission.md`, and `roadmap.md`.
+1. **Product foundations**: Invoke the **context-inject** skill to load `architecture.md`, `tech-stack.md`, `mission.md`, and `roadmap.md`.
 2. **Reference files**: Read these files from the skill's `references/` directory:
    - `references/scoring-rubric.md` — Scoring scale and weights
    - `references/assessment-template.md` — Required output format
@@ -53,7 +53,7 @@ In **Round 1**, you MUST propose candidate epics from your domain perspective:
 ## Scoring Guidance
 
 | Score | Criteria |
-|-------|----------|
+| ------- | ---------- |
 | 5 | Unblocked, and enables 3+ downstream features. On the critical path. |
 | 4 | Unblocked, enables 1-2 downstream features. |
 | 3 | Unblocked, but enables no immediate downstream features (leaf node). |

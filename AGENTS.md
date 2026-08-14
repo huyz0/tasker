@@ -32,10 +32,12 @@ Three rules make the handoff work, and they are non-negotiable:
 
 Full rules: `.specs/standards/milestone-standard.md`.
 
-## 3. The Agentic System & Standards
-This repository uses a sophisticated, declarative agentic ecosystem. Do not rely on assumptions or your base training for project-specific rules.
-- **Just-In-Time Context**: Before writing code, you should understand the project's rules by referring to `.specs/standards/index.yml`. If a standard applies to your task (e.g., `frontend-standard.md` when building UI), you MUST read it to adopt the required constraints.
-- **Tribal Knowledge**: All project rules live in `.specs/`. If you encounter an undocumented pattern that the team uses, suggest capturing it via the `standards-discover` workflow.
+## 3. The Agent Harness & Standards
+This repository uses a declarative agentic ecosystem. Do not rely on assumptions or your base training for project-specific rules.
+- **Just-In-Time Context**: Before writing code, read `.specs/standards/index.yml` and load at most **two** standards relevant to your task — `/context-inject` does this for you. Loading everything degrades compliance rather than improving it.
+- **Tribal Knowledge**: All project rules live in `.specs/`. If you encounter an undocumented pattern the team relies on, capture it via `/standards-manage`.
+- **The harness itself** lives in `.agents/` — skills, thin workflow forwarders, and the shared protocols in `.agents/protocols/`. `.claude/` is **generated** from it; never hand-edit that directory. Run `/skill-forge` to add, compress, audit or re-sync anything in the harness. Full map: `AGENTIC_SYSTEM.md`.
+- **Response style**: follow `.agents/protocols/response-style.md` by default — compressed text, full accuracy, plain English for anything destructive or ambiguous. The user can cancel it with "normal mode".
 
 ## 4. Planning & Architecture First
 Do not jump blindly into implementation for new features.

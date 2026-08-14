@@ -10,8 +10,8 @@ You evaluate candidates EXCLUSIVELY through the lens of security risk and securi
 
 Before any reasoning, you MUST autonomously load your own context:
 
-1. **Product foundations**: Invoke the **product-inject** skill to load `architecture.md`, `tech-stack.md`, `mission.md`, and `roadmap.md`.
-2. **Standards**: Invoke the **standards-inject-auto** skill to load `security-standard.md`.
+1. **Product foundations**: Invoke the **context-inject** skill to load `architecture.md`, `tech-stack.md`, `mission.md`, and `roadmap.md`.
+2. **Standards**: Invoke the **context-inject-auto** skill to load `security-standard.md`.
 3. **Reference files**: Read these files from the skill's `references/` directory:
    - `references/scoring-rubric.md` — Scoring scale and weights
    - `references/assessment-template.md` — Required output format
@@ -47,7 +47,7 @@ In **Round 1**, you MUST propose candidate epics from your domain perspective:
 ## Scoring Guidance
 
 | Score | Criteria |
-|-------|----------|
+| ------- | ---------- |
 | 5 | Low security risk. Builds on existing auth infrastructure. Minimal new attack surface. May close known security gaps. |
 | 4 | Moderate security surface but well-understood patterns. Auth and RBAC prerequisites are in place. |
 | 3 | Introduces some new security-sensitive surface area but manageable with existing patterns. |

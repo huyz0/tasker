@@ -52,6 +52,8 @@ jobs:
         uses: moonrepo/setup-toolchain@v0
       - name: Unused code and dependencies
         run: moon run :knip
+      - name: Agent harness contract
+        run: moon run :skills-check
 
   gui:
     name: GUI (React/Vite)

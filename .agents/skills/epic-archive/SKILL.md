@@ -29,3 +29,14 @@ Identify completed epics (`status: done`), summarize their outcomes into a dense
    - Move `.epics/EPIC-<id>-<title>` to `.archive/epics/EPIC-<id>-<title>`.
    - Move `.test-plans/TEST-PLAN-<id>-<title>` to `.archive/test-plans/TEST-PLAN-<id>-<title>` (if present).
 5. **Report:** Output a short summary of what was archived.
+
+# Output Format
+
+```
+ARCHIVED
+
+  Epics:      EPIC-0017 Universal Search, EPIC-0018 Frontend CLI Integration
+  Test plans: TEST-PLAN-0017, TEST-PLAN-0018
+  History:    .archive/EPICS-HISTORY.md (+2 entries, sorted by id)
+  Working set: 1 epic remaining
+```

@@ -39,7 +39,7 @@ Ask sequentially:
 2. "What features are planned post-launch?" (accept "none yet")
 
 ## Step 4: Tech Stack (→ tech-stack.md)
-Check if `.specs/standards/global/tech-stack.md` exists.
+Check if `.specs/product/tech-stack.md` exists.
 - If exists → summarize and ask: (1) Same as standard, (2) Different.
 - If missing or "Different" → ask: Frontend, Backend, Database, Other.
 

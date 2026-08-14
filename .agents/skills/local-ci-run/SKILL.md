@@ -34,3 +34,18 @@ Provide an optional layer of quality testing by verifying CI tasks passing local
 5. **Report Results:** 
    - Evaluate the output of the local CI run. 
    - Provide a brief summary of what passed or failed.
+
+# Output Format
+
+```
+LOCAL CI
+
+  Tooling:  gh + act present
+  Ran:      .agents/skills/local-ci-run/scripts/run.sh push -W .github/workflows/ci.yml
+  Result:   4/6 jobs pass
+  Failed:   gui-e2e — "No tasks found ... For targets gui:e2e"
+  Next:     fix the target filter, re-run
+```
+
+If the tooling is absent and the user declines installation, say so plainly and
+report the check as skipped — never as passed.
