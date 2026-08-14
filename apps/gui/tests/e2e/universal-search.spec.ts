@@ -2,20 +2,22 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Universal Search E2E', () => {
   test('Command Palette can be opened', async ({ page }) => {
-    // Go to home page
     await page.goto('/');
 
-    // Ensure the page has loaded
-    await page.waitForSelector('text=Tasker');
+    // Wait on the dashboard's own heading rather than the "Tasker" brand: the
+    // brand is rendered twice (mobile header and sidebar) and the first match
+    // in DOM order is the `md:hidden` one, which is never visible at the
+    // desktop viewport these tests run at.
+    await expect(page.getByRole('heading', { name: 'Dashboard Overview' })).toBeVisible();
 
-    // The search button should be visible
-    const searchBtn = page.getByText('Search tasks, artifacts...');
+    // Same duplication for the search trigger - keep the visible one.
+    const searchBtn = page
+      .getByRole('button', { name: 'Search tasks, artifacts...' })
+      .filter({ visible: true });
     await expect(searchBtn).toBeVisible();
 
-    // Click it to open palette
     await searchBtn.click();
 
-    // The input should appear
     const searchInput = page.getByPlaceholder('Type a command or search...');
     await expect(searchInput).toBeVisible();
   });

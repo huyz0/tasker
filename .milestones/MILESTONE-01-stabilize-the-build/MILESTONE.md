@@ -89,7 +89,7 @@ performance work (M07), any change to the specs' claims (M02).
       - Files: `.github/workflows/ci.yml`
       - Verify: a deliberately broken assertion fails CI.
 
-- [ ] **M01-T07** — Add a `gui:e2e` moon task and CI job: install Playwright
+- [x] **M01-T07** — Add a `gui:e2e` moon task and CI job: install Playwright
       browsers via `bunx playwright install --with-deps`, remove the hardcoded
       `executablePath`, boot the backend with a seeded database as a step.
       - Files: `apps/gui/playwright.config.ts`, `apps/gui/moon.yml`,

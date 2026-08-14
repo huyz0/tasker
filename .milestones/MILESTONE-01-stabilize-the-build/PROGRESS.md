@@ -135,3 +135,35 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   with sinking coverage would otherwise still merge. Installed moon 2.4.6 via
   `proto install moon` to run any of this; it was not present on this machine.
 - **Next**: M01-T07
+
+## M01-T07 — E2E runs in CI
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: apps/gui/playwright.config.ts, apps/gui/moon.yml,
+  .github/workflows/ci.yml, apps/gui/tests/e2e/universal-search.spec.ts,
+  apps/gui/tests/e2e/comments.spec.ts
+- **Verified**: The literal Verify line ("E2E job runs and passes on a pull
+  request") needs a PR, which this session will not open. Everything short of
+  the runner was executed here instead: seeded a fresh database, started the
+  backend, and ran the exact command the CI job runs —
+  `moon run gui:e2e` → **2 passed, exit 0**. The workflow file parses and now
+  declares five jobs (contract, gui, gui-e2e, backend, cli).
+- **Notes**: Removing the pinned `executablePath` was the smallest part of this.
+  Once the specs could actually launch a browser, **both of them failed** —
+  they had never run against the product:
+  - `universal-search` waited on `text=Tasker`, which matches the mobile
+    header's brand first; that node is `md:hidden` and never visible at the
+    desktop viewport, so it timed out at 30s. Now waits on the dashboard
+    heading, and picks the visible one of the two search buttons.
+  - `comments` clicked `.bg-card.border.rounded-md`, a Tailwind class chain.
+    Now selects the board card by structure (a `role=button` containing an
+    `h4`) and waits for the detail overlay, which is a route change since T01.
+  Both rewritten rather than retry-masked, per the milestone's stated risk
+  position. Local browser notes (environment, not repo): this machine is Ubuntu
+  26.04, which Playwright 1.59 has no browser build for —
+  `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu22.04-x64` plus nspr/nss/asound
+  extracted into a scratch dir on `LD_LIBRARY_PATH` got it running without
+  touching system packages. CI uses `--with-deps`, which handles this properly.
+  `gui:e2e` is `cache: false` on purpose: its result depends on a live server
+  and database that moon cannot fingerprint.
+- **Next**: M01-T08

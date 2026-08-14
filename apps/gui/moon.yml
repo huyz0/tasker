@@ -24,6 +24,19 @@ tasks:
       - 'vitest.config.ts'
       - 'package.json'
 
+  # Drives a real browser against a real backend, so its result depends on
+  # state moon cannot see (a running server and its database) - caching a pass
+  # would mean skipping the run that actually proves anything.
+  e2e:
+    command: 'bun run test:e2e'
+    inputs:
+      - 'src/**/*'
+      - 'tests/e2e/**/*'
+      - 'playwright.config.ts'
+      - 'package.json'
+    options:
+      cache: false
+
   build:
     command: 'bun run build'
     inputs:

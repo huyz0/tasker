@@ -11,9 +11,9 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
-    launchOptions: {
-      executablePath: '/usr/bin/chromium-browser',
-    },
+    // No executablePath: use the browser Playwright installs itself
+    // (`bunx playwright install chromium`). Pinning /usr/bin/chromium-browser
+    // tied the suite to one machine's layout and fails on any CI runner.
     video: 'on',
   },
   projects: [
