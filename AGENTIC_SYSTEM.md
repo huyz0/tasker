@@ -74,8 +74,13 @@ and `skill-forge` enforces every one of them deterministically.
 | Host | Skills | Slash commands | Always-on rules |
 | --- | --- | --- | --- |
 | **Codex CLI** | `.agents/skills/<name>/SKILL.md` — native | via skills | `AGENTS.md` |
-| **Antigravity** | `.agents/skills/` — native | `.agents/workflows/*.md` | `AGENTS.md`, `.agents/rules/` |
+| **Antigravity** | `.agents/skills/` — native | `.agents/workflows/*.md` | `.agents/rules/` |
 | **Claude Code** | `.claude/skills/<name>/SKILL.md` | `.claude/commands/<name>.md` | `AGENTS.md` / `CLAUDE.md` |
+
+`AGENTS.md` is the always-on layer and the only file every host loads on every
+turn. `.agents/rules/00-project.md` exists solely because Antigravity reads that
+directory rather than the root file — it forwards to `AGENTS.md` and restates the
+four rules that get broken most.
 
 Claude Code does not scan `.agents/`, so its two directories are a **generated
 adapter layer**: each file is a thin forwarder to the `.agents/` playbook, never a

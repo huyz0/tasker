@@ -41,7 +41,7 @@ tasks:
   # Zero dependencies, so it needs no install step. Part of the root project's
   # task set, so `moon check --all` includes it.
   skills-check:
-    command: 'node .agents/skills/skill-forge/scripts/validate.mjs'
+    command: 'bash -c "node .agents/skills/skill-forge/scripts/validate.mjs && node .agents/skills/skill-forge/scripts/sync-adapters.mjs --check"'
     inputs:
       - '/.agents/**/*'
       - '/.claude/**/*'

@@ -72,16 +72,25 @@ function parseFrontmatter(text) {
 /**
  * Repo-relative paths a document points at, from `@path` and `` `path` ``
  * tokens. Placeholders and globs are skipped — they are not literal targets.
+ *
+ * `base` resolves the skill-relative form (`references/foo.md`, `scripts/x.mjs`)
+ * that skills use to reach their own tier-2 files. Checking only the
+ * repo-absolute form would leave exactly those references unverified.
  */
-function referencedPaths(text) {
+function referencedPaths(text, base) {
   const out = new Set();
-  const re = /[@`](\.(?:agents|specs|milestones|claude|epics|test-plans)\/[^\s`)\]},;]+)/g;
-  let m;
-  while ((m = re.exec(text))) {
-    const p = m[1].replace(/[.,;:]+$/, '');
-    if (/[*{}<>]/.test(p)) continue;
-    out.add(p);
-  }
+  const absolute = /[@`](\.(?:agents|specs|milestones|claude|epics|test-plans)\/[^\s`)\]},;]+)/g;
+  const relative = /`((?:references|scripts)\/[^\s`)\]},;]+)`/g;
+  const collect = (re, prefix) => {
+    let m;
+    while ((m = re.exec(text))) {
+      const p = m[1].replace(/[.,;:]+$/, '');
+      if (/[*{}<>[\]]/.test(p)) continue;
+      out.add(prefix ? `${prefix}/${p}` : p);
+    }
+  };
+  collect(absolute, '');
+  if (base) collect(relative, base);
   return [...out];
 }
 
@@ -139,8 +148,18 @@ for (const name of skillNames) {
     if (pattern.test(body)) err(rel, `inlines protocol text owned by ${PROTOCOLS_DIR}/${owner} — reference it instead`);
   }
 
-  for (const p of referencedPaths(text)) {
+  for (const p of referencedPaths(text, `${SKILLS_DIR}/${name}`)) {
     if (!has(p)) err(rel, `references a path that does not exist: ${p}`);
+  }
+
+  // Tier-2 files carry the detail an agent acts on, so a dead path in one is as
+  // much a runtime failure as a dead path in the body.
+  const refDir = `${SKILLS_DIR}/${name}/references`;
+  for (const refFile of mds(refDir)) {
+    const refRel = `${refDir}/${refFile}`;
+    for (const p of referencedPaths(read(refRel), `${SKILLS_DIR}/${name}`)) {
+      if (!has(p)) err(refRel, `references a path that does not exist: ${p}`);
+    }
   }
 
   const wf = `${WORKFLOWS_DIR}/${name}.md`;
