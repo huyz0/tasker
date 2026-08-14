@@ -29,6 +29,12 @@ The format rules live in `.specs/standards/milestone-standard.md`.
 | `/milestone-deliver-auto [M0N]` | Same, autonomously — implements, tests, commits, continues until the milestone is done or something blocks. |
 | `/milestone-plan` | Add, split, re-scope or re-sequence milestones after new information. |
 
+These are available in **Claude Code** (via `.claude/commands/`) and in
+**Antigravity** (via `.agents/workflows/`). Both forward to the same playbooks
+in `.agents/skills/` — see the Host Adapters section of `AGENTIC_SYSTEM.md`.
+If a command is not offered by your host, check that the adapter file for that
+host exists; the playbook itself is host-agnostic.
+
 ## The resume contract
 
 Three rules make handoff work. The `milestone-deliver` skill enforces them:

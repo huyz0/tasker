@@ -129,6 +129,31 @@ Workflows are human-readable (and agent-executable) orchestrations of large proc
 
 **System Adaptability**: Currently, these lightweight slash-command workflows are optimized specifically to be executed by the **Antigravity** agentic ecosystem. However, because they are written as pure Markdown playbooks rather than explicit Python or Node scripts, they can be trivially extended or adapted to plug into *any* AI coding agent or IDE that supports custom slash commands.
 
+### Host Adapters (`.claude/`)
+
+Each AI coding host discovers commands and skills from its own directory, and
+none of them scan `.agents/`. Portability is therefore delivered by a **thin
+adapter layer**: a small file in the host's expected location that forwards to
+the real playbook in `.agents/`. The playbook stays the single source of truth,
+so there is no content to keep in sync.
+
+| Host | Slash commands | Skills |
+|---|---|---|
+| Antigravity | `.agents/workflows/<name>.md` | `.agents/skills/<name>/SKILL.md` |
+| Claude Code | `.claude/commands/<name>.md` | `.claude/skills/<name>/SKILL.md` |
+
+Claude Code additionally supports `$ARGUMENTS` in a command body, which is how
+`/milestone-deliver M03` passes its target through to the skill.
+
+**Adding a command for a new host**: create the host's file, point it at the
+`.agents/skills/<name>/SKILL.md` playbook, and state the execution mode
+(interactive or autonomous). Never copy the playbook body — a duplicated
+instruction set drifts and the two hosts silently diverge.
+
+> Only the `milestone-*` commands currently carry a Claude Code adapter. The
+> `epic-*`, `standards-*` and other playbooks remain Antigravity-only until an
+> adapter is added for them.
+
 Rather than chaining complex steps, a Workflow in this architecture acts primarily as an explicit **1:1 forwarder** to a specific Skill. It serves as an optimization for Antigravity, providing a dedicated slash command that intentionally triggers an isolated capability (e.g., typing `/epic-implement` directly forwards the execution context to the `epic-implement` Skill).
 
 **Key Workflows:**
