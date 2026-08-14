@@ -35,7 +35,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 
 | ID  | Milestone                      | Status | Depends on | Tasks | Done |
 |-----|--------------------------------|--------|------------|-------|------|
-| M01 | Stabilize the Build            | in-progress | —     | 13    | 13   |
+| M01 | Stabilize the Build            | in-progress | —     | 14    | 14   |
 | M02 | Specification Truth            | todo   | M01        | 7     | 0    |
 | M03 | IAM Correctness & Scale        | todo   | M01        | 14    | 0    |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
@@ -48,7 +48,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 
-**Total: 138 tasks across 12 milestones.**
+**Total: 139 tasks across 12 milestones.**
 
 ## Dependency graph
 

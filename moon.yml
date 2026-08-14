@@ -3,6 +3,8 @@ language: system
 
 tasks:
   dev:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bash scripts/dev.sh'
     options:
       cache: false
@@ -24,6 +26,8 @@ tasks:
   # Fails the build on unused files, dependencies and exports. Part of the root
   # project's task set, so `moon check --all` includes it.
   knip:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bunx knip'
     inputs:
       - 'knip.json'

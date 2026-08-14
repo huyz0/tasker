@@ -1,23 +1,33 @@
 tasks:
   test:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bun run test'
     inputs:
       - 'src/**/*'
       - '**/*.test.ts'
   test-integration:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bun run test:integration'
     inputs:
       - 'src/**/*'
       - '**/*.integration.test.ts'
   build:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bun build ./src/index.ts --target bun --outdir dist'
   build-standalone:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bun run build:standalone'
     inputs:
       - 'src/**/*'
     outputs:
       - 'dist/tasker-standalone'
   lint:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bun run lint'
     inputs:
       - 'src/**/*'

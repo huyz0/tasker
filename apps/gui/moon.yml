@@ -6,18 +6,24 @@ dependsOn:
 
 tasks:
   lint:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bun run lint'
     inputs:
       - 'src/**/*'
       - 'package.json'
 
   typecheck:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bunx tsc --noEmit'
     inputs:
       - 'src/**/*'
       - 'tsconfig.json'
 
   test:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bun run test:coverage'
     inputs:
       - 'src/**/*'
@@ -32,6 +38,8 @@ tasks:
   # invokes: a commit must not require a booted backend and installed browsers.
   # The CI job runs it explicitly (`moon run gui:e2e`) after seeding one.
   e2e:
+    deps:
+      - 'shared-contract:install-deps'
     type: 'run'
     command: 'bun run test:e2e'
     inputs:
@@ -43,6 +51,8 @@ tasks:
       cache: false
 
   build:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bun run build'
     inputs:
       - 'src/**/*'

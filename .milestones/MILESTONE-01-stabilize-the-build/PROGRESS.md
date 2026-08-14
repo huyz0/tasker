@@ -328,4 +328,46 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   `bun install` before `moon check --all` could pass, since this workspace uses
   `language: system` and no moon toolchain, so moon does not install JS
   dependencies for you.
+- **Next**: M01-T14
+
+## M01-T14 — A clean clone bootstraps its own dependencies
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: packages/shared-contract/moon.yml, moon.yml, apps/gui/moon.yml,
+  apps/backend/moon.yml, .moon/toolchain.yml, README.md
+- **Verified**: Two throwaway clones of this branch, each starting with zero
+  `node_modules` and no `.env`:
+  - exit criterion 5 — `moon setup` then `moon check --all` → **19 tasks
+    completed**, no failures, and `node_modules/.bin` populated on the way.
+  - exit criterion 1 — `moon run :dev` alone → `shared-contract:install-deps`
+    ran first, then backend and GUI came up: `gui:200`, test-login `inject:200`,
+    `ENABLE_TEST_LOGIN=true` in the log. No manual step of any kind.
+  `moon check --all` in this working tree: 19 tasks completed.
+- **Notes**: Added during exit-criteria verification, not planned upfront.
+  Three real defects sat between a clean clone and a working checkout:
+  1. Nothing installed `node_modules`. Every JS-consuming task now depends on
+     an `install-deps` task. It lives in **shared-contract**, not the workspace
+     root, and that placement is the point: moon derives the ROOT project's id
+     from the *checkout directory name*, so `root:install-deps` resolves in a
+     directory called `tasker` and breaks in a clone called anything else —
+     which is exactly how it failed the first time I tested it. A task anchored
+     to a real directory has a stable target in every clone. Tried and rejected
+     first: `implicitDeps` in `.moon/tasks.yml` (silently not applied in moon
+     2.4.6 — `moon task` showed "Depends on: —"), an explicit id via
+     `projects.sources` or `moon.yml`'s `id` (both stop the workspace root from
+     being resolvable as the default project), and `pipeline.installDependencies`
+     (needs moon 2 toolchain plugins this workspace does not configure).
+  2. `moon run dev` — the command the README has always given as *the* way to
+     start the app — fails with "No default project has been configured", and
+     always has: confirmed against the committed tree with my changes stashed,
+     so this predates this milestone. The README now says `moon run :dev` and
+     explains why. This is what T05's Verify line named; T05 was verified by
+     running `bash scripts/dev.sh`, which is what the task shells out to, so the
+     behaviour was right and only the documented invocation was wrong.
+  3. `.moon/toolchain.yml` still pinned node 22.14.0 / bun 1.0.30 / go 1.22.0
+     while `.prototools` had moved to 24.12.0 / 1.3.11 / 1.26.1. moon 2 ignores
+     those deprecated platform keys (hence `moon setup` reporting "no toolchains
+     are configured"), so the file was inert — but a stale pin that disagrees
+     with the live one is a trap for the next reader. Brought into step, with a
+     comment saying which file actually governs.
 - **Next**: milestone close

@@ -2,12 +2,31 @@ $schema: https://moonrepo.dev/schemas/project.json
 language: system
 
 tasks:
+  # Nothing here installs node modules for us: every project is
+  # `language: system`, and moon 2's toolchain plugins are not configured, so
+  # `pipeline.installDependencies` has nothing to act on. Every JS-consuming
+  # task in the workspace depends on this one, which is why it lives in a
+  # project whose id is stable - moon derives the ROOT project's id from the
+  # checkout directory name, so a `root:`/`tasker:` target breaks in any clone
+  # not named that. Runs at the workspace root, where the single lockfile is.
+  install-deps:
+    command: 'bun install --cwd $workspaceRoot'
+    inputs:
+      - '/package.json'
+      - '/bun.lock'
+      - '/apps/*/package.json'
+      - '/packages/*/package.json'
+
   format:
+    deps:
+      - 'shared-contract:install-deps'
     command: 'bunx tsp format --check "**/*.tsp"'
     inputs:
       - '**/*.tsp'
 
   compile:
+    deps:
+      - 'shared-contract:install-deps'
     script: 'bunx tsp compile main.tsp && bunx buf generate'
     inputs:
       - '**/*.tsp'

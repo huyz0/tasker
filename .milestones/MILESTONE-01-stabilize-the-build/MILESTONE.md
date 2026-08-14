@@ -128,6 +128,17 @@ performance work (M07), any change to the specs' claims (M02).
       - Files: `moon.yml`, `README.md`
       - Verify: a fresh clone's first commit runs the hook.
 
+- [x] **M01-T14** — Make the documented setup bootstrap its own dependencies:
+      a clean clone currently fails `moon check --all` because nothing installs
+      `node_modules`, so exit criteria 1 and 5 cannot hold. Add an
+      `install-deps` task the JS-consuming tasks depend on, give the root
+      project a stable id so its targets resolve in any clone directory, and
+      correct `.moon/toolchain.yml`'s stale versions.
+      - Files: `.moon/workspace.yml`, `.moon/toolchain.yml`, `moon.yml`,
+        `apps/*/moon.yml`, `packages/shared-contract/moon.yml`, `README.md`
+      - Verify: from a fresh clone with no `node_modules`, `moon setup` followed
+        by `moon check --all` succeeds.
+
 ## 6. Verification
 
 ```bash
