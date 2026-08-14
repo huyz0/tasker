@@ -21,6 +21,15 @@ tasks:
       - 'src/**/*'
       - 'tsconfig.json'
 
+  # Design rules were prose in ui-ux-standard.md and drifted to 47 raw palette
+  # values, 4 WCAG contrast failures and no reduced-motion handling. Zero
+  # dependencies, so it needs no install step and runs in milliseconds.
+  design-lint:
+    command: 'node scripts/design-lint.mjs'
+    inputs:
+      - 'src/**/*'
+      - 'scripts/design-lint.mjs'
+
   test:
     deps:
       - 'shared-contract:install-deps'

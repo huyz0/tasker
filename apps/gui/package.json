@@ -18,5 +18,9 @@
   "dependencies": {
     "shared-contract": "workspace:*",
     "use-debounce": "^10.1.1"
+  },
+  "devDependencies": {
+    "@types/jest-axe": "^3.5.9",
+    "jest-axe": "^11.0.0"
   }
 }

@@ -11,16 +11,16 @@ interface RepositoryIntegrationConfigProps {
 }
 
 const PR_STATUS_STYLES: Record<string, string> = {
-  open: 'bg-green-500/10 text-green-500 border-green-500/20',
-  merged: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  closed: 'bg-red-500/10 text-red-500 border-red-500/20',
+  open: 'bg-success/10 text-success border-success/20',
+  merged: 'bg-primary/10 text-primary border-primary/20',
+  closed: 'bg-destructive/10 text-destructive border-destructive/20',
   draft: 'bg-muted text-muted-foreground border-border',
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  SUCCESS: 'bg-green-500/10 text-green-500 border-green-500/20',
-  FAILURE: 'bg-red-500/10 text-red-500 border-red-500/20',
-  PENDING: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+  SUCCESS: 'bg-success/10 text-success border-success/20',
+  FAILURE: 'bg-destructive/10 text-destructive border-destructive/20',
+  PENDING: 'bg-warning/10 text-warning border-warning/20',
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -325,6 +325,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                 window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=repo`;
               }
             }}
+            /* design-lint-disable-next-line tokens — GitHub brand colour, fixed by the vendor */
             className="px-4 py-2 flex-1 bg-[#2b3137] text-white text-sm font-medium rounded hover:bg-[#2b3137]/90 disabled:opacity-50 transition-colors"
           >
             Connect {provider === 'github' ? 'GitHub' : 'Bitbucket'} via OAuth

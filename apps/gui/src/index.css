@@ -28,6 +28,28 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
+  /* Status semantics. `destructive` is an *action* (delete this thing);
+     `success`/`warning`/`info` are *states* a build, PR or job reports. Both
+     need a solid pair for badges and a subtle pair for tinted callouts, which
+     is what components previously reached for raw palette utilities to get. */
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-success-subtle: hsl(var(--success-subtle));
+  --color-success-subtle-foreground: hsl(var(--success-subtle-foreground));
+
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-warning-subtle: hsl(var(--warning-subtle));
+  --color-warning-subtle-foreground: hsl(var(--warning-subtle-foreground));
+
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+  --color-info-subtle: hsl(var(--info-subtle));
+  --color-info-subtle-foreground: hsl(var(--info-subtle-foreground));
+
+  --color-destructive-subtle: hsl(var(--destructive-subtle));
+  --color-destructive-subtle-foreground: hsl(var(--destructive-subtle-foreground));
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -44,24 +66,41 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 271 100% 61%; 
+    --primary: 271 100% 60%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted-foreground: 215.4 16.3% 45%;
 
     --accent: 271 100% 61% / 0.1;
     --accent-foreground: 222.2 47.4% 11.2%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84.2% 48%;
     --destructive-foreground: 210 40% 98%;
+    --destructive-subtle: 0 93% 95%;
+    --destructive-subtle-foreground: 0 74% 32%;
+
+    --success: 142 72% 26%;
+    --success-foreground: 0 0% 100%;
+    --success-subtle: 138 76% 95%;
+    --success-subtle-foreground: 142 72% 20%;
+
+    --warning: 30 95% 30%;
+    --warning-foreground: 0 0% 100%;
+    --warning-subtle: 48 96% 92%;
+    --warning-subtle-foreground: 28 80% 23%;
+
+    --info: 217 91% 38%;
+    --info-foreground: 0 0% 100%;
+    --info-subtle: 214 95% 95%;
+    --info-subtle-foreground: 224 76% 30%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 271 100% 61%;
+    --ring: 271 100% 60%;
 
     --radius: 0.5rem;
   }
@@ -78,7 +117,7 @@
       --popover-foreground: 210 40% 98%;
 
       --primary: 271 100% 75%;
-      --primary-foreground: 210 40% 98%;
+      --primary-foreground: 271 80% 12%;
 
       --secondary: 217.2 32.6% 17.5%;
       --secondary-foreground: 210 40% 98%;
@@ -91,6 +130,23 @@
 
       --destructive: 0 62.8% 30.6%;
       --destructive-foreground: 210 40% 98%;
+      --destructive-subtle: 0 60% 16%;
+      --destructive-subtle-foreground: 0 91% 78%;
+
+      --success: 142 69% 58%;
+      --success-foreground: 144 80% 8%;
+      --success-subtle: 143 64% 13%;
+      --success-subtle-foreground: 141 79% 75%;
+
+      --warning: 43 96% 56%;
+      --warning-foreground: 26 83% 10%;
+      --warning-subtle: 30 70% 14%;
+      --warning-subtle-foreground: 48 96% 76%;
+
+      --info: 213 94% 68%;
+      --info-foreground: 226 71% 10%;
+      --info-subtle: 226 57% 17%;
+      --info-subtle-foreground: 213 97% 80%;
 
       --border: 217.2 32.6% 17.5%;
       --input: 217.2 32.6% 17.5%;
@@ -106,6 +162,22 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     @apply antialiased;
+  }
+
+  /* WCAG 2.3.3. Eleven files animate; none of them checked whether the visitor
+     asked the OS to stop. Motion sensitivity is not a preference to honour where
+     convenient, so this is global rather than per-component: near-zero durations
+     rather than `animation: none`, because handlers waiting on transitionend or
+     animationend still need the event to fire. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   /* Global keyboard-focus indicator - nothing in the app defined one, so

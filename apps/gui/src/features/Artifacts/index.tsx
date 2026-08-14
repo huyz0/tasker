@@ -239,7 +239,7 @@ export function ArtifactsBrowser() {
                     autoFocus
                     value={editFolderName}
                     onChange={(e) => setEditFolderName(e.target.value)}
-                    className="flex-1 text-sm bg-transparent border-b outline-none"
+                    className="flex-1 text-sm bg-transparent border-b outline-none focus:border-primary"
                   />
                   <button type="submit" disabled={!editFolderName.trim() || updateFolderMutation.isPending} className="text-xs text-primary disabled:opacity-50">Save</button>
                   <button type="button" onClick={() => setEditingFolderId(null)} className="text-xs text-muted-foreground">Cancel</button>

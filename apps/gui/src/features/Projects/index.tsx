@@ -227,7 +227,7 @@ export function ProjectsWizard() {
         ) : templatesData && templatesData.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {templatesData.map(t => (
-              <div key={t.id} className="border rounded-lg bg-card p-6 shadow-sm hover:border-primary transition-all flex flex-col h-full">
+              <div key={t.id} className="border rounded-lg bg-card p-6 shadow-sm hover:border-primary transition-colors flex flex-col h-full">
                  <div className="w-10 h-10 mb-4 rounded bg-primary/10 flex items-center justify-center text-primary">
                    <Package className="w-5 h-5" />
                  </div>
@@ -366,7 +366,7 @@ export function ProjectsWizard() {
                     autoFocus
                     value={editTaskTypeName}
                     onChange={(e) => setEditTaskTypeName(e.target.value)}
-                    className="bg-transparent border-b outline-none w-24"
+                    className="bg-transparent border-b outline-none focus:border-primary w-24"
                   />
                   <button type="submit" disabled={!editTaskTypeName.trim() || updateTaskTypeMutation.isPending} className="text-primary disabled:opacity-50">Save</button>
                   <button type="button" onClick={() => setEditingTaskTypeId(null)} className="text-muted-foreground">Cancel</button>

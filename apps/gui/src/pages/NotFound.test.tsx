@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { expectNoA11yViolations } from '../test/a11y';
 
 const { mockSetActivePageTitle } = vi.hoisted(() => ({ mockSetActivePageTitle: vi.fn() }));
 
@@ -36,6 +37,11 @@ describe('NotFound', () => {
   it('offers a route back to the dashboard', () => {
     renderPage();
     expect(screen.getByRole('link', { name: 'Back to dashboard' })).toHaveAttribute('href', '/');
+  });
+
+  it('has no accessibility violations', async () => {
+    const { container } = renderPage();
+    await expectNoA11yViolations(container);
   });
 
   it('sets the shell page title', () => {

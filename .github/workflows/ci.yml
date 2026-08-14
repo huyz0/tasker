@@ -81,7 +81,7 @@ jobs:
       # gui:test is `vitest run --coverage`, so this gates merges on both the
       # suite passing and the 95% coverage thresholds in vitest.config.ts.
       - name: Build & Test (Cached)
-        run: moon run gui:lint gui:typecheck gui:test gui:build
+        run: moon run gui:lint gui:design-lint gui:typecheck gui:test gui:build
 
   gui-e2e:
     name: GUI E2E (Playwright)

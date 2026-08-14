@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import LoginPage from './Login';
+import { expectNoA11yViolations } from '../test/a11y';
 
 describe('LoginPage Component', () => {
   afterEach(() => {
@@ -26,6 +27,11 @@ describe('LoginPage Component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
 
     expect(window.location.href).toBe('http://localhost:8080/api/auth/google/login');
+  });
+
+  it('has no accessibility violations', async () => {
+    const { container } = render(<LoginPage />);
+    await expectNoA11yViolations(container);
   });
 
   it('should only render a single button', () => {

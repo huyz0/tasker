@@ -32,3 +32,6 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# Screenshots from scripts/screenshot.mjs — review artefacts, not source.
+.design/

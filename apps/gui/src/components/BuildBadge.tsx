@@ -7,9 +7,9 @@ export interface BuildBadgeProps {
 
 export const BuildBadge: React.FC<BuildBadgeProps> = ({ status, commitSha }) => {
   const shortSha = commitSha.substring(0, 7);
-  let colorClass = 'bg-gray-200 text-gray-800';
-  if (status === 'SUCCESS') colorClass = 'bg-green-100 text-green-800';
-  if (status === 'FAILURE') colorClass = 'bg-red-100 text-red-800';
+  let colorClass = 'bg-muted text-muted-foreground';
+  if (status === 'SUCCESS') colorClass = 'bg-success-subtle text-success-subtle-foreground';
+  if (status === 'FAILURE') colorClass = 'bg-destructive-subtle text-destructive-subtle-foreground';
 
   return (
     <span data-testid="build-badge" className={`px-2 py-1 rounded text-xs font-mono ${colorClass}`}>

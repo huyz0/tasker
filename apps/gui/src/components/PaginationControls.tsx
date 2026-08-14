@@ -13,7 +13,7 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
 }) => {
   if (!nextCursor) {
     return (
-      <div className="flex justify-center p-4 text-sm text-gray-500">
+      <div className="flex justify-center p-4 text-sm text-muted-foreground">
         No more items to load
       </div>
     );
@@ -24,9 +24,9 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
       <button 
         onClick={() => onNextPage(nextCursor)}
         disabled={isLoading}
-        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
       >
-        {isLoading ? "Loading..." : "Load More"}
+        {isLoading ? "Loading…" : "Load More"}
       </button>
     </div>
   );

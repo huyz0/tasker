@@ -8,21 +8,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4">
-      <Card className="w-full max-w-sm border-zinc-800 bg-zinc-900/50 backdrop-blur-xl">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-semibold text-white tracking-tight">
+          <CardTitle className="text-2xl font-semibold text-foreground tracking-tight">
             Tasker
           </CardTitle>
-          <p className="text-sm text-zinc-400 mt-2">
+          <p className="text-sm text-muted-foreground mt-2">
             Autonomous SDLC Platform
           </p>
         </CardHeader>
         <CardContent>
-          <Button 
-            className="w-full bg-white text-black hover:bg-zinc-200 transition-colors"
-            onClick={handleGoogleLogin}
-          >
+          <Button variant="inverted" className="w-full" onClick={handleGoogleLogin}>
             Continue with Google
           </Button>
         </CardContent>

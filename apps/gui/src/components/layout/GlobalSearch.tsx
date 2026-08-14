@@ -83,7 +83,7 @@ export function GlobalSearch() {
           <input
             autoFocus
             placeholder="Type a command or search..."
-            className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

@@ -208,11 +208,11 @@ export function AgentsDashboard() {
                 ) : (
                 <div key={a.id} className="p-3 text-sm flex justify-between items-center">
                   <span className="flex-1 font-medium text-primary flex justify-start items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
                     {a.name}
                   </span>
                   <span className="w-24 text-muted-foreground">{roleNameById.get(a.agentRoleId) ?? a.agentRoleId}</span>
-                  <span className="w-24"><span className="text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider bg-green-500/10 text-green-500 border border-green-500/20">WORKING</span></span>
+                  <span className="w-24"><span className="text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider bg-success/10 text-success border border-success/20">WORKING</span></span>
                   <button
                     onClick={() => {
                       setEditingAgentId(a.id);

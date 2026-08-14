@@ -9,6 +9,13 @@ import { fetchAllPages } from '../../lib/fetchAllPages';
 
 const labelClient = createClient(LabelService, transport);
 
+// A label's colour is user data — chosen in a colour input, stored on the
+// entity, rendered through an inline style. It is not a theme decision, so it
+// cannot come from a semantic token. One named default rather than a literal
+// repeated at three call sites.
+/* design-lint-disable-next-line tokens — user-chosen entity colour, not a theme token */
+const DEFAULT_LABEL_COLOR = '#3b82f6';
+
 export function LabelsManager() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
@@ -16,10 +23,10 @@ export function LabelsManager() {
   const queryClient = useQueryClient();
 
   const [newLabelName, setNewLabelName] = useState('');
-  const [newLabelColor, setNewLabelColor] = useState('#3b82f6');
+  const [newLabelColor, setNewLabelColor] = useState(DEFAULT_LABEL_COLOR);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editLabelName, setEditLabelName] = useState('');
-  const [editLabelColor, setEditLabelColor] = useState('#3b82f6');
+  const [editLabelColor, setEditLabelColor] = useState(DEFAULT_LABEL_COLOR);
 
   const { data: labelsData, isLoading } = useQuery({
     queryKey: ['labels', activeOrgId],
@@ -121,7 +128,7 @@ export function LabelsManager() {
                     autoFocus
                     value={editLabelName}
                     onChange={(e) => setEditLabelName(e.target.value)}
-                    className="bg-transparent border-b outline-none w-24"
+                    className="bg-transparent border-b outline-none focus:border-primary w-24"
                   />
                   <button type="submit" disabled={!editLabelName.trim() || updateLabelMutation.isPending} className="text-xs text-primary disabled:opacity-50">Save</button>
                   <button type="button" onClick={() => setEditingLabelId(null)} className="text-xs text-muted-foreground">Cancel</button>
@@ -137,7 +144,7 @@ export function LabelsManager() {
                     onClick={() => {
                       setEditingLabelId(label.id);
                       setEditLabelName(label.name);
-                      setEditLabelColor(label.color || '#3b82f6');
+                      setEditLabelColor(label.color || DEFAULT_LABEL_COLOR);
                     }}
                     className="text-muted-foreground hover:text-foreground text-xs"
                   >

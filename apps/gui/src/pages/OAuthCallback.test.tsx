@@ -24,6 +24,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 import { OAuthCallback } from './OAuthCallback';
+import { expectNoA11yViolations } from '../test/a11y';
 
 function renderAt(search: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -135,5 +136,10 @@ describe('OAuthCallback', () => {
     renderAt(`?code=abc123&state=${state}`);
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/projects'));
+  });
+
+  it('has no accessibility violations', async () => {
+    const { container } = renderAt('?code=abc&state=' + encodeState({ nonce: 'n' }));
+    await expectNoA11yViolations(container);
   });
 });

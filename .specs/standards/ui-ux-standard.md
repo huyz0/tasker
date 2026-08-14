@@ -1,5 +1,11 @@
 # UI/UX Standards
 
+> Rules here are enforced by `moon run gui:design-lint` (tokens, contrast, and
+> the statically checkable Web Interface Guidelines) and by the axe assertion on
+> every page. Judgement that no regex can make — hierarchy, density, whether the
+> screen has a point of view — is covered by `/design-review`, which looks at
+> rendered screenshots rather than at source.
+
 ## 1. Design Tokens & System
 
 - **Rule**: NEVER hardcode color hexes or ad-hoc pixel values

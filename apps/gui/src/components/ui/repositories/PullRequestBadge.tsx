@@ -14,11 +14,11 @@ export function PullRequestBadge({ pr }: PullRequestBadgeProps) {
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'merged':
-        return <GitPullRequest className="w-4 h-4 text-purple-500" />;
+        return <GitPullRequest className="w-4 h-4 text-primary" />;
       case 'closed':
-        return <CircleCheck className="w-4 h-4 text-red-500" />;
+        return <CircleCheck className="w-4 h-4 text-destructive" />;
       case 'open':
-        return <CircleDot className="w-4 h-4 text-green-500" />;
+        return <CircleDot className="w-4 h-4 text-success" />;
       default:
          return <AlertCircle className="w-4 h-4 text-muted-foreground" />;
     }

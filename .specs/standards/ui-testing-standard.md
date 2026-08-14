@@ -5,9 +5,27 @@ To ensure a robust, accessible, and high-quality frontend, all UI development mu
 ## 1. Accessibility (A11y) Testing
 
 All pages and complex components MUST be validated for WCAG 2.1 AA compliance.
-- **Tools**: We use `axe-core` (or `@axe-core/react`) for automated accessibility tests.
-- **Rule**: Every top-level page component in `apps/gui/src/pages/` must include a vitest/testing-library block that runs `jest-axe` against the rendered DOM to prove 0 accessibility violations.
-- **Manual Audits**: Use the browser's built-in Axe DevTools extension during manual QA to test keyboard nav and color contrast for newly introduced token combinations.
+- **Tools**: `jest-axe`, wrapped by `src/test/a11y.ts`. It brings `axe-core`
+  itself — do not add that as a direct dependency, `knip` fails the build on it.
+- **Rule**: Every top-level page component in `apps/gui/src/pages/` MUST call
+  `expectNoA11yViolations(container)` and prove 0 violations. This rule was
+  aspirational until axe was actually installed; a rule nothing runs binds nothing.
+- **Colour contrast is not tested here.** jsdom has no layout or paint, so axe
+  cannot evaluate it and the rule is disabled in the helper. Contrast is measured
+  instead by `node scripts/design-lint.mjs --only contrast`, which computes every
+  token pair in both themes and fails below 4.5:1.
+- **Manual Audits**: Use Axe DevTools during manual QA for keyboard navigation
+  and for token combinations the static gate cannot see.
+
+## 1b. Design Gates
+
+Two gates run in `moon check` alongside the suite:
+- `gui:design-lint` — raw hex, raw palette utilities, token contrast, and the
+  statically checkable Web Interface Guidelines (`transition: all`, `outline-none`
+  without a replacement, `<div onClick>`, images without `alt`, `...` for `…`).
+- `/design-review` — the judgement the linter cannot make, against rendered
+  screenshots at 375/768/1280 in light and dark. Not a CI gate; run it before
+  shipping a screen.
 
 ## 2. Component Testing (Unit/Integration)
 

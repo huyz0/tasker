@@ -38,6 +38,7 @@ vi.mock('../store/layout', () => ({
 }));
 
 import { Dashboard } from './Dashboard';
+import { expectNoA11yViolations } from '../test/a11y';
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -166,5 +167,11 @@ describe('Dashboard', () => {
 
     await waitFor(() => expect(screen.getByText('Tasks by Status')).toBeDefined());
     expect(screen.getByText('Todo').previousElementSibling?.textContent).toBe('1');
+  });
+
+  it('has no accessibility violations once loaded', async () => {
+    const { container } = renderPage();
+    await waitFor(() => expect(screen.queryByText('Loading telemetry...')).toBeNull());
+    await expectNoA11yViolations(container);
   });
 });

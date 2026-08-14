@@ -18,9 +18,9 @@ describe('PaginationControls', () => {
     expect(onNextPage).toHaveBeenCalledWith('cursor123');
   });
 
-  it('renders "Loading..." and disables button when isLoading is true', () => {
+  it('renders the loading label and disables the button while loading', () => {
     render(<PaginationControls nextCursor="cursor123" onNextPage={vi.fn()} isLoading={true} />);
-    const button = screen.getByRole('button', { name: 'Loading...' }) as HTMLButtonElement;
+    const button = screen.getByRole('button', { name: 'Loading…' }) as HTMLButtonElement;
     expect(button).toBeDefined();
     expect(button.disabled).toBe(true);
   });

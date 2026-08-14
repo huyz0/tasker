@@ -81,6 +81,38 @@ anything.
 
 ## Handoff notes
 
+**2026-08-15 — UI/UX design harness added (outside the milestone plan).**
+
+Researched the 2026 design-skill landscape (Vercel Web Interface Guidelines,
+Anthropic `frontend-design`, `plugin87/ux-ui-agent-skills`) and adopted the
+patterns rather than the packages — Snyk's ToxicSkills audit found 36.8% of
+scanned third-party skills flawed.
+
+1. **`/design-review`** — judges rendered screenshots, not source.
+   `apps/gui/scripts/screenshot.mjs <route>` captures light and dark at
+   375/768/1280 with reduced motion, and reports console errors. Needs the dev
+   server and `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu22.04-x64` on this box.
+2. **`moon run gui:design-lint`** is now part of `moon check --all` and CI. It
+   fails on raw hex, raw Tailwind palette utilities, token pairs below WCAG AA,
+   and the statically checkable Web Interface Guidelines. Escape hatch:
+   `design-lint-disable-next-line <rule> — <reason>`.
+3. **axe is real.** `jest-axe` is installed and every page asserts
+   `expectNoA11yViolations`. `ui-testing-standard.md` §1 had required this since
+   it was written while axe was never installed. Do **not** add `axe-core` as a
+   direct dependency — `jest-axe` brings it and `knip` fails the build on it.
+4. **Design-system tokens gained status semantics** — `success`/`warning`/`info`
+   with solid and subtle pairs, plus `destructive-subtle`. Four pre-existing
+   WCAG AA failures were fixed by adjusting `--primary`, `--muted-foreground`,
+   `--destructive` (light) and dark `--primary-foreground`, so the app's purple
+   and red are marginally darker than before.
+5. **`Card` and `Button` were unstyled `<div>`/`<button>` passthroughs.** The
+   screenshot loop caught it in the first capture. Both now carry their Shadcn
+   styling, and `Button` has the `variant`/`size` API that
+   `frontend-standard.md` §1 already described.
+
+Verified: `moon check --all` 21 tasks pass; `CI=true moon run gui:e2e` 13 pass;
+the a11y gate was confirmed to fail on an injected `button-name` violation.
+
 **2026-08-15 — Agent harness consolidated (outside the milestone plan).**
 
 The harness in `.agents/` was rebuilt against four reference systems (agent-os,

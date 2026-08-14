@@ -14,7 +14,30 @@ We use Semantic HSL variables mapping closely to the Shadcn UI standard.
 - `accent`: Hover states on menus, slight pop-out background (`bg-accent`).
 - `background` / `foreground`: Default document background and base text rendering.
 
+### Status Semantics
+
+`destructive` is an **action** (delete this thing). `success`, `warning` and
+`info` are **states** something reports. Each has a solid pair for badges and a
+subtle pair for tinted callouts:
+
+| Token | Solid | Subtle |
+|---|---|---|
+| success | `bg-success text-success-foreground` | `bg-success-subtle text-success-subtle-foreground` |
+| warning | `bg-warning text-warning-foreground` | `bg-warning-subtle text-warning-subtle-foreground` |
+| info | `bg-info text-info-foreground` | `bg-info-subtle text-info-subtle-foreground` |
+| destructive | `bg-destructive text-destructive-foreground` | `bg-destructive-subtle text-destructive-subtle-foreground` |
+
+- Reach for these instead of `bg-green-100` / `text-red-800`. Raw palette
+  utilities were the single largest source of drift in this codebase.
+- MUST NOT convey state by colour alone (WCAG 1.4.1). Pair the colour with text
+  or an icon.
+
 *Note: NEVER hardcode `#hex` colors in UI components. Always use the mapped Tailwind classes above.*
+
+**This is enforced, not advised.** `moon run gui:design-lint` fails the build on
+a raw hex, a raw palette utility, or a token pair below WCAG AA 4.5:1 in either
+theme. A genuine exception — a third-party brand colour, or user-chosen entity
+data — carries `design-lint-disable-next-line tokens — <reason>`.
 
 ## 2. Typography
 
