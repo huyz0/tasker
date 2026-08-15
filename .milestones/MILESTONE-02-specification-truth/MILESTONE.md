@@ -71,7 +71,7 @@ a later milestone and must be referenced, not built, here.
       - Files: `.specs/adr/ADR-0003…ADR-0007.md`
       - Verify: `architecture.md` links each ADR.
 
-- [ ] **M02-T04** — Add a `spec-drift` script comparing declared dependencies
+- [x] **M02-T04** — Add a `spec-drift` script comparing declared dependencies
       against `tech-stack.md`, wired into `moon check` and CI.
       - Files: `scripts/spec-drift.ts`, `moon.yml`, `.github/workflows/ci.yml`
       - Verify: adding a dependency without documenting it fails the check.

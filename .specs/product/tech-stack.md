@@ -81,6 +81,10 @@ trail and live GUI are M08.
   health probe; **nothing writes to it**. A real index is M07.
 - **OpenSearch is not installed** — see Planned.
 
+| Technology | Version | Role |
+|---|---|---|
+| `better-sqlite3` | ^12.8.0 | Not imported by this repo — `drizzle-kit` loads it dynamically for `sqlite` migrations. See the correction below. |
+
 ### CLI — `apps/cli/go.mod`
 
 | Technology | Version | Role |
@@ -95,16 +99,26 @@ mode**; Viper, the Charmbracelet ecosystem and `mcp-go` are not dependencies.
 
 ### API contract — `package.json`
 
-TypeSpec (`@typespec/compiler` ^1.11.0, `@typespec/protobuf` ^0.81.0) compiled
-to protobuf, then to TypeScript via `@bufbuild/protoc-gen-es` ^2.11.0 and
-validated with `@bufbuild/buf` ^1.67.0. `packages/shared-contract` holds the
-generated output.
+| Technology | Version | Role |
+|---|---|---|
+| `@typespec/compiler` | ^1.11.0 | Contract language |
+| `@typespec/protobuf` | ^0.81.0 | TypeSpec → protobuf emitter |
+| `@bufbuild/protoc-gen-es` | ^2.11.0 | protobuf → TypeScript |
+| `@bufbuild/buf` | ^1.67.0 | Proto linting and breaking-change detection |
+
+`packages/shared-contract` holds the generated output.
 
 ### Build & toolchain — `.prototools`
 
-moon 2.4.6 (task running and caching), proto (pins node 24.12.0, bun 1.3.11,
-moon 2.4.6, go 1.26.1). Every moon project is `language: system`; commands
-resolve through proto's shims.
+| Technology | Version | Role |
+|---|---|---|
+| `moon` | 2.4.6 | Task running, caching, CI orchestration |
+| `node` | 24.12.0 | Runs the zero-dependency gate scripts |
+| `bun` | 1.3.11 | Backend runtime, package manager, test runner |
+| `go` | 1.26.1 | CLI toolchain |
+
+proto owns all four pins. Every moon project is `language: system`; commands
+resolve through proto's shims, so these versions are what actually run.
 
 ### Quality — `package.json`, `apps/gui/package.json`
 
@@ -122,16 +136,22 @@ resolve through proto's shims.
 Git hooks are plain shell in `.githooks/`, wired by `moon run :setup-hooks`.
 Husky and lint-staged are not installed.
 
-### Known manifest drift
+### Correction — the two "unused" devDependencies are load-bearing
 
-Two root devDependencies are declared and unused. Both are removal candidates;
-M02-T04's drift check is the right place to force the decision rather than
-deleting them inside a documentation task.
+An earlier revision of this file (M02-T01) listed `better-sqlite3` and
+`@storybook/addon-onboarding` as declared-and-unused, on the strength of having
+no `import` anywhere in `src/`. Both conclusions were wrong, and the drift check
+built in M02-T04 is what forced the second look:
 
-- **`better-sqlite3` ^12.8.0** — zero imports, and not a dependency or peer of
-  `drizzle-kit`. The SQLite driver actually used is `bun:sqlite`.
-- **`@storybook/addon-onboarding` ^10.3.5** — the scaffolding wizard from
-  `storybook init`. It serves no purpose after the first run.
+- **`better-sqlite3`** is loaded by `drizzle-kit`, which does
+  `import("better-sqlite3")` at runtime for the `sqlite` dialect. Nothing
+  declares it as a peer, so it has to be declared here or
+  `drizzle-kit push --config drizzle.sqlite.config.ts` fails. It now has a row
+  in the table above. **Do not remove it because grep finds no import** — that
+  is exactly the reasoning that got it labelled unused.
+- **`@storybook/addon-onboarding`** is registered in
+  `apps/gui/.storybook/main.ts:13`, so it is an active addon, not leftover
+  scaffolding. It is covered by the `@storybook/*` entry.
 
 ---
 

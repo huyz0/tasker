@@ -55,6 +55,25 @@ tasks:
   # milestones are all prose that agents execute. It stayed advisory while it
   # reported 615 errors; now that the conventions are recorded in
   # `.markdownlint-cli2.jsonc` and the tree is clean, it can hold the line.
+  # `.specs/` is only a source of truth if something breaks when it stops being
+  # true. This is that something: it compares every declared manifest identifier
+  # against the "In Use" tables of tech-stack.md, in both directions. Its own
+  # suite runs first — the rules that decide whether the specs are honest have to
+  # be provably capable of failing, same as `skills-check`.
+  spec-drift:
+    deps:
+      - 'shared-contract:install-deps'
+    command: 'bash -c "bun test scripts/spec-drift.test.ts && bun run scripts/spec-drift.ts"'
+    inputs:
+      - '/scripts/spec-drift.ts'
+      - '/scripts/spec-drift.test.ts'
+      - '/package.json'
+      - '/apps/*/package.json'
+      - '/packages/*/package.json'
+      - '/apps/cli/go.mod'
+      - '/.prototools'
+      - '/.specs/product/tech-stack.md'
+
   docs-lint:
     deps:
       - 'shared-contract:install-deps'

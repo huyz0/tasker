@@ -172,3 +172,66 @@ line omitted.
   read-store decision to measurement, and ADR-0004 leaves that measurement
   per-process and volatile. Stated explicitly in both files rather than left for
   a reader to notice.
+
+---
+
+## M02-T04 — spec-drift check
+
+**Date**: 2026-08-15
+**Status**: done
+**Approach**: A script comparing every declared manifest identifier against the
+**In Use** tables of `tech-stack.md`, failing in both directions — an undeclared
+entry and an undocumented dependency are the same defect seen from either side.
+Tests first, then the script, then a deliberate break: add a real dependency and
+confirm the gate fails. Wired into `moon check --all` and the CI Workspace job.
+
+**Changed**: `scripts/spec-drift.ts`, `scripts/spec-drift.test.ts` (21 tests),
+`moon.yml` (`tasker:spec-drift`), `.github/workflows/ci.yml` (Workspace job),
+and `.specs/product/tech-stack.md` — which the check immediately proved wrong in
+seven places.
+
+**Sources read**: root and workspace `package.json` files, `apps/cli/go.mod`
+(direct requires only), and `.prototools` (pins above `[settings]`). 62 declared
+identifiers, 58 documented, 0 drift.
+
+**Verified**: three ways.
+
+1. `bun test scripts/spec-drift.test.ts` — 21 tests, each breaking exactly one
+   thing: both directions, `@types/*` exemption, `@scope/*` wildcard coverage
+   and its limits, workspace-internal skip, built-ins, go direct vs `// indirect`
+   vs single-line require, `.prototools` `[settings]`, first-column-only
+   parsing, Planned entries not counting as documentation, and a missing
+   `## In Use` section throwing rather than silently passing.
+2. **Deliberate break** — added `date-fns` to root `devDependencies`. The check
+   reported exactly one finding and exited 1; restoring the manifest returned it
+   to 0. `git diff --stat package.json` confirmed a clean restore.
+3. `moon check --all` is now 23 tasks and green; `bunx knip` clean.
+
+**What the evidence changed about the plan**:
+
+The check found seven drifts on its first run against the real tree, four of
+which were prose the document had that the tables did not: the TypeSpec/buf
+toolchain, and the `node`/`moon` pins in `.prototools`. Those sections are now
+tables. Prose is not enforceable, which is the whole argument for this task.
+
+The other three were **two wrong claims I wrote in M02-T01**, both from the same
+mistake — concluding "unused" from the absence of an `import`:
+
+- **`better-sqlite3` is load-bearing.** `drizzle-kit` does
+  `import("better-sqlite3")` inside its own bundle for the `sqlite` dialect and
+  declares it as no kind of peer, so it must be declared here or
+  `drizzle-kit push --config drizzle.sqlite.config.ts` breaks. T01 called it
+  "zero imports, not a dependency or peer of `drizzle-kit`" and listed it as a
+  removal candidate. Removing it would have broken sqlite migrations.
+- **`@storybook/addon-onboarding` is an active addon**, registered at
+  `apps/gui/.storybook/main.ts:13`. T01 called it leftover scaffolding.
+
+The "Known manifest drift" section is now a correction section saying so, with
+the reasoning that produced the error, because the next agent will be tempted by
+the same grep.
+
+**Divergence**: the task frames the check as "comparing declared dependencies
+against `tech-stack.md`" — one direction. It runs both. A document naming a
+package nobody installed is the defect this milestone opened with: an agent
+reads `tech-stack.md`, imports Radix, and the build fails. Catching only
+undocumented additions would leave that class untouched.
