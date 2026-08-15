@@ -16,6 +16,7 @@ import { createLabelsHandler } from '../modules/labels/labels.handler';
 import { createRepositoriesHandler } from '../modules/repositories/repositories.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
+import createSearchHandler from '../modules/search/search.handler';
 
 /**
  * Deny-by-default for agent tokens, the sibling of `viewer-denial.test.ts`.
@@ -33,7 +34,7 @@ import { createAuthHandler } from '../modules/auth/auth.handler';
  */
 
 /** Handlers agents may never reach at all, whatever scopes they hold. */
-const NO_AGENT_ACCESS = ['orgs', 'auth'];
+const NO_AGENT_ACCESS = ['orgs', 'auth', 'search'];
 
 /** Unauthenticated, so there is no principal for a scope to apply to. */
 const PUBLIC: Record<string, string[]> = { health: ['ping'] };
@@ -75,6 +76,11 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     setOrgRetentionDays: { orgId: ids.org, binRetentionDays: 5 },
   },
   auth: { getIdentity: {} },
+  // Registered through a router rather than as a handler factory, which is why
+  // it was absent from this sweep and from viewer-denial's until M04-T12 went
+  // looking. It is closed to agents today only because it still calls
+  // requireUser; nothing would have caught a future migration.
+  search: { universalSearch: { orgId: ids.org, query: 'x' } },
   projects: {
     getProject: { id: ids.project },
     listProjects: { orgId: ids.org },
@@ -223,6 +229,13 @@ beforeAll(async () => {
     labels: createLabelsHandler(db, null),
     repositories: createRepositoriesHandler(db, null),
     health: createHealthHandler(db, null),
+    // createSearchHandler takes a ConnectRouter and registers onto it, so the
+    // methods are recovered from a stub router rather than from a return value.
+    search: (() => {
+      const captured: Record<string, any> = {};
+      createSearchHandler({ service: (_svc: unknown, impl: Record<string, any>) => Object.assign(captured, impl) } as any, db);
+      return captured;
+    })(),
   };
 });
 

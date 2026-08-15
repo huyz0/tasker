@@ -29,6 +29,8 @@ export interface RateLimiterOptions {
   windowMs?: number;
   /** Buckets idle this long are dropped. */
   idleEvictionMs?: number;
+  /** Hard ceiling on tracked credentials. See the note in createRateLimiter. */
+  maxBuckets?: number;
 }
 
 interface Bucket {
@@ -36,12 +38,13 @@ interface Bucket {
   lastRefill: number;
 }
 
-const DEFAULTS = { capacity: 120, windowMs: 60_000, idleEvictionMs: 10 * 60_000 };
+const DEFAULTS = { capacity: 120, windowMs: 60_000, idleEvictionMs: 10 * 60_000, maxBuckets: 10_000 };
 
 export function createRateLimiter(options: RateLimiterOptions = {}) {
   const capacity = options.capacity ?? DEFAULTS.capacity;
   const windowMs = options.windowMs ?? DEFAULTS.windowMs;
   const idleEvictionMs = options.idleEvictionMs ?? DEFAULTS.idleEvictionMs;
+  const maxBuckets = options.maxBuckets ?? DEFAULTS.maxBuckets;
   const refillPerMs = capacity / windowMs;
 
   const buckets = new Map<string, Bucket>();
@@ -57,6 +60,34 @@ export function createRateLimiter(options: RateLimiterOptions = {}) {
     }
   }
 
+  /**
+   * Hard ceiling, because idle eviction alone is not enough.
+   *
+   * This keys on the presented token's hash *before* authentication - it has
+   * to, since resolving a token id means the database lookup it exists to
+   * protect - so anyone can create a bucket by sending a random `tskr_` string.
+   * With only a 10-minute idle sweep, a flood of forged credentials grows the
+   * map until memory runs out. Found by the M04-T12 security review.
+   *
+   * Evicts the *least constrained* buckets first - those with the most
+   * allowance left - rather than the least recently used. LRU is wrong here:
+   * during a flood the genuine credential is by definition the least recently
+   * used, so LRU evicts exactly the bucket worth keeping and hands its holder a
+   * fresh allowance. Dropping a bucket that is nearly full loses almost no
+   * state; dropping one that is nearly empty discards the limit being enforced.
+   */
+  function enforceCeiling(now: number) {
+    if (buckets.size < maxBuckets) return;
+    evictIdle(now);
+    if (buckets.size < maxBuckets) return;
+
+    const byAllowance = [...buckets.entries()].sort((a, b) => b[1].tokens - a[1].tokens);
+    for (const [key] of byAllowance) {
+      if (buckets.size < maxBuckets) break;
+      buckets.delete(key);
+    }
+  }
+
   return {
     /** Consumes one unit for `key`, and says whether the request may proceed. */
     check(key: string, now: number = Date.now()): RateLimitDecision {
@@ -65,6 +96,7 @@ export function createRateLimiter(options: RateLimiterOptions = {}) {
         // Evicting on miss rather than on a timer keeps this dependency-free
         // and means an idle process holds no work.
         if (buckets.size > 0 && buckets.size % 64 === 0) evictIdle(now);
+        enforceCeiling(now);
         bucket = { tokens: capacity, lastRefill: now };
         buckets.set(key, bucket);
       }

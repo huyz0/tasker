@@ -500,3 +500,49 @@ Append-only. Newest entry at the bottom.
   warning that doing it in the other order is what causes downtime, and the
   per-instance caveat on rate limits.
 - **Next**: M04-T12
+
+---
+
+## M04-T12 — Security review of the whole surface
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `src/modules/agents/agents.handler.ts` (purge deletes tokens),
+  `src/lib/rateLimit.ts` (bounded bucket map), `src/lib/agent-scope-sweep.test.ts`
+  (covers `search`), `src/lib/token-purge.test.ts` (new, 3 tests),
+  `src/lib/rateLimit.test.ts` (+2)
+- **Verified**: `moon run backend:test` — 556 pass / 7 skip / 0 fail (was 550).
+  `moon check --all` — 23 pass. Both fixes proven by tests that fail without
+  them; the sweep's new coverage proven by injection.
+- **Review**: `reviews/M04-T12-security-v1.md` — approved, no open criticals.
+- **Divergence**: the task says "via `/security-review`". **No such skill
+  exists** — the harness has 16 and that is not one of them, so the plan named a
+  command nobody wrote. Performed directly against `security-standard.md` and
+  `heavy-task.md`'s security lens, and recorded rather than quietly substituted.
+- **CRITICAL, found and fixed: a purged agent's tokens kept working.**
+  `purgeAgent` deleted the agent row but never touched `api_tokens`, and
+  `resolveAgentToken` LEFT JOINs agents to check `deletedAt` — with the agent row
+  gone the join yields NULL, the deleted-agent branch never fires, and the
+  credential resolves normally. The agent is absent from every screen and every
+  query, and its token still authenticates. Found by asking what happens to a
+  credential when the identity it stands for stops existing, then writing the
+  test to find out.
+- **HIGH, found and fixed: the rate limiter's bucket map was unbounded and
+  reachable without any credential.** It keys on the presented token's hash
+  *before* authentication — it has to, since resolving a token id means the
+  lookup it protects — so anyone can create a bucket with a random `tskr_`
+  string. Now capped. The eviction order turned out to matter more than the cap:
+  LRU is exactly wrong, because during a flood the genuine credential *is* the
+  least recently used, so LRU evicts the one bucket worth keeping and hands its
+  holder a fresh allowance. It now evicts the least *constrained* first.
+- **MEDIUM, closed: `universalSearch` was in neither sweep.**
+  `createSearchHandler` registers onto a `ConnectRouter` rather than returning a
+  handler object, so both sweeps' handler maps missed it. Closed to agents today
+  only because it still calls `requireUser`; nothing would have caught a future
+  migration. Both sweeps now cover it, proven by injection.
+- **MEDIUM, handed to M11: agent traffic is unattributed in logs.**
+  `requestLogging` binds `userId` from `resolveSessionUserId`, which is null for
+  a token, so "which agent did this" is unanswerable from the logs. The
+  credential itself is correctly never logged. The fix is a change to the
+  logging context shape that M11 should design once.
+- **Next**: milestone close

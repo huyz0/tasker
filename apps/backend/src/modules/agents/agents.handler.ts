@@ -309,6 +309,15 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
       await db.update(comments).set({ agentId: null }).where(eq((comments as any).agentId, parsed.agentId));
+
+      // Delete the agent's credentials before the agent itself. Without this
+      // the token rows are orphaned, and resolveAgentToken LEFT JOINs agents to
+      // check deletedAt - with the agent row gone that join yields NULL, the
+      // deleted-agent check does not fire, and the token keeps authenticating
+      // as an agent that no longer exists anywhere in the product. Found by the
+      // M04-T12 security review; see token-purge.test.ts.
+      await db.delete(apiTokensTable()).where(eq((apiTokensTable() as any).agentId, parsed.agentId));
+
       await db.delete(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId));
 
       publishDomainEvent(nc, "domain.agent.purged", { agentId: parsed.agentId });

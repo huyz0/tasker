@@ -115,3 +115,28 @@ describe('the 429 body', () => {
     expect(JSON.parse(rateLimitProblem(1).body).detail).toContain('1 second.');
   });
 });
+
+describe('bucket map is bounded', () => {
+  it('does not grow without limit when a caller invents credentials', () => {
+    // The limiter keys on the presented token's hash, before authentication —
+    // it has to, because resolving a token id means the database lookup this
+    // protects. So anything can create a bucket by sending a random tskr_
+    // string, and an unbounded map turns that into memory exhaustion.
+    const rl = createRateLimiter({ capacity: 5, windowMs: 1000, maxBuckets: 500 });
+    const t0 = 1_000_000;
+    for (let i = 0; i < 5000; i++) rl.check(`forged-${i}`, t0);
+    expect(rl.size()).toBeLessThanOrEqual(500);
+  });
+
+  it('keeps the constrained buckets and drops the roomy ones', () => {
+    const rl = createRateLimiter({ capacity: 5, windowMs: 1000, maxBuckets: 100 });
+    const t0 = 1_000_000;
+    // A real credential that has spent its allowance...
+    for (let i = 0; i < 5; i++) rl.check('real', t0);
+    // ...survives a flood of forged keys that have each spent one.
+    for (let i = 0; i < 1000; i++) rl.check(`forged-${i}`, t0);
+    // Evicting by least-recently-used would drop exactly this bucket and hand
+    // its holder a fresh allowance, which is the opposite of the point.
+    expect(rl.check('real', t0).allowed).toBe(false);
+  });
+});

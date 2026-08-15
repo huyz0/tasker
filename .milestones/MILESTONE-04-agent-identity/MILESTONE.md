@@ -112,7 +112,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
       - Files: `docs/agent-integration.md`, `README.md`
       - Verify: a reader can authenticate an agent from the guide alone.
 
-- [ ] **M04-T12** — Security review of the whole surface via `/security-review`,
+- [x] **M04-T12** — Security review of the whole surface via `/security-review`,
       with findings resolved.
       - Verify: review recorded under `.milestones/MILESTONE-04-agent-identity/reviews/` with no open criticals.
 
