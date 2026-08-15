@@ -197,7 +197,7 @@ Append-only. Newest entry at the bottom.
   `src/modules/agents/agents.handler.ts`, `src/lib/scopes.ts` (new),
   `src/modules/agents/agent-tokens.test.ts` (new, 18 tests),
   `src/lib/viewer-denial.test.ts` (classification + fixture)
-- **Verified**: `moon run backend:test` — 530 pass / 7 skip / 0 fail (was 495).
+- **Verified**: `moon run backend:test` — 516 pass / 7 skip / 0 fail (was 495).
   `moon check --all` — 23 tasks pass. Verify line proven by injection: adding
   `tokenHash` to the wire shape turns the suite red.
 - **Review**: `reviews/M04-T05-token-rpcs-v1.md` — approved, 2 medium, 3 low.
