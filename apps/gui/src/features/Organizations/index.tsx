@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
@@ -10,10 +10,74 @@ import { useDebounce } from 'use-debounce';
 
 const orgClient = createClient(OrgService, transport);
 
+// Member rows are a fixed height, which is what lets the virtualizer skip
+// per-row measurement. Kept beside the row's own style so the two cannot drift.
+const MEMBER_ROW_HEIGHT = 57;
+
 // An admin can promote/demote among these three; only an existing owner can
 // grant or revoke the "owner" role itself (see updateOrgMemberRole on the
 // backend) - the GUI mirrors that by never offering "Owner" as a pick here.
 const ASSIGNABLE_ROLES = ['admin', 'member', 'viewer'];
+
+// Rendered per member, memoised because the virtualizer re-renders this screen
+// on almost every scroll frame: at ~100px/frame over 57px rows the visible range
+// shifts continuously, and without memo all ~17 rows - each rebuilding a <select>
+// and its options - re-render for the sake of the one or two that actually
+// entered. Every prop here is a value or a stable callback so the comparison
+// holds; passing an inline arrow would silently turn this back into a no-op.
+const MemberRow = memo(function MemberRow({ member, index, top, roleBusy, removeBusy, onRoleChange, onRemove }: {
+  member: any;
+  index: number;
+  top: number;
+  roleBusy: boolean;
+  removeBusy: boolean;
+  onRoleChange: (userId: string, role: string) => void;
+  onRemove: (userId: string, label: string) => void;
+}) {
+  const label = member.name || member.email || member.userId;
+  return (
+    <div
+      data-index={index}
+      // No measureElement: every row is the same height, so dynamic measurement
+      // forces a layout read per row per frame to re-learn a constant. Measured
+      // at 100k members it cost 14.6% dropped frames against a 0% empty-page
+      // control (M03-T16). The explicit height keeps rows and the virtualizer's
+      // estimate in step - if one changes, change both.
+      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: MEMBER_ROW_HEIGHT, transform: `translateY(${top}px)` }}
+      className="grid grid-cols-[1fr_160px_80px] gap-2 p-3 text-sm items-center border-b">
+      <div className="min-w-0">
+        <div className="truncate font-medium">{label}</div>
+        {member.email && member.name && <div className="truncate text-xs text-muted-foreground">{member.email}</div>}
+      </div>
+      <div>
+        {member.role === 'owner' ? (
+          <span className="text-xs text-muted-foreground px-2 py-1">Owner</span>
+        ) : (
+          <select
+            aria-label={`Role for ${label}`}
+            value={member.role}
+            disabled={roleBusy}
+            onChange={(e) => onRoleChange(member.userId, e.target.value)}
+            className="w-full text-xs rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            {ASSIGNABLE_ROLES.map((role) => (
+              <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
+            ))}
+          </select>
+        )}
+      </div>
+      <div className="text-right">
+        <button
+          onClick={() => onRemove(member.userId, label)}
+          disabled={removeBusy}
+          className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+        >
+          Remove
+        </button>
+      </div>
+    </div>
+  );
+});
 
 function slugify(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `org-${Date.now()}`;
@@ -186,7 +250,7 @@ export function OrganizationsDashboard() {
   const memberVirtualizer = useVirtualizer({
     count: membersData?.length ?? 0,
     getScrollElement: () => memberScrollRef.current,
-    estimateSize: () => 57,
+    estimateSize: () => MEMBER_ROW_HEIGHT,
     overscan: 8,
   });
 
@@ -251,6 +315,25 @@ export function OrganizationsDashboard() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgMembers', activeOrgId] }),
   });
+
+  // Stable identities, or MemberRow's memo compares unequal every render and
+  // buys nothing. mutate is referentially stable in react-query; activeOrgName
+  // only changes when the user picks another organization, which re-renders the
+  // rows anyway.
+  const updateMemberRole = updateMemberRoleMutation.mutate;
+  const removeMember = removeMemberMutation.mutate;
+  const activeOrgName = activeOrg?.name;
+
+  const handleMemberRoleChange = useCallback(
+    (userId: string, role: string) => updateMemberRole({ userId, role }),
+    [updateMemberRole],
+  );
+  const handleMemberRemove = useCallback(
+    (userId: string, label: string) => {
+      if (window.confirm(`Remove ${label} from "${activeOrgName}"?`)) removeMember(userId);
+    },
+    [removeMember, activeOrgName],
+  );
 
   const toggleCollapsed = (orgId: string) => {
     setCollapsedOrgIds((prev) => {
@@ -577,47 +660,16 @@ export function OrganizationsDashboard() {
                       {virtualMemberRows.map((virtualRow) => {
                         const m = membersData[virtualRow.index]!;
                         return (
-                      <div
-                        key={m.userId}
-                        ref={memberVirtualizer.measureElement}
-                        data-index={virtualRow.index}
-                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${virtualRow.start}px)` }}
-                        className="grid grid-cols-[1fr_160px_80px] gap-2 p-3 text-sm items-center border-b">
-                        <div className="min-w-0">
-                          <div className="truncate font-medium">{m.name || m.email || m.userId}</div>
-                          {m.email && m.name && <div className="truncate text-xs text-muted-foreground">{m.email}</div>}
-                        </div>
-                        <div>
-                          {m.role === 'owner' ? (
-                            <span className="text-xs text-muted-foreground px-2 py-1">Owner</span>
-                          ) : (
-                            <select
-                              aria-label={`Role for ${m.name || m.email || m.userId}`}
-                              value={m.role}
-                              disabled={updateMemberRoleMutation.isPending}
-                              onChange={(e) => updateMemberRoleMutation.mutate({ userId: m.userId, role: e.target.value })}
-                              className="w-full text-xs rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
-                            >
-                              {ASSIGNABLE_ROLES.map((role) => (
-                                <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <button
-                            onClick={() => {
-                              if (window.confirm(`Remove ${m.name || m.email} from "${activeOrg?.name}"?`)) {
-                                removeMemberMutation.mutate(m.userId);
-                              }
-                            }}
-                            disabled={removeMemberMutation.isPending}
-                            className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
+                          <MemberRow
+                            key={m.userId}
+                            member={m}
+                            index={virtualRow.index}
+                            top={virtualRow.start}
+                            roleBusy={updateMemberRoleMutation.isPending}
+                            removeBusy={removeMemberMutation.isPending}
+                            onRoleChange={handleMemberRoleChange}
+                            onRemove={handleMemberRemove}
+                          />
                         );
                       })}
                     </div>

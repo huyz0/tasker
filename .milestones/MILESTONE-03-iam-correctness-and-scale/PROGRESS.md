@@ -674,3 +674,50 @@ un-indexed join predict. That is the shape M07 will change, not this milestone.
   A lint rule or a wrapper that refuses an async callback on the sqlite driver
   would make it structural rather than remembered.
 - **Next**: milestone close
+
+---
+
+## M03-T16 — Hold 60 fps while scrolling the members table
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Why this exists**: found at milestone close. Exit criterion 2 names a 16 ms
+  frame budget, and every prior claim about it was structural — M03-T08 measured
+  DOM row count (9 rows for 1000 members) and inferred smoothness. Measured for
+  real against 100,001 members in a headless browser, the list dropped **14.6% of
+  frames**, p95 35.4 ms ≈ 28 fps. An empty-page control running the identical
+  scroll loop in the same browser dropped **0%** (p95 16.8 ms), so the cost was
+  the component, not WSL2's lack of a GPU.
+- **What changed**:
+  1. Removed `measureElement` from the member rows. Rows are a fixed height, so
+     dynamic measurement forces a layout read per row per frame to re-learn a
+     constant. p95 35.4 → 25.0 ms, dropped 14.6% → 4.6%.
+  2. Extracted `MemberRow` and memoised it. The virtualizer re-renders this
+     screen on nearly every scroll frame, and all ~17 visible rows re-rendered
+     each time — each rebuilding a `<select>` and its options — for the sake of
+     the one or two that actually entered. Its callbacks are `useCallback`s over
+     react-query's stable `mutate`, or the memo compares unequal and buys
+     nothing. p95 25.0 → 19.3 ms, dropped 4.6% → **0.0%**.
+- **Measured** (239 frames, 100,001 members, headless Chromium 1280×900,
+  100 px/frame):
+
+  | | p50 | p95 | p99 | max | dropped (>25 ms) |
+  |---|---|---|---|---|---|
+  | Before | 16.70 ms | 35.40 ms | — | 51.70 ms | 14.6% |
+  | After (1) | 16.80 ms | 25.00 ms | 31.90 ms | 34.90 ms | 4.6% |
+  | After (2) | 16.60 ms | 19.30 ms | 21.60 ms | 23.50 ms | **0.0%** |
+  | Empty-page control | 16.70 ms | 16.80 ms | — | 17.00 ms | 0.0% |
+
+- **On the 16 ms figure in exit criterion 2**: a `requestAnimationFrame` delta of
+  ~16.7 ms *is* 60 fps — it is the vsync cadence, not a violation. Read
+  literally, "without exceeding 16 ms frame budget" is unsatisfiable by any
+  page, including a blank one, which the control demonstrates at p50 16.70 ms.
+  The meaningful threshold is a delta spanning two vsyncs, ~25 ms, and that is
+  what every "dropped" figure above uses. The criterion is met in substance:
+  the members table now holds 60 fps and its worst frame in 239 (23.5 ms) never
+  reaches a dropped frame.
+- **Not covered by CI**: frame timing needs a real browser, a real 100k fixture
+  and a real scroll — jsdom has no layout and no compositor, so this cannot be a
+  unit test. The numbers above come from a script run against the dev stack. A
+  regression here will not fail a gate; noted for **M12**, which owns test depth.
+- **Next**: milestone close

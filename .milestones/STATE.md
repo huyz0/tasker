@@ -1,6 +1,6 @@
 ---
 active_milestone: M03
-active_task: M03-T15
+active_task: M03-T16
 last_updated: 2026-08-15
 last_commit: a0ebe9f
 blocked: false
@@ -16,7 +16,7 @@ blocker: null
 ## Now
 
 - **Milestone**: M03 — IAM Correctness & Scale
-- **Task**: M03-T15 — make the task-number claim atomic
+- **Task**: M03-T16 — hold 60 fps on the members table
 - **Branch**: `feature/m03-iam-correctness-and-scale`
 - **Command to continue**: `/milestone-deliver M03`
 
@@ -40,7 +40,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 |-----|--------------------------------|--------|------------|-------|------|
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
 | M02 | Specification Truth            | done   | M01        | 7     | 7    |
-| M03 | IAM Correctness & Scale        | in-progress | M01   | 15    | 15   |
+| M03 | IAM Correctness & Scale        | in-progress | M01   | 16    | 15   |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |
 | M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |
@@ -51,7 +51,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 
-**Total: 140 tasks across 12 milestones.**
+**Total: 141 tasks across 12 milestones.**
 
 ## Dependency graph
 
