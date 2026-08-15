@@ -326,4 +326,31 @@ Append-only. Newest entry at the bottom.
   is about *where* the work happens, so they now assert the request.
 - **Measured, not asserted**: 151 cards, one keystroke burst, one further
   request carrying the filter, one card.
-- **Next**: M05-T12
+
+## M05-T12 — RPC coverage audit
+
+- **Done.** 95 RPCs, 92 called by the GUI, 3 excepted with reasons — recorded in
+  `MILESTONE.md` and enforced by `scripts/rpc-coverage.mjs`.
+  (`reviews/M05-T12-rpc-audit-v1.md`) — approved, 2 medium, 1 low.
+- **The audit is a gate, not a document.** An audit answers the question once;
+  the case that matters is the next RPC, added in a later milestone and
+  reachable only from the CLI — the exact defect this milestone existed to
+  remove. `main.tsp` is a declared input, so adding an RPC invalidates the
+  cache. Proved by injection.
+- **The gate has its own tests**, seven of them, including a *stale* exception —
+  one listed as unreachable that the GUI now calls. That is the failure mode a
+  hand-written list drifts into, and it is worse than no list, because it claims
+  the GUI cannot do something it does. M05-T01 recorded the lesson: a gate
+  nobody tests is trusted on faith.
+- **It found a real gap, not just paperwork.** `createAgentRole` was
+  unreachable — roles could be edited but never created — and deploying an agent
+  requires choosing a role, so an organization starting from nothing could not
+  deploy its first agent from the browser at all. Now wired.
+- **The three exceptions**: `createTaskNote` (agent-only by design — M04 made
+  the handler refuse a human principal, because `task_notes.agent_id` is NOT
+  NULL), and `getProject`/`getTemplate` (single-entity reads the GUI already
+  holds from its lists; the CLI and agents use them).
+- **Recorded**: the check matches method names textually, so a local helper
+  sharing an RPC's name would count as a call. The failure mode is a false pass
+  on one RPC, and resolving the client object per call is a type-checker's job.
+- **Next**: close the milestone

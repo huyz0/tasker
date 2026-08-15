@@ -36,6 +36,19 @@ tasks:
       - 'scripts/design-lint.mjs'
       - 'scripts/design-lint.test.mjs'
 
+  # M05's first exit criterion, kept true rather than audited once: every RPC in
+  # the contract is called by the GUI or excepted with a reason. The case that
+  # matters is the next RPC — one added later and reachable only from the CLI is
+  # the defect this milestone existed to remove (M05-T12). The contract is an
+  # input, so adding an RPC invalidates the cache.
+  rpc-coverage:
+    script: 'node scripts/rpc-coverage.test.mjs && node scripts/rpc-coverage.mjs'
+    inputs:
+      - 'src/**/*'
+      - 'scripts/rpc-coverage.mjs'
+      - 'scripts/rpc-coverage.test.mjs'
+      - '/packages/shared-contract/main.tsp'
+
   test:
     deps:
       - 'shared-contract:install-deps'

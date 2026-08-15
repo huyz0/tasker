@@ -2,10 +2,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListAgents, mockListAgentRoles, mockCreateAgent, mockArchiveAgent, mockUpdateAgent, mockUpdateAgentRole } = vi.hoisted(() => ({
+const { mockListAgents, mockListAgentRoles, mockCreateAgent, mockArchiveAgent, mockUpdateAgent, mockUpdateAgentRole, mockCreateAgentRole } = vi.hoisted(() => ({
   mockListAgents: vi.fn(),
   mockListAgentRoles: vi.fn(),
   mockCreateAgent: vi.fn(),
+  mockCreateAgentRole: vi.fn(),
   mockArchiveAgent: vi.fn(),
   mockUpdateAgent: vi.fn(),
   mockUpdateAgentRole: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('@connectrpc/connect', () => ({
     listAgents: mockListAgents,
     listAgentRoles: mockListAgentRoles,
     createAgent: mockCreateAgent,
+    createAgentRole: mockCreateAgentRole,
     archiveAgent: mockArchiveAgent,
     updateAgent: mockUpdateAgent,
     updateAgentRole: mockUpdateAgentRole,
@@ -51,6 +53,8 @@ describe('AgentsDashboard', () => {
     mockListAgents.mockReset();
     mockListAgentRoles.mockReset();
     mockCreateAgent.mockReset();
+    mockCreateAgentRole.mockReset();
+    mockCreateAgentRole.mockResolvedValue({ role: { id: 'role-9' } });
     mockArchiveAgent.mockReset();
     mockUpdateAgent.mockReset();
     mockUpdateAgentRole.mockReset();
@@ -362,5 +366,39 @@ describe('AgentsDashboard', () => {
     // the list omits it and the agent's cell renders blank, which reads as data
     // loss rather than as a truncated list.
     await waitFor(() => expect(screen.getAllByText('Deep Role')).toHaveLength(2));
+  });
+
+  it('creates an agent role, so a new organization can deploy its first agent', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockListAgentRoles.mockResolvedValue({ roles: [] });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New Role' }));
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Reviewer' } });
+    fireEvent.change(screen.getByLabelText('System prompt'), { target: { value: 'Review carefully.' } });
+    fireEvent.change(screen.getByLabelText('Capabilities'), { target: { value: '["review"]' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+
+    // Roles could be edited but never created here, and deploying an agent
+    // requires choosing one — so an organization starting from nothing could
+    // not deploy its first agent from the browser at all.
+    await waitFor(() => expect(mockCreateAgentRole).toHaveBeenCalledWith({
+      orgId: 'org-1', name: 'Reviewer', systemPrompt: 'Review carefully.', capabilities: '["review"]',
+    }));
+  });
+
+  it('reports a failed role creation', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockListAgentRoles.mockResolvedValue({ roles: [] });
+    mockCreateAgentRole.mockRejectedValue(new Error('permission denied'));
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New Role' }));
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Reviewer' } });
+    fireEvent.change(screen.getByLabelText('System prompt'), { target: { value: 'p' } });
+    fireEvent.change(screen.getByLabelText('Capabilities'), { target: { value: '[]' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+
+    expect(await screen.findByText(/Failed to create role: permission denied/)).toBeInTheDocument();
   });
 });

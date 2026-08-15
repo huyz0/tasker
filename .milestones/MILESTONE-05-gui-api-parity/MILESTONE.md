@@ -112,9 +112,28 @@ canvas is warranted.
       - Files: `apps/gui/src/features/Tasks/index.tsx`
       - Verify: filtering issues a new request rather than filtering in memory.
 
-- [ ] **M05-T12** — Audit every remaining RPC against GUI usage and record the
+- [x] **M05-T12** — Audit every remaining RPC against GUI usage and record the
       agent-only exceptions in this file.
       - Verify: the exit criterion's list exists and is justified.
+
+### RPC coverage: the exceptions
+
+95 RPCs across 14 services. 92 are called by the GUI. The audit is enforced by
+`apps/gui/scripts/rpc-coverage.mjs`, which runs on every build — a one-off audit
+answers the question once, and the case that matters is the *next* RPC.
+
+The three exceptions, and why:
+
+| RPC | Why the GUI does not call it |
+|---|---|
+| `TaskNoteService.createTaskNote` | **Agent-only by design.** `task_notes.agent_id` is `NOT NULL`, so a note has no human author; M04 made the handler refuse a user principal outright rather than let a human file a note under a worker that never wrote it. The GUI reads, edits and deletes notes. |
+| `ProjectService.getProject` | **Redundant here.** The GUI lists projects and holds them in cache, so a single-project read would be a second request for data already on the client. Agents and the CLI, which hold no list, use it. |
+| `ProjectTemplateService.getTemplate` | **Redundant here**, for the same reason as `getProject`. |
+
+The audit also found one genuine gap, now closed: `createAgentRole` was
+unreachable, and since deploying an agent requires choosing a role, an
+organization starting from nothing could not deploy its first agent from the
+browser at all.
 
 ## 6. Verification
 

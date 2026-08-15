@@ -24,6 +24,10 @@ export function AgentsDashboard() {
   const [editAgentName, setEditAgentName] = useState('');
   const [editAgentRoleId, setEditAgentRoleId] = useState('');
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [isAddingRole, setIsAddingRole] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleSystemPrompt, setNewRoleSystemPrompt] = useState('');
+  const [newRoleCapabilities, setNewRoleCapabilities] = useState('');
   const [editRoleName, setEditRoleName] = useState('');
   const [editRoleSystemPrompt, setEditRoleSystemPrompt] = useState('');
   const [editRoleCapabilities, setEditRoleCapabilities] = useState('');
@@ -84,6 +88,27 @@ export function AgentsDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agentRoles'] });
       setEditingRoleId(null);
+    },
+  });
+
+  // Roles could be edited but never created here — an organization starting
+  // from nothing had no way to deploy its first agent, because deploying one
+  // requires choosing a role (M05-T12).
+  const createAgentRoleMutation = useMutation({
+    mutationFn: async () => {
+      await agentClient.createAgentRole({
+        orgId: activeOrgId,
+        name: newRoleName.trim(),
+        systemPrompt: newRoleSystemPrompt.trim(),
+        capabilities: newRoleCapabilities.trim(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agentRoles'] });
+      setIsAddingRole(false);
+      setNewRoleName('');
+      setNewRoleSystemPrompt('');
+      setNewRoleCapabilities('');
     },
   });
 
@@ -264,7 +289,60 @@ export function AgentsDashboard() {
       </div>
 
       <div className="border rounded-lg bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-medium mb-4">Agent Roles</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-medium">Agent Roles</h2>
+          <button
+            onClick={() => setIsAddingRole((v) => !v)}
+            className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
+          >
+            {isAddingRole ? 'Cancel' : 'New Role'}
+          </button>
+        </div>
+        {isAddingRole && (
+          <form
+            onSubmit={(e) => { e.preventDefault(); createAgentRoleMutation.mutate(); }}
+            className="mb-4 p-3 border rounded-md flex flex-col gap-2 bg-muted/20"
+          >
+            <label className="sr-only" htmlFor="new-role-name">Role name</label>
+            <input
+              id="new-role-name"
+              value={newRoleName}
+              onChange={(e) => setNewRoleName(e.target.value)}
+              placeholder="Role name"
+              required
+              className="text-sm bg-transparent border rounded-md px-2 py-1"
+            />
+            <label className="sr-only" htmlFor="new-role-prompt">System prompt</label>
+            <textarea
+              id="new-role-prompt"
+              value={newRoleSystemPrompt}
+              onChange={(e) => setNewRoleSystemPrompt(e.target.value)}
+              placeholder="System prompt"
+              rows={3}
+              required
+              className="text-sm bg-transparent border rounded-md px-2 py-1"
+            />
+            <label className="sr-only" htmlFor="new-role-capabilities">Capabilities</label>
+            <input
+              id="new-role-capabilities"
+              value={newRoleCapabilities}
+              onChange={(e) => setNewRoleCapabilities(e.target.value)}
+              placeholder='Capabilities, e.g. ["code","review"]'
+              required
+              className="text-sm bg-transparent border rounded-md px-2 py-1"
+            />
+            {createAgentRoleMutation.isError && (
+              <p className="text-xs text-destructive">Failed to create role: {(createAgentRoleMutation.error as Error).message}</p>
+            )}
+            <button
+              type="submit"
+              disabled={createAgentRoleMutation.isPending || !newRoleName.trim() || !newRoleSystemPrompt.trim() || !newRoleCapabilities.trim()}
+              className="self-end px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium disabled:opacity-50"
+            >
+              {createAgentRoleMutation.isPending ? 'Creating...' : 'Create role'}
+            </button>
+          </form>
+        )}
         <div className="border rounded-md divide-y">
           {(rolesData ?? []).length === 0 ? (
             <div className="p-4 text-center text-sm text-muted-foreground">No agent roles yet.</div>
