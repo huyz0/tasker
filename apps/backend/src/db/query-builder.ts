@@ -70,7 +70,7 @@ export function decodeCursor(cursor?: string): CursorData | null {
  * absent - it belongs to a different sort and can't be reused (e.g. the
  * caller changed --sort between page requests).
  */
-export function buildCursorPaginationWhere(
+function buildCursorPaginationWhere(
   cursor: CursorData | null,
   sortCol: SQLiteColumn,
   idCol: SQLiteColumn,

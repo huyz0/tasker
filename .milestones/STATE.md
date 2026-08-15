@@ -1,10 +1,10 @@
 ---
 active_milestone: M07
 active_task: M07-T07
-last_updated: 2026-08-15
-last_commit: 0e87f21
-blocked: false
-blocker: null
+last_updated: 2026-08-16
+last_commit: ed8b7d1
+blocked: true
+blocker: "M07-T07's verify line needs a MySQL instance; no mysql client and Docker's daemon is unreachable from this WSL distro. Code and a gated test are committed and unrun."
 ---
 
 # Delivery State

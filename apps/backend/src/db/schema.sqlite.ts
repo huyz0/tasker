@@ -1,5 +1,17 @@
 import { text, sqliteTable, primaryKey, integer, index, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 
+/**
+ * Maps `schema_migrations_test`, a table present in both dialects' migration
+ * history since `0000`. Nothing imports it — and nothing did before either; it
+ * was hidden from knip by `search.handler.ts`'s namespace import of this
+ * module, which M07-T07 removed when the LIKE branch went.
+ *
+ * Kept rather than deleted: removing the definition would leave the table in
+ * every existing database with no schema entry, so the next generated migration
+ * would propose DROPping it. That is a schema decision, not dead-code cleanup.
+ *
+ * @knipignore
+ */
 export const testSchema = sqliteTable("schema_migrations_test", {
   id: text("id").primaryKey(),
 });

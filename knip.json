@@ -24,6 +24,7 @@
     }
   },
   "ignore": [".agents/**"],
+  "tags": ["-knipignore"],
   "ignoreDependencies": [
     "@typespec/compiler",
     "@typespec/protobuf",
