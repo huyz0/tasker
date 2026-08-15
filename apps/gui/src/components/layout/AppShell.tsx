@@ -12,10 +12,12 @@ import {
   Workflow,
   LogOut
 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { GlobalSearch, GlobalSearchTrigger } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
+import { useFocusTrap } from '../ui/useFocusTrap';
 import { CurrentUser } from './CurrentUser';
 import { OrgProjectSwitcher } from './OrgProjectSwitcher';
 import { logout } from '../../lib/authSession';
@@ -34,8 +36,23 @@ const NAVIGATION_ITEMS = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { sidebarOpen, toggleSidebar } = useLayoutStore();
+  const setSidebarOpen = useLayoutStore((s) => s.setSidebarOpen);
   const location = useLocation();
   const navigate = useNavigate();
+  const sidebarRef = useRef<HTMLElement | null>(null);
+
+  // On mobile the open sidebar covers the page, so it is modal in every sense
+  // except the markup — trapped, escapable, and dismissed by a tap outside.
+  // The same hook the Dialog uses, rather than a second implementation
+  // (ADR-0009).
+  useFocusTrap(sidebarRef, sidebarOpen, () => setSidebarOpen(false));
+
+  // Navigating with the drawer open used to leave it covering the page that had
+  // just loaded behind it.
+  useEffect(() => {
+    setSidebarOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -63,8 +80,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
+      {/* The backdrop exists only while the drawer is open, and only below the
+          md breakpoint where the drawer is an overlay rather than a column. */}
+      {sidebarOpen && (
+        <div
+          data-testid="sidebar-backdrop"
+          aria-hidden="true"
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm md:hidden"
+        />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 border-r bg-card transition-transform md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside
+        ref={sidebarRef}
+        data-focus-trap={sidebarOpen ? 'on' : undefined}
+        tabIndex={-1}
+        className={`fixed inset-y-0 left-0 z-40 w-64 border-r bg-card transition-transform md:relative md:translate-x-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
         <div className="flex h-full flex-col">
           <div className="flex h-14 items-center px-6 border-b md:h-[60px] font-semibold text-lg gap-2">
             <Activity className="h-5 w-5 text-primary" />
@@ -83,7 +116,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               return (
                 <Link 
                   key={item.name}
-                  to={item.path} 
+                  to={item.path}
+                  // On the click as well as on the path change: tapping the link
+                  // for the page you are already on navigates nowhere, so the
+                  // pathname effect never fires and the drawer stayed open over
+                  // it (M06-T10).
+                  onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
                     isActive 
                       ? 'bg-primary/10 text-primary font-medium' 

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useFocusTrap } from './useFocusTrap';
 import { createPortal } from 'react-dom';
 
 /**
@@ -39,42 +40,6 @@ export interface DialogProps {
   'data-testid'?: string;
 }
 
-/**
- * Elements that can hold focus. `[tabindex="-1"]` is deliberately excluded: it
- * is programmatically focusable but not part of the tab ring, so including it
- * would make the cycle stop somewhere the user cannot Tab back out of.
- */
-const FOCUSABLE = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled]):not([type="hidden"])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',');
-
-/**
- * The last element focused outside any dialog.
- *
- * Needed because a child with `autoFocus` takes focus during the commit, before
- * the dialog's own effect runs — so by then `document.activeElement` is already
- * *inside* the dialog and the element that opened it is unrecoverable. Restoring
- * to the inside element focuses a detached node once the dialog unmounts, which
- * the browser turns into `body`: the keyboard user lands at the top of the
- * document. The search palette did exactly this (M06-T03).
- */
-let lastFocusOutsideDialog: HTMLElement | null = null;
-if (typeof document !== 'undefined') {
-  document.addEventListener(
-    'focusin',
-    (e) => {
-      const target = e.target as HTMLElement | null;
-      if (target && !target.closest('[role="dialog"]')) lastFocusOutsideDialog = target;
-    },
-    true,
-  );
-}
-
 export function Dialog({
   open,
   onClose,
@@ -87,77 +52,18 @@ export function Dialog({
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const titleId = useId();
-  // Captured on open, restored on close. Reading it at close time is too late:
-  // by then focus is inside the dialog.
-  const openerRef = useRef<HTMLElement | null>(null);
 
-  const focusable = useCallback(() => {
-    const panel = panelRef.current;
-    if (!panel) return [] as HTMLElement[];
-    return Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-      // Not `offsetParent !== null`: that is null for the whole subtree of a
-      // fixed-position element, which this panel is, so it would drop every
-      // control and silently disable the trap.
-      (el) => !el.hasAttribute('hidden') && el.getAttribute('aria-hidden') !== 'true',
-    );
-  }, []);
+  // The trap, the escape handler and the focus restoration all live in
+  // useFocusTrap, which the mobile sidebar shares — ADR-0009's warning is that
+  // hand-rolled overlays drift apart, and two of them already had.
+  useFocusTrap(panelRef, open, onClose);
 
   useEffect(() => {
     if (!open) return;
-
-    const active = document.activeElement as HTMLElement | null;
-    const activeIsOutside = active && !panelRef.current?.contains(active);
-    openerRef.current = activeIsOutside ? active : lastFocusOutsideDialog;
-
-    // Focus the first control, or the panel itself when there is none — an
-    // unfocused dialog leaves the screen reader reading the page behind it.
-    const first = focusable()[0];
-    (first ?? panelRef.current)?.focus();
-
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onClose();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-
-      const items = focusable();
-      if (items.length === 0) {
-        // Nothing to move to: keep focus on the panel rather than letting the
-        // browser hand it to the page behind.
-        e.preventDefault();
-        panelRef.current?.focus();
-        return;
-      }
-      const firstItem = items[0];
-      const lastItem = items[items.length - 1];
-      const active = document.activeElement;
-
-      // Wrapping is the whole trap. Without these two branches the browser
-      // walks focus straight out of the panel and into the page.
-      if (e.shiftKey && (active === firstItem || active === panelRef.current)) {
-        e.preventDefault();
-        lastItem.focus();
-      } else if (!e.shiftKey && active === lastItem) {
-        e.preventDefault();
-        firstItem.focus();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown, true);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown, true);
-      document.body.style.overflow = previousOverflow;
-      // Every close path lands here — Escape, the backdrop, a close button, or
-      // the caller unmounting the dialog — so restoration cannot be forgotten
-      // at one of them.
-      openerRef.current?.focus?.();
-    };
-  }, [open, onClose, focusable]);
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [open]);
 
   if (!open) return null;
 
@@ -174,6 +80,7 @@ export function Dialog({
       />
       <div
         ref={panelRef}
+        data-focus-trap="on"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

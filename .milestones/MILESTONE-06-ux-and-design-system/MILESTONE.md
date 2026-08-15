@@ -97,7 +97,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: `apps/gui/src/components/layout/OrgProjectSwitcher.tsx`
       - Verify: with 2,000 projects the switcher opens instantly and finds one by typing.
 
-- [ ] **M06-T10** — Mobile sidebar: add a backdrop, close on navigation, and trap
+- [x] **M06-T10** — Mobile sidebar: add a backdrop, close on navigation, and trap
       focus while open.
       - Files: `apps/gui/src/components/layout/AppShell.tsx`
       - Verify: tapping outside closes it; the underlying page is not focusable.

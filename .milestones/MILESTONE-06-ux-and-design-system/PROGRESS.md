@@ -331,3 +331,38 @@ standard and wonder which one is wrong.
     helper, so the seed script tried MySQL and hung on `ETIMEDOUT`.
   - knip caught the `Choice` interface exported for nobody. Fifth time.
 - **Next**: M06-T10
+
+## M06-T10 — The mobile sidebar
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: new `components/ui/useFocusTrap.ts` (extracted from `Dialog`),
+  `components/ui/Dialog.tsx`, `components/layout/AppShell.tsx` (+ 6 tests)
+- **Verified**: at 390×844 — no backdrop until it opens, a backdrop while open,
+  focus lands **inside** the drawer, **40 Tabs and focus left it 0 times**, a
+  tap outside closes it, Escape closes it, and navigating leaves it closed.
+  `gui:test` — 603 pass, branches 95.2%. `moon check --all` — 24 pass.
+- **Notes**: the trap is `Dialog`'s, extracted rather than rewritten —
+  ADR-0009's warning is that hand-rolled overlays drift apart, and this app
+  already had two that did. Dialog's 19 tests passed unchanged against the
+  extracted hook, which is what made the extraction safe to do.
+  **Three defects, none of which the unit tests could see:**
+  1. **The first "focusable" was invisible.** The sidebar holds a
+     `hidden md:block` search trigger, so on a phone `focus()` landed on an
+     element inside a `display: none` ancestor and did nothing at all — the
+     drawer opened with focus still on the hamburger, and the first Tabs walked
+     the header. Now filtered with `checkVisibility`, which jsdom does not
+     implement (hence the `?? true`) — so no test could have caught this, in
+     either direction.
+  2. **The escape callback was a dependency.** Callers write
+     `() => setOpen(false)` inline, so its identity changed every render, the
+     effect tore down and set up each time, and the teardown restores focus to
+     the opener. Held in a ref now.
+  3. **Tapping the link for the page you are already on left the drawer open**,
+     because the pathname never changes and the effect that closes it keys on
+     exactly that. Closed on the click as well. A test pins it by clicking
+     Dashboard while already at `/`.
+  A fourth, in my own test script rather than the product: `click({force:true})`
+  on the backdrop dispatched at the element's centre, which is *underneath* the
+  drawer, so it followed a nav link and I read the result as a navigation bug.
+- **Next**: M06-T11
