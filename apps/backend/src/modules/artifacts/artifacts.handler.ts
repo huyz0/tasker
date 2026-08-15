@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -75,10 +75,10 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
   return {
     async createFolder(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = CreateFolderSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
-      await assertOrgWriter(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', write: true });
 
       if (parsed.parentId) {
         const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
@@ -106,10 +106,10 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
 
     async updateFolder(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = UpdateFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
-      await assertOrgWriter(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', write: true });
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const existing = await db.select().from(folders).where(eq((folders as any).id, parsed.folderId)).limit(1);
@@ -123,10 +123,10 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
 
     async createArtifact(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = CreateArtifactSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
-      await assertOrgWriter(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', write: true });
 
       const artifacts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const newId = `art-${crypto.randomUUID()}`;
@@ -146,10 +146,10 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
 
     async updateArtifactContent(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = UpdateArtifactContentSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
-      await assertOrgWriter(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', write: true });
 
       const artifacts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const existing = await db.select().from(artifacts).where(eq((artifacts as any).id, parsed.artifactId)).limit(1);
@@ -167,14 +167,14 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
 
     async linkTaskArtifact(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = LinkTaskArtifactSchema.parse(req);
       const taskOrgId = await getTaskOrgId(db, parsed.taskId);
       const artifactOrgId = await getArtifactOrgId(db, parsed.artifactId);
       if (taskOrgId !== artifactOrgId) {
         throw new ConnectError("task and artifact belong to different organizations", Code.InvalidArgument);
       }
-      await assertOrgWriter(db, userId, taskOrgId);
+      await authorizePrincipal(db, principal, taskOrgId, { scope: 'artifacts:write', write: true });
 
       const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
       const newId = `tal-${crypto.randomUUID()}`;
@@ -188,10 +188,10 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       return { link: payload };
     },
     async listFolders(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       if (!req.projectId) throw new ConnectError("projectId is required", Code.InvalidArgument);
       const orgId = await getProjectOrgId(db, req.projectId);
-      await assertOrgMember(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
 
       const flds = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const deletedFolderFilter = req.onlyDeleted ? not(notDeleted(flds)) : notDeleted(flds);
@@ -206,10 +206,10 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       };
     },
     async listArtifacts(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       if (!req.folderId) throw new ConnectError("folderId is required", Code.InvalidArgument);
       const orgId = await getFolderOrgId(db, req.folderId);
-      await assertOrgMember(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const deletedArtifactFilter = req.onlyDeleted ? not(notDeleted(arts)) : notDeleted(arts);

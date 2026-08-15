@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUser, requirePrincipal, assertOrgMember, assertOrgWriter, getTaskOrgId } from "../../lib/authz";
+import { requireUser, requirePrincipal, authorizePrincipal, assertOrgMember, assertOrgWriter, getTaskOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schema ---
@@ -47,9 +47,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
           Code.PermissionDenied,
         );
       }
-      if (principal.orgId !== orgId) {
-        throw new ConnectError("this token cannot act in that organization", Code.PermissionDenied);
-      }
+      await authorizePrincipal(db, principal, orgId, { scope: "comments:write", write: true });
 
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
       const newId = `tnt-${crypto.randomUUID()}`;
@@ -67,14 +65,14 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       return { taskNote: noteResp };
     },
     async updateTaskNote(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = UpdateTaskNoteSchema.parse(req);
 
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
       const existing = await db.select().from(notes).where(eq((notes as any).id, parsed.taskNoteId)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("task note not found", Code.NotFound);
       const orgId = await getTaskOrgId(db, existing[0].taskId);
-      await assertOrgWriter(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'comments:write', write: true });
 
       await db.update(notes).set({ content: parsed.content }).where(eq((notes as any).id, parsed.taskNoteId));
 
@@ -83,14 +81,14 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       return { taskNote: updated };
     },
     async deleteTaskNote(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = DeleteTaskNoteSchema.parse(req);
 
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
       const existing = await db.select().from(notes).where(eq((notes as any).id, parsed.taskNoteId)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("task note not found", Code.NotFound);
       const orgId = await getTaskOrgId(db, existing[0].taskId);
-      await assertOrgWriter(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'comments:write', write: true });
 
       await db.delete(notes).where(eq((notes as any).id, parsed.taskNoteId));
 
@@ -98,10 +96,10 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async listTaskNotes(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       if (!req.taskId) throw new ConnectError("taskId is required", Code.InvalidArgument);
       const orgId = await getTaskOrgId(db, req.taskId);
-      await assertOrgMember(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'tasks:read' });
 
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, notes, eq((notes as any).taskId, req.taskId), req.page);

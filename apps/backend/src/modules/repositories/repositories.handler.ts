@@ -6,7 +6,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import crypto from "node:crypto";
 import { logger } from "../../lib/logger";
-import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getRepositoryLinkOrgId } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getRepositoryLinkOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 import { encryptToken, decryptToken } from "../../lib/crypto";
 import {
@@ -206,10 +206,10 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
 
     async listRepositoryLinks(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = ListRepositoryLinksSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
-      await assertOrgMember(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'repos:read' });
 
       const links = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       
@@ -340,10 +340,10 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
 
     async listPullRequests(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = ListPullRequestsSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
-      await assertOrgMember(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'repos:read' });
 
       const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       const prsTable = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
@@ -363,10 +363,10 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
 
     async listBuilds(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = ListBuildsSchema.parse(req);
       const orgId = await getRepositoryLinkOrgId(db, parsed.repositoryLinkId);
-      await assertOrgMember(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'repos:read' });
 
       const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       const links = await db.select().from(linksTable).where(eq((linksTable as any).id, parsed.repositoryLinkId));
@@ -393,10 +393,10 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
 
     async listDeployments(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = ListDeploymentsSchema.parse(req);
       const orgId = await getRepositoryLinkOrgId(db, parsed.repositoryLinkId);
-      await assertOrgMember(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'repos:read' });
 
       const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       const links = await db.select().from(linksTable).where(eq((linksTable as any).id, parsed.repositoryLinkId));

@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUser, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -115,9 +115,9 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
     },
 
     async listLabels(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await assertOrgMember(db, userId, req.orgId);
+      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read' });
 
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, labels, eq((labels as any).orgId, req.orgId), req.page, (labels as any).name, { name: (labels as any).name, createdAt: (labels as any).createdAt });
@@ -196,10 +196,10 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
     },
 
     async listEntityLabels(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = EntityRefSchema.parse(req);
       const orgId = await getEntityOrgId(db, parsed.entityId, parsed.entityType);
-      await assertOrgMember(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'projects:read' });
 
       const entityLabels = isStandalone ? schemaSqlite.entityLabels : schemaMysql.entityLabels;
       const labelsTable = isStandalone ? schemaSqlite.labels : schemaMysql.labels;

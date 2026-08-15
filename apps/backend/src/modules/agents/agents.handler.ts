@@ -4,7 +4,7 @@ import { eq, and, not } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { notDeleted, softDeleteById, restoreById, executePaginatedQuery, insertRecord } from "../../db/query-builder";
 import { mintToken, revokeToken, parseScopes } from "../../lib/agentToken";
 import { AGENT_SCOPES } from "../../lib/scopes";
@@ -171,12 +171,12 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       return { role: updated };
     },
     async listAgentRoles(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = ListAgentRolesSchema.parse(req);
       // Reading is membership, not admin - a member picking a role for an agent
       // needs the list. Scoping it is what stops one tenant's catalogue leaking
       // into another's picker.
-      await assertOrgMember(db, userId, parsed.orgId);
+      await authorizePrincipal(db, principal, parsed.orgId, { scope: 'agents:read' });
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
         db,
@@ -245,9 +245,9 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       return { agent: updated };
     },
     async listAgents(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await assertOrgMember(db, userId, req.orgId);
+      await authorizePrincipal(db, principal, req.orgId, { scope: 'agents:read' });
 
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(agentsSchema)) : notDeleted(agentsSchema);

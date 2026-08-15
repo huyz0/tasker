@@ -49,6 +49,40 @@ export function requireUser(contextValues: any): string {
   return principal.userId;
 }
 
+/**
+ * The single authorization call for an endpoint that agents may reach.
+ *
+ * A human is governed by their organization role, exactly as before. An agent
+ * is governed by its token: the organization it was issued for, and the scopes
+ * on it. Scopes do not apply to humans — a person's authority comes from their
+ * role, and giving them a second, parallel permission system is M10's decision
+ * to make, not a side effect of adding tokens.
+ *
+ * `write` picks assertOrgWriter over assertOrgMember for the human path, so a
+ * viewer stays read-only here too (ADR-0006 still holds).
+ */
+export async function authorizePrincipal(
+  db: any,
+  principal: Principal,
+  orgId: string,
+  opts: { scope: string; write?: boolean },
+): Promise<void> {
+  if (principal.kind === 'agent') {
+    if (principal.orgId !== orgId) {
+      throw new ConnectError('this token cannot act in that organization', Code.PermissionDenied);
+    }
+    if (!principal.scopes.includes(opts.scope)) {
+      throw new ConnectError(`this token lacks the ${opts.scope} scope`, Code.PermissionDenied);
+    }
+    return;
+  }
+  if (opts.write) {
+    await assertOrgWriter(db, principal.userId, orgId);
+  } else {
+    await assertOrgMember(db, principal.userId, orgId);
+  }
+}
+
 export async function assertOrgMember(db: any, userId: string, orgId: string): Promise<void> {
   const members = isStandalone() ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
   const rows = await db

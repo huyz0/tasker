@@ -87,7 +87,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
         `modules/tasks/task_notes.handler.ts`, `main.tsp`
       - Verify: a human session can no longer author a comment as an agent.
 
-- [ ] **M04-T07** — Enforce scopes: map each RPC to a required scope and reject
+- [x] **M04-T07** — Enforce scopes: map each RPC to a required scope and reject
       tokens that lack it.
       - Files: `apps/backend/src/lib/authz.ts`, handler registration
       - Verify: a read-scoped token cannot create a task.

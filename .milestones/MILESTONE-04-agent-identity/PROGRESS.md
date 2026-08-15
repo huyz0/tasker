@@ -273,3 +273,47 @@ Append-only. Newest entry at the bottom.
   is gone from the contract, so no new client can learn to send it.
 - **Field numbers 3/4 are `reserved`**, not reused, per `api-standard.md` §2.
 - **Next**: M04-T07
+
+---
+
+## M04-T07 — Enforce scopes per RPC
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `src/lib/scopes.ts` (`AGENT_RPC_SCOPES`), `src/lib/authz.ts`
+  (`authorizePrincipal`), 30 endpoints across 8 handler modules,
+  `src/lib/agent-scope-sweep.test.ts` (new, 6 tests),
+  `src/lib/scope-enforcement.test.ts` (new, 7 tests)
+- **Verified**: `moon run backend:test` — 540 pass / 7 skip / 0 fail (was 527).
+  `moon check --all` — 23 tasks pass. Verify line: a `tasks:read` token gets
+  `permission_denied: this token lacks the tasks:write scope` on `createTask`.
+- **Review**: `reviews/M04-T07-scope-enforcement-v1.md` — approved; 1 high,
+  1 medium, 1 low.
+- **The sweep caught a real defect in my own map on its first run.** Five
+  methods were filed under `tasks` when they live in `taskManagement`
+  (`createTask`, `listTasks`, `listTaskReviewers`, `updateTask`,
+  `updateTaskStatus`). The effect was the worst combination available: migrated
+  to `authorizePrincipal` so they accepted tokens, while the sweep saw them as
+  unmapped and expected refusal. This is the entire argument for writing the
+  gate before the migration rather than after.
+- **The error names the missing scope**, not just "denied" — the difference
+  between an agent that can correct itself and one that retries forever.
+- **An injection that silently did not apply.** The first attempt at proving the
+  sweep — opening `deleteTask` to agents without mapping it — matched on
+  `assertOrgWriter` while `deleteTask` uses `assertOrgAdmin`, so the file was
+  unchanged and the green run meant nothing. I nearly recorded "the gate cannot
+  catch this". Re-run against the real edit it failed naming
+  `taskManagement.deleteTask`. **Check the injection landed before believing the
+  result.**
+- **Deliberately closed to agents**, recorded in the map rather than inferred:
+  everything destructive (archive/restore/purge/`deleteTask`), all org and
+  membership administration, token issuance, and `assignTask` — a token that can
+  reassign work to itself can help itself to any task in the org. M10 owns
+  delegation.
+- **Scopes apply only to agents.** A human's authority is still their org role;
+  a viewer is still refused by `assertOrgWriter`, asserted directly so ADR-0006
+  cannot lapse silently. A parallel permission system for people is M10's call.
+- **Found, recorded for M08**: `createTask` stamps `createdBy: null` for an
+  agent, because the column references `users.id`. Which agent created a task is
+  therefore not answerable from the row. M08 owns audit persistence.
+- **Next**: M04-T08

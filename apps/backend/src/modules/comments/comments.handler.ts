@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUser, requirePrincipal, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUser, requirePrincipal, authorizePrincipal, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 import type { Principal } from "../auth/session";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -81,14 +81,10 @@ function assertCommentAuthor(comment: any, principal: Principal) {
  * cannot reach another (ADR-0008). Scope checks arrive in M04-T07.
  */
 async function authorizeAndAttribute(db: any, principal: Principal, orgId: string) {
-  if (principal.kind === "agent") {
-    if (principal.orgId !== orgId) {
-      throw new ConnectError("this token cannot act in that organization", Code.PermissionDenied);
-    }
-    return { userId: null, agentId: principal.agentId };
-  }
-  await assertOrgWriter(db, principal.userId, orgId);
-  return { userId: principal.userId, agentId: null };
+  await authorizePrincipal(db, principal, orgId, { scope: "comments:write", write: true });
+  return principal.kind === "agent"
+    ? { userId: null, agentId: principal.agentId }
+    : { userId: principal.userId, agentId: null };
 }
 
 // --- Handler Factory ---
@@ -165,12 +161,12 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async listComments(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       if (!req.entityId || !req.entityType) throw new ConnectError("entityId and entityType are required", Code.InvalidArgument);
       const orgId = req.entityType === "task"
         ? await getTaskOrgId(db, req.entityId)
         : await getArtifactOrgId(db, req.entityId);
-      await assertOrgMember(db, userId, orgId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'tasks:read' });
 
       const cmts = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, cmts, and(eq((cmts as any).entityId, req.entityId), eq((cmts as any).entityType, req.entityType)), req.page);

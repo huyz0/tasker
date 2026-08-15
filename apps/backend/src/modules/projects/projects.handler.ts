@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 /** Derives a short, human-typeable project key from its name, e.g. "Engineering Docs" -> "ED", "Backend" -> "BACKEN". */
@@ -97,12 +97,12 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
     async getProject(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = GetProjectSchema.parse(req);
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.id)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertOrgMember(db, userId, result[0].orgId);
+      await authorizePrincipal(db, principal, result[0].orgId, { scope: 'projects:read' });
       return { project: result[0] };
     },
     async createProject(req: unknown, { values: contextValues }: { values: any }) {
@@ -157,9 +157,9 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       throw lastError;
     },
     async listProjects(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await assertOrgMember(db, userId, req.orgId);
+      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read' });
 
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(ps)) : notDeleted(ps);
@@ -270,12 +270,12 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
     async getTemplate(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = GetTemplateSchema.parse(req);
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const result = await db.select().from(pts).where(eq((pts as any).id, parsed.id)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("template not found", Code.NotFound);
-      await assertOrgMember(db, userId, result[0].orgId);
+      await authorizePrincipal(db, principal, result[0].orgId, { scope: 'projects:read' });
       return { template: result[0] };
     },
     async createTemplate(req: unknown, { values: contextValues }: { values: any }) {
@@ -336,9 +336,9 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       return { template: updated };
     },
     async listTemplates(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await assertOrgMember(db, userId, req.orgId);
+      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read' });
 
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, req.orgId), req.page, (pts as any).name, { name: (pts as any).name, createdAt: (pts as any).createdAt });
