@@ -166,3 +166,23 @@ milestone's fourth exit criterion is that the numbers are committed.
   **This task adds the index. Nothing reads it yet** — `universalSearch` is
   still `LIKE '%term%'`, and switching it over is T06.
 - **Next**: M07-T06
+
+## M07-T06 — not started; one design note for whoever picks it up
+
+The index from T05 exists and nothing reads it. `universalSearch` still runs
+`LIKE '%term%'` on `tasks.title`/`description` and `artifacts.name`/`content`.
+
+**The non-obvious part is the cursor, not the `MATCH`.** Both branches currently
+paginate with `buildCursorPaginationWhere` over `createdAt`/`id`, and the verify
+line asks for results ranked by *relevance*. A cursor over `createdAt` cannot
+page a result set ordered by `bm25()`: the second page would be ordered by one
+thing and filtered by another, which silently skips and repeats rows. So T06 is
+"switch to MATCH" **plus** "decide what the cursor sorts on" — the honest
+options being a `(rank, rowid)` cursor, or an offset within a bounded result set
+on the grounds that nobody pages deeply into a search.
+
+Note also that `artifacts.content` is searched today but is **not** in the FTS5
+index (T05 indexes `name` and `description`). Indexing 15 MB base64 bodies would
+be a large index of unsearchable noise, so the sensible reading is that artifact
+*bodies* stop being searched and that is a deliberate, recorded narrowing — but
+it is a behaviour change and belongs in T06's journal entry, not silently.
