@@ -113,6 +113,12 @@ const (
 	// TaskTypeServiceCreateTaskStatusTransitionProcedure is the fully-qualified name of the
 	// TaskTypeService's CreateTaskStatusTransition RPC.
 	TaskTypeServiceCreateTaskStatusTransitionProcedure = "/tasker.health.v1.TaskTypeService/CreateTaskStatusTransition"
+	// TaskTypeServiceDeleteTaskStatusTransitionProcedure is the fully-qualified name of the
+	// TaskTypeService's DeleteTaskStatusTransition RPC.
+	TaskTypeServiceDeleteTaskStatusTransitionProcedure = "/tasker.health.v1.TaskTypeService/DeleteTaskStatusTransition"
+	// TaskTypeServiceReorderTaskStatusesProcedure is the fully-qualified name of the TaskTypeService's
+	// ReorderTaskStatuses RPC.
+	TaskTypeServiceReorderTaskStatusesProcedure = "/tasker.health.v1.TaskTypeService/ReorderTaskStatuses"
 	// ProjectTemplateServiceGetTemplateProcedure is the fully-qualified name of the
 	// ProjectTemplateService's GetTemplate RPC.
 	ProjectTemplateServiceGetTemplateProcedure = "/tasker.health.v1.ProjectTemplateService/GetTemplate"
@@ -348,6 +354,8 @@ var (
 	taskTypeServiceListTaskTypesMethodDescriptor              = taskTypeServiceServiceDescriptor.Methods().ByName("ListTaskTypes")
 	taskTypeServiceCreateTaskStatusMethodDescriptor           = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskStatus")
 	taskTypeServiceCreateTaskStatusTransitionMethodDescriptor = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskStatusTransition")
+	taskTypeServiceDeleteTaskStatusTransitionMethodDescriptor = taskTypeServiceServiceDescriptor.Methods().ByName("DeleteTaskStatusTransition")
+	taskTypeServiceReorderTaskStatusesMethodDescriptor        = taskTypeServiceServiceDescriptor.Methods().ByName("ReorderTaskStatuses")
 	projectTemplateServiceServiceDescriptor                   = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectTemplateService")
 	projectTemplateServiceGetTemplateMethodDescriptor         = projectTemplateServiceServiceDescriptor.Methods().ByName("GetTemplate")
 	projectTemplateServiceCreateTemplateMethodDescriptor      = projectTemplateServiceServiceDescriptor.Methods().ByName("CreateTemplate")
@@ -956,6 +964,8 @@ type TaskTypeServiceClient interface {
 	ListTaskTypes(context.Context, *connect.Request[v1.ListTaskTypesRequest]) (*connect.Response[v1.ListTaskTypesResponse], error)
 	CreateTaskStatus(context.Context, *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error)
 	CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error)
+	DeleteTaskStatusTransition(context.Context, *connect.Request[v1.DeleteTaskStatusTransitionRequest]) (*connect.Response[v1.DeleteTaskStatusTransitionResponse], error)
+	ReorderTaskStatuses(context.Context, *connect.Request[v1.ReorderTaskStatusesRequest]) (*connect.Response[v1.ReorderTaskStatusesResponse], error)
 }
 
 // NewTaskTypeServiceClient constructs a client for the tasker.health.v1.TaskTypeService service. By
@@ -1004,6 +1014,18 @@ func NewTaskTypeServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(taskTypeServiceCreateTaskStatusTransitionMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		deleteTaskStatusTransition: connect.NewClient[v1.DeleteTaskStatusTransitionRequest, v1.DeleteTaskStatusTransitionResponse](
+			httpClient,
+			baseURL+TaskTypeServiceDeleteTaskStatusTransitionProcedure,
+			connect.WithSchema(taskTypeServiceDeleteTaskStatusTransitionMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		reorderTaskStatuses: connect.NewClient[v1.ReorderTaskStatusesRequest, v1.ReorderTaskStatusesResponse](
+			httpClient,
+			baseURL+TaskTypeServiceReorderTaskStatusesProcedure,
+			connect.WithSchema(taskTypeServiceReorderTaskStatusesMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1015,6 +1037,8 @@ type taskTypeServiceClient struct {
 	listTaskTypes              *connect.Client[v1.ListTaskTypesRequest, v1.ListTaskTypesResponse]
 	createTaskStatus           *connect.Client[v1.CreateTaskStatusRequest, v1.CreateTaskStatusResponse]
 	createTaskStatusTransition *connect.Client[v1.CreateTaskStatusTransitionRequest, v1.CreateTaskStatusTransitionResponse]
+	deleteTaskStatusTransition *connect.Client[v1.DeleteTaskStatusTransitionRequest, v1.DeleteTaskStatusTransitionResponse]
+	reorderTaskStatuses        *connect.Client[v1.ReorderTaskStatusesRequest, v1.ReorderTaskStatusesResponse]
 }
 
 // GetTaskType calls tasker.health.v1.TaskTypeService.GetTaskType.
@@ -1047,6 +1071,16 @@ func (c *taskTypeServiceClient) CreateTaskStatusTransition(ctx context.Context, 
 	return c.createTaskStatusTransition.CallUnary(ctx, req)
 }
 
+// DeleteTaskStatusTransition calls tasker.health.v1.TaskTypeService.DeleteTaskStatusTransition.
+func (c *taskTypeServiceClient) DeleteTaskStatusTransition(ctx context.Context, req *connect.Request[v1.DeleteTaskStatusTransitionRequest]) (*connect.Response[v1.DeleteTaskStatusTransitionResponse], error) {
+	return c.deleteTaskStatusTransition.CallUnary(ctx, req)
+}
+
+// ReorderTaskStatuses calls tasker.health.v1.TaskTypeService.ReorderTaskStatuses.
+func (c *taskTypeServiceClient) ReorderTaskStatuses(ctx context.Context, req *connect.Request[v1.ReorderTaskStatusesRequest]) (*connect.Response[v1.ReorderTaskStatusesResponse], error) {
+	return c.reorderTaskStatuses.CallUnary(ctx, req)
+}
+
 // TaskTypeServiceHandler is an implementation of the tasker.health.v1.TaskTypeService service.
 type TaskTypeServiceHandler interface {
 	GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error)
@@ -1055,6 +1089,8 @@ type TaskTypeServiceHandler interface {
 	ListTaskTypes(context.Context, *connect.Request[v1.ListTaskTypesRequest]) (*connect.Response[v1.ListTaskTypesResponse], error)
 	CreateTaskStatus(context.Context, *connect.Request[v1.CreateTaskStatusRequest]) (*connect.Response[v1.CreateTaskStatusResponse], error)
 	CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error)
+	DeleteTaskStatusTransition(context.Context, *connect.Request[v1.DeleteTaskStatusTransitionRequest]) (*connect.Response[v1.DeleteTaskStatusTransitionResponse], error)
+	ReorderTaskStatuses(context.Context, *connect.Request[v1.ReorderTaskStatusesRequest]) (*connect.Response[v1.ReorderTaskStatusesResponse], error)
 }
 
 // NewTaskTypeServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1099,6 +1135,18 @@ func NewTaskTypeServiceHandler(svc TaskTypeServiceHandler, opts ...connect.Handl
 		connect.WithSchema(taskTypeServiceCreateTaskStatusTransitionMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskTypeServiceDeleteTaskStatusTransitionHandler := connect.NewUnaryHandler(
+		TaskTypeServiceDeleteTaskStatusTransitionProcedure,
+		svc.DeleteTaskStatusTransition,
+		connect.WithSchema(taskTypeServiceDeleteTaskStatusTransitionMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskTypeServiceReorderTaskStatusesHandler := connect.NewUnaryHandler(
+		TaskTypeServiceReorderTaskStatusesProcedure,
+		svc.ReorderTaskStatuses,
+		connect.WithSchema(taskTypeServiceReorderTaskStatusesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskTypeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskTypeServiceGetTaskTypeProcedure:
@@ -1113,6 +1161,10 @@ func NewTaskTypeServiceHandler(svc TaskTypeServiceHandler, opts ...connect.Handl
 			taskTypeServiceCreateTaskStatusHandler.ServeHTTP(w, r)
 		case TaskTypeServiceCreateTaskStatusTransitionProcedure:
 			taskTypeServiceCreateTaskStatusTransitionHandler.ServeHTTP(w, r)
+		case TaskTypeServiceDeleteTaskStatusTransitionProcedure:
+			taskTypeServiceDeleteTaskStatusTransitionHandler.ServeHTTP(w, r)
+		case TaskTypeServiceReorderTaskStatusesProcedure:
+			taskTypeServiceReorderTaskStatusesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1144,6 +1196,14 @@ func (UnimplementedTaskTypeServiceHandler) CreateTaskStatus(context.Context, *co
 
 func (UnimplementedTaskTypeServiceHandler) CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.CreateTaskStatusTransition is not implemented"))
+}
+
+func (UnimplementedTaskTypeServiceHandler) DeleteTaskStatusTransition(context.Context, *connect.Request[v1.DeleteTaskStatusTransitionRequest]) (*connect.Response[v1.DeleteTaskStatusTransitionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.DeleteTaskStatusTransition is not implemented"))
+}
+
+func (UnimplementedTaskTypeServiceHandler) ReorderTaskStatuses(context.Context, *connect.Request[v1.ReorderTaskStatusesRequest]) (*connect.Response[v1.ReorderTaskStatusesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.ReorderTaskStatuses is not implemented"))
 }
 
 // ProjectTemplateServiceClient is a client for the tasker.health.v1.ProjectTemplateService service.

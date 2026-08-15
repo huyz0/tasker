@@ -57,6 +57,9 @@ export const taskStatuses = mysqlTable("task_statuses", {
   id: varchar("id", { length: 256 }).primaryKey(),
   taskTypeId: varchar("task_type_id", { length: 256 }).notNull().references(() => taskTypes.id),
   name: varchar("name", { length: 256 }).notNull(),
+  // Statuses are a pipeline, not a set: a board that renders its columns in
+  // whatever order the database returns is not a board (M05-T09).
+  position: int("position").notNull().default(0),
 }, (table) => {
   return {
     taskTypeIdIdx: index("task_statuses_task_type_id_idx").on(table.taskTypeId),

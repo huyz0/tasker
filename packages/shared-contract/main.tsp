@@ -249,6 +249,10 @@ model TaskStatus {
   @field(1) id: string;
   @field(2) taskTypeId: string;
   @field(3) name: string;
+
+  // Statuses are a pipeline, not a set. Without this the order is whatever the
+  // database returns, which puts "done" wherever it likes (M05-T09).
+  @field(4) position: int32;
 }
 
 model TaskStatusTransition {
@@ -306,6 +310,28 @@ model CreateTaskStatusTransitionResponse {
   @field(1) transition: TaskStatusTransition;
 }
 
+// The complete list, in the new order. A partial list is rejected: leaving the
+// unnamed statuses at their old positions is how two of them end up sharing
+// one.
+model ReorderTaskStatusesRequest {
+  @field(1) taskTypeId: string;
+  @field(2) statusIds: string[];
+}
+model ReorderTaskStatusesResponse {
+  @field(1) statuses: TaskStatus[];
+}
+
+// The type is named as well as the edge so the request can be authorized even
+// when the edge is already gone. Looking the edge up first and returning early
+// would hand back success for any id at all, without an authorization check.
+model DeleteTaskStatusTransitionRequest {
+  @field(1) transitionId: string;
+  @field(2) taskTypeId: string;
+}
+model DeleteTaskStatusTransitionResponse {
+  @field(1) success: boolean;
+}
+
 model UpdateTaskTypeRequest {
   @field(1) id: string;
   @field(2) name?: string;
@@ -324,6 +350,12 @@ interface TaskTypeService {
   createTaskStatusTransition(
     request: CreateTaskStatusTransitionRequest,
   ): CreateTaskStatusTransitionResponse;
+  deleteTaskStatusTransition(
+    request: DeleteTaskStatusTransitionRequest,
+  ): DeleteTaskStatusTransitionResponse;
+  reorderTaskStatuses(
+    request: ReorderTaskStatusesRequest,
+  ): ReorderTaskStatusesResponse;
 }
 
 // ==== Project Models ====

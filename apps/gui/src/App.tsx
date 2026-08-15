@@ -6,6 +6,7 @@ import { TasksWorkbench } from './features/Tasks';
 import { AgentsDashboard } from './features/Agents';
 import { ArtifactsBrowser } from './features/Artifacts';
 import { LabelsManager } from './features/Labels';
+import { TaskTypesEditor } from './features/TaskTypes';
 import { BinDashboard } from './features/Bin';
 import { Dashboard } from './pages/Dashboard';
 import { GenericPlaceholder } from './components/ui/GenericPlaceholder';
@@ -34,6 +35,7 @@ function App() {
                 <Route path="/agents" element={<AgentsDashboard />} />
                 <Route path="/artifacts" element={<ArtifactsBrowser />} />
                 <Route path="/artifacts/:artifactId" element={<ArtifactsBrowser />} />
+                <Route path="/task-types" element={<TaskTypesEditor />} />
                 <Route path="/labels" element={<LabelsManager />} />
                 <Route path="/bin" element={<BinDashboard />} />
                 <Route path="/settings" element={<GenericPlaceholder title="Settings" description="Global application preferences." />} />

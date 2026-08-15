@@ -95,7 +95,7 @@ canvas is warranted.
       - Files: `apps/gui/src/features/Artifacts/index.tsx`
       - Verify: an image uploaded in the browser renders after reload.
 
-- [ ] **M05-T09** — Task type editor: create and order statuses, define allowed
+- [x] **M05-T09** — Task type editor: create and order statuses, define allowed
       transitions, set the root type on a template.
       - Files: new `apps/gui/src/features/TaskTypes/`, `App.tsx`
       - Verify: a custom state machine configured in the UI is enforced on status change.

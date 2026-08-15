@@ -9,6 +9,7 @@ import {
   Activity,
   Trash2,
   Tag,
+  Workflow,
   LogOut
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -25,6 +26,7 @@ const NAVIGATION_ITEMS = [
   { name: 'Tasks', path: '/tasks', icon: CheckSquare },
   { name: 'AI Agents', path: '/agents', icon: Bot },
   { name: 'Artifacts', path: '/artifacts', icon: FileBox },
+  { name: 'Task Types', path: '/task-types', icon: Workflow },
   { name: 'Labels', path: '/labels', icon: Tag },
   { name: 'Bin', path: '/bin', icon: Trash2 },
 ];

@@ -245,4 +245,39 @@ Append-only. Newest entry at the bottom.
 - **Verified through a reload with a real PNG**: uploaded a 64×64 image in the
   browser, reloaded, and the `<img>` reported `naturalWidth` 64 — the browser
   decoded it, rather than the element merely existing.
-- **Next**: M05-T09
+
+## M05-T09 — Task type editor
+
+- **Done.** A new Task Types view: statuses with order, transitions with
+  removal, and setting a type as a template's root
+  (`features/TaskTypes/index.tsx`). (`reviews/M05-T09-task-type-editor-v1.md`)
+  — approved, 1 high, 1 medium, 1 low.
+- **The enforcement was already built and had never run.**
+  `validateStatusForTaskType` has checked membership and edges since M01, but
+  nothing could configure a machine, so it only ever ran against the built-in
+  `todo / in progress / done`. Configuring `triage → mitigating` in the browser
+  and then attempting `todo` (refused — not a status of this type), `resolved`
+  (refused — no edge) and `mitigating` (accepted) is the first time that code
+  has been exercised against real configuration.
+- **A hole I opened, caught by the sweeps.** `deleteTaskStatusTransition` first
+  looked the edge up, returned success when it was missing, and authorized
+  after — so any id at all returned success with no authorization check, and
+  because it never threw, the deny-by-default sweeps would have counted it as
+  classified. It now names the type as well as the edge and authorizes against
+  the type.
+- **Ordering was a schema change, not a sort.** `task_statuses` had no position
+  column, so the order was whatever the database returned. Added `position` in
+  both dialects with backfills (rowid for sqlite, id for mysql, which has no
+  rowid), and `createTaskStatus` appends rather than inserting — a status
+  arriving in the middle would silently reorder a live board.
+- **`reorderTaskStatuses` demands the complete list.** A partial one leaves the
+  unnamed statuses at stale positions, which is how two end up sharing a
+  position; the failure is invisible in the response, so three tests cover it.
+- **Deleting a status is deliberately not built.** Tasks store their status by
+  name, so a delete leaves tasks in a status their type no longer contains.
+  Recorded for M08.
+- **Recorded for future clients**: proto3 omits zero-valued scalars, so the
+  first status arrives with `position` absent rather than `0`. The GUI never
+  reads it — the server returns the array ordered — but a client that sorts
+  client-side must treat missing as 0.
+- **Next**: M05-T10

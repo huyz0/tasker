@@ -62,6 +62,9 @@ export const taskStatuses = sqliteTable("task_statuses", {
   id: text("id").primaryKey(),
   taskTypeId: text("task_type_id").notNull().references(() => taskTypes.id),
   name: text("name").notNull(),
+  // Statuses are a pipeline, not a set: a board that renders its columns in
+  // whatever order the database returns is not a board (M05-T09).
+  position: integer("position").notNull().default(0),
 }, (table) => {
   return {
     taskTypeIdIdx: index("task_statuses_task_type_id_idx").on(table.taskTypeId),

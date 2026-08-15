@@ -117,6 +117,37 @@ describe('ArtifactUpload', () => {
     expect(await screen.findByText(/Upload failed: permission denied/)).toBeInTheDocument();
   });
 
+  it('reports a file it could not read', async () => {
+    const realFileReader = globalThis.FileReader;
+    class FailingReader {
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      result: string | null = null;
+      readAsDataURL() { queueMicrotask(() => this.onerror?.()); }
+    }
+    (globalThis as any).FileReader = FailingReader;
+    try {
+      renderUpload();
+      pick(fileOf('locked.png', 'image/png'));
+      // A file can genuinely fail to read — removed from the disk mid-pick, or
+      // a permission error. Silence would leave the picker looking idle.
+      expect(await screen.findByText(/Upload failed: could not read that file/)).toBeInTheDocument();
+    } finally {
+      globalThis.FileReader = realFileReader;
+    }
+  });
+
+  it('says it is uploading while the request is in flight', async () => {
+    let release: (v: unknown) => void = () => {};
+    mockCreate.mockReturnValue(new Promise((r) => { release = r; }));
+    renderUpload();
+    pick(fileOf('notes.md', 'text/markdown'));
+
+    expect(await screen.findByText('Uploading…')).toBeInTheDocument();
+    release({ artifact: { id: 'art-1' } });
+    await waitFor(() => expect(screen.getByText('↑ Upload a file')).toBeInTheDocument());
+  });
+
   it('ignores a cancelled file dialog', () => {
     renderUpload();
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;

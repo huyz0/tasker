@@ -103,6 +103,8 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     updateTaskType: { id: ids.taskType, name: 'TT2' },
     createTaskStatus: { taskTypeId: ids.taskType, name: 'S' },
     createTaskStatusTransition: { taskTypeId: ids.taskType, fromStatusId: ids.taskStatus, toStatusId: ids.taskStatus },
+    deleteTaskStatusTransition: { transitionId: 'tstr-scope-sweep', taskTypeId: ids.taskType },
+    reorderTaskStatuses: { taskTypeId: ids.taskType, statusIds: [ids.taskStatus] },
   },
   taskManagement: {
     createTask: { projectId: ids.project, title: 'T' },

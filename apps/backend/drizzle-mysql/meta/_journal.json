@@ -78,6 +78,13 @@
       "when": 1786772053171,
       "tag": "0010_api_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1786790000000,
+      "tag": "0011_task_status_position",
+      "breakpoints": true
     }
   ]
 }

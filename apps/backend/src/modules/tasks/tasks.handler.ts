@@ -95,6 +95,16 @@ const UpdateTaskStatusSchema = z.object({
   status: z.string().min(1, "status is required").max(256),
 });
 
+const DeleteTaskStatusTransitionSchema = z.object({
+  transitionId: z.string().min(1, "transitionId is required"),
+  taskTypeId: z.string().min(1, "taskTypeId is required"),
+});
+
+const ReorderTaskStatusesSchema = z.object({
+  taskTypeId: z.string().min(1, "taskTypeId is required"),
+  statusIds: z.array(z.string().min(1)).min(1, "statusIds is required"),
+});
+
 const UpdateTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   title: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(512).optional()),
@@ -129,7 +139,13 @@ export const createTasksHandler = (db: any, nc: any = null) => {
 
       const taskType = result[0];
       const statusesSchema = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
-      const statuses = await db.select().from(statusesSchema).where(eq((statusesSchema as any).taskTypeId, parsed.id));
+      // Ordered, because statuses are a pipeline: the board renders them as
+      // columns, and "whatever the database returns" is not an order (M05-T09).
+      const statuses = await db
+        .select()
+        .from(statusesSchema)
+        .where(eq((statusesSchema as any).taskTypeId, parsed.id))
+        .orderBy((statusesSchema as any).position, (statusesSchema as any).id);
 
       const transitionsSchema = isStandalone ? schemaSqlite.taskStatusTransitions : schemaMysql.taskStatusTransitions;
       const transitions = await db.select().from(transitionsSchema).where(eq((transitionsSchema as any).taskTypeId, parsed.id));
@@ -257,8 +273,13 @@ export const createTasksHandler = (db: any, nc: any = null) => {
         throw new ConnectError("a status with this name already exists for this task type", Code.AlreadyExists);
       }
 
+      // Appended, not inserted: a new status arriving in the middle of an
+      // existing pipeline would silently reorder the board.
+      const siblings = await db.select().from(statuses).where(eq((statuses as any).taskTypeId, parsed.taskTypeId));
+      const position = siblings.reduce((max: number, r: any) => Math.max(max, Number(r.position ?? 0) + 1), 0);
+
       const newId = `tst-${crypto.randomUUID()}`;
-      const payload = { id: newId, taskTypeId: parsed.taskTypeId, name: parsed.name };
+      const payload = { id: newId, taskTypeId: parsed.taskTypeId, name: parsed.name, position };
 
       await insertRecord(db, statuses, payload, isStandalone, false);
 
@@ -303,6 +324,65 @@ export const createTasksHandler = (db: any, nc: any = null) => {
 
       publishDomainEvent(nc, "domain.task_status_transition.created", payload);
       return { transition: payload };
+    },
+    async deleteTaskStatusTransition(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUser(contextValues);
+      const parsed = DeleteTaskStatusTransitionSchema.parse(req);
+
+      // Authorized against the *type*, not the edge. Looking the edge up first
+      // and returning success when it is missing would answer "yes" to any id
+      // at all, from anyone, without an authorization check ever running.
+      const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+      const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
+      if (!typeRows.length) throw new ConnectError("task type not found", Code.NotFound);
+      await assertOrgWriter(db, userId, typeRows[0].orgId);
+
+      // Idempotent on the pair: an edge removed twice is the same end state,
+      // and the second ✕ arrives from a stale list often enough to matter.
+      const transitions = isStandalone ? schemaSqlite.taskStatusTransitions : schemaMysql.taskStatusTransitions;
+      await db.delete(transitions).where(and(
+        eq((transitions as any).id, parsed.transitionId),
+        eq((transitions as any).taskTypeId, parsed.taskTypeId),
+      ));
+      publishDomainEvent(nc, "domain.task_status_transition.deleted", { id: parsed.transitionId });
+      return { success: true };
+    },
+    async reorderTaskStatuses(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUser(contextValues);
+      const parsed = ReorderTaskStatusesSchema.parse(req);
+
+      const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+      const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
+      if (!typeRows.length) throw new ConnectError("task type not found", Code.NotFound);
+      await assertOrgWriter(db, userId, typeRows[0].orgId);
+
+      const statuses = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
+      const current = await db.select().from(statuses).where(eq((statuses as any).taskTypeId, parsed.taskTypeId));
+
+      // The request must name every status of this type exactly once. A partial
+      // list would leave the unnamed ones at stale positions - which is how two
+      // statuses end up sharing one - and a foreign id would silently do
+      // nothing.
+      const have = new Set(current.map((r: any) => r.id));
+      const want = new Set(parsed.statusIds);
+      if (want.size !== parsed.statusIds.length) {
+        throw new ConnectError("statusIds contains a duplicate", Code.InvalidArgument);
+      }
+      if (want.size !== have.size || parsed.statusIds.some((id) => !have.has(id))) {
+        throw new ConnectError("statusIds must list every status of this task type exactly once", Code.InvalidArgument);
+      }
+
+      for (const [index, id] of parsed.statusIds.entries()) {
+        await db.update(statuses).set({ position: index }).where(eq((statuses as any).id, id));
+      }
+
+      const reordered = await db
+        .select()
+        .from(statuses)
+        .where(eq((statuses as any).taskTypeId, parsed.taskTypeId))
+        .orderBy((statuses as any).position, (statuses as any).id);
+      publishDomainEvent(nc, "domain.task_statuses.reordered", { taskTypeId: parsed.taskTypeId });
+      return { statuses: reordered };
     },
   };
 };

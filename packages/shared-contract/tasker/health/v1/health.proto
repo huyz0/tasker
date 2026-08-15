@@ -208,6 +208,9 @@ message TaskStatus {
   string id = 1;
   string taskTypeId = 2;
   string name = 3;
+  // Statuses are a pipeline, not a set. Without this the order is whatever the
+  // database returns, which puts "done" wherever it likes (M05-T09).
+  int32 position = 4;
 }
 
 message TaskStatusTransition {
@@ -267,6 +270,30 @@ message CreateTaskStatusTransitionResponse {
   TaskStatusTransition transition = 1;
 }
 
+// The complete list, in the new order. A partial list is rejected: leaving the
+// unnamed statuses at their old positions is how two of them end up sharing
+// one.
+message ReorderTaskStatusesRequest {
+  string taskTypeId = 1;
+  repeated string statusIds = 2;
+}
+
+message ReorderTaskStatusesResponse {
+  repeated TaskStatus statuses = 1;
+}
+
+// The type is named as well as the edge so the request can be authorized even
+// when the edge is already gone. Looking the edge up first and returning early
+// would hand back success for any id at all, without an authorization check.
+message DeleteTaskStatusTransitionRequest {
+  string transitionId = 1;
+  string taskTypeId = 2;
+}
+
+message DeleteTaskStatusTransitionResponse {
+  bool success = 1;
+}
+
 message UpdateTaskTypeRequest {
   string id = 1;
   optional string name = 2;
@@ -283,6 +310,8 @@ service TaskTypeService {
   rpc ListTaskTypes(ListTaskTypesRequest) returns (ListTaskTypesResponse);
   rpc CreateTaskStatus(CreateTaskStatusRequest) returns (CreateTaskStatusResponse);
   rpc CreateTaskStatusTransition(CreateTaskStatusTransitionRequest) returns (CreateTaskStatusTransitionResponse);
+  rpc DeleteTaskStatusTransition(DeleteTaskStatusTransitionRequest) returns (DeleteTaskStatusTransitionResponse);
+  rpc ReorderTaskStatuses(ReorderTaskStatusesRequest) returns (ReorderTaskStatusesResponse);
 }
 
 message ProjectTemplate {
