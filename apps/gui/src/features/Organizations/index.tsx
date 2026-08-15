@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
-import { useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { OrgService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
@@ -200,6 +200,43 @@ export function OrganizationsDashboard() {
       fetchMoreMembers();
     }
   }, [virtualMemberRows, membersData, hasMoreMembers, isFetchingMoreMembers, fetchMoreMembers]);
+
+  // Whether the caller may manage invitations is the server's call, not a role
+  // table copied into the client. listInvitations is admin-gated, so a failure
+  // here means "not an admin" and the whole section hides rather than rendering
+  // as a permanent permission error. retry:false so a denial settles once.
+  const invitationsQuery = useQuery({
+    queryKey: ['orgInvitations', activeOrgId],
+    queryFn: async () => (await orgClient.listInvitations({ orgId: activeOrgId })).invitations,
+    enabled: !!activeOrgId,
+    retry: false,
+  });
+  // isSuccess, not !isError: with the latter the section renders during loading
+  // and then vanishes when the denial arrives, which is a worse experience than
+  // never showing it. The server's answer is what decides, so wait for one.
+  const canManageInvites = invitationsQuery.isSuccess;
+
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('member');
+
+  const inviteMutation = useMutation({
+    mutationFn: async () => {
+      await orgClient.inviteUser({ orgId: activeOrgId, email: inviteEmail.trim(), role: inviteRole });
+    },
+    onSuccess: () => {
+      // Clear only on success: a failed send that wipes the field makes the
+      // user retype an address they already typed.
+      setInviteEmail('');
+      queryClient.invalidateQueries({ queryKey: ['orgInvitations', activeOrgId] });
+    },
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      await orgClient.revokeInvitation({ invitationId });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgInvitations', activeOrgId] }),
+  });
 
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -496,7 +533,7 @@ export function OrganizationsDashboard() {
                 </div>
                 <div>
                   <label htmlFor="member-role-facet" className="block text-xs font-medium text-muted-foreground mb-1">
-                    Role
+                    Filter by role
                   </label>
                   <select
                     id="member-role-facet"
@@ -616,6 +653,95 @@ export function OrganizationsDashboard() {
               )}
               {updateMemberRoleMutation.isError && (
                 <p className="text-sm text-destructive mt-2">Failed to update role: {(updateMemberRoleMutation.error as Error).message}</p>
+              )}
+
+              {canManageInvites && (
+                <div className="mt-8">
+                  <h3 className="text-base font-medium">Invite someone</h3>
+                  <p className="text-sm text-muted-foreground mt-1 mb-3">
+                    They join {activeOrg?.name ?? 'this organization'} the first time they sign in. Invitations expire after 14 days.
+                  </p>
+                  <form
+                    className="flex flex-col gap-2 sm:flex-row sm:items-end"
+                    onSubmit={(e) => { e.preventDefault(); if (inviteEmail.trim()) inviteMutation.mutate(); }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <label htmlFor="invite-email" className="block text-xs font-medium text-muted-foreground mb-1">Email address</label>
+                      <input
+                        id="invite-email"
+                        type="email"
+                        required
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="person@example.com"
+                        className="w-full text-sm rounded-md border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="invite-role" className="block text-xs font-medium text-muted-foreground mb-1">Role</label>
+                      <select
+                        id="invite-role"
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value)}
+                        className="w-full sm:w-40 text-sm rounded-md border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50"
+                      >
+                        {ASSIGNABLE_ROLES.map((role) => (
+                          <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={inviteMutation.isPending || !inviteEmail.trim()}
+                      className="text-sm rounded-md bg-primary text-primary-foreground px-4 py-2 disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    >
+                      {inviteMutation.isPending ? 'Sending...' : 'Send invite'}
+                    </button>
+                  </form>
+                  {inviteMutation.isError && (
+                    <p className="text-sm text-destructive mt-2">Failed to send invite: {(inviteMutation.error as Error).message}</p>
+                  )}
+
+                  {(invitationsQuery.data?.length ?? 0) > 0 ? (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-medium mb-2">
+                        Pending invitations ({invitationsQuery.data!.length})
+                      </h4>
+                      <div className="border rounded-md divide-y">
+                        {invitationsQuery.data!.map((inv) => (
+                          <div key={inv.id} className="grid grid-cols-[1fr_100px_140px_60px] gap-2 p-3 text-sm items-center">
+                            <span className="truncate">{inv.email}</span>
+                            <span className="text-xs text-muted-foreground capitalize">{inv.role}</span>
+                            <span>
+                              {inv.expired ? (
+                                <span className="text-xs rounded px-2 py-0.5 bg-warning-subtle text-warning-subtle-foreground">Expired</span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Pending</span>
+                              )}
+                            </span>
+                            <span className="text-right">
+                              <button
+                                aria-label={`Revoke invitation for ${inv.email}`}
+                                disabled={revokeInviteMutation.isPending}
+                                onClick={() => {
+                                  if (window.confirm(`Revoke the invitation for ${inv.email}?`)) {
+                                    revokeInviteMutation.mutate(inv.id);
+                                  }
+                                }}
+                                className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
+                              >
+                                Revoke
+                              </button>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      {revokeInviteMutation.isError && (
+                        <p className="text-sm text-destructive mt-2">Failed to revoke: {(revokeInviteMutation.error as Error).message}</p>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               )}
             </>
           )}

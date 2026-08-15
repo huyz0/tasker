@@ -121,7 +121,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
         `apps/cli/cmd/orgs.go`
       - Verify: an invitation can be listed then revoked and no longer applies.
 
-- [ ] **M03-T13** — Build the invite UI in the Organizations view: an invite form,
+- [x] **M03-T13** — Build the invite UI in the Organizations view: an invite form,
       a pending list with role and expiry, and a revoke action.
       - Files: `apps/gui/src/features/Organizations/index.tsx`
       - Verify: an administrator invites and revokes without touching the CLI.

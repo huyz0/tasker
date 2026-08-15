@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OrganizationsDashboard } from './index';
 
-const { mockListOrgs, mockSeedOrg, mockArchiveOrg, mockSetOrgRetentionDays, mockUpdateOrg, mockListOrgMembers, mockRemoveOrgMember, mockUpdateOrgMemberRole } = vi.hoisted(() => ({
+const { mockListOrgs, mockSeedOrg, mockArchiveOrg, mockSetOrgRetentionDays, mockUpdateOrg, mockListOrgMembers, mockRemoveOrgMember, mockUpdateOrgMemberRole, mockListInvitations, mockInviteUser, mockRevokeInvitation } = vi.hoisted(() => ({
   mockListOrgs: vi.fn(),
   mockSeedOrg: vi.fn(),
   mockArchiveOrg: vi.fn(),
@@ -12,6 +12,9 @@ const { mockListOrgs, mockSeedOrg, mockArchiveOrg, mockSetOrgRetentionDays, mock
   mockListOrgMembers: vi.fn(),
   mockRemoveOrgMember: vi.fn(),
   mockUpdateOrgMemberRole: vi.fn(),
+  mockListInvitations: vi.fn(),
+  mockInviteUser: vi.fn(),
+  mockRevokeInvitation: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -27,6 +30,9 @@ vi.mock('@connectrpc/connect', () => ({
     listOrgMembers: mockListOrgMembers,
     removeOrgMember: mockRemoveOrgMember,
     updateOrgMemberRole: mockUpdateOrgMemberRole,
+    listInvitations: mockListInvitations,
+    inviteUser: mockInviteUser,
+    revokeInvitation: mockRevokeInvitation,
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ OrgService: {} }));
@@ -60,6 +66,12 @@ describe('OrganizationsDashboard', () => {
     mockSetActiveOrgId.mockReset();
     mockUpdateOrg.mockReset();
     mockListOrgMembers.mockReset();
+    mockListInvitations.mockReset();
+    mockListInvitations.mockResolvedValue({ invitations: [] });
+    mockInviteUser.mockReset();
+    mockInviteUser.mockResolvedValue({ success: true });
+    mockRevokeInvitation.mockReset();
+    mockRevokeInvitation.mockResolvedValue({ success: true });
     mockListOrgMembers.mockResolvedValue({ members: [] });
     mockRemoveOrgMember.mockReset();
     mockUpdateOrgMemberRole.mockReset();
@@ -587,7 +599,7 @@ describe('OrganizationsDashboard', () => {
     fireEvent.click(screen.getByText('Roles & Permissions'));
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
 
-    fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'viewer' } });
+    fireEvent.change(screen.getByLabelText('Filter by role'), { target: { value: 'viewer' } });
 
     await waitFor(() =>
       expect(mockListOrgMembers).toHaveBeenLastCalledWith(expect.objectContaining({ role: 'viewer' })),
@@ -700,6 +712,109 @@ describe('OrganizationsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getAllByText('Zeta Parent')).toHaveLength(1));
+  });
+
+  // M03-T13: the whole invite loop must be reachable without the CLI.
+  const openRoles = async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
+    mockListOrgMembers.mockResolvedValue({ members: [], page: { totalCount: 0 } });
+    renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+  };
+
+  it('sends an invitation with the chosen role and clears the field', async () => {
+    await openRoles();
+    await waitFor(() => expect(screen.getByLabelText('Email address')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'ada@example.com' } });
+    fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'viewer' } });
+    fireEvent.click(screen.getByText('Send invite'));
+
+    await waitFor(() =>
+      expect(mockInviteUser).toHaveBeenCalledWith({ orgId: 'org-1', email: 'ada@example.com', role: 'viewer' }),
+    );
+    await waitFor(() => expect(screen.getByLabelText('Email address')).toHaveValue(''));
+  });
+
+  it('keeps what was typed when sending fails', async () => {
+    mockInviteUser.mockRejectedValue(new Error('Admin role required in this organization'));
+    await openRoles();
+    await waitFor(() => expect(screen.getByLabelText('Email address')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'ada@example.com' } });
+    fireEvent.click(screen.getByText('Send invite'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to send invite/)).toBeInTheDocument());
+    // Wiping the field on failure makes the user retype an address they typed.
+    expect(screen.getByLabelText('Email address')).toHaveValue('ada@example.com');
+  });
+
+  it('marks a lapsed invitation as expired rather than showing a date to decode', async () => {
+    mockListInvitations.mockResolvedValue({
+      invitations: [
+        { id: 'inv-1', email: 'live@example.com', role: 'member', expired: false },
+        { id: 'inv-2', email: 'old@example.com', role: 'viewer', expired: true },
+      ],
+    });
+    await openRoles();
+
+    await waitFor(() => expect(screen.getByText('Pending invitations (2)')).toBeInTheDocument());
+    expect(screen.getByText('Expired')).toBeInTheDocument();
+    expect(screen.getByText('Pending')).toBeInTheDocument();
+  });
+
+  it('revokes an invitation after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockListInvitations.mockResolvedValue({
+      invitations: [{ id: 'inv-1', email: 'ada@example.com', role: 'member', expired: false }],
+    });
+    await openRoles();
+
+    await waitFor(() => expect(screen.getByLabelText('Revoke invitation for ada@example.com')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Revoke invitation for ada@example.com'));
+
+    await waitFor(() => expect(mockRevokeInvitation).toHaveBeenCalledWith({ invitationId: 'inv-1' }));
+  });
+
+  it('does not revoke when confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    mockListInvitations.mockResolvedValue({
+      invitations: [{ id: 'inv-1', email: 'ada@example.com', role: 'member', expired: false }],
+    });
+    await openRoles();
+
+    await waitFor(() => expect(screen.getByLabelText('Revoke invitation for ada@example.com')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Revoke invitation for ada@example.com'));
+
+    expect(mockRevokeInvitation).not.toHaveBeenCalled();
+  });
+
+  it('shows an error when revoking fails, and keeps the row', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockListInvitations.mockResolvedValue({
+      invitations: [{ id: 'inv-1', email: 'ada@example.com', role: 'member', expired: false }],
+    });
+    mockRevokeInvitation.mockRejectedValue(new Error('invitation not found'));
+    await openRoles();
+
+    await waitFor(() => expect(screen.getByLabelText('Revoke invitation for ada@example.com')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Revoke invitation for ada@example.com'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to revoke/)).toBeInTheDocument());
+    // The row stays, because the invitation still exists.
+    expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+  });
+
+  it('hides the whole section from someone who may not manage invitations', async () => {
+    // listInvitations is admin-gated, so a denial is how the client learns the
+    // caller is not an admin — rather than a role table copied into the client.
+    mockListInvitations.mockRejectedValue(new Error('Admin role required in this organization'));
+    await openRoles();
+
+    // The rest of the view still renders — only the invite section is absent.
+    await waitFor(() => expect(screen.getByLabelText('Search members')).toBeInTheDocument());
+    expect(screen.queryByText('Invite someone')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Email address')).not.toBeInTheDocument();
   });
 
   // M03-T04: the server refuses to remove a member who still owns projects and

@@ -538,3 +538,48 @@ completes the task.
   timezones will eventually disagree about whether an invitation has lapsed,
   and lapsing is the single fact the list exists to show.
 - **Next**: M03-T13
+
+---
+
+## M03-T13 — Invite UI
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: Add an invite form and a pending-invitations list with role,
+  expiry state and a revoke action to the Roles & Permissions view, so an
+  administrator can complete the whole loop without the CLI.
+- **Weight**: heavy — a new flow a user has to learn, so a
+  [UX pass](design/M03-T13-invite-ui.md) came first and
+  [a review](reviews/M03-T13-invite-ui-v1.md) after.
+- **Changed**: `features/Organizations/index.tsx`, its test (+7 cases).
+- **Verified**: `moon check --all` — 23 tasks, 404 GUI tests. Verify line
+  covered end to end: send with a chosen role, see it listed with its state,
+  revoke behind a confirmation.
+- **Notes**: two defects found while building, both in the same class — the
+  thing that looks right until you watch it.
+
+  **The section flashed in and then vanished for a non-admin.** Visibility was
+  gated on `!invitationsQuery.isError`, which is false while the query is in
+  flight, so someone without permission saw the invite form appear and then be
+  taken away. Gated on `isSuccess` now, which also made the internal loading
+  branch unreachable — removed rather than left as dead code, and the design
+  note corrected to match.
+
+  **Two controls in one view were both labelled "Role."** The members facet and
+  the invite role. A test failed for what looked like a test-only reason
+  (`getByLabelText` ambiguity); a screen reader would have been equally
+  ambiguous. The facet is "Filter by role" now, which is a better label anyway.
+
+  The email field keeps its contents when a send fails. Clearing on submit is
+  the reflex and it makes someone retype an address in exactly the moment they
+  are already annoyed.
+
+  Whether the caller may manage invitations is the **server's** answer — the
+  client runs `listInvitations` and reads a rejection as "not an admin". This is
+  a deliberate exception to M03-T08's position, and both design notes say why:
+  there, a control someone might legitimately try, with an informative refusal;
+  here, a whole section that would otherwise be a permanent error.
+- **Divergence**: the 95% branch-coverage gate failed at 94.27% when the UI
+  landed without tests. That is the gate working — the uncovered branches were
+  the error and permission paths, which are the ones nobody exercises by hand.
+- **Next**: M03-T14
