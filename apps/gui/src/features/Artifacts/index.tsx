@@ -15,6 +15,7 @@ import { Folder, FolderOpen, FileText, X } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { ListState } from '../../components/ui/ListState';
 
 const artifactClient = createClient(ArtifactService, transport);
 
@@ -48,7 +49,7 @@ export function ArtifactsBrowser() {
 
   // Fetch all folders for the project - loop through every page, not just
   // the first, or folders past the default page size become unreachable.
-  const { data: foldersData, isLoading: isLoadingFolders } = useQuery({
+  const { data: foldersData, isLoading: isLoadingFolders, error: foldersError, refetch: refetchFolders } = useQuery({
     queryKey: ['folders', activeProjectId],
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await artifactClient.listFolders({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
@@ -58,7 +59,7 @@ export function ArtifactsBrowser() {
   });
 
   // Fetch artifacts for the selected folder, likewise across all pages.
-  const { data: artifactsData, isLoading: isLoadingArtifacts } = useQuery({
+  const { data: artifactsData, isLoading: isLoadingArtifacts, error: artifactsError, refetch: refetchArtifacts } = useQuery({
     queryKey: ['artifacts', selectedFolderId],
     queryFn: async () => {
       if (!selectedFolderId) return [];
@@ -338,7 +339,16 @@ export function ArtifactsBrowser() {
               {/* Show artifacts if this folder is selected */}
               {selectedFolderId === folder.id && (
                 <div className="pl-6 mt-1 space-y-1">
-                  {isLoadingArtifacts && <div className="text-xs text-muted-foreground px-2 py-1">Loading...</div>}
+                  {(isLoadingArtifacts || artifactsError) && (
+                    <ListState
+                      isLoading={isLoadingArtifacts}
+                      error={artifactsError}
+                      isEmpty={false}
+                      loadingMessage="Loading artifacts…"
+                      emptyMessage=""
+                      onRetry={() => refetchArtifacts()}
+                    />
+                  )}
                   {artifactsData?.map(artifact => (
                     <div
                       key={artifact.id}
@@ -447,9 +457,18 @@ export function ArtifactsBrowser() {
               onCancel={() => setIsAddingFolder(false)}
             />
           )}
-          {isLoadingFolders && <p className="p-2 text-muted-foreground text-xs">Loading folders...</p>}
-          {!isLoadingFolders && rootFolders.length === 0 && !isAddingFolder && (
-             <p className="p-2 text-muted-foreground text-xs">No folders yet.</p>
+          {(isLoadingFolders || foldersError || (rootFolders.length === 0 && !isAddingFolder)) && (
+            // `rootFolders` is derived from the query data, so a failed load
+            // gives an empty array and this pane used to say "No folders yet."
+            <ListState
+              isLoading={isLoadingFolders}
+              error={foldersError}
+              isEmpty
+              loadingMessage="Loading folders…"
+              emptyMessage="No folders yet."
+              emptyAction={<p className="text-xs">Use “+ New folder” above to add one.</p>}
+              onRetry={() => refetchFolders()}
+            />
           )}
 
           {rootFolders.map((folder: any) => renderFolder(folder, 0))}

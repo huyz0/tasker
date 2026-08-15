@@ -366,3 +366,48 @@ standard and wonder which one is wrong.
   on the backdrop dispatched at the element's centre, which is *underneath* the
   drawer, so it followed a nav link and I read the result as a navigation bug.
 - **Next**: M06-T11
+
+## M06-T11 — Empty, loading and error states
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Audit**: every view has a loading state. The finding is the *error* state:
+  every `isError` reference in `features/*` belongs to a **mutation**. Query
+  errors surfaced per view — Projects 0, Labels 0, TaskTypes 0, Artifacts 0,
+  Agents 0, Tasks 0, Bin 0, Organizations 1. A failed list therefore falls
+  through to the empty branch and renders "No projects found": not a blank
+  region but something worse, a confident lie that the user's data is gone,
+  with nothing to click to find out otherwise.
+- **Changed**: new `components/ui/ListState.tsx` (+ 9 tests), new
+  `scripts/query-error-coverage.mjs` + `.test.mjs` (8 tests) wired into
+  `moon.yml`; all 8 feature views, the 3 pickers, `BinList` and
+  `OrgProjectSwitcher` (+ 1 test).
+- **Verified**: with a real browser against a real backend, aborting **only**
+  the one RPC each surface depends on and leaving the rest working — all nine
+  surfaces (8 views + the switcher) render `role="alert"` with the server's own
+  message and a **Try again** button, and **none** renders a "No X" claim.
+  `gui:test` — 613 pass, branches 95.11%. `moon check --all` — 25 pass
+  (24 before; the new gate is the 25th).
+- **Notes**: the interesting part of the audit was not blankness. Loading
+  states existed everywhere; what was missing was the *error* state, and its
+  absence did not leave a blank region — it left the **empty** one. A failed
+  `listProjects` fell through to "No projects found", which tells the user their
+  data is gone when the request never arrived. Six of the nine surfaces said
+  something false; the switcher said it on every page.
+  **The gate paid for itself before it was committed**: after sweeping the eight
+  views by hand, `query-error-coverage` named four more readers I had missed —
+  `AgentTokens`, `AssigneePicker`, `ReviewerPicker`, `TaskArtifactLinks`. Two of
+  those (`ReviewerPicker`, `TaskArtifactLinks`) had the same lie.
+  Two deliberate exceptions, both permission-gated on `isSuccess` rather than
+  shown as failures (`listInvitations`, `listAgentTokens`) — M03-T13's choice,
+  and an exception excuses one query, not a whole file.
+  A `Bin` test failed honestly: it set its projects mock *after* the tab click,
+  so the first call always rejected and the pane rendered its empty state
+  anyway. The failure had been invisible for as long as the test existed.
+  And once more, the probe before the finding: the first browser run reported
+  zero alerts everywhere. The route pattern used lowercase RPC names against
+  PascalCase paths, so nothing was ever aborted. The second run broke `ListOrgs`
+  for every view, which only disabled the `enabled: !!activeOrgId` queries
+  downstream — also proving nothing. Only the third, one RPC per view with the
+  abort counted, said anything.
+- **Next**: M06-T12

@@ -102,7 +102,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: `apps/gui/src/components/layout/AppShell.tsx`
       - Verify: tapping outside closes it; the underlying page is not focusable.
 
-- [ ] **M06-T11** — Audit empty, loading and error states across every view and
+- [x] **M06-T11** — Audit empty, loading and error states across every view and
       give each one an action rather than a dead end.
       - Files: all `features/*`
       - Verify: no view renders an unexplained blank region.

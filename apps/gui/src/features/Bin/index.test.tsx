@@ -257,6 +257,10 @@ describe('BinDashboard', () => {
 
   it("shows the Projects tab's empty message when no org is active", async () => {
     mockListOrgs.mockResolvedValue({ organizations: [] });
+    // Set before rendering. It used to be set after the tab click, so the first
+    // call rejected on an unstubbed mock and the pane rendered its empty state
+    // anyway — the failure was invisible, which is the defect M06-T11 removed.
+    mockListProjects.mockResolvedValue({ projects: [] });
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
@@ -264,7 +268,6 @@ describe('BinDashboard', () => {
     // Projects query is `enabled: Boolean(activeOrgId)` - with activeOrgId
     // set (org-1, per the mocked layout store), it still resolves via the
     // mock and should show its own empty state without loading forever.
-    mockListProjects.mockResolvedValue({ projects: [] });
     await waitFor(() => expect(screen.getByText('No archived projects in the active organization.')).toBeDefined());
   });
 

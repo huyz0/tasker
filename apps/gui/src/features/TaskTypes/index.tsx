@@ -4,6 +4,7 @@ import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
 import { TaskTypeService, ProjectTemplateService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore } from '../../store/layout';
+import { ListState } from '../../components/ui/ListState';
 
 const typeClient = createClient(TaskTypeService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
@@ -116,9 +117,15 @@ export function TaskTypesEditor() {
             {t.name}
           </button>
         ))}
-        {taskTypes.length === 0 && !typesQuery.isLoading && (
-          <span className="text-sm text-muted-foreground">No task types yet.</span>
-        )}
+        <ListState
+          isLoading={typesQuery.isLoading}
+          error={typesQuery.error}
+          isEmpty={taskTypes.length === 0}
+          loadingMessage="Loading task types…"
+          emptyMessage="No task types yet."
+          emptyAction={<p className="text-xs">Add one on the right to configure its statuses.</p>}
+          onRetry={() => typesQuery.refetch()}
+        />
         <form
           className="flex items-center gap-1 ml-auto"
           onSubmit={(e) => { e.preventDefault(); if (newType.trim()) createType.mutate(newType.trim()); }}
@@ -142,6 +149,19 @@ export function TaskTypesEditor() {
 
       {!selectedId ? (
         <p className="text-sm text-muted-foreground">Choose a task type to configure its statuses and transitions.</p>
+      ) : detail.isLoading || detail.error ? (
+        // Without this branch a failed `getTaskType` renders the two empty-state
+        // explanations below — "this type has no statuses" and "every status
+        // change is allowed" — which describe a configuration the user does not
+        // have and cannot see (M06-T11).
+        <ListState
+          isLoading={detail.isLoading}
+          error={detail.error}
+          isEmpty={false}
+          loadingMessage="Loading this task type…"
+          emptyMessage=""
+          onRetry={() => detail.refetch()}
+        />
       ) : (
         <div className="flex flex-col gap-8">
           <section>

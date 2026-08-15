@@ -6,6 +6,7 @@ import { ChevronsUpDown } from 'lucide-react';
 import { transport } from '../../lib/connectTransport';
 import { OrgService, ProjectService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore } from '../../store/layout';
+import { ListState } from '../ui/ListState';
 
 const orgClient = createClient(OrgService, transport);
 const projectClient = createClient(ProjectService, transport);
@@ -39,6 +40,8 @@ function SearchSelect({
   choices,
   total,
   isLoading,
+  error,
+  onRetry,
   search,
   onSearch,
   onPick,
@@ -50,6 +53,10 @@ function SearchSelect({
   choices: Choice[];
   total: number;
   isLoading: boolean;
+  /** The query error. Without it a failed list said "No organizations", which
+   *  is the same words as an account that genuinely has none (M06-T11). */
+  error: unknown;
+  onRetry: () => void;
   search: string;
   onSearch: (next: string) => void;
   onPick: (choice: Choice) => void;
@@ -92,7 +99,7 @@ function SearchSelect({
         onClick={() => setIsOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-2 rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/50"
       >
-        <span className="truncate">{valueLabel || emptyMessage}</span>
+        <span className="truncate">{valueLabel || (error ? 'Unavailable' : emptyMessage)}</span>
         <ChevronsUpDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
       </button>
 
@@ -133,10 +140,20 @@ function SearchSelect({
             ))}
           </ul>
 
-          {!isLoading && choices.length === 0 && (
-            <span className="px-2 py-1 text-xs text-muted-foreground">
-              {search ? 'Nothing matches that.' : emptyMessage}
-            </span>
+          {error ? (
+            <ListState
+              isLoading={false}
+              error={error}
+              isEmpty={false}
+              emptyMessage=""
+              onRetry={onRetry}
+            />
+          ) : (
+            !isLoading && choices.length === 0 && (
+              <span className="px-2 py-1 text-xs text-muted-foreground">
+                {search ? 'Nothing matches that.' : emptyMessage}
+              </span>
+            )
           )}
 
           {total > choices.length && (
@@ -242,6 +259,8 @@ export function OrgProjectSwitcher() {
         choices={orgChoices}
         total={orgsQuery.data?.total ?? 0}
         isLoading={orgsQuery.isLoading}
+        error={orgsQuery.error}
+        onRetry={() => orgsQuery.refetch()}
         search={orgSearch}
         onSearch={setOrgSearch}
         onPick={(choice) => {
@@ -261,6 +280,8 @@ export function OrgProjectSwitcher() {
         choices={projects.map((p: any) => ({ id: p.id, label: p.name }))}
         total={projectsQuery.data?.total ?? 0}
         isLoading={projectsQuery.isLoading}
+        error={projectsQuery.error}
+        onRetry={() => projectsQuery.refetch()}
         search={projectSearch}
         onSearch={setProjectSearch}
         onPick={(choice) => { setActiveProjectId(choice.id); setProjectLabel(choice.label); }}

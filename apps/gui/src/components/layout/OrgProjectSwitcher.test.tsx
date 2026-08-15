@@ -313,5 +313,19 @@ describe('OrgProjectSwitcher', () => {
 
       expect(await screen.findByText('Nothing matches that.')).toBeInTheDocument();
     });
+
+    it('does not claim there are no organizations when the request failed', async () => {
+      // The switcher sits on every page, so this was the most persistent
+      // instance of the M06-T11 defect: a failed `listOrgs` rendered
+      // "No organizations", the same words as an account that has none.
+      mockListOrgs.mockRejectedValue(new Error('unavailable'));
+      mockListProjects.mockResolvedValue({ projects: [], page: { totalCount: 0 } });
+      renderSwitcher();
+
+      fireEvent.click(await screen.findByLabelText('Active organization'));
+      expect(await screen.findByRole('alert')).toHaveTextContent('unavailable');
+      expect(screen.queryByText('No organizations')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    });
   });
 });

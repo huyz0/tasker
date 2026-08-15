@@ -104,7 +104,7 @@ describe('OrganizationsDashboard', () => {
   it('renders loading state for orgs', () => {
     mockListOrgs.mockResolvedValue({ organizations: [] });
     renderPage();
-    expect(screen.getByText('Loading organizations...')).toBeDefined();
+    expect(screen.getByText('Loading organizations…')).toBeDefined();
   });
 
   it('auto-selects the first real org when the current selection does not exist', async () => {
@@ -255,7 +255,7 @@ describe('OrganizationsDashboard', () => {
   it('shows a message when there are no organizations', async () => {
     mockListOrgs.mockResolvedValue({ organizations: [] });
     renderPage();
-    await waitFor(() => expect(screen.getByText('No organizations found - create one above.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No organizations yet.')).toBeDefined());
   });
 
   it('archives a root org after confirmation', async () => {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ListState } from '../../components/ui/ListState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { useDebounce } from 'use-debounce';
@@ -77,10 +78,18 @@ export function TaskArtifactLinks({ taskId, artifactId, orgId }: { taskId?: stri
 
   return (
     <div className="flex flex-col gap-2">
-      {links.length === 0 ? (
-        <span className="text-xs text-muted-foreground">
-          {anchor === 'task' ? 'No linked artifacts' : 'Not linked to any task'}
-        </span>
+      {linksQuery.isLoading || linksQuery.error || links.length === 0 ? (
+        // "No linked artifacts" was rendered for a failed load too, so a broken
+        // read looked exactly like an unlinked task (M06-T11).
+        <ListState
+          isLoading={linksQuery.isLoading}
+          error={linksQuery.error}
+          isEmpty
+          loadingMessage="Loading links…"
+          emptyMessage={anchor === 'task' ? 'No linked artifacts' : 'Not linked to any task'}
+          emptyAction={<p className="text-xs">Use the link control below to add one.</p>}
+          onRetry={() => linksQuery.refetch()}
+        />
       ) : (
         <ul className="flex flex-col gap-1">
           {links.map((l: any) => (
@@ -118,6 +127,15 @@ export function TaskArtifactLinks({ taskId, artifactId, orgId }: { taskId?: stri
             <span className="text-xs text-muted-foreground">Type to search.</span>
           )}
           {candidates.isLoading && <span className="text-xs text-muted-foreground">Searching…</span>}
+          {candidates.error && (
+            <ListState
+              isLoading={false}
+              error={candidates.error}
+              isEmpty={false}
+              emptyMessage=""
+              onRetry={() => candidates.refetch()}
+            />
+          )}
           {offered.map((c: any) => (
             <button
               key={c.id}

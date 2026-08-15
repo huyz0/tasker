@@ -8,6 +8,7 @@ import { PaginationControls } from '../../components/PaginationControls';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDebounce } from 'use-debounce';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { ListState } from '../../components/ui/ListState';
 
 const orgClient = createClient(OrgService, transport);
 
@@ -107,6 +108,8 @@ export function OrganizationsDashboard() {
   const {
     data: orgsPages,
     isLoading,
+    error: orgsError,
+    refetch: refetchOrgs,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
@@ -223,6 +226,8 @@ export function OrganizationsDashboard() {
   const {
     data: membersPages,
     isLoading: isLoadingMembers,
+    error: membersError,
+    refetch: refetchMembers,
     isFetchingNextPage: isFetchingMoreMembers,
     hasNextPage: hasMoreMembers,
     fetchNextPage: fetchMoreMembers,
@@ -549,13 +554,17 @@ export function OrganizationsDashboard() {
                    <span className="font-medium min-w-[200px]">Name</span>
                    <span className="font-medium">Slug</span>
                  </div>
-                 {isLoading ? (
-                   <div className="p-3 text-sm text-center text-muted-foreground">Loading organizations...</div>
-                 ) : orgsData && orgsData.length > 0 ? (
-                   rootOrgs.map(org => renderOrgNode(org, 0))
-                 ) : (
-                   <div className="p-3 text-sm text-center text-muted-foreground">No organizations found - create one above.</div>
-                 )}
+                 <ListState
+                   isLoading={isLoading}
+                   error={orgsError}
+                   isEmpty={!orgsData || orgsData.length === 0}
+                   loadingMessage="Loading organizations…"
+                   emptyMessage="No organizations yet."
+                   emptyAction={<p className="text-xs">Create one above — every project belongs to an organization.</p>}
+                   onRetry={() => refetchOrgs()}
+                 >
+                   {rootOrgs.map(org => renderOrgNode(org, 0))}
+                 </ListState>
               </div>
               {orgsData && orgsData.length > 0 && (
                 <PaginationControls
@@ -657,8 +666,15 @@ export function OrganizationsDashboard() {
                   <span>Role</span>
                   <span className="text-right">Actions</span>
                 </div>
-                {isLoadingMembers ? (
-                  <div className="p-3 text-sm text-center text-muted-foreground">Loading members...</div>
+                {isLoadingMembers || membersError ? (
+                  <ListState
+                    isLoading={isLoadingMembers}
+                    error={membersError}
+                    isEmpty={false}
+                    loadingMessage="Loading members…"
+                    emptyMessage=""
+                    onRetry={() => refetchMembers()}
+                  />
                 ) : membersData && membersData.length > 0 ? (
                   <div
                     ref={memberScrollRef}

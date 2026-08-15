@@ -8,6 +8,7 @@ import { Bot } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { AgentTokens } from './AgentTokens';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { ListState } from '../../components/ui/ListState';
 
 const agentClient = createClient(AgentService, transport);
 
@@ -34,7 +35,7 @@ export function AgentsDashboard() {
   const [editRoleSystemPrompt, setEditRoleSystemPrompt] = useState('');
   const [editRoleCapabilities, setEditRoleCapabilities] = useState('');
 
-  const { data: agentsData, isLoading } = useQuery({
+  const { data: agentsData, isLoading, error: agentsError, refetch: refetchAgents } = useQuery({
     queryKey: ['agents', activeOrgId],
     // The dashboard needs every agent to render deploy/archive actions
     // correctly, not just the first page - loop until no pages remain.
@@ -52,7 +53,7 @@ export function AgentsDashboard() {
   // role past that boundary could not be chosen when creating an agent, and any
   // existing agent holding one rendered with a blank role name in the table
   // below, because roleNameById had no entry for it.
-  const { data: rolesData } = useQuery({
+  const { data: rolesData, isLoading: isLoadingRoles, error: rolesError, refetch: refetchRoles } = useQuery({
     queryKey: ['agentRoles', activeOrgId],
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await agentClient.listAgentRoles({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
@@ -201,10 +202,16 @@ export function AgentsDashboard() {
               <span className="flex-1">Name</span>
               <span className="w-24">Role</span>
             </div>
-            {isLoading ? (
-               <div className="p-4 text-center text-sm text-muted-foreground">Loading agents...</div>
-            ) : agentsData && agentsData.length > 0 ? (
-              agentsData.map(a => (
+            <ListState
+              isLoading={isLoading}
+              error={agentsError}
+              isEmpty={!agentsData || agentsData.length === 0}
+              loadingMessage="Loading agents…"
+              emptyMessage="No agent instances deployed yet."
+              emptyAction={<p className="text-xs">Deploy one with the form above.</p>}
+              onRetry={() => refetchAgents()}
+            >
+              {(agentsData ?? []).map(a => (
                 editingAgentId === a.id ? (
                   <form
                     key={a.id}
@@ -278,10 +285,8 @@ export function AgentsDashboard() {
                 {tokensAgentId === a.id && <AgentTokens agentId={a.id} agentName={a.name} />}
                 </div>
                 )
-              ))
-            ) : (
-               <div className="p-4 text-center text-sm text-muted-foreground">No agent instances deployed yet - deploy one above.</div>
-            )}
+              ))}
+            </ListState>
           </div>
         </div>
 
@@ -351,10 +356,16 @@ export function AgentsDashboard() {
           </form>
         )}
         <div className="border rounded-md divide-y">
-          {(rolesData ?? []).length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">No agent roles yet.</div>
-          ) : (
-            (rolesData ?? []).map((role) => (
+          <ListState
+            isLoading={isLoadingRoles}
+            error={rolesError}
+            isEmpty={(rolesData ?? []).length === 0}
+            loadingMessage="Loading agent roles…"
+            emptyMessage="No agent roles yet."
+            emptyAction={<p className="text-xs">A role defines what an agent may do — create one above.</p>}
+            onRetry={() => refetchRoles()}
+          >
+            {(rolesData ?? []).map((role) => (
               editingRoleId === role.id ? (
                 <form
                   key={role.id}
@@ -427,8 +438,8 @@ export function AgentsDashboard() {
                   </button>
                 </div>
               )
-            ))
-          )}
+            ))}
+          </ListState>
         </div>
       </div>
       {confirmDialog}

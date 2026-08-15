@@ -49,6 +49,17 @@ tasks:
       - 'scripts/rpc-coverage.test.mjs'
       - '/packages/shared-contract/main.tsp'
 
+  # M06-T11, kept true rather than swept once: every view that reads can say the
+  # read failed. Before this, every `isError` in `features/*` was a *mutation* —
+  # a failed list fell through to its empty branch and claimed the data was gone.
+  # The case that matters is the next view, which would inherit the same shape.
+  query-error-coverage:
+    script: 'node scripts/query-error-coverage.test.mjs && node scripts/query-error-coverage.mjs'
+    inputs:
+      - 'src/features/**/*'
+      - 'scripts/query-error-coverage.mjs'
+      - 'scripts/query-error-coverage.test.mjs'
+
   test:
     deps:
       - 'shared-contract:install-deps'

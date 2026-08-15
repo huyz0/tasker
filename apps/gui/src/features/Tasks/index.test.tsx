@@ -762,7 +762,7 @@ describe('TasksWorkbench', () => {
     renderPage();
 
     fireEvent.click(screen.getByRole('button', { name: 'Table' }));
-    await waitFor(() => expect(screen.getByText('Loading tasks...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Loading tasks…')).toBeInTheDocument());
     resolveList({ tasks: [] });
   });
 

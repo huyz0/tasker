@@ -12,6 +12,7 @@ import {
 } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { ListState } from '../../components/ui/ListState';
 
 const orgClient = createClient(OrgService, transport);
 const projectClient = createClient(ProjectService, transport);
@@ -32,7 +33,7 @@ const TABS: { id: EntityKind; label: string }[] = [
 
 function OrganizationsBin() {
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['orgs', 'bin'],
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await orgClient.listOrgs({ onlyDeleted: true, page: cursor ? { cursor } : undefined });
@@ -53,6 +54,8 @@ function OrganizationsBin() {
   return (
     <BinList
       isLoading={isLoading}
+      error={error}
+      onRetry={() => refetch()}
       items={data}
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
@@ -68,7 +71,7 @@ function OrganizationsBin() {
 function ProjectsBin() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['projects', 'bin', activeOrgId],
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await projectClient.listProjects({ orgId: activeOrgId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
@@ -91,6 +94,8 @@ function ProjectsBin() {
   return (
     <BinList
       isLoading={isLoading}
+      error={error}
+      onRetry={() => refetch()}
       items={data}
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
@@ -106,7 +111,7 @@ function ProjectsBin() {
 function TasksBin() {
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['tasks', 'bin', activeProjectId],
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await taskClient.listTasks({ projectId: activeProjectId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
@@ -128,6 +133,8 @@ function TasksBin() {
   return (
     <BinList
       isLoading={isLoading}
+      error={error}
+      onRetry={() => refetch()}
       items={data}
       labelKey="title"
       onRestore={(id) => restoreMutation.mutate(id)}
@@ -144,7 +151,7 @@ function TasksBin() {
 function AgentsBin() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['agents', 'bin', activeOrgId],
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await agentClient.listAgents({ orgId: activeOrgId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
@@ -166,6 +173,8 @@ function AgentsBin() {
   return (
     <BinList
       isLoading={isLoading}
+      error={error}
+      onRetry={() => refetch()}
       items={data}
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
@@ -181,7 +190,7 @@ function AgentsBin() {
 function FoldersBin() {
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['folders', 'bin', activeProjectId],
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await artifactClient.listFolders({ projectId: activeProjectId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
@@ -203,6 +212,8 @@ function FoldersBin() {
   return (
     <BinList
       isLoading={isLoading}
+      error={error}
+      onRetry={() => refetch()}
       items={data}
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
@@ -226,7 +237,7 @@ function ArtifactsBin() {
     }),
     enabled: Boolean(activeProjectId),
   });
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['artifacts', 'bin', activeProjectId, folders?.map(f => f.id).join(',')],
     queryFn: async () => {
       const perFolder = await Promise.all(
@@ -253,6 +264,8 @@ function ArtifactsBin() {
   return (
     <BinList
       isLoading={isLoading}
+      error={error}
+      onRetry={() => refetch()}
       items={data}
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
@@ -265,8 +278,12 @@ function ArtifactsBin() {
   );
 }
 
-function BinList({ isLoading, items, onRestore, isRestoring, restoreError, onPurge, isPurging, purgeError, emptyMessage, labelKey = 'name' }: {
+function BinList({ isLoading, error, onRetry, items, onRestore, isRestoring, restoreError, onPurge, isPurging, purgeError, emptyMessage, labelKey = 'name' }: {
   isLoading: boolean;
+  /** The *query* error. `restoreError`/`purgeError` are mutations — a failed
+   *  load used to fall through to `emptyMessage` and claim the bin was empty. */
+  error: unknown;
+  onRetry: () => void;
   items: any[] | undefined;
   onRestore: (id: string) => void;
   isRestoring: boolean;
@@ -279,11 +296,18 @@ function BinList({ isLoading, items, onRestore, isRestoring, restoreError, onPur
 }) {
   const { confirm, confirmDialog } = useConfirm();
 
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground text-center py-8">Loading bin...</p>;
-  }
-  if (!items || items.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-8">{emptyMessage}</p>;
+  if (isLoading || error || !items || items.length === 0) {
+    return (
+      <ListState
+        isLoading={isLoading}
+        error={error}
+        isEmpty
+        loadingMessage="Loading bin…"
+        emptyMessage={emptyMessage}
+        emptyAction={<p className="text-xs">Anything you move to the bin appears here and can be restored.</p>}
+        onRetry={onRetry}
+      />
+    );
   }
   return (
     <div className="border rounded-md divide-y">

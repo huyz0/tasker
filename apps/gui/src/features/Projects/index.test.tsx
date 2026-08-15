@@ -203,9 +203,9 @@ describe('ProjectsWizard', () => {
     mockListProjects.mockResolvedValue({ projects: [] });
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('No templates yet - create one above.')).toBeDefined());
-    expect(screen.getByText('No task types yet - create one above.')).toBeDefined();
-    expect(screen.getByText('No projects found. Create one from a template above.')).toBeDefined();
+    await waitFor(() => expect(screen.getByText('No templates yet.')).toBeDefined());
+    expect(screen.getByText('No task types yet.')).toBeDefined();
+    expect(screen.getByText('No projects yet.')).toBeDefined();
   });
 
   it('shows an error message when template creation fails', async () => {

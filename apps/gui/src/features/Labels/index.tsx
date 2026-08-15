@@ -6,6 +6,7 @@ import { transport } from "../../lib/connectTransport";
 import { LabelService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 
 import { fetchAllPages } from '../../lib/fetchAllPages';
+import { ListState } from '../../components/ui/ListState';
 
 const labelClient = createClient(LabelService, transport);
 
@@ -28,7 +29,7 @@ export function LabelsManager() {
   const [editLabelName, setEditLabelName] = useState('');
   const [editLabelColor, setEditLabelColor] = useState(DEFAULT_LABEL_COLOR);
 
-  const { data: labelsData, isLoading } = useQuery({
+  const { data: labelsData, isLoading, error: labelsError, refetch: refetchLabels } = useQuery({
     queryKey: ['labels', activeOrgId],
     // Every label must be visible here (and in the label picker elsewhere),
     // not just the first page - loop until the server reports no more.
@@ -101,11 +102,17 @@ export function LabelsManager() {
 
       <div className="border rounded-lg bg-card p-6 shadow-sm max-w-xl">
         <h2 className="text-lg font-medium mb-4">All labels</h2>
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading labels...</p>
-        ) : labelsData && labelsData.length > 0 ? (
+        <ListState
+          isLoading={isLoading}
+          error={labelsError}
+          isEmpty={!labelsData || labelsData.length === 0}
+          loadingMessage="Loading labels…"
+          emptyMessage="No labels yet."
+          emptyAction={<p className="text-xs">Create one above to start tagging tasks.</p>}
+          onRetry={() => refetchLabels()}
+        >
           <div className="flex flex-wrap gap-2">
-            {labelsData.map((label) => (
+            {(labelsData ?? []).map((label) => (
               editingLabelId === label.id ? (
                 <form
                   key={label.id}
@@ -154,9 +161,7 @@ export function LabelsManager() {
               )
             ))}
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No labels created yet - create one above.</p>
-        )}
+        </ListState>
         {updateLabelMutation.isError && (
           <p className="text-sm text-destructive mt-3">Failed to update label: {(updateLabelMutation.error as Error).message}</p>
         )}

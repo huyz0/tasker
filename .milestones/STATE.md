@@ -1,6 +1,6 @@
 ---
 active_milestone: M06
-active_task: M06-T11
+active_task: M06-T12
 last_updated: 2026-08-15
 last_commit: 82b6a0f
 blocked: false
@@ -47,7 +47,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M03 | IAM Correctness & Scale        | done   | M01        | 16    | 16   |
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
 | M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
-| M06 | UX, Design System & A11y       | in-progress | M05   | 13    | 10   |
+| M06 | UX, Design System & A11y       | in-progress | M05   | 13    | 11   |
 | M07 | Read-Path Scale                | todo   | M05        | 11    | 0    |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |

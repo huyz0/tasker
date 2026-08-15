@@ -19,6 +19,7 @@ import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { Breadcrumbs } from '../../components/layout/Breadcrumbs';
+import { ListState } from '../../components/ui/ListState';
 
 const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
@@ -33,7 +34,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
   const [editNoteContent, setEditNoteContent] = useState('');
   const queryKey = ['taskNotes', taskId];
 
-  const { data: notesData, isLoading } = useQuery({
+  const { data: notesData, isLoading, error: notesError, refetch: refetchNotes } = useQuery({
     queryKey,
     queryFn: async () => fetchAllPages(async (cursor) => {
       const resp = await taskNoteClient.listTaskNotes({ taskId, page: cursor ? { cursor } : undefined });
@@ -58,8 +59,19 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading notes...</p>;
-  if (!notesData || notesData.length === 0) return <p className="text-sm text-muted-foreground italic">No agent notes yet.</p>;
+  if (isLoading || notesError || !notesData || notesData.length === 0) {
+    return (
+      <ListState
+        isLoading={isLoading}
+        error={notesError}
+        isEmpty
+        loadingMessage="Loading notes…"
+        emptyMessage="No agent notes yet."
+        emptyAction={<p className="text-xs">Agents working this task record what they did here.</p>}
+        onRetry={() => refetchNotes()}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -187,7 +199,7 @@ export function TasksWorkbench() {
   };
   const sortParam = sort ? `${SORT_FIELDS[sort.key]}:${sort.dir}` : undefined;
 
-  const { data: tasksData, isLoading } = useQuery({
+  const { data: tasksData, isLoading, error: tasksError, refetch: refetchTasks } = useQuery({
     // Filter and sort belong in the key: they change which rows come back, so
     // a shared key would serve one query's results for another's question.
     queryKey: ['tasks', activeProjectId, debouncedSearch, sortParam],
@@ -400,11 +412,15 @@ export function TasksWorkbench() {
             ))}
             <div role="columnheader" className="px-4 py-2 font-medium">Pull Requests</div>
           </div>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground w-full text-center py-10">Loading tasks...</p>
-          ) : sortedTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground w-full text-center py-10">No tasks yet.</p>
-          ) : (
+          <ListState
+            isLoading={isLoading}
+            error={tasksError}
+            isEmpty={sortedTasks.length === 0}
+            loadingMessage="Loading tasks…"
+            emptyMessage="No tasks yet."
+            emptyAction={<p className="text-xs">Switch to the board and use “+” on a column to add the first one.</p>}
+            onRetry={() => refetchTasks()}
+          >
             <div ref={tableScrollRef} className="flex-1 overflow-auto">
               <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
                 {rowVirtualizer.getVirtualItems().map(virtualRow => {
@@ -447,13 +463,23 @@ export function TasksWorkbench() {
                 })}
               </div>
             </div>
-          )}
+          </ListState>
         </div>
       ) : (
       <div className="flex gap-4 overflow-x-auto pb-4 h-full">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground w-full text-center py-10">Loading tasks...</p>
-          ) : columns.map(col => (
+          {(isLoading || tasksError) && (
+            // The board derives its columns from the query, so a failure left
+            // this pane completely blank — no message, no way to retry.
+            <ListState
+              isLoading={isLoading}
+              error={tasksError}
+              isEmpty={false}
+              loadingMessage="Loading tasks…"
+              emptyMessage=""
+              onRetry={() => refetchTasks()}
+            />
+          )}
+          {!isLoading && !tasksError && columns.map(col => (
              <div key={col.id} className="w-80 flex-shrink-0 flex flex-col bg-muted/30 rounded-lg p-3">
                <div className="flex items-center justify-between mb-3 font-medium text-sm">
                  <span className="flex items-center gap-2">{col.display} <span className="text-xs bg-muted text-muted-foreground px-2 rounded-full">{col.count}</span></span>

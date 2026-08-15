@@ -94,7 +94,7 @@ describe('AgentsDashboard', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('No agent instances deployed yet - deploy one above.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
     fireEvent.click(screen.getByText('Deploy Agent'));
 
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
@@ -110,7 +110,7 @@ describe('AgentsDashboard', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('No agent instances deployed yet - deploy one above.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
     fireEvent.click(screen.getByText('Deploy Agent'));
 
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
@@ -188,7 +188,7 @@ describe('AgentsDashboard', () => {
     mockCreateAgent.mockReturnValue(new Promise((resolve) => { resolveCreate = resolve; }));
 
     renderPage();
-    await waitFor(() => expect(screen.getByText('No agent instances deployed yet - deploy one above.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
     fireEvent.click(screen.getByText('Deploy Agent'));
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'role-1' } });
@@ -203,7 +203,7 @@ describe('AgentsDashboard', () => {
     mockListAgentRoles.mockReturnValue(new Promise(() => {}));
 
     renderPage();
-    await waitFor(() => expect(screen.getByText('No agent instances deployed yet - deploy one above.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
     fireEvent.click(screen.getByText('Deploy Agent'));
 
     expect(screen.getByText('Select a role...')).toBeInTheDocument();

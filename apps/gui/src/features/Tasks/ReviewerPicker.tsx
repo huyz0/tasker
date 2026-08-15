@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ListState } from '../../components/ui/ListState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { useDebounce } from 'use-debounce';
@@ -59,8 +60,18 @@ export function ReviewerPicker({ taskId, orgId }: { taskId: string; orgId: strin
 
   return (
     <div className="flex flex-col gap-2">
-      {reviewers.length === 0 ? (
-        <span className="text-xs text-muted-foreground">No reviewers</span>
+      {reviewersQuery.isLoading || reviewersQuery.error || reviewers.length === 0 ? (
+        // A failed `listReviewers` used to render "No reviewers", which is the
+        // same words the task uses when it genuinely has none (M06-T11).
+        <ListState
+          isLoading={reviewersQuery.isLoading}
+          error={reviewersQuery.error}
+          isEmpty
+          loadingMessage="Loading reviewers…"
+          emptyMessage="No reviewers"
+          emptyAction={<p className="text-xs">Add one below to have them review this task.</p>}
+          onRetry={() => reviewersQuery.refetch()}
+        />
       ) : (
         <ul className="flex flex-col gap-1">
           {reviewers.map((r: any) => (
@@ -90,6 +101,15 @@ export function ReviewerPicker({ taskId, orgId }: { taskId: string; orgId: strin
             className="text-xs rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
           />
           {candidates.isLoading && <span className="text-xs text-muted-foreground">Searching…</span>}
+          {candidates.error && (
+            <ListState
+              isLoading={false}
+              error={candidates.error}
+              isEmpty={false}
+              emptyMessage=""
+              onRetry={() => candidates.refetch()}
+            />
+          )}
           {people.map((m: any) => (
             <button
               key={m.userId}

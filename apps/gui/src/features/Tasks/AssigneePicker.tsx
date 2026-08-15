@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ListState } from '../../components/ui/ListState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { useDebounce } from 'use-debounce';
@@ -123,6 +124,19 @@ export function AssigneePicker({ taskId, orgId, assignees }: { taskId: string; o
           />
 
           {candidates.isLoading && <span className="text-xs text-muted-foreground">Searching…</span>}
+
+          {/* The empty line below is gated on `isSuccess`, so it does not lie —
+              but without this the dropdown was just a search box with nothing
+              under it and no hint that the search had failed (M06-T11). */}
+          {candidates.error && (
+            <ListState
+              isLoading={false}
+              error={candidates.error}
+              isEmpty={false}
+              emptyMessage=""
+              onRetry={() => candidates.refetch()}
+            />
+          )}
 
           {people.length > 0 && (
             <>
