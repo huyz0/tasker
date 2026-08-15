@@ -6,7 +6,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import crypto from "node:crypto";
 import { logger } from "../../lib/logger";
-import { requireUserId, assertOrgMember, assertOrgAdmin, getProjectOrgId, getRepositoryLinkOrgId } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getRepositoryLinkOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 import { encryptToken, decryptToken } from "../../lib/crypto";
 import {
@@ -235,7 +235,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = SyncPullRequestsSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       const linksTable = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
       const prsTable = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;

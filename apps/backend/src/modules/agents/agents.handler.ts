@@ -4,7 +4,7 @@ import { eq, and, not } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUserId, assertOrgMember, assertOrgAdmin, assertOrgAdminOfAny } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin, assertOrgAdminOfAny } from "../../lib/authz";
 import { notDeleted, softDeleteById, restoreById, executePaginatedQuery, insertRecord } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
@@ -101,7 +101,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
     async createAgent(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = CreateAgentSchema.parse(req);
-      await assertOrgMember(db, userId, parsed.orgId);
+      await assertOrgWriter(db, userId, parsed.orgId);
 
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
       const roleRows = await db.select().from(roles).where(eq((roles as any).id, parsed.agentRoleId)).limit(1);

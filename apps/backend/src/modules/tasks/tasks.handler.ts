@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not, isNull } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, assertOrgAdmin, getProjectOrgId, getTaskOrgId } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getTaskOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -133,7 +133,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
     async createTaskType(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = CreateTaskTypeSchema.parse(req);
-      await assertOrgMember(db, userId, parsed.orgId);
+      await assertOrgWriter(db, userId, parsed.orgId);
 
       if (parsed.projectId) {
         const orgIdForProject = await getProjectOrgId(db, parsed.projectId);
@@ -202,7 +202,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
       const existing = await db.select().from(types).where(eq((types as any).id, parsed.id)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("task type not found", Code.NotFound);
-      await assertOrgMember(db, userId, existing[0].orgId);
+      await assertOrgWriter(db, userId, existing[0].orgId);
 
       if (parsed.parentId) {
         if (parsed.parentId === parsed.id) {
@@ -233,7 +233,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
       const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
       if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
-      await assertOrgMember(db, userId, typeRows[0].orgId);
+      await assertOrgWriter(db, userId, typeRows[0].orgId);
 
       const statuses = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
       // Two statuses with the same name under one task type would make
@@ -262,7 +262,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
       const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
       if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
-      await assertOrgMember(db, userId, typeRows[0].orgId);
+      await assertOrgWriter(db, userId, typeRows[0].orgId);
 
       const statuses = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
       const [fromRows, toRows] = await Promise.all([
@@ -358,7 +358,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = CreateTaskSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       if (parsed.taskTypeId) {
         const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
@@ -426,7 +426,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = AssignTaskSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       if (parsed.agentId) {
         const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
@@ -446,7 +446,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         // own bad argument, so report it as InvalidArgument instead of
         // implying the caller's own auth is broken.
         try {
-          await assertOrgMember(db, parsed.userId, orgId);
+          await assertOrgWriter(db, parsed.userId, orgId);
         } catch (e) {
           if (e instanceof ConnectError && e.code === Code.PermissionDenied) {
             throw new ConnectError("userId is not a member of this task's organization", Code.InvalidArgument);
@@ -485,9 +485,9 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = AddTaskReviewerSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
       try {
-        await assertOrgMember(db, parsed.userId, orgId);
+        await assertOrgWriter(db, parsed.userId, orgId);
       } catch (e) {
         if (e instanceof ConnectError && e.code === Code.PermissionDenied) {
           throw new ConnectError("userId is not a member of this task's organization", Code.InvalidArgument);
@@ -509,7 +509,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = RemoveTaskReviewerSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       const reviewers = isStandalone ? schemaSqlite.taskReviewers : schemaMysql.taskReviewers;
       await db.delete(reviewers).where(and(eq((reviewers as any).taskId, parsed.taskId), eq((reviewers as any).userId, parsed.userId)));
@@ -529,7 +529,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = UpdateTaskSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       const existing = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
@@ -559,7 +559,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = UpdateTaskStatusSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       const existingRows = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);

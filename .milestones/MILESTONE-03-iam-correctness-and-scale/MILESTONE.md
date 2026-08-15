@@ -1,12 +1,12 @@
 ---
 id: M03
 title: IAM Correctness & Scale
-status: todo
+status: in-progress
 goal: User, role and organization management is correct, safe to operate, and usable at 100 organizations and 100,000 members per organization.
 depends_on: [M01]
 surfaces: [backend, gui, cli, contract]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-15
 completed_at: null
 ---
 
@@ -56,7 +56,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
 
 ### Correctness
 
-- [ ] **M03-T01** — Enforce `viewer` as read-only: add `assertOrgWriter`, apply it
+- [x] **M03-T01** — Enforce `viewer` as read-only: add `assertOrgWriter`, apply it
       to every mutating handler, and cover each endpoint with a denial test.
       - Files: `apps/backend/src/lib/authz.ts`, all `modules/*/*.handler.ts`
       - Verify: a viewer receives `PermissionDenied` from every write RPC.

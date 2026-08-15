@@ -1,8 +1,8 @@
 ---
 active_milestone: M03
-active_task: null
+active_task: M03-T02
 last_updated: 2026-08-15
-last_commit: 6159a86
+last_commit: 9ab21b1
 blocked: false
 blocker: null
 ---
@@ -15,9 +15,9 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M03 — IAM Correctness & Scale (not started)
-- **Task**: none in flight
-- **Branch**: M02 is merged; `main` is at `6159a86` with CI green on all six jobs
+- **Milestone**: M03 — IAM Correctness & Scale
+- **Task**: M03-T02 — let a member leave an organization
+- **Branch**: `feature/m03-iam-correctness-and-scale`
 - **Command to continue**: `/milestone-deliver M03`
 
 M02 closed 7/7 tasks and 5/5 exit criteria. M03 and M05 both have their
@@ -40,7 +40,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 |-----|--------------------------------|--------|------------|-------|------|
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
 | M02 | Specification Truth            | done   | M01        | 7     | 7    |
-| M03 | IAM Correctness & Scale        | todo   | M01        | 14    | 0    |
+| M03 | IAM Correctness & Scale        | in-progress | M01   | 14    | 1    |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |
 | M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |

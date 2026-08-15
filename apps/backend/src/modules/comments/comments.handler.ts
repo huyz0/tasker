@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // Resolves each comment's userId/agentId to a display name in two batched
@@ -83,7 +83,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       const orgId = parsed.entityType === "task"
         ? await getTaskOrgId(db, parsed.entityId)
         : await getArtifactOrgId(db, parsed.entityId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       if (parsed.agentId) {
         const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
@@ -127,7 +127,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       const orgId = existing[0].entityType === "task"
         ? await getTaskOrgId(db, existing[0].entityId)
         : await getArtifactOrgId(db, existing[0].entityId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
       assertCommentAuthor(existing[0], userId, parsed.agentId);
 
       await db.update(comments).set({ content: parsed.content }).where(eq((comments as any).id, parsed.commentId));
@@ -147,7 +147,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       const orgId = existing[0].entityType === "task"
         ? await getTaskOrgId(db, existing[0].entityId)
         : await getArtifactOrgId(db, existing[0].entityId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
       assertCommentAuthor(existing[0], userId, parsed.agentId);
 
       await db.delete(comments).where(eq((comments as any).id, parsed.commentId));

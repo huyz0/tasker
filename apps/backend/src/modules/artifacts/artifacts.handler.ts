@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, assertOrgAdmin, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -78,7 +78,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = CreateFolderSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       if (parsed.parentId) {
         const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
@@ -109,7 +109,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = UpdateFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const existing = await db.select().from(folders).where(eq((folders as any).id, parsed.folderId)).limit(1);
@@ -126,7 +126,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = CreateArtifactSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       const artifacts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const newId = `art-${crypto.randomUUID()}`;
@@ -149,7 +149,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = UpdateArtifactContentSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       const artifacts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const existing = await db.select().from(artifacts).where(eq((artifacts as any).id, parsed.artifactId)).limit(1);
@@ -174,7 +174,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       if (taskOrgId !== artifactOrgId) {
         throw new ConnectError("task and artifact belong to different organizations", Code.InvalidArgument);
       }
-      await assertOrgMember(db, userId, taskOrgId);
+      await assertOrgWriter(db, userId, taskOrgId);
 
       const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
       const newId = `tal-${crypto.randomUUID()}`;

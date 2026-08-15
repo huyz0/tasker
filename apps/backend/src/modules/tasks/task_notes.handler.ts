@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, getTaskOrgId } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgWriter, getTaskOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schema ---
@@ -34,7 +34,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = CreateTaskNoteSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const agentRows = await db.select().from(agents).where(eq((agents as any).id, parsed.agentId)).limit(1);
@@ -68,7 +68,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       const existing = await db.select().from(notes).where(eq((notes as any).id, parsed.taskNoteId)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("task note not found", Code.NotFound);
       const orgId = await getTaskOrgId(db, existing[0].taskId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       await db.update(notes).set({ content: parsed.content }).where(eq((notes as any).id, parsed.taskNoteId));
 
@@ -84,7 +84,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       const existing = await db.select().from(notes).where(eq((notes as any).id, parsed.taskNoteId)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("task note not found", Code.NotFound);
       const orgId = await getTaskOrgId(db, existing[0].taskId);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       await db.delete(notes).where(eq((notes as any).id, parsed.taskNoteId));
 

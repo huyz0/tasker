@@ -58,6 +58,38 @@ export async function countOrgOwners(db: any, orgId: string): Promise<number> {
   return rows.length;
 }
 
+/**
+ * Roles permitted to change data inside an organization. `viewer` is the only
+ * role deliberately absent: the Organizations UI has always described it as
+ * read-only, while every mutating handler gated on `assertOrgMember` - which
+ * admits any member regardless of role - so a viewer could write across the
+ * whole product. See ADR-0006.
+ *
+ * Expressed as an allowlist rather than `role !== 'viewer'` so that a role
+ * added later is denied writes until someone decides otherwise. A new role
+ * that silently inherits write access is the failure mode worth designing out.
+ */
+const WRITER_ROLES = ['owner', 'admin', 'member'];
+
+/**
+ * Requires membership *and* a role that may write. Use this in place of
+ * `assertOrgMember` in every handler that changes data; `assertOrgMember`
+ * remains correct for reads.
+ *
+ * There is no interceptor enforcing this - the guarantee comes from
+ * `viewer-denial.test.ts`, which enumerates every handler method and fails on
+ * any that is neither on its read allowlist nor denies a viewer.
+ */
+export async function assertOrgWriter(db: any, userId: string, orgId: string): Promise<void> {
+  const role = await getOrgMemberRole(db, userId, orgId);
+  if (!role) {
+    throw new ConnectError('Not a member of this organization', Code.PermissionDenied);
+  }
+  if (!WRITER_ROLES.includes(role)) {
+    throw new ConnectError('Your role in this organization is read-only', Code.PermissionDenied);
+  }
+}
+
 export async function assertOrgAdmin(db: any, userId: string, orgId: string): Promise<void> {
   const role = await getOrgMemberRole(db, userId, orgId);
   if (!role || !ADMIN_ROLES.includes(role)) {

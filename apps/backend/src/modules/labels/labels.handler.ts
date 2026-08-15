@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -53,7 +53,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
     async createLabel(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = CreateLabelSchema.parse(req);
-      await assertOrgMember(db, userId, parsed.orgId);
+      await assertOrgWriter(db, userId, parsed.orgId);
 
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
       const existing = await db
@@ -96,7 +96,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
       const existing = await db.select().from(labels).where(eq((labels as any).id, parsed.labelId)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("label not found", Code.NotFound);
-      await assertOrgMember(db, userId, existing[0].orgId);
+      await assertOrgWriter(db, userId, existing[0].orgId);
 
       const updates: Record<string, unknown> = {};
       if (parsed.name !== undefined) updates.name = parsed.name;
@@ -129,7 +129,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = AttachLabelSchema.parse(req);
       const orgId = await getEntityOrgId(db, parsed.entityId, parsed.entityType);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       const labelsTable = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
       const labelRows = await db.select().from(labelsTable).where(eq((labelsTable as any).id, parsed.labelId)).limit(1);
@@ -178,7 +178,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       const userId = requireUserId(contextValues);
       const parsed = AttachLabelSchema.parse(req);
       const orgId = await getEntityOrgId(db, parsed.entityId, parsed.entityType);
-      await assertOrgMember(db, userId, orgId);
+      await assertOrgWriter(db, userId, orgId);
 
       const entityLabels = isStandalone ? schemaSqlite.entityLabels : schemaMysql.entityLabels;
       await db

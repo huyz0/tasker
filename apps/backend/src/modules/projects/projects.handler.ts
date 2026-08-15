@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, assertOrgAdmin } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 /** Derives a short, human-typeable project key from its name, e.g. "Engineering Docs" -> "ED", "Backend" -> "BACKEN". */
@@ -108,9 +108,9 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
     async createProject(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = CreateProjectSchema.parse(req);
-      await assertOrgMember(db, userId, parsed.orgId);
+      await assertOrgWriter(db, userId, parsed.orgId);
       try {
-        await assertOrgMember(db, parsed.ownerId, parsed.orgId);
+        await assertOrgWriter(db, parsed.ownerId, parsed.orgId);
       } catch (e) {
         if (e instanceof ConnectError && e.code === Code.PermissionDenied) {
           throw new ConnectError("ownerId is not a member of this organization", Code.InvalidArgument);
@@ -179,7 +179,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertOrgMember(db, userId, result[0].orgId);
+      await assertOrgWriter(db, userId, result[0].orgId);
 
       await db.update(ps).set({ name: parsed.name }).where(eq((ps as any).id, parsed.projectId));
 
@@ -281,7 +281,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
     async createTemplate(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = CreateTemplateSchema.parse(req);
-      await assertOrgMember(db, userId, parsed.orgId);
+      await assertOrgWriter(db, userId, parsed.orgId);
 
       if (parsed.rootTaskTypeId) {
         const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
@@ -313,7 +313,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const result = await db.select().from(pts).where(eq((pts as any).id, parsed.id)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("template not found", Code.NotFound);
-      await assertOrgMember(db, userId, result[0].orgId);
+      await assertOrgWriter(db, userId, result[0].orgId);
 
       if (parsed.rootTaskTypeId) {
         const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
