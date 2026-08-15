@@ -176,6 +176,13 @@
       "when": 1786790000000,
       "tag": "0024_task_status_position",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1786790010000,
+      "tag": "0025_fts5_search_index",
+      "breakpoints": true
     }
   ]
 }

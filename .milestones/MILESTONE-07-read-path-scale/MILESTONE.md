@@ -74,7 +74,7 @@ that it is not adopted before measured need), caching layers, read replicas.
       - Files: `features/Agents/`, `features/Bin/`, `features/Labels/`
       - Verify: each view issues one request on mount.
 
-- [ ] **M07-T05** — Maintain the SQLite FTS5 index on write for tasks and
+- [x] **M07-T05** — Maintain the SQLite FTS5 index on write for tasks and
       artifacts, backfilling existing rows in a migration.
       - Files: `apps/backend/src/db/searchIndex.ts`, handlers, migrations
       - Verify: creating a task makes it findable by a word in its description.

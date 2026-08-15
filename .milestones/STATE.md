@@ -1,6 +1,6 @@
 ---
 active_milestone: M07
-active_task: M07-T05
+active_task: M07-T06
 last_updated: 2026-08-15
 last_commit: 82b6a0f
 blocked: false
@@ -16,7 +16,7 @@ blocker: null
 ## Now
 
 - **Milestone**: M07 — Read-Path Scale
-- **Task**: M07-T05 — maintain the SQLite FTS5 index on write
+- **Task**: M07-T06 — serve search from MATCH with ranking and snippets
 - **Branch**: `main`, at the user's explicit instruction for this milestone
   ("just do it on main and push there") — the same instruction was given
   separately for M06. This overrides `git-workflow-standard.md` and
@@ -52,7 +52,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
 | M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
 | M06 | UX, Design System & A11y       | done   | M05        | 14    | 14   |
-| M07 | Read-Path Scale                | in-progress | M05   | 11    | 4    |
+| M07 | Read-Path Scale                | in-progress | M05   | 11    | 5    |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
 | M10 | Teams & Policy-Based RBAC      | todo   | M03, M04   | 13    | 0    |

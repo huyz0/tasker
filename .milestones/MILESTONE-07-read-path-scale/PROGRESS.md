@@ -136,3 +136,33 @@ milestone's fourth exit criterion is that the numbers are committed.
   on `Agent`, the M05 `Assignee.name` lesson; that is a contract change and is
   noted at the call site for whoever next touches the service.
 - **Next**: M07-T05
+
+## M07-T05 — An FTS5 index that cannot drift
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: new `drizzle-sqlite/0025_fts5_search_index.sql` (+ journal entry),
+  new `src/db/searchIndex.test.ts` (5 tests)
+- **Verified**: against a migrated database — a task inserted with the word
+  only in its **description** is found by that word (the verify line); an
+  update leaves the old word unfindable and the new one findable; a delete
+  removes it; artifacts index by name and description; and `cat` no longer
+  matches `concatenate`. `backend:test` — 601 pass.
+- **Notes**: **maintained by triggers, not by the application.** The milestone's
+  risk note asks for the index update to sit in the same transaction as the
+  write so it cannot drift — a trigger is that guarantee expressed where the
+  next handler to insert a row cannot forget it. An application-side update has
+  to be repeated at every write site, and the site that forgets is invisible
+  until someone reports a missing search result.
+  The tables are `content=''` (contentless): they hold the index, not a second
+  copy of the rows, so a 15 MB artifact body is not duplicated on disk. That
+  choice has a consequence the update trigger has to respect — a contentless
+  FTS5 row cannot be updated in place, so the trigger deletes and reinserts.
+  A test asserts both halves, because an update that only inserted would leave
+  the old text findable and nothing else would notice.
+  The migration backfills existing rows, so search does not silently return
+  less than it used to for data written before this.
+  Only the SQLite dialect is touched; the MySQL `FULLTEXT` branch is T07.
+  **This task adds the index. Nothing reads it yet** — `universalSearch` is
+  still `LIKE '%term%'`, and switching it over is T06.
+- **Next**: M07-T06
