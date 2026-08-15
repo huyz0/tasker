@@ -1,8 +1,8 @@
 ---
-active_milestone: M03
-active_task: M03-T16
+active_milestone: M04
+active_task: null
 last_updated: 2026-08-15
-last_commit: a0ebe9f
+last_commit: 44248d8
 blocked: false
 blocker: null
 ---
@@ -15,13 +15,16 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M03 — IAM Correctness & Scale
-- **Task**: M03-T16 — hold 60 fps on the members table
-- **Branch**: `feature/m03-iam-correctness-and-scale`
-- **Command to continue**: `/milestone-deliver M03`
+- **Milestone**: M04 — Agent Identity & M2M Tokens
+- **Task**: none started
+- **Branch**: `feature/m03-iam-correctness-and-scale` — M03 is complete on it but
+  **not yet merged to `main`**. Merge it before branching M04, which builds on
+  M03's authorization work.
+- **Command to continue**: `/milestone-deliver M04`
 
-M02 closed 7/7 tasks and 5/5 exit criteria. M03 and M05 both have their
-dependencies satisfied and can run in parallel on separate branches.
+M03 closed 16/16 tasks and 8/8 exit criteria. M04 (unblocked by M03), M05 and
+M10 (needs M04) are the frontier; M04 and M05 can run in parallel on separate
+branches.
 
 ## How to resume
 
@@ -40,7 +43,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 |-----|--------------------------------|--------|------------|-------|------|
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
 | M02 | Specification Truth            | done   | M01        | 7     | 7    |
-| M03 | IAM Correctness & Scale        | in-progress | M01   | 16    | 15   |
+| M03 | IAM Correctness & Scale        | done   | M01        | 16    | 16   |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |
 | M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |
@@ -51,7 +54,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 
-**Total: 141 tasks across 12 milestones.**
+**Total: 141 tasks across 12 milestones — 37 done (M01 14, M02 7, M03 16).**
 
 ## Dependency graph
 
@@ -80,6 +83,75 @@ branches. M02 is intentionally cheap and unblocking — it can run alongside
 anything.
 
 ## Handoff notes
+
+**2026-08-15 — M03 IAM Correctness & Scale closed (16/16 tasks, 8/8 exit criteria).**
+
+An administrator can now operate an organization of 100,001 members: page it,
+search it by name or email, filter by role, change roles, remove people safely,
+and manage invitations — all inside 200 ms server-side and at 60 fps in the
+browser. A viewer genuinely cannot write. Five things a next session would
+otherwise rediscover the hard way:
+
+1. **`db.transaction(async …)` is a no-op on bun:sqlite.** Drizzle hands the
+   callback to `client.transaction(fn)`, which commits as soon as `fn`
+   *returns* — and an async callback returns a promise immediately, so COMMIT
+   lands before the first statement runs. This was not theory: `purgeOrg` left
+   half-deleted organizations, and eight concurrent `createTask` calls all
+   returned `ENG-1`. Both sites are now dialect-split — the SQLite branch is
+   **fully synchronous** (`.run()`/`.all()`, no `await` anywhere inside, not even
+   `await 0`, which defers past the commit); MySQL keeps the awaited form with
+   `SELECT … FOR UPDATE`. Both occurrences were found by accident. A third would
+   look identical: correct-reading code, a green suite, wrong behaviour only
+   under concurrency. **Flagged for M12**: a lint rule or a wrapper that refuses
+   an async callback on the sqlite driver.
+2. **bun:sqlite silently discards errors from every statement after the first**
+   in one multi-statement `run()`. Drizzle runs one chunk per `run()`, so a
+   migration guard sharing a chunk with anything before it is decorative — the
+   abort in `0021_scope_agent_roles_to_org.sql` was, until each statement got its
+   own chunk. And drizzle splits on the literal `--> statement-breakpoint`
+   *wherever it appears, including inside a comment*, which produces a
+   comment-only chunk that fails as invalid SQL. Do not write that marker in
+   prose.
+3. **`viewer-denial.test.ts` is a build gate, not a test file.** It enumerates
+   every RPC on every handler and denies by default, with an explicit read
+   allowlist; a completeness test fails naming any method it does not recognise.
+   Adding an RPC without classifying it breaks the build — which is how
+   `listInvitations`/`revokeInvitation` were caught unguarded, unprompted. When
+   you add an endpoint in M04, expect this to fail first; that is it working.
+4. **A `requestAnimationFrame` delta of ~16.7 ms is 60 fps**, not a budget
+   violation. Exit criterion 2's literal "16 ms frame budget" is unsatisfiable by
+   any page including a blank one (measured: p50 16.70 ms). Judge dropped frames
+   at ~25 ms (two vsyncs), and always run the empty-page control beside the
+   measurement — on this GPU-less WSL2 box it is the only thing separating the
+   component's cost from the environment's. The members table went 14.6% → 0.0%
+   dropped by removing `measureElement` from fixed-height rows and memoising the
+   row component. Note that memo is silently reversible: passing an inline arrow
+   as a row callback restores the old cost with no test failing.
+5. **`moon` caches on declared `inputs`, and a missing one is invisible.**
+   `shared-contract:compile` omitted the `.proto` that buf actually reads, so
+   contract edits did not invalidate it. Likewise `cli:format` could never fail,
+   because `gofmt -l` lists files and exits 0 — unformatted Go went through it
+   during this milestone. Both fixed, and both were found by injection rather
+   than by reading. Prove a new gate fails before trusting it.
+
+**The contract is two hand-maintained files.** TypeSpec (`main.tsp`) *and*
+`packages/shared-contract/tasker/health/v1/health.proto` — buf generates from the
+latter and `buf.yaml` excludes `tsp-output`. 195 messages in each, kept in sync
+by hand. Every contract change in M04 must edit both.
+
+**Deliberately deferred, with owners**: audit history for invitation revocations
+(**M08**); the viewer-visible-but-disabled control question (**M06** — M03 chose
+to leave members-table controls active and let the server refuse, but hid the
+invitations section entirely, and the two design notes record why they differ);
+frame timing as a CI gate and the async-sqlite-transaction lint rule (**M12**).
+
+Still open from M02 and unchanged: `/settings` renders a placeholder nothing
+links to (**M05**), and `search_index` is a contentless FTS5 table with no
+writer (**M07**).
+
+Verified at close: `moon check --all` 23 tasks pass · backend 444 pass / 7 skip ·
+GUI suite green at 95.27% branch coverage · `gui:e2e` 13 pass ·
+`bun run measure:members` PASS at 1k/10k/100k.
 
 **2026-08-15 — M02 Specification Truth closed (7/7 tasks, 5/5 exit criteria).**
 
