@@ -1,12 +1,12 @@
 ---
 id: M04
 title: Agent Identity & M2M Tokens
-status: todo
+status: in-progress
 goal: An AI agent is a first-class authenticated principal with its own scoped, revocable, rate-limited credential, and attribution is derived from that credential rather than trusted from the request body.
 depends_on: [M03]
 surfaces: [backend, cli, gui, contract]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-15
 completed_at: null
 ---
 
@@ -54,7 +54,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
 
 ## 5. Task Breakdown
 
-- [ ] **M04-T01** — Design the token model and record it as an ADR: prefix format,
+- [x] **M04-T01** — Design the token model and record it as an ADR: prefix format,
       hashing (never store plaintext), scope vocabulary, expiry policy.
       - Files: `.specs/adr/ADR-0008-agent-tokens.md`
       - Verify: the ADR names the hash algorithm and the scope list.
