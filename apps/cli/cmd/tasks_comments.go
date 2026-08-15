@@ -17,8 +17,6 @@ var tasksCommentAddCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		content, _ := cmd.Flags().GetString("content")
-		userID, _ := cmd.Flags().GetString("user")
-		agentID, _ := cmd.Flags().GetString("agent")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if content == "" {
 			cmd.Println("Error: --content is required.")
@@ -29,8 +27,6 @@ var tasksCommentAddCmd = &cobra.Command{
 		res, err := client.CreateComment(context.Background(), connect.NewRequest(&healthv1.CreateCommentRequest{
 			EntityId:   args[0],
 			EntityType: "task",
-			UserId:     userID,
-			AgentId:    agentID,
 			Content:    content,
 		}))
 		if err != nil {
@@ -83,6 +79,7 @@ func init() {
 	tasksCmd.AddCommand(tasksCommentsCmd)
 
 	tasksCommentAddCmd.Flags().String("content", "", "Comment text")
-	tasksCommentAddCmd.Flags().String("user", "", "User ID authoring the comment")
-	tasksCommentAddCmd.Flags().String("agent", "", "Agent ID authoring the comment")
+	// --user and --agent are gone (M04-T06): the author is whoever the
+	// credential belongs to. Naming an author in the request let any member
+	// attribute a comment to any agent.
 }

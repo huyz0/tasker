@@ -13,21 +13,19 @@ import (
 
 var tasksNoteAddCmd = &cobra.Command{
 	Use:   "note-add [task_id]",
-	Short: "Add an AI agent note to a task",
+	Short: "Add an AI agent note to a task (requires an agent token)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		content, _ := cmd.Flags().GetString("content")
-		agentID, _ := cmd.Flags().GetString("agent")
 		isJson, _ := cmd.Flags().GetBool("json")
-		if content == "" || agentID == "" {
-			cmd.Println("Error: --agent and --content are required.")
-			return fmt.Errorf("--agent and --content are required")
+		if content == "" {
+			cmd.Println("Error: --content is required.")
+			return fmt.Errorf("--content is required")
 		}
 
 		client := backend.NewTaskNoteServiceClient()
 		res, err := client.CreateTaskNote(context.Background(), connect.NewRequest(&healthv1.CreateTaskNoteRequest{
 			TaskId:  args[0],
-			AgentId: agentID,
 			Content: content,
 		}))
 		if err != nil {
@@ -79,5 +77,7 @@ func init() {
 	tasksCmd.AddCommand(tasksNotesCmd)
 
 	tasksNoteAddCmd.Flags().String("content", "", "Note text")
-	tasksNoteAddCmd.Flags().String("agent", "", "Agent ID authoring the note")
+	// --agent is gone (M04-T06): a task note is authored by the authenticated
+	// agent, not by whoever the caller names. Authenticate with an agent token
+	// (M04-T09 adds --token / TASKER_TOKEN).
 }

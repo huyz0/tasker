@@ -73,7 +73,7 @@ export function CommentProvider({ entityId, entityType, children }: CommentProvi
 
   const addCommentMutation = useMutation({
     mutationFn: async (content: string) => {
-      const resp = await commentClient.createComment({ entityId, entityType, content, userId: '', agentId: '' });
+      const resp = await commentClient.createComment({ entityId, entityType, content });
       return resp.comment;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
@@ -81,7 +81,7 @@ export function CommentProvider({ entityId, entityType, children }: CommentProvi
 
   const editCommentMutation = useMutation({
     mutationFn: async (variables: { commentId: string; content: string }) => {
-      const resp = await commentClient.updateComment({ ...variables, userId: '', agentId: '' });
+      const resp = await commentClient.updateComment(variables);
       return resp.comment;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
@@ -89,7 +89,7 @@ export function CommentProvider({ entityId, entityType, children }: CommentProvi
 
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: string) => {
-      await commentClient.deleteComment({ commentId, userId: '', agentId: '' });
+      await commentClient.deleteComment({ commentId });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });

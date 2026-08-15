@@ -65,34 +65,20 @@ describe("Comments Handler", () => {
     expect(res.comment.entityType).toBe("artifact");
   });
 
-  it("should create comment with agentId", async () => {
+  it("ignores an agentId in the request — a human authors as themselves", async () => {
+    // This replaces three tests that asserted the old contract: that a human
+    // could author as a named agent, and that the server would then validate
+    // the agent exists and belongs to the org. M04-T06 removed the field, so
+    // there is no caller-supplied agent left to validate. Attribution from an
+    // agent token is covered in comments/attribution.test.ts.
     const res = await handler.createComment({
       entityId: taskId,
       entityType: "task",
       agentId,
       content: "Agent feedback",
-    }, ctx);
-    expect(res.comment.agentId).toBe(agentId);
-    expect(res.comment.userId).toBeNull();
-  });
-
-  it("should reject comment with a nonexistent agentId", async () => {
-    await expect(
-      handler.createComment({ entityId: taskId, entityType: "task", agentId: "agt-does-not-exist", content: "x" }, ctx)
-    ).rejects.toThrow();
-  });
-
-  it("should reject comment with an agentId belonging to a different org", async () => {
-    const otherOrgId = "org-other-" + crypto.randomUUID();
-    const otherAgentRoleId = "ar-other-" + crypto.randomUUID();
-    const otherAgentId = "agt-other-" + crypto.randomUUID();
-    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other Org", slug: "org-other-" + Date.now(), createdAt: new Date() });
-    await db.insert(schemaSqlite.agentRoles).values({ id: otherAgentRoleId, orgId: otherOrgId, name: "Other Role", systemPrompt: "p", capabilities: "{}" });
-    await db.insert(schemaSqlite.agents).values({ id: otherAgentId, orgId: otherOrgId, agentRoleId: otherAgentRoleId, name: "Other Agent", createdAt: new Date() });
-
-    await expect(
-      handler.createComment({ entityId: taskId, entityType: "task", agentId: otherAgentId, content: "x" }, ctx)
-    ).rejects.toThrow();
+    } as any, ctx);
+    expect(res.comment.agentId).toBeNull();
+    expect(res.comment.userId).toBe(userId);
   });
 
   it("attributes authorship to the authenticated caller, ignoring any client-supplied userId", async () => {

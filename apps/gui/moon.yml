@@ -12,6 +12,7 @@ tasks:
     inputs:
       - 'src/**/*'
       - 'package.json'
+      - '/packages/shared-contract/gen/**/*'
 
   typecheck:
     deps:
@@ -20,6 +21,7 @@ tasks:
     inputs:
       - 'src/**/*'
       - 'tsconfig.json'
+      - '/packages/shared-contract/gen/**/*'
 
   # Design rules were prose in ui-ux-standard.md and drifted to 47 raw palette
   # values, 4 WCAG contrast failures and no reduced-motion handling. Zero
@@ -38,6 +40,7 @@ tasks:
       - 'src/**/*'
       - 'vitest.config.ts'
       - 'package.json'
+      - '/packages/shared-contract/gen/**/*'
 
   # Drives a real browser against a real backend, so its result depends on
   # state moon cannot see (a running server and its database) - caching a pass
@@ -72,6 +75,7 @@ tasks:
       - 'index.html'
       - 'vite.config.*'
       - 'package.json'
+      - '/packages/shared-contract/gen/**/*'
       # The workspace's single lockfile lives at the repo root (see
       # dependency-standard.md); this used to name a bun.lockb that never
       # existed here, so dependency changes did not invalidate the build.

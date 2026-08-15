@@ -948,11 +948,11 @@ model Comment {
   @field(8) authorName?: string;
 }
 
+// Field numbers 3 (userId) and 4 (agentId) were removed in M04-T06 and are
+// reserved in the .proto: attribution comes from the authenticated principal.
 model CreateCommentRequest {
   @field(1) entityId: string;
   @field(2) entityType: string;
-  @field(3) userId: string; // Optional
-  @field(4) agentId: string; // Optional
   @field(5) content: string;
 }
 model CreateCommentResponse {
@@ -970,15 +970,11 @@ model ListCommentsResponse {
   @field(2) page?: PageResponse;
 }
 
+// Authorship is checked against the authenticated principal (M04-T06), so the
+// caller no longer names an author. Field numbers 3 and 4 are reserved.
 model UpdateCommentRequest {
   @field(1) commentId: string;
   @field(2) content: string;
-
-  // Caller's userId/agentId, used to authorize that only the original author
-  // may edit or delete a comment - same attribution pattern as createComment.
-  @field(3) userId: string; // Optional
-
-  @field(4) agentId: string; // Optional
 }
 model UpdateCommentResponse {
   @field(1) comment: Comment;
@@ -986,8 +982,6 @@ model UpdateCommentResponse {
 
 model DeleteCommentRequest {
   @field(1) commentId: string;
-  @field(2) userId: string; // Optional
-  @field(3) agentId: string; // Optional
 }
 model DeleteCommentResponse {
   @field(1) success: boolean;
@@ -1011,7 +1005,6 @@ model TaskNote {
 
 model CreateTaskNoteRequest {
   @field(1) taskId: string;
-  @field(2) agentId: string;
   @field(3) content: string;
 }
 

@@ -81,7 +81,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
       - Files: `packages/shared-contract/main.tsp`, `modules/agents/agents.handler.ts`
       - Verify: the plaintext never appears in a list response.
 
-- [ ] **M04-T06** — Derive agent attribution from the principal and delete the
+- [x] **M04-T06** — Derive agent attribution from the principal and delete the
       `agentId` field from comment, note and task request models.
       - Files: `modules/comments/comments.handler.ts`,
         `modules/tasks/task_notes.handler.ts`, `main.tsp`

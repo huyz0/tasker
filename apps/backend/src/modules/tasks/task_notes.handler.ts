@@ -4,14 +4,17 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUser, assertOrgMember, assertOrgWriter, getTaskOrgId } from "../../lib/authz";
+import { requireUser, requirePrincipal, assertOrgMember, assertOrgWriter, getTaskOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schema ---
 
+// No agentId: a task note is the agent's own record of its work, so the author
+// is the authenticated agent. Zod strips the key, so an old client still
+// sending it is refused for the right reason (not being an agent) rather than
+// for sending an unknown field.
 const CreateTaskNoteSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
-  agentId: z.string().min(1, "agentId is required"),
   content: z.string().min(1, "content is required").max(8192),
 });
 
@@ -31,18 +34,21 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
 
   return {
     async createTaskNote(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = CreateTaskNoteSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
-      await assertOrgWriter(db, userId, orgId);
 
-      const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
-      const agentRows = await db.select().from(agents).where(eq((agents as any).id, parsed.agentId)).limit(1);
-      if (!agentRows || agentRows.length === 0) {
-        throw new ConnectError("agent not found", Code.NotFound);
+      // task_notes.agent_id is NOT NULL, so a note has no meaningful human
+      // author. Before M04 a human supplied the agentId and the note was filed
+      // under a worker that never wrote it.
+      if (principal.kind !== "agent") {
+        throw new ConnectError(
+          "task notes are authored by an agent - authenticate with an agent token",
+          Code.PermissionDenied,
+        );
       }
-      if (agentRows[0].orgId !== orgId) {
-        throw new ConnectError("agent belongs to a different organization", Code.InvalidArgument);
+      if (principal.orgId !== orgId) {
+        throw new ConnectError("this token cannot act in that organization", Code.PermissionDenied);
       }
 
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
@@ -50,7 +56,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       const payload = {
         id: newId,
         taskId: parsed.taskId,
-        agentId: parsed.agentId,
+        agentId: principal.agentId,
         content: parsed.content,
       };
 

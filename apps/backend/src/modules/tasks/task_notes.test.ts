@@ -2,11 +2,14 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createTaskNotesHandler } from "./task_notes.handler";
+import { createContextValues } from "@connectrpc/connect";
+import { currentPrincipalKey } from "../auth/session";
 
 describe("Task Notes Handler", () => {
   let db: any;
   let handler: ReturnType<typeof createTaskNotesHandler>;
   let ctx: any;
+  let agentCtx: any;
   let taskId: string;
   let agentId: string;
 
@@ -33,6 +36,14 @@ describe("Task Notes Handler", () => {
     await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent", createdAt: new Date() });
 
     ctx = makeAuthContext(userId);
+    // A task note is authored by the authenticated agent (M04-T06), so creating
+    // one needs an agent principal - the shape the interceptor builds from a
+    // token. Reads and the human-rejection case still use ctx.
+    agentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-test", scopes: ["tasks:write", "comments:write"] });
+      return v;
+    })() } as any;
   });
 
   // --- createTaskNote happy paths ---
@@ -40,9 +51,8 @@ describe("Task Notes Handler", () => {
   it("should create a task note", async () => {
     const res = await handler.createTaskNote({
       taskId,
-      agentId,
       content: "This is a detailed AI reasoning block.",
-    }, ctx);
+    }, agentCtx);
 
     expect(res.taskNote).toBeDefined();
     expect(res.taskNote.taskId).toBe(taskId);
@@ -125,9 +135,8 @@ describe("Task Notes Handler", () => {
     const h = createTaskNotesHandler(db, mockNc);
     await h.createTaskNote({
       taskId,
-      agentId,
       content: "Event propagation test",
-    }, ctx);
+    }, agentCtx);
 
     expect(published).not.toBeNull();
     expect(published!.subject).toBe("domain.tasknote.created");
@@ -136,8 +145,10 @@ describe("Task Notes Handler", () => {
   // --- listTaskNotes ---
 
   it("should list task notes for a task", async () => {
-    await handler.createTaskNote({ taskId, agentId, content: "N1" }, ctx);
-    await handler.createTaskNote({ taskId, agentId, content: "N2" }, ctx);
+    await handler.createTaskNote({ taskId, content: "N1" }, agentCtx);
+    await handler.createTaskNote({ taskId, content: "N2" }, agentCtx);
+    // Reading stays open to humans: a note is written by an agent and read by
+    // whoever is supervising it.
     const res = await handler.listTaskNotes({ taskId }, ctx);
     expect(res.taskNotes).toHaveLength(2);
     expect(res.taskNotes.map((n: any) => n.content)).toContain("N1");

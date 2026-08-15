@@ -892,8 +892,11 @@ message Comment {
 message CreateCommentRequest {
   string entityId = 1;
   string entityType = 2;
-  string userId = 3;
-  string agentId = 4;
+  // 3 (userId) and 4 (agentId) removed in M04-T06: attribution is derived from
+  // the authenticated principal. Reserved rather than reused - a field number
+  // is permanent, and an old client sending 4 must not land in a new field.
+  reserved 3, 4;
+  reserved "userId", "agentId";
   string content = 5;
 }
 
@@ -915,8 +918,9 @@ message ListCommentsResponse {
 message UpdateCommentRequest {
   string commentId = 1;
   string content = 2;
-  string userId = 3;
-  string agentId = 4;
+  // Removed in M04-T06 - authorship is checked against the principal.
+  reserved 3, 4;
+  reserved "userId", "agentId";
 }
 message UpdateCommentResponse {
   Comment comment = 1;
@@ -924,8 +928,9 @@ message UpdateCommentResponse {
 
 message DeleteCommentRequest {
   string commentId = 1;
-  string userId = 2;
-  string agentId = 3;
+  // Removed in M04-T06 - authorship is checked against the principal.
+  reserved 2, 3;
+  reserved "userId", "agentId";
 }
 message DeleteCommentResponse {
   bool success = 1;
@@ -947,7 +952,9 @@ message TaskNote {
 
 message CreateTaskNoteRequest {
   string taskId = 1;
-  string agentId = 2;
+  // Removed in M04-T06 - a task note is authored by the authenticated agent.
+  reserved 2;
+  reserved "agentId";
   string content = 3;
 }
 

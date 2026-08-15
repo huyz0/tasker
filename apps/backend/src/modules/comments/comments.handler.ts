@@ -4,7 +4,8 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUser, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUser, requirePrincipal, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import type { Principal } from "../auth/session";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // Resolves each comment's userId/agentId to a display name in two batched
@@ -34,41 +35,60 @@ async function attachAuthorNames(db: any, isStandalone: boolean, items: any[]): 
 
 // --- Zod Request Schema ---
 
+// No userId or agentId: attribution is the authenticated principal's, and a
+// field the server ignores is worse than no field - it reads as though the
+// caller can choose. Zod strips unlisted keys, so an old client still sending
+// them is attributed correctly rather than being rejected.
 const CreateCommentSchema = z.object({
   entityId: z.string().min(1, "entityId is required"),
   entityType: z.enum(["task", "artifact"]),
-  userId: z.string().nullable().optional(),
-  agentId: z.string().nullable().optional(),
   content: z.string().min(1, "content is required").max(4096),
 });
 
 const UpdateCommentSchema = z.object({
   commentId: z.string().min(1, "commentId is required"),
   content: z.string().min(1, "content is required").max(4096),
-  userId: z.string().nullable().optional(),
-  agentId: z.string().nullable().optional(),
 });
 
 const DeleteCommentSchema = z.object({
   commentId: z.string().min(1, "commentId is required"),
-  userId: z.string().nullable().optional(),
-  agentId: z.string().nullable().optional(),
 });
 
 /**
- * A comment may only be edited/deleted by whoever authored it - the
- * authenticated userId for a user comment, or the caller-supplied agentId
- * for an agent-authored one (agents have no session of their own, so this
- * trusts the caller-supplied agentId the same way createComment already
- * does for attribution).
+ * A comment may only be edited or deleted by whoever authored it, decided
+ * against the authenticated principal.
+ *
+ * This used to compare the stored agentId against one taken from the *request
+ * body*, which meant any organization member could edit or delete any
+ * agent-authored comment by naming the agent. Closing that is M04's reason for
+ * existing (ADR-0008).
  */
-function assertCommentAuthor(comment: any, callerUserId: string, requestAgentId?: string | null) {
+function assertCommentAuthor(comment: any, principal: Principal) {
   const isAuthor = comment.agentId
-    ? comment.agentId === requestAgentId
-    : comment.userId === callerUserId;
+    ? principal.kind === "agent" && comment.agentId === principal.agentId
+    : principal.kind === "user" && comment.userId === principal.userId;
   if (!isAuthor) {
     throw new ConnectError("only the comment's author can edit or delete it", Code.PermissionDenied);
   }
+}
+
+/**
+ * Authorizes the principal against the organization owning the commented-on
+ * entity, and returns the attribution columns for a new row.
+ *
+ * A human must be an org writer, as before. An agent's authorization is its
+ * token's org binding: the credential was issued for one organization and
+ * cannot reach another (ADR-0008). Scope checks arrive in M04-T07.
+ */
+async function authorizeAndAttribute(db: any, principal: Principal, orgId: string) {
+  if (principal.kind === "agent") {
+    if (principal.orgId !== orgId) {
+      throw new ConnectError("this token cannot act in that organization", Code.PermissionDenied);
+    }
+    return { userId: null, agentId: principal.agentId };
+  }
+  await assertOrgWriter(db, principal.userId, orgId);
+  return { userId: principal.userId, agentId: null };
 }
 
 // --- Handler Factory ---
@@ -78,35 +98,24 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
 
   return {
     async createComment(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = CreateCommentSchema.parse(req);
       const orgId = parsed.entityType === "task"
         ? await getTaskOrgId(db, parsed.entityId)
         : await getArtifactOrgId(db, parsed.entityId);
-      await assertOrgWriter(db, userId, orgId);
+      const attribution = await authorizeAndAttribute(db, principal, orgId);
 
-      if (parsed.agentId) {
-        const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
-        const agentRows = await db.select().from(agents).where(eq((agents as any).id, parsed.agentId)).limit(1);
-        if (!agentRows || agentRows.length === 0) {
-          throw new ConnectError("agent not found", Code.NotFound);
-        }
-        if (agentRows[0].orgId !== orgId) {
-          throw new ConnectError("agent belongs to a different organization", Code.InvalidArgument);
-        }
-      }
-
-      // Attribution is derived from the authenticated caller, not trusted from
-      // the request body: agentId (if present) marks it as an AI note, otherwise
-      // it's attributed to whoever is actually logged in - never a client-supplied userId.
+      // Attribution is a property of the credential, never of the request. The
+      // agent-existence and agent-org checks this used to do are gone because
+      // there is nothing left to check: the agent id comes from a token the
+      // server issued and validated on the way in.
       const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
       const newId = `cmt-${crypto.randomUUID()}`;
       const payload = {
         id: newId,
         entityId: parsed.entityId,
         entityType: parsed.entityType,
-        userId: parsed.agentId ? null : userId,
-        agentId: parsed.agentId || null,
+        ...attribution,
         content: parsed.content,
       };
 
@@ -118,7 +127,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       return { comment: commentResp };
     },
     async updateComment(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = UpdateCommentSchema.parse(req);
 
       const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
@@ -127,8 +136,8 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       const orgId = existing[0].entityType === "task"
         ? await getTaskOrgId(db, existing[0].entityId)
         : await getArtifactOrgId(db, existing[0].entityId);
-      await assertOrgWriter(db, userId, orgId);
-      assertCommentAuthor(existing[0], userId, parsed.agentId);
+      await authorizeAndAttribute(db, principal, orgId);
+      assertCommentAuthor(existing[0], principal);
 
       await db.update(comments).set({ content: parsed.content }).where(eq((comments as any).id, parsed.commentId));
 
@@ -138,7 +147,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       return { comment: commentResp };
     },
     async deleteComment(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUser(contextValues);
+      const principal = requirePrincipal(contextValues);
       const parsed = DeleteCommentSchema.parse(req);
 
       const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
@@ -147,8 +156,8 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       const orgId = existing[0].entityType === "task"
         ? await getTaskOrgId(db, existing[0].entityId)
         : await getArtifactOrgId(db, existing[0].entityId);
-      await assertOrgWriter(db, userId, orgId);
-      assertCommentAuthor(existing[0], userId, parsed.agentId);
+      await authorizeAndAttribute(db, principal, orgId);
+      assertCommentAuthor(existing[0], principal);
 
       await db.delete(comments).where(eq((comments as any).id, parsed.commentId));
 

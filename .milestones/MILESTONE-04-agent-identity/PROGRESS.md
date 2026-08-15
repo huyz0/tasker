@@ -228,3 +228,48 @@ Append-only. Newest entry at the bottom.
   `isAgentScope`, both for T07). Removed; they arrive with their first caller.
   Third time this milestone the gate has caught this.
 - **Next**: M04-T06
+
+---
+
+## M04-T06 — Derive attribution from the principal
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `comments.handler.ts`, `task_notes.handler.ts`, both contract
+  files, `apps/cli/cmd/tasks_comments.go`, `cmd/tasks_notes.go`,
+  `apps/gui/src/components/ui/comments/CommentContext.tsx`, `apps/gui/moon.yml`,
+  `comments/attribution.test.ts` (new, 13 tests), plus 6 rewritten tests
+- **Verified**: `moon run backend:test` — 527 pass / 7 skip / 0 fail.
+  `moon run gui:test` — 404 pass, 95.27% branches. `moon check --all` — 23 pass.
+- **Review**: `reviews/M04-T06-attribution-v1.md` — approved; 1 high, 1 medium,
+  1 low.
+- **The hole was bigger than the task described.** Two paths trusted the request
+  body, not one: `createComment` filed a comment under any `agentId` the caller
+  named, *and* `assertCommentAuthor` compared the stored `agentId` against one
+  taken from the **request** — so any member could also edit or delete any
+  agent-authored comment by naming that agent. The second is the sharper of the
+  two and was not in the task's description; it was found by reading the
+  function the task pointed at.
+- **Kept `assignTask.agentId` deliberately**, against the task's wording of
+  "comment, note and task request models". That field is the *assignee*, not the
+  author. Removing it would delete the ability to assign work to an agent, which
+  is the product's core function rather than an attribution leak. Attribution is
+  who wrote a thing; assignment is who should do it.
+- **`createTaskNote` is now agent-only**, which is a behaviour removal rather
+  than just a field removal. `task_notes.agent_id` is NOT NULL, so a note has no
+  representable human author. The cost: `tasker tasks note-add` cannot be used
+  by a logged-in human until **T09** ships `--token`. The milestone's stated
+  breaking change, arriving on schedule, but a real gap between T06 and T09.
+- **A gate was passing on stale output.** `moon check --all` was green while
+  `moon run gui:build --force` failed with three type errors: the GUI tasks
+  never declared the generated contract as an input, so a contract change left
+  their caches valid. Same defect M03 found on `shared-contract:compile`, in
+  four more places. CI would have caught it on a cold cache; the pre-commit hook
+  would not, which is what the hook is for. Fixed and verified by touching the
+  generated file and confirming the build re-runs instead of reporting cached.
+- **Old clients are not rejected**, just re-attributed: Zod strips unlisted
+  keys, so a not-yet-rebuilt client still sending `agentId` succeeds and is
+  attributed correctly. Chosen over erroring on unknown fields because the field
+  is gone from the contract, so no new client can learn to send it.
+- **Field numbers 3/4 are `reserved`**, not reused, per `api-standard.md` §2.
+- **Next**: M04-T07
