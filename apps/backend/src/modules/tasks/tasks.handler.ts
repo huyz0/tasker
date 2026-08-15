@@ -582,6 +582,9 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(tasks)) : notDeleted(tasks);
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, and(eq((tasks as any).projectId, req.projectId), deletedFilter), req.page, (tasks as any).title, { title: (tasks as any).title, status: (tasks as any).status, createdAt: (tasks as any).createdAt });
+      // Sorting by displayId is deliberately not offered: it is a string, so
+      // "SEED-100" sorts before "SEED-99". Ids are assigned in creation order,
+      // so createdAt is the same ordering done correctly (M05-T11).
 
       const assignees = await assigneesByTask(items.map((t: any) => t.id));
 

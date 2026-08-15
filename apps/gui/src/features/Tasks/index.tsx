@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
@@ -146,6 +147,8 @@ export function TasksWorkbench() {
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [sort, setSort] = useState<{ key: 'displayId' | 'title' | 'status'; dir: 'asc' | 'desc' } | null>(null);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebounce(search, 250);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -162,12 +165,28 @@ export function TasksWorkbench() {
     },
   });
 
+  // The server sorts by column name; the ID header maps to createdAt because
+  // displayId is a string ("SEED-100" sorts before "SEED-99") and ids are
+  // assigned in creation order, so createdAt is that ordering done correctly.
+  const SORT_FIELDS: Record<'displayId' | 'title' | 'status', string> = {
+    displayId: 'createdAt',
+    title: 'title',
+    status: 'status',
+  };
+  const sortParam = sort ? `${SORT_FIELDS[sort.key]}:${sort.dir}` : undefined;
+
   const { data: tasksData, isLoading } = useQuery({
-    queryKey: ['tasks', activeProjectId],
+    // Filter and sort belong in the key: they change which rows come back, so
+    // a shared key would serve one query's results for another's question.
+    queryKey: ['tasks', activeProjectId, debouncedSearch, sortParam],
     // The Kanban board needs every task to render accurate columns/counts,
     // not just the first page - loop until the server reports no more pages.
     queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await taskClient.listTasks({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
+      // Sent on every page, not just the first: the cursor records which field
+      // it was built for, and a page requested without them is a page of a
+      // different query.
+      const page = { cursor, filter: debouncedSearch || undefined, sort: sortParam };
+      const resp = await taskClient.listTasks({ projectId: activeProjectId, page });
       return { items: resp.tasks, nextCursor: resp.page?.nextCursor || undefined };
     }),
     enabled: !!activeProjectId,
@@ -284,16 +303,9 @@ export function TasksWorkbench() {
 
   const statusDisplay = (statusId: string) => columnDefs.find(c => c.id === statusId)!.display;
 
-  const sortedTasks = useMemo(() => {
-    const items = tasksData ?? [];
-    if (!sort) return items;
-    const dir = sort.dir === 'asc' ? 1 : -1;
-    return [...items].sort((a, b) => {
-      const va = sort.key === 'status' ? statusDisplay(a.status || 'todo') : a[sort.key];
-      const vb = sort.key === 'status' ? statusDisplay(b.status || 'todo') : b[sort.key];
-      return va.localeCompare(vb) * dir;
-    });
-  }, [tasksData, sort, columnDefs]);
+  // The server orders the rows. Sorting them again here would reorder one
+  // page's worth of a paginated set and call the result sorted.
+  const sortedTasks = tasksData ?? [];
 
   const toggleSort = (key: 'displayId' | 'title' | 'status') => {
     setSort(prev => {
@@ -334,7 +346,16 @@ export function TasksWorkbench() {
               Table
             </button>
           </div>
-          <button className="px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium">Filter Tasks</button>
+          <div className="flex flex-col">
+            <label className="sr-only" htmlFor="task-filter">Filter tasks</label>
+            <input
+              id="task-filter"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Filter tasks…"
+              className="px-3 py-2 rounded-md border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
         </div>
       </div>
 

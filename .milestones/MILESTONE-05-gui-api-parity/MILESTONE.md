@@ -107,7 +107,7 @@ canvas is warranted.
 
 ### Server-driven lists
 
-- [ ] **M05-T11** — Wire the Tasks filter control to the backend `filter`
+- [x] **M05-T11** — Wire the Tasks filter control to the backend `filter`
       parameter and the table headers to the `sort` parameter.
       - Files: `apps/gui/src/features/Tasks/index.tsx`
       - Verify: filtering issues a new request rather than filtering in memory.

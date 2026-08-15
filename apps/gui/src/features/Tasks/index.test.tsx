@@ -646,7 +646,7 @@ describe('TasksWorkbench', () => {
     expect(screen.getByText('Todo')).toBeInTheDocument();
   });
 
-  it('sorts table rows by title, toggling asc/desc/none', async () => {
+  it('asks the server to sort, and cycles asc/desc/off', async () => {
     mockListTasks.mockResolvedValue({ tasks: [
       { id: 'task-1', title: 'Zebra task', status: 'todo', description: '', displayId: 'ENG-1' },
       { id: 'task-2', title: 'Apple task', status: 'todo', description: '', displayId: 'ENG-2' },
@@ -656,35 +656,80 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.getByText('Zebra task')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Table' }));
 
-    const getTitles = () => screen.getAllByRole('row').slice(1).map(r => within(r).getAllByRole('cell')[1].textContent);
-    expect(getTitles()).toEqual(['Zebra task', 'Apple task']);
+    // Sorting one page of a paginated set in the browser sorts the page, not
+    // the set — which is why this asserts on the request and not on the rows.
+    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
+    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ page: expect.objectContaining({ sort: 'title:asc' }) }),
+    ));
 
     fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
-    expect(getTitles()).toEqual(['Apple task', 'Zebra task']);
+    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ page: expect.objectContaining({ sort: 'title:desc' }) }),
+    ));
 
+    mockListTasks.mockClear();
     fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
-    expect(getTitles()).toEqual(['Zebra task', 'Apple task']);
+    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ page: expect.objectContaining({ sort: undefined }) }),
+    ));
+  });
 
-    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
-    expect(getTitles()).toEqual(['Zebra task', 'Apple task']);
+  it('sorts by creation time behind the ID header', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-2' },
+    ] });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /^ID/ }));
+    // displayId is a string, so sorting by it puts "ENG-100" before "ENG-99".
+    // Ids are handed out in creation order, so createdAt is the same ordering
+    // done correctly.
+    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ page: expect.objectContaining({ sort: 'createdAt:asc' }) }),
+    ));
   });
 
   it('switching the sort column resets to ascending', async () => {
     mockListTasks.mockResolvedValue({ tasks: [
       { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-2' },
-      { id: 'task-2', title: 'Write docs', status: 'in-progress', description: '', displayId: 'ENG-1' },
     ] });
     renderPage();
-
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Table' }));
 
-    fireEvent.click(screen.getByRole('columnheader', { name: /^ID/ }));
-    const getIds = () => screen.getAllByRole('row').slice(1).map(r => within(r).getAllByRole('cell')[0].textContent);
-    expect(getIds()).toEqual(['ENG-1', 'ENG-2']);
-
+    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
+    fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
     fireEvent.click(screen.getByRole('columnheader', { name: /Status/ }));
-    expect(screen.getAllByRole('row').slice(1).map(r => within(r).getAllByRole('cell')[2].textContent)).toEqual(['In Progress', 'Todo']);
+    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ page: expect.objectContaining({ sort: 'status:asc' }) }),
+    ));
+  });
+
+  it('asks the server to filter, rather than filtering what it already has', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
+    ] });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText('Filter tasks'), { target: { value: 'bug' } });
+
+    // A project holds more tasks than one page; filtering in the browser hides
+    // rows that were never fetched and calls the remainder the result.
+    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ page: expect.objectContaining({ filter: 'bug' }) }),
+    ));
+  });
+
+  it('sends no filter for an empty box', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [] });
+    renderPage();
+    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ page: expect.objectContaining({ filter: undefined }) }),
+    ));
   });
 
   it('shows a loading state in table view', async () => {

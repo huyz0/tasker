@@ -301,4 +301,29 @@ Append-only. Newest entry at the bottom.
 - **Verified in the browser end to end**: built Level1 → Level2 → Level3 through
   the UI, created an artifact at the bottom, then cold-loaded its URL — all
   three ancestors reopened.
-- **Next**: M05-T11
+
+## M05-T11 — Server-driven filtering and sorting
+
+- **Done.** The Tasks filter box sends `page.filter`; the table headers send
+  `page.sort`. The client-side sort is gone.
+  (`reviews/M05-T11-server-lists-v1.md`) — approved, 2 medium, 1 low.
+- **"Filter Tasks" was a button with no handler.** Same class of problem as this
+  milestone's fabricated badges — a control that looks like a feature and does
+  nothing — though the fabrication lint does not match it, because it looks for
+  invented *state*, not inert controls. Recorded for M06.
+- **The client-side sort was worse than redundant**: it sorted whatever array
+  was in hand, so under pagination it sorted a page and presented it as a sorted
+  set.
+- **The parameters travel on every page request**, not just the first. The
+  cursor records which field it was built for, so a continuation sent without
+  them is a page of a different query.
+- **The ID header sorts by `createdAt`.** `displayId` is a string, so sorting by
+  it puts `SEED-100` before `SEED-99` — which the old `localeCompare` sort did.
+  Ids are handed out in creation order, so `createdAt` is that ordering done
+  correctly.
+- **Two tests were rewritten rather than repaired.** They asserted that rows
+  reordered in the DOM — exactly the behaviour being removed. The exit criterion
+  is about *where* the work happens, so they now assert the request.
+- **Measured, not asserted**: 151 cards, one keystroke burst, one further
+  request carrying the filter, one card.
+- **Next**: M05-T12
