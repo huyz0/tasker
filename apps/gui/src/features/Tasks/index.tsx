@@ -14,6 +14,7 @@ import { Label } from '../../components/ui/labels';
 import { AssigneePicker } from './AssigneePicker';
 import { ReviewerPicker } from './ReviewerPicker';
 import { TaskArtifactLinks } from './TaskArtifactLinks';
+import { Dialog } from '../../components/ui/Dialog';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 
@@ -503,19 +504,17 @@ export function TasksWorkbench() {
 
       {/* Focused task-detail overlay (Jira/Linear pattern): takes over most
           of the screen instead of a cramped permanent side panel, so there's
-          room for description, labels, agent notes, and comments at once. */}
+          room for description, labels, agent notes, and comments at once.
+          On `Dialog` since M06-T03 — it previously declared no role, no
+          aria-modal, and trapped no focus (ADR-0009). */}
       {expandedTask && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:p-8 animate-in fade-in"
-          onClick={() => setExpandedTaskId(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-4xl h-full max-h-[90vh] bg-card border rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95"
-          >
-           <div className="p-4 border-b flex justify-between items-center shrink-0">
-             <h2 className="font-semibold">Task Details</h2>
-             <div className="flex items-center gap-3">
+        <Dialog
+          open
+          onClose={() => setExpandedTaskId(null)}
+          title="Task Details"
+          className="w-full max-w-4xl h-full max-h-[90vh] animate-in zoom-in-95"
+          headerRight={
+            <div className="flex items-center gap-3">
                {!isEditingTask && (
                  <button
                    onClick={() => {
@@ -539,9 +538,10 @@ export function TasksWorkbench() {
                >
                  {deleteTaskMutation.isPending ? 'Moving to bin...' : 'Delete'}
                </button>
-               <button onClick={() => setExpandedTaskId(null)} aria-label="Close task details" className="text-muted-foreground hover:text-foreground">✕</button>
-             </div>
-           </div>
+              <button onClick={() => setExpandedTaskId(null)} aria-label="Close task details" className="text-muted-foreground hover:text-foreground">✕</button>
+            </div>
+          }
+        >
            {deleteTaskMutation.isError && (
              <p className="text-sm text-destructive px-4 pt-2 shrink-0">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
            )}
@@ -661,8 +661,7 @@ export function TasksWorkbench() {
              </div>
            </div>
            </div>
-          </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

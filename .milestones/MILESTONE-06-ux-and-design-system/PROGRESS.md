@@ -52,16 +52,63 @@ standard and wonder which one is wrong.
 
 ## M06-T02 — Component primitives decision
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-08-15
-- **Approach**: ADR-0005 left M06 a recommendation — install Radix for the
-  overlay primitives only. Two forces bear on it now: `AGENTS.md` forbids
-  installing a third-party package without explicit user authorization or a
-  `tech-stack.md` entry, and neither exists; and the milestone itself says
-  formalising the hand-rolled set is an equally valid outcome provided the
-  accessibility criteria are met. Write the ADR with both options costed, and
-  make whichever is chosen binding on T03.
-- **Note on the verify line**: "the ADR is referenced by the dialog
-  implementation" cannot pass until T03 builds that dialog, so this task's box
-  stays unchecked until then. The ADR ships in its own commit; T03's commit
-  checks both.
+- **Changed**: `.specs/adr/ADR-0009-component-primitives.md`,
+  `.specs/product/tech-stack.md`
+- **Verified**: the ADR is referenced by the dialog implementation —
+  `apps/gui/src/components/ui/Dialog.tsx:8` names it, and the seven behaviours
+  it lists are the seven tests in `Dialog.test.tsx`. Discharged by T03, which is
+  why this box was checked in T03's commit rather than its own.
+- **Notes**: ADR-0005 recommended installing Radix for overlays only. Rejected,
+  for a reason ADR-0005 did not anticipate: `AGENTS.md` forbids installing a
+  third-party package without explicit user authorization or a `tech-stack.md`
+  entry, and neither exists — a recommendation inside an ADR is not
+  authorization. The milestone already allows formalising the hand-rolled set
+  provided the accessibility criteria are met, and the ADR makes that
+  conditional real by naming seven behaviours and requiring a test for each.
+  The bundle delta is recorded as **not measured**, because measuring means
+  installing; the argument turns on correctness, not size. If the user wants
+  Radix, ADR-0009 names the three conditions that reverse the decision and the
+  swap is one file, because call sites depend on `Dialog`'s props.
+- **Next**: M06-T03
+
+## M06-T03 — The accessible Dialog primitive
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: new `apps/gui/src/components/ui/Dialog.tsx` (+ 19 tests),
+  `features/Tasks/index.tsx`, `components/layout/GlobalSearch.tsx`,
+  `components/layout/AppShell.tsx`, `store/layout.ts`, and the two suites whose
+  assumptions moved
+- **Verified**: in a real browser, both overlays — 60 Tabs and 30 Shift+Tabs
+  inside the task detail with focus leaving the dialog **0 times**, `aria-modal`
+  true, the name announced, scroll locked while open and released on close, and
+  focus restored to the card that opened it. Same for the palette, restoring to
+  the search button. `moon run gui:test` — 551 pass, branches 95.0%.
+  `moon check --all` — 24 tasks pass.
+- **Notes**: three defects surfaced that the task did not predict, each found by
+  running the thing rather than reading it.
+  - **⌘K opened two modal dialogs.** `GlobalSearch` is mounted twice — header
+    and sidebar — and each copy held its own `open` state and its own ⌘K
+    listener. Two stacked overlays had always been there; giving them
+    `aria-modal` is what made it visible. Split into `GlobalSearchTrigger`
+    (rendered twice) and one palette mounted by `AppShell`, sharing `searchOpen`
+    in the layout store.
+  - **`autoFocus` in the palette silently broke focus restoration.** A child
+    with `autoFocus` takes focus during the commit, *before* the dialog's effect
+    runs, so `document.activeElement` was already inside the dialog and the
+    opener was unrecoverable — closing dropped the keyboard user on `<body>`.
+    `Dialog` now tracks the last focus outside any dialog. The unit test for
+    this failed first and passes now; the browser check agreed both times.
+  - **`offsetParent !== null` is the wrong visibility test here.** It is null for
+    the entire subtree of a fixed-position element, which the panel is, so the
+    first version of the focus filter dropped every control and disabled the
+    trap it was meant to build — in jsdom *and* in a browser.
+  - **The design-lint gate caught `outline-none` with no focus replacement** on
+    the panel, which takes focus itself when it holds nothing focusable. Fixed
+    rather than exempted.
+  - **Two existing tests reached for `.fixed.inset-0`** to find the backdrop.
+    The backdrop moved inside `Dialog`, so they now use a `data-testid`: a class
+    name is styling, not contract.
+- **Next**: M06-T04

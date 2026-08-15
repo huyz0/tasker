@@ -339,7 +339,7 @@ describe('TasksWorkbench', () => {
     fireEvent.click(screen.getByText('Fix bug'));
 
     await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
-    fireEvent.click(screen.getByText('Task Details').closest('.fixed.inset-0')!);
+    fireEvent.click(screen.getByTestId('dialog-backdrop'));
 
     await waitFor(() => expect(screen.queryByText('Task Details')).toBeNull());
   });

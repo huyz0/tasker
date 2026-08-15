@@ -56,13 +56,13 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: `.specs/design/design-system.md`, `apps/gui/src/index.css`
       - Verify: `BuildBadge` and the PR badges use the same success token.
 
-- [ ] **M06-T02** — Decide the component-library question in an ADR: adopt Radix
+- [x] **M06-T02** — Decide the component-library question in an ADR: adopt Radix
       primitives (as `tech-stack.md` originally claimed) or formalise the
       hand-rolled set. Whichever is chosen, `tech-stack.md` must match.
       - Files: `.specs/adr/ADR-0009-component-primitives.md`
       - Verify: the ADR is referenced by the dialog implementation.
 
-- [ ] **M06-T03** — Build the accessible `Dialog` primitive and migrate the task
+- [x] **M06-T03** — Build the accessible `Dialog` primitive and migrate the task
       detail overlay and the search palette onto it.
       - Files: `apps/gui/src/components/ui/Dialog.tsx`, call sites
       - Verify: tab cycles within the dialog; closing restores focus to the trigger.

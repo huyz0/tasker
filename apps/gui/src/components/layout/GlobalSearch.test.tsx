@@ -15,9 +15,6 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   SearchService: 'SearchService',
 }));
 vi.mock('../../lib/connectTransport', () => ({ transport: {} }));
-vi.mock('../../store/layout', () => ({
-  useLayoutStore: vi.fn((selector: any) => selector({ activeOrgId: 'org-1' })),
-}));
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return { ...actual, useNavigate: () => mockNavigate };
@@ -29,34 +26,60 @@ vi.mock('use-debounce', () => ({
   useDebounce: (value: string) => [value, { flush: vi.fn(), cancel: vi.fn() }],
 }));
 
-import { GlobalSearch, resultRoute } from './GlobalSearch';
+import { GlobalSearch, GlobalSearchTrigger, resultRoute } from './GlobalSearch';
+import { useLayoutStore } from '../../store/layout';
 
+/**
+ * The real store, not a stub. The palette and its trigger are separate
+ * components sharing one `searchOpen` — the whole point of M06-T03's split, and
+ * a stubbed store would test the two halves in isolation and miss exactly the
+ * defect that motivated it (two triggers, two dialogs).
+ *
+ * `AppShell` renders the trigger twice and the palette once; this mirrors that.
+ */
 function renderSearch() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
+        <GlobalSearchTrigger />
+        <GlobalSearchTrigger />
         <GlobalSearch />
       </MemoryRouter>
     </QueryClientProvider>
   );
 }
 
+/** The trigger is rendered twice, as in the shell. */
+const clickTrigger = () => fireEvent.click(screen.getAllByText('Search tasks, artifacts...')[0]);
+
 describe('GlobalSearch', () => {
   beforeEach(() => {
     mockUniversalSearch.mockReset();
     mockNavigate.mockReset();
     mockUniversalSearch.mockResolvedValue({ results: [] });
+    useLayoutStore.setState({ activeOrgId: 'org-1', searchOpen: false });
   });
 
   it('renders the closed search button by default', () => {
     renderSearch();
-    expect(screen.getByText('Search tasks, artifacts...')).toBeInTheDocument();
+    expect(screen.getAllByText('Search tasks, artifacts...')).toHaveLength(2);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('opens one dialog no matter how many triggers are on the page', () => {
+    renderSearch();
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    // Each trigger used to render its own palette with its own open state and
+    // its own ⌘K listener, so the shortcut opened two stacked modal dialogs —
+    // invisible until M06-T03 gave them `aria-modal` (ADR-0009).
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getAllByPlaceholderText('Type a command or search...')).toHaveLength(1);
   });
 
   it('opens the search dialog when the button is clicked', () => {
     renderSearch();
-    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    clickTrigger();
     expect(screen.getByPlaceholderText('Type a command or search...')).toBeInTheDocument();
   });
 
@@ -65,13 +88,17 @@ describe('GlobalSearch', () => {
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
     expect(screen.getByPlaceholderText('Type a command or search...')).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: 'Escape' });
+    // Dispatched at the document, which is where a real key press arrives:
+    // Escape now belongs to `Dialog`, whose listener is a document capture
+    // listener. An event dispatched straight at `window` has only `window` in
+    // its propagation path and would reach nothing.
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByPlaceholderText('Type a command or search...')).not.toBeInTheDocument();
   });
 
   it('closes the dialog when the close button is clicked', () => {
     renderSearch();
-    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    clickTrigger();
     fireEvent.click(screen.getByRole('button', { name: 'Close search' }));
     expect(screen.queryByPlaceholderText('Type a command or search...')).not.toBeInTheDocument();
   });
@@ -81,7 +108,7 @@ describe('GlobalSearch', () => {
     mockUniversalSearch.mockReturnValue(new Promise((resolve) => { resolveSearch = resolve; }));
     renderSearch();
 
-    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    clickTrigger();
     fireEvent.change(screen.getByPlaceholderText('Type a command or search...'), { target: { value: 'foo' } });
 
     await waitFor(() => expect(screen.getByText('Searching...')).toBeInTheDocument());
@@ -92,7 +119,7 @@ describe('GlobalSearch', () => {
     mockUniversalSearch.mockResolvedValue({ results: [] });
     renderSearch();
 
-    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    clickTrigger();
     fireEvent.change(screen.getByPlaceholderText('Type a command or search...'), { target: { value: 'nothing-matches' } });
 
     await waitFor(() => expect(screen.getByText('No results found.')).toBeInTheDocument());
@@ -107,7 +134,7 @@ describe('GlobalSearch', () => {
     });
     renderSearch();
 
-    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    clickTrigger();
     fireEvent.change(screen.getByPlaceholderText('Type a command or search...'), { target: { value: 'query' } });
 
     await waitFor(() => expect(screen.getByText('Fix login bug')).toBeInTheDocument());
@@ -121,7 +148,7 @@ describe('GlobalSearch', () => {
     });
     renderSearch();
 
-    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    clickTrigger();
     fireEvent.change(screen.getByPlaceholderText('Type a command or search...'), { target: { value: 'query' } });
     await waitFor(() => expect(screen.getByText('Fix login bug')).toBeInTheDocument());
 
@@ -140,7 +167,7 @@ describe('GlobalSearch', () => {
     });
     renderSearch();
 
-    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    clickTrigger();
     fireEvent.change(screen.getByPlaceholderText('Type a command or search...'), { target: { value: 'query' } });
 
     await waitFor(() => expect(screen.getByText('Fix login bug')).toBeInTheDocument());
@@ -160,7 +187,7 @@ describe('GlobalSearch', () => {
     });
     renderSearch();
 
-    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    clickTrigger();
     fireEvent.change(screen.getByPlaceholderText('Type a command or search...'), { target: { value: 'query' } });
     await waitFor(() => expect(screen.getByText('Design doc')).toBeInTheDocument());
 
@@ -170,18 +197,19 @@ describe('GlobalSearch', () => {
 
   it('closes the dialog when clicking the backdrop overlay', () => {
     renderSearch();
-    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    clickTrigger();
     expect(screen.getByPlaceholderText('Type a command or search...')).toBeInTheDocument();
 
-    const overlay = document.body.querySelector('.fixed.inset-0')!;
-    fireEvent.click(overlay);
+    // A test hook rather than a class name: the backdrop moved inside `Dialog`
+    // in M06-T03 and its classes are styling, not contract.
+    fireEvent.click(screen.getByTestId('dialog-backdrop'));
 
     expect(screen.queryByPlaceholderText('Type a command or search...')).not.toBeInTheDocument();
   });
 
   it('does not call universalSearch while the query is empty', () => {
     renderSearch();
-    fireEvent.click(screen.getByText('Search tasks, artifacts...'));
+    clickTrigger();
     expect(mockUniversalSearch).not.toHaveBeenCalled();
   });
 });

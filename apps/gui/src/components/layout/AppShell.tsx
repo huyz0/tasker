@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
-import { GlobalSearch } from './GlobalSearch';
+import { GlobalSearch, GlobalSearchTrigger } from './GlobalSearch';
 import { CurrentUser } from './CurrentUser';
 import { OrgProjectSwitcher } from './OrgProjectSwitcher';
 import { logout } from '../../lib/authSession';
@@ -56,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <GlobalSearch />
+          <GlobalSearchTrigger />
           <CurrentUser />
         </div>
       </header>
@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Tasker
           </div>
           <div className="hidden md:block px-4 py-3 border-b">
-            <GlobalSearch />
+            <GlobalSearchTrigger />
           </div>
           <OrgProjectSwitcher />
           <nav className="flex-1 space-y-1 p-4">
@@ -115,6 +115,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-x-hidden">
         {children}
       </main>
+
+      {/* Mounted once, for both triggers. Rendering it beside each trigger is
+          how ⌘K came to open two stacked modal dialogs (M06-T03). */}
+      <GlobalSearch />
     </div>
   );
 }

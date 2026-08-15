@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
@@ -8,6 +7,7 @@ import { Search, CheckSquare, FileBox, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
 import { useLayoutStore } from '../../store/layout';
+import { Dialog } from '../ui/Dialog';
 
 const searchClient = createClient(SearchService, transport);
 
@@ -24,8 +24,36 @@ export function resultRoute(result: { type: string; id: string }): string | null
   return ROUTE_BY_RESULT_TYPE[result.type]?.(result.id) ?? null;
 }
 
+/**
+ * The button that opens the palette. Rendered twice — once in the header for
+ * desktop, once in the sidebar for mobile — which is exactly why the palette
+ * itself is not rendered here: it used to be, and each copy kept its own `open`
+ * state and its own ⌘K listener, so the shortcut opened two stacked modal
+ * dialogs (M06-T03).
+ */
+export function GlobalSearchTrigger() {
+  const toggleSearch = useLayoutStore((s) => s.toggleSearch);
+  return (
+    <button
+      onClick={toggleSearch}
+      className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 hover:bg-muted/80 px-3 py-1.5 rounded-md border border-border transition-colors w-full min-w-0 justify-between"
+    >
+      <span className="flex items-center gap-2">
+        <Search className="w-4 h-4" />
+        Search tasks, artifacts...
+      </span>
+      <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+        <span className="text-xs">⌘</span>K
+      </kbd>
+    </button>
+  );
+}
+
+/** The palette itself. Mounted **once**, by `AppShell`. */
 export function GlobalSearch() {
-  const [isOpen, setIsOpen] = useState(false);
+  const isOpen = useLayoutStore((s) => s.searchOpen);
+  const setIsOpen = useLayoutStore((s) => s.setSearchOpen);
+  const toggleSearch = useLayoutStore((s) => s.toggleSearch);
   const [query, setQuery] = useState('');
   const [debouncedQuery] = useDebounce(query, 300);
   const navigate = useNavigate();
@@ -35,15 +63,14 @@ export function GlobalSearch() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setIsOpen((prev) => !prev);
+        toggleSearch();
       }
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-      }
+      // Escape is `Dialog`'s job while the palette is open; this only matters
+      // for the closed case, where there is nothing to close.
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [toggleSearch]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['universalSearch', debouncedQuery, activeOrgId],
@@ -57,31 +84,27 @@ export function GlobalSearch() {
     enabled: debouncedQuery.length > 0 && isOpen,
   });
 
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 hover:bg-muted/80 px-3 py-1.5 rounded-md border border-border transition-colors w-full min-w-0 justify-between"
-      >
-        <span className="flex items-center gap-2">
-          <Search className="w-4 h-4" />
-          Search tasks, artifacts...
-        </span>
-        <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-          <span className="text-xs">⌘</span>K
-        </kbd>
-      </button>
-    );
-  }
+  if (!isOpen) return null;
 
-  return createPortal(
-    <>
-      <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
-      <div className="fixed left-[50%] top-[20%] z-50 w-full max-w-lg translate-x-[-50%] rounded-xl border bg-card text-card-foreground shadow-2xl overflow-hidden">
+  // On `Dialog` since M06-T03. This palette handled Escape and nothing else:
+  // no role, no aria-modal, no focus trap, and closing it dropped the keyboard
+  // user at the top of the document (ADR-0009).
+  return (
+    <Dialog
+      open
+      onClose={() => setIsOpen(false)}
+      title="Search tasks and artifacts"
+      hideTitle
+      className="w-full max-w-lg self-start mt-[10vh]"
+    >
+      <div>
         <div className="flex items-center border-b px-3">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+          {/* No autoFocus: `Dialog` focuses the first control itself, and an
+              autoFocus here beat it to the punch — it also stole the capture of
+              which element opened the palette, so closing dropped the keyboard
+              user on <body> (M06-T03). */}
           <input
-            autoFocus
             placeholder="Type a command or search..."
             className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
             value={query}
@@ -123,7 +146,6 @@ export function GlobalSearch() {
           )}
         </div>
       </div>
-    </>,
-    document.body
+    </Dialog>
   );
 }
