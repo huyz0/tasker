@@ -351,3 +351,38 @@ export const revokedSessions = sqliteTable("revoked_sessions", {
   userId: text("user_id").notNull().references(() => users.id),
   revokedAt: integer("revoked_at", { mode: "timestamp" }).notNull(),
 });
+
+// Agent credentials (ADR-0008). A token is an opaque 256-bit random secret;
+// only its SHA-256 hash is ever stored, so a database dump does not yield a
+// usable credential and the plaintext cannot be re-shown after creation.
+export const apiTokens = sqliteTable("api_tokens", {
+  id: text("id").primaryKey(),
+  // Both, not just agentId: the interceptor authorizes against orgId on every
+  // request, and reading it from the token row rather than joining through the
+  // agent keeps a re-homed agent from silently widening an existing credential.
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  agentId: text("agent_id").notNull().references(() => agents.id),
+  name: text("name").notNull(),
+  // First few characters of the plaintext, kept so the list view can identify a
+  // token ("tskr_a1b2...") without the secret. Not a credential on its own.
+  tokenPrefix: text("token_prefix").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  // JSON array from ADR-0008's fixed vocabulary. Stored as text because both
+  // dialects have to agree and the set is small enough to read whole.
+  scopes: text("scopes").notNull(),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  // NOT NULL by decision, not by oversight: a credential with no expiry is one
+  // nobody ever rotates. Changing this means superseding ADR-0008.
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+  revokedAt: integer("revoked_at", { mode: "timestamp" }),
+}, (table) => {
+  return {
+    // Unique because authentication looks a token up *by* this value - two rows
+    // sharing one would authenticate as whichever the index returned first.
+    tokenHashIdx: uniqueIndex("api_tokens_token_hash_idx").on(table.tokenHash),
+    agentIdIdx: index("api_tokens_agent_id_idx").on(table.agentId),
+    orgIdIdx: index("api_tokens_org_id_idx").on(table.orgId),
+  };
+});

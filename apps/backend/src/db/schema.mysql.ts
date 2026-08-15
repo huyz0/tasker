@@ -328,3 +328,39 @@ export const revokedSessions = mysqlTable("revoked_sessions", {
   userId: varchar("user_id", { length: 256 }).notNull().references(() => users.id),
   revokedAt: timestamp("revoked_at").notNull(),
 });
+
+// Agent credentials (ADR-0008). A token is an opaque 256-bit random secret;
+// only its SHA-256 hash is ever stored, so a database dump does not yield a
+// usable credential and the plaintext cannot be re-shown after creation.
+export const apiTokens = mysqlTable("api_tokens", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  // Both, not just agentId: the interceptor authorizes against orgId on every
+  // request, and reading it from the token row rather than joining through the
+  // agent keeps a re-homed agent from silently widening an existing credential.
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  agentId: varchar("agent_id", { length: 256 }).notNull().references(() => agents.id),
+  name: varchar("name", { length: 256 }).notNull(),
+  // First few characters of the plaintext, kept so the list view can identify a
+  // token ("tskr_a1b2...") without the secret. Not a credential on its own.
+  tokenPrefix: varchar("token_prefix", { length: 32 }).notNull(),
+  // 64 hex characters of SHA-256, fixed width.
+  tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+  // JSON array from ADR-0008's fixed vocabulary. Stored as text because both
+  // dialects have to agree and the set is small enough to read whole.
+  scopes: mediumtext("scopes").notNull(),
+  createdBy: varchar("created_by", { length: 256 }).notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  // NOT NULL by decision, not by oversight: a credential with no expiry is one
+  // nobody ever rotates. Changing this means superseding ADR-0008.
+  expiresAt: timestamp("expires_at").notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => {
+  return {
+    // Unique because authentication looks a token up *by* this value - two rows
+    // sharing one would authenticate as whichever the index returned first.
+    tokenHashIdx: uniqueIndex("api_tokens_token_hash_idx").on(table.tokenHash),
+    agentIdIdx: index("api_tokens_agent_id_idx").on(table.agentId),
+    orgIdIdx: index("api_tokens_org_id_idx").on(table.orgId),
+  };
+});

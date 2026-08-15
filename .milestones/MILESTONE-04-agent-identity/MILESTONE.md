@@ -59,7 +59,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
       - Files: `.specs/adr/ADR-0008-agent-tokens.md`
       - Verify: the ADR names the hash algorithm and the scope list.
 
-- [ ] **M04-T02** — Add the `api_tokens` table to both dialects with migrations:
+- [x] **M04-T02** — Add the `api_tokens` table to both dialects with migrations:
       id, orgId, agentId, name, tokenHash, scopes, expiresAt, lastUsedAt, revokedAt.
       - Files: `db/schema.*.ts`, `drizzle-sqlite/`, `drizzle-mysql/`
       - Verify: migrations apply cleanly on both dialects.

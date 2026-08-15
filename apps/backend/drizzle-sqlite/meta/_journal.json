@@ -162,6 +162,13 @@
       "when": 1786665602000,
       "tag": "0022_invitation_expiry",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1786772023820,
+      "tag": "0023_api_tokens",
+      "breakpoints": true
     }
   ]
 }
