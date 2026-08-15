@@ -184,3 +184,36 @@ standard and wonder which one is wrong.
   - **`#3b82f6` in `Labels` stays too**: it is the default colour offered for a
     user-created label — entity data, not chrome.
 - **Next**: M06-T06
+
+## M06-T06 — The token lint
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `apps/gui/scripts/design-lint.mjs`, `scripts/design-lint.test.mjs`
+- **Verified**: the task's line — "adding `bg-blue-600` fails the lint task" —
+  passes, and so do `text-red-500`, `border-green-400`, `bg-[#123456]`,
+  `text-white` and `bg-black`, each injected into a real source file and each
+  failing `moon run gui:design-lint`. Injected into `src/components`,
+  `src/features` and `src/pages`; all three caught. 16 gate tests pass.
+- **Notes**:
+  - **The rule already existed**; `design-lint`'s `tokens` check has failed on
+    raw hex and raw palette utilities since M05-T01. Saying so beats building a
+    second one.
+  - **It had a real hole, and it is the interesting part of this task.**
+    `text-white`, `bg-black` and `bg-white` carry no shade number, so the
+    shade-based pattern never saw them — and they are *worse* than a palette
+    shade, not better: they are the same colour in both themes, so a component
+    using one is dark-mode-broken by construction. Now caught, with a test that
+    also pins `backdrop-blur-sm` and `whitespace-nowrap` as **not** matches, so
+    the new pattern cannot fire on a token whose name merely contains the word.
+  - **A phantom gap nearly went in the journal as real.** A probe injecting
+    `bg-blue-600` into a `.ts` file appeared to pass the gate, suggesting it only
+    scanned `.tsx`. The injection had silently not applied — the file has no
+    `import` line for my script to anchor on. Re-running it against
+    `statusStyles.ts` failed correctly. This is the second time this discipline
+    has caught a wrong conclusion; **an injection that proves nothing looks
+    exactly like a gate that catches nothing.**
+  - The one surviving `text-white` is on the OAuth button, inside the existing
+    `design-lint-disable-next-line tokens` for GitHub's brand colour — white on
+    that colour is the vendor's button, not this app's chrome.
+- **Next**: M06-T07

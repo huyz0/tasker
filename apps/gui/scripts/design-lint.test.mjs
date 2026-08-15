@@ -125,6 +125,21 @@ test('tokens: flags a raw hex colour', () => {
   assert.ok(found.length >= 1, 'expected a raw hex to be caught');
 });
 
+test('tokens: flags text-white and bg-black, which have no shade to match on', () => {
+  // These are worse than a palette shade, not better: they are the same colour
+  // in both themes, so a component using one is dark-mode-broken by
+  // construction. The shade-based rule never saw them (M06-T06).
+  for (const cls of ['text-white', 'bg-black', 'bg-white', 'border-black']) {
+    const found = lint(`export const T = () => <div className="${cls}" />;`, { only: 'tokens' });
+    assert.ok(found.length >= 1, `expected ${cls} to be caught`);
+  }
+});
+
+test('tokens: does not mistake a token whose name merely contains white or black', () => {
+  const found = lint(`export const T = () => <div className="backdrop-blur-sm whitespace-nowrap" />;`, { only: 'tokens' });
+  assert.deepEqual(found, []);
+});
+
 test('tokens: accepts a semantic token utility', () => {
   const found = lint(`export const T = () => <div className="bg-card text-foreground" />;`, { only: 'tokens' });
   assert.deepEqual(found, []);

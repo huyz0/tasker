@@ -77,6 +77,11 @@ const TW_PREFIX =
 const TW_COLOR =
   '(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
 const RE_TAILWIND = new RegExp(`(?<![\\w-])${TW_PREFIX}-${TW_COLOR}-(?:50|[1-9]00|950)\\b`, 'g');
+// `text-white` and `bg-black` carry no shade number, so the rule above never
+// saw them — and they are worse than a palette shade, not better: they are the
+// same colour in both themes, so a component using one is dark-mode-broken by
+// construction. Added in M06-T06 after the gate passed all three of them.
+const RE_ABSOLUTE = new RegExp(`(?<![\\w-])${TW_PREFIX}-(?:white|black)\\b`, 'g');
 const RE_HEX = /(?<![\w&#])#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}(?:[0-9a-fA-F]{2})?)?\b/g;
 const RE_FONT = /font-family\s*:\s*(?!.*var\()/;
 
@@ -88,6 +93,8 @@ function checkTokens(file, lines) {
     if (disabledAt(lines, i) === 'tokens' || isComment(line)) return;
     for (const m of line.matchAll(RE_TAILWIND))
       add('tokens', file, i + 1, `raw palette utility \`${m[0]}\` — use a semantic token`);
+    for (const m of line.matchAll(RE_ABSOLUTE))
+      add('tokens', file, i + 1, `\`${m[0]}\` is the same colour in both themes — use a semantic token`);
     for (const m of line.matchAll(RE_HEX))
       add('tokens', file, i + 1, `raw hex \`${m[0]}\` — use a semantic token`);
     if (RE_FONT.test(line)) add('tokens', file, i + 1, 'hardcoded font-family — use a token');

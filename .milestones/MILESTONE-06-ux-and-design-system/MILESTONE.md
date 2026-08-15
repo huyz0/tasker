@@ -77,7 +77,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: those three components, `RepositoryIntegrationConfig.tsx`
       - Verify: the login page respects the active theme.
 
-- [ ] **M06-T06** — Add a lint rule (oxlint or a custom check) forbidding raw
+- [x] **M06-T06** — Add a lint rule (oxlint or a custom check) forbidding raw
       Tailwind palette classes and hex literals in `src/components` and `src/features`.
       - Files: `.oxlintrc.json` or `scripts/check-tokens.ts`, `moon.yml`
       - Verify: adding `bg-blue-600` fails the lint task.
