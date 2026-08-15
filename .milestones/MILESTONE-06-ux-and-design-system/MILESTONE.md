@@ -92,7 +92,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: `apps/gui/src/components/layout/Breadcrumbs.tsx`, route views
       - Verify: a deep-linked task shows project → task.
 
-- [ ] **M06-T09** — Replace the two native switcher selects with a searchable
+- [x] **M06-T09** — Replace the two native switcher selects with a searchable
       combobox querying the server by name, showing org hierarchy as indentation.
       - Files: `apps/gui/src/components/layout/OrgProjectSwitcher.tsx`
       - Verify: with 2,000 projects the switcher opens instantly and finds one by typing.

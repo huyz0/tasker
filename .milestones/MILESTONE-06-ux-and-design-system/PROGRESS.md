@@ -290,3 +290,44 @@ standard and wonder which one is wrong.
     folder count for the same reason M05-T10's expansion is: nothing in the
     schema forbids a parent cycle.
 - **Next**: M06-T09
+
+## M06-T09 — A switcher that works at 2,000 projects
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `components/layout/OrgProjectSwitcher.tsx` (rewritten), its suite
+  (3 tests replaced, 11 added)
+- **Verified**: against a real 2,000-project fixture — **1** `ListProjects`
+  request to render the switcher, opens in **75 ms**, shows "Showing 10 of 2001
+  — keep typing to narrow it down", and one further request finds
+  `Bulk Project 1234` by typing. Three requests for the entire session.
+  `gui:test` — 597 pass, branches 95.15%. `moon check --all` — 24 pass.
+- **Notes**:
+  - **The old switcher followed `nextCursor` until it ran out**, for both orgs
+    and projects, before the primary navigation control was usable — at 2,000
+    projects that is 200 requests. The same unbounded-list shape M03 removed
+    from the backend and M05-T04 reintroduced on the client, here in the one
+    component every page mounts.
+  - **The browser found a bug the unit tests could not.** After picking
+    `Bulk Project 1234`, the switcher displayed `Bulk Project 0999`. Closing
+    resets the search, page one comes back without the chosen project on it, and
+    the auto-select effect read that as "the active project is gone" and
+    re-picked `projects[0]`. That effect was correct when the list held *every*
+    project; with one page, "not in this list" means "on another page". Now it
+    only fires when nothing is selected at all, and a test reproduces the exact
+    sequence.
+  - **A native `<select>` cannot do this job**: it cannot search, cannot indent
+    a hierarchy, and cannot say that what you are looking at is ten of two
+    thousand. The replacement is a listbox with the keyboard contract that
+    implies — arrows, Enter, Escape, click-outside — each with a test, because
+    a combobox nobody can drive from the keyboard is a mouse-only control
+    wearing the right ARIA roles.
+  - **Organizations indent under their parents** within the page that came
+    back. An org whose parent is not on this page renders at the top level
+    rather than disappearing: a search result you cannot see is worse than one
+    shown without its context.
+  - **The 2,000-project fixture needed `setupDatabase("sqlite")` explicitly** —
+    `STANDALONE` selects the driver at the server entry point, not inside the
+    helper, so the seed script tried MySQL and hung on `ETIMEDOUT`.
+  - knip caught the `Choice` interface exported for nobody. Fifth time.
+- **Next**: M06-T10
