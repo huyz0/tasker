@@ -107,7 +107,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
       - Files: `apps/gui/src/features/Agents/index.tsx`
       - Verify: an administrator issues and revokes a token from the UI.
 
-- [ ] **M04-T11** — Write the agent integration guide: how an autonomous worker
+- [x] **M04-T11** — Write the agent integration guide: how an autonomous worker
       authenticates, what scopes exist, how to rotate.
       - Files: `docs/agent-integration.md`, `README.md`
       - Verify: a reader can authenticate an agent from the guide alone.

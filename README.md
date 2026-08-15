@@ -64,6 +64,13 @@ With no milestone id, both read `active_milestone` from `STATE.md`.
 The roadmap in [`.specs/product/roadmap.md`](.specs/product/roadmap.md) maps
 every remaining capability to the milestone that owns it.
 
+### Integrating an agent
+
+[**Authenticating an agent**](docs/agent-integration.md) — how an autonomous
+worker gets a token, what the eight scopes grant, what no token can do, and how
+to rotate without downtime. Start here if you are wiring a worker to Tasker
+rather than developing Tasker itself.
+
 ### Foundational context
 
 All foundational context is stored entirely within the `.specs/` directory.

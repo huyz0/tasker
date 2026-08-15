@@ -467,3 +467,36 @@ Append-only. Newest entry at the bottom.
   authorization under `AGENTS.md`. Rewritten on `fireEvent`, which every other
   suite here uses.
 - **Next**: M04-T11
+
+---
+
+## M04-T11 — Agent integration guide
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `docs/agent-integration.md` (new), `README.md` (pointer under
+  Project Navigation)
+- **Verified**: the verify line is "a reader can authenticate an agent from the
+  guide alone", so the guide was **executed**, not proofread. Every command in
+  it was run verbatim against a running backend from a shell with no saved
+  login: issue a token, export it, list, create a task, add a note, the raw
+  `curl` example, the documented refusal messages, and `auth token list`. All
+  produce what the guide says they produce. `moon run tasker:docs-lint` — clean.
+  `moon check --all` — 23 pass.
+- **Executing it found a real error.** §1 issued a token with `tasks:read` and
+  `tasks:write`, and §2 then ran `note-add` with it — which needs
+  `comments:write`. A reader following the guide exactly would have hit
+  `permission_denied: this token lacks the comments:write scope` on the third
+  command of the walkthrough. Fixed in §1, and in the two scripting snippets
+  that repeat the same scope set. Proofreading would not have caught this; the
+  scopes look plausible together.
+- **`jq` is not installed here**, and the scripting snippet uses it. Rather than
+  rewrite around a tool that is the idiomatic choice, the guide now says the
+  secret is the `plaintext` field so any JSON reader will do — and the field
+  name itself was verified, since that is the part that could actually be wrong.
+- **What the guide deliberately covers**: what no token can do (the categorical
+  refusals, not "scopes we left out"), why precedence is `--token` >
+  `TASKER_TOKEN` > saved session, rotation as issue → switch → revoke with the
+  warning that doing it in the other order is what causes downtime, and the
+  per-instance caveat on rate limits.
+- **Next**: M04-T12
