@@ -1,6 +1,6 @@
 ---
 active_milestone: M06
-active_task: null
+active_task: M06-T02
 last_updated: 2026-08-15
 last_commit: 82b6a0f
 blocked: false
@@ -16,9 +16,11 @@ blocker: null
 ## Now
 
 - **Milestone**: M06 — UX, Design System & A11y
-- **Task**: none started
-- **Branch**: `main` — M05 is merged (fast-forward, `82b6a0f`) and pushed.
-  Branch M06 from `main`.
+- **Task**: M06-T02 — component-primitives ADR
+- **Branch**: `main`, at the user's explicit instruction. This overrides
+  `git-workflow-standard.md` and `milestone-standard.md` §5, which both require
+  a `feature/m06-*` branch; recorded so the next session knows it was a decision
+  and not a slip.
 - **Command to continue**: `/milestone-deliver M06`
 
 M05 closed 12/12 tasks and 6/6 exit criteria. With M05 done the frontier is M06
@@ -45,7 +47,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M03 | IAM Correctness & Scale        | done   | M01        | 16    | 16   |
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
 | M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
-| M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |
+| M06 | UX, Design System & A11y       | in-progress | M05   | 13    | 1    |
 | M07 | Read-Path Scale                | todo   | M05        | 11    | 0    |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |

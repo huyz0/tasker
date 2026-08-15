@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../../lib/connectTransport";
 import { RepositoryService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { TONE_CLASSES, buildTone, pullRequestTone } from '../statusStyles';
 
 const repositoryClient = createClient(RepositoryService, transport);
 
@@ -10,22 +11,10 @@ interface RepositoryIntegrationConfigProps {
   projectId: string;
 }
 
-const PR_STATUS_STYLES: Record<string, string> = {
-  open: 'bg-success/10 text-success border-success/20',
-  merged: 'bg-primary/10 text-primary border-primary/20',
-  closed: 'bg-destructive/10 text-destructive border-destructive/20',
-  draft: 'bg-muted text-muted-foreground border-border',
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  SUCCESS: 'bg-success/10 text-success border-success/20',
-  FAILURE: 'bg-destructive/10 text-destructive border-destructive/20',
-  PENDING: 'bg-warning/10 text-warning border-warning/20',
-};
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider border ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground border-border'}`}>
+    <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider border ${TONE_CLASSES[buildTone(status)]}`}>
       {status}
     </span>
   );
@@ -221,7 +210,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
               {pullRequests.map(pr => (
                 <li key={pr.id} className="text-sm flex items-center justify-between px-3 py-2 rounded bg-muted/20">
                   <span>#{pr.remotePrId}: {pr.title}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider border ${PR_STATUS_STYLES[pr.status] || PR_STATUS_STYLES.draft}`}>
+                  <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider border ${TONE_CLASSES[pullRequestTone(pr.status)]}`}>
                     {pr.status}
                   </span>
                 </li>

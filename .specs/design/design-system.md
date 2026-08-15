@@ -17,16 +17,36 @@ We use Semantic HSL variables mapping closely to the Shadcn UI standard.
 
 ### Status Semantics
 
-`destructive` is an **action** (delete this thing). `success`, `warning` and
-`info` are **states** something reports. Each has a solid pair for badges and a
-subtle pair for tinted callouts:
+`destructive` is an **action** (delete this thing). `success`, `warning`, `info`
+and `neutral` are **states** something reports. Each has a solid pair for badges
+and a subtle pair for tinted callouts:
 
-| Token | Solid | Subtle |
-|---|---|---|
-| success | `bg-success text-success-foreground` | `bg-success-subtle text-success-subtle-foreground` |
-| warning | `bg-warning text-warning-foreground` | `bg-warning-subtle text-warning-subtle-foreground` |
-| info | `bg-info text-info-foreground` | `bg-info-subtle text-info-subtle-foreground` |
-| destructive | `bg-destructive text-destructive-foreground` | `bg-destructive-subtle text-destructive-subtle-foreground` |
+| Token | Meaning | Solid | Subtle |
+|---|---|---|---|
+| success | It worked, it is healthy, it is open | `bg-success text-success-foreground` | `bg-success-subtle text-success-subtle-foreground` |
+| warning | It needs attention but has not failed | `bg-warning text-warning-foreground` | `bg-warning-subtle text-warning-subtle-foreground` |
+| info | Worth knowing, not a problem | `bg-info text-info-foreground` | `bg-info-subtle text-info-subtle-foreground` |
+| neutral | Neither good nor bad — draft, todo, archived, unknown | `bg-neutral text-neutral-foreground` | `bg-neutral-subtle text-neutral-subtle-foreground` |
+| destructive | It failed, or this action destroys something | `bg-destructive text-destructive-foreground` | `bg-destructive-subtle text-destructive-subtle-foreground` |
+
+**There is no `danger`.** The failure step is `destructive`, which is also the
+delete-action colour, and the two have never needed to differ. A separate
+`danger` token would have to be introduced everywhere `destructive` is already
+correct, and every call site would then have to answer "is this the action or
+the state?" — a question with no consequence, since the answer is the same
+colour.
+
+**Pick `neutral` over `muted` for a state.** `muted` means *de-emphasised* — a
+disabled control, a secondary label. A "todo" badge is not de-emphasised; it is
+reporting a real state that happens to be uneventful. They looked the same on
+screen, which is why `bg-muted` kept getting used for both, and it left an
+unstyled-looking badge next to styled ones.
+
+**Never spell a status with an alpha tint.** `bg-success/10 text-success` is not
+the subtle pair: it is a fourth colour, it is not contrast-checked (the gate
+reads token pairs, not arbitrary utilities), and it lands slightly different in
+every component that reinvents it. Use `bg-success-subtle
+text-success-subtle-foreground`.
 
 - Reach for these instead of `bg-green-100` / `text-red-800`. Raw palette
   utilities were the single largest source of drift in this codebase.

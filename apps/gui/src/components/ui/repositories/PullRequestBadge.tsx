@@ -1,4 +1,4 @@
-import { GitPullRequest, CircleCheck, CircleDot, AlertCircle } from 'lucide-react';
+import { GitPullRequest, GitPullRequestClosed, CircleDot, AlertCircle } from 'lucide-react';
 
 
 interface PullRequestBadgeProps {
@@ -14,13 +14,17 @@ export function PullRequestBadge({ pr }: PullRequestBadgeProps) {
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'merged':
-        return <GitPullRequest className="w-4 h-4 text-primary" />;
+        return <GitPullRequest className="w-4 h-4 text-info" aria-label="merged" />;
       case 'closed':
-        return <CircleCheck className="w-4 h-4 text-destructive" />;
+        // Was a CircleCheck — a tick — for a pull request that was closed
+        // without merging. The colour said "bad" and the shape said "done",
+        // which is the failure mode the "never by colour alone" rule exists to
+        // prevent: a reader who cannot see the red reads a success (M06-T01).
+        return <GitPullRequestClosed className="w-4 h-4 text-destructive" aria-label="closed" />;
       case 'open':
-        return <CircleDot className="w-4 h-4 text-success" />;
+        return <CircleDot className="w-4 h-4 text-success" aria-label="open" />;
       default:
-         return <AlertCircle className="w-4 h-4 text-muted-foreground" />;
+         return <AlertCircle className="w-4 h-4 text-neutral" aria-label={status} />;
     }
   };
 

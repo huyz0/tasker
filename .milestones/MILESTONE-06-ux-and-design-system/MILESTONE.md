@@ -1,12 +1,12 @@
 ---
 id: M06
 title: UX, Design System & Accessibility
-status: todo
+status: in-progress
 goal: The interface is one coherent visual system, every interaction is operable by keyboard and screen reader, and no view is a dead end.
 depends_on: [M05]
 surfaces: [gui, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-15
 completed_at: null
 ---
 
@@ -50,7 +50,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
 
 ## 5. Task Breakdown
 
-- [ ] **M06-T01** — Define a semantic status colour scale (success, warning,
+- [x] **M06-T01** — Define a semantic status colour scale (success, warning,
       danger, info, neutral) as tokens in `design-system.md` and `index.css`,
       with light and dark values.
       - Files: `.specs/design/design-system.md`, `apps/gui/src/index.css`

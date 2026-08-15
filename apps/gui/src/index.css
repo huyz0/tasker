@@ -50,6 +50,11 @@
   --color-destructive-subtle: hsl(var(--destructive-subtle));
   --color-destructive-subtle-foreground: hsl(var(--destructive-subtle-foreground));
 
+  --color-neutral: hsl(var(--neutral));
+  --color-neutral-foreground: hsl(var(--neutral-foreground));
+  --color-neutral-subtle: hsl(var(--neutral-subtle));
+  --color-neutral-subtle-foreground: hsl(var(--neutral-subtle-foreground));
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -97,6 +102,15 @@
     --info-foreground: 0 0% 100%;
     --info-subtle: 214 95% 95%;
     --info-subtle-foreground: 224 76% 30%;
+
+    /* The fifth step: a state that is neither good nor bad — draft, todo,
+       archived, unknown. It reads as deliberately grey rather than as an
+       unstyled badge, which is what `bg-muted` looked like wherever it was
+       standing in for this. */
+    --neutral: 215 25% 35%;
+    --neutral-foreground: 0 0% 100%;
+    --neutral-subtle: 210 40% 96%;
+    --neutral-subtle-foreground: 215 25% 27%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
@@ -147,6 +161,11 @@
       --info-foreground: 226 71% 10%;
       --info-subtle: 226 57% 17%;
       --info-subtle-foreground: 213 97% 80%;
+
+      --neutral: 215 20% 72%;
+      --neutral-foreground: 215 30% 12%;
+      --neutral-subtle: 217 33% 18%;
+      --neutral-subtle-foreground: 214 32% 80%;
 
       --border: 217.2 32.6% 17.5%;
       --input: 217.2 32.6% 17.5%;
