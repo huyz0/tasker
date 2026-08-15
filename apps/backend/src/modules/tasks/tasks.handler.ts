@@ -584,6 +584,32 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       publishDomainEvent(nc, "domain.task.created", payload);
       return { task: payload };
     },
+    /**
+     * One task, including the fields `listTasks` projects away.
+     *
+     * `description` is unbounded free text that no list renders, so it is not
+     * selected there (M07-T01). This is where the detail view reads it back.
+     */
+    async getTask(req: any, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      if (!req?.taskId) throw new ConnectError("taskId is required", Code.InvalidArgument);
+      const orgId = await getTaskOrgId(db, req.taskId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'tasks:read' });
+
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const rows = await db.select().from(tasks).where(eq((tasks as any).id, req.taskId)).limit(1);
+      if (!rows || rows.length === 0) throw new ConnectError("task not found", Code.NotFound);
+
+      const t = rows[0];
+      const assignees = await assigneesByTask([t.id]);
+      return {
+        task: {
+          ...t,
+          createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
+          assignees: assignees.get(t.id) ?? [],
+        },
+      };
+    },
     async listTasks(req: any, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       if (!req.projectId) throw new ConnectError("projectId is required", Code.InvalidArgument);
@@ -592,7 +618,15 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(tasks)) : notDeleted(tasks);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, and(eq((tasks as any).projectId, req.projectId), deletedFilter), req.page, {
+      // One board column, when asked for. The count that comes back is then
+      // that column's real count, computed by the database over the whole
+      // project rather than by counting one page's worth in the browser
+      // (M07-T03).
+      const statusFacet = req.status ? eq((tasks as any).status, req.status) : undefined;
+      const scope = statusFacet
+        ? and(eq((tasks as any).projectId, req.projectId), deletedFilter, statusFacet)
+        : and(eq((tasks as any).projectId, req.projectId), deletedFilter);
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, scope, req.page, {
         filterColumn: (tasks as any).title,
         sortableColumns: { title: (tasks as any).title, status: (tasks as any).status, createdAt: (tasks as any).createdAt },
         // `description` is free text with no length bound and the list renders

@@ -64,3 +64,42 @@ milestone's fourth exit criterion is that the numbers are committed.
   in the page is what settled it — the absence of a request, not its failure,
   was the signal.
 - **Next**: M07-T03
+
+## M07-T03 — Each board column fetches and counts itself
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `main.tsp` **and** `health.proto` (`ListTasksRequest.status`, new
+  `getTask`), `tasks.handler.ts`, `lib/scopes.ts`,
+  `lib/viewer-denial.test.ts`, `features/Tasks/index.tsx` (new `BoardColumn`),
+  its test (+ 6 tests, 1 replaced), `scripts/seed.ts` (batched task insert)
+- **Verified**: against a **50,000-task** project, in a real browser:
+  **first card painted in 326 ms** (verify line: under one second), **4**
+  `ListTasks` requests for the whole screen, 60 cards, and the column badges
+  read **16667 / 16667 / 16666** — the server's counts, which sum exactly to
+  50,000. Server-side: each faceted page is ~25 ms and every row matches its
+  facet. `gui:test` — 619 pass, branches 95.01%. `backend:test` — 596 pass.
+  `moon check --all` — 26 pass.
+- **Notes**: the board's cost is now the number of columns rather than the size
+  of the project. The old `fetchAllPages` looped until the project was
+  exhausted — at the default page size of 50 that is **1,000 sequential
+  requests** for 50,000 tasks, before anything painted.
+  The reason it needed all of them is worth keeping: a column's contents *and*
+  its count cannot both be had from a page of mixed statuses. Counting rendered
+  cards would say "20", not "16,667". A server-side `status` facet is what makes
+  a real count possible, so the facet and the per-column paging are one change.
+  **Two regressions from T01 surfaced here, one of them mine on paper.** T01's
+  comment said `description` "is read back by `getTask` on the detail view" —
+  and no such RPC existed, so the detail panel would have shown an empty
+  description. `getTask` is now real, and the comment is true. It is also what
+  makes a deep link work at all once the board is paged: the task a URL names
+  need not be on any loaded page.
+  Column discovery changed source. It used to scan every task in the project for
+  an unrecognised status — which required the very fetch this removes. It reads
+  the project's task types now: a status a type declares is a column, and a
+  status no type declares is a data defect rather than a column to invent.
+  **Seed batching was pulled forward from T10** because T03 cannot be verified
+  without data at the scale target, and no project in the fixture had a single
+  task. 50,000 rows insert in 1.4 s batched at 500. The `--scale` interface and
+  the latency script remain T10's.
+- **Next**: M07-T04

@@ -50,6 +50,7 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
   },
   taskManagement: {
     listTasks: 'tasks:read',
+    getTask: 'tasks:read',
     listTaskReviewers: 'tasks:read',
     createTask: 'tasks:write',
     updateTask: 'tasks:write',

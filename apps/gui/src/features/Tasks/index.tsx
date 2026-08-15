@@ -3,7 +3,7 @@ import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
-import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueries, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
@@ -147,11 +147,157 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
 // couple of badges before wrapping.
 const TABLE_COLUMN_WIDTHS = '110px minmax(200px, 1fr) 140px minmax(180px, 260px)';
 
+/** One screenful of cards. A column is a queue to work, not a catalogue. */
+const COLUMN_PAGE = 20;
+
 const DEFAULT_STATUS_OPTIONS = [
   { id: 'todo', display: 'Todo' },
   { id: 'in-progress', display: 'In Progress' },
   { id: 'done', display: 'Done' },
 ];
+
+/**
+ * One board column, which fetches and counts itself.
+ *
+ * The board used to fetch the whole project and group by status in the browser.
+ * That is the only way to get a column's contents *and* its count out of a
+ * single unfaceted list — and it costs 500 sequential round trips at the
+ * 50,000-task scale target. Each column is now its own paginated query with a
+ * server-computed `totalCount`, so the board's cost is the number of columns
+ * rather than the size of the project (M07-T03).
+ *
+ * A component per column rather than a loop of hooks: the hook count then
+ * belongs to the component instance, so columns can appear and disappear
+ * without violating the rules of hooks.
+ */
+function BoardColumn({
+  status,
+  display,
+  projectId,
+  orgId,
+  filter,
+  isAdding,
+  onStartAdding,
+  onCancelAdding,
+  onCreate,
+  isCreating,
+  onOpenTask,
+  pullRequestsByTaskId,
+}: {
+  status: string;
+  display: string;
+  projectId: string;
+  orgId: string;
+  filter?: string;
+  isAdding: boolean;
+  onStartAdding: () => void;
+  onCancelAdding: () => void;
+  onCreate: (title: string) => void;
+  isCreating: boolean;
+  onOpenTask: (taskId: string) => void;
+  pullRequestsByTaskId: Map<string, any[]>;
+}) {
+  const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['tasks', projectId, 'column', status, filter],
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      taskClient.listTasks({
+        projectId,
+        status,
+        page: { cursor: pageParam, limit: COLUMN_PAGE, filter: filter || undefined },
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
+    enabled: !!projectId,
+  });
+
+  const items = data?.pages.flatMap((p) => p.tasks) ?? [];
+  // The server's count over the whole column, not the number loaded so far.
+  const count = Number(data?.pages[0]?.page?.totalCount ?? 0);
+
+  return (
+    <div className="w-80 flex-shrink-0 flex flex-col bg-muted/30 rounded-lg p-3">
+      <div className="flex items-center justify-between mb-3 font-medium text-sm">
+        <span className="flex items-center gap-2">
+          {display}
+          <span className="text-xs bg-muted text-muted-foreground px-2 rounded-full">{count}</span>
+        </span>
+        <button
+          aria-label={`Add task to ${display}`}
+          onClick={onStartAdding}
+          className="text-muted-foreground hover:text-foreground"
+        >+</button>
+      </div>
+      <div className="flex flex-col gap-3 flex-1 overflow-y-auto">
+        {(isLoading || error) && (
+          <ListState
+            isLoading={isLoading}
+            error={error}
+            isEmpty={false}
+            loadingMessage={`Loading ${display.toLowerCase()}…`}
+            emptyMessage=""
+            onRetry={() => refetch()}
+          />
+        )}
+        {items.map((task: any) => (
+          <div
+            key={task.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => onOpenTask(task.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpenTask(task.id);
+              }
+            }}
+            className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          >
+            <div className="text-xs text-muted-foreground mb-1 font-mono">{task.displayId}</div>
+            <h4 className="font-medium text-sm leading-tight mb-2">{task.title}</h4>
+
+            <div className="mb-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
+              <AssigneePicker taskId={task.id} orgId={orgId} assignees={task.assignees ?? []} />
+            </div>
+
+            {(pullRequestsByTaskId.get(task.id)?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {pullRequestsByTaskId.get(task.id)!.map((pr: any) => (
+                  <PullRequestBadge key={pr.id} pr={{ remotePrId: `#${pr.remotePrId}`, title: pr.title, status: pr.status, url: pr.url }} />
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        {hasNextPage && (
+          <button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="w-full py-2 text-xs text-muted-foreground bg-background rounded-md border border-dashed hover:border-solid disabled:opacity-50"
+          >
+            {isFetchingNextPage ? 'Loading…' : `Load more (${items.length} of ${count})`}
+          </button>
+        )}
+        {isAdding ? (
+          <InlineCreateForm
+            placeholder="Task title"
+            isSubmitting={isCreating}
+            onSubmit={onCreate}
+            onCancel={onCancelAdding}
+            className="flex flex-col gap-2 mt-2"
+            inputClassName="border p-2 rounded-md text-sm bg-background"
+            buttonClassName="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+          />
+        ) : (
+          <button
+            aria-label={`Add task to ${display}`}
+            onClick={onStartAdding}
+            className="w-full mt-2 py-2 text-muted-foreground bg-background rounded-md border border-dashed hover:border-solid text-sm shadow-sm"
+          >+</button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function TasksWorkbench() {
   const { confirm, confirmDialog } = useConfirm();
@@ -199,24 +345,48 @@ export function TasksWorkbench() {
   };
   const sortParam = sort ? `${SORT_FIELDS[sort.key]}:${sort.dir}` : undefined;
 
-  const { data: tasksData, isLoading, error: tasksError, refetch: refetchTasks } = useQuery({
+  // The table view, one page at a time.
+  //
+  // This was `fetchAllPages` — it looped the cursor until the project was
+  // exhausted, which at the 50,000-task scale target is 500 sequential round
+  // trips before anything paints. The rows are virtualized, so the pages that
+  // matter are the ones the user has scrolled to (M07-T03).
+  const {
+    data: tablePages,
+    isLoading,
+    error: tasksError,
+    refetch: refetchTasks,
+    fetchNextPage: fetchMoreTasks,
+    hasNextPage: hasMoreTasks,
+    isFetchingNextPage: isFetchingMoreTasks,
+  } = useInfiniteQuery({
     // Filter and sort belong in the key: they change which rows come back, so
     // a shared key would serve one query's results for another's question.
-    queryKey: ['tasks', activeProjectId, debouncedSearch, sortParam],
-    // The Kanban board needs every task to render accurate columns/counts,
-    // not just the first page - loop until the server reports no more pages.
-    queryFn: async () => fetchAllPages(async (cursor) => {
+    queryKey: ['tasks', activeProjectId, 'table', debouncedSearch, sortParam],
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
       // Sent on every page, not just the first: the cursor records which field
       // it was built for, and a page requested without them is a page of a
       // different query.
-      const page = { cursor, filter: debouncedSearch || undefined, sort: sortParam };
-      const resp = await taskClient.listTasks({ projectId: activeProjectId, page });
-      return { items: resp.tasks, nextCursor: resp.page?.nextCursor || undefined };
-    }),
+      const page = { cursor: pageParam, filter: debouncedSearch || undefined, sort: sortParam };
+      return taskClient.listTasks({ projectId: activeProjectId, page });
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
     enabled: !!activeProjectId,
   });
+  const tasksData = tablePages?.pages.flatMap((p) => p.tasks);
+  const taskTotalCount = Number(tablePages?.pages[0]?.page?.totalCount ?? 0);
 
-  const expandedTask = tasksData?.find(t => t.id === expandedTaskId) ?? null;
+  // The open task is fetched by id rather than found among loaded rows: with
+  // the board paged per column, the row a deep link names may be on a page
+  // nothing has loaded. `getTask` also carries `description`, which the list
+  // deliberately projects away (M07-T01).
+  const expandedTaskQuery = useQuery({
+    queryKey: ['task', expandedTaskId],
+    enabled: !!expandedTaskId,
+    queryFn: async () => (await taskClient.getTask({ taskId: expandedTaskId! })).task,
+  });
+  const expandedTask = expandedTaskQuery.data ?? null;
 
   // The project's own name, for the breadcrumb. `getProject` is the right call
   // when all you hold is an id — the alternative is listing every project to
@@ -244,7 +414,16 @@ export function TasksWorkbench() {
   // (see tasks.handler.ts's validateStatusForTaskType) - fetch each distinct
   // task type actually in use so the board can render columns for them
   // instead of hiding tasks whose status doesn't match the 3 defaults.
-  const distinctTaskTypeIds = Array.from(new Set((tasksData ?? []).map(t => t.taskTypeId).filter((id): id is string => !!id)));
+  // Sourced from the project's task types rather than from every task in it.
+  // The old derivation read `taskTypeId` off the whole-project fetch, which is
+  // exactly the fetch this task removes — and a type is worth a column because
+  // the project defines it, not because a task happens to be loaded (M07-T03).
+  const { data: taskTypesData } = useQuery({
+    queryKey: ['taskTypes', activeOrgId],
+    enabled: !!activeOrgId,
+    queryFn: async () => (await taskTypeClient.listTaskTypes({ orgId: activeOrgId })).taskTypes,
+  });
+  const distinctTaskTypeIds = Array.from(new Set((taskTypesData ?? []).map(t => t.id)));
   const taskTypeQueries = useQueries({
     queries: distinctTaskTypeIds.map(taskTypeId => ({
       queryKey: ['taskType', taskTypeId],
@@ -269,16 +448,11 @@ export function TasksWorkbench() {
       }
     }
   }
-  // Defensive: a task's status might not match any known column yet (e.g.
-  // its task type's statuses are still loading) - still give it a column
-  // rather than silently dropping it from the board.
-  for (const t of tasksData ?? []) {
-    const status = t.status || 'todo';
-    if (!seenStatusIds.has(status)) {
-      seenStatusIds.add(status);
-      columnDefs.push({ id: status, display: status });
-    }
-  }
+  // The old fallback scanned every task in the project for an unrecognised
+  // status and gave it a column. That required the whole-project fetch. The
+  // task types above are the authoritative source, and a status no type
+  // declares is a data defect rather than a column to invent.
+
 
   const { data: pullRequestsData } = useQuery({
     queryKey: ['pullRequests', activeProjectId],
@@ -325,10 +499,10 @@ export function TasksWorkbench() {
     },
   });
 
-  const columns = columnDefs.map(col => {
-    const items = tasksData?.filter(t => (t.status || 'todo') === col.id) || [];
-    return { ...col, items, count: items.length };
-  }).filter(col => col.items.length > 0 || DEFAULT_STATUS_OPTIONS.some(d => d.id === col.id));
+  // Each column fetches and counts itself (see BoardColumn). Grouping a page of
+  // mixed statuses in the browser cannot produce a column's real count, which
+  // is why the board used to need every task.
+  const columns = columnDefs;
 
   const expandedTaskStatusOptions = expandedTask?.taskTypeId && statusesByTaskType.has(expandedTask.taskTypeId)
     ? statusesByTaskType.get(expandedTask.taskTypeId)!.map(name => ({ id: name, display: name }))
@@ -354,6 +528,18 @@ export function TasksWorkbench() {
     estimateSize: () => 45,
     overscan: 10,
   });
+
+  // Fetch the next page as the last rows come into view. The same shape the
+  // member list uses (M03-T16): the virtualizer knows what is on screen, so it
+  // is what decides when more is needed.
+  const virtualTaskRows = rowVirtualizer.getVirtualItems();
+  useEffect(() => {
+    const last = virtualTaskRows[virtualTaskRows.length - 1];
+    if (!last) return;
+    if (last.index >= sortedTasks.length - 10 && hasMoreTasks && !isFetchingMoreTasks) {
+      fetchMoreTasks();
+    }
+  }, [virtualTaskRows, sortedTasks.length, hasMoreTasks, isFetchingMoreTasks, fetchMoreTasks]);
 
   return (
     <div className="h-full flex flex-col gap-6">
@@ -421,9 +607,18 @@ export function TasksWorkbench() {
             emptyAction={<p className="text-xs">Switch to the board and use “+” on a column to add the first one.</p>}
             onRetry={() => refetchTasks()}
           >
-            <div ref={tableScrollRef} className="flex-1 overflow-auto">
+            <div
+              ref={tableScrollRef}
+              // Only the visible rows exist in the DOM, so the real size is not
+              // discoverable by tabbing — aria-rowcount carries it, and it is
+              // the server's count of the whole project rather than the number
+              // of pages loaded so far.
+              role="rowgroup"
+              aria-rowcount={taskTotalCount}
+              className="flex-1 overflow-auto"
+            >
               <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
-                {rowVirtualizer.getVirtualItems().map(virtualRow => {
+                {virtualTaskRows.map(virtualRow => {
                   const task = sortedTasks[virtualRow.index];
                   return (
                     <div
@@ -467,80 +662,22 @@ export function TasksWorkbench() {
         </div>
       ) : (
       <div className="flex gap-4 overflow-x-auto pb-4 h-full">
-          {(isLoading || tasksError) && (
-            // The board derives its columns from the query, so a failure left
-            // this pane completely blank — no message, no way to retry.
-            <ListState
-              isLoading={isLoading}
-              error={tasksError}
-              isEmpty={false}
-              loadingMessage="Loading tasks…"
-              emptyMessage=""
-              onRetry={() => refetchTasks()}
+          {columns.map(col => (
+            <BoardColumn
+              key={col.id}
+              status={col.id}
+              display={col.display}
+              projectId={activeProjectId}
+              orgId={activeOrgId}
+              filter={debouncedSearch}
+              isAdding={addingToColumnId === col.id}
+              onStartAdding={() => setAddingToColumnId(col.id)}
+              onCancelAdding={() => setAddingToColumnId(null)}
+              onCreate={(title) => createTaskMutation.mutate({ title, status: col.id })}
+              isCreating={createTaskMutation.isPending}
+              onOpenTask={setExpandedTaskId}
+              pullRequestsByTaskId={pullRequestsByTaskId}
             />
-          )}
-          {!isLoading && !tasksError && columns.map(col => (
-             <div key={col.id} className="w-80 flex-shrink-0 flex flex-col bg-muted/30 rounded-lg p-3">
-               <div className="flex items-center justify-between mb-3 font-medium text-sm">
-                 <span className="flex items-center gap-2">{col.display} <span className="text-xs bg-muted text-muted-foreground px-2 rounded-full">{col.count}</span></span>
-                 <button
-                   aria-label={`Add task to ${col.display}`}
-                   onClick={() => setAddingToColumnId(col.id)}
-                   className="text-muted-foreground hover:text-foreground"
-                 >+</button>
-               </div>
-               <div className="flex flex-col gap-3 flex-1 overflow-y-auto">
-                 {col.items.map(task => (
-                   <div
-                     key={task.id}
-                     role="button"
-                     tabIndex={0}
-                     onClick={() => setExpandedTaskId(task.id)}
-                     onKeyDown={(e) => {
-                       if (e.key === 'Enter' || e.key === ' ') {
-                         e.preventDefault();
-                         setExpandedTaskId(task.id);
-                       }
-                     }}
-                     className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                   >
-                      <div className="text-xs text-muted-foreground mb-1 font-mono">{task.displayId}</div>
-                      <h4 className="font-medium text-sm leading-tight mb-2">{task.title}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{task.description || 'No description provided.'}</p>
-
-                      <div className="mb-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
-                        <AssigneePicker taskId={task.id} orgId={activeOrgId} assignees={task.assignees ?? []} />
-                      </div>
-
-                      {(pullRequestsByTaskId.get(task.id)?.length ?? 0) > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {pullRequestsByTaskId.get(task.id)!.map(pr => (
-                            <PullRequestBadge key={pr.id} pr={{ remotePrId: `#${pr.remotePrId}`, title: pr.title, status: pr.status, url: pr.url }} />
-                          ))}
-                        </div>
-                      )}
-
-                   </div>
-                 ))}
-                 {addingToColumnId === col.id ? (
-                   <InlineCreateForm
-                     placeholder="Task title"
-                     isSubmitting={createTaskMutation.isPending}
-                     onSubmit={(title) => createTaskMutation.mutate({ title, status: col.id })}
-                     onCancel={() => setAddingToColumnId(null)}
-                     className="flex flex-col gap-2 mt-2"
-                     inputClassName="border p-2 rounded-md text-sm bg-background"
-                     buttonClassName="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
-                   />
-                 ) : (
-                   <button
-                     aria-label={`Add task to ${col.display}`}
-                     onClick={() => setAddingToColumnId(col.id)}
-                     className="w-full mt-2 py-2 text-muted-foreground bg-background rounded-md border border-dashed hover:border-solid text-sm shadow-sm"
-                   >+</button>
-                 )}
-               </div>
-             </div>
           ))}
         </div>
       )}

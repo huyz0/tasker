@@ -766,10 +766,33 @@ model ListTaskReviewersResponse {
   @field(1) reviewers: TaskReviewer[];
 }
 
+// One task, with the fields the list deliberately leaves out.
+//
+// `listTasks` projects `description` away: it is unbounded free text and a list
+// renders only titles (M07-T01). The detail view needs it, so it asks for the
+// one task it is showing rather than every task carrying a body nobody reads.
+model GetTaskRequest {
+  @field(1) taskId: string;
+}
+
+model GetTaskResponse {
+  @field(1) task: Task;
+}
+
 model ListTasksRequest {
   @field(1) projectId: string;
   @field(2) page?: PageRequest;
   @field(3) onlyDeleted?: boolean;
+
+  // One board column's worth of tasks.
+  //
+  // The Kanban board used to fetch the *whole project* and group in the
+  // browser, because a column's contents and its count are not derivable from a
+  // page of mixed statuses. At 50,000 tasks that is 500 sequential round trips
+  // before the first column paints. With this facet each column is its own
+  // paginated list and `page.totalCount` is that column's real count, computed
+  // by the database (M07-T03).
+  @field(4) status?: string;
 }
 
 model ListTasksResponse {
@@ -825,6 +848,7 @@ interface TaskService {
   createTask(request: CreateTaskRequest): CreateTaskResponse;
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
   unassignTask(request: UnassignTaskRequest): UnassignTaskResponse;
+  getTask(request: GetTaskRequest): GetTaskResponse;
   listTasks(request: ListTasksRequest): ListTasksResponse;
   updateTask(request: UpdateTaskRequest): UpdateTaskResponse;
   updateTaskStatus(request: UpdateTaskStatusRequest): UpdateTaskStatusResponse;

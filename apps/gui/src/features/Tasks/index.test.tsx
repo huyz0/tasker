@@ -3,9 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
-const { mockGetProject, mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockUpdateTask, mockCreateTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests, mockGetTaskType, mockListTaskNotes, mockUpdateTaskNote, mockDeleteTaskNote } = vi.hoisted(() => ({
+const { mockGetProject, mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockUpdateTask, mockCreateTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests, mockGetTaskType, mockListTaskTypes, mockGetTask, mockListTaskNotes, mockUpdateTaskNote, mockDeleteTaskNote } = vi.hoisted(() => ({
   mockGetProject: vi.fn(),
   mockListTasks: vi.fn(),
+  mockGetTask: vi.fn(),
+  mockListTaskTypes: vi.fn(),
   mockUpdateTaskStatus: vi.fn(),
   mockDeleteTask: vi.fn(),
   mockUpdateTask: vi.fn(),
@@ -34,12 +36,28 @@ vi.mock('@connectrpc/connect', () => ({
       createLabel: vi.fn(),
     };
     if (service === 'RepositoryService') return { listPullRequests: mockListPullRequests };
-    if (service === 'TaskTypeService') return { getTaskType: mockGetTaskType };
+    if (service === 'TaskTypeService') return { getTaskType: mockGetTaskType, listTaskTypes: mockListTaskTypes };
     if (service === 'TaskNoteService') return { listTaskNotes: mockListTaskNotes, updateTaskNote: mockUpdateTaskNote, deleteTaskNote: mockDeleteTaskNote };
     if (service === 'OrgService') return { listOrgMembers: vi.fn().mockResolvedValue({ members: [], page: {} }) };
     if (service === 'ProjectService') return { getProject: mockGetProject };
     if (service === 'AgentService') return { listAgents: vi.fn().mockResolvedValue({ agents: [], page: {} }) };
-    return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask, updateTask: mockUpdateTask, createTask: mockCreateTask, assignTask: vi.fn(), unassignTask: vi.fn(), listTaskReviewers: vi.fn().mockResolvedValue({ reviewers: [] }), addTaskReviewer: vi.fn(), removeTaskReviewer: vi.fn() };
+    return {
+      // `listTasks` as the server implements it. The board asks for one status
+      // at a time now (M07-T03), and every fixture in this file declares the
+      // tasks of a *project* — applying the facet here keeps them meaning what
+      // they say, instead of every card appearing in all three columns.
+      listTasks: async (req: any) => {
+        const res = await mockListTasks(req);
+        if (!req?.status) return res;
+        const tasks = (res?.tasks ?? []).filter((t: any) => (t.status || 'todo') === req.status);
+        // A fixture's own totalCount wins. The server's count is over the whole
+        // column, not the page — a test that says "20 loaded of 16,667" is
+        // describing exactly the case this design exists for, and deriving the
+        // count from the filtered rows would make that untestable.
+        const totalCount = res?.page?.totalCount ?? tasks.length;
+        return { ...res, tasks, page: { ...(res?.page ?? {}), totalCount } };
+      },
+      getTask: mockGetTask, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask, updateTask: mockUpdateTask, createTask: mockCreateTask, assignTask: vi.fn(), unassignTask: vi.fn(), listTaskReviewers: vi.fn().mockResolvedValue({ reviewers: [] }), addTaskReviewer: vi.fn(), removeTaskReviewer: vi.fn() };
   }),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
@@ -98,6 +116,24 @@ function renderPage(initialEntry = '/tasks') {
 describe('TasksWorkbench', () => {
   beforeEach(() => {
     mockListTasks.mockReset();
+    mockGetTask.mockReset();
+    mockListTaskTypes.mockReset();
+    // Board columns for custom statuses come from the project's task types now,
+    // not from scanning every task in the project (M07-T03). Default to none;
+    // the tests that care declare their own.
+    mockListTaskTypes.mockResolvedValue({ taskTypes: [] });
+    // The board is paged per status and the detail view fetches its task by id
+    // (M07-T03), so a test that configures `mockListTasks` is also describing
+    // what `getTask` should answer. Resolve it from the same fixture, and
+    // honour the `status` facet the columns send.
+    mockGetTask.mockImplementation(async ({ taskId }: { taskId: string }) => {
+      const pages = await Promise.all(mockListTasks.mock.results.map((r: any) => r.value).filter(Boolean));
+      for (const page of pages) {
+        const match = (page?.tasks ?? []).find((t: any) => t.id === taskId);
+        if (match) return { task: match };
+      }
+      return { task: { id: taskId, title: '', status: 'todo', description: '' } };
+    });
     mockGetProject.mockReset();
     mockGetProject.mockResolvedValue({ project: { id: 'proj-1', name: 'Seed Project' } });
     mockUpdateTaskStatus.mockReset();
@@ -134,16 +170,92 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
   });
 
-  it('auto-loads later pages so the Kanban board is not missing tasks past the first page', async () => {
-    mockListTasks
-      .mockResolvedValueOnce({ tasks: [{ id: 'task-1', title: 'Page One Task', status: 'todo', description: '' }], page: { nextCursor: 'cursor-2' } })
-      .mockResolvedValueOnce({ tasks: [{ id: 'task-2', title: 'Page Two Task', status: 'todo', description: '' }], page: {} });
+  it('asks the server for one column at a time, rather than the whole project', async () => {
+    // This replaces a test that asserted the board looped the cursor until the
+    // project was exhausted. That was the defect, not the contract: at the
+    // 50,000-task scale target it is 500 sequential round trips before the
+    // first column paints (M07-T03).
+    mockListTasks.mockResolvedValue({
+      tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }],
+      page: { totalCount: 1 },
+    });
 
     renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
 
-    await waitFor(() => expect(screen.getByText('Page One Task')).toBeDefined());
-    await waitFor(() => expect(screen.getByText('Page Two Task')).toBeDefined());
-    expect(mockListTasks).toHaveBeenCalledWith({ projectId: 'proj-1', page: { cursor: 'cursor-2' } });
+    const statusesAsked = mockListTasks.mock.calls.map(([req]: any[]) => req.status).filter(Boolean);
+    expect(statusesAsked).toEqual(expect.arrayContaining(['todo', 'in-progress', 'done']));
+    // Every board request names a status and a bounded page.
+    for (const [req] of mockListTasks.mock.calls) {
+      if (!req.status) continue;
+      expect(req.page.limit).toBe(20);
+    }
+  });
+
+  it('offers Load more when a column has pages left, and appends them', async () => {
+    // A column of 16,667 shows 20. The way to the rest is per column, because
+    // the pages belong to the column rather than to the project (M07-T03).
+    mockListTasks.mockImplementation(async (req: any) => {
+      if (req.status !== 'todo') return { tasks: [], page: { totalCount: 0 } };
+      return req.page?.cursor
+        ? { tasks: [{ id: 'task-2', title: 'Second page task', status: 'todo' }], page: { totalCount: 2 } }
+        : { tasks: [{ id: 'task-1', title: 'First page task', status: 'todo' }], page: { nextCursor: 'c2', totalCount: 2 } };
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('First page task')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: /Load more/ }));
+    await waitFor(() => expect(screen.getByText('Second page task')).toBeDefined());
+    // The first page is still there: pages accumulate rather than replace.
+    expect(screen.getByText('First page task')).toBeDefined();
+  });
+
+  it('does not offer Load more when the column is fully loaded', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Only task', status: 'todo' }], page: {} });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Only task')).toBeDefined());
+    expect(screen.queryByRole('button', { name: /Load more/ })).toBeNull();
+  });
+
+  it('surfaces a failed column without claiming the column is empty', async () => {
+    mockListTasks.mockImplementation(async (req: any) => {
+      if (req.status === 'todo') throw new Error('column unavailable');
+      return { tasks: [], page: { totalCount: 0 } };
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(0));
+    expect(screen.getAllByRole('alert')[0]).toHaveTextContent('column unavailable');
+  });
+
+  it('reads the open task by id, so a deep link works when its page is not loaded', async () => {
+    // The board is paged now, so the task a URL names need not be in any loaded
+    // column. `getTask` also carries `description`, which the list projects
+    // away (M07-T01).
+    mockListTasks.mockResolvedValue({ tasks: [], page: { totalCount: 0 } });
+    mockGetTask.mockResolvedValue({
+      task: { id: 'task-99', title: 'Deep linked task', status: 'todo', description: 'Body only getTask returns', displayId: 'ENG-99' },
+    });
+
+    renderPage('/tasks/task-99');
+
+    await waitFor(() => expect(screen.getByText('Deep linked task')).toBeDefined());
+    expect(mockGetTask).toHaveBeenCalledWith({ taskId: 'task-99' });
+    expect(screen.getByText('Body only getTask returns')).toBeDefined();
+  });
+
+  it('shows each column the count the server reports, not the number of cards loaded', async () => {
+    // A page of 20 cards in a column of 16,667 must still say 16,667. Counting
+    // the rendered cards is exactly what the whole-project fetch existed for.
+    mockListTasks.mockImplementation(async (req: any) => ({
+      tasks: req.status === 'todo' ? [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] : [],
+      page: { totalCount: req.status === 'todo' ? 16667 : 0 },
+    }));
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    expect(screen.getByText('16667')).toBeInTheDocument();
   });
 
   it('shows a pull request badge on a task it is linked to, using real data not a hardcoded placeholder', async () => {
@@ -208,6 +320,7 @@ describe('TasksWorkbench', () => {
     mockListTasks.mockResolvedValue({
       tasks: [{ id: 'task-1', title: 'Custom flow task', status: 'in-review', description: '', taskTypeId: 'tt-1' }],
     });
+    mockListTaskTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Custom' }] });
     mockGetTaskType.mockResolvedValue({
       taskType: { id: 'tt-1' },
       statuses: [{ id: 's-1', name: 'backlog' }, { id: 's-2', name: 'in-review' }, { id: 's-3', name: 'shipped' }],

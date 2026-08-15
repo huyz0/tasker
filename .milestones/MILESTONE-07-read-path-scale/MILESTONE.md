@@ -64,7 +64,7 @@ that it is not adopted before measured need), caching layers, read replicas.
         `features/Artifacts/index.tsx`
       - Verify: listing a folder of 50 images transfers under 100 KB.
 
-- [ ] **M07-T03** — Give the Kanban board per-column pagination with server-side
+- [x] **M07-T03** — Give the Kanban board per-column pagination with server-side
       counts, removing the whole-project fetch.
       - Files: `modules/tasks/tasks.handler.ts`, `features/Tasks/index.tsx`, `main.tsp`
       - Verify: a 50,000-task project paints its first screen in under one second.

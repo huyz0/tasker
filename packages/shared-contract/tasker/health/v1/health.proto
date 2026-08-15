@@ -713,10 +713,26 @@ message PageResponse {
   int32 total_count = 2;
 }
 
+// One task, with the fields the list deliberately leaves out. listTasks
+// projects `description` away — it is unbounded free text and a list renders
+// only titles (M07-T01).
+message GetTaskRequest {
+  string taskId = 1;
+}
+
+message GetTaskResponse {
+  Task task = 1;
+}
+
 message ListTasksRequest {
   string project_id = 1;
   PageRequest page = 2;
   bool onlyDeleted = 3;
+
+  // One board column's worth of tasks. The board used to fetch the whole
+  // project and group in the browser; with this facet each column is its own
+  // paginated list and page.totalCount is that column's real count (M07-T03).
+  string status = 4;
 }
 
 message ListTasksResponse {
@@ -771,6 +787,7 @@ service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
   rpc UnassignTask(UnassignTaskRequest) returns (UnassignTaskResponse);
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
   rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse);
