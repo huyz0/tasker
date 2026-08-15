@@ -3,8 +3,9 @@
 ## 1. Validation & Deserialization
 
 - **Rule**: Never trust boundary inputs (Client API, Webhook, Queue Events).
-- **Zod**: Validation via strict schema (Zod/ArkType) occurs BEFORE execution
-  hits domain logic.
+- **Zod**: Validation via a strict Zod schema occurs BEFORE execution hits
+  domain logic. Zod is the only validation library here — ArkType is not
+  installed.
 - **Coercion**: Strip unlisted JSON fields from incoming properties natively.
 
 ## 2. Authentication & Authorization
@@ -31,7 +32,8 @@
 
 ## 5. Dependency Security
 
-- **Auditing**: Break builds on high CVSS vulnerability alerts (`npm audit` /
-  Snyk).
-- **Locking**: Enforce deterministic versioning via `pnpm-lock.yaml` or
-  `package-lock.json`.
+- **Auditing**: Break builds on high CVSS vulnerability alerts. **No scanner is
+  wired up yet** — it is owned by M11. Do not write `npm audit`; `npm`, `npx`,
+  `yarn` and `pnpm` are forbidden repo-wide (`AGENTS.md`).
+- **Locking**: One lockfile, `bun.lock`, at the workspace root. A second
+  lockfile anywhere in the tree is a defect — see `dependency-standard.md`.
