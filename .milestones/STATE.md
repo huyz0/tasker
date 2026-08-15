@@ -149,6 +149,25 @@ Still open from M02 and unchanged: `/settings` renders a placeholder nothing
 links to (**M05**), and `search_index` is a contentless FTS5 table with no
 writer (**M07**).
 
+**The `Real Integration Tests` workflow's documented cause was wrong.** Every
+handoff note since M01 has said it fails for want of `GITHUB_TEST_TOKEN` /
+`GITHUB_TEST_REPO`. The run on this merge prints `HAS_TOKEN: true` and
+`GITHUB_TEST_REPO: huyz0/tasker-test-sandbox` — the secrets are configured and
+have been. The actual failure is 3 tests in
+`repositories.integration.test.ts`, identical before and after M03 (0 pass /
+3 fail in both), throwing `Repository link not found` from
+`getRepositoryLinkOrgId`. Cause: nothing on that path sets `STANDALONE`.
+`integration.yml` sets only `TASKER_REAL_INTEGRATION` / the two GitHub vars,
+`moon run backend:test-integration` runs `bun test <file>` directly, and that
+file does not import `src/test/setup.ts` (which is where `STANDALONE=true` is
+set for the normal suite). So `isStandalone()` is false, `authz.ts` resolves the
+**MySQL** schema objects, and the test's mock db — which compares
+`table === schemaSqlite.repositoryLinks` by identity — matches nothing and
+returns no rows. Likely a one-line `STANDALONE: "true"` in the workflow env,
+unverified because reproducing it needs the sandbox token. Not fixed here: it is
+outside M03 and I could not verify the fix. **Do not spend time chasing the
+secrets.**
+
 Verified at close: `moon check --all` 23 tasks pass · backend 444 pass / 7 skip ·
 GUI suite green at 95.27% branch coverage · `gui:e2e` 13 pass ·
 `bun run measure:members` PASS at 1k/10k/100k.
@@ -191,8 +210,9 @@ work and pushed; CI run 31857839549 passed all six jobs, and the **Specification
 drift** step ran inside the Workspace job. The earlier hedge in this note — that
 the gate was configuration until a run was seen — is retired. The separate
 **Real Integration Tests** workflow still fails on every push, as it has since
-at least July: it needs `GITHUB_TEST_TOKEN` / `GITHUB_TEST_REPO` secrets.
-Pre-existing and untouched by M02.
+at least July. Pre-existing and untouched by M02. The reason recorded here
+originally — missing secrets — was wrong; see the M03 note above for the real
+cause.
 
 **Deliberately deferred**: a permanent gate for `NAVIGATION.md`. Its route map
 was verified against `App.tsx` by a throwaway script (14 nodes, 14 routes) and
@@ -411,9 +431,9 @@ is now explicit. A workflow that declares the right jobs is not the same as one
 observed to run them — which is why that criterion was hedged.
 
 The separate **Real Integration Tests** workflow (`integration.yml`) still fails
-on every push, as it has since at least July: it needs `GITHUB_TEST_TOKEN` /
-`GITHUB_TEST_REPO` secrets to hit a real GitHub sandbox. Pre-existing and
-untouched by M01.
+on every push, as it has since at least July. Pre-existing and untouched by M01.
+The reason recorded here originally — missing secrets — was wrong; see the M03
+note for the real cause.
 
 M02, M03 and M05 all have their dependencies satisfied now and can run in
 parallel on separate branches. M02 is the cheap unblocking one.
