@@ -1,8 +1,8 @@
 ---
 active_milestone: M03
-active_task: M03-T10
+active_task: M03-T11
 last_updated: 2026-08-15
-last_commit: 0fb5b11
+last_commit: 5d9c3dd
 blocked: false
 blocker: null
 ---
@@ -16,7 +16,7 @@ blocker: null
 ## Now
 
 - **Milestone**: M03 — IAM Correctness & Scale
-- **Task**: M03-T10 — page the agent-role picker
+- **Task**: M03-T11 — expire invitations
 - **Branch**: `feature/m03-iam-correctness-and-scale`
 - **Command to continue**: `/milestone-deliver M03`
 
@@ -40,7 +40,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 |-----|--------------------------------|--------|------------|-------|------|
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
 | M02 | Specification Truth            | done   | M01        | 7     | 7    |
-| M03 | IAM Correctness & Scale        | in-progress | M01   | 15    | 9    |
+| M03 | IAM Correctness & Scale        | in-progress | M01   | 15    | 10   |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |
 | M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |

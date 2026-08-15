@@ -103,7 +103,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
       - Files: `modules/orgs/orgs.handler.ts`, `features/Organizations/index.tsx`
       - Verify: with `limit=1`, every org still renders at its correct depth.
 
-- [ ] **M03-T10** — Page the agent-role picker rather than reading only the first
+- [x] **M03-T10** — Page the agent-role picker rather than reading only the first
       response.
       - Files: `apps/gui/src/features/Agents/index.tsx`
       - Verify: the 120th agent role is selectable.

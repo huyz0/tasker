@@ -40,12 +40,16 @@ export function AgentsDashboard() {
   // Roles are scoped to an organization (ADR-0007), so the active org is part
   // of the key as well as the request - without it, switching orgs would serve
   // the previous org's roles from cache.
+  // Read from one response, this returned only the server's first page - so a
+  // role past that boundary could not be chosen when creating an agent, and any
+  // existing agent holding one rendered with a blank role name in the table
+  // below, because roleNameById had no entry for it.
   const { data: rolesData } = useQuery({
     queryKey: ['agentRoles', activeOrgId],
-    queryFn: async () => {
-      const resp = await agentClient.listAgentRoles({ orgId: activeOrgId });
-      return resp.roles;
-    },
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await agentClient.listAgentRoles({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
+      return { items: resp.roles, nextCursor: resp.page?.nextCursor || undefined };
+    }),
     enabled: !!activeOrgId,
   });
 

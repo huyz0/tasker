@@ -433,3 +433,29 @@ completes the task.
   of its parent, so the unrestricted version hands them the name of an
   organization they were never added to. There is a test for exactly that shape.
 - **Next**: M03-T10
+
+---
+
+## M03-T10 — Page the agent-role picker
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: The roles query reads `resp.roles` from one call, so past the
+  server's page size a role simply cannot be picked and its name renders as
+  blank in the agents table. Page it the way the agents query beside it already
+  does.
+- **Weight**: not heavy. No separate review file: the change is four lines and
+  the two tests are the record.
+- **Changed**: `features/Agents/index.tsx`, its test (+2 cases).
+- **Verified**: `moon check --all` — 23 tasks, 397 GUI tests. Both new tests
+  were confirmed to **fail** against the unpaged query before the fix.
+- **Notes**: the verify line names the 120th role, so the fixture pages at 100
+  and the assertion asks for `Role 120` by its accessible option name. A second
+  case covers the half of this defect the verify line does not mention: an
+  *existing* agent holding a role from a later page rendered with a **blank**
+  role name, because `roleNameById` had no entry for it. Blank reads as data
+  loss rather than as a truncated list, and nothing in the UI said which it was.
+
+  The fix uses the same `fetchAllPages` helper the agents query beside it
+  already used — the two queries sat next to each other, one paged and one not.
+- **Next**: M03-T11

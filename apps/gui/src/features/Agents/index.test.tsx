@@ -313,4 +313,54 @@ describe('AgentsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Failed to update role/)).toBeInTheDocument());
   });
+  // M03-T10: the roles query read one response, so a role past the server's
+  // page size could not be selected when deploying an agent, and any existing
+  // agent holding one showed a blank role name. The verify line names the
+  // 120th role specifically, so the fixture pages at 100.
+  it('makes the 120th agent role selectable', async () => {
+    const page = (from: number, to: number) =>
+      Array.from({ length: to - from }, (_, i) => ({
+        id: `role-${from + i + 1}`,
+        name: `Role ${from + i + 1}`,
+        systemPrompt: '',
+        capabilities: '',
+      }));
+
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockListAgentRoles
+      .mockResolvedValueOnce({ roles: page(0, 100), page: { nextCursor: 'cursor-2' } })
+      .mockResolvedValueOnce({ roles: page(100, 130), page: {} });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Deploy Agent')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Deploy Agent'));
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Role 120' })).toBeInTheDocument());
+    // The first page must still be there — paging should append, not replace.
+    expect(screen.getByRole('option', { name: 'Role 1' })).toBeInTheDocument();
+  });
+
+  it('resolves the name of an agent holding a role from a later page', async () => {
+    mockListAgents.mockResolvedValue({
+      agents: [{ id: 'agent-1', name: 'Scout', agentRoleId: 'role-120', orgId: 'org-1' }],
+    });
+    mockListAgentRoles
+      .mockResolvedValueOnce({
+        roles: Array.from({ length: 100 }, (_, i) => ({ id: `role-${i + 1}`, name: `Role ${i + 1}`, systemPrompt: '', capabilities: '' })),
+        page: { nextCursor: 'cursor-2' },
+      })
+      .mockResolvedValueOnce({
+        roles: [{ id: 'role-120', name: 'Deep Role', systemPrompt: '', capabilities: '' }],
+        page: {},
+      });
+
+    renderPage();
+
+    // Two occurrences once paging works: the agent's role column and the roles
+    // list itself. Before the fix there are none — the role is on page 2, so
+    // the list omits it and the agent's cell renders blank, which reads as data
+    // loss rather than as a truncated list.
+    await waitFor(() => expect(screen.getAllByText('Deep Role')).toHaveLength(2));
+  });
 });
