@@ -2,7 +2,7 @@
 active_milestone: M03
 active_task: M03-T15
 last_updated: 2026-08-15
-last_commit: fabbf07
+last_commit: a0ebe9f
 blocked: false
 blocker: null
 ---
@@ -40,7 +40,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 |-----|--------------------------------|--------|------------|-------|------|
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
 | M02 | Specification Truth            | done   | M01        | 7     | 7    |
-| M03 | IAM Correctness & Scale        | in-progress | M01   | 15    | 14   |
+| M03 | IAM Correctness & Scale        | in-progress | M01   | 15    | 15   |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |
 | M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |

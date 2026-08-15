@@ -371,20 +371,53 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
 
-      // Atomically claim this project's next task number, then build a
-      // stable, human-readable display ID from the project's key + that
-      // number (e.g. "ENG-42") - assigned once here, never recomputed, so it
-      // survives a later project rename. Under MySQL, `SELECT ... FOR UPDATE`
-      // inside a transaction locks the project row so two concurrent creates
-      // can't both read the same nextTaskNumber; SQLite's single-writer model
-      // makes this atomic without locking (and doesn't support FOR UPDATE).
-      const { projectRow, taskNumber } = await db.transaction(async (tx: any) => {
-        const rowQuery = tx.select().from(ps).where(eq((ps as any).id, parsed.projectId));
-        const [row] = isStandalone ? await rowQuery.limit(1) : await rowQuery.for("update").limit(1);
-        const claimedNumber = row.nextTaskNumber;
-        await tx.update(ps).set({ nextTaskNumber: claimedNumber + 1 }).where(eq((ps as any).id, parsed.projectId));
-        return { projectRow: row, taskNumber: claimedNumber };
-      });
+      // Claim this project's next task number, then build a stable,
+      // human-readable display ID from the project's key + that number (e.g.
+      // "ENG-42") - assigned once here, never recomputed, so it survives a
+      // later project rename.
+      //
+      // The claim must be a single indivisible read-modify-write. It was not:
+      // this ran `await db.transaction(async tx => …)` for both dialects, and
+      // on bun:sqlite that transaction did nothing at all. Drizzle hands the
+      // callback to `client.transaction(fn)`, which commits as soon as `fn`
+      // returns; an `async` callback returns a promise immediately, so COMMIT
+      // landed before the read had happened. Eight concurrent creates against
+      // one project all returned `ENG-1`.
+      //
+      // The two dialects need different code, and the comment that used to sit
+      // here - "SQLite's single-writer model makes this atomic without
+      // locking" - was the mistake. Single-writer protects one *statement*.
+      // Between an awaited SELECT and an awaited UPDATE the event loop is free
+      // to run another request's SELECT, and that is exactly what happened.
+      let projectRow: any;
+      let taskNumber: number;
+
+      if (isStandalone) {
+        // Synchronous throughout: no `await` anywhere inside, so nothing can
+        // interleave between the read and the write, and drizzle's sync
+        // transaction commits only after both have run.
+        const claim = db.transaction((tx: any) => {
+          const [row] = tx.select().from(ps).where(eq((ps as any).id, parsed.projectId)).all();
+          const claimedNumber = row.nextTaskNumber;
+          tx.update(ps).set({ nextTaskNumber: claimedNumber + 1 }).where(eq((ps as any).id, parsed.projectId)).run();
+          return { projectRow: row, taskNumber: claimedNumber };
+        });
+        projectRow = claim.projectRow;
+        taskNumber = claim.taskNumber;
+      } else {
+        // mysql2's transaction is genuinely async and holds one pooled
+        // connection, so `SELECT ... FOR UPDATE` locks the project row for the
+        // duration and two concurrent creates serialise on it.
+        const claim = await db.transaction(async (tx: any) => {
+          const [row] = await tx.select().from(ps).where(eq((ps as any).id, parsed.projectId)).for("update").limit(1);
+          const claimedNumber = row.nextTaskNumber;
+          await tx.update(ps).set({ nextTaskNumber: claimedNumber + 1 }).where(eq((ps as any).id, parsed.projectId));
+          return { projectRow: row, taskNumber: claimedNumber };
+        });
+        projectRow = claim.projectRow;
+        taskNumber = claim.taskNumber;
+      }
+
       const displayId = `${projectRow.key}-${taskNumber}`;
 
       const newId = `tsk-${crypto.randomUUID()}`;

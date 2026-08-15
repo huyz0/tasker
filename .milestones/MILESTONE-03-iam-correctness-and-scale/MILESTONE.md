@@ -128,7 +128,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
 
 ### Discovered during delivery
 
-- [ ] **M03-T15** — Make `createTask`'s task-number claim atomic on SQLite.
+- [x] **M03-T15** — Make `createTask`'s task-number claim atomic on SQLite.
       `db.transaction(async …)` is a no-op on `bun:sqlite`: drizzle hands the
       callback to `client.transaction(fn)`, which commits as soon as `fn`
       returns, so an async callback commits before its first statement runs.

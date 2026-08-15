@@ -3,7 +3,7 @@ import { Code } from "@connectrpc/connect";
 import { eq, and } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin, seedProject } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { createTasksHandler } from "./tasks.handler";
+import { createTasksHandler, createTaskManagementHandler } from "./tasks.handler";
 
 describe("Tasks Handler Integration Tests", () => {
   test("createTaskType can create, publish, and retrieve task types", async () => {
@@ -619,5 +619,74 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(
       taskHandler.updateTaskStatus({ taskId: created.task.id, status: "todo" }, ctx)
     ).rejects.toThrow();
+  });
+});
+
+describe("Concurrent task creation (M03-T15)", () => {
+  /**
+   * `createTask` claims a project's next task number inside a transaction and
+   * builds the display id from it. On bun:sqlite that transaction did nothing:
+   * drizzle hands the callback to `client.transaction(fn)`, which commits as
+   * soon as `fn` returns, and an `async` callback returns a promise
+   * immediately - so the COMMIT landed before the read-modify-write had run.
+   *
+   * The effect was not subtle. Eight concurrent creates against one project all
+   * returned `ENG-1`: every task in the project sharing one human-readable id,
+   * which is the id people paste into chat and search for.
+   *
+   * Found while fixing the same shape in purgeOrg (M03-T03).
+   */
+  const seedProjectForTasks = async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createTaskManagementHandler(db, nc);
+    const suffix = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const orgId = "org-conc-" + suffix;
+    const userId = "user-conc-" + suffix;
+    const templateId = "tmpl-conc-" + suffix;
+    const projectId = "proj-conc-" + suffix;
+
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Conc Org", slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@t.local`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId, role: "admin", joinedAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({
+      id: projectId, orgId, templateId, ownerId: userId, name: "P", key: "ENG", nextTaskNumber: 1, createdAt: new Date(),
+    });
+    return { db, handler, projectId, ctx: makeAuthContext(userId) };
+  };
+
+  test("concurrent creates each claim a distinct task number", async () => {
+    const { handler, projectId, ctx } = await seedProjectForTasks();
+
+    const results = await Promise.all(
+      Array.from({ length: 8 }, (_, i) => handler.createTask({ projectId, title: `Task ${i}` }, ctx)),
+    );
+
+    const displayIds = results.map((r: any) => r.task.displayId);
+    expect(new Set(displayIds).size).toBe(displayIds.length);
+    expect([...displayIds].sort()).toEqual(
+      ["ENG-1", "ENG-2", "ENG-3", "ENG-4", "ENG-5", "ENG-6", "ENG-7", "ENG-8"].sort(),
+    );
+  });
+
+  test("the project's counter ends where the claims did", async () => {
+    const { db, handler, projectId, ctx } = await seedProjectForTasks();
+
+    await Promise.all(Array.from({ length: 5 }, (_, i) => handler.createTask({ projectId, title: `T${i}` }, ctx)));
+
+    // A counter that lags behind hands out ids that are unique today and
+    // collide with the next batch.
+    const [project] = await db.select().from(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, projectId));
+    expect(project.nextTaskNumber).toBe(6);
+  });
+
+  test("sequential creates still number consecutively", async () => {
+    const { handler, projectId, ctx } = await seedProjectForTasks();
+
+    const first: any = await handler.createTask({ projectId, title: "one" }, ctx);
+    const second: any = await handler.createTask({ projectId, title: "two" }, ctx);
+
+    expect(first.task.displayId).toBe("ENG-1");
+    expect(second.task.displayId).toBe("ENG-2");
   });
 });

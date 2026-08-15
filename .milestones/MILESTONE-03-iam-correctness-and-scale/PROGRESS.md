@@ -633,3 +633,44 @@ un-indexed join predict. That is the shape M07 will change, not this milestone.
   only by hand, so it now has a `measure:members` package script, which is both
   what knip wanted and better ergonomics.
 - **Next**: M03-T15
+
+---
+
+## M03-T15 — Make the task-number claim atomic on SQLite
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: Same defect M03-T03 found in `purgeOrg`, in the one other
+  `db.transaction` call site: bun:sqlite commits when the callback returns, so
+  an async callback commits before its first statement runs. Rewrite the SQLite
+  path synchronously, audit every call site, and commit the concurrency test
+  that proved it — eight concurrent `createTask` calls all returned `ENG-1`.
+- **Weight**: not heavy on the decision axis, but it is a correctness defect in
+  a hot path, so [the review](reviews/M03-T15-atomic-task-number-v1.md) runs.
+- **Changed**: `modules/tasks/tasks.handler.ts`, `tasks.test.ts` (+3 cases).
+- **Verified**: `moon check --all` — 23 tasks green. The verify line is the
+  test: eight concurrent `createTask` calls now produce `ENG-1`…`ENG-8`, and it
+  was **red before the fix** — the same eight all returned `ENG-1`.
+- **Audit**: `grep '\.transaction('` across `apps/backend/src` returns exactly
+  two call sites — `orgs.handler.ts` (fixed in M03-T03) and
+  `tasks.handler.ts` (this task), plus a comment in `db.ts`. No third site.
+- **Notes**: **the comment was the mistake, not just the code.** The block was
+  headed "SQLite's single-writer model makes this atomic without locking",
+  which is true of a single statement and false of a read-modify-write spanning
+  two awaits: between the awaited SELECT and the awaited UPDATE the event loop
+  is free to run another request's SELECT. The replacement says what protects
+  the claim in each dialect instead of asserting nothing needs to.
+
+  The counter assertion earns its place separately from the distinctness one. A
+  claim that hands out unique ids but leaves `nextTaskNumber` behind produces
+  ids that are unique today and collide with the next batch — a
+  distinctness-only test passes that. And the sequential case is a control: it
+  passed before the fix and must keep passing, so "the ids are distinct" cannot
+  be satisfied by breaking numbering altogether.
+- **Residual risk, flagged for M12**: this defect is invisible and repeatable.
+  Both occurrences were found by accident — the first while writing a rollback
+  test, the second while investigating the first. A third would look identical:
+  correct-reading code, a green suite, wrong behaviour only under concurrency.
+  A lint rule or a wrapper that refuses an async callback on the sqlite driver
+  would make it structural rather than remembered.
+- **Next**: milestone close
