@@ -235,3 +235,56 @@ against `tech-stack.md`" — one direction. It runs both. A document naming a
 package nobody installed is the defect this milestone opened with: an agent
 reads `tech-stack.md`, imports Radix, and the build fails. Catching only
 undocumented additions would leave that class untouched.
+
+---
+
+## M02-T05 — Reconcile NAVIGATION.md with the routes that exist
+
+**Date**: 2026-08-15
+**Status**: done
+**Approach**: Extract the route table from `App.tsx`, diff it against every
+route named in `NAVIGATION.md`, and rewrite the document to match. Rules that
+describe behaviour nothing implements — breadcrumbs, nested context — get
+labelled M06-owned rather than deleted. Verify by script, both directions.
+
+**Changed**: `.specs/design/NAVIGATION.md` — rewritten as a route map, a route
+table, a "what is not a route" section, and rules split into enforced vs
+required-and-unbuilt.
+
+**Verified**: scripted, both ways. Every node label in the mermaid diagram
+resolves to a `<Route path="…">` in `App.tsx`, and every declared route appears
+in the table: **14 diagram nodes, 14 declared routes, 0 mismatches**. Cited
+lines checked individually (`AppShell.tsx:22-29`, `:75`,
+`Organizations/index.tsx:20`, `App.tsx:43`). The breadcrumb claim was confirmed
+by the grep the document quotes — it returns nothing. `docs-lint` clean.
+
+**What the evidence changed about the plan**:
+
+- **The old diagram had almost no routes in it.** Its nodes were concepts —
+  "Org Settings", "Teams View", "Project Hub", "Activity Log", "Agent Config".
+  None is a route; `Teams` does not exist in any form (that is M10) and there is
+  no `/projects/:projectId` at all. The verify line, "every route in the mermaid
+  map exists in `App.tsx`", could not have been satisfied by patching labels, so
+  the rule is now explicit at the top: **a node in the diagram is an address**.
+  Everything else moved to §3.
+- **Six real routes were missing from the document**: `/labels`, `/bin`,
+  `/settings`, `/login`, `/oauth/callback` and the `*` Not Found catch-all, plus
+  the two detail routes M01 added. The sidebar has eight items; the old diagram
+  drew six.
+- **`/settings` is orphaned** — the route resolves and renders
+  `GenericPlaceholder`, and nothing in the application links to it. Recorded as
+  a decision M05 has to make (entry point or delete) rather than silently
+  documented as if it were reachable.
+- **Rule 2 described a URL the router answers with Not Found.** It required the
+  sidebar to keep `Projects` highlighted while at `/projects/xyz/tasks/123`. No
+  nested route of that shape exists, so there is no context to retain. It is now
+  a requirement conditional on M05 building project-scoped routes.
+- **Rule 3 required breadcrumbs on every detail view**; there is no breadcrumb
+  component anywhere in `apps/gui/src`. Labelled M06.
+
+**Recommended, not built**: the route/table agreement was verified with a
+throwaway script. The same argument that justifies `spec-drift` applies here —
+`NAVIGATION.md` will drift the moment someone adds a route. A permanent check
+belongs in `moon check`, but M02's exit criteria name only the dependency drift
+check, and T05's file list is `NAVIGATION.md` alone. Flagging it for M05, which
+is the milestone that will actually add routes.

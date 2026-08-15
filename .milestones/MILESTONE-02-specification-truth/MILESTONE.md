@@ -76,7 +76,7 @@ a later milestone and must be referenced, not built, here.
       - Files: `scripts/spec-drift.ts`, `moon.yml`, `.github/workflows/ci.yml`
       - Verify: adding a dependency without documenting it fails the check.
 
-- [ ] **M02-T05** — Reconcile `NAVIGATION.md` with the routes that exist after M01,
+- [x] **M02-T05** — Reconcile `NAVIGATION.md` with the routes that exist after M01,
       and mark breadcrumb and nested-context rules as M06-owned.
       - Files: `.specs/design/NAVIGATION.md`
       - Verify: every route in the mermaid map exists in `App.tsx`.
