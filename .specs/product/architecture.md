@@ -1,78 +1,261 @@
 # Architecture & Principles
 
-## System Context
+This document has two halves and one rule.
 
-Tasker operates as the foundational **Task Management System for AI Agents and Humans**.
+**Built** describes the system that exists. Every mechanism stated in the
+present tense cites the file that implements it. If you cannot cite a path, the
+statement does not belong in this half.
 
-- **Internal Entities**: Designed to scale for up to 20K AI Agents, 20K Human Users, 20K Teams, and 2K Concurrent Projects.
-- **External Integrations**:
-  - *Identity/Auth*: Google Auth (OAuth2.1) for humans; Machine-to-Machine (M2M) API tokens tailored for Agents.
-  - *AI Execution Platforms*: Interfaces with external autonomous agent runtimes via standardized API contracts (TypeSpec).
-  - *Monitoring & Observability*: OpenTelemetry (OTel) for distributed tracing, metrics, and structured logging. In production environments, it is configured via standard environment variables (OTLP) to seamlessly export to well-known observability platforms like Datadog, Prometheus, Grafana Tempo, or Jaeger. In standalone/portable local deployments, it gracefully falls back to no-op or stdout reporting to prevent unreachable dependency errors.
+**Planned Architecture** describes what is intended and not yet built. Every
+entry names the milestone that owns it. Nothing there may be imported, called,
+or assumed by code written today.
 
-## Component Design (Container View)
+> Libraries and versions: [tech-stack.md](./tech-stack.md). Decisions and their
+> reasons: [`.specs/adr/`](../adr/). Delivery order: [roadmap.md](./roadmap.md).
 
-- **Frontend (Web App)**: React SPA served with Server-Side Rendering (SSR) where necessary. Designed primarily for humans to interact, monitor, and provide feedback to agents in real-time. Features interactive visual editors utilizing React Flow, offering dual support with textual language definitions for complex workflows and state machines.
-- **CLI & AI Agent Skills**: A suite of command-line tools and executable agent skills that interface directly with the API Gateway. These afford AI agents and advanced users scriptable, fast access to the system.
-- **API Gateway & Core Logic (Backend)**: Bun + gRPC. High-performance, low-latency command routing. Provides bi-directional streaming for fast synchronization with Agent systems.
-- **Event Bus**: NATS. The central nervous system of the architecture decoupling side-effects from primary logic, capable of scaling to 40K+ concurrent pub/sub connections.
-- **Primary Data Store**: MySQL. The source of truth for transactional states.
-- **Search & Analytics**: OpenSearch. Handles heavy reading and complex filtering (e.g., retrieving failed task logs across multiple teams) without impacting MySQL performance.
-- **Data Storage Abstraction**: The backend provides flexible interfaces for both the transactional database and search layers. This abstraction allows seamless switching between enterprise clustered components (MySQL/OpenSearch) and `bun:sqlite` with the FTS5 extension, empowering standalone, zero-config local execution without losing full-text search capability.
+---
 
-## Architectural Patterns & Intents
+## Built
 
-### Domain-Driven Design (DDD)
+### System context
 
-The codebase, specifically the backend, is separated into strict **Bounded Contexts** (e.g., `Organizations/Teams`, `Projects`, `Tasks`, `Artifacts`, `Feedback`).
+Tasker is a task-management system whose clients are both humans and AI agents.
+It exposes one API contract, defined in TypeSpec and served over Connect-RPC,
+consumed by a React SPA (`apps/gui/`) and a Go CLI (`apps/cli/`).
 
-- **Intent**: By restricting modules to their own domain boundaries, agents operate within clear boundaries, avoiding cross-domain entanglement. When states change in one domain (e.g., a Task concludes), it publishes a Domain Event via NATS, allowing other domains to react independently.
+- **Human identity** is Google OAuth 2.1 — `apps/backend/src/modules/auth/auth.ts`
+  for the routes, `modules/auth/session.ts` for cookie/bearer session
+  resolution, `lib/sessionRevocation.ts` for revocation checks.
+- **Agent identity** is not separate from human identity yet. Agents are rows in
+  the agent tables (`modules/agents/agents.handler.ts`); there is no M2M token
+  issuance. That is **M04**.
+- **External runtimes** integrate by calling the same Connect-RPC contract. There
+  is no separate agent-execution protocol.
 
-### Command-Query Responsibility Segregation (CQRS)
+### Process and transport
 
-Because AI agents generate extreme volumes of write activity compared to human reads, the architecture splits processing asymmetrically:
+One process serves everything (`apps/backend/src/index.ts`):
 
-- **Write Path (Commands)**: Incoming state changes from Agents/Humans are synchronous. They are handled by Bun, validated using Zod, and committed transactionally to MySQL. Upon database commit, an event is emitted to NATS.
-- **Read Path (Queries)**: To prevent blocking the main transactional database, UI and Agent search queries generally read from **OpenSearch**. NATS events continually sync MySQL state into OpenSearch materialized views.
-- **Intent**: Ensure that a spike in Agents aggressively updating task logs will never degrade the dashboard query performance for human managers.
+- A `node:http` server on port 8080 is the listener (`index.ts:157`).
+- Connect-RPC handlers are mounted through `connectNodeAdapter` from
+  `@connectrpc/connect-node`. Fourteen services are registered from the
+  generated contract (`index.ts:3`).
+- **Elysia handles two route groups only**, not the whole surface:
+  `/api/auth/*` (`modules/auth/auth.ts`) and `/api/client-errors` + `/api/debug/*`
+  (`modules/telemetry/telemetry.ts`). `index.ts:113-145` dispatches to them by
+  URL prefix and caps request bodies at 256 KiB before any handler runs.
+- **All RPCs are unary.** The TypeSpec contract declares no streaming methods,
+  so nothing in the system is bi-directionally streaming today.
 
-### Modular Monolith (Moving to Microservices)
+Cross-cutting behaviour is implemented as Connect interceptors in `index.ts`:
+session resolution, request logging (`lib/requestLogging.ts`) and per-method
+latency capture (`lib/rpcMetrics.ts`).
 
-- **Intent**: The application is structured logically as independent feature modules within a single monorepo deployable. This provides speed and simplicity during the initial development phases. As the system scales toward 20K users/agents, specific high-load bound contexts can be trivially extracted independently.
+### Bounded contexts
 
-### CLI: Dual-Surface Architecture (Agent DX vs Human DX)
+The backend is a **modular monolith**. Twelve modules under
+`apps/backend/src/modules/` own their own handlers and schema access:
 
-Because AI agents and humans interact fundamentally differently, the CLI must provide a **Dual-Surface Interface** from the same binary.
+`agents`, `artifacts`, `auth`, `comments`, `health`, `labels`, `orgs`,
+`projects`, `repositories`, `search`, `tasks`, `telemetry`.
 
-- **Human DX (Discoverability)**: Optimizes for interactive terminals, rich colors, bespoke flags (`--title "My Doc"`), and step-by-step wizards.
-- **Agent DX (Predictability)**: Optimizes for zero-trust, deterministic Machine-to-Machine communication.
-  - **Raw JSON Payloads**: Agents invoke commands via `--json` mapped strictly to the API schema, neutralizing hallucinated nested flags.
-  - **Schema Introspection**: The CLI acts as its own documentation. Agents can run `cli schema [cmd]` to introspect exactly what is accepted at runtime without costing token limits.
-  - **Context Window Discipline**: Support for strict field masks (`--fields`) and NDJSON pagination (`--page-all`) ensures AI agents do not blow their LLM context window limits reading large data dumps.
-  - **Input Hardening against Hallucinations**: Zero-trust defense-in-depth on agent inputs enforcing strict sanitization specifically against adversarial edge-cases (e.g., double-url-encoding, rejected path traversals `../../.ssh`, hallucinated query parameters embedded in resource IDs).
-  - **Multi-Surface Accessibility**: Rather than just `stdio`, the CLI is simultaneously exposed via the **Model Context Protocol (MCP)** using JSON-RPC, or as a plugin/extension.
+Each exports a `create*Handler(router, db, nc)` factory registered in
+`index.ts`. Modules do not import one another's handlers; shared behaviour lives
+in `src/lib/`.
 
-### Hierarchical Configuration Strategy
+### Data
 
-To support both zero-dependency portable executables and highly scalable cloud-native deployments, the application employs a rigid hierarchical configuration loader natively validated by Zod schemas at runtime:
+- **Two dialects, two schemas**: `db/schema.mysql.ts` and `db/schema.sqlite.ts`.
+  `db/db.ts` selects one via `setupDatabase("sqlite" | "mysql")`, driven by the
+  `STANDALONE` environment variable (`index.ts:38`).
+- Handlers pick the matching schema module at call time rather than at import
+  time — see the comment in `lib/authz.ts:8-13` explaining why freezing it at
+  module load queried the wrong dialect under test.
+- **Multi-tenant access control is enforced in application code**, not by
+  database row-level security. `lib/authz.ts` provides `requireUserId`,
+  `assertOrgMember` and `getOrgMemberRole`; org roles are `owner`, `admin`,
+  `member`, `viewer`, with `owner` treated as a superset of `admin`
+  (`lib/authz.ts:38`).
+- `db/query-builder.ts` centralises pagination and filter construction.
+- **Retention**: `lib/retentionSweep.ts` runs hourly from `index.ts:162`.
+  `lib/cascadePurge.ts` implements hard deletion.
 
-- **Cloud-Native / Production**: Fully relies on `process.env` (e.g., K8s ConfigMaps/Secrets) as the primary source of truth, providing 12-factor app compliance.
-- **Portable Executable / Local**: Seamlessly supports `.env` files dynamically loaded by Bun from the CWD next to the binary, allowing zero-friction user configuration without managing system environments.
-- **Runtime Validation**: The application "Fails Fast" strictly if parsing the Zod config schema fails, providing clear and precise error documentation to end users.
+### Search
 
-## Deployment View
+**Search is `LIKE`-based.** `modules/search/search.handler.ts:35` builds
+`column LIKE ? ESCAPE '\'` with caller input escaped for `%`, `_` and `\`.
 
-- **Packaging & Portability**: The architecture leverages `bun build --compile` natively with `bun:sqlite` to package the frontend and backend into a single, highly portable, easy-to-run executable with zero external database dependencies. In this standalone mode, frontend-to-backend network overhead is eliminated; communication is routed via lightweight, in-process function calls that still rigorously align with the defined Connect-RPC API contracts.
-- **Infrastructure**: Cloud-native, relying on containerized application deployments (e.g., Docker + Kubernetes, or AWS ECS/GCP Cloud Run).
-- **Backend Nodes**: Bun Backend containers run immutably and scale horizontally behind a load balancer to accommodate streaming (Connect-RPC) requests.
-- **Data Layers**: Managed MySQL with Read Replicas and point-in-time recovery. Managed OpenSearch cluster.
-- **Messaging Node**: NATS deployed as a resilient, multi-node clustered service ensuring high availability.
-- **Edge Delivery**: Frontend built via Vite and distributed globally through a CDN for minimal latency.
+An FTS5 virtual table named `search_index` is created in `db/db.ts:27` and is
+read only by the health probe. **Nothing writes to it.** It is scaffolding, not
+an index. A real search path is **M07**.
 
-## Non-Functional Requirements (NFRs)
+### Events
 
-- **Scalability**: NATS pub/sub and Bun instances are designed to scale horizontally to effortlessly handle up to 40K concurrent connections. Database partitioning by Bounded Context is considered for future horizontal scale.
-- **Performance**: High throughput per second (TPS) achieved. Use of gRPC, Connect-RPC, and strict Zod runtime validation ensures typical agent operations remain extremely low latency (P95 < 50ms).
-- **Reliability**: Asynchronous event-driven fallbacks. If OpenSearch indexing drops, writes can still be safely processed in MySQL, providing graceful degradation.
-- **Security**: OAuth2.1 for human SSO. Strict API limits and quotas applied to specific AI Agent keys. Multi-tenant row-level access controls implemented via Drizzle ORM.
-- **Developer Speed**: Full end-to-end type safety from database (Drizzle) to runtime (Bun/Zod) to client (React Query/TypeSpec). Monorepo execution via fast tools like Vite and Bun.
+The backend **publishes** domain events to NATS and consumes none.
+
+- Connection: `index.ts:51`, wrapped by `lib/natsCorrelation.ts` so every
+  `domain.*` payload carries the request correlation id.
+- `publishDomainEvent(nc, subject, payload)` (`lib/natsCorrelation.ts:43`) is a
+  no-op when NATS is unreachable, so a missing broker degrades rather than fails.
+- Publishers: `modules/{tasks,agents,comments,labels,repositories}` handlers,
+  plus `modules/tasks/task_notes.handler.ts`. Subjects follow
+  `domain.<entity>.<verb>` — e.g. `domain.task.status_updated`
+  (`modules/tasks/tasks.handler.ts:576`).
+- **There is no subscriber anywhere in the repository.** No audit trail is
+  derived from these events and no client is updated by them. Consumers are
+  **M08**.
+
+### Configuration
+
+`apps/backend/src/config.ts` implements a hierarchical loader validated by Zod
+at startup, with `config.test.ts` covering it.
+
+- Production reads `process.env`, which satisfies 12-factor deployment.
+- Standalone reads a `.env` next to the binary, loaded by Bun from the CWD.
+- Parsing failure is fatal at boot rather than deferred to first use.
+
+### Observability
+
+**Telemetry is in-process counters over Pino, not OpenTelemetry.** No
+`@opentelemetry` package is installed.
+
+- `lib/logger.ts` — structured JSON logging.
+- `lib/rpcMetrics.ts`, `lib/businessEvents.ts`, `lib/httpMetrics.ts` — counters
+  and latency summaries, flushed to the log stream every five minutes
+  (`index.ts:169-175`).
+- `lib/errorRingBuffer.ts` + `lib/errorReporter.ts` — recent errors in memory;
+  `index.ts:41-47` makes uncaught exceptions fatal and logs unhandled rejections.
+- `modules/telemetry/telemetry.ts` exposes these over `/api/debug/*`.
+- `lib/problemDetails.ts` shapes error responses as `application/problem+json`.
+
+Distributed tracing and OTLP export are **M11**.
+
+### Frontend
+
+`apps/gui/` is a **client-rendered single-page app**. There is no server-side
+rendering and no React Flow; routes are declared in `apps/gui/src/App.tsx` and
+data is fetched through TanStack Query against the generated Connect-RPC
+clients. Design tokens live in `apps/gui/src/index.css` and are enforced by
+`apps/gui/scripts/design-lint.mjs`.
+
+### CLI
+
+`apps/cli/` is a Cobra command tree (`apps/cli/cmd/`) over a Connect-RPC client.
+Commands cover agents, artifacts, auth, comments, labels, orgs, projects,
+project templates, repositories, search, tasks and task types.
+
+Output is human-readable text or `--json`. **The following do not exist**:
+`--fields` masks, `--page-all` NDJSON pagination, a `schema` introspection
+command, an MCP server mode, and any TUI. Those are described under Planned.
+
+### Deployment
+
+What is actually buildable today:
+
+- `bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts`
+  (`apps/backend/package.json`, wired as `backend:build-standalone` in
+  `apps/backend/moon.yml`). This compiles **the backend only**.
+- **The SPA is not embedded.** A `GET /` on the standalone binary returns a
+  hardcoded placeholder string (`index.ts:149-152`). Its own text claims
+  "Embedded Vite SPA Assets active"; no asset is bundled, because the compile
+  step above has only `src/index.ts` as input. Serving the real SPA is **M09**.
+- `index.ts:34` exports `localInProcessTransportRouter`, a three-line stub
+  returning `{ status: 200, message: "in-process override active" }`. **It is
+  referenced nowhere.** In-process transport is **M09**.
+- Standalone uses `bun:sqlite`; clustered deployment uses MySQL and an external
+  NATS server. No container images, Kubernetes manifests or CDN configuration
+  are committed.
+
+### Quality gates
+
+`moon check --all` runs 22 tasks, mirrored in `.github/workflows/ci.yml`:
+type-checking, `oxlint`, unit tests behind a 95% coverage threshold, `knip`,
+`tasker:skills-check`, `tasker:docs-lint` and `gui:design-lint`. Playwright
+end-to-end (`gui:e2e`) is `type: run` and executed explicitly in CI against a
+seeded backend.
+
+### Non-functional characteristics
+
+Stated honestly: the properties below are **designed for**, not measured. No
+load test, benchmark or profiling run is committed.
+
+| Property | What exists today |
+|---|---|
+| Type safety | End-to-end and real — TypeSpec → protobuf → generated TS/Go, Drizzle schema types, Zod at every boundary. |
+| Latency | `lib/rpcMetrics.ts` records per-method P50/P95 and logs a summary every five minutes. No target is asserted or enforced. |
+| Scalability | The backend is stateless apart from in-memory counters, so it can run behind a load balancer. This has never been run multi-instance. |
+| Reliability | NATS failure degrades to no-publish (`lib/natsCorrelation.ts:45`); config failure is fatal at boot. |
+| Security | OAuth 2.1 sessions with revocation, org-membership checks on every handler, 256 KiB body cap, `ESCAPE`-hardened `LIKE` input. No rate limiting or per-key quota exists. |
+
+Measured numbers are owed by **M07** (read-path scale), **M11**
+(observability) and **M12** (test depth and release).
+
+---
+
+## Planned Architecture
+
+Not built. Each entry names its owning milestone. Do not write code against any
+of it.
+
+### CQRS with a separate read store — **M07**
+
+The intent is asymmetric handling: writes commit to MySQL and emit an event;
+reads serve from a materialised view so agent write bursts cannot degrade human
+dashboard queries.
+
+Today there is **one path**. Reads and writes both hit the transactional
+database, and search scans with `LIKE`. M07 decides between populating the
+existing FTS5 table and introducing a dedicated index; **OpenSearch is not
+installed and no milestone commits to it** — it is one candidate, to be chosen
+against measured need. See `.specs/adr/` (M02-T03).
+
+### Event consumers, audit trail and live updates — **M08**
+
+Publishing exists; consumption does not. M08 adds subscribers that derive an
+audit trail from `domain.*` events and push changes to the GUI so the interface
+updates without polling.
+
+### Single portable binary — **M09**
+
+Three separate pieces are missing behind one goal:
+
+1. Embedding the built SPA in the compiled binary and serving it, replacing the
+   placeholder at `index.ts:149-152`.
+2. Replacing the `localInProcessTransportRouter` stub (`index.ts:34`) with a
+   real in-process transport that satisfies the same Connect-RPC contract,
+   removing network overhead inside the binary.
+3. Zero-config startup against `bun:sqlite` with FTS5 so standalone loses no
+   capability.
+
+### Graphical state-machine editing — **M05**
+
+Task state machines are configured through the API today
+(`modules/tasks/tasks.handler.ts`). A visual editor is an M05 capability; the
+library is an open choice. React Flow was named in an earlier draft of this
+document and is not a commitment.
+
+### OpenTelemetry — **M11**
+
+Distributed tracing and metrics over OTLP, exporting to a standard backend, with
+graceful degradation to stdout in standalone. Replaces the in-process counters
+described under Built, or sits alongside them.
+
+### Agent identity and quotas — **M04**, **M10**
+
+M2M tokens with their own lifecycle (M04), and policy-based RBAC over teams
+(M10). Until then, agents authenticate as the user that created them and
+authorisation is the four org roles in `lib/authz.ts`.
+
+### Agent-facing CLI ergonomics — **M05**
+
+Field masks (`--fields`), NDJSON pagination (`--page-all`) and schema
+introspection (`cli schema <cmd>`) exist as intent only. An MCP server mode and
+a TUI are named in no milestone; see the Dropped table in
+[tech-stack.md](./tech-stack.md).
+
+### Not planned by anyone
+
+Server-side rendering and React Flow appeared in earlier revisions of this
+document as present-tense descriptions. Neither is built, and no milestone owns
+either. They are recorded in the Dropped table of
+[tech-stack.md](./tech-stack.md) so they are not reintroduced by accident.

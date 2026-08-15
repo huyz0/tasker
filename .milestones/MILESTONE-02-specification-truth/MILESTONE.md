@@ -58,7 +58,7 @@ a later milestone and must be referenced, not built, here.
       - Files: `.specs/product/tech-stack.md`
       - Verify: every "In Use" entry is greppable in `package.json` / `go.mod`.
 
-- [ ] **M02-T02** — Rewrite `architecture.md` so present-tense statements describe
+- [x] **M02-T02** — Rewrite `architecture.md` so present-tense statements describe
       the built system. Move CQRS/OpenSearch, in-process transport, OTel, SSR and
       React Flow into a "Planned Architecture" section citing M07/M08/M09/M11.
       - Files: `.specs/product/architecture.md`

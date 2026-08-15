@@ -54,7 +54,7 @@ not installed**; the decision is recorded in `.specs/adr/` (M02-T03).
 | Technology | Version | Role |
 |---|---|---|
 | `bun` | 1.3.11 (`.prototools`) | Runtime and package manager |
-| `elysia` | ^1.4.28 | HTTP server |
+| `elysia` | ^1.4.28 | Routing for `/api/auth/*` and `/api/debug/*` only — the listener is `node:http` |
 | `@connectrpc/connect`, `@connectrpc/connect-node`, `@connectrpc/connect-web` | ^2.1.1 | Transport for the TypeSpec contract |
 | `@bufbuild/protobuf` | ^2.11.0 | Generated message runtime |
 | `drizzle-orm` / `drizzle-kit` | ^0.45.2 / ^0.31.10 | Schema, queries, migrations |
@@ -73,7 +73,7 @@ trail and live GUI are M08.
 ### Database & search
 
 - **MySQL** for the clustered deployment, **`bun:sqlite`** for standalone, behind
-  one schema per dialect (`src/db/schema.ts`, `src/db/schema.sqlite.ts`).
+  one schema per dialect (`src/db/schema.mysql.ts`, `src/db/schema.sqlite.ts`).
 - **Search is `LIKE`-based** — `src/modules/search/search.handler.ts:35`. An FTS5
   virtual table `search_index` is created in `src/db/db.ts` and read only by the
   health probe; **nothing writes to it**. A real index is M07.
