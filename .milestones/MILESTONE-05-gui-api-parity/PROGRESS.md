@@ -68,3 +68,45 @@ Append-only. Newest entry at the bottom.
   code, so it is known to catch the thing it was written for rather than
   asserted to.
 - **Next**: M05-T03
+
+---
+
+## M05-T03 — Render the signed-in user from `getIdentity`
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `apps/gui/src/components/layout/CurrentUser.tsx` (new),
+  `CurrentUser.test.tsx` (new, 7 tests), `AppShell.tsx`
+- **Verified**: `moon run gui:test` — 430 pass. `moon check --all` — 23 pass.
+  And in a real browser against a running backend:
+
+  ```
+  backend identity:                    Dev User <dev@tasker.local>
+  sidebar says:                        Signed in as Dev User
+  matches backend:                     true
+  hardcoded "Tuong Nguyen" present:    false
+  console errors:                      none
+  ```
+
+- **No contract change was needed.** The task says "extend the response with
+  name and avatar", but `User` already carries `name` and `avatarUrl`, the
+  `users` table already stores both, and `getIdentity` already returns the whole
+  row. The gap was entirely on the client: **`getIdentity` had no caller in the
+  GUI at all**. Recorded because the task's file list named `main.tsp` and
+  `auth.handler.ts`, and neither needed touching.
+- **The review found a second fabrication the task did not name, and the gate
+  could not catch.** The sidebar footer showed **"Tuong Nguyen" / "Admin"** —
+  hardcoded, identical for every account that ever signed in. That is exit
+  criterion 2's "hardcoded user name" exactly. The `fabrication` rule matches
+  status words, priority chips and placeholder initials; an arbitrary person's
+  name is not expressible as a pattern without flagging every string in the
+  product. **The gate narrows the search; it does not replace reading the
+  screen.**
+- **Unknown identity renders nothing**, deliberately — not a stand-in avatar.
+  Loading, signed out and failed all produce no account chip, because a
+  placeholder in those states looks exactly like a resolved account, which is
+  the fabrication this milestone removes. Three tests hold it.
+- The fallback initial is computed from the real name or email
+  (`label.charAt(0)`), so it is an initial rather than the literal `U` that
+  M05-T02 deleted — and being an expression, it cannot trip the avatar rule.
+- **Next**: M05-T04

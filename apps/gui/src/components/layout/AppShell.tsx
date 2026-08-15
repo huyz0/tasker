@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Menu,
   Activity,
-  UserCircle,
   Trash2,
   Tag,
   LogOut
@@ -15,6 +14,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { GlobalSearch } from './GlobalSearch';
+import { CurrentUser } from './CurrentUser';
 import { OrgProjectSwitcher } from './OrgProjectSwitcher';
 import { logout } from '../../lib/authSession';
 
@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="flex items-center gap-2">
           <GlobalSearch />
-          <UserCircle className="h-6 w-6 text-muted-foreground" />
+          <CurrentUser />
         </div>
       </header>
 
@@ -91,13 +91,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
           <div className="p-4 border-t/50 mt-auto">
              <div className="flex items-center justify-between gap-3 py-2 px-3 text-sm text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <UserCircle className="h-6 w-6" />
-                  <div className="flex flex-col">
-                    <span className="font-medium text-foreground">Tuong Nguyen</span>
-                    <span className="text-xs">Admin</span>
-                  </div>
-                </div>
+                {/* Was a hardcoded "Tuong Nguyen / Admin" - the same name and
+                    the same role for every account that ever signed in. */}
+                <CurrentUser />
                 <button
                   onClick={handleLogout}
                   aria-label="Log out"

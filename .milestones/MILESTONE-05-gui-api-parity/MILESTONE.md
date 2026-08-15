@@ -63,7 +63,7 @@ canvas is warranted.
       - Files: `apps/gui/src/features/Tasks/index.tsx`
       - Verify: nothing on a card is unbacked by data.
 
-- [ ] **M05-T03** — Render the signed-in user from `getIdentity`; extend the
+- [x] **M05-T03** — Render the signed-in user from `getIdentity`; extend the
       response with name and avatar.
       - Files: `apps/gui/src/components/layout/AppShell.tsx`,
         `modules/auth/auth.handler.ts`, `main.tsp`
