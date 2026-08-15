@@ -40,12 +40,16 @@ tasks:
   # budgets, dead path references, host-adapter parity, standards-index drift.
   # Zero dependencies, so it needs no install step. Part of the root project's
   # task set, so `moon check --all` includes it.
+  # The gates that guard every skill are themselves 1,151 lines of script. Three
+  # of their rules were wrong when first checked by hand, so the suite runs
+  # before the gate does: every rule must be provably capable of failing.
   skills-check:
-    command: 'bash -c "node .agents/skills/skill-forge/scripts/validate.mjs && node .agents/skills/skill-forge/scripts/sync-adapters.mjs --check"'
+    command: 'bash -c "node --test .agents/skills/skill-forge/scripts/*.test.mjs && node .agents/skills/skill-forge/scripts/validate.mjs && node .agents/skills/skill-forge/scripts/sync-adapters.mjs --check"'
     inputs:
       - '/.agents/**/*'
       - '/.claude/**/*'
       - '/.specs/standards/**/*'
+      - '/AGENTS.md'
 
   # Markdown is the substrate of this whole system — skills, protocols, specs and
   # milestones are all prose that agents execute. It stayed advisory while it

@@ -26,7 +26,10 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, dirname, relative, resolve, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const GUI = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// Overridable for the test suite; unset in normal use.
+const GUI = process.env.DESIGN_LINT_ROOT
+  ? resolve(process.env.DESIGN_LINT_ROOT)
+  : resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(GUI, 'src');
 const CSS = join(SRC, 'index.css');
 

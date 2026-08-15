@@ -18,7 +18,11 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+// Overridable so the test suite can point the whole validator at a fixture
+// tree. Nothing in normal use sets it.
+const ROOT = process.env.HARNESS_ROOT
+  ? resolve(process.env.HARNESS_ROOT)
+  : resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 const SKILLS_DIR = '.agents/skills';
 const WORKFLOWS_DIR = '.agents/workflows';

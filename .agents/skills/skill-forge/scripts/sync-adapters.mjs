@@ -17,7 +17,10 @@ import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, rmSync
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+// Overridable for the test suite; unset in normal use.
+const ROOT = process.env.HARNESS_ROOT
+  ? resolve(process.env.HARNESS_ROOT)
+  : resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const CHECK = process.argv.includes('--check');
 
 const SKILLS = '.agents/skills';

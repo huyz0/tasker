@@ -85,14 +85,22 @@ Steps are numbered across the whole skill, not per mode, so a reference to
 
 ### evolve
 
-14. Run the audit, then read the last three `PROGRESS.md` entries of the active
-    milestone and the most recent session's friction: steps an agent had to
-    rediscover, rules it broke, paths it guessed.
-15. Convert each recurring friction into exactly one change — a new constraint, a
+14. Run the audit, then read the four records that actually exist. Nothing logs
+    "friction" — do not look for it.
+
+    | Source | What it shows |
+    |---|---|
+    | `PROGRESS.md` divergence lines | Where the plan named the wrong files |
+    | `PROGRESS.md` `blocked` entries | What stopped an agent, verbatim |
+    | `STATE.md` handoff notes | What a session had to discover the hard way |
+    | `git log --stat -- .agents/` | Churn: a file edited every session is unstable |
+
+15. Convert each recurring signal into exactly one change — a new constraint, a
     new protocol, a script replacing prose, or a merge of two competing skills.
     One change per finding; do not bundle.
 16. Apply, re-audit, and report the delta. If a finding cannot be encoded as a
-    deterministic check, say so rather than encoding a vague instruction.
+    deterministic check, say so rather than encoding a vague instruction — and
+    if it can, add the check **and a test that proves it fires**.
 
 # Output Format
 
