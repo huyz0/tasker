@@ -124,7 +124,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
                     isActive 
-                      ? 'bg-primary/10 text-primary font-medium' 
+                      ? 'bg-primary-subtle text-primary-subtle-foreground font-medium' 
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   }`}
                 >
@@ -150,7 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <LogOut className="h-4 w-4" />
                 </button>
              </div>
-             <div className="px-3 pb-1 text-xs text-muted-foreground/70 font-mono">
+             <div className="px-3 pb-1 text-xs text-muted-foreground font-mono">
                build {__BUILD_SHA__.slice(0, 7)}
              </div>
           </div>

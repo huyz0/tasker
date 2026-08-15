@@ -28,7 +28,7 @@ function StatCard({ label, value, icon, error }: { label: string; value: number 
           <div className="text-3xl font-bold">{value}</div>
         )}
       </div>
-      <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg">{icon}</div>
+      <div className="w-10 h-10 rounded-full bg-primary-subtle text-primary-subtle-foreground flex items-center justify-center text-lg">{icon}</div>
     </div>
   );
 }

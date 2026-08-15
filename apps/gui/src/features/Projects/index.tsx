@@ -239,7 +239,7 @@ export function ProjectsWizard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {(templatesData ?? []).map(t => (
               <div key={t.id} className="border rounded-lg bg-card p-6 shadow-sm hover:border-primary transition-colors flex flex-col h-full">
-                 <div className="w-10 h-10 mb-4 rounded bg-primary/10 flex items-center justify-center text-primary">
+                 <div className="w-10 h-10 mb-4 rounded bg-primary-subtle flex items-center justify-center text-primary-subtle-foreground">
                    <Package className="w-5 h-5" />
                  </div>
                  {editingTemplateId === t.id ? (

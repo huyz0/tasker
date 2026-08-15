@@ -140,7 +140,7 @@ export function AgentsDashboard() {
              <div className="text-muted-foreground text-sm font-medium mb-1">Total Agents</div>
              <div className="text-3xl font-bold">{agentsData?.length || 0}</div>
            </div>
-           <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center"><Bot className="w-5 h-5" /></div>
+           <div className="w-10 h-10 rounded-full bg-primary-subtle text-primary-subtle-foreground flex items-center justify-center"><Bot className="w-5 h-5" /></div>
          </div>
       </div>
 
@@ -295,7 +295,9 @@ export function AgentsDashboard() {
           <div className="flex-1 border rounded bg-muted/20 flex items-center justify-center flex-col text-muted-foreground text-sm border-dashed">
              <div className="mb-2 text-xl">React Flow Component</div>
              <p>Visual workflow rendering goes here.</p>
-             <p className="text-xs pt-4 opacity-50">(To be implemented fully with reactflow)</p>
+             {/* `opacity-50` halved the contrast of already-muted text to 2:1.
+                 Muting is a colour decision, and there is a token for it. */}
+             <p className="text-xs pt-4 text-muted-foreground">(To be implemented fully with reactflow)</p>
           </div>
         </div>
       </div>

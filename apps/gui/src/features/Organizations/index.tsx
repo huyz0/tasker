@@ -410,19 +410,20 @@ export function OrganizationsDashboard() {
 
     return (
       <div key={org.id}>
+        {/* The row was itself `role="button"` while containing Expand, Edit and
+            Delete buttons. A button inside a button has no defined behaviour —
+            axe calls it `nested-interactive` — and every one of those children
+            needed `stopPropagation` to keep the row from also firing. The name
+            is the control now, and the row is a plain container (M06-T14). */}
         <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setActiveOrgId(org.id)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveOrgId(org.id); } }}
-          className={`p-3 text-sm flex justify-between items-center cursor-pointer hover:bg-muted/50 border-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${activeOrgId === org.id ? 'bg-primary/5' : ''}`}
+          className={`p-3 text-sm flex justify-between items-center hover:bg-muted/50 border-t ${activeOrgId === org.id ? 'bg-primary/5' : ''}`}
           style={{ paddingLeft: indent }}
         >
           <span className="min-w-[200px] flex items-center gap-2">
             {hasChildren ? (
               <button
                 aria-label={isCollapsed ? `Expand ${org.name}` : `Collapse ${org.name}`}
-                onClick={(e) => { e.stopPropagation(); toggleCollapsed(org.id); }}
+                onClick={() => toggleCollapsed(org.id)}
                 className="w-4 h-4 flex items-center justify-center text-muted-foreground hover:text-foreground shrink-0"
               >
                 {isCollapsed ? '▶' : '▼'}
@@ -430,21 +431,26 @@ export function OrganizationsDashboard() {
             ) : (
               <span className="w-4 shrink-0" />
             )}
-            <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">{org.name.charAt(0).toUpperCase()}</span>
-            <span className="truncate">{org.name}</span>
-            {activeOrgId === org.id && <span className="text-xs bg-primary/20 text-primary px-2 rounded-full shrink-0">Active</span>}
+            <span className="w-6 h-6 rounded-full bg-primary-subtle text-primary-subtle-foreground flex items-center justify-center font-bold shrink-0">{org.name.charAt(0).toUpperCase()}</span>
+            <button
+              onClick={() => setActiveOrgId(org.id)}
+              aria-current={activeOrgId === org.id ? 'true' : undefined}
+              className="truncate text-left hover:underline underline-offset-2 rounded outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            >
+              {org.name}
+            </button>
+            {activeOrgId === org.id && <span className="text-xs bg-primary-subtle text-primary-subtle-foreground px-2 rounded-full shrink-0">Active</span>}
           </span>
           <span className="flex items-center gap-3 shrink-0">
             <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{org.slug}</span>
             <button
-              onClick={(e) => { e.stopPropagation(); startEditing(org); }}
+              onClick={() => startEditing(org)}
               className="text-muted-foreground hover:text-foreground text-xs"
             >
               Edit
             </button>
             <button
-              onClick={async (e) => {
-                e.stopPropagation();
+              onClick={async () => {
                 if (await confirm({
                   title: `Move "${org.name}" to the bin?`,
                   consequence: 'The organization and everything inside it stop appearing in lists.',
@@ -588,14 +594,20 @@ export function OrganizationsDashboard() {
                     }}
                     className="flex items-center gap-2"
                   >
+                    {/* The visible "days" sits *after* the field, so a screen
+                        reader announced an unnamed spinbutton (M06-T14). */}
+                    <label className="sr-only" htmlFor="bin-retention-days">
+                      Bin retention, in days
+                    </label>
                     <input
+                      id="bin-retention-days"
                       type="number"
                       min={1}
                       value={retentionDaysInput}
                       onChange={(e) => setRetentionDaysInput(e.target.value)}
                       className="w-24 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
                     />
-                    <span className="text-sm text-muted-foreground">days</span>
+                    <span className="text-sm text-muted-foreground" aria-hidden="true">days</span>
                     <button
                       type="submit"
                       disabled={setRetentionMutation.isPending}

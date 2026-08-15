@@ -143,9 +143,17 @@ export function LabelsManager() {
               ) : (
                 <span
                   key={label.id}
-                  className="inline-flex items-center gap-2 text-sm px-3 py-1 rounded-full border"
-                  style={label.color ? { borderColor: label.color, color: label.color } : undefined}
+                  className="inline-flex items-center gap-2 text-sm px-3 py-1 rounded-full border text-foreground"
+                  style={label.color ? { borderColor: label.color } : undefined}
                 >
+                  {/* A swatch, not the text colour — see LabelChips (M06-T14). */}
+                  {label.color && (
+                    <span
+                      aria-hidden="true"
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: label.color }}
+                    />
+                  )}
                   {label.name}
                   <button
                     onClick={() => {

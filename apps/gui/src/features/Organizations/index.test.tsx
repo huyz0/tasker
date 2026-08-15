@@ -426,7 +426,7 @@ describe('OrganizationsDashboard', () => {
     await waitFor(() => expect(screen.getAllByText('Active')).toHaveLength(1));
   });
 
-  it('selects a child org via keyboard', async () => {
+  it('selects a child org from the keyboard, because its name is a real button', async () => {
     mockListOrgs.mockResolvedValue({
       organizations: [
         { id: 'org-root', name: 'Root Co', slug: 'root-co' },
@@ -435,9 +435,23 @@ describe('OrganizationsDashboard', () => {
     });
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('Child Co')).toBeDefined());
-    fireEvent.keyDown(screen.getByText('Child Co'), { key: ' ' });
+    // The row used to be `role="button"` with Expand/Edit/Delete buttons inside
+    // it, which is `nested-interactive` and had undefined activation behaviour.
+    // The name carries the action now, so Enter and Space are the browser's job
+    // rather than a hand-written keydown handler (M06-T14).
+    const child = await screen.findByRole('button', { name: 'Child Co' });
+    fireEvent.click(child);
     expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-child');
+  });
+
+  it('does not nest the row action inside another button', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    renderPage();
+
+    const name = await screen.findByRole('button', { name: 'Root Co' });
+    // A native <button> carries no role *attribute*, so check the ancestry for
+    // both spellings — the row's old `role="button"` wrapper is what this pins.
+    expect(name.parentElement?.closest('button, [role="button"]')).toBeNull();
   });
 
   it('renames an org through the GUI', async () => {

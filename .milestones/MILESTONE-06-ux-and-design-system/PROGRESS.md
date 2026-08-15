@@ -480,3 +480,40 @@ standard and wonder which one is wrong.
   is wrong. Asserting on `chromium.launch` instead — the same lesson as T12's
   comment tripping the lint.
 - **Next**: close M06
+
+## M06-T14 — The five violations the exit check found
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `src/index.css` (new `primary-subtle` pair, both themes),
+  `components/layout/AppShell.tsx`, `components/ui/labels/LabelChips.tsx`,
+  `features/{Organizations,Labels,Agents,Projects,TaskTypes,Artifacts}/`,
+  `pages/Dashboard.tsx`, `components/layout/CurrentUser.tsx` (+ 1 test, 1
+  rewritten)
+- **Verified**: axe over all 9 views in **both** themes — light 25 contrast +
+  2 other violations → **0**; dark 10 + 2 → **0**. `gui:test` — 614 pass,
+  branches 95.12%. `design-lint` — 0 findings. `storybook-test` — 21 stories,
+  0 violations. `moon check --all` — 26 pass.
+- **Notes**: this task exists because the exit-criteria check found what no
+  per-task check could. Criterion 2 says both themes render every view legibly,
+  and nothing in T01–T13 ever ran axe over a *whole page* in both themes — the
+  contrast gate reads token **pairs** in CSS, and every violation here was
+  composed in a `className` where no token pair exists to check.
+  The largest was `bg-primary/10 text-primary`: brand colour on a wash of its
+  own hue, 4.2:1, on the **active navigation item of every page**. The fix is a
+  named `primary-subtle` pair, which the contrast gate then discovers on its own
+  — the gate enumerates `X`/`X-foreground`, so naming the pair is what makes it
+  checkable. `text-muted-foreground/70` and `opacity-50` are the same mistake
+  in a different spelling: an opacity modifier discards the contrast the token
+  was chosen to guarantee.
+  **The label chip is the one worth remembering.** It rendered the user's chosen
+  colour as the *text* colour, so readability depended on a value any user can
+  pick — a plain grey measured 3.54:1. The colour is now a swatch beside the
+  name, with the name on `text-foreground`. No token could have fixed this and
+  no lint rule can catch it: the defect was making user data load-bearing for
+  legibility.
+  Also: the organization row was `role="button"` while containing Expand, Edit
+  and Delete buttons — `nested-interactive`, with undefined activation, which is
+  why all three children carried `stopPropagation`. The name is the control now
+  and the three workarounds are gone.
+- **Next**: close M06

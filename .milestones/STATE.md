@@ -1,6 +1,6 @@
 ---
-active_milestone: M06
-active_task: M06-T13
+active_milestone: M07
+active_task: null
 last_updated: 2026-08-15
 last_commit: 82b6a0f
 blocked: false
@@ -15,17 +15,20 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M06 — UX, Design System & A11y
-- **Task**: M06-T13 — Storybook a11y at `error`, wired into CI
-- **Branch**: `main`, at the user's explicit instruction. This overrides
-  `git-workflow-standard.md` and `milestone-standard.md` §5, which both require
-  a `feature/m06-*` branch; recorded so the next session knows it was a decision
-  and not a slip.
-- **Command to continue**: `/milestone-deliver M06`
+- **Milestone**: M07 — Read-Path Scale
+- **Task**: none started — begin at M07-T01
+- **Branch**: M06 was delivered directly on `main` at the user's explicit
+  instruction ("just do it on main and push there"), overriding
+  `git-workflow-standard.md` and `milestone-standard.md` §5. **That instruction
+  was scoped to M06 and does not carry forward** — M07 starts on
+  `feature/m07-*` unless the user says otherwise. Recorded so the next session
+  reads the exception as a decision rather than as the new default.
+- **Command to continue**: `/milestone-deliver M07`
 
-M05 closed 12/12 tasks and 6/6 exit criteria. With M05 done the frontier is M06
-(UX & A11y), M07 (Read-Path Scale) and M10 (Teams & RBAC) — all three unblocked
-and independent of each other, so they can run in parallel on separate branches.
+M06 closed 14/14 tasks and 7/7 exit criteria. The frontier is now M07
+(Read-Path Scale) and M10 (Teams & RBAC) — both unblocked and independent of
+each other, so they can run in parallel. M07 is the wider unblock: M08 and M09
+both wait on it, and M12 waits on those.
 
 ## How to resume
 
@@ -47,7 +50,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M03 | IAM Correctness & Scale        | done   | M01        | 16    | 16   |
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
 | M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
-| M06 | UX, Design System & A11y       | in-progress | M05   | 13    | 12   |
+| M06 | UX, Design System & A11y       | done   | M05        | 14    | 14   |
 | M07 | Read-Path Scale                | todo   | M05        | 11    | 0    |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
@@ -55,7 +58,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 
-**Total: 141 tasks across 12 milestones — 61 done (M01 14, M02 7, M03 16, M04 12, M05 12).**
+**Total: 142 tasks across 12 milestones — 75 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14).**
 
 ## Dependency graph
 
@@ -84,6 +87,77 @@ branches. M02 is intentionally cheap and unblocking — it can run alongside
 anything.
 
 ## Handoff notes
+
+**2026-08-15 — M06 UX, Design System & Accessibility closed (14/14 tasks, 7/7
+exit criteria).**
+
+The interface is one system: colour comes from tokens, one `Dialog` primitive
+owns every overlay, both themes pass axe on every view, and no view is a dead
+end. The milestone was planned as 13 tasks and closed as 14 — the fourteenth is
+the interesting part, below.
+
+Six things a next session would otherwise pay to rediscover:
+
+1. **The exit-criteria check found what thirteen task-level checks could not,
+   and it was the largest defect in the milestone.** Criterion 2 says both
+   themes render every view legibly. Running axe over whole pages in both themes
+   — which no task had done — surfaced 25 contrast violations in light and 10 in
+   dark, including `bg-primary/10 text-primary` at 4.2:1 on the **active
+   navigation item of every page**. Every one of them was composed in a
+   `className`, and the contrast gate reads token **pairs** in CSS, so there was
+   nothing for it to check. **Run the exit criteria as written; do not infer
+   them from the tasks.** M06-T14 is the fix, and `primary-subtle` is now a
+   named pair the gate discovers on its own.
+2. **Opacity modifiers discard the contrast a token guarantees.**
+   `text-muted-foreground/70` (2.84:1), `opacity-50` on muted text (2:1),
+   `bg-primary/20 text-primary` (3.38:1). If a colour needs to be quieter, that
+   is a token, not a modifier. Related but distinct: `border-t/50` is not a
+   utility *at all* — the modifier applies to colours and `border-t` is a width,
+   so the class was never generated and the sidebar footer had no border
+   (M06-T12, now a lint rule, along with runtime-assembled class names).
+3. **Do not make user data load-bearing for legibility.** Label chips rendered
+   the user's chosen colour as the *text* colour, so whether the name could be
+   read depended on a value any user can pick — a plain grey measured 3.54:1.
+   The colour is a swatch now and the name is `text-foreground`. No token and no
+   lint rule can catch this shape; only rendering it can.
+4. **Query errors were surfaced nowhere.** Every `isError` in `features/*`
+   belonged to a *mutation*, so a failed list fell through to its empty branch
+   and said "No projects found" — a confident claim that the data is gone.
+   `ListState` renders the three states as one component and
+   `gui:query-error-coverage` keeps the next view from omitting it. That gate
+   found four readers the manual sweep had missed, two with the same lie
+   (M06-T11).
+5. **Three gates are new and will fail on ordinary future work**:
+   `gui:query-error-coverage` (a new `useQuery` in `features/*` must render its
+   error, or be excepted **with a reason**; an exception excuses one query, not
+   a whole file), `gui:storybook-test` (axe over every story in a real browser —
+   `type: run`, so it is out of `moon check` and explicit in CI), and
+   `gui:storybook-a11y-config` (cheap, cached, pins the settings whose quiet
+   reversal would make the a11y gate a no-op again). `gui:design-lint` gained
+   two rules. `moon check --all` is 26 tasks.
+6. **`test: 'todo'` is indistinguishable from `off`.** The Storybook a11y addon
+   had been reporting to a panel nobody opened, and a critical violation had
+   been sitting in a story the whole time — the gate found it on its first run.
+   The runner is deliberately built from what was already installed
+   (`storybook build`, `playwright`, `axe-core`, node's http server) rather than
+   adding `@vitest/browser`. It must stay a **real browser**: `color-contrast`
+   is the rule it exists to catch, and axe reports it `incomplete` under jsdom,
+   which would make it a gate that cannot fail.
+
+**Verified as configuration, not as an observed run.** Exit criterion 7 says the
+a11y addon runs in CI at `error` and passes. It passes locally (21 stories, 0
+violations) and the workflow step plus the browser install are committed and
+pinned by a test — but no CI run has executed them. The first push will be the
+first real proof.
+
+**Deliberately deferred, with owners.** ADR-0009 keeps the primitives
+hand-rolled and names the three conditions that would reverse it — if a later
+milestone needs a combobox, a date picker or a menu with roving tabindex, read
+it before building a fourth overlay by hand. The Kanban card is still a
+`<div role="button">` (M12 owns E2E depth). `.pb-1`-style violations were fixed
+at the source, but nothing yet runs axe over the *app* in CI the way
+`storybook-test` does for stories — the whole-page sweep that found M06-T14 was
+run by hand, and making it a gate is the obvious follow-up for **M12**.
 
 **2026-08-15 — M05 GUI / API Parity closed (12/12 tasks, 6/6 exit criteria).**
 

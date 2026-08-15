@@ -1,13 +1,13 @@
 ---
 id: M06
 title: UX, Design System & Accessibility
-status: in-progress
+status: done
 goal: The interface is one coherent visual system, every interaction is operable by keyboard and screen reader, and no view is a dead end.
 depends_on: [M05]
 surfaces: [gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-15
-completed_at: null
+completed_at: 2026-08-15
 ---
 
 # M06 — UX, Design System & Accessibility
@@ -28,16 +28,32 @@ coverage in M12, since dialogs without roles are hard to drive from a test.
 
 ## 3. Exit Criteria
 
-- [ ] No colour literal outside `index.css` and the documented status scale;
-      enforced by a lint rule.
-- [ ] Light and dark themes both render every view legibly, and a user can
-      choose light, dark, or system.
-- [ ] Every modal has `role="dialog"`, `aria-modal`, focus trapping, focus
-      restoration and escape-to-close.
-- [ ] `window.confirm` appears nowhere; destructive actions use a styled dialog.
-- [ ] Every detail view shows breadcrumbs back to its parent.
-- [ ] The org/project switcher is searchable and does not preload every record.
-- [ ] Storybook's accessibility addon runs in CI at `error` severity and passes.
+- [x] No colour literal outside `index.css` and the documented status scale;
+      enforced by a lint rule. — `gui:design-lint`, 128 files, 0 findings; the
+      rule set grew two more in T12 (no-op utilities, runtime-built classes).
+- [x] Light and dark themes both render every view legibly, and a user can
+      choose light, dark, or system. — axe over all 9 views in both themes: 0
+      violations (25+2 light and 10+2 dark when first measured, closed in T14).
+      `ThemeToggle` offers all three and persists the choice.
+- [x] Every modal has `role="dialog"`, `aria-modal`, focus trapping, focus
+      restoration and escape-to-close. — one `Dialog` primitive (ADR-0009), 19
+      tests; the mobile drawer shares its `useFocusTrap` rather than repeating
+      it.
+- [x] `window.confirm` appears nowhere; destructive actions use a styled dialog.
+      — a sweep test enumerates the source and fails on any occurrence.
+- [x] Every detail view shows breadcrumbs back to its parent. — the two
+      parameterised routes (`/tasks/:taskId`, `/artifacts/:artifactId`) are the
+      detail views, and both render `Breadcrumbs`.
+- [x] The org/project switcher is searchable and does not preload every record.
+      — against 2,001 projects: 2 `ListOrgs` + 2 `ListProjects` at boot, one
+      page of 10, "Showing 10 of 2001", and a typed query finds the exact
+      project on another page.
+- [x] Storybook's accessibility addon runs in CI at `error` severity and passes.
+      — `test: 'error'`, and `moon run gui:storybook-test` runs axe over all 21
+      stories in a real browser: 0 violations. **Observed locally; in CI this is
+      verified as configuration** — the workflow step and the browser install
+      are committed and pinned by `storybook-a11y-config`, but no CI run has
+      executed them yet.
 
 ## 4. Scope
 
@@ -116,6 +132,19 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       `moon run gui:storybook-test` to CI.
       - Files: `apps/gui/.storybook/preview.tsx`, `moon.yml`, `.github/workflows/ci.yml`
       - Verify: a component with a contrast violation fails CI.
+
+- [x] **M06-T14** — Close the five accessibility violations that running axe
+      over every view in both themes surfaced, which the exit-criteria check
+      found and no per-task check could: `text-primary` on `bg-primary/10`
+      (4.2:1) and on `bg-primary/20` (3.38:1), `text-muted-foreground/70`
+      (2.84:1 light, 4.23:1 dark), the bin-retention input with no label, and
+      the organization row whose `role="button"` wrapper contains focusable
+      children. Add a `primary-subtle` token pair so the tinted-surface case is
+      covered by the contrast gate rather than by a className.
+      - Files: `apps/gui/src/index.css`, `components/layout/AppShell.tsx`,
+        `components/BuildBadge.tsx`, `features/Organizations/index.tsx`
+      - Verify: axe over all 9 views, in light **and** dark, reports 0
+        violations.
 
 ## 6. Verification
 

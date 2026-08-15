@@ -41,7 +41,7 @@ export function CurrentUser() {
         <span
           data-testid="current-user-initial"
           aria-hidden="true"
-          className="h-6 w-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold"
+          className="h-6 w-6 rounded-full bg-primary-subtle text-primary-subtle-foreground text-xs flex items-center justify-center font-bold"
         >
           {initial}
         </span>

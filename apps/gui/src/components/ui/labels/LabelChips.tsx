@@ -12,9 +12,20 @@ export function LabelChips({ emptyMessage = 'No labels attached.' }: { emptyMess
       {state.attached.map((label) => (
         <span
           key={label.id}
-          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border"
-          style={label.color ? { borderColor: label.color, color: label.color } : undefined}
+          className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border text-foreground"
+          style={label.color ? { borderColor: label.color } : undefined}
         >
+          {/* The colour is a swatch, not the text colour. It is user data — any
+              value is pickable, including ones that fail contrast against the
+              card (a plain grey label measured 3.54:1) — so the name must stay
+              readable no matter what was chosen (M06-T14). */}
+          {label.color && (
+            <span
+              aria-hidden="true"
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: label.color }}
+            />
+          )}
           {label.name}
           <button
             onClick={() => actions.detachLabel(label.id)}

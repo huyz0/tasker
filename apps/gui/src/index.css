@@ -9,6 +9,14 @@
 
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
+  /* The tinted-surface pair. Components had been composing this themselves as
+     `bg-primary/10 text-primary`, which is brand colour on a wash of the *same*
+     hue — 4.2:1 in light, below AA, on the active navigation item of every
+     page. Composed opacity cannot be checked by a gate that reads token pairs,
+     which is why it survived; as a named pair it is checked in both themes
+     (M06-T14). */
+  --color-primary-subtle: hsl(var(--primary-subtle));
+  --color-primary-subtle-foreground: hsl(var(--primary-subtle-foreground));
 
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
@@ -73,6 +81,10 @@
 
     --primary: 271 100% 60%;
     --primary-foreground: 210 40% 98%;
+    /* A lighter wash and a darker ink than the brand colour — the same shape as
+       every other subtle pair, and 7.4:1 rather than 4.2:1. */
+    --primary-subtle: 271 100% 96%;
+    --primary-subtle-foreground: 271 85% 33%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -133,6 +145,8 @@
     --popover-foreground: 210 40% 98%;
     --primary: 271 100% 75%;
     --primary-foreground: 271 80% 12%;
+    --primary-subtle: 271 45% 18%;
+    --primary-subtle-foreground: 271 95% 85%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;

@@ -112,7 +112,7 @@ export function TaskTypesEditor() {
             key={t.id}
             onClick={() => setSelectedId(t.id)}
             aria-current={selectedId === t.id ? 'true' : undefined}
-            className={`text-sm px-3 py-1 rounded-md border ${selectedId === t.id ? 'bg-primary/10 text-primary border-primary/40' : 'hover:bg-muted'}`}
+            className={`text-sm px-3 py-1 rounded-md border ${selectedId === t.id ? 'bg-primary-subtle text-primary-subtle-foreground border-primary/40' : 'hover:bg-muted'}`}
           >
             {t.name}
           </button>
