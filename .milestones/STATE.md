@@ -2,7 +2,7 @@
 active_milestone: M03
 active_task: null
 last_updated: 2026-08-15
-last_commit: 49f7a99
+last_commit: 6159a86
 blocked: false
 blocker: null
 ---
@@ -17,7 +17,7 @@ blocker: null
 
 - **Milestone**: M03 — IAM Correctness & Scale (not started)
 - **Task**: none in flight
-- **Branch**: `feature/m02-specification-truth` holds M02 and is **not merged**
+- **Branch**: M02 is merged; `main` is at `6159a86` with CI green on all six jobs
 - **Command to continue**: `/milestone-deliver M03`
 
 M02 closed 7/7 tasks and 5/5 exit criteria. M03 and M05 both have their
@@ -114,11 +114,13 @@ record oxlint-only linting, `LIKE` search, no separate read store, in-process
 counters over OTel, and hand-rolled UI primitives. Each names what it forecloses
 and the milestone that would reverse it.
 
-**Hedged, deliberately**: exit criterion 5 says a *CI* check fails on an
-undocumented dependency. The check is verified locally by injection and the CI
-step is committed, but **no CI run has been observed** — this branch is not
-pushed. Treat it as configuration until a run is seen, the same distinction M01
-had to make about `gui:e2e`.
+**Criterion 5 is observed, not inferred.** `main` was fast-forwarded to this
+work and pushed; CI run 31857839549 passed all six jobs, and the **Specification
+drift** step ran inside the Workspace job. The earlier hedge in this note — that
+the gate was configuration until a run was seen — is retired. The separate
+**Real Integration Tests** workflow still fails on every push, as it has since
+at least July: it needs `GITHUB_TEST_TOKEN` / `GITHUB_TEST_REPO` secrets.
+Pre-existing and untouched by M02.
 
 **Deliberately deferred**: a permanent gate for `NAVIGATION.md`. Its route map
 was verified against `App.tsx` by a throwaway script (14 nodes, 14 routes) and
