@@ -6,6 +6,7 @@ import { transport } from "../../lib/connectTransport";
 import { AgentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Bot, Zap } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
+import { AgentTokens } from './AgentTokens';
 
 const agentClient = createClient(AgentService, transport);
 
@@ -19,6 +20,7 @@ export function AgentsDashboard() {
   const [newAgentName, setNewAgentName] = useState('');
   const [newAgentRoleId, setNewAgentRoleId] = useState('');
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
+  const [tokensAgentId, setTokensAgentId] = useState<string | null>(null);
   const [editAgentName, setEditAgentName] = useState('');
   const [editAgentRoleId, setEditAgentRoleId] = useState('');
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
@@ -214,13 +216,21 @@ export function AgentsDashboard() {
                     <button type="button" onClick={() => setEditingAgentId(null)} className="text-xs text-muted-foreground">Cancel</button>
                   </form>
                 ) : (
-                <div key={a.id} className="p-3 text-sm flex justify-between items-center">
+                <div key={a.id}>
+                <div className="p-3 text-sm flex justify-between items-center">
                   <span className="flex-1 font-medium text-primary flex justify-start items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
                     {a.name}
                   </span>
                   <span className="w-24 text-muted-foreground">{roleNameById.get(a.agentRoleId) ?? a.agentRoleId}</span>
                   <span className="w-24"><span className="text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider bg-success/10 text-success border border-success/20">WORKING</span></span>
+                  <button
+                    aria-label={`Tokens for ${a.name}`}
+                    onClick={() => setTokensAgentId((cur) => (cur === a.id ? null : a.id))}
+                    className="text-muted-foreground hover:text-foreground text-xs ml-3"
+                  >
+                    Tokens
+                  </button>
                   <button
                     onClick={() => {
                       setEditingAgentId(a.id);
@@ -242,6 +252,8 @@ export function AgentsDashboard() {
                   >
                     Delete
                   </button>
+                </div>
+                {tokensAgentId === a.id && <AgentTokens agentId={a.id} agentName={a.name} />}
                 </div>
                 )
               ))
