@@ -102,7 +102,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
       - Files: `apps/cli/cmd/auth.go`, `apps/cli/internal/backend/credentials.go`
       - Verify: a scripted agent session works with no browser login.
 
-- [ ] **M04-T10** — GUI: token management on the agent detail view, with
+- [x] **M04-T10** — GUI: token management on the agent detail view, with
       copy-once presentation and a revoke action.
       - Files: `apps/gui/src/features/Agents/index.tsx`
       - Verify: an administrator issues and revokes a token from the UI.

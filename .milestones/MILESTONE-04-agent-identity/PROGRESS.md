@@ -415,3 +415,55 @@ Append-only. Newest entry at the bottom.
   is fragile and is the price of answering 429 with RFC 7807 — recorded rather
   than hidden.
 - **Next**: M04-T10
+
+---
+
+## M04-T10 — GUI: token management on the agent view
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `apps/gui/src/features/Agents/AgentTokens.tsx` (new),
+  `AgentTokens.test.tsx` (new, 19 tests), `features/Agents/index.tsx`
+  (Tokens button + expanding panel)
+- **Verified**: `moon run gui:test` — 423 pass, branches 95.03% (gate 95%).
+  `moon check --all` — 23 pass. And the verify line in a real browser:
+
+  ```
+  panel opened / empty state              true / true
+  secret shown  tskr_mpc1f9U0F… (48 chars)  only-once notice: true
+  secret dismissed by hand                 true
+  listed        tskr_mpc1f9… GUI issued active  expires in 90 days  x
+  after revoke  tskr_mpc1f9… GUI issued revoked  -
+  revoke button gone                       true
+  console errors                           none
+  ```
+
+- **Artifacts**: UX pass at `design/M04-T10-token-management.md` (this adds a
+  flow a user must learn), review at `reviews/M04-T10-token-ui-v1.md` —
+  approved, 2 medium, 1 low.
+- **Divergence: there is no agent detail view.** Agents is a flat list, so the
+  panel expands under the row instead. Building a detail route to hold one panel
+  would invent navigation this milestone does not need, and **M05** owns route
+  structure — whether agents deserve a detail route is its call.
+- **The copy-once block has no timeout and no auto-dismiss.** This is the only
+  screen showing something the server cannot show again; a timer expiring while
+  someone switches to their password manager destroys the only copy. A test
+  holds that property rather than trusting the absence of a `setTimeout` to stay
+  absent.
+- **Copy failure is surfaced.** `navigator.clipboard` is unavailable over plain
+  HTTP in some browsers, and a Copy button that silently does nothing here is
+  worse than no button — the user believes they have the value. Both paths
+  tested.
+- **The 95% branch gate failed at 94.67%** and named four real behaviours: the
+  loading line, unchecking a scope, the in-flight submit state, and the
+  singular in "expires in 1 day". All four covered; the gate working as intended
+  for the third milestone running.
+- **Nothing is pre-checked in the scope list**, and scope strings are shown
+  verbatim. A default set is how a credential ends up with more authority than
+  the issuer considered; a prettified label would make the UI and the agent's
+  error message disagree about what the scope is called.
+- **Caught before it landed**: the tests were first written against
+  `@testing-library/user-event`, which is not installed and would need
+  authorization under `AGENTS.md`. Rewritten on `fireEvent`, which every other
+  suite here uses.
+- **Next**: M04-T11
