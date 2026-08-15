@@ -642,6 +642,11 @@ message TaskReviewer {
   string id = 1;
   string task_id = 2;
   string user_id = 3;
+  // Resolved server-side, for the same reason Assignee.name is: otherwise a
+  // client must hold the member catalogue to render a name, and fetching that
+  // catalogue is what made the first assignee picker issue 2,000 requests
+  // (M05-T04).
+  string name = 4;
 }
 
 message AddTaskReviewerRequest {

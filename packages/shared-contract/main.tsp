@@ -703,6 +703,12 @@ model TaskReviewer {
   @field(1) id: string;
   @field(2) taskId: string;
   @field(3) userId: string;
+
+  // Resolved server-side, for the same reason Assignee.name is: otherwise a
+  // client must hold the member catalogue to render a name, and fetching that
+  // catalogue is what made the first assignee picker issue 2,000 requests
+  // (M05-T04).
+  @field(4) name: string;
 }
 
 model AddTaskReviewerRequest {

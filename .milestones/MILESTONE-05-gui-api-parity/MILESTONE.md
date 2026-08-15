@@ -76,7 +76,7 @@ canvas is warranted.
       - Files: `apps/gui/src/features/Tasks/`, new `AssigneePicker` component
       - Verify: assigning in the UI is visible via `cli tasks list`.
 
-- [ ] **M05-T05** — Reviewers: add, list and remove reviewers on the task detail.
+- [x] **M05-T05** — Reviewers: add, list and remove reviewers on the task detail.
       - Files: `apps/gui/src/features/Tasks/`
       - Verify: reviewers round-trip through the API.
 

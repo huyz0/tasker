@@ -152,6 +152,37 @@ describe('AssigneePicker', () => {
     expect(await screen.findByText(/Failed to assign/)).toBeInTheDocument();
   });
 
+  it('identifies someone who has a login but no name yet', async () => {
+    mockListMembers.mockResolvedValue({
+      members: [{ userId: 'u-9', name: '', email: 'invited@x.test', role: 'member' }],
+      page: { totalCount: 1 },
+    });
+    renderPicker([]);
+    await openPicker();
+    // An invited member who has never signed in has no name. A blank row is
+    // unassignable; their email is the only handle anyone has on them.
+    expect(await screen.findByRole('button', { name: 'invited@x.test' })).toBeInTheDocument();
+  });
+
+  it('does not claim there are more matches when the server sent no count', async () => {
+    mockListMembers.mockResolvedValue({ members: [{ userId: 'u-1', name: 'Ada Lovelace', email: 'ada@x.test' }] });
+    mockListAgents.mockResolvedValue({ agents: [] });
+    renderPicker([]);
+    await openPicker();
+    await screen.findByRole('button', { name: 'Ada Lovelace' });
+    // Falling back to the page length rather than 0 keeps "Showing 1 of 0"
+    // off the screen.
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('closes without assigning when cancelled', async () => {
+    renderPicker([]);
+    await openPicker();
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByLabelText('Search people and agents')).toBeNull());
+    expect(mockAssign).not.toHaveBeenCalled();
+  });
+
   it('reports a failed removal and keeps the row', async () => {
     mockUnassign.mockRejectedValue(new Error('nope'));
     renderPicker([{ userId: 'u-1', agentId: '', name: 'Ada Lovelace' }]);

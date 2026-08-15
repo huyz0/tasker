@@ -636,7 +636,25 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       const reviewers = isStandalone ? schemaSqlite.taskReviewers : schemaMysql.taskReviewers;
       const rows = await db.select().from(reviewers).where(eq((reviewers as any).taskId, parsed.taskId));
-      return { reviewers: rows };
+      if (rows.length === 0) return { reviewers: [] };
+
+      // One lookup for every name, not one per reviewer. Resolved here rather
+      // than by the client for the same reason as Assignee.name: holding the
+      // member catalogue client-side is what made the first assignee picker
+      // fetch 100,001 rows (M05-T04).
+      const usersTable = isStandalone ? schemaSqlite.users : schemaMysql.users;
+      const userRows = await db.select().from(usersTable)
+        .where(inArray((usersTable as any).id, [...new Set(rows.map((r: any) => r.userId))]));
+      const nameById = new Map(userRows.map((u: any) => [u.id, u.name || u.email]));
+
+      return {
+        reviewers: rows.map((r: any) => ({
+          ...r,
+          // Falling back to the id keeps the reviewer visible if the account
+          // has gone, rather than dropping them from the list silently.
+          name: nameById.get(r.userId) ?? r.userId,
+        })),
+      };
     },
     async updateTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);

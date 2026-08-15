@@ -37,7 +37,7 @@ vi.mock('@connectrpc/connect', () => ({
     if (service === 'TaskNoteService') return { listTaskNotes: mockListTaskNotes, updateTaskNote: mockUpdateTaskNote, deleteTaskNote: mockDeleteTaskNote };
     if (service === 'OrgService') return { listOrgMembers: vi.fn().mockResolvedValue({ members: [], page: {} }) };
     if (service === 'AgentService') return { listAgents: vi.fn().mockResolvedValue({ agents: [], page: {} }) };
-    return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask, updateTask: mockUpdateTask, createTask: mockCreateTask, assignTask: vi.fn(), unassignTask: vi.fn() };
+    return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask, updateTask: mockUpdateTask, createTask: mockCreateTask, assignTask: vi.fn(), unassignTask: vi.fn(), listTaskReviewers: vi.fn().mockResolvedValue({ reviewers: [] }), addTaskReviewer: vi.fn(), removeTaskReviewer: vi.fn() };
   }),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({

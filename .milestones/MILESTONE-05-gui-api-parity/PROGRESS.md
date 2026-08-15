@@ -157,4 +157,28 @@ Append-only. Newest entry at the bottom.
   accessible name is now its entire text including the labels of the controls
   inside it — `getByRole('button', {name: 'Assign…'})` matches the card. Found
   while writing the browser check.
-- **Next**: M05-T05
+
+## M05-T05 — Reviewers
+
+- **Done.** Reviewers add, list and remove from the task detail
+  (`ReviewerPicker.tsx`), with names resolved server-side.
+  (`reviews/M05-T05-reviewers-v1.md`) — approved, 1 medium, 1 low.
+- **The verify line was read strictly.** "Round-trips through the API" means a
+  *second* client sees what the GUI wrote, not that the page still shows it.
+  Added `Member 0099999` to `SEED-145` in the browser; a separate HTTP
+  `ListTaskReviewers` returned that reviewer by name; removed it in the browser;
+  the same call then returned empty.
+- **`TaskReviewer` carried only ids**, so any client wanting to show a name had
+  to hold the member catalogue — the exact pressure that produced M05-T04's
+  two-thousand-request picker one task earlier. Added `TaskReviewer.name`,
+  resolved in one batched lookup.
+- **Deliberately not shared with `AssigneePicker`.** Same shape — bounded page,
+  server-side `filter`, a count of what was matched but not shown — but a
+  different set (`task_reviewers` references `users` only) and a different
+  question. One component with a `kind` flag would carry that branch through
+  every line.
+- **The 95% branch gate fired again**, at 94.72%, and named four real
+  behaviours across both pickers: the "Showing N of M" line, the two distinct
+  empty states, Cancel, and the name-or-email fallback for a member who was
+  invited but never signed in. Fourth milestone running.
+- **Next**: M05-T06

@@ -11,6 +11,7 @@ import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
 import { AssigneePicker } from './AssigneePicker';
+import { ReviewerPicker } from './ReviewerPicker';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 
@@ -614,6 +615,10 @@ export function TasksWorkbench() {
                     <AssigneePicker taskId={expandedTask.id} orgId={activeOrgId} assignees={(expandedTask as any).assignees ?? []} />
                   </div>
                 </div>
+             </div>
+             <div>
+               <h3 className="text-sm font-semibold tracking-tight mb-3">Reviewers</h3>
+               <ReviewerPicker taskId={expandedTask.id} orgId={activeOrgId} />
              </div>
              <div>
                <h3 className="text-sm font-semibold tracking-tight mb-3">Labels</h3>
