@@ -223,4 +223,26 @@ Append-only. Newest entry at the bottom.
   both fail when the string is flipped, checked by injection.
 - **Verified through a reload, not a cache read.** Posted a comment in the
   browser, reloaded the page, and read it back over HTTP as an artifact comment.
-- **Next**: M05-T08
+
+## M05-T08 — Artifact upload
+
+- **Done.** A file input in each folder: base64, detected content type, a size
+  limit checked before sending, and a preview while it uploads
+  (`ArtifactUpload.tsx`).
+- **`createArtifact` has always taken `content` and `contentType`,** and the
+  viewer has always decoded `image/*` from base64 — but nothing in the GUI ever
+  sent either, so every artifact created here was an empty text file. Same shape
+  of gap as T06: half the path built, the other half missing, so neither half
+  was exercised.
+- **The limit is derived, not chosen.** The server accepts 15,000,000 characters
+  of content; base64 inflates by 4/3, so raw bytes cap at 11,250,000. Checking
+  it client-side turns "rejected after the whole body was uploaded" into an
+  immediate answer. A test pins the boundary exactly, because an off-by-one here
+  rejects a file the server would have taken.
+- **An unknown extension is called `application/octet-stream`, never text.**
+  A mislabelled binary rendered as markdown is a wall of mojibake; an unknown
+  type is merely undisplayable.
+- **Verified through a reload with a real PNG**: uploaded a 64×64 image in the
+  browser, reloaded, and the `<img>` reported `naturalWidth` 64 — the browser
+  decoded it, rather than the element merely existing.
+- **Next**: M05-T09

@@ -90,7 +90,7 @@ canvas is warranted.
       - Files: `apps/gui/src/features/Artifacts/index.tsx`
       - Verify: a comment on an artifact persists and re-renders.
 
-- [ ] **M05-T08** — Artifact upload: a file input that base64-encodes, detects
+- [x] **M05-T08** — Artifact upload: a file input that base64-encodes, detects
       content type, enforces the size limit, and previews images.
       - Files: `apps/gui/src/features/Artifacts/index.tsx`
       - Verify: an image uploaded in the browser renders after reload.

@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { TaskArtifactLinks } from "../Tasks/TaskArtifactLinks";
 import { Comment } from "../../components/ui/comments";
+import { ArtifactUpload } from "./ArtifactUpload";
 import { transport } from "../../lib/connectTransport";
 import { ArtifactService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Label } from '../../components/ui/labels';
@@ -342,6 +343,7 @@ export function ArtifactsBrowser() {
                       + New artifact
                     </button>
                   )}
+                  <ArtifactUpload folderId={folder.id} />
                 </div>
               )}
             </div>
