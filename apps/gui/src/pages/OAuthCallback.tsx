@@ -84,7 +84,7 @@ export function OAuthCallback() {
 
   if (error) {
     return (
-      <div className="p-8 max-w-md mx-auto mt-10 border rounded-lg bg-destructive/10 text-destructive border-destructive/20 text-center">
+      <div className="p-8 max-w-md mx-auto mt-10 border border-transparent rounded-lg bg-destructive-subtle text-destructive-subtle-foreground text-center">
         <h2 className="text-lg font-bold mb-2">Integration Failed</h2>
         <p>{error}</p>
         <button onClick={() => navigate('/projects')} className="mt-4 px-4 py-2 bg-background border rounded hover:bg-muted text-foreground">Return to Projects</button>

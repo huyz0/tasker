@@ -321,7 +321,7 @@ function BinList({ isLoading, items, onRestore, isRestoring, restoreError, onPur
                 }
               }}
               disabled={isRestoring || isPurging}
-              className="px-3 py-1 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-md text-xs font-medium disabled:opacity-50"
+              className="px-3 py-1 bg-destructive-subtle text-destructive-subtle-foreground hover:bg-destructive hover:text-destructive-foreground rounded-md text-xs font-medium disabled:opacity-50"
             >
               {isPurging ? 'Deleting...' : 'Delete Forever'}
             </button>

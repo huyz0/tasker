@@ -72,7 +72,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: all `features/*` delete handlers
       - Verify: no `window.confirm` remains in `src/`.
 
-- [ ] **M06-T05** — Move `PaginationControls`, `Login` and `ErrorBoundary` onto
+- [x] **M06-T05** — Move `PaginationControls`, `Login` and `ErrorBoundary` onto
       tokens and remove the hex literal from the OAuth button.
       - Files: those three components, `RepositoryIntegrationConfig.tsx`
       - Verify: the login page respects the active theme.

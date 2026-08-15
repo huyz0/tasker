@@ -29,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.error) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
-          <div className="max-w-md w-full border border-destructive/20 bg-destructive/10 text-destructive rounded-lg p-6 text-center">
+          <div className="max-w-md w-full border border-transparent bg-destructive-subtle text-destructive-subtle-foreground rounded-lg p-6 text-center">
             <h2 className="text-lg font-bold mb-2">Something went wrong</h2>
             <p className="text-sm mb-4">{this.state.error.message}</p>
             <button

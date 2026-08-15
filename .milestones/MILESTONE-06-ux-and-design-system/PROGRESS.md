@@ -156,3 +156,31 @@ standard and wonder which one is wrong.
     its own toggle, abandoning a subfolder form, and the "Clear filters" way out
     of an empty member search. All three are now tested.
 - **Next**: M06-T05
+
+## M06-T05 — The last components onto tokens
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `components/ErrorBoundary.tsx`, `pages/OAuthCallback.tsx`,
+  `features/Bin/index.tsx`
+- **Verified**: the login page renders `rgb(255,255,255)` on
+  `rgb(2,8,23)` text in light and the exact inverse in dark, measured in a real
+  browser under both `prefers-color-scheme` settings.
+  `moon run gui:design-lint` — 121 files, 0 findings. `gui:test` — 565 pass.
+- **Notes**: most of what this task describes was already done, and saying so is
+  more useful than pretending otherwise.
+  - **`Login` and `PaginationControls` were already on tokens.** No change was
+    needed and none was invented.
+  - **The OAuth button's hex stays**, with the exemption it already carries:
+    `#2b3137` is GitHub's brand colour, fixed by the vendor, and
+    `design-system.md` explicitly allows a third-party brand colour behind a
+    `design-lint-disable-next-line` with a reason. Removing it would mean
+    rendering GitHub's button in a colour GitHub does not use.
+  - **What was actually left** was the alpha-tint pattern T01 documented as *not*
+    the scale — `bg-destructive/10 text-destructive` — surviving in three error
+    surfaces: `ErrorBoundary`, `OAuthCallback`, and the Bin's delete-forever
+    button. Now on `destructive-subtle`, which the contrast gate checks at 4.5:1
+    in both themes; the alpha tint it replaces was checked by nothing.
+  - **`#3b82f6` in `Labels` stays too**: it is the default colour offered for a
+    user-created label — entity data, not chrome.
+- **Next**: M06-T06
