@@ -49,3 +49,19 @@ standard and wonder which one is wrong.
     two of those; `OAuthCallback` and `Bin` are named by neither task, so T05
     should take them.
 - **Next**: M06-T02
+
+## M06-T02 — Component primitives decision
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: ADR-0005 left M06 a recommendation — install Radix for the
+  overlay primitives only. Two forces bear on it now: `AGENTS.md` forbids
+  installing a third-party package without explicit user authorization or a
+  `tech-stack.md` entry, and neither exists; and the milestone itself says
+  formalising the hand-rolled set is an equally valid outcome provided the
+  accessibility criteria are met. Write the ADR with both options costed, and
+  make whichever is chosen binding on T03.
+- **Note on the verify line**: "the ADR is referenced by the dialog
+  implementation" cannot pass until T03 builds that dialog, so this task's box
+  stays unchecked until then. The ADR ships in its own commit; T03's commit
+  checks both.

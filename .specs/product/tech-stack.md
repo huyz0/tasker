@@ -47,9 +47,20 @@ rendering; see Dropped.
 ### UI components
 
 Hand-rolled primitives in `apps/gui/src/components/ui/`. **Shadcn and Radix are
-not installed** — see
-[ADR-0005](../adr/ADR-0005-hand-rolled-ui-primitives-instead-of-shadcn-and-radix.md),
-which recommends Radix for overlay primitives only when M06 revisits it.
+not installed, by decision** — see
+[ADR-0009](../adr/ADR-0009-component-primitives.md), which settled the question
+M06 inherited from
+[ADR-0005](../adr/ADR-0005-hand-rolled-ui-primitives-instead-of-shadcn-and-radix.md).
+
+Overlays go through one primitive, `components/ui/Dialog.tsx`, which owns the
+seven behaviours ADR-0009 lists (`role="dialog"`, `aria-modal`, an accessible
+name, focus in, focus trapped, `Escape` to close, focus restored) and has a test
+for each. **Do not hand-roll a second overlay** — that is how the two
+pre-M06 overlays ended up with no focus trap between them.
+
+Adopting Radix later is deliberately cheap: call sites depend on `Dialog`'s
+props, not its internals. ADR-0009 names the three conditions that would
+reverse the decision.
 
 ### Backend — `package.json`, `apps/backend/package.json`
 
