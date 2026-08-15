@@ -78,3 +78,31 @@ func ClearCredentials() error {
 	}
 	return nil
 }
+
+// tokenOverride holds the value of the global --token flag. A package variable
+// rather than a parameter because every command builds its client through
+// ClientOptions(), and threading a token through all of them to serve one flag
+// would be a worse trade than this.
+var tokenOverride string
+
+// SetTokenOverride records the --token flag's value. Empty means unset.
+func SetTokenOverride(token string) { tokenOverride = token }
+
+// ResolveToken returns the credential to authenticate with, most explicit
+// first: the --token flag, then TASKER_TOKEN, then the saved session.
+//
+// The ordering matters for the case this exists to serve. A scripted agent
+// exports TASKER_TOKEN in an environment where a human may also have run
+// `tasker auth login`; if the leftover session won, the script would silently
+// run as that person, with their permissions, attributing its work to them.
+//
+// An empty result is not an error: being logged out is a normal state.
+func ResolveToken() (string, error) {
+	if tokenOverride != "" {
+		return tokenOverride, nil
+	}
+	if v := os.Getenv("TASKER_TOKEN"); v != "" {
+		return v, nil
+	}
+	return LoadCredentials()
+}

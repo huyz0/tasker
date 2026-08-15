@@ -97,7 +97,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
       - Files: `apps/backend/src/lib/rateLimit.ts`, `apps/backend/src/index.ts`
       - Verify: a burst past the limit is throttled and recovers.
 
-- [ ] **M04-T09** — CLI: `tasker auth token create|list|revoke`, plus `--token`
+- [x] **M04-T09** — CLI: `tasker auth token create|list|revoke`, plus `--token`
       and `TASKER_TOKEN` for authenticating as an agent.
       - Files: `apps/cli/cmd/auth.go`, `apps/cli/internal/backend/credentials.go`
       - Verify: a scripted agent session works with no browser login.

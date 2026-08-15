@@ -364,3 +364,54 @@ Append-only. Newest entry at the bottom.
   **M11** owns multi-instance deployment and inherits it.
 - **knip caught a third premature export** (`RateLimiter`). Removed.
 - **Next**: M04-T09
+
+---
+
+## M04-T09 — CLI: `auth token create|list|revoke`, `--token`, `TASKER_TOKEN`
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `cmd/auth_token.go` (new), `cmd/auth_token_test.go` (new,
+  6 tests), `cmd/root.go` (`--token` persistent flag),
+  `internal/backend/credentials.go` (`ResolveToken`, `SetTokenOverride`),
+  `internal/backend/client.go` (`DescribeRPCError`, `DescribeHTTPError`),
+  `internal/backend/token_test.go` (new, 7 tests), `apps/cli/moon.yml`
+- **Verified**: `moon run cli:test` — cmd and internal/backend both pass.
+  `moon check --all` — 23 pass. And the verify line end to end against a running
+  backend, with a scripted agent and no browser login anywhere:
+
+  ```
+  admin mints a token via the CLI      → plaintext returned once, JSON for scripts
+  TASKER_TOKEN=… tasks create          → T09-1 created
+  TASKER_TOKEN=… tasks list            → sees it
+  TASKER_TOKEN=… tasks note-add        → agentId: agent-t09
+  TASKER_TOKEN=… tasks comment-add     → authorName: "Worker"
+  read-only token, tasks create        → permission_denied: this token lacks
+                                          the tasks:write scope
+  read-only token, tasks list          → allowed
+  auth token list                      → prefixes, states, last-used; no secret
+  auth token revoke, then next request → unauthenticated, no restart
+  ```
+
+- **Precedence is `--token` > `TASKER_TOKEN` > saved session**, and the ordering
+  is the point rather than a detail. A scripted agent exports `TASKER_TOKEN` in
+  an environment where a human may also have run `tasker auth login`; if the
+  leftover session won, the script would silently run as that person, with their
+  permissions, attributing its work to them.
+- **`note-add` works again**, closing the gap T06 opened — now for the right
+  reason: the note is authored by the authenticated agent rather than by a human
+  naming one.
+- **`cli:test` was only running `./cmd/...`.** `internal/backend` holds the
+  client, the auth interceptor and credential resolution, and its tests — which
+  already existed — had never been run by the gate. Found because a new test
+  file compiled locally while `moon run cli:test` reported green without having
+  built it. Now `./...`; both packages pass. Third gate this milestone that was
+  reporting success on something it never checked.
+- **A 429 needed special handling in the client**, which ADR-0008 predicted:
+  putting the limiter ahead of the Connect adapter means a generated client sees
+  a transport failure, and connect-go maps a non-Connect 429 to
+  `CodeUnavailable`. Left alone, the CLI would tell an agent its backend is down
+  when it needs to slow down. `DescribeRPCError` matches the message text, which
+  is fragile and is the price of answering 429 with RFC 7807 — recorded rather
+  than hidden.
+- **Next**: M04-T10

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -36,4 +37,13 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().Bool("json", false, "Output in JSON format")
+	rootCmd.PersistentFlags().String("token", "", "Agent token to authenticate with (overrides TASKER_TOKEN and any saved session)")
+
+	// Read once, before any command runs, rather than in each RunE: every
+	// command authenticates, and a flag only some of them consulted would be a
+	// flag that silently does nothing on the rest.
+	cobra.OnInitialize(func() {
+		token, _ := rootCmd.PersistentFlags().GetString("token")
+		backend.SetTokenOverride(token)
+	})
 }

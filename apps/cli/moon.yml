@@ -18,8 +18,12 @@ tasks:
       - 'go.mod'
       - 'go.sum'
 
+  # ./... not ./cmd/... - internal/backend holds the client, the auth
+  # interceptor and credential resolution, and its tests existed but were never
+  # run by this gate. Found in M04-T09 when a new test file compiled locally and
+  # the gate reported green without having built it.
   test:
-    command: 'go test -v -coverprofile=coverage.out ./cmd/...'
+    command: 'go test -v -coverprofile=coverage.out ./...'
     inputs:
       - '**/*.go'
       - 'go.mod'

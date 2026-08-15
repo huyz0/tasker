@@ -8,8 +8,12 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
+	"strings"
 
 	"connectrpc.com/connect"
 )
@@ -65,14 +69,16 @@ func RequestIDInterceptor() connect.Interceptor {
 	})
 }
 
-// AuthInterceptor attaches the CLI's saved session token (from `tasker auth
-// login`) as an Authorization: Bearer header on every outgoing RPC. Commands
-// run with no saved credentials simply send no header - the backend then
-// rejects with Unauthenticated, same as an anonymous browser request.
+// AuthInterceptor attaches the caller's credential as an Authorization: Bearer
+// header on every outgoing RPC. That is an agent token from --token or
+// TASKER_TOKEN, or the session saved by `tasker auth login` - see ResolveToken
+// for the precedence and why it is that way round. Commands run with no
+// credential at all simply send no header, and the backend rejects with
+// Unauthenticated, same as an anonymous browser request.
 func AuthInterceptor() connect.Interceptor {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			token, err := LoadCredentials()
+			token, err := ResolveToken()
 			if err != nil {
 				Logger.Warn("failed to load saved credentials", "err", err)
 			} else if token != "" {
@@ -86,4 +92,44 @@ func AuthInterceptor() connect.Interceptor {
 // ClientOptions returns the connect.ClientOption set every CLI client should use.
 func ClientOptions() []connect.ClientOption {
 	return []connect.ClientOption{connect.WithInterceptors(RequestIDInterceptor(), AuthInterceptor())}
+}
+
+// DescribeHTTPError turns a raw HTTP response into a message worth printing.
+//
+// Only 429 gets special treatment, and only because ADR-0008 put the rate
+// limiter ahead of the Connect adapter so the refusal could carry RFC 7807 and
+// Retry-After. The cost, named in that ADR, is that generated Connect clients
+// see a transport-level failure rather than a typed error - so without this the
+// CLI prints something unhelpful at exactly the moment a caller needs to know
+// to back off.
+func DescribeHTTPError(res *http.Response) string {
+	if res.StatusCode != http.StatusTooManyRequests {
+		return fmt.Sprintf("request failed with status %d", res.StatusCode)
+	}
+	if retry := res.Header.Get("Retry-After"); retry != "" {
+		return fmt.Sprintf("rate limit exceeded - retry after %s seconds", retry)
+	}
+	return "rate limit exceeded"
+}
+
+// DescribeRPCError renders an RPC failure for a human or an agent to act on.
+//
+// A throttle arrives as CodeUnavailable, because connect-go maps a non-Connect
+// 429 that way, and "unavailable" tells an agent the backend is down when in
+// fact it needs to slow down - the difference between retrying harder and
+// retrying later. Matching on the message text is fragile, and is the price of
+// answering 429 at the transport; the alternative was giving up RFC 7807.
+func DescribeRPCError(err error) string {
+	if err == nil {
+		return ""
+	}
+	var connectErr *connect.Error
+	if errors.As(err, &connectErr) {
+		if connectErr.Code() == connect.CodeUnavailable &&
+			strings.Contains(strings.ToLower(connectErr.Message()), "too many requests") {
+			return "rate limit exceeded - wait before retrying"
+		}
+		return connectErr.Message()
+	}
+	return err.Error()
 }
