@@ -193,7 +193,7 @@ describe("Tasks Handler Integration Tests", () => {
     // both combinations are distinct rows.
     const agentRoleId = "role-assign-both-" + Date.now();
     const agentId = "agent-assign-both-" + Date.now();
-    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
     await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
     const otherUserId = "user-assign-both-" + Date.now();
     await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
@@ -396,7 +396,7 @@ describe("Tasks Handler Integration Tests", () => {
     await db.insert(schemaSqlite.repositoryLinks).values({ id: repoLinkId, projectId, provider: "github", remoteName: "org/repo", accessTokenEncrypted: "enc", createdAt: new Date() });
     const agentRoleId = "role-purge-" + Date.now();
     const agentId = "agent-purge-" + Date.now();
-    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
     await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
 
     const { createTaskManagementHandler } = require("./tasks.handler");

@@ -176,3 +176,63 @@ completes the task.
   wording for no gain. A GUI test asserts the ids reach the screen instead, so a
   change that swallows or truncates the message fails.
 - **Next**: M03-T05
+
+---
+
+## M03-T05 — Scope agent roles to an organization
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: `agent_roles` is a global catalogue every tenant shares, so an
+  admin of any organization can rewrite a persona another organization's agents
+  run on. Add `orgId`, backfill from the agents that reference each role, and
+  replace `assertOrgAdminOfAny` with `assertOrgAdmin` against the role's own
+  org. Contract gains `orgId` on `AgentRole`, `CreateAgentRoleRequest` and
+  `ListAgentRolesRequest` as new field numbers.
+- **Weight**: heavy — a breaking data migration on a shared table, the
+  milestone's own stated risk.
+  [ADR-0007](../../.specs/adr/ADR-0007-agent-roles-belong-to-one-organization.md)
+  first, [review](reviews/M03-T05-agent-role-tenancy-v1.md) after.
+- **Changed**: `main.tsp` + `tasker/health/v1/health.proto` (three new field
+  numbers), both schemas, two migrations
+  (`0021_scope_agent_roles_to_org.sql`, `0008_…`), `agents.handler.ts`,
+  `apps/cli/cmd/agents.go` (+`--org`), `features/Agents/index.tsx`,
+  `scripts/seed.ts`, `packages/shared-contract/moon.yml`, and eight test files.
+- **Verified**: `moon check --all` — 23 tasks green, 410 backend tests. The
+  verify line is proven directly: an admin of org A calling `updateAgentRole`
+  on org B's role is rejected, and the row is re-read to confirm the prompt was
+  not written. Plus cross-org create, list isolation, borrowing another org's
+  role for a new agent, and member-can-read-but-not-write.
+- **Notes**: **the abort guard did not work as first written, and only the
+  migration test found it.** `bun:sqlite` silently discards errors from any
+  statement after the first in a single `run()` call — `CREATE TABLE g(… CHECK
+  …); INSERT INTO g VALUES(0);` completes without throwing and leaves `g`
+  empty. Drizzle runs one chunk per `run()`, so a guard sharing a chunk with
+  anything before it is decorative: the migration would have picked an
+  arbitrary owner for a shared role and reported success. Every statement now
+  has its own breakpoint chunk, with the reason written into the file.
+
+  A second defect in the same file: a comment quoting the literal breakpoint
+  marker split the file there, because drizzle splits on that exact string
+  wherever it appears. That left a comment-only chunk which fails as invalid
+  SQL. Also caught by the test, not by reading.
+
+  The migration is tested against a database built in the **pre**-migration
+  shape. Running it through drizzle's migrator would only ever exercise the
+  empty-database path, which is the one case that cannot go wrong.
+- **Divergence — three things beyond the task's file list**:
+
+  1. `packages/shared-contract/moon.yml`'s `compile` inputs listed `**/*.tsp`
+     but not the `.proto` that `buf` actually generates from (`buf.yaml`
+     excludes `tsp-output`). Editing the proto did not invalidate the cache, so
+     `moon run compile` reported success and regenerated nothing. Fixed.
+  2. The GUI roles query key was `['agentRoles']` with no org in it. With the
+     request now org-scoped, switching organizations would have served the
+     previous org's roles from cache — a cross-tenant leak in the client.
+  3. A CLI negative test passed spuriously: cobra keeps flag values on the
+     command object and the whole package shares one `rootCmd`, so an earlier
+     test's `--org` was still set. It resets both flags explicitly now.
+- **Correction to ADR-0007**: it claimed `assertOrgAdminOfAny` "goes away
+  entirely". It does not — `telemetry.ts` still uses it for `/api/debug/*`,
+  which is platform-wide rather than org-scoped. The ADR now says so.
+- **Next**: M03-T06

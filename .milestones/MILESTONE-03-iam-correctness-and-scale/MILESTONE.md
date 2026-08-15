@@ -75,7 +75,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
       - Files: `modules/orgs/orgs.handler.ts`, `features/Organizations/index.tsx`
       - Verify: removing a project owner is blocked until reassigned.
 
-- [ ] **M03-T05** — Scope agent roles to an organization: add `orgId`, migrate
+- [x] **M03-T05** — Scope agent roles to an organization: add `orgId`, migrate
       existing rows, and gate writes on org admin rather than admin-of-any.
       - Files: `db/schema.*.ts`, migrations, `modules/agents/agents.handler.ts`,
         `lib/authz.ts`

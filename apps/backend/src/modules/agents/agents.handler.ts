@@ -4,12 +4,13 @@ import { eq, and, not } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin, assertOrgAdminOfAny } from "../../lib/authz";
+import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin } from "../../lib/authz";
 import { notDeleted, softDeleteById, restoreById, executePaginatedQuery, insertRecord } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
 
 const CreateAgentRoleSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
   name: z.string().min(1, "name is required").max(256),
   systemPrompt: z.string().min(1, "systemPrompt is required").max(4096),
   capabilities: z.string().min(1, "capabilities is required").max(2048),
@@ -22,6 +23,11 @@ const UpdateAgentRoleSchema = z.object({
   capabilities: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(2048).optional()),
 }).refine((v) => v.name !== undefined || v.systemPrompt !== undefined || v.capabilities !== undefined, {
   message: "at least one of name, systemPrompt, or capabilities must be provided",
+});
+
+const ListAgentRolesSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+  page: z.any().optional(),
 });
 
 const CreateAgentSchema = z.object({
@@ -57,12 +63,17 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
   return {
     async createAgentRole(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
-      await assertOrgAdminOfAny(db, userId);
       const parsed = CreateAgentRoleSchema.parse(req);
+      // ADR-0007: a role belongs to one organization, so this is an ordinary
+      // org-scoped admin check. It used to be `assertOrgAdminOfAny` - admin of
+      // any organization anywhere - because the catalogue was global and there
+      // was no org to scope to.
+      await assertOrgAdmin(db, userId, parsed.orgId);
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
       const newId = `ar-${crypto.randomUUID()}`;
       const payload = {
         id: newId,
+        orgId: parsed.orgId,
         name: parsed.name,
         systemPrompt: parsed.systemPrompt,
         capabilities: parsed.capabilities,
@@ -74,12 +85,15 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
     },
     async updateAgentRole(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
-      await assertOrgAdminOfAny(db, userId);
       const parsed = UpdateAgentRoleSchema.parse(req);
 
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
       const existing = await db.select().from(roles).where(eq((roles as any).id, parsed.id)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("agent role not found", Code.NotFound);
+      // Scope to the role's own organization, resolved from the row - not from
+      // anything the caller sent, which they could point at an org they do
+      // administer to reach a role in one they do not.
+      await assertOrgAdmin(db, userId, existing[0].orgId);
 
       const updates: Record<string, unknown> = {};
       if (parsed.name !== undefined) updates.name = parsed.name;
@@ -92,10 +106,22 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       publishDomainEvent(nc, "domain.agent_role.updated", updated);
       return { role: updated };
     },
-    async listAgentRoles(req: any, { values: contextValues }: { values: any }) {
-      requireUserId(contextValues);
+    async listAgentRoles(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ListAgentRolesSchema.parse(req);
+      // Reading is membership, not admin - a member picking a role for an agent
+      // needs the list. Scoping it is what stops one tenant's catalogue leaking
+      // into another's picker.
+      await assertOrgMember(db, userId, parsed.orgId);
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, roles, undefined, req?.page, (roles as any).name, { name: (roles as any).name });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(
+        db,
+        roles,
+        eq((roles as any).orgId, parsed.orgId),
+        parsed.page,
+        (roles as any).name,
+        { name: (roles as any).name },
+      );
       return { roles: items, page: { nextCursor, totalCount } };
     },
     async createAgent(req: unknown, { values: contextValues }: { values: any }) {
@@ -106,6 +132,12 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
       const roleRows = await db.select().from(roles).where(eq((roles as any).id, parsed.agentRoleId)).limit(1);
       if (!roleRows || roleRows.length === 0) {
+        throw new ConnectError("agent role not found", Code.NotFound);
+      }
+      // NotFound rather than PermissionDenied: whether a role exists in another
+      // organization is that organization's business, and answering the
+      // question at all would turn this into a probe for role ids.
+      if (roleRows[0].orgId !== parsed.orgId) {
         throw new ConnectError("agent role not found", Code.NotFound);
       }
 

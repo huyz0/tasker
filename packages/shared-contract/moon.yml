@@ -30,6 +30,13 @@ tasks:
     script: 'bunx tsp compile main.tsp && bunx buf generate'
     inputs:
       - '**/*.tsp'
+      # buf generates from the checked-in .proto, not from tsp-output (which
+      # buf.yaml excludes). Leaving it out of the inputs meant editing the proto
+      # did not invalidate the cache, so `moon run compile` reported success and
+      # regenerated nothing.
+      - 'tasker/**/*.proto'
+      - 'buf.yaml'
+      - 'buf.gen.yaml'
       - 'package.json'
     outputs:
       - 'tsp-output'

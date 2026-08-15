@@ -125,6 +125,10 @@ export const projects = mysqlTable("projects", {
 
 export const agentRoles = mysqlTable("agent_roles", {
   id: varchar("id", { length: 256 }).primaryKey(),
+  // A role belongs to exactly one organization (ADR-0007). This table used to
+  // be a global catalogue every tenant shared, so an admin of any org could
+  // rewrite a persona another org's agents run on.
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
   name: varchar("name", { length: 256 }).notNull(),
   systemPrompt: varchar("system_prompt", { length: 4096 }).notNull(),
   capabilities: varchar("capabilities", { length: 2048 }).notNull(),

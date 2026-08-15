@@ -387,6 +387,8 @@ message AgentRole {
   string name = 2;
   string system_prompt = 3;
   string capabilities = 4;
+  // A role belongs to exactly one organization (ADR-0007).
+  string org_id = 5;
 }
 
 message Agent {
@@ -401,6 +403,7 @@ message CreateAgentRoleRequest {
   string name = 1;
   string system_prompt = 2;
   string capabilities = 3;
+  string org_id = 4;
 }
 
 message CreateAgentRoleResponse {
@@ -409,6 +412,7 @@ message CreateAgentRoleResponse {
 
 message ListAgentRolesRequest {
   PageRequest page = 1;
+  string org_id = 2;
 }
 
 message ListAgentRolesResponse {

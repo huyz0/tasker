@@ -29,7 +29,7 @@ describe("Task Notes Handler", () => {
     await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "Tmpl", createdAt: new Date() });
     await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", createdAt: new Date() });
     await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: "Task", status: "todo", createdAt: new Date() });
-    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "{}" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "{}" });
     await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent", createdAt: new Date() });
 
     ctx = makeAuthContext(userId);
@@ -105,7 +105,7 @@ describe("Task Notes Handler", () => {
     const otherAgentRoleId = "ar-other-" + crypto.randomUUID();
     const otherAgentId = "agt-other-" + crypto.randomUUID();
     await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other Org", slug: "org-other-" + Date.now(), createdAt: new Date() });
-    await db.insert(schemaSqlite.agentRoles).values({ id: otherAgentRoleId, name: "Other Role", systemPrompt: "p", capabilities: "{}" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: otherAgentRoleId, orgId: otherOrgId, name: "Other Role", systemPrompt: "p", capabilities: "{}" });
     await db.insert(schemaSqlite.agents).values({ id: otherAgentId, orgId: otherOrgId, agentRoleId: otherAgentRoleId, name: "Other Agent", createdAt: new Date() });
 
     expect(

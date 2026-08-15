@@ -139,7 +139,7 @@ func TestAgentsListRolesCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
-	rootCmd.SetArgs([]string{"agents", "list-roles", "--cursor", "cursor-2", "--limit", "10"})
+	rootCmd.SetArgs([]string{"agents", "list-roles", "--org", "org_1", "--cursor", "cursor-2", "--limit", "10"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestAgentsCreateRoleCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
-	rootCmd.SetArgs([]string{"agents", "create-role", "--name", "Reviewer", "--system-prompt", "You review code", "--capabilities", "read,comment"})
+	rootCmd.SetArgs([]string{"agents", "create-role", "--org", "org_1", "--name", "Reviewer", "--system-prompt", "You review code", "--capabilities", "read,comment"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -198,5 +198,34 @@ func TestAgentsDeleteRestorePurgeCmd(t *testing.T) {
 	}
 	if fake.purgedID != "ag_1" {
 		t.Fatalf("expected PurgeAgent to be called with ag_1, got %q", fake.purgedID)
+	}
+}
+
+// M03-T05: a role belongs to one organization, so both commands must refuse
+// rather than silently act on whatever the server would default to.
+//
+// The explicit flag reset is not ceremony: cobra keeps flag values on the
+// command object, and every test in this binary shares one rootCmd, so a
+// previous test passing --org leaves it set and this test would pass while
+// proving nothing.
+func TestAgentRoleCommandsRequireAnOrg(t *testing.T) {
+	agentsListRolesCmd.Flags().Set("org", "")
+	agentsCreateRoleCmd.Flags().Set("org", "")
+
+	for _, args := range [][]string{
+		{"agents", "list-roles"},
+		{"agents", "create-role", "--name", "Reviewer"},
+	} {
+		withAgentServer(t, &fakeAgentHandler{})
+		b := bytes.NewBufferString("")
+		rootCmd.SetOut(b)
+		rootCmd.SetErr(b)
+		rootCmd.SetArgs(args)
+		if err := rootCmd.Execute(); err == nil {
+			t.Fatalf("expected %v to require --org", args)
+		}
+		if !strings.Contains(b.String(), "--org is required") {
+			t.Fatalf("expected %v to say why it failed, got %s", args, b.String())
+		}
 	}
 }

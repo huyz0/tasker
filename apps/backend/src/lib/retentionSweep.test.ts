@@ -134,7 +134,7 @@ describe("runRetentionSweep", () => {
     await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: "F", createdAt: new Date(), deletedAt: daysAgo(DEFAULT_RETENTION_DAYS + 1) });
     await db.insert(schemaSqlite.artifacts).values({ id: artifactId, folderId, name: "A", createdAt: new Date(), deletedAt: daysAgo(DEFAULT_RETENTION_DAYS + 1) });
     await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: "T", status: "todo", createdAt: new Date(), deletedAt: daysAgo(DEFAULT_RETENTION_DAYS + 1) });
-    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "{}" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "{}" });
     await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent", deletedAt: daysAgo(DEFAULT_RETENTION_DAYS + 1) });
 
     const purged = await runRetentionSweep(db);

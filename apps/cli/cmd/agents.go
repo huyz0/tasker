@@ -96,8 +96,13 @@ var agentsCreateCmd = &cobra.Command{
 
 var agentsListRolesCmd = &cobra.Command{
 	Use:   "list-roles",
-	Short: "List all agent role personas",
+	Short: "List an organization's agent role personas",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		orgID, _ := cmd.Flags().GetString("org")
+		if orgID == "" {
+			cmd.Println("Error: --org is required.")
+			return errors.New("Error: --org is required.")
+		}
 		isJson, _ := cmd.Flags().GetBool("json")
 		filter, _ := cmd.Flags().GetString("filter")
 		sort, _ := cmd.Flags().GetString("sort")
@@ -106,7 +111,8 @@ var agentsListRolesCmd = &cobra.Command{
 
 		client := backend.NewAgentServiceClient()
 		res, err := client.ListAgentRoles(context.Background(), connect.NewRequest(&healthv1.ListAgentRolesRequest{
-			Page: &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
+			OrgId: orgID,
+			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list agent roles: %v\n", err)
@@ -128,8 +134,13 @@ var agentsListRolesCmd = &cobra.Command{
 
 var agentsCreateRoleCmd = &cobra.Command{
 	Use:   "create-role",
-	Short: "Create a new agent role persona (system prompt, capabilities)",
+	Short: "Create an agent role persona in an organization (requires org admin)",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		orgID, _ := cmd.Flags().GetString("org")
+		if orgID == "" {
+			cmd.Println("Error: --org is required.")
+			return errors.New("Error: --org is required.")
+		}
 		name, _ := cmd.Flags().GetString("name")
 		systemPrompt, _ := cmd.Flags().GetString("system-prompt")
 		capabilities, _ := cmd.Flags().GetString("capabilities")
@@ -141,6 +152,7 @@ var agentsCreateRoleCmd = &cobra.Command{
 
 		client := backend.NewAgentServiceClient()
 		res, err := client.CreateAgentRole(context.Background(), connect.NewRequest(&healthv1.CreateAgentRoleRequest{
+			OrgId:        orgID,
 			Name:         name,
 			SystemPrompt: systemPrompt,
 			Capabilities: capabilities,
@@ -226,10 +238,12 @@ func init() {
 	agentsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 	agentsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	agentsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	agentsListRolesCmd.Flags().String("org", "", "Organization ID whose roles to list (required)")
 	agentsListRolesCmd.Flags().StringP("filter", "f", "", "Substring match against role name")
 	agentsListRolesCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 	agentsListRolesCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	agentsListRolesCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	agentsCreateRoleCmd.Flags().String("org", "", "Organization the role belongs to (required)")
 	agentsCreateRoleCmd.Flags().String("name", "", "Role name")
 	agentsCreateRoleCmd.Flags().String("system-prompt", "", "System prompt for the role")
 	agentsCreateRoleCmd.Flags().String("capabilities", "", "Capabilities/skills description for the role")

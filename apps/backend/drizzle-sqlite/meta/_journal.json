@@ -148,6 +148,13 @@
       "when": 1786665600000,
       "tag": "0020_purge_health_probe_rows",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1786665601000,
+      "tag": "0021_scope_agent_roles_to_org",
+      "breakpoints": true
     }
   ]
 }

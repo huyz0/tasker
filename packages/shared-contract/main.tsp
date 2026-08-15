@@ -425,6 +425,10 @@ model AgentRole {
   @field(2) name: string;
   @field(3) systemPrompt: string;
   @field(4) capabilities: string; // JSON string
+
+  // A role belongs to exactly one organization (ADR-0007). New field number,
+  // so existing clients are unaffected.
+  @field(5) orgId: string;
 }
 
 model Agent {
@@ -441,6 +445,7 @@ model CreateAgentRoleRequest {
   @field(1) name: string;
   @field(2) systemPrompt: string;
   @field(3) capabilities: string;
+  @field(4) orgId: string;
 }
 
 model CreateAgentRoleResponse {
@@ -449,6 +454,7 @@ model CreateAgentRoleResponse {
 
 model ListAgentRolesRequest {
   @field(1) page?: PageRequest;
+  @field(2) orgId: string;
 }
 model ListAgentRolesResponse {
   @field(1) roles: AgentRole[];

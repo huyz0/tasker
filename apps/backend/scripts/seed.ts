@@ -83,7 +83,7 @@ async function main() {
   }
 
   const agentRoleId = `role-seed-${crypto.randomUUID()}`;
-  await db.insert(schema.agentRoles).values({ id: agentRoleId, name: "Seed Agent Role", systemPrompt: "You are a seeded test agent.", capabilities: "[]", createdAt: now });
+  await db.insert(schema.agentRoles).values({ id: agentRoleId, orgId, name: "Seed Agent Role", systemPrompt: "You are a seeded test agent.", capabilities: "[]", createdAt: now });
   for (let i = 0; i < 5; i++) {
     await db.insert(schema.agents).values({ id: `agt-seed-${crypto.randomUUID()}`, orgId, agentRoleId, name: `Seed Agent ${i + 1}`, createdAt: now });
   }

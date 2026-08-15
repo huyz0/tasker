@@ -134,6 +134,10 @@ export const projects = sqliteTable("projects", {
 
 export const agentRoles = sqliteTable("agent_roles", {
   id: text("id").primaryKey(),
+  // A role belongs to exactly one organization (ADR-0007). This table used to
+  // be a global catalogue every tenant shared, so an admin of any org could
+  // rewrite a persona another org's agents run on.
+  orgId: text("org_id").notNull().references(() => organizations.id),
   name: text("name").notNull(),
   systemPrompt: text("system_prompt").notNull(),
   capabilities: text("capabilities").notNull(),

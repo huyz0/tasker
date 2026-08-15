@@ -37,12 +37,16 @@ export function AgentsDashboard() {
     enabled: !!activeOrgId,
   });
 
+  // Roles are scoped to an organization (ADR-0007), so the active org is part
+  // of the key as well as the request - without it, switching orgs would serve
+  // the previous org's roles from cache.
   const { data: rolesData } = useQuery({
-    queryKey: ['agentRoles'],
+    queryKey: ['agentRoles', activeOrgId],
     queryFn: async () => {
-      const resp = await agentClient.listAgentRoles({});
+      const resp = await agentClient.listAgentRoles({ orgId: activeOrgId });
       return resp.roles;
-    }
+    },
+    enabled: !!activeOrgId,
   });
 
   const roleNameById = new Map((rolesData ?? []).map((r) => [r.id, r.name]));

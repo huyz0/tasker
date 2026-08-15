@@ -173,7 +173,7 @@ describe("cascadePurge", () => {
     const taskId = "tsk-cascade-agents-" + Date.now();
 
     await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Org", slug: orgId, createdAt: new Date() });
-    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, name: "Role", systemPrompt: "p", capabilities: "[]", createdAt: new Date() });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]", createdAt: new Date() });
     for (const agentId of agentIds) {
       await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: agentId, createdAt: new Date() });
     }

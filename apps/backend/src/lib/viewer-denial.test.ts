@@ -131,8 +131,8 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     deleteTaskNote: { taskNoteId: ids.note },
   },
   agents: {
-    createAgentRole: { name: 'R', systemPrompt: 'p', capabilities: '[]' },
-    updateAgentRole: { agentRoleId: ids.agentRole, name: 'R2' },
+    createAgentRole: { orgId: ids.org, name: 'R', systemPrompt: 'p', capabilities: '[]' },
+    updateAgentRole: { id: ids.agentRole, name: 'R2' },
     createAgent: { orgId: ids.org, agentRoleId: ids.agentRole, name: 'A' },
     updateAgent: { agentId: ids.agent, name: 'A2' },
     archiveAgent: { agentId: ids.agent },
@@ -208,7 +208,7 @@ beforeAll(async () => {
   });
   await db.insert(schema.labels).values({ id: ids.label, orgId: ids.org, name: 'L', createdAt: now });
   await db.insert(schema.agentRoles).values({
-    id: ids.agentRole, name: 'R', systemPrompt: 'p', capabilities: '[]', createdAt: now,
+    id: ids.agentRole, orgId: ids.org, name: 'R', systemPrompt: 'p', capabilities: '[]', createdAt: now,
   });
   await db.insert(schema.agents).values({
     id: ids.agent, orgId: ids.org, agentRoleId: ids.agentRole, name: 'A', createdAt: now,
