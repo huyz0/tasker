@@ -5,6 +5,7 @@ import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { TaskArtifactLinks } from "../Tasks/TaskArtifactLinks";
+import { Comment } from "../../components/ui/comments";
 import { transport } from "../../lib/connectTransport";
 import { ArtifactService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Label } from '../../components/ui/labels';
@@ -410,6 +411,16 @@ export function ArtifactsBrowser() {
                  )}
                </div>
                )}
+               <div className="mt-6 not-prose">
+                 {/* The backend has accepted entityType "artifact" since M01;
+                     nothing mounted it, so the comments existed and were
+                     unreachable. */}
+                 <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>
+                 <Comment.Provider entityId={selectedArtifact.id} entityType="artifact">
+                   <Comment.List />
+                   <Comment.Composer />
+                 </Comment.Provider>
+               </div>
                <div className="mt-6 not-prose">
                  <h3 className="text-sm font-semibold tracking-tight mb-3">Tasks</h3>
                  <TaskArtifactLinks artifactId={selectedArtifact.id} orgId={activeOrgId} />

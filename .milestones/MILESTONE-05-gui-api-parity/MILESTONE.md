@@ -85,7 +85,7 @@ canvas is warranted.
       - Files: `apps/gui/src/features/Tasks/`, `features/Artifacts/index.tsx`
       - Verify: a linked artifact appears on the task.
 
-- [ ] **M05-T07** — Artifact comments: mount the existing comment provider with
+- [x] **M05-T07** — Artifact comments: mount the existing comment provider with
       `entityType="artifact"`.
       - Files: `apps/gui/src/features/Artifacts/index.tsx`
       - Verify: a comment on an artifact persists and re-renders.

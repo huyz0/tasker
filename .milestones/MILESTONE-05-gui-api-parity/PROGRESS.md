@@ -208,4 +208,19 @@ Append-only. Newest entry at the bottom.
 - **The name lookup selects two columns.** Artifact rows carry up to ~15MB of
   base64 in `content`; `select *` would pull every linked artifact's body into
   memory to render a list of file names.
-- **Next**: M05-T07
+
+## M05-T07 — Artifact comments
+
+- **Done.** `Comment.Provider` mounted in the artifact viewer with
+  `entityType="artifact"`.
+- **This one really was only a mount.** The backend has accepted
+  `entityType: "artifact"` since M01 — the enum, the authorization branch and
+  the listing filter were all there — so the comments existed and were
+  unreachable. No contract change, unlike T04, T05 and T06.
+- **The risk is a single string.** Mounting it as `"task"` would write comments
+  keyed to an artifact id that the table reads as a task, and the screen would
+  look identical. Two tests pin `entityType` on both the read and the write;
+  both fail when the string is flipped, checked by injection.
+- **Verified through a reload, not a cache read.** Posted a comment in the
+  browser, reloaded the page, and read it back over HTTP as an artifact comment.
+- **Next**: M05-T08

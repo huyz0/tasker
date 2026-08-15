@@ -14,6 +14,9 @@ const {
   mockListLabels,
   mockUpdateFolder,
   mockUpdateArtifactContent,
+  mockListComments,
+  mockCreateComment,
+  mockListTaskArtifactLinks,
 } = vi.hoisted(() => ({
   mockListFolders: vi.fn(),
   mockListArtifacts: vi.fn(),
@@ -25,6 +28,9 @@ const {
   mockListLabels: vi.fn(),
   mockUpdateFolder: vi.fn(),
   mockUpdateArtifactContent: vi.fn(),
+  mockListComments: vi.fn(),
+  mockCreateComment: vi.fn(),
+  mockListTaskArtifactLinks: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -32,6 +38,12 @@ vi.mock('@connectrpc/connect-web', () => ({
 }));
 vi.mock('@connectrpc/connect', () => ({
   createClient: vi.fn((service: unknown) => {
+    if (service === 'CommentService') return {
+      listComments: mockListComments,
+      createComment: mockCreateComment,
+      updateComment: vi.fn(),
+      deleteComment: vi.fn(),
+    };
     if (service === 'LabelService') return {
       listEntityLabels: mockListEntityLabels,
       listLabels: mockListLabels,
@@ -48,6 +60,10 @@ vi.mock('@connectrpc/connect', () => ({
       createArtifact: mockCreateArtifact,
       updateFolder: mockUpdateFolder,
       updateArtifactContent: mockUpdateArtifactContent,
+      listTaskArtifactLinks: mockListTaskArtifactLinks,
+      linkTaskArtifact: vi.fn(),
+      unlinkTaskArtifact: vi.fn(),
+      universalSearch: vi.fn(async () => ({ results: [] })),
     };
   }),
 }));
@@ -56,6 +72,8 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   LabelService: 'LabelService',
   // TaskArtifactLinks (M05-T06) searches for tasks to link from this view.
   SearchService: 'SearchService',
+  // Artifact comments (M05-T07).
+  CommentService: 'CommentService',
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
@@ -106,6 +124,12 @@ describe('ArtifactsBrowser', () => {
     mockListEntityLabels.mockResolvedValue({ labels: [] });
     mockListLabels.mockReset();
     mockListLabels.mockResolvedValue({ labels: [] });
+    mockListComments.mockReset();
+    mockListComments.mockResolvedValue({ comments: [] });
+    mockCreateComment.mockReset();
+    mockCreateComment.mockResolvedValue({ comment: { id: 'cmt-1' } });
+    mockListTaskArtifactLinks.mockReset();
+    mockListTaskArtifactLinks.mockResolvedValue({ links: [] });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
@@ -583,6 +607,39 @@ describe('ArtifactsBrowser', () => {
       fireEvent.click(screen.getByText('readme.md'));
 
       await waitFor(() => expect(locationRef.current).toBe('/artifacts/art-1'));
+    });
+
+    it('reads the comments belonging to the artifact, not to a task', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+      mockListComments.mockResolvedValue({
+        comments: [{ id: 'cmt-1', entityId: 'art-1', entityType: 'artifact', content: 'Looks right to me', authorName: 'Ada', createdAt: '2026-08-15T00:00:00Z' }],
+      });
+
+      renderPage('/artifacts/art-1');
+
+      expect(await screen.findByText('Looks right to me')).toBeInTheDocument();
+      // entityType is the whole risk here: mounting it as "task" would attach
+      // the comment to an id the comments table reads as a task, and the screen
+      // would look identical.
+      expect(mockListComments).toHaveBeenCalledWith(
+        expect.objectContaining({ entityId: 'art-1', entityType: 'artifact' }),
+      );
+    });
+
+    it('posts a new comment against the artifact', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+
+      renderPage('/artifacts/art-1');
+
+      const box = await screen.findByPlaceholderText(/comment/i);
+      fireEvent.change(box, { target: { value: 'First' } });
+      fireEvent.click(screen.getByRole('button', { name: /post|comment|send/i }));
+
+      await waitFor(() => expect(mockCreateComment).toHaveBeenCalledWith(
+        expect.objectContaining({ entityId: 'art-1', entityType: 'artifact', content: 'First' }),
+      ));
     });
 
     it('shows the placeholder on a plain /artifacts URL', async () => {
