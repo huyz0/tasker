@@ -92,7 +92,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
       - Files: `apps/backend/src/lib/authz.ts`, handler registration
       - Verify: a read-scoped token cannot create a task.
 
-- [ ] **M04-T08** — Add per-token rate limiting and quota counters with a
+- [x] **M04-T08** — Add per-token rate limiting and quota counters with a
       `429` + `Retry-After` response.
       - Files: `apps/backend/src/lib/rateLimit.ts`, `apps/backend/src/index.ts`
       - Verify: a burst past the limit is throttled and recovers.

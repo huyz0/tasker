@@ -24,6 +24,12 @@ const configSchema = z.object({
   nodeEnv: z.enum(['development', 'production', 'test']).default('development'),
   enableTestLogin: z.boolean().default(false),
   corsAllowedOrigins: z.array(z.string()).default(DEFAULT_CORS_ALLOWED_ORIGINS),
+  // Per-agent-token throttling (ADR-0008). Configurable because the right
+  // number depends on the deployment, and a hardcoded one becomes a reason to
+  // patch the binary. Defaults are generous: an agent polling every second sits
+  // well inside them, and a runaway retry loop does not.
+  agentRateLimitBurst: z.coerce.number().int().positive().default(120),
+  agentRateLimitWindowMs: z.coerce.number().int().positive().default(60_000),
 }).superRefine((cfg, ctx) => {
   if (cfg.nodeEnv !== 'production') return;
 
@@ -72,6 +78,8 @@ const loadConfig = () => {
     corsAllowedOrigins: process.env.CORS_ALLOWED_ORIGINS !== undefined
       ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
       : undefined,
+    agentRateLimitBurst: process.env.AGENT_RATE_LIMIT_BURST,
+    agentRateLimitWindowMs: process.env.AGENT_RATE_LIMIT_WINDOW_MS,
   };
 
   const parsed = configSchema.safeParse(envConfig);

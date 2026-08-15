@@ -7,6 +7,9 @@ import { createAuthHandler } from "./modules/auth/auth.handler";
 import { createAuthRoutes } from "./modules/auth/auth";
 import { currentUserIdKey, currentPrincipalKey } from "./modules/auth/session";
 import { resolvePrincipal } from "./lib/authenticate";
+import { createRateLimiter, rateLimitProblem } from "./lib/rateLimit";
+import { parseBearerToken } from "./modules/auth/session";
+import { isAgentToken, hashToken } from "./lib/agentToken";
 import { createOrgsHandler } from "./modules/orgs/orgs.handler";
 import { createProjectTemplatesHandler, createProjectsHandler } from "./modules/projects/projects.handler";
 import { createTasksHandler, createTaskManagementHandler } from "./modules/tasks/tasks.handler";
@@ -69,6 +72,33 @@ const sessionInterceptor: Interceptor = (next) => async (req) => {
   return next(req);
 };
 
+// Per-token throttling (ADR-0008 §5). This runs on the raw request, ahead of
+// the Connect adapter, so the refusal can be a real 429 with RFC 7807 problem
+// details and a Retry-After header - ConnectRPC has its own error envelope and
+// lib/problemDetails.ts is explicitly not for RPC endpoints. Throttling is a
+// transport concern, answered at the transport.
+const agentRateLimiter = createRateLimiter({
+  capacity: config.agentRateLimitBurst,
+  windowMs: config.agentRateLimitWindowMs,
+});
+
+/**
+ * Identifies the credential to throttle, without a database round trip.
+ *
+ * Keyed on the hash of the presented token rather than the token id, because
+ * resolving an id means the lookup this is meant to protect. Hashing is the
+ * same digest the store uses, so the key is stable per credential and the
+ * plaintext never reaches the map.
+ *
+ * Returns null for anything that is not an agent token: human sessions are not
+ * throttled here. Browser traffic is bounded by a person's hands, and the
+ * milestone's criterion is about tokens.
+ */
+function rateLimitKey(authorization: string | null): string | null {
+  const bearer = parseBearerToken(authorization);
+  return isAgentToken(bearer) ? hashToken(bearer!) : null;
+}
+
 const authRoutes = createAuthRoutes(db);
 const telemetryRoutes = createTelemetryRoutes(db);
 
@@ -111,6 +141,17 @@ http.createServer(async (req, res) => {
     res.writeHead(204);
     res.end();
     return;
+  }
+
+  const limitKey = rateLimitKey(req.headers.authorization ?? null);
+  if (limitKey) {
+    const decision = agentRateLimiter.check(limitKey);
+    if (!decision.allowed) {
+      const problem = rateLimitProblem(decision.retryAfterSeconds);
+      res.writeHead(problem.status, problem.headers);
+      res.end(problem.body);
+      return;
+    }
   }
 
   if (req.url?.startsWith("/api/auth/") || req.url?.startsWith("/api/client-errors") || req.url?.startsWith("/api/debug/")) {

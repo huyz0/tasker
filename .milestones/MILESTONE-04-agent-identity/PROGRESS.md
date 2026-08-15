@@ -317,3 +317,50 @@ Append-only. Newest entry at the bottom.
   agent, because the column references `users.id`. Which agent created a task is
   therefore not answerable from the row. M08 owns audit persistence.
 - **Next**: M04-T08
+
+---
+
+## M04-T08 — Per-token rate limiting with `429` + `Retry-After`
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `src/lib/rateLimit.ts` (new), `src/lib/rateLimit.test.ts` (new,
+  10 tests), `src/index.ts` (HTTP wrapper ahead of the Connect adapter),
+  `src/config.ts` (`AGENT_RATE_LIMIT_BURST`, `AGENT_RATE_LIMIT_WINDOW_MS`)
+- **Verified**: `moon run backend:test` — 550 pass / 7 skip / 0 fail (was 540).
+  `moon check --all` — 23 pass. And the verify line end to end against a running
+  server started with a burst of 5 over a 5s window:
+
+  ```
+  requests 1-5   403  (past the limiter; refused by authz, which is the point)
+  requests 6-8   429  Content-Type: application/problem+json   Retry-After: 1
+  body           {"type":"about:blank","title":"Too Many Requests","status":429,
+                  "detail":"Rate limit exceeded. Retry after 1 second."}
+  after waiting  403  (throttle lifted; recovers without a restart)
+  8 unauthenticated requests  401 x8, never 429
+  ```
+
+- **A token bucket, not a fixed window.** A fixed window lets a caller spend its
+  whole allowance in the last millisecond of one window and again in the first
+  of the next — twice the intended rate at the boundary, which is exactly where
+  a retrying agent lands.
+- **Keyed on the hash of the presented token, not the token id.** Resolving an
+  id means performing the database lookup this is meant to protect. The digest
+  is the same one the store uses, so the key is stable per credential and the
+  plaintext never enters the map.
+- **Human sessions are not throttled here** — browser traffic is bounded by a
+  person's hands, and the criterion is about tokens. Confirmed: eight
+  unauthenticated requests returned 401 eight times, never 429.
+- **`Retry-After` is never 0**, and waiting exactly that long is asserted to
+  succeed. A `Retry-After: 0` invites an immediate retry certain to be refused,
+  which for an autonomous caller is a hot loop.
+- **Buckets are evicted when idle.** Keyed by credential, the map would
+  otherwise retain every token that ever made one request for the life of the
+  process. Eviction runs on a miss rather than on a timer, so an idle process
+  holds no work.
+- **Stated, not hidden**: the limiter is in-process and per-instance. A shared
+  counter needs Redis or a per-request database round trip, and `tech-stack.md`
+  has neither. With N backend instances the effective limit is N times this one.
+  **M11** owns multi-instance deployment and inherits it.
+- **knip caught a third premature export** (`RateLimiter`). Removed.
+- **Next**: M04-T09
