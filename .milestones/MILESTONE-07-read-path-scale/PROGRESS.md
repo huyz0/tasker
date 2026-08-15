@@ -236,7 +236,25 @@ because it belongs to the milestone.
   supervision console is a human's screen, and agents have no business reading
   it.
   Two pre-existing e2e specs asserted the old `Dashboard Overview` heading and
-  were updated. One spec, `comments.spec.ts`, **fails and is left failing**: its
-  task-detail dialog assertion is stale drift from an earlier milestone. It was
-  confirmed to fail identically on a clean tree with fresh servers, so it is not
-  caused by this work and fixing it is not in this scope.
+  were updated. A third, `comments.spec.ts`, had been failing on a clean tree
+  since before this work and is now fixed — see below.
+
+## Out-of-band — repairing `comments.spec.ts`
+
+- **Problem**: the spec clicked a board card and waited for the task-detail
+  dialog, which never opened. Playwright clicks an element's **centre**, and a
+  card's centre is now the `AssigneePicker`, which deliberately calls
+  `stopPropagation` so that choosing an assignee does not also open the task.
+  So the card's `onClick` never fired. The product behaviour is right; the spec
+  was clicking a spot that stopped meaning "open this task" when the picker
+  landed on the card.
+- **Change**: click the card's `h4` title — the actual affordance — instead of
+  the card body. The assertion was also anchored to the comment this run posts
+  (`check <stamp>`) rather than to any `strong` containing "bold", which a
+  comment left behind by an earlier run would have satisfied. As written before,
+  the test would have survived the post silently failing.
+- **Verify**: Playwright — 19 pass, 0 fail. `moon check --all` — 26 tasks pass.
+- **Notes**: the failure mode is specific and easy to repeat: a centred click is a guess
+  about layout, and any component that legitimately swallows clicks in the middle
+  of a container silently invalidates every test that clicks that container.
+  Prefer clicking the named affordance.
