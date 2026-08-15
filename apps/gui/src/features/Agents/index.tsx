@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { AgentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
-import { Bot, Zap } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { AgentTokens } from './AgentTokens';
 
@@ -114,13 +114,6 @@ export function AgentsDashboard() {
            </div>
            <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center"><Bot className="w-5 h-5" /></div>
          </div>
-         <div className="p-4 border rounded-lg bg-card shadow-sm flex items-center justify-between">
-           <div>
-             <div className="text-muted-foreground text-sm font-medium mb-1">Active Workflows</div>
-             <div className="text-3xl font-bold">0</div>
-           </div>
-           <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center"><Zap className="w-5 h-5" /></div>
-         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -180,7 +173,6 @@ export function AgentsDashboard() {
             <div className="p-3 text-xs font-medium text-muted-foreground flex justify-between bg-muted/30">
               <span className="flex-1">Name</span>
               <span className="w-24">Role</span>
-              <span className="w-24">Status</span>
             </div>
             {isLoading ? (
                <div className="p-4 text-center text-sm text-muted-foreground">Loading agents...</div>
@@ -219,11 +211,9 @@ export function AgentsDashboard() {
                 <div key={a.id}>
                 <div className="p-3 text-sm flex justify-between items-center">
                   <span className="flex-1 font-medium text-primary flex justify-start items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
                     {a.name}
                   </span>
                   <span className="w-24 text-muted-foreground">{roleNameById.get(a.agentRoleId) ?? a.agentRoleId}</span>
-                  <span className="w-24"><span className="text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider bg-success/10 text-success border border-success/20">WORKING</span></span>
                   <button
                     aria-label={`Tokens for ${a.name}`}
                     onClick={() => setTokensAgentId((cur) => (cur === a.id ? null : a.id))}

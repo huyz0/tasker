@@ -8,7 +8,10 @@ export default defineConfig({
     __BUILD_SHA__: JSON.stringify('test'),
   },
   test: {
-    exclude: ['e2e/**', 'tests/e2e/**', 'node_modules/**', 'dist/**', '.idea/**', '.git/**', '.cache/**'],
+    // scripts/ holds node:test suites for the build-time gates (design-lint),
+    // which vitest would otherwise collect and fail to run. They execute inside
+    // `moon run gui:design-lint`, before the gate they cover.
+    exclude: ['e2e/**', 'tests/e2e/**', 'scripts/**', 'node_modules/**', 'dist/**', '.idea/**', '.git/**', '.cache/**'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],

@@ -1,12 +1,12 @@
 ---
 id: M05
 title: GUI / API Parity
-status: todo
+status: in-progress
 goal: Every capability the backend implements is reachable from the web interface, and nothing on screen is fabricated.
 depends_on: [M01]
 surfaces: [gui, contract]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-15
 completed_at: null
 ---
 
@@ -54,7 +54,7 @@ canvas is warranted.
 
 ### Remove fabrication
 
-- [ ] **M05-T01** — Delete the hardcoded `WORKING` badge and pulsing indicator
+- [x] **M05-T01** — Delete the hardcoded `WORKING` badge and pulsing indicator
       from the agents list.
       - Files: `apps/gui/src/features/Agents/index.tsx`
       - Verify: no agent displays a status the system does not store.

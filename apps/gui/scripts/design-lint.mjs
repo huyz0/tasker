@@ -8,9 +8,10 @@
  * standards do not hold; a gate does.
  *
  * Three checks, all static and dependency-free:
- *   tokens   — raw hex, raw Tailwind palette utilities, hardcoded font-family
- *   contrast — every token foreground/background pair against WCAG 2.1 AA, both themes
- *   wig      — the statically checkable subset of the Web Interface Guidelines
+ *   tokens      — raw hex, raw Tailwind palette utilities, hardcoded font-family
+ *   contrast    — every token foreground/background pair against WCAG 2.1 AA, both themes
+ *   wig         — the statically checkable subset of the Web Interface Guidelines
+ *   fabrication — UI asserting state the system does not store (M05)
  *
  * Escape hatch, which must carry a reason:
  *   {/* design-lint-disable-next-line tokens — third-party brand colour *\/}
@@ -225,6 +226,43 @@ function checkWig(file, lines) {
   });
 }
 
+
+/**
+ * State the interface asserts but the system does not store.
+ *
+ * M05's second exit criterion is "no component renders a hardcoded status,
+ * priority, assignee or user name". Removing the ones that exist today is a
+ * one-off; this makes it hold. The Agents screen showed every agent as WORKING
+ * with a pulsing "live" dot, and the schema has no agent status at all — so the
+ * indicator was not stale, it was invented, and it was invented uniformly for
+ * every agent including archived ones.
+ *
+ * Matching is on literal display text, because that is what a user reads. A
+ * value that comes from data reaches the DOM through an expression, so it does
+ * not match; a literal in the markup is the defect by definition.
+ *
+ * The escape hatch is the usual one and must carry a reason:
+ *   {/* design-lint-disable-next-line fabrication — legend, not a value *\/}
+ */
+const FABRICATED = [
+  // "ACTIVE" is deliberately absent. The Organizations tree marks the selected
+  // organization "Active", which is real state rendered conditionally - a rule
+  // that flags it would be wrong, and a rule that is wrong gets disabled rather
+  // than obeyed. Precision matters more here than catching every possible word.
+  [/>\s*(?:WORKING|IDLE|ONLINE|OFFLINE|RUNNING)\s*</i, 'hardcoded status text — the schema stores no such state'],
+  [/>\s*(?:High|Medium|Low)\s+Priority\s*</i, 'hardcoded priority — tasks have no priority column'],
+  [/\bAll systems operational\b/i, 'hardcoded health claim'],
+];
+
+function checkFabrication(file, lines) {
+  lines.forEach((line, i) => {
+    if (disabledAt(lines, i) === 'fabrication' || isComment(line)) return;
+    for (const [re, msg] of FABRICATED) {
+      if (re.test(line)) add('fabrication', file, i + 1, msg);
+    }
+  });
+}
+
 /** Motion without a reduced-motion escape is a WCAG 2.3.3 failure, not a nit. */
 function checkReducedMotion(files) {
   const css = existsSync(CSS) ? readFileSync(CSS, 'utf8') : '';
@@ -253,6 +291,7 @@ for (const file of files) {
   const lines = readFileSync(file, 'utf8').split('\n');
   if (run('tokens')) checkTokens(file, lines);
   if (run('wig')) checkWig(file, lines);
+  if (run('fabrication')) checkFabrication(file, lines);
 }
 if (run('contrast')) checkContrast();
 if (run('wig')) checkReducedMotion(files);

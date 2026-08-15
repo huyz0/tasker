@@ -26,11 +26,15 @@ tasks:
   # Design rules were prose in ui-ux-standard.md and drifted to 47 raw palette
   # values, 4 WCAG contrast failures and no reduced-motion handling. Zero
   # dependencies, so it needs no install step and runs in milliseconds.
+  # The gate's own tests run first. design-lint decides whether the GUI ships
+  # and had none - DESIGN_LINT_ROOT existed as a testing seam no test used,
+  # which is a gate trusted on faith (M05-T01).
   design-lint:
-    command: 'node scripts/design-lint.mjs'
+    script: 'node scripts/design-lint.test.mjs && node scripts/design-lint.mjs'
     inputs:
       - 'src/**/*'
       - 'scripts/design-lint.mjs'
+      - 'scripts/design-lint.test.mjs'
 
   test:
     deps:
