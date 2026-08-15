@@ -251,6 +251,10 @@ const FABRICATED = [
   // than obeyed. Precision matters more here than catching every possible word.
   [/>\s*(?:WORKING|IDLE|ONLINE|OFFLINE|RUNNING)\s*</i, 'hardcoded status text — the schema stores no such state'],
   [/>\s*(?:High|Medium|Low)\s+Priority\s*</i, 'hardcoded priority — tasks have no priority column'],
+  // A single literal letter inside a circular element is an avatar standing in
+  // for a person nobody looked up. A real initial arrives as an expression
+  // ({name.charAt(0)}), so this cannot match one.
+  [/rounded-full[^>]*>\s*[A-Z]\s*</, 'hardcoded avatar initial — no user was resolved'],
   [/\bAll systems operational\b/i, 'hardcoded health claim'],
 ];
 

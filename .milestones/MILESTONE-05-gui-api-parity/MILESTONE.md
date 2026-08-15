@@ -59,7 +59,7 @@ canvas is warranted.
       - Files: `apps/gui/src/features/Agents/index.tsx`
       - Verify: no agent displays a status the system does not store.
 
-- [ ] **M05-T02** — Delete the `High Priority` chip and the `U` avatar from task cards.
+- [x] **M05-T02** — Delete the `High Priority` chip and the `U` avatar from task cards.
       - Files: `apps/gui/src/features/Tasks/index.tsx`
       - Verify: nothing on a card is unbacked by data.
 

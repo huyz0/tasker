@@ -41,3 +41,30 @@ Append-only. Newest entry at the bottom.
   tasks. It carries a reason naming T02, and T02 removes chip and hatch
   together.
 - **Next**: M05-T02
+
+---
+
+## M05-T02 — Remove the fabricated priority chip and avatar
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `apps/gui/src/features/Tasks/index.tsx`,
+  `apps/gui/scripts/design-lint.mjs` (avatar rule),
+  `apps/gui/scripts/design-lint.test.mjs` (+2, now 14)
+- **Verified**: `moon run gui:test` — 423 pass (Tasks 45). `moon check --all` —
+  23 pass. `node scripts/design-lint.mjs --only fabrication` — 0 findings, and
+  the escape hatch T01 left behind is gone with the chip it covered.
+- **Every task card claimed the same two things.** `High Priority` on all of
+  them — tasks have no priority column — and a `U` avatar, an initial standing
+  in for a person nobody looked up. The footer row held nothing else, so it went
+  with them; **M05-T04** puts a real assignee there.
+- **Extended the gate rather than only deleting.** A hardcoded avatar initial is
+  the same class of lie as a hardcoded badge, so `fabrication` now flags a
+  single literal letter inside a `rounded-full` element. A real initial arrives
+  as an expression (`{name.charAt(0)}`), so the rule cannot match one — pinned
+  by a negative test, which is also what stops it flagging the Organizations
+  tree's org avatars.
+- The avatar rule was written **before** the removal and failed on the live
+  code, so it is known to catch the thing it was written for rather than
+  asserted to.
+- **Next**: M05-T03

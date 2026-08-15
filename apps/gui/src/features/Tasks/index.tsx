@@ -445,11 +445,6 @@ export function TasksWorkbench() {
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between mt-auto">
-                        <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">U</div>
-                        {/* design-lint-disable-next-line fabrication — known defect, removed in M05-T02 along with the U avatar above */}
-                        <span className="text-[10px] text-muted-foreground border px-1.5 py-0.5 rounded">High Priority</span>
-                      </div>
                    </div>
                  ))}
                  {addingToColumnId === col.id ? (

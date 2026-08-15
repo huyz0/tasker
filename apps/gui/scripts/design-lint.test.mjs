@@ -105,6 +105,21 @@ test('fabrication: honours the escape hatch with a reason', () => {
   assert.deepEqual(found, []);
 });
 
+test('fabrication: flags a hardcoded avatar initial', () => {
+  const found = lint(`export const T = () => <div className="w-6 rounded-full bg-card">U</div>;`, { only: 'fabrication' });
+  assert.deepEqual(rules(found), ['fabrication']);
+});
+
+test('fabrication: does NOT flag an initial derived from a name', () => {
+  // A real initial arrives as an expression, so the rule cannot match one -
+  // this is what keeps it from flagging the Organizations tree's org avatars.
+  const found = lint(
+    `export const T = ({ n }: { n: string }) => <div className="rounded-full bg-card">{n.charAt(0)}</div>;`,
+    { only: 'fabrication' },
+  );
+  assert.deepEqual(found, []);
+});
+
 test('tokens: flags a raw hex colour', () => {
   const found = lint(`export const T = () => <div style={{ color: '#ff0000' }} />;`, { only: 'tokens' });
   assert.ok(found.length >= 1, 'expected a raw hex to be caught');
