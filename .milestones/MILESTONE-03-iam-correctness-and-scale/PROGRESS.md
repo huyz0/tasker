@@ -296,3 +296,52 @@ completes the task.
   The committed tests use hundreds of rows and assert behaviour. **M03-T14**
   owns making these numbers reproducible from the seed script.
 - **Next**: M03-T07
+
+---
+
+## M03-T07 — Honour the contract's page field end to end
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: The contract has always declared `page` on both
+  `ListOrgMembersRequest` and `ListOrgMembersResponse`; M03-T06 made the server
+  honour it. What T06 also did was cap the response at 50 rows, and the
+  Organizations view renders whatever it receives — so it now shows 50 of an
+  organization's members with nothing to say more exist. Prove the server-side
+  paging over 100,000 members, and close that truncation rather than carry a
+  silent data-loss regression into T08.
+- **Weight**: not heavy.
+  [Reviewed](reviews/M03-T07-page-field-honoured-v1.md), because it fixes a
+  regression this milestone introduced.
+- **Changed**: `features/Organizations/index.tsx` + its test. **No contract
+  change was needed** — `page` was already declared on both the request and the
+  response, and T06 made the server honour it.
+- **Verified**: the verify line, measured over the full set under three
+  orderings:
+
+  | Sort | Pages | Rows | Distinct | Dupes | Missing | totalCount |
+  |---|---|---|---|---|---|---|
+  | `name:asc` | 1001 | 100,001 | 100,001 | 0 | 0 | 100,001 |
+  | `role:desc` | 1001 | 100,001 | 100,001 | 0 | 0 | 100,001 |
+  | default (`joinedAt`) | 1001 | 100,001 | 100,001 | 0 | 0 | 100,001 |
+
+  `moon check --all` — 23 tasks green, 387 GUI tests.
+- **Notes**: the fixture gives members **deliberately repeating** names
+  (`Member 0000`–`0999` across 100,000 rows) and only two distinct roles. That
+  is the whole point of the test. With unique sort values a broken tiebreak
+  still looks correct, because no page boundary ever falls inside a run of
+  equal values; `role:desc` sorts 100,000 rows into two groups so nearly every
+  boundary does.
+- **Divergence — a regression from M03-T06, found and fixed here**: T06 capped
+  the server response at 50 rows while the Organizations view read
+  `resp.members` from a single call. The Roles & Permissions table was
+  therefore showing the first 50 members of an organization with nothing on
+  screen to say the rest existed. The component now pages until the cursor runs
+  out, and the new test was confirmed to **fail against the unfixed component**
+  rather than merely pass against the fixed one.
+
+  That fix loads every member into memory, which at 100,000 members is 100,000
+  rows in the browser. It matches the existing idiom in `features/Agents` and is
+  the honest interim, not the destination — **M03-T08** replaces it with a
+  virtualized, server-filtered table.
+- **Next**: M03-T08

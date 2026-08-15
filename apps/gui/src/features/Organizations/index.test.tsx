@@ -526,6 +526,29 @@ describe('OrganizationsDashboard', () => {
     await waitFor(() => expect(screen.getByText(/Failed to remove member/)).toBeInTheDocument());
   });
 
+  // M03-T07: the server caps a page at 100 rows, so reading one response would
+  // show the first page and silently drop the rest. This mock returns two
+  // pages; a component that ignores the cursor renders only Alice.
+  it('follows the cursor until every member is loaded', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers
+      .mockResolvedValueOnce({
+        members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
+        page: { nextCursor: 'cursor-2', totalCount: 2 },
+      })
+      .mockResolvedValueOnce({
+        members: [{ userId: 'user-2', email: 'b@b.com', name: 'Bob', role: 'member' }],
+        page: { totalCount: 2 },
+      });
+
+    renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+
+    await waitFor(() => expect(screen.getByText(/Bob/)).toBeInTheDocument());
+    expect(screen.getByText(/Alice/)).toBeInTheDocument();
+    expect(mockListOrgMembers).toHaveBeenCalledWith({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
+  });
+
   // M03-T04: the server refuses to remove a member who still owns projects and
   // names them in the refusal. The ids are the actionable part, so this asserts
   // they reach the screen rather than just that "something failed" was shown.

@@ -5,6 +5,7 @@ import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { OrgService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { PaginationControls } from '../../components/PaginationControls';
+import { fetchAllPages } from '../../lib/fetchAllPages';
 
 const orgClient = createClient(OrgService, transport);
 
@@ -131,12 +132,22 @@ export function OrganizationsDashboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgs'] }),
   });
 
+  // The server caps a page at 100 rows (M03-T06). Reading `resp.members` from a
+  // single call therefore showed the first 50 members of the organization with
+  // nothing on screen to say the rest existed - the roles table would simply
+  // have been wrong for anyone past that. Page until the cursor runs out.
+  //
+  // M03-T08 replaces this with a virtualized, server-filtered table; loading
+  // every member into memory is the honest interim, not the destination.
   const { data: membersData, isLoading: isLoadingMembers } = useQuery({
     queryKey: ['orgMembers', activeOrgId],
-    queryFn: async () => {
-      const resp = await orgClient.listOrgMembers({ orgId: activeOrgId });
-      return resp.members;
-    },
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await orgClient.listOrgMembers({
+        orgId: activeOrgId,
+        page: cursor ? { cursor } : undefined,
+      });
+      return { items: resp.members, nextCursor: resp.page?.nextCursor || undefined };
+    }),
     enabled: !!activeOrgId,
   });
 

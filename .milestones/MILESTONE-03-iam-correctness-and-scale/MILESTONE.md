@@ -88,7 +88,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
       - Files: `modules/orgs/orgs.handler.ts`, `db/query-builder.ts`
       - Verify: 100,000-member org returns page 1 in under 200 ms.
 
-- [ ] **M03-T07** — Honour the `page` field the contract already declares, and
+- [x] **M03-T07** — Honour the `page` field the contract already declares, and
       return `nextCursor` and `totalCount`.
       - Files: `modules/orgs/orgs.handler.ts`, `packages/shared-contract/main.tsp`
       - Verify: paging through 100,000 members visits each exactly once.
