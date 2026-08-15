@@ -76,7 +76,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
       - Files: `apps/backend/src/index.ts`, `lib/sessionRevocation.ts`
       - Verify: a revoked token is rejected on the next call.
 
-- [ ] **M04-T05** — Add `createAgentToken`, `listAgentTokens` and `revokeAgentToken`
+- [x] **M04-T05** — Add `createAgentToken`, `listAgentTokens` and `revokeAgentToken`
       RPCs, gated on org admin, returning the plaintext once.
       - Files: `packages/shared-contract/main.tsp`, `modules/agents/agents.handler.ts`
       - Verify: the plaintext never appears in a list response.

@@ -6,8 +6,40 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin } from "../../lib/authz";
 import { notDeleted, softDeleteById, restoreById, executePaginatedQuery, insertRecord } from "../../db/query-builder";
+import { mintToken, revokeToken, parseScopes } from "../../lib/agentToken";
+import { AGENT_SCOPES } from "../../lib/scopes";
+import { randomUUID } from "node:crypto";
 
 // --- Zod Request Schemas ---
+
+// ADR-0008: 90 days by default, 365 maximum, always expiring. The maximum is
+// enforced here rather than left to the caller because "no expiry" is the
+// option the decision deliberately removed.
+const DEFAULT_EXPIRY_DAYS = 90;
+const MAX_EXPIRY_DAYS = 365;
+
+const CreateAgentTokenSchema = z.object({
+  agentId: z.string().min(1, "agentId is required"),
+  name: z.string().min(1, "name is required").max(256),
+  // The vocabulary is closed. An unrecognised scope is far more likely a typo
+  // that would silently grant nothing than a deliberate extension, and a token
+  // that appears to grant "task:read" but matches no check is worse than one
+  // refused at creation.
+  scopes: z.array(z.enum(AGENT_SCOPES as unknown as [string, ...string[]]))
+    .min(1, "at least one scope is required"),
+  expiresInDays: z.preprocess(
+    (v) => (v === undefined || v === null || v === 0 ? undefined : v),
+    z.number().int().positive().max(MAX_EXPIRY_DAYS, `expiresInDays cannot exceed ${MAX_EXPIRY_DAYS}`).optional(),
+  ),
+});
+
+const ListAgentTokensSchema = z.object({
+  agentId: z.string().min(1, "agentId is required"),
+});
+
+const RevokeAgentTokenSchema = z.object({
+  tokenId: z.string().min(1, "tokenId is required"),
+});
 
 const CreateAgentRoleSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
@@ -60,6 +92,38 @@ const PurgeAgentSchema = z.object({
 
 export const createAgentsHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
+
+  const apiTokensTable = () => (isStandalone ? schemaSqlite.apiTokens : schemaMysql.apiTokens);
+
+  /** Loads a live agent or throws NotFound. Token operations all start here. */
+  const loadAgent = async (agentId: string) => {
+    const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+    const rows = await db.select().from(agents).where(eq((agents as any).id, agentId)).limit(1);
+    if (!rows || rows.length === 0) throw new ConnectError("agent not found", Code.NotFound);
+    return rows[0];
+  };
+
+  /**
+   * Shapes a token row for the wire. There is no tokenHash field on the wire
+   * message at all, so a hash cannot leak by being forgotten here - the
+   * contract is the guard, not this function's diligence.
+   */
+  const toWireToken = (row: any, now: Date) => ({
+    id: row.id,
+    agentId: row.agentId,
+    orgId: row.orgId,
+    name: row.name,
+    tokenPrefix: row.tokenPrefix,
+    scopes: parseScopes(row.scopes),
+    createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : "",
+    expiresAt: new Date(row.expiresAt).toISOString(),
+    lastUsedAt: row.lastUsedAt ? new Date(row.lastUsedAt).toISOString() : "",
+    revokedAt: row.revokedAt ? new Date(row.revokedAt).toISOString() : "",
+    // Computed here rather than by each client, whose clock and timezone are
+    // not this server's.
+    expired: new Date(row.expiresAt).getTime() <= now.getTime(),
+  });
+
   return {
     async createAgentRole(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
@@ -248,6 +312,75 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       await db.delete(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId));
 
       publishDomainEvent(nc, "domain.agent.purged", { agentId: parsed.agentId });
+      return { success: true };
+    },
+
+    async createAgentToken(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUser(contextValues);
+      const parsed = CreateAgentTokenSchema.parse(req);
+      const agent = await loadAgent(parsed.agentId);
+      await assertOrgAdmin(db, userId, agent.orgId);
+
+      const minted = mintToken();
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + (parsed.expiresInDays ?? DEFAULT_EXPIRY_DAYS) * 86400000);
+      const row = {
+        id: randomUUID(),
+        orgId: agent.orgId,
+        agentId: agent.id,
+        name: parsed.name,
+        tokenPrefix: minted.tokenPrefix,
+        tokenHash: minted.tokenHash,
+        scopes: JSON.stringify(parsed.scopes),
+        createdBy: userId,
+        createdAt: now,
+        expiresAt,
+        lastUsedAt: null,
+        revokedAt: null,
+      };
+      await db.insert(apiTokensTable()).values(row);
+
+      publishDomainEvent(nc, "domain.agent.token_created", {
+        tokenId: row.id, agentId: agent.id, orgId: agent.orgId, scopes: parsed.scopes,
+      });
+
+      // The only time the plaintext leaves this process. It is not stored and
+      // cannot be recovered - re-showing it later would require keeping it.
+      return { token: toWireToken(row, now), plaintext: minted.plaintext };
+    },
+
+    async listAgentTokens(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUser(contextValues);
+      const parsed = ListAgentTokensSchema.parse(req);
+      const agent = await loadAgent(parsed.agentId);
+      await assertOrgAdmin(db, userId, agent.orgId);
+
+      const tokens = apiTokensTable();
+      const rows = await db.select().from(tokens).where(eq((tokens as any).agentId, agent.id));
+      const now = new Date();
+      // Revoked tokens stay in the list. A credential that existed and was
+      // turned off is history an operator needs; removing the row would make
+      // "was this ever issued?" unanswerable.
+      return { tokens: rows.map((r: any) => toWireToken(r, now)) };
+    },
+
+    async revokeAgentToken(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUser(contextValues);
+      const parsed = RevokeAgentTokenSchema.parse(req);
+
+      const tokens = apiTokensTable();
+      const rows = await db.select().from(tokens).where(eq((tokens as any).id, parsed.tokenId)).limit(1);
+      if (!rows || rows.length === 0) throw new ConnectError("token not found", Code.NotFound);
+
+      // Scoped from the token's own row, never from anything the caller sent.
+      // Trusting a request-supplied org here would let an admin of any
+      // organization revoke another's credential by naming its id.
+      await assertOrgAdmin(db, userId, rows[0].orgId);
+      await revokeToken(db, parsed.tokenId);
+
+      publishDomainEvent(nc, "domain.agent.token_revoked", {
+        tokenId: parsed.tokenId, agentId: rows[0].agentId, orgId: rows[0].orgId,
+      });
       return { success: true };
     },
   };

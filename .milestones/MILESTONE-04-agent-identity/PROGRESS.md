@@ -185,3 +185,46 @@ Append-only. Newest entry at the bottom.
 - **knip caught an over-export**: `TokenRejection` was exported with no importer.
   Unexported; the union is still reachable through `TokenResolution`.
 - **Next**: M04-T05
+
+---
+
+## M04-T05 — `createAgentToken`, `listAgentTokens`, `revokeAgentToken`
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `packages/shared-contract/main.tsp` and
+  `tasker/health/v1/health.proto` (both, in parallel — 3 RPCs, 6 messages),
+  `src/modules/agents/agents.handler.ts`, `src/lib/scopes.ts` (new),
+  `src/modules/agents/agent-tokens.test.ts` (new, 18 tests),
+  `src/lib/viewer-denial.test.ts` (classification + fixture)
+- **Verified**: `moon run backend:test` — 530 pass / 7 skip / 0 fail (was 495).
+  `moon check --all` — 23 tasks pass. Verify line proven by injection: adding
+  `tokenHash` to the wire shape turns the suite red.
+- **Review**: `reviews/M04-T05-token-rpcs-v1.md` — approved, 2 medium, 3 low.
+- **The plaintext cannot leak by omission.** `AgentToken` has no plaintext and
+  no hash field on the wire at all, so the guarantee is structural rather than a
+  property of how carefully `toWireToken` was written.
+- **The viewer sweep caught the three new endpoints immediately**, as T03's
+  entry predicted it would. `listAgentTokens` is deliberately *not* on the
+  viewer read allowlist: who holds a credential, its prefix and its last use is
+  administrative information.
+- **The sweep also caught a test that would have passed for the wrong reason.**
+  `revokeAgentToken` answers NotFound before authorization — right for not
+  leaking existence, but it meant the fixture was asserting a viewer cannot
+  revoke a token *nobody has*. Seeded a real token in the viewer's org so the
+  case exercises the authorization path.
+- **`expiresInDays: 0` means unset, and that is the wire format's doing.** A
+  proto3 `int32` has no field presence, so a client omitting the field sends 0;
+  refusing 0 would refuse everyone who did not set an expiry. My test asserting
+  0 is rejected was wrong and now asserts the default with the reason inline.
+- **Found, not fixed, recorded**: validation failures propagate as `ZodError`,
+  which ConnectRPC maps to `internal` — an agent sending a malformed request is
+  told the server broke, when `invalid_argument` is correct and is the
+  difference between "retry" and "fix your request". Pre-existing and
+  repository-wide (every handler calls `Schema.parse` directly), so fixing it
+  here would change error semantics for every RPC on the way past. **T12** owns
+  it.
+- **knip caught two exports written one task early** (`AgentScope`,
+  `isAgentScope`, both for T07). Removed; they arrive with their first caller.
+  Third time this milestone the gate has caught this.
+- **Next**: M04-T06

@@ -495,6 +495,9 @@ service AgentService {
   rpc ArchiveAgent(ArchiveAgentRequest) returns (ArchiveAgentResponse);
   rpc RestoreAgent(RestoreAgentRequest) returns (RestoreAgentResponse);
   rpc PurgeAgent(PurgeAgentRequest) returns (PurgeAgentResponse);
+  rpc CreateAgentToken(CreateAgentTokenRequest) returns (CreateAgentTokenResponse);
+  rpc ListAgentTokens(ListAgentTokensRequest) returns (ListAgentTokensResponse);
+  rpc RevokeAgentToken(RevokeAgentTokenRequest) returns (RevokeAgentTokenResponse);
 }
 
 message ListAgentsRequest {
@@ -526,6 +529,56 @@ message PurgeAgentRequest {
   string agentId = 1;
 }
 message PurgeAgentResponse {
+  bool success = 1;
+}
+
+// ==== Agent Token Models (ADR-0008) ====
+
+// Never carries the secret. The plaintext exists only in CreateAgentTokenResponse.
+message AgentToken {
+  string id = 1;
+  string agentId = 2;
+  string org_id = 3;
+  string name = 4;
+  // First characters of the plaintext ("tskr_a1b2"), enough to match a token
+  // against a leaked string without being usable as one.
+  string tokenPrefix = 5;
+  repeated string scopes = 6;
+  string createdAt = 7;
+  string expiresAt = 8;
+  string lastUsedAt = 9;
+  string revokedAt = 10;
+  // Computed server-side rather than left to each client's clock and timezone.
+  bool expired = 11;
+}
+
+message CreateAgentTokenRequest {
+  string agentId = 1;
+  string name = 2;
+  repeated string scopes = 3;
+  int32 expiresInDays = 4;
+}
+
+message CreateAgentTokenResponse {
+  AgentToken token = 1;
+  // The only time the secret is ever returned. It is not stored and cannot be
+  // shown again.
+  string plaintext = 2;
+}
+
+message ListAgentTokensRequest {
+  string agentId = 1;
+}
+
+message ListAgentTokensResponse {
+  repeated AgentToken tokens = 1;
+}
+
+message RevokeAgentTokenRequest {
+  string tokenId = 1;
+}
+
+message RevokeAgentTokenResponse {
   bool success = 1;
 }
 

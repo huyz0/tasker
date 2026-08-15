@@ -77,6 +77,7 @@ const ids = {
   note: 'note-viewer-sweep',
   repoLink: 'repo-viewer-sweep',
   invitation: 'inv-viewer-sweep',
+  apiToken: 'tok-viewer-sweep',
 };
 
 /**
@@ -144,6 +145,12 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     archiveAgent: { agentId: ids.agent },
     restoreAgent: { agentId: ids.agent },
     purgeAgent: { agentId: ids.agent },
+    // Admin-gated, so a viewer is denied - including listAgentTokens, which is
+    // a read but not a viewer-allowed one. Who holds a credential, and its
+    // prefix and last use, is administrative information (M04-T05).
+    createAgentToken: { agentId: ids.agent, name: 'T', scopes: ['tasks:read'] },
+    listAgentTokens: { agentId: ids.agent },
+    revokeAgentToken: { tokenId: ids.apiToken },
   },
   artifacts: {
     createFolder: { projectId: ids.project, name: 'F' },
@@ -221,6 +228,15 @@ beforeAll(async () => {
   });
   await db.insert(schema.taskNotes).values({
     id: ids.note, taskId: ids.task, agentId: ids.agent, content: 'n', createdAt: now,
+  });
+  // A real token row, so revokeAgentToken reaches its authorization check
+  // instead of stopping at NotFound - otherwise the sweep would be asserting
+  // that a viewer cannot revoke a token nobody has, which is not the claim.
+  await db.insert(schema.apiTokens).values({
+    id: ids.apiToken, orgId: ids.org, agentId: ids.agent, name: 'T',
+    tokenPrefix: 'tskr_sweep', tokenHash: 'hash-viewer-sweep',
+    scopes: '["tasks:read"]', createdBy: ids.viewer, createdAt: now,
+    expiresAt: new Date(now.getTime() + 86400000),
   });
   await db.insert(schema.repositoryLinks).values({
     id: ids.repoLink, projectId: ids.project, provider: 'github', remoteName: 'o/r',

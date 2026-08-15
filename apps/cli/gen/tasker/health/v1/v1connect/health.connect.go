@@ -171,6 +171,15 @@ const (
 	AgentServiceRestoreAgentProcedure = "/tasker.health.v1.AgentService/RestoreAgent"
 	// AgentServicePurgeAgentProcedure is the fully-qualified name of the AgentService's PurgeAgent RPC.
 	AgentServicePurgeAgentProcedure = "/tasker.health.v1.AgentService/PurgeAgent"
+	// AgentServiceCreateAgentTokenProcedure is the fully-qualified name of the AgentService's
+	// CreateAgentToken RPC.
+	AgentServiceCreateAgentTokenProcedure = "/tasker.health.v1.AgentService/CreateAgentToken"
+	// AgentServiceListAgentTokensProcedure is the fully-qualified name of the AgentService's
+	// ListAgentTokens RPC.
+	AgentServiceListAgentTokensProcedure = "/tasker.health.v1.AgentService/ListAgentTokens"
+	// AgentServiceRevokeAgentTokenProcedure is the fully-qualified name of the AgentService's
+	// RevokeAgentToken RPC.
+	AgentServiceRevokeAgentTokenProcedure = "/tasker.health.v1.AgentService/RevokeAgentToken"
 	// TaskServiceCreateTaskProcedure is the fully-qualified name of the TaskService's CreateTask RPC.
 	TaskServiceCreateTaskProcedure = "/tasker.health.v1.TaskService/CreateTask"
 	// TaskServiceAssignTaskProcedure is the fully-qualified name of the TaskService's AssignTask RPC.
@@ -353,6 +362,9 @@ var (
 	agentServiceArchiveAgentMethodDescriptor                  = agentServiceServiceDescriptor.Methods().ByName("ArchiveAgent")
 	agentServiceRestoreAgentMethodDescriptor                  = agentServiceServiceDescriptor.Methods().ByName("RestoreAgent")
 	agentServicePurgeAgentMethodDescriptor                    = agentServiceServiceDescriptor.Methods().ByName("PurgeAgent")
+	agentServiceCreateAgentTokenMethodDescriptor              = agentServiceServiceDescriptor.Methods().ByName("CreateAgentToken")
+	agentServiceListAgentTokensMethodDescriptor               = agentServiceServiceDescriptor.Methods().ByName("ListAgentTokens")
+	agentServiceRevokeAgentTokenMethodDescriptor              = agentServiceServiceDescriptor.Methods().ByName("RevokeAgentToken")
 	taskServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("TaskService")
 	taskServiceCreateTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("CreateTask")
 	taskServiceAssignTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
@@ -1504,6 +1516,9 @@ type AgentServiceClient interface {
 	ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error)
 	RestoreAgent(context.Context, *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error)
 	PurgeAgent(context.Context, *connect.Request[v1.PurgeAgentRequest]) (*connect.Response[v1.PurgeAgentResponse], error)
+	CreateAgentToken(context.Context, *connect.Request[v1.CreateAgentTokenRequest]) (*connect.Response[v1.CreateAgentTokenResponse], error)
+	ListAgentTokens(context.Context, *connect.Request[v1.ListAgentTokensRequest]) (*connect.Response[v1.ListAgentTokensResponse], error)
+	RevokeAgentToken(context.Context, *connect.Request[v1.RevokeAgentTokenRequest]) (*connect.Response[v1.RevokeAgentTokenResponse], error)
 }
 
 // NewAgentServiceClient constructs a client for the tasker.health.v1.AgentService service. By
@@ -1570,20 +1585,41 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(agentServicePurgeAgentMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		createAgentToken: connect.NewClient[v1.CreateAgentTokenRequest, v1.CreateAgentTokenResponse](
+			httpClient,
+			baseURL+AgentServiceCreateAgentTokenProcedure,
+			connect.WithSchema(agentServiceCreateAgentTokenMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listAgentTokens: connect.NewClient[v1.ListAgentTokensRequest, v1.ListAgentTokensResponse](
+			httpClient,
+			baseURL+AgentServiceListAgentTokensProcedure,
+			connect.WithSchema(agentServiceListAgentTokensMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		revokeAgentToken: connect.NewClient[v1.RevokeAgentTokenRequest, v1.RevokeAgentTokenResponse](
+			httpClient,
+			baseURL+AgentServiceRevokeAgentTokenProcedure,
+			connect.WithSchema(agentServiceRevokeAgentTokenMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // agentServiceClient implements AgentServiceClient.
 type agentServiceClient struct {
-	createAgentRole *connect.Client[v1.CreateAgentRoleRequest, v1.CreateAgentRoleResponse]
-	updateAgentRole *connect.Client[v1.UpdateAgentRoleRequest, v1.UpdateAgentRoleResponse]
-	listAgentRoles  *connect.Client[v1.ListAgentRolesRequest, v1.ListAgentRolesResponse]
-	createAgent     *connect.Client[v1.CreateAgentRequest, v1.CreateAgentResponse]
-	updateAgent     *connect.Client[v1.UpdateAgentRequest, v1.UpdateAgentResponse]
-	listAgents      *connect.Client[v1.ListAgentsRequest, v1.ListAgentsResponse]
-	archiveAgent    *connect.Client[v1.ArchiveAgentRequest, v1.ArchiveAgentResponse]
-	restoreAgent    *connect.Client[v1.RestoreAgentRequest, v1.RestoreAgentResponse]
-	purgeAgent      *connect.Client[v1.PurgeAgentRequest, v1.PurgeAgentResponse]
+	createAgentRole  *connect.Client[v1.CreateAgentRoleRequest, v1.CreateAgentRoleResponse]
+	updateAgentRole  *connect.Client[v1.UpdateAgentRoleRequest, v1.UpdateAgentRoleResponse]
+	listAgentRoles   *connect.Client[v1.ListAgentRolesRequest, v1.ListAgentRolesResponse]
+	createAgent      *connect.Client[v1.CreateAgentRequest, v1.CreateAgentResponse]
+	updateAgent      *connect.Client[v1.UpdateAgentRequest, v1.UpdateAgentResponse]
+	listAgents       *connect.Client[v1.ListAgentsRequest, v1.ListAgentsResponse]
+	archiveAgent     *connect.Client[v1.ArchiveAgentRequest, v1.ArchiveAgentResponse]
+	restoreAgent     *connect.Client[v1.RestoreAgentRequest, v1.RestoreAgentResponse]
+	purgeAgent       *connect.Client[v1.PurgeAgentRequest, v1.PurgeAgentResponse]
+	createAgentToken *connect.Client[v1.CreateAgentTokenRequest, v1.CreateAgentTokenResponse]
+	listAgentTokens  *connect.Client[v1.ListAgentTokensRequest, v1.ListAgentTokensResponse]
+	revokeAgentToken *connect.Client[v1.RevokeAgentTokenRequest, v1.RevokeAgentTokenResponse]
 }
 
 // CreateAgentRole calls tasker.health.v1.AgentService.CreateAgentRole.
@@ -1631,6 +1667,21 @@ func (c *agentServiceClient) PurgeAgent(ctx context.Context, req *connect.Reques
 	return c.purgeAgent.CallUnary(ctx, req)
 }
 
+// CreateAgentToken calls tasker.health.v1.AgentService.CreateAgentToken.
+func (c *agentServiceClient) CreateAgentToken(ctx context.Context, req *connect.Request[v1.CreateAgentTokenRequest]) (*connect.Response[v1.CreateAgentTokenResponse], error) {
+	return c.createAgentToken.CallUnary(ctx, req)
+}
+
+// ListAgentTokens calls tasker.health.v1.AgentService.ListAgentTokens.
+func (c *agentServiceClient) ListAgentTokens(ctx context.Context, req *connect.Request[v1.ListAgentTokensRequest]) (*connect.Response[v1.ListAgentTokensResponse], error) {
+	return c.listAgentTokens.CallUnary(ctx, req)
+}
+
+// RevokeAgentToken calls tasker.health.v1.AgentService.RevokeAgentToken.
+func (c *agentServiceClient) RevokeAgentToken(ctx context.Context, req *connect.Request[v1.RevokeAgentTokenRequest]) (*connect.Response[v1.RevokeAgentTokenResponse], error) {
+	return c.revokeAgentToken.CallUnary(ctx, req)
+}
+
 // AgentServiceHandler is an implementation of the tasker.health.v1.AgentService service.
 type AgentServiceHandler interface {
 	CreateAgentRole(context.Context, *connect.Request[v1.CreateAgentRoleRequest]) (*connect.Response[v1.CreateAgentRoleResponse], error)
@@ -1642,6 +1693,9 @@ type AgentServiceHandler interface {
 	ArchiveAgent(context.Context, *connect.Request[v1.ArchiveAgentRequest]) (*connect.Response[v1.ArchiveAgentResponse], error)
 	RestoreAgent(context.Context, *connect.Request[v1.RestoreAgentRequest]) (*connect.Response[v1.RestoreAgentResponse], error)
 	PurgeAgent(context.Context, *connect.Request[v1.PurgeAgentRequest]) (*connect.Response[v1.PurgeAgentResponse], error)
+	CreateAgentToken(context.Context, *connect.Request[v1.CreateAgentTokenRequest]) (*connect.Response[v1.CreateAgentTokenResponse], error)
+	ListAgentTokens(context.Context, *connect.Request[v1.ListAgentTokensRequest]) (*connect.Response[v1.ListAgentTokensResponse], error)
+	RevokeAgentToken(context.Context, *connect.Request[v1.RevokeAgentTokenRequest]) (*connect.Response[v1.RevokeAgentTokenResponse], error)
 }
 
 // NewAgentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1704,6 +1758,24 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(agentServicePurgeAgentMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	agentServiceCreateAgentTokenHandler := connect.NewUnaryHandler(
+		AgentServiceCreateAgentTokenProcedure,
+		svc.CreateAgentToken,
+		connect.WithSchema(agentServiceCreateAgentTokenMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	agentServiceListAgentTokensHandler := connect.NewUnaryHandler(
+		AgentServiceListAgentTokensProcedure,
+		svc.ListAgentTokens,
+		connect.WithSchema(agentServiceListAgentTokensMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	agentServiceRevokeAgentTokenHandler := connect.NewUnaryHandler(
+		AgentServiceRevokeAgentTokenProcedure,
+		svc.RevokeAgentToken,
+		connect.WithSchema(agentServiceRevokeAgentTokenMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.AgentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AgentServiceCreateAgentRoleProcedure:
@@ -1724,6 +1796,12 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 			agentServiceRestoreAgentHandler.ServeHTTP(w, r)
 		case AgentServicePurgeAgentProcedure:
 			agentServicePurgeAgentHandler.ServeHTTP(w, r)
+		case AgentServiceCreateAgentTokenProcedure:
+			agentServiceCreateAgentTokenHandler.ServeHTTP(w, r)
+		case AgentServiceListAgentTokensProcedure:
+			agentServiceListAgentTokensHandler.ServeHTTP(w, r)
+		case AgentServiceRevokeAgentTokenProcedure:
+			agentServiceRevokeAgentTokenHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1767,6 +1845,18 @@ func (UnimplementedAgentServiceHandler) RestoreAgent(context.Context, *connect.R
 
 func (UnimplementedAgentServiceHandler) PurgeAgent(context.Context, *connect.Request[v1.PurgeAgentRequest]) (*connect.Response[v1.PurgeAgentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.PurgeAgent is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) CreateAgentToken(context.Context, *connect.Request[v1.CreateAgentTokenRequest]) (*connect.Response[v1.CreateAgentTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.CreateAgentToken is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) ListAgentTokens(context.Context, *connect.Request[v1.ListAgentTokensRequest]) (*connect.Response[v1.ListAgentTokensResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.ListAgentTokens is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) RevokeAgentToken(context.Context, *connect.Request[v1.RevokeAgentTokenRequest]) (*connect.Response[v1.RevokeAgentTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AgentService.RevokeAgentToken is not implemented"))
 }
 
 // TaskServiceClient is a client for the tasker.health.v1.TaskService service.

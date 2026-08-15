@@ -569,6 +569,60 @@ model PurgeAgentResponse {
   @field(1) success: boolean;
 }
 
+// ==== Agent Token Models (ADR-0008) ====
+
+// Never carries the secret. The plaintext exists only in CreateAgentTokenResponse.
+model AgentToken {
+  @field(1) id: string;
+  @field(2) agentId: string;
+  @field(3) orgId: string;
+  @field(4) name: string;
+
+  // First characters of the plaintext ("tskr_a1b2"), enough to match a token
+  // against a leaked string without being usable as one.
+  @field(5) tokenPrefix: string;
+
+  @field(6) scopes: string[];
+  @field(7) createdAt: string;
+  @field(8) expiresAt: string;
+  @field(9) lastUsedAt?: string;
+  @field(10) revokedAt?: string;
+
+  // Computed server-side rather than left to each client's clock and timezone.
+  @field(11) expired: boolean;
+}
+
+model CreateAgentTokenRequest {
+  @field(1) agentId: string;
+  @field(2) name: string;
+  @field(3) scopes: string[];
+  @field(4) expiresInDays?: int32;
+}
+
+model CreateAgentTokenResponse {
+  @field(1) token: AgentToken;
+
+  // The only time the secret is ever returned. It is not stored and cannot be
+  // shown again.
+  @field(2) plaintext: string;
+}
+
+model ListAgentTokensRequest {
+  @field(1) agentId: string;
+}
+
+model ListAgentTokensResponse {
+  @field(1) tokens: AgentToken[];
+}
+
+model RevokeAgentTokenRequest {
+  @field(1) tokenId: string;
+}
+
+model RevokeAgentTokenResponse {
+  @field(1) success: boolean;
+}
+
 interface AgentService {
   createAgentRole(request: CreateAgentRoleRequest): CreateAgentRoleResponse;
   updateAgentRole(request: UpdateAgentRoleRequest): UpdateAgentRoleResponse;
@@ -579,6 +633,9 @@ interface AgentService {
   archiveAgent(request: ArchiveAgentRequest): ArchiveAgentResponse;
   restoreAgent(request: RestoreAgentRequest): RestoreAgentResponse;
   purgeAgent(request: PurgeAgentRequest): PurgeAgentResponse;
+  createAgentToken(request: CreateAgentTokenRequest): CreateAgentTokenResponse;
+  listAgentTokens(request: ListAgentTokensRequest): ListAgentTokensResponse;
+  revokeAgentToken(request: RevokeAgentTokenRequest): RevokeAgentTokenResponse;
 }
 
 // ==== Task Models ====
