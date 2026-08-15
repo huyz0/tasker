@@ -139,7 +139,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
 
 ### Proof
 
-- [ ] **M03-T14** — Extend the seed script with a `--members N` mode and record
+- [x] **M03-T14** — Extend the seed script with a `--members N` mode and record
       measured timings for 1k / 10k / 100k in this milestone's `PROGRESS.md`.
       - Files: `apps/backend/scripts/seed.ts`
       - Verify: the numbers are committed alongside the change.

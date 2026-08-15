@@ -24,6 +24,47 @@ const STATUSES = ["todo", "in-progress", "done"] as const;
 // an empty dashboard until someone pastes the printed token by hand.
 const GUI_DEV_USER_ID = "dev-user";
 
+/**
+ * `--members N` seeds an organization of N members, so the membership list can
+ * be measured at a size nobody reaches by clicking. M03-T06 and M03-T07 found
+ * their defects at 100,000 - the old listOrgMembers did not return slowly there,
+ * it threw, because it bound one SQL parameter per member.
+ *
+ * Batched at 500. One insert per row takes minutes at this size, and a single
+ * statement carrying 100,000 rows exceeds the very parameter ceiling that
+ * defect was about.
+ */
+const MEMBER_COUNT = (() => {
+  const flag = process.argv.indexOf("--members");
+  if (flag >= 0 && process.argv[flag + 1]) return Number(process.argv[flag + 1]);
+  return Number(process.env.SEED_MEMBER_COUNT) || 0;
+})();
+const MEMBER_BATCH = 500;
+
+async function seedMembers(db: any, orgId: string, count: number): Promise<number> {
+  const started = performance.now();
+  const stamp = Date.now();
+  for (let start = 0; start < count; start += MEMBER_BATCH) {
+    const size = Math.min(MEMBER_BATCH, count - start);
+    const users = Array.from({ length: size }, (_, i) => {
+      const n = start + i;
+      return {
+        id: `usr-bulk-${stamp}-${n}`,
+        email: `member${n}.${stamp}@seed.local`,
+        // Padded so a lexical sort matches the numeric one, which makes
+        // "is page 2 the second page" checkable by eye.
+        name: `Member ${String(n).padStart(7, "0")}`,
+        createdAt: new Date(),
+      };
+    });
+    await db.insert(schema.users).values(users);
+    await db.insert(schema.organizationMembers).values(
+      users.map((u) => ({ orgId, userId: u.id, role: "member", joinedAt: new Date() })),
+    );
+  }
+  return Math.round(performance.now() - started);
+}
+
 async function main() {
   if (process.env.STANDALONE !== "true") {
     console.error("seed.ts only supports STANDALONE=true (SQLite) - it writes directly to the dev DB, not a shared MySQL instance.");
@@ -95,12 +136,15 @@ async function main() {
 
   const token = createSessionToken(userId);
 
+  const memberSeedMs = MEMBER_COUNT > 0 ? await seedMembers(db, orgId, MEMBER_COUNT) : 0;
+
   console.log("Seeded:");
   console.log(`  org:     ${orgId}`);
   console.log(`  project: ${projectId} (key: SEED)`);
   console.log(`  tasks:   ${TASK_COUNT}`);
   console.log(`  agents:  5`);
   console.log(`  labels:  ${labelNames.length}`);
+  if (MEMBER_COUNT > 0) console.log(`  members: ${MEMBER_COUNT} (seeded in ${memberSeedMs}ms)`);
   console.log("");
   console.log(`The GUI's dev user (${GUI_DEV_USER_ID}) is a member of this org - reload http://localhost:5173 and the data is there.`);
   console.log("");
