@@ -1,12 +1,12 @@
 ---
 id: M02
 title: Specification Truth
-status: todo
+status: in-progress
 goal: Every claim in .specs/ is traceable to running code, and every unbuilt ambition is a dated roadmap item owned by a specific milestone.
 depends_on: [M01]
 surfaces: [specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-15
 completed_at: null
 ---
 
@@ -53,7 +53,7 @@ a later milestone and must be referenced, not built, here.
 
 ## 5. Task Breakdown
 
-- [ ] **M02-T01** — Rewrite `tech-stack.md` from the actual manifests. Split into
+- [x] **M02-T01** — Rewrite `tech-stack.md` from the actual manifests. Split into
       "In Use" (traceable to a manifest) and "Planned" (with the owning milestone id).
       - Files: `.specs/product/tech-stack.md`
       - Verify: every "In Use" entry is greppable in `package.json` / `go.mod`.

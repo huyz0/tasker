@@ -1,8 +1,8 @@
 ---
 active_milestone: M02
-active_task: null
+active_task: M02-T02
 last_updated: 2026-08-15
-last_commit: 1c16ceb
+last_commit: 5c4ec47
 blocked: false
 blocker: null
 ---
@@ -16,12 +16,12 @@ blocker: null
 ## Now
 
 - **Milestone**: M02 — Specification Truth
-- **Task**: not started
-- **Branch**: `feature/m02-specification-truth` (create on first task)
+- **Task**: M02-T02 — rewrite `architecture.md`
+- **Branch**: `feature/m02-specification-truth`
 - **Command to continue**: `/milestone-deliver M02`
 
-M01 is done and lives on `feature/m01-stabilize-the-build`, which has not been
-merged to `main` — open that PR before or alongside starting M02.
+M01 is done and merged: `main` is at `5c4ec47`, which carries M01 plus the
+agent-harness consolidation. CI is green on all six jobs.
 
 ## How to resume
 
@@ -39,7 +39,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | ID  | Milestone                      | Status | Depends on | Tasks | Done |
 |-----|--------------------------------|--------|------------|-------|------|
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
-| M02 | Specification Truth            | todo   | M01        | 7     | 0    |
+| M02 | Specification Truth            | in-progress | M01   | 7     | 1    |
 | M03 | IAM Correctness & Scale        | todo   | M01        | 14    | 0    |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |
