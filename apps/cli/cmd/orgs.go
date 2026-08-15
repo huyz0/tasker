@@ -130,6 +130,38 @@ var orgsSetMemberRoleCmd = &cobra.Command{
 	},
 }
 
+// Leaving is self-service: the server authorizes on the *target* of the
+// removal, so a member removing themselves needs no admin rights. The caller's
+// own id is not something the CLI holds, so it is resolved from the session
+// via GetIdentity rather than asked for as an argument - requiring a user to
+// look up their own id before they can leave would be its own small absurdity.
+var orgsLeaveCmd = &cobra.Command{
+	Use:   "leave [org_id]",
+	Short: "Leave an organization (the last owner cannot leave)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		identity, err := backend.NewAuthServiceClient().GetIdentity(
+			context.Background(),
+			connect.NewRequest(&healthv1.GetIdentityRequest{}),
+		)
+		if err != nil {
+			cmd.PrintErrf("Failed to resolve the signed-in user: %v\n", err)
+			return err
+		}
+
+		client := backend.NewOrgServiceClient()
+		if _, err := client.RemoveOrgMember(context.Background(), connect.NewRequest(&healthv1.RemoveOrgMemberRequest{
+			OrgId:  args[0],
+			UserId: identity.Msg.User.Id,
+		})); err != nil {
+			cmd.PrintErrf("Failed to leave organization: %v\n", err)
+			return err
+		}
+		cmd.Printf("Left organization %s\n", args[0])
+		return nil
+	},
+}
+
 var orgsDeleteCmd = &cobra.Command{
 	Use:   "delete [org_id]",
 	Short: "Move an organization to the bin (requires org admin)",
@@ -205,6 +237,7 @@ func init() {
 	orgsCmd.AddCommand(orgsSeedCmd)
 	orgsCmd.AddCommand(orgsInviteCmd)
 	orgsCmd.AddCommand(orgsSetMemberRoleCmd)
+	orgsCmd.AddCommand(orgsLeaveCmd)
 	orgsCmd.AddCommand(orgsDeleteCmd)
 	orgsCmd.AddCommand(orgsRestoreCmd)
 	orgsCmd.AddCommand(orgsPurgeCmd)

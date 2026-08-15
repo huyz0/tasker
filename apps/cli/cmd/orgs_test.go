@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,15 @@ type fakeOrgHandler struct {
 	invitedEmail    string
 	invitedRole     string
 	updatedRoleArgs *healthv1.UpdateOrgMemberRoleRequest
+	removedArgs     *healthv1.RemoveOrgMemberRequest
+}
+
+func (f *fakeOrgHandler) RemoveOrgMember(
+	_ context.Context,
+	req *connect.Request[healthv1.RemoveOrgMemberRequest],
+) (*connect.Response[healthv1.RemoveOrgMemberResponse], error) {
+	f.removedArgs = req.Msg
+	return connect.NewResponse(&healthv1.RemoveOrgMemberResponse{Success: true}), nil
 }
 
 func (f *fakeOrgHandler) SeedOrg(
@@ -167,4 +177,77 @@ func TestOrgsListCmd(t *testing.T) {
 	if !strings.Contains(b.String(), "Seeded Org") {
 		t.Fatalf("expected output to list the seeded org, got %s", b.String())
 	}
+}
+
+// `orgs leave` never asks for a user id: it resolves the signed-in user from
+// the session. That is the whole point of the command, so the test asserts the
+// id reaching RemoveOrgMember is the one GetIdentity returned - not one the
+// caller typed.
+func TestOrgsLeaveCmdRemovesTheSignedInUser(t *testing.T) {
+	orgFake := &fakeOrgHandler{}
+	authFake := &fakeAuthHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewOrgServiceHandler(orgFake))
+	mux.Handle(v1connect.NewAuthServiceHandler(authFake))
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"orgs", "leave", "org_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if orgFake.removedArgs == nil {
+		t.Fatal("expected leave to call RemoveOrgMember")
+	}
+	if orgFake.removedArgs.OrgId != "org_1" {
+		t.Fatalf("expected org_1, got %q", orgFake.removedArgs.OrgId)
+	}
+	if orgFake.removedArgs.UserId != "user-1" {
+		t.Fatalf("expected the signed-in user id from GetIdentity, got %q", orgFake.removedArgs.UserId)
+	}
+	if !strings.Contains(b.String(), "Left organization org_1") {
+		t.Fatalf("expected confirmation output, got %s", b.String())
+	}
+}
+
+// The server rejects a sole owner leaving. The CLI must surface that as a
+// failure, not print "Left organization" over the top of an error.
+func TestOrgsLeaveCmdReportsServerRefusal(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewOrgServiceHandler(&refusingOrgHandler{}))
+	mux.Handle(v1connect.NewAuthServiceHandler(&fakeAuthHandler{}))
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"orgs", "leave", "org_1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected leaving as the last owner to fail")
+	}
+	if !strings.Contains(b.String(), "Failed to leave organization") {
+		t.Fatalf("expected the refusal to be reported, got %s", b.String())
+	}
+	if strings.Contains(b.String(), "Left organization") {
+		t.Fatalf("reported success despite an error: %s", b.String())
+	}
+}
+
+type refusingOrgHandler struct {
+	v1connect.UnimplementedOrgServiceHandler
+}
+
+func (refusingOrgHandler) RemoveOrgMember(
+	_ context.Context,
+	_ *connect.Request[healthv1.RemoveOrgMemberRequest],
+) (*connect.Response[healthv1.RemoveOrgMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot remove the organization's last owner"))
 }

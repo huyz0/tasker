@@ -515,7 +515,7 @@ describe('OrganizationsDashboard', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
-    mockRemoveOrgMember.mockRejectedValue(new Error('cannot remove yourself'));
+    mockRemoveOrgMember.mockRejectedValue(new Error("cannot remove the organization's last owner"));
 
     renderPage();
     fireEvent.click(screen.getByText('Roles & Permissions'));

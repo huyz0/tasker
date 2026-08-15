@@ -52,3 +52,44 @@ completes the task.
   recorded as a low finding in the review rather than changed across 31
   handlers inside this task.
 - **Next**: M03-T02
+
+---
+
+## M03-T02 — Let a member leave an organization
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Approach**: Split `removeOrgMember`'s authorization by target — removing
+  *someone else* still requires admin, removing *yourself* requires only
+  membership — and delete the blanket "cannot remove yourself" rejection. The
+  last-owner guard applies to both paths. Expose it as `cli orgs leave`,
+  resolving the caller through `getIdentity` so no contract change is needed.
+- **Weight**: heavy. It changes an authorization rule, so
+  [a review](reviews/M03-T02-member-can-leave-v1.md) precedes the box. **No
+  ADR**: the one alternative, a separate `leaveOrg` RPC, is a contract addition
+  performing identical checks and an identical delete. A decision with no
+  consequence is a description, so it is recorded in the review instead.
+- **Changed**: `modules/orgs/orgs.handler.ts`, `apps/cli/cmd/orgs.go`
+  (+`orgs leave`), `orgs.test.ts` (+7 cases), `orgs_test.go` (+2 cases),
+  and one stale string in the GUI test.
+- **Verified**: `moon check --all` — 23 tasks green. The seven new backend
+  cases went 5 fail → 0 across the change. Verify line satisfied both ways: a
+  member removes themselves (membership row gone), and a sole owner cannot
+  (`FailedPrecondition`, row intact).
+- **Notes**: a stranger passing their own id was the case worth catching. The
+  obvious implementation — skip the admin check when `userId === caller` —
+  would let a non-member reach a delete that matches nothing and returns
+  `success: true`, reporting that they left an organization they were never in.
+  `assertOrgMember` on the self path closes it, and there is a test.
+
+  `cli orgs leave` takes no user id. It resolves the caller through
+  `GetIdentity`, because requiring someone to look up their own id before they
+  can leave is its own small absurdity. That costs one extra round trip.
+
+  Leaving publishes `domain.org.member_removed`, same as an admin removal —
+  asserted, because M08's audit trail would otherwise record removals and be
+  blind to departures.
+- **Divergence**: none in scope. The review flags forward that **M03-T04 must
+  apply its owned-project reassignment guard to the leave path as well**, not
+  only to the admin-removal path, or T04 will close a hole this task opened.
+- **Next**: M03-T03

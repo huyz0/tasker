@@ -61,7 +61,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
       - Files: `apps/backend/src/lib/authz.ts`, all `modules/*/*.handler.ts`
       - Verify: a viewer receives `PermissionDenied` from every write RPC.
 
-- [ ] **M03-T02** — Allow a member to leave an organization, keeping only the
+- [x] **M03-T02** — Allow a member to leave an organization, keeping only the
       last-owner guard; expose `cli orgs leave`.
       - Files: `modules/orgs/orgs.handler.ts`, `apps/cli/cmd/orgs.go`
       - Verify: a member removes themselves; a sole owner cannot.

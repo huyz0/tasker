@@ -386,3 +386,101 @@ describe("Organizations Handler Integration Logic", () => {
     await expect(handler.updateOrgMemberRole({ orgId: org.organization.id, userId: memberId, role: "admin" }, makeAuthContext(memberId))).rejects.toThrow();
   });
 });
+
+describe("Leaving an organization (M03-T02)", () => {
+  /**
+   * Removing yourself used to be rejected outright, so the only exit from an
+   * organization was to ask an admin. That is a support ticket for something a
+   * person should be able to do themselves, and it left no way to clean up a
+   * membership created by a mistaken invitation.
+   *
+   * The rule is now about *target*, not role: removing someone else needs
+   * admin, removing yourself needs only membership. The last-owner guard is
+   * unchanged and applies to both.
+   */
+  const seedLeaveFixture = async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const suffix = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const ownerId = "user-leave-owner-" + suffix;
+    const memberId = "user-leave-member-" + suffix;
+    const viewerId = "user-leave-viewer-" + suffix;
+
+    for (const id of [ownerId, memberId, viewerId]) {
+      await db.insert(schemaSqlite.users).values({ id, email: `${id}@foo.com`, createdAt: new Date() });
+    }
+    const org = await handler.seedOrg({ name: "Leave Org", slug: "leave-org-" + suffix }, makeAuthContext(ownerId));
+    const orgId = org.organization.id;
+    await db.insert(schemaSqlite.organizationMembers).values([
+      { orgId, userId: memberId, role: "member", joinedAt: new Date() },
+      { orgId, userId: viewerId, role: "viewer", joinedAt: new Date() },
+    ]);
+    return { db, nc, handler, orgId, ownerId, memberId, viewerId };
+  };
+
+  const membershipCount = (db: any, orgId: string, userId: string) =>
+    db
+      .select()
+      .from(schemaSqlite.organizationMembers)
+      .where(and(eq(schemaSqlite.organizationMembers.orgId, orgId), eq(schemaSqlite.organizationMembers.userId, userId)))
+      .then((r: any[]) => r.length);
+
+  test("a member can remove themselves without being an admin", async () => {
+    const { db, handler, orgId, memberId } = await seedLeaveFixture();
+
+    const res = await handler.removeOrgMember({ orgId, userId: memberId }, makeAuthContext(memberId));
+
+    expect(res.success).toBe(true);
+    expect(await membershipCount(db, orgId, memberId)).toBe(0);
+  });
+
+  test("a viewer can leave too — leaving is self-service, not a write on the org", async () => {
+    const { db, handler, orgId, viewerId } = await seedLeaveFixture();
+
+    await handler.removeOrgMember({ orgId, userId: viewerId }, makeAuthContext(viewerId));
+
+    expect(await membershipCount(db, orgId, viewerId)).toBe(0);
+  });
+
+  test("the sole owner still cannot leave", async () => {
+    const { db, handler, orgId, ownerId } = await seedLeaveFixture();
+
+    await expect(handler.removeOrgMember({ orgId, userId: ownerId }, makeAuthContext(ownerId))).rejects.toThrow(
+      /last owner/
+    );
+    expect(await membershipCount(db, orgId, ownerId)).toBe(1);
+  });
+
+  test("an owner can leave once a second owner exists", async () => {
+    const { db, handler, orgId, ownerId, memberId } = await seedLeaveFixture();
+    await handler.updateOrgMemberRole({ orgId, userId: memberId, role: "owner" }, makeAuthContext(ownerId));
+
+    await handler.removeOrgMember({ orgId, userId: ownerId }, makeAuthContext(ownerId));
+
+    expect(await membershipCount(db, orgId, ownerId)).toBe(0);
+  });
+
+  test("a non-admin still cannot remove somebody else", async () => {
+    const { db, handler, orgId, memberId, viewerId } = await seedLeaveFixture();
+
+    await expect(handler.removeOrgMember({ orgId, userId: viewerId }, makeAuthContext(memberId))).rejects.toThrow();
+    expect(await membershipCount(db, orgId, viewerId)).toBe(1);
+  });
+
+  test("a stranger cannot leave an organization they were never in", async () => {
+    const { db, handler, orgId } = await seedLeaveFixture();
+    const strangerId = "user-leave-stranger-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: strangerId, email: `${strangerId}@foo.com`, createdAt: new Date() });
+
+    await expect(handler.removeOrgMember({ orgId, userId: strangerId }, makeAuthContext(strangerId))).rejects.toThrow();
+  });
+
+  test("leaving publishes the same member_removed event as an admin removal", async () => {
+    const { nc, handler, orgId, memberId } = await seedLeaveFixture();
+    nc.clear();
+
+    await handler.removeOrgMember({ orgId, userId: memberId }, makeAuthContext(memberId));
+
+    expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.org.member_removed");
+  });
+});

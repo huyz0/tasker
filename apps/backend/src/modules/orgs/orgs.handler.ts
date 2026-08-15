@@ -178,10 +178,18 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
     async removeOrgMember(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);
       const parsed = RemoveOrgMemberSchema.parse(req);
-      await assertOrgAdmin(db, userId, parsed.orgId);
 
+      // Authorization turns on the *target*, not the caller's role. Removing
+      // somebody else is an administrative act; removing yourself is leaving,
+      // which any member may do - including a viewer, since it changes nothing
+      // about the organization except your own presence in it.
+      //
+      // This previously rejected self-removal outright, so the only way out of
+      // an organization was to ask an admin to do it for you.
       if (parsed.userId === userId) {
-        throw new ConnectError("cannot remove yourself from the organization", Code.InvalidArgument);
+        await assertOrgMember(db, userId, parsed.orgId);
+      } else {
+        await assertOrgAdmin(db, userId, parsed.orgId);
       }
 
       const targetRole = await getOrgMemberRole(db, parsed.userId, parsed.orgId);
