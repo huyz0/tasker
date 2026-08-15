@@ -50,16 +50,33 @@ describe('LabelsManager', () => {
     await waitFor(() => expect(screen.getByText('bug')).toBeDefined());
   });
 
-  it('auto-loads later pages so labels past the first page are not hidden', async () => {
+  it('issues one request on mount, and pages the rest on request', async () => {
+    // This replaces a test that asserted the view looped the cursor to
+    // exhaustion on mount. That was the defect, not the contract: an
+    // organization's label set has no bound, and a screen that cannot open
+    // until the last page arrives is not more usable for having them all
+    // (M07-T04).
     mockListLabels
-      .mockResolvedValueOnce({ labels: [{ id: 'lbl-1', name: 'Page One Label' }], page: { nextCursor: 'cursor-2' } })
-      .mockResolvedValueOnce({ labels: [{ id: 'lbl-2', name: 'Page Two Label' }], page: {} });
+      .mockResolvedValueOnce({ labels: [{ id: 'lbl-1', name: 'Page One Label' }], page: { nextCursor: 'cursor-2', totalCount: 2 } })
+      .mockResolvedValueOnce({ labels: [{ id: 'lbl-2', name: 'Page Two Label' }], page: { totalCount: 2 } });
 
     renderPage();
-
     await waitFor(() => expect(screen.getByText('Page One Label')).toBeDefined());
+    expect(mockListLabels).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Page Two Label')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Load more/ }));
     await waitFor(() => expect(screen.getByText('Page Two Label')).toBeDefined());
     expect(mockListLabels).toHaveBeenCalledWith({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
+    // The first page is still on screen: pages accumulate.
+    expect(screen.getByText('Page One Label')).toBeDefined();
+  });
+
+  it('does not offer Load more when the label list is complete', async () => {
+    mockListLabels.mockResolvedValue({ labels: [{ id: 'lbl-1', name: 'only' }], page: {} });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('only')).toBeDefined());
+    expect(screen.queryByRole('button', { name: /Load more/ })).toBeNull();
   });
 
   it('shows an empty state when there are no labels', async () => {

@@ -315,16 +315,31 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
     async listArtifacts(req: any, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.folderId) throw new ConnectError("folderId is required", Code.InvalidArgument);
-      const orgId = await getFolderOrgId(db, req.folderId);
+      if (!req.folderId && !req.projectId) {
+        throw new ConnectError("folderId or projectId is required", Code.InvalidArgument);
+      }
+      // Authorized against whichever scope the caller named — a project-wide
+      // list is not a weaker check, it is the same check one level up.
+      const orgId = req.folderId
+        ? await getFolderOrgId(db, req.folderId)
+        : await getProjectOrgId(db, req.projectId);
       await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+      const flds2 = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const deletedArtifactFilter = req.onlyDeleted ? not(notDeleted(arts)) : notDeleted(arts);
+      // Project scope resolves through the folder table rather than fanning out
+      // one request per folder, which is what the Bin used to do.
+      const scopeCondition = req.folderId
+        ? eq((arts as any).folderId, req.folderId)
+        : inArray(
+            (arts as any).folderId,
+            db.select({ id: (flds2 as any).id }).from(flds2).where(eq((flds2 as any).projectId, req.projectId)),
+          );
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
         db,
         arts,
-        and(eq((arts as any).folderId, req.folderId), deletedArtifactFilter),
+        and(scopeCondition, deletedArtifactFilter),
         req.page,
         {
           filterColumn: (arts as any).name,

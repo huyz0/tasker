@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { AgentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
@@ -35,24 +35,47 @@ export function AgentsDashboard() {
   const [editRoleSystemPrompt, setEditRoleSystemPrompt] = useState('');
   const [editRoleCapabilities, setEditRoleCapabilities] = useState('');
 
-  const { data: agentsData, isLoading, error: agentsError, refetch: refetchAgents } = useQuery({
+  const {
+    data: agentPages,
+    isLoading,
+    error: agentsError,
+    refetch: refetchAgents,
+    fetchNextPage: fetchMoreAgents,
+    hasNextPage: hasMoreAgents,
+    isFetchingNextPage: isFetchingMoreAgents,
+  } = useInfiniteQuery({
     queryKey: ['agents', activeOrgId],
-    // The dashboard needs every agent to render deploy/archive actions
-    // correctly, not just the first page - loop until no pages remain.
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await agentClient.listAgents({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
-      return { items: resp.agents, nextCursor: resp.page?.nextCursor || undefined };
-    }),
+    // One page on mount. The old comment said the dashboard "needs every agent
+    // to render deploy/archive actions correctly" — it does not: those actions
+    // belong to the row they are on, and a row that is not rendered has no
+    // action to render (M07-T04).
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      agentClient.listAgents({ orgId: activeOrgId, page: { cursor: pageParam } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
     enabled: !!activeOrgId,
   });
+  const agentsData = agentPages?.pages.flatMap((p) => p.agents);
+  const loadedAgents = agentsData?.length ?? 0;
+  const agentTotal = Number(agentPages?.pages[0]?.page?.totalCount ?? 0);
 
   // Roles are scoped to an organization (ADR-0007), so the active org is part
   // of the key as well as the request - without it, switching orgs would serve
   // the previous org's roles from cache.
-  // Read from one response, this returned only the server's first page - so a
-  // role past that boundary could not be chosen when creating an agent, and any
-  // existing agent holding one rendered with a blank role name in the table
-  // below, because roleNameById had no entry for it.
+  // **A deliberate remaining use of `fetchAllPages`** (M07 exit criterion 1
+  // requires each one to be justified here).
+  //
+  // Roles are a configuration vocabulary an administrator writes — the same
+  // kind of set as task types — not user-generated volume, and this backs two
+  // things that need the whole set rather than a page: the `<select>` an
+  // operator picks from when deploying an agent, and `roleNameById`, which
+  // resolves the role name for every agent row. Paging it means a role past
+  // the boundary cannot be chosen, and an agent holding one renders with a
+  // blank role.
+  //
+  // The proper fix is to resolve the name server-side on `Agent` (the M05
+  // lesson about `Assignee.name`) and let the picker search; that is a contract
+  // change and belongs with the next one to touch this service.
   const { data: rolesData, isLoading: isLoadingRoles, error: rolesError, refetch: refetchRoles } = useQuery({
     queryKey: ['agentRoles', activeOrgId],
     queryFn: async () => fetchAllPages(async (cursor) => {
@@ -286,6 +309,15 @@ export function AgentsDashboard() {
                 </div>
                 )
               ))}
+              {hasMoreAgents && (
+                <button
+                  onClick={() => fetchMoreAgents()}
+                  disabled={isFetchingMoreAgents}
+                  className="w-full p-3 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  {isFetchingMoreAgents ? 'Loading…' : `Load more (${loadedAgents} of ${agentTotal})`}
+                </button>
+              )}
             </ListState>
           </div>
         </div>

@@ -103,3 +103,36 @@ milestone's fourth exit criterion is that the numbers are committed.
   task. 50,000 rows insert in 1.4 s batched at 500. The `--scale` interface and
   the latency script remain T10's.
 - **Next**: M07-T04
+
+## M07-T04 — `fetchAllPages` out of Agents, Bin and Labels
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `main.tsp` **and** `health.proto`
+  (`ListArtifactsRequest.projectId`), `artifacts.handler.ts`,
+  `features/{Labels,Agents,Bin}/index.tsx` and their tests (5 rewritten,
+  4 added)
+- **Verified**: in a real browser — `/labels` issues **1** `ListLabels`,
+  `/agents` **1** `ListAgents`, and each Bin section **1** request (the Bin's
+  two `ListOrgs` are its own section plus the sidebar switcher, which every
+  page has; `/labels` shows the switcher's 1 on its own). `ListFolders` on the
+  Bin is now **0**. `gui:test` — 621 pass, branches 95.03%.
+  `moon check --all` — 26 pass.
+- **Notes**: eight loops removed, one kept. Each removed loop had a comment
+  explaining why it needed everything, and each explanation was wrong in the
+  same way: "the dashboard needs every agent to render deploy/archive actions"
+  — those actions belong to the row they are on, and an unrendered row has no
+  action to render.
+  **The Bin's artifacts tab was the worst of them**: it listed every folder in
+  the project (all pages), then every deleted artifact in each folder (all
+  pages) — a fan-out proportional to the folder tree, to render one small list.
+  `listArtifacts` takes a `projectId` now and answers it in one query.
+  **One `fetchAllPages` is kept, justified in the code** (exit criterion 1
+  requires exactly that): agent **roles**. It backs the `<select>` an operator
+  picks from and the map that resolves a role name for every agent row — page
+  it and a role past the boundary cannot be chosen, and an agent holding one
+  renders blank. Roles are a configuration vocabulary an administrator writes,
+  not user-generated volume. The proper fix is to resolve the name server-side
+  on `Agent`, the M05 `Assignee.name` lesson; that is a contract change and is
+  noted at the call site for whoever next touches the service.
+- **Next**: M07-T05

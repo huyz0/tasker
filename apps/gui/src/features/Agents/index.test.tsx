@@ -76,16 +76,32 @@ describe('AgentsDashboard', () => {
     expect(screen.getAllByText('Researcher').length).toBeGreaterThan(0);
   });
 
-  it('auto-loads later pages so agents past the first page are not hidden', async () => {
+  it('issues one request on mount, and pages the rest on request', async () => {
+    // Replaces a test that asserted the dashboard looped the cursor to
+    // exhaustion. The old justification was that it "needs every agent to
+    // render deploy/archive actions correctly" — those actions belong to the
+    // row they are on, and an unrendered row has no action to render
+    // (M07-T04).
     mockListAgents
-      .mockResolvedValueOnce({ agents: [{ id: 'agent-1', name: 'Page One Agent', agentRoleId: 'role-1' }], page: { nextCursor: 'cursor-2' } })
-      .mockResolvedValueOnce({ agents: [{ id: 'agent-2', name: 'Page Two Agent', agentRoleId: 'role-1' }], page: {} });
+      .mockResolvedValueOnce({ agents: [{ id: 'agent-1', name: 'Page One Agent', agentRoleId: 'role-1' }], page: { nextCursor: 'cursor-2', totalCount: 2 } })
+      .mockResolvedValueOnce({ agents: [{ id: 'agent-2', name: 'Page Two Agent', agentRoleId: 'role-1' }], page: { totalCount: 2 } });
 
     renderPage();
-
     await waitFor(() => expect(screen.getByText('Page One Agent')).toBeDefined());
+    expect(mockListAgents).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Page Two Agent')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Load more/ }));
     await waitFor(() => expect(screen.getByText('Page Two Agent')).toBeDefined());
     expect(mockListAgents).toHaveBeenCalledWith({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
+    expect(screen.getByText('Page One Agent')).toBeDefined();
+  });
+
+  it('does not offer Load more when the agent list is complete', async () => {
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1', name: 'Only Agent', agentRoleId: 'role-1' }], page: {} });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Only Agent')).toBeDefined());
+    expect(screen.queryByRole('button', { name: /Load more/ })).toBeNull();
   });
 
   it('deploys a new agent via the form', async () => {

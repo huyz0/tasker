@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { LabelService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 
-import { fetchAllPages } from '../../lib/fetchAllPages';
 import { ListState } from '../../components/ui/ListState';
 
 const labelClient = createClient(LabelService, transport);
@@ -29,16 +28,29 @@ export function LabelsManager() {
   const [editLabelName, setEditLabelName] = useState('');
   const [editLabelColor, setEditLabelColor] = useState(DEFAULT_LABEL_COLOR);
 
-  const { data: labelsData, isLoading, error: labelsError, refetch: refetchLabels } = useQuery({
+  const {
+    data: labelPages,
+    isLoading,
+    error: labelsError,
+    refetch: refetchLabels,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['labels', activeOrgId],
-    // Every label must be visible here (and in the label picker elsewhere),
-    // not just the first page - loop until the server reports no more.
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await labelClient.listLabels({ orgId: activeOrgId, page: cursor ? { cursor } : undefined });
-      return { items: resp.labels, nextCursor: resp.page?.nextCursor || undefined };
-    }),
+    // One page on mount, more on request. This looped the cursor to exhaustion
+    // on the grounds that "every label must be visible" — but an organization's
+    // label set has no bound, and a management screen that cannot open until
+    // the last page arrives is not more usable for having them all (M07-T04).
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      labelClient.listLabels({ orgId: activeOrgId, page: { cursor: pageParam } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
     enabled: !!activeOrgId,
   });
+  const labelsData = labelPages?.pages.flatMap((p) => p.labels);
+  const loadedLabels = labelsData?.length ?? 0;
+  const labelTotal = Number(labelPages?.pages[0]?.page?.totalCount ?? 0);
 
   const createLabelMutation = useMutation({
     mutationFn: async () => {
@@ -169,6 +181,15 @@ export function LabelsManager() {
               )
             ))}
           </div>
+          {hasNextPage && (
+            <button
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="mt-3 w-full py-2 text-xs text-muted-foreground bg-background rounded-md border border-dashed hover:border-solid disabled:opacity-50"
+            >
+              {isFetchingNextPage ? 'Loading…' : `Load more (${loadedLabels} of ${labelTotal})`}
+            </button>
+          )}
         </ListState>
         {updateLabelMutation.isError && (
           <p className="text-sm text-destructive mt-3">Failed to update label: {(updateLabelMutation.error as Error).message}</p>

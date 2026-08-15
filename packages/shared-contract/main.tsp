@@ -992,9 +992,16 @@ model ListTaskArtifactLinksResponse {
 }
 
 model ListArtifactsRequest {
-  @field(1) folderId: string;
+  // One of `folderId` or `projectId`. The folder is the browsing case; the
+  // project is the Bin, which wants every deleted artifact regardless of where
+  // it lived. Without it the Bin listed *every folder in the project* and then
+  // every deleted artifact in each — a fan-out proportional to the folder tree,
+  // to render one small list (M07-T04).
+  @field(1) folderId?: string;
+
   @field(2) page?: PageRequest;
   @field(3) onlyDeleted?: boolean;
+  @field(4) projectId?: string;
 }
 
 model ListArtifactsResponse {

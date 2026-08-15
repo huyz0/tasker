@@ -922,9 +922,13 @@ message ListTaskArtifactLinksResponse {
 }
 
 message ListArtifactsRequest {
+  // One of folderId or projectId. The folder is the browsing case; the project
+  // is the Bin, which wants every deleted artifact regardless of where it
+  // lived (M07-T04).
   string folderId = 1;
   PageRequest page = 2;
   bool onlyDeleted = 3;
+  string projectId = 4;
 }
 
 message ListArtifactsResponse {

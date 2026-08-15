@@ -69,7 +69,7 @@ that it is not adopted before measured need), caching layers, read replicas.
       - Files: `modules/tasks/tasks.handler.ts`, `features/Tasks/index.tsx`, `main.tsp`
       - Verify: a 50,000-task project paints its first screen in under one second.
 
-- [ ] **M07-T04** — Remove `fetchAllPages` from the Agents, Bin and Labels views,
+- [x] **M07-T04** — Remove `fetchAllPages` from the Agents, Bin and Labels views,
       replacing it with infinite queries plus virtualization.
       - Files: `features/Agents/`, `features/Bin/`, `features/Labels/`
       - Verify: each view issues one request on mount.

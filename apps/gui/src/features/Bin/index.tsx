@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import {
@@ -10,7 +10,6 @@ import {
   AgentService,
   ArtifactService,
 } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
-import { fetchAllPages } from '../../lib/fetchAllPages';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ListState } from '../../components/ui/ListState';
 
@@ -33,13 +32,15 @@ const TABS: { id: EntityKind; label: string }[] = [
 
 function OrganizationsBin() {
   const queryClient = useQueryClient();
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data: pages, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ['orgs', 'bin'],
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await orgClient.listOrgs({ onlyDeleted: true, page: cursor ? { cursor } : undefined });
-      return { items: resp.organizations, nextCursor: resp.page?.nextCursor || undefined };
-    }),
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      orgClient.listOrgs({ onlyDeleted: true, page: { cursor: pageParam } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
   });
+  const data = pages?.pages.flatMap((p) => p.organizations);
+  const total = Number(pages?.pages[0]?.page?.totalCount ?? 0);
   const restoreMutation = useMutation({
     mutationFn: async (orgId: string) => { await orgClient.restoreOrg({ orgId }); },
     onSuccess: () => {
@@ -57,6 +58,10 @@ function OrganizationsBin() {
       error={error}
       onRetry={() => refetch()}
       items={data}
+      total={total}
+      hasMore={hasNextPage}
+      isLoadingMore={isFetchingNextPage}
+      onLoadMore={() => fetchNextPage()}
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
       restoreError={restoreMutation.error as Error | null}
@@ -71,14 +76,16 @@ function OrganizationsBin() {
 function ProjectsBin() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const queryClient = useQueryClient();
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data: pages, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ['projects', 'bin', activeOrgId],
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await projectClient.listProjects({ orgId: activeOrgId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
-      return { items: resp.projects, nextCursor: resp.page?.nextCursor || undefined };
-    }),
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      projectClient.listProjects({ orgId: activeOrgId, onlyDeleted: true, page: { cursor: pageParam } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
     enabled: Boolean(activeOrgId),
   });
+  const data = pages?.pages.flatMap((p) => p.projects);
+  const total = Number(pages?.pages[0]?.page?.totalCount ?? 0);
   const restoreMutation = useMutation({
     mutationFn: async (projectId: string) => { await projectClient.restoreProject({ projectId }); },
     onSuccess: () => {
@@ -97,6 +104,10 @@ function ProjectsBin() {
       error={error}
       onRetry={() => refetch()}
       items={data}
+      total={total}
+      hasMore={hasNextPage}
+      isLoadingMore={isFetchingNextPage}
+      onLoadMore={() => fetchNextPage()}
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
       restoreError={restoreMutation.error as Error | null}
@@ -111,14 +122,16 @@ function ProjectsBin() {
 function TasksBin() {
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const queryClient = useQueryClient();
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data: pages, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ['tasks', 'bin', activeProjectId],
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await taskClient.listTasks({ projectId: activeProjectId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
-      return { items: resp.tasks, nextCursor: resp.page?.nextCursor || undefined };
-    }),
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      taskClient.listTasks({ projectId: activeProjectId, onlyDeleted: true, page: { cursor: pageParam } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
     enabled: Boolean(activeProjectId),
   });
+  const data = pages?.pages.flatMap((p) => p.tasks);
+  const total = Number(pages?.pages[0]?.page?.totalCount ?? 0);
   const restoreMutation = useMutation({
     mutationFn: async (taskId: string) => { await taskClient.restoreTask({ taskId }); },
     onSuccess: () => {
@@ -136,6 +149,10 @@ function TasksBin() {
       error={error}
       onRetry={() => refetch()}
       items={data}
+      total={total}
+      hasMore={hasNextPage}
+      isLoadingMore={isFetchingNextPage}
+      onLoadMore={() => fetchNextPage()}
       labelKey="title"
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
@@ -151,14 +168,16 @@ function TasksBin() {
 function AgentsBin() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const queryClient = useQueryClient();
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data: pages, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ['agents', 'bin', activeOrgId],
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await agentClient.listAgents({ orgId: activeOrgId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
-      return { items: resp.agents, nextCursor: resp.page?.nextCursor || undefined };
-    }),
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      agentClient.listAgents({ orgId: activeOrgId, onlyDeleted: true, page: { cursor: pageParam } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
     enabled: Boolean(activeOrgId),
   });
+  const data = pages?.pages.flatMap((p) => p.agents);
+  const total = Number(pages?.pages[0]?.page?.totalCount ?? 0);
   const restoreMutation = useMutation({
     mutationFn: async (agentId: string) => { await agentClient.restoreAgent({ agentId }); },
     onSuccess: () => {
@@ -176,6 +195,10 @@ function AgentsBin() {
       error={error}
       onRetry={() => refetch()}
       items={data}
+      total={total}
+      hasMore={hasNextPage}
+      isLoadingMore={isFetchingNextPage}
+      onLoadMore={() => fetchNextPage()}
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
       restoreError={restoreMutation.error as Error | null}
@@ -190,14 +213,16 @@ function AgentsBin() {
 function FoldersBin() {
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const queryClient = useQueryClient();
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data: pages, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ['folders', 'bin', activeProjectId],
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await artifactClient.listFolders({ projectId: activeProjectId, onlyDeleted: true, page: cursor ? { cursor } : undefined });
-      return { items: resp.folders, nextCursor: resp.page?.nextCursor || undefined };
-    }),
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      artifactClient.listFolders({ projectId: activeProjectId, onlyDeleted: true, page: { cursor: pageParam } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
     enabled: Boolean(activeProjectId),
   });
+  const data = pages?.pages.flatMap((p) => p.folders);
+  const total = Number(pages?.pages[0]?.page?.totalCount ?? 0);
   const restoreMutation = useMutation({
     mutationFn: async (folderId: string) => { await artifactClient.restoreFolder({ folderId }); },
     onSuccess: () => {
@@ -215,6 +240,10 @@ function FoldersBin() {
       error={error}
       onRetry={() => refetch()}
       items={data}
+      total={total}
+      hasMore={hasNextPage}
+      isLoadingMore={isFetchingNextPage}
+      onLoadMore={() => fetchNextPage()}
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
       restoreError={restoreMutation.error as Error | null}
@@ -229,27 +258,20 @@ function FoldersBin() {
 function ArtifactsBin() {
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const queryClient = useQueryClient();
-  const { data: folders } = useQuery({
-    queryKey: ['folders', activeProjectId],
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await artifactClient.listFolders({ projectId: activeProjectId, page: cursor ? { cursor } : undefined });
-      return { items: resp.folders, nextCursor: resp.page?.nextCursor || undefined };
-    }),
+  // One project-scoped request. This used to list every folder in the project
+  // (all pages), then every deleted artifact in each folder (all pages) — a
+  // fan-out proportional to the folder tree, to render one small list. The
+  // server answers it directly now (M07-T04).
+  const { data: pages, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['artifacts', 'bin', activeProjectId],
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      artifactClient.listArtifacts({ projectId: activeProjectId, onlyDeleted: true, page: { cursor: pageParam } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
     enabled: Boolean(activeProjectId),
   });
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['artifacts', 'bin', activeProjectId, folders?.map(f => f.id).join(',')],
-    queryFn: async () => {
-      const perFolder = await Promise.all(
-        (folders ?? []).map(f => fetchAllPages(async (cursor) => {
-          const resp = await artifactClient.listArtifacts({ folderId: f.id, onlyDeleted: true, page: cursor ? { cursor } : undefined });
-          return { items: resp.artifacts, nextCursor: resp.page?.nextCursor || undefined };
-        }))
-      );
-      return perFolder.flat();
-    },
-    enabled: Boolean(activeProjectId) && Boolean(folders),
-  });
+  const data = pages?.pages.flatMap((p) => p.artifacts);
+  const total = Number(pages?.pages[0]?.page?.totalCount ?? 0);
   const restoreMutation = useMutation({
     mutationFn: async (artifactId: string) => { await artifactClient.restoreArtifact({ artifactId }); },
     onSuccess: () => {
@@ -267,6 +289,10 @@ function ArtifactsBin() {
       error={error}
       onRetry={() => refetch()}
       items={data}
+      total={total}
+      hasMore={hasNextPage}
+      isLoadingMore={isFetchingNextPage}
+      onLoadMore={() => fetchNextPage()}
       onRestore={(id) => restoreMutation.mutate(id)}
       isRestoring={restoreMutation.isPending}
       restoreError={restoreMutation.error as Error | null}
@@ -278,8 +304,13 @@ function ArtifactsBin() {
   );
 }
 
-function BinList({ isLoading, error, onRetry, items, onRestore, isRestoring, restoreError, onPurge, isPurging, purgeError, emptyMessage, labelKey = 'name' }: {
+function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore, isLoadingMore, onRestore, isRestoring, restoreError, onPurge, isPurging, purgeError, emptyMessage, labelKey = 'name' }: {
   isLoading: boolean;
+  /** The server's count of the whole bin, not the number of rows loaded. */
+  total: number;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
   /** The *query* error. `restoreError`/`purgeError` are mutations — a failed
    *  load used to fall through to `emptyMessage` and claim the bin was empty. */
   error: unknown;
@@ -352,6 +383,15 @@ function BinList({ isLoading, error, onRetry, items, onRestore, isRestoring, res
           </div>
         </div>
       ))}
+      {hasMore && (
+        <button
+          onClick={onLoadMore}
+          disabled={isLoadingMore}
+          className="w-full p-3 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          {isLoadingMore ? 'Loading…' : `Load more (${items.length} of ${total})`}
+        </button>
+      )}
       {confirmDialog}
     </div>
   );
