@@ -83,6 +83,10 @@ export const invitations = mysqlTable("invitations", {
   // handed out through an email invite.
   role: mysqlEnum("role", ['admin', 'member', 'viewer']).notNull().default('member'),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // An invitation that never expires is a standing key to the organization.
+  // Nullable so rows predating M03-T11 remain valid rather than being silently
+  // treated as expired.
+  expiresAt: timestamp("expires_at"),
 }, (table) => {
   return {
     orgIdIdx: index("invitations_org_id_idx").on(table.orgId),

@@ -88,6 +88,11 @@ export const invitations = sqliteTable("invitations", {
   // (never 'owner': ownership isn't handed out through an email invite).
   role: text("role").notNull().default('member'),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  // An invitation that never expires is a standing key to the organization: an
+  // address invited once could be redeemed at any point afterwards, long after
+  // whoever sent it had left. Nullable so rows predating M03-T11 remain valid
+  // rather than being silently treated as expired.
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
 }, (table) => {
   return {
     orgIdIdx: index("invitations_org_id_idx").on(table.orgId),

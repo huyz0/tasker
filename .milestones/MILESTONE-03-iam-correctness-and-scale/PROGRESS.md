@@ -459,3 +459,46 @@ completes the task.
   The fix uses the same `fetchAllPages` helper the agents query beside it
   already used — the two queries sat next to each other, one paged and one not.
 - **Next**: M03-T11
+
+---
+
+## M03-T11 — Expire invitations
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: Invitations never expire, so an address invited once can be
+  redeemed into the organization at any point afterwards — including long after
+  the person who sent it left. Add `expiresAt` with a default window, set it on
+  create, and skip expired rows at login.
+- **Weight**: heavy — it touches authorization and adds a migration, so
+  [the review](reviews/M03-T11-invitation-expiry-v1.md) runs.
+- **Changed**: both schemas, two migrations (`0022_invitation_expiry.sql`,
+  `0009_…`), `orgs.handler.ts` (+`INVITATION_TTL_DAYS`, 14 days),
+  `modules/auth/auth.ts`, `auth.test.ts` (+4), `orgs.test.ts` (+3).
+- **Verified**: `moon check --all` — 23 tasks, 43 org tests, 30 auth tests. The
+  verify line is tested directly: an expired invitation leaves the user with
+  **zero** memberships while the login itself still succeeds.
+- **Notes**: three places where the obvious version is wrong.
+
+  **`expires_at` is nullable and null means valid.** `NOT NULL` would have put
+  an expiry on invitations issued before the concept existed, and backfilling
+  to the epoch would have revoked every outstanding invitation the instant the
+  migration ran — a support incident, not a migration. There is a test for the
+  legacy row.
+
+  **Re-inviting renews an expired invitation.** The duplicate check
+  short-circuits on `(orgId, email)`, so without renewal a lapsed invitation is
+  permanently un-reissuable and the admin's only remedy is deleting a row the
+  UI does not show them. It renews the role too.
+
+  **Re-inviting a live invitation does not extend it**, or the expiry is
+  defeated by anyone re-sending and there is no window at all.
+
+  Expired invitations are skipped at login rather than deleted: deleting them
+  there makes the invitation vanish at the exact moment the person finally
+  tries to use it, and hides from the admin that it lapsed unredeemed.
+- **Divergence**: knip flagged `INVITATION_TTL_DAYS` as an unused export, which
+  was correct and useful — the test had hardcoded 13/15 days beside a constant
+  of 14. Importing the constant into the test fixed both: the export has a
+  consumer and the assertion tracks the value.
+- **Next**: M03-T12

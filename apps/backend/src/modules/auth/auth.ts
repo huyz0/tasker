@@ -82,7 +82,17 @@ async function completeLogin(db: any, profile: GoogleProfile): Promise<void> {
   }
 
   const pendingInvites = await db.select().from(invitations).where(eq((invitations as any).email, profile.email));
+  const now = Date.now();
   for (const invite of pendingInvites) {
+    // Expired invitations are skipped rather than deleted. They stay visible to
+    // an admin through listInvitations (M03-T12), where an invite that lapsed
+    // unredeemed is useful information; deleting it here would make it vanish
+    // at the moment the person finally tried to use it.
+    //
+    // A null expiresAt is an invitation issued before M03-T11 and remains
+    // valid - see the migration's note.
+    if (invite.expiresAt && new Date(invite.expiresAt).getTime() <= now) continue;
+
     const alreadyMember = await db.select().from(members)
       .where(and(eq((members as any).orgId, invite.orgId), eq((members as any).userId, profile.id)))
       .limit(1);

@@ -285,6 +285,90 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
     globalThis.fetch = originalFetch;
   });
 
+  /**
+   * M03-T11. An invitation with no expiry was a standing key to the
+   * organization: an address invited once could be redeemed at any point
+   * afterwards, including long after whoever sent it had left.
+   */
+  const loginAs = async (userId: string, email: string) => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL, options?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') {
+        return new Response(JSON.stringify({ access_token: 'mock_access_token' }), { status: 200 });
+      }
+      if (urlStr === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        return new Response(JSON.stringify({ id: userId, email }), { status: 200 });
+      }
+      return originalFetch(url, options);
+    }) as unknown as typeof fetch;
+
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state, cookie: stateCookie } = extractLoginFlow(loginRes);
+    const res = await authRoutes.handle(new Request(`http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`, {
+      headers: { cookie: stateCookie },
+    }));
+    globalThis.fetch = originalFetch;
+    return res;
+  };
+
+  const seedInvite = async (id: string, email: string, expiresAt: Date | null) => {
+    await db.insert(schemaSqlite.organizations).values({ id: `org-${id}`, name: `Org ${id}`, slug: `org-${id}`, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: `inviter-${id}`, email: `inviter-${id}@example.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.invitations).values({
+      id, orgId: `org-${id}`, email, invitedBy: `inviter-${id}`, createdAt: new Date(), expiresAt,
+    });
+  };
+
+  it('does not join a user on an expired invitation', async () => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await seedInvite('inv-expired', 'lapsed@example.com', yesterday);
+
+    const res = await loginAs('lapsed-user', 'lapsed@example.com');
+    expect(res.status).toBe(302); // login itself still succeeds
+
+    const membership = await db.select().from(schemaSqlite.organizationMembers)
+      .where(eq(schemaSqlite.organizationMembers.userId, 'lapsed-user'));
+    expect(membership).toHaveLength(0);
+  });
+
+  it('leaves an expired invitation in place rather than consuming it', async () => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await seedInvite('inv-kept', 'kept@example.com', yesterday);
+
+    await loginAs('kept-user', 'kept@example.com');
+
+    // Deleting it here would make the invitation vanish at the exact moment
+    // the person finally tried to use it, and hide from the admin that it
+    // lapsed unredeemed.
+    const remaining = await db.select().from(schemaSqlite.invitations).where(eq(schemaSqlite.invitations.id, 'inv-kept'));
+    expect(remaining).toHaveLength(1);
+  });
+
+  it('still joins on an invitation that has not expired yet', async () => {
+    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await seedInvite('inv-live', 'live@example.com', nextWeek);
+
+    await loginAs('live-user', 'live@example.com');
+
+    const membership = await db.select().from(schemaSqlite.organizationMembers)
+      .where(eq(schemaSqlite.organizationMembers.userId, 'live-user'));
+    expect(membership).toHaveLength(1);
+  });
+
+  it('honours an invitation issued before expiry existed', async () => {
+    // Rows predating the migration have a null expiresAt. Treating null as
+    // "expired at the epoch" would have revoked every outstanding invitation
+    // the moment the migration ran.
+    await seedInvite('inv-legacy', 'legacy@example.com', null);
+
+    await loginAs('legacy-user', 'legacy@example.com');
+
+    const membership = await db.select().from(schemaSqlite.organizationMembers)
+      .where(eq(schemaSqlite.organizationMembers.userId, 'legacy-user'));
+    expect(membership).toHaveLength(1);
+  });
+
   it('should accept a pending invitation matching the logged-in email, joining the invited org', async () => {
     await db.insert(schemaSqlite.organizations).values({ id: 'org-invited', name: 'Invited Org', slug: 'invited-org', createdAt: new Date() });
     await db.insert(schemaSqlite.users).values({ id: 'inviter-1', email: 'inviter@example.com', createdAt: new Date() });

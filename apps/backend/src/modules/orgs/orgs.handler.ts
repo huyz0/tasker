@@ -71,6 +71,16 @@ const UpdateOrgMemberRoleSchema = z.object({
   role: OrgRole,
 });
 
+/**
+ * How long an invitation stays redeemable. Two weeks is long enough to survive
+ * a holiday and short enough that a forgotten invite is not a standing key to
+ * the organization.
+ */
+export const INVITATION_TTL_DAYS = 14;
+
+const invitationExpiry = (from: Date = new Date()) =>
+  new Date(from.getTime() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000);
+
 // --- Handler Factory ---
 
 export const createOrgsHandler = (db: any, nc: any = null) => {
@@ -338,7 +348,21 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const existing = await db.select().from(invs)
         .where(and(eq((invs as any).orgId, parsed.orgId), eq((invs as any).email, parsed.email)))
         .limit(1);
-      if (existing.length > 0) return { success: true };
+      if (existing.length > 0) {
+        // Re-inviting stays idempotent for a live invitation, but must renew an
+        // expired one - otherwise a lapsed invite becomes permanently
+        // un-reissuable, and the admin's only remedy is to delete a row they
+        // cannot see. It also renews the role, since re-inviting with a
+        // different role is the obvious way to change one's mind.
+        const invite = existing[0];
+        const isExpired = invite.expiresAt && new Date(invite.expiresAt).getTime() <= Date.now();
+        if (isExpired) {
+          await db.update(invs)
+            .set({ expiresAt: invitationExpiry(), role: parsed.role, invitedBy: userId })
+            .where(eq((invs as any).id, invite.id));
+        }
+        return { success: true };
+      }
 
       const payload = {
         id: `i-${crypto.randomUUID()}`,
@@ -346,6 +370,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         email: parsed.email,
         invitedBy: userId,
         role: parsed.role,
+        expiresAt: invitationExpiry(),
       };
       await insertRecord(db, invs, payload, isStandalone);
       return { success: true };

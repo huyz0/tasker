@@ -2,7 +2,7 @@ import { expect, test, describe } from "bun:test";
 import { eq, and, inArray } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext, seedUser } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { createOrgsHandler } from "./orgs.handler";
+import { createOrgsHandler, INVITATION_TTL_DAYS } from "./orgs.handler";
 import { Code } from "@connectrpc/connect";
 
 describe("Organizations Handler Integration Logic", () => {
@@ -947,5 +947,66 @@ describe("listOrgs never drops a sub-organization (M03-T09)", () => {
     // The fix must not become a way to read the name of an organization you
     // were never added to.
     expect(page.ancestors).toEqual([]);
+  });
+});
+
+describe("Invitation expiry (M03-T11)", () => {
+  const seedOrgForInvite = async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const suffix = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const orgId = "org-inv-" + suffix;
+    const adminId = "user-inv-" + suffix;
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@t.local`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Inv Org", slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: adminId, role: "admin", joinedAt: new Date() });
+    return { db, handler, orgId, adminId, ctx: makeAuthContext(adminId) };
+  };
+
+  const inviteRow = (db: any, orgId: string) =>
+    db.select().from(schemaSqlite.invitations).where(eq(schemaSqlite.invitations.orgId, orgId)).then((r: any[]) => r[0]);
+
+  test("a new invitation is given an expiry", async () => {
+    const { db, handler, orgId, ctx } = await seedOrgForInvite();
+
+    await handler.inviteUser({ orgId, email: "new@t.local" }, ctx);
+
+    const row = await inviteRow(db, orgId);
+    expect(row.expiresAt).toBeDefined();
+    // Asserted against the constant rather than a literal, so changing the
+    // window is one edit rather than two that can disagree.
+    const days = (new Date(row.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000);
+    expect(days).toBeGreaterThan(INVITATION_TTL_DAYS - 1);
+    expect(days).toBeLessThanOrEqual(INVITATION_TTL_DAYS);
+  });
+
+  test("re-inviting a live invitation stays idempotent and does not extend it", async () => {
+    const { db, handler, orgId, ctx } = await seedOrgForInvite();
+    await handler.inviteUser({ orgId, email: "dup@t.local" }, ctx);
+    const first = await inviteRow(db, orgId);
+
+    await handler.inviteUser({ orgId, email: "dup@t.local" }, ctx);
+
+    const rows = await db.select().from(schemaSqlite.invitations).where(eq(schemaSqlite.invitations.orgId, orgId));
+    expect(rows).toHaveLength(1);
+    expect(new Date(rows[0].expiresAt).getTime()).toBe(new Date(first.expiresAt).getTime());
+  });
+
+  test("re-inviting an expired invitation renews it", async () => {
+    const { db, handler, orgId, ctx } = await seedOrgForInvite();
+    await handler.inviteUser({ orgId, email: "lapsed@t.local", role: "viewer" }, ctx);
+    await db.update(schemaSqlite.invitations)
+      .set({ expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000) })
+      .where(eq(schemaSqlite.invitations.orgId, orgId));
+
+    // Without this, a lapsed invitation is permanently un-reissuable: the
+    // duplicate check short-circuits and the admin's only remedy is deleting a
+    // row they cannot see.
+    await handler.inviteUser({ orgId, email: "lapsed@t.local", role: "admin" }, ctx);
+
+    const row = await inviteRow(db, orgId);
+    expect(new Date(row.expiresAt).getTime()).toBeGreaterThan(Date.now());
+    // Re-inviting with a different role is the obvious way to change one's mind.
+    expect(row.role).toBe("admin");
   });
 });

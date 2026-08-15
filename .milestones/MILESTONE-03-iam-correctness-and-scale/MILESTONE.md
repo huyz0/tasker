@@ -110,7 +110,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
 
 ### Invitations
 
-- [ ] **M03-T11** — Add `expiresAt` to invitations with a default window, and
+- [x] **M03-T11** — Add `expiresAt` to invitations with a default window, and
       ignore expired invitations at login.
       - Files: `db/schema.*.ts`, migrations, `modules/auth/auth.ts`
       - Verify: an expired invitation does not join the user.
