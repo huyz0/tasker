@@ -2,7 +2,7 @@
 active_milestone: M06
 active_task: null
 last_updated: 2026-08-15
-last_commit: d04d0b7
+last_commit: 82b6a0f
 blocked: false
 blocker: null
 ---
@@ -17,8 +17,8 @@ blocker: null
 
 - **Milestone**: M06 — UX, Design System & A11y
 - **Task**: none started
-- **Branch**: `feature/m05-gui-api-parity` — M05 is complete on it but **not yet
-  merged to `main`**. Merge it before branching M06.
+- **Branch**: `main` — M05 is merged (fast-forward, `82b6a0f`) and pushed.
+  Branch M06 from `main`.
 - **Command to continue**: `/milestone-deliver M06`
 
 M05 closed 12/12 tasks and 6/6 exit criteria. With M05 done the frontier is M06
