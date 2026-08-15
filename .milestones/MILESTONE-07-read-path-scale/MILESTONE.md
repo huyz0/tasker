@@ -79,7 +79,7 @@ that it is not adopted before measured need), caching layers, read replicas.
       - Files: `apps/backend/src/db/searchIndex.ts`, handlers, migrations
       - Verify: creating a task makes it findable by a word in its description.
 
-- [ ] **M07-T06** — Serve search from `MATCH` in standalone mode with ranking
+- [x] **M07-T06** — Serve search from `MATCH` in standalone mode with ranking
       and snippet extraction.
       - Files: `modules/search/search.handler.ts`
       - Verify: results are ranked by relevance, not creation date.

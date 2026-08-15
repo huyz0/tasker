@@ -187,6 +187,57 @@ be a large index of unsearchable noise, so the sensible reading is that artifact
 *bodies* stop being searched and that is a deliberate, recorded narrowing — but
 it is a behaviour change and belongs in T06's journal entry, not silently.
 
+## M07-T06 — Search served from MATCH, ranked by relevance
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `modules/search/search.handler.ts` (new `fullTextSearch`, token
+  allowlist, application-side snippets, offset cursor), `search.test.ts`
+  (+10 tests, 1 replaced), new `.specs/adr/ADR-0010-…`, new
+  `reviews/CODE-REVIEW-v1.md`
+- **Verified**: the verify line — *ranked by relevance, not creation date* —
+  in a real browser through the GUI's own search box: a task created **2020**
+  outranks one created **2030** because the older one matches more strongly.
+  Under the previous `ORDER BY createdAt DESC` that order was reversed. Its
+  snippet is a window centred on the match rather than the first 100 characters,
+  which for that row were entirely filler. `backend:test` — 618 pass.
+  `moon check --all` — 26 pass.
+- **Artifacts**: ADR-0010 (the pagination decision had a real alternative);
+  `CODE-REVIEW-v1.md`. No UX pass — no screen changed, the GUI was not touched.
+  No test plan — the behaviour states in one verify line.
+- **Notes**: **the ordering change forces a pagination change; they are one
+  decision.** A cursor over `createdAt` cannot page a set ordered by `bm25()` —
+  page two would be filtered by one thing and ordered by another, silently
+  skipping and repeating rows.
+  Two SQLite facts were measured rather than assumed, and both moved the design.
+  `bm25()` **is** usable in a `WHERE` clause, so a keyset cursor was genuinely
+  available — the first draft of the ADR claimed otherwise and was wrong. But
+  `EXPLAIN QUERY PLAN` shows `SCAN … VIRTUAL TABLE` + `USE TEMP B-TREE FOR ORDER
+  BY`: ranking re-sorts the entire match set on every page regardless, so keyset
+  does not avoid the cost it exists to avoid. It would only have bought
+  stability, at the price of comparing floats for equality — and bm25 ties are
+  common (two rows in a six-row fixture scored identically). Hence a bounded
+  offset, and hence `ORDER BY bm25(...), id`, whose tie-break is load-bearing.
+  **`snippet()` cannot be used and does not say so.** On a contentless FTS5
+  table it returns **NULL** rather than raising, so a handler built on it ships
+  silently empty snippets. Snippets are built in the application from the base
+  row instead.
+  **The injection surface moved rather than disappeared.** It is no longer SQL
+  wildcards but FTS5's query language, where an unbalanced `"` is a hard error,
+  not a no-op. The defence is an allowlist — only `\p{L}`/`\p{N}` runs survive
+  — because refusing to carry operator characters is easier to get right than
+  escaping them.
+  **The review caught a High that predates this task.** Paging restarted an
+  entity type once it was exhausted, because an omitted per-type cursor is
+  indistinguishable from "no cursor yet". One task and five artifacts at limit 2
+  returned ten rows for six ids. The old keyset cursor had the identical shape,
+  so this is a fix rather than a regression — and the existing paging test
+  collected into a `Set`, which hid it.
+  Artifact **bodies** are no longer searched: `artifacts_fts` covers name and
+  description, and `content` holds base64 blobs. A deliberate narrowing, in
+  ADR-0010 and asserted by a test so the loss is visible.
+- **Next**: M07-T07
+
 ---
 
 ## Out-of-band — dashboard rework (not an M07 task)

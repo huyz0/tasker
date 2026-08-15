@@ -24,6 +24,184 @@ function decodeSearchCursor(cursor: string | undefined): { taskCursor?: string; 
   }
 }
 
+// -------------------------------------------------------------------------
+// Full-text search (standalone / SQLite). See ADR-0010.
+// -------------------------------------------------------------------------
+
+/**
+ * How deep a ranked search will page before it stops offering a next page.
+ *
+ * Ordering by relevance re-sorts the whole match set on every page (the query
+ * plan is `SCAN … VIRTUAL TABLE` + `USE TEMP B-TREE FOR ORDER BY`), so offset
+ * is not free. Past this depth search refuses rather than answers slowly:
+ * someone asking for result 5,000 wants a filter, not a search box.
+ */
+const MAX_SEARCH_DEPTH = 200;
+
+/** How much text either side of the matched word a snippet carries. */
+const SNIPPET_RADIUS = 60;
+
+/**
+ * Splits caller text into the words FTS5 will actually match on.
+ *
+ * Deliberately keeps letters and digits only. That is the whole injection
+ * defence: FTS5's `MATCH` takes a query *language* — `AND`, `OR`, `NOT`, `*`,
+ * `^`, `:` and quotes are all operators — and an unbalanced quote is not a
+ * no-op but a hard `unterminated string` error. Extracting alphanumeric runs
+ * means no operator character can survive to be interpreted, so each token can
+ * then be safely wrapped in quotes as a literal phrase.
+ */
+function searchTokens(raw: string): string[] {
+  return raw.match(/[\p{L}\p{N}]+/gu) ?? [];
+}
+
+/**
+ * Builds the `MATCH` expression: every word required, the last one treated as
+ * a prefix so that "find" matches "findable" while someone is still typing.
+ */
+function toMatchExpression(tokens: string[]): string {
+  return tokens
+    .map((t, i) => `"${t}"` + (i === tokens.length - 1 ? "*" : ""))
+    .join(" AND ");
+}
+
+/**
+ * A window of text around the first matched word.
+ *
+ * FTS5 ships `snippet()` for exactly this, and it cannot be used here: on a
+ * contentless table (`content=''`) it returns **NULL** rather than erroring, so
+ * a handler built on it would have shipped silently empty snippets. The index
+ * stores no text to snippet from, so the text comes from the base row instead.
+ */
+function buildSnippet(text: string | null | undefined, tokens: string[]): string {
+  if (!text) return "";
+  const haystack = text.toLowerCase();
+  let at = -1;
+  for (const token of tokens) {
+    const found = haystack.indexOf(token.toLowerCase());
+    if (found !== -1 && (at === -1 || found < at)) at = found;
+  }
+  // The match may be in the title rather than the body, in which case the
+  // opening of the body is still the most useful thing to show.
+  if (at === -1) return text.slice(0, SNIPPET_RADIUS * 2);
+
+  const start = Math.max(0, at - SNIPPET_RADIUS);
+  const end = Math.min(text.length, at + SNIPPET_RADIUS);
+  return (start > 0 ? "…" : "") + text.slice(start, end).trim() + (end < text.length ? "…" : "");
+}
+
+/** Reads an offset back out of a per-type cursor, ignoring anything malformed. */
+function decodeOffset(raw: string | undefined): number {
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
+}
+
+/**
+ * The SQLite branch: ranked by `bm25()` out of the FTS5 indexes T05 maintains.
+ *
+ * Written as raw SQL rather than through the query builder because the join is
+ * `tasks_fts.rowid = tasks.rowid` — an implicit SQLite column the drizzle
+ * schema does not model — and because `bm25()` has to appear in both the
+ * projection and the `ORDER BY`.
+ */
+async function fullTextSearch(db: any, orgId: string, rawQuery: string, page: any) {
+  const totalLimit = Math.min(Math.max(page?.limit || 20, 1), 100);
+  const perTypeLimit = Math.max(Math.ceil(totalLimit / 2), 1);
+  const { taskCursor, artifactCursor } = decodeSearchCursor(page?.cursor);
+  const taskOffset = decodeOffset(taskCursor);
+  const artifactOffset = decodeOffset(artifactCursor);
+
+  const tokens = searchTokens(rawQuery);
+  // Punctuation only ("???"). The query was non-empty, so this is a search that
+  // legitimately matches nothing rather than a bad request.
+  if (tokens.length === 0) return { results: [], page: { totalCount: 0, nextCursor: undefined } };
+  const match = toMatchExpression(tokens);
+
+  const [matchedTasks, [taskCountRow], matchedArtifacts, [artifactCountRow]] = await Promise.all([
+    db.all(sql`
+      SELECT t.id AS id, t.title AS title, t.description AS description
+      FROM tasks_fts
+      JOIN tasks t ON t.rowid = tasks_fts.rowid
+      JOIN projects p ON p.id = t.project_id
+      WHERE tasks_fts MATCH ${match} AND p.org_id = ${orgId} AND t.deleted_at IS NULL
+      ORDER BY bm25(tasks_fts), t.id
+      LIMIT ${perTypeLimit} OFFSET ${taskOffset}
+    `),
+    db.all(sql`
+      SELECT count(*) AS count
+      FROM tasks_fts
+      JOIN tasks t ON t.rowid = tasks_fts.rowid
+      JOIN projects p ON p.id = t.project_id
+      WHERE tasks_fts MATCH ${match} AND p.org_id = ${orgId} AND t.deleted_at IS NULL
+    `),
+    db.all(sql`
+      SELECT a.id AS id, a.name AS name, a.description AS description
+      FROM artifacts_fts
+      JOIN artifacts a ON a.rowid = artifacts_fts.rowid
+      JOIN folders f ON f.id = a.folder_id
+      JOIN projects p ON p.id = f.project_id
+      WHERE artifacts_fts MATCH ${match} AND p.org_id = ${orgId} AND a.deleted_at IS NULL
+      ORDER BY bm25(artifacts_fts), a.id
+      LIMIT ${perTypeLimit} OFFSET ${artifactOffset}
+    `),
+    db.all(sql`
+      SELECT count(*) AS count
+      FROM artifacts_fts
+      JOIN artifacts a ON a.rowid = artifacts_fts.rowid
+      JOIN folders f ON f.id = a.folder_id
+      JOIN projects p ON p.id = f.project_id
+      WHERE artifacts_fts MATCH ${match} AND p.org_id = ${orgId} AND a.deleted_at IS NULL
+    `),
+  ]);
+
+  const results = [
+    ...matchedTasks.map((t: any) => ({
+      id: t.id,
+      type: "task",
+      title: t.title,
+      snippet: buildSnippet(t.description, tokens),
+    })),
+    ...matchedArtifacts.map((a: any) => ({
+      id: a.id,
+      type: "artifact",
+      title: a.name,
+      snippet: buildSnippet(a.description, tokens),
+    })),
+  ];
+
+  // Tasks are pushed before artifacts, so trimming an odd limit only ever drops
+  // artifacts - the next artifact offset must therefore count what was *kept*,
+  // not what was fetched, or the trimmed row is skipped on every later page.
+  const keptResults = results.slice(0, totalLimit);
+  const keptTaskCount = Math.min(matchedTasks.length, totalLimit);
+  const keptArtifactCount = keptResults.length - keptTaskCount;
+
+  const taskTotal = Number(taskCountRow?.count ?? 0);
+  const artifactTotal = Number(artifactCountRow?.count ?? 0);
+
+  const nextTaskOffset = taskOffset + keptTaskCount;
+  const nextArtifactOffset = artifactOffset + keptArtifactCount;
+  // The cap bounds what is *served*. `totalCount` below still reports what
+  // actually matched, because a total that shrank to the cap would misstate the
+  // size of the result set.
+  const moreTasks = nextTaskOffset < Math.min(taskTotal, MAX_SEARCH_DEPTH);
+  const moreArtifacts = nextArtifactOffset < Math.min(artifactTotal, MAX_SEARCH_DEPTH);
+
+  // BOTH offsets are always carried, and paging stops only once BOTH types are
+  // exhausted. Omitting the exhausted type's offset would be indistinguishable
+  // from "this type has no cursor yet", so it would restart at zero and return
+  // its rows again on every page the other type kept alive.
+  return {
+    results: keptResults,
+    page: {
+      totalCount: taskTotal + artifactTotal,
+      nextCursor: moreTasks || moreArtifacts
+        ? encodeSearchCursor(String(nextTaskOffset), String(nextArtifactOffset))
+        : undefined,
+    },
+  };
+}
+
 // Escapes LIKE's special characters (\, %, _) in caller-supplied query text
 // so a search for e.g. "100%" or "foo_bar" matches those literal characters
 // instead of "%"/"_" acting as SQL wildcards and matching unrelated rows.
@@ -46,6 +224,11 @@ export default (router: ConnectRouter, db: any) => {
       if (!orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       if (!query || !query.trim()) throw new ConnectError("query is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, orgId);
+
+      // SQLite reads the FTS5 index T05 maintains and ranks by relevance
+      // (ADR-0010). MySQL still runs the `LIKE` scan below; its `FULLTEXT`
+      // branch is M07-T07.
+      if (isStandalone) return await fullTextSearch(db, orgId, query, page);
 
       const { tasks, artifacts, projects, folders } = schema;
       const results: any[] = [];

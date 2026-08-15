@@ -159,16 +159,33 @@ describe("Search Handler", () => {
     expect(seenIds.has("art-oddpage-1")).toBe(true);
   });
 
-  it("treats _ in the search query as a literal character, not a SQL single-char wildcard", async () => {
-    await db.insert(schemaSqlite.tasks).values({ id: "tsk-literal-" + crypto.randomUUID(), projectId, title: "foo_bar release", status: "todo", createdAt: new Date() });
-    // Unescaped, the pattern "%o_b%" would also match this via its "oob"
-    // substring (the "_" wildcard matching the middle "o").
-    await db.insert(schemaSqlite.tasks).values({ id: "tsk-decoy-" + crypto.randomUUID(), projectId, title: "foobar unrelated", status: "todo", createdAt: new Date() });
+  // Replaces a test that asserted LIKE's `_` wildcard was escaped. That
+  // behaviour is gone with the LIKE scan (M07-T06); the equivalent exposure is
+  // now FTS5's own query language, where `"` is not a wildcard but a syntax
+  // error that would surface as a 500.
+  it("treats FTS5 operator characters in the query as literal text, not syntax", async () => {
+    await db.insert(schemaSqlite.tasks).values({ id: "tsk-quote-" + crypto.randomUUID(), projectId, title: "Quoted release notes", status: "todo", createdAt: new Date() });
 
-    const res = await impl.universalSearch({ query: "o_b", orgId }, ctx);
-    const titles = res.results.map((r: any) => r.title);
-    expect(titles).toContain("foo_bar release");
-    expect(titles).not.toContain("foobar unrelated");
+    // Punctuation is dropped, so the row is still found.
+    for (const query of ['Quoted"', 'Quoted*', '^Quoted', 'Quoted:notes', '"Quoted release"']) {
+      const res = await impl.universalSearch({ query, orgId }, ctx);
+      expect(res.results.map((r: any) => r.title)).toContain("Quoted release notes");
+    }
+
+    // FTS5 keywords are demoted to ordinary words, so "Quoted OR" asks for a
+    // row containing both "Quoted" and "or" rather than either — it must return
+    // nothing, and it must not raise. A handler that let these through as
+    // operators would answer a question the caller did not ask.
+    for (const query of ["Quoted OR", "Quoted AND NOT"]) {
+      const res = await impl.universalSearch({ query, orgId }, ctx);
+      expect(res.results).toHaveLength(0);
+    }
+  });
+
+  it("returns nothing, rather than erroring, when the query is only punctuation", async () => {
+    const res = await impl.universalSearch({ query: "???", orgId }, ctx);
+    expect(res.results).toHaveLength(0);
+    expect(res.page.totalCount).toBe(0);
   });
 
   it("pages through results using nextCursor until the full matched set has been seen", async () => {
@@ -210,5 +227,167 @@ describe("Search Handler", () => {
     const res = await impl.universalSearch({ query: "Findable Deleted", orgId }, ctx);
     expect(res.results.some((r: any) => r.id === deletedTaskId)).toBe(false);
     expect(res.results.some((r: any) => r.id === deletedArtifactId)).toBe(false);
+  });
+
+  // ---------------------------------------------------------------------
+  // M07-T06 — served from the FTS5 index, ranked by bm25. See ADR-0010.
+  // ---------------------------------------------------------------------
+
+  it("ranks by relevance, not by creation date", async () => {
+    // The task's verify line. The strong match is the OLDER row, so under the
+    // previous `ORDER BY createdAt DESC` it came second; if it comes first now,
+    // the ordering is genuinely the relevance score and not the clock.
+    const strongId = "tsk-strong-" + crypto.randomUUID();
+    const weakId = "tsk-weak-" + crypto.randomUUID();
+
+    await db.insert(schemaSqlite.tasks).values({
+      id: strongId, projectId, title: "Rankable rankable", status: "todo",
+      createdAt: new Date("2020-01-01"),
+    });
+    await db.insert(schemaSqlite.tasks).values({
+      id: weakId, projectId, title: "Unrelated heading", status: "todo",
+      description: "a long body ".repeat(20) + " rankable " + "and more filler ".repeat(20),
+      createdAt: new Date("2030-01-01"),
+    });
+
+    const res = await impl.universalSearch({ query: "rankable", orgId }, ctx);
+    const ids = res.results.map((r: any) => r.id);
+    expect(ids).toContain(strongId);
+    expect(ids).toContain(weakId);
+    expect(ids.indexOf(strongId)).toBeLessThan(ids.indexOf(weakId));
+  });
+
+  it("matches whole words, so 'cat' no longer finds 'concatenate'", async () => {
+    await db.insert(schemaSqlite.tasks).values({ id: "tsk-concat-" + crypto.randomUUID(), projectId, title: "concatenate the buffers", status: "todo", createdAt: new Date() });
+    const res = await impl.universalSearch({ query: "cat", orgId }, ctx);
+    expect(res.results.map((r: any) => r.title)).not.toContain("concatenate the buffers");
+  });
+
+  it("returns a snippet around the match, not the opening of the text", async () => {
+    const filler = "Preamble that is not what anyone searched for. ".repeat(6);
+    await db.insert(schemaSqlite.tasks).values({
+      id: "tsk-snip-" + crypto.randomUUID(), projectId, title: "Snippable", status: "todo",
+      description: filler + "the quarantine threshold is configurable",
+      createdAt: new Date(),
+    });
+
+    const res = await impl.universalSearch({ query: "quarantine", orgId }, ctx);
+    const hit = res.results.find((r: any) => r.title === "Snippable");
+    // The old handler returned description.substring(0, 100), which for this
+    // row is entirely preamble — a snippet that never contains the search term.
+    expect(hit.snippet).toContain("quarantine");
+    expect(hit.snippet.startsWith("…")).toBe(true);
+  });
+
+  it("still finds a task by a word that appears only in its description", async () => {
+    await db.insert(schemaSqlite.tasks).values({
+      id: "tsk-desc-" + crypto.randomUUID(), projectId, title: "Opaque heading", status: "todo",
+      description: "mentions aardvark once", createdAt: new Date(),
+    });
+    const res = await impl.universalSearch({ query: "aardvark", orgId }, ctx);
+    expect(res.results.map((r: any) => r.title)).toContain("Opaque heading");
+  });
+
+  it("no longer searches artifact bodies, which the index deliberately omits", async () => {
+    // A recorded narrowing, not an oversight: `artifacts.content` holds base64
+    // blobs whose indexed form would be a large index of unsearchable noise
+    // (ADR-0010). Asserted so the loss is visible if anyone expects otherwise.
+    const folderId = "fld-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: "Bodies", createdAt: new Date() });
+    await db.insert(schemaSqlite.artifacts).values({
+      id: "art-body-" + crypto.randomUUID(), folderId, name: "Opaque artifact",
+      content: "buried zebra in the body", createdAt: new Date(),
+    });
+
+    const res = await impl.universalSearch({ query: "zebra", orgId }, ctx);
+    expect(res.results.map((r: any) => r.title)).not.toContain("Opaque artifact");
+  });
+
+  it("finds an artifact by its description, which the index does cover", async () => {
+    const folderId = "fld-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: "Described", createdAt: new Date() });
+    await db.insert(schemaSqlite.artifacts).values({
+      id: "art-desc-" + crypto.randomUUID(), folderId, name: "Opaque artifact name",
+      description: "covers the wombat migration", createdAt: new Date(),
+    });
+
+    const res = await impl.universalSearch({ query: "wombat", orgId }, ctx);
+    expect(res.results.map((r: any) => r.title)).toContain("Opaque artifact name");
+  });
+
+  it("pages a ranked result set without repeating or skipping a row", async () => {
+    const rows = Array.from({ length: 7 }, (_, i) => ({
+      id: `tsk-paged-${i}-` + crypto.randomUUID(), projectId,
+      title: `Paginatable item ${i}`, status: "todo", createdAt: new Date(),
+    }));
+    await db.insert(schemaSqlite.tasks).values(rows);
+
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    for (let guard = 0; guard < 20; guard++) {
+      const res: any = await impl.universalSearch({ query: "Paginatable", orgId, page: { limit: 2, cursor } }, ctx);
+      seen.push(...res.results.map((r: any) => r.id));
+      cursor = res.page.nextCursor;
+      if (!cursor) break;
+    }
+
+    expect(new Set(seen).size).toBe(seen.length);
+    expect(seen.length).toBe(7);
+  });
+
+  it("does not restart one entity type when the other still has pages left", async () => {
+    // The two types page independently, and they run out at different times.
+    // If "no more tasks" is encoded the same way as "no task cursor yet", the
+    // next page restarts tasks from the top and returns the same task on every
+    // page for as long as artifacts keep going.
+    const folderId = "fld-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: "Lopsided", createdAt: new Date() });
+    await db.insert(schemaSqlite.tasks).values({
+      id: "tsk-lopsided-" + crypto.randomUUID(), projectId, title: "Lopsided lone task", status: "todo", createdAt: new Date(),
+    });
+    await db.insert(schemaSqlite.artifacts).values(
+      Array.from({ length: 5 }, (_, i) => ({
+        id: `art-lopsided-${i}-` + crypto.randomUUID(), folderId,
+        name: `Lopsided artifact ${i}`, createdAt: new Date(),
+      })),
+    );
+
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    for (let guard = 0; guard < 20; guard++) {
+      const res: any = await impl.universalSearch({ query: "Lopsided", orgId, page: { limit: 2, cursor } }, ctx);
+      seen.push(...res.results.map((r: any) => r.id));
+      cursor = res.page.nextCursor;
+      if (!cursor) break;
+    }
+
+    expect(new Set(seen).size).toBe(seen.length);
+    expect(seen.length).toBe(6);
+  });
+
+  it("stops offering pages past the depth cap, while still reporting the true total", async () => {
+    // Ordering by relevance re-sorts the whole match set per page, so offset is
+    // not free and the depth is bounded (ADR-0010). The cap limits what is
+    // *served*, not what is *counted* — a total that shrank to the cap would be
+    // a lie about how much matched.
+    const rows = Array.from({ length: 205 }, (_, i) => ({
+      id: `tsk-deep-${i}-` + crypto.randomUUID(), projectId,
+      title: `Deeplypaged item ${i}`, status: "todo", createdAt: new Date(),
+    }));
+    await db.insert(schemaSqlite.tasks).values(rows);
+
+    const seen = new Set<string>();
+    let cursor: string | undefined;
+    let reportedTotal = 0;
+    for (let guard = 0; guard < 40; guard++) {
+      const res: any = await impl.universalSearch({ query: "Deeplypaged", orgId, page: { limit: 100, cursor } }, ctx);
+      res.results.forEach((r: any) => seen.add(r.id));
+      reportedTotal = Number(res.page.totalCount);
+      cursor = res.page.nextCursor;
+      if (!cursor) break;
+    }
+
+    expect(reportedTotal).toBe(205);
+    expect(seen.size).toBe(200);
   });
 });
