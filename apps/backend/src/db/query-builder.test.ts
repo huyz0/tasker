@@ -23,7 +23,7 @@ describe("executePaginatedQuery cursor-cached totalCount", () => {
     const projectId = "proj-cache-" + Date.now();
     await seedTasks(db, 3, projectId);
 
-    const page1 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 2 });
+    const page1 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 2 }, { select: { id: schemaSqlite.tasks.id, projectId: schemaSqlite.tasks.projectId, title: schemaSqlite.tasks.title, status: schemaSqlite.tasks.status, createdAt: schemaSqlite.tasks.createdAt } });
     expect(page1.totalCount).toBe(3);
     expect(page1.nextCursor).toBeTruthy();
 
@@ -32,7 +32,7 @@ describe("executePaginatedQuery cursor-cached totalCount", () => {
     // carried in page 1's cursor instead of recomputing it.
     await db.insert(schemaSqlite.tasks).values({ id: `${projectId}-tsk-extra`, projectId, title: "Extra", status: "todo", createdAt: new Date() });
 
-    const page2 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 2, cursor: page1.nextCursor });
+    const page2 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 2, cursor: page1.nextCursor }, { select: { id: schemaSqlite.tasks.id, projectId: schemaSqlite.tasks.projectId, title: schemaSqlite.tasks.title, status: schemaSqlite.tasks.status, createdAt: schemaSqlite.tasks.createdAt } });
     expect(page2.totalCount).toBe(3);
   });
 
@@ -41,8 +41,8 @@ describe("executePaginatedQuery cursor-cached totalCount", () => {
     const projectId = "proj-cache-prop-" + Date.now();
     await seedTasks(db, 5, projectId);
 
-    const page1 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 2 });
-    const page2 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 2, cursor: page1.nextCursor });
+    const page1 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 2 }, { select: { id: schemaSqlite.tasks.id, projectId: schemaSqlite.tasks.projectId, title: schemaSqlite.tasks.title, status: schemaSqlite.tasks.status, createdAt: schemaSqlite.tasks.createdAt } });
+    const page2 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 2, cursor: page1.nextCursor }, { select: { id: schemaSqlite.tasks.id, projectId: schemaSqlite.tasks.projectId, title: schemaSqlite.tasks.title, status: schemaSqlite.tasks.status, createdAt: schemaSqlite.tasks.createdAt } });
     expect(page2.nextCursor).toBeTruthy();
 
     const decoded = decodeCursor(page2.nextCursor);
@@ -56,12 +56,12 @@ describe("executePaginatedQuery cursor-cached totalCount", () => {
     // Give one task a distinguishing title to filter on.
     await db.update(schemaSqlite.tasks).set({ title: "special-needle" }).where(eq(schemaSqlite.tasks.id, `${projectId}-tsk-0`));
 
-    const page1 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 1 }, schemaSqlite.tasks.title);
+    const page1 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 1 }, { filterColumn: schemaSqlite.tasks.title, select: { id: schemaSqlite.tasks.id, projectId: schemaSqlite.tasks.projectId, title: schemaSqlite.tasks.title, status: schemaSqlite.tasks.status, createdAt: schemaSqlite.tasks.createdAt } });
     expect(page1.totalCount).toBe(3);
 
     // Reuse page 1's cursor but with a different filter - the cached count
     // (3, for "no filter") must not leak into this request (1 match).
-    const page2 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 1, cursor: page1.nextCursor, filter: "special-needle" }, schemaSqlite.tasks.title);
+    const page2 = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 1, cursor: page1.nextCursor, filter: "special-needle" }, { filterColumn: schemaSqlite.tasks.title, select: { id: schemaSqlite.tasks.id, projectId: schemaSqlite.tasks.projectId, title: schemaSqlite.tasks.title, status: schemaSqlite.tasks.status, createdAt: schemaSqlite.tasks.createdAt } });
     expect(page2.totalCount).toBe(1);
   });
 
@@ -75,7 +75,7 @@ describe("executePaginatedQuery cursor-cached totalCount", () => {
     const decoded = decodeCursor(legacyCursor);
     expect(decoded?.totalCount).toBeUndefined();
 
-    const page = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 10, cursor: legacyCursor });
+    const page = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 10, cursor: legacyCursor }, { select: { id: schemaSqlite.tasks.id, projectId: schemaSqlite.tasks.projectId, title: schemaSqlite.tasks.title, status: schemaSqlite.tasks.status, createdAt: schemaSqlite.tasks.createdAt } });
     expect(page.totalCount).toBe(2);
   });
 });

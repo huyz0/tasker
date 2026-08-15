@@ -120,7 +120,17 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read' });
 
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, labels, eq((labels as any).orgId, req.orgId), req.page, (labels as any).name, { name: (labels as any).name, createdAt: (labels as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, labels, eq((labels as any).orgId, req.orgId), req.page, {
+        filterColumn: (labels as any).name,
+        sortableColumns: { name: (labels as any).name, createdAt: (labels as any).createdAt },
+        select: {
+          id: (labels as any).id,
+          orgId: (labels as any).orgId,
+          name: (labels as any).name,
+          color: (labels as any).color,
+          createdAt: (labels as any).createdAt,
+        },
+      });
 
       return { labels: items, page: { nextCursor, totalCount } };
     },

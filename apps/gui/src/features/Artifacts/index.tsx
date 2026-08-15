@@ -100,6 +100,16 @@ export function ArtifactsBrowser() {
     ? (artifactsData?.find(a => a.id === artifactId) ?? locatedArtifact?.artifact ?? null)
     : null;
 
+  // The body, fetched only for the artifact actually open. `listArtifacts` no
+  // longer carries `content` — returning every body to render a list of names
+  // cost 2,008 KB for 50 images (M07-T01/T02).
+  const contentQuery = useQuery({
+    queryKey: ['artifactContent', artifactId],
+    enabled: !!artifactId,
+    queryFn: async () => artifactClient.getArtifactContent({ artifactId: artifactId! }),
+  });
+  const artifactContent = contentQuery.data?.content ?? '';
+
   const archiveFolderMutation = useMutation({
     mutationFn: async (folderId: string) => {
       await artifactClient.archiveFolder({ folderId });
@@ -200,6 +210,9 @@ export function ArtifactsBrowser() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artifacts'] });
       queryClient.invalidateQueries({ queryKey: ['artifactLocate'] });
+      // The body now lives in its own query, so saving has to invalidate that
+      // too — otherwise the editor closes onto the text that was just replaced.
+      queryClient.invalidateQueries({ queryKey: ['artifactContent'] });
       setIsEditingContent(false);
     },
   });
@@ -503,7 +516,7 @@ export function ArtifactsBrowser() {
                    </div>
                  ) : (
                    <button
-                     onClick={() => { setEditedContent(selectedArtifact.content || ''); setIsEditingContent(true); }}
+                     onClick={() => { setEditedContent(artifactContent); setIsEditingContent(true); }}
                      className="text-xs px-3 py-1 mr-3 rounded-md hover:bg-muted text-muted-foreground"
                    >
                      Edit
@@ -525,16 +538,24 @@ export function ArtifactsBrowser() {
                  />
                ) : (
                <div className="prose prose-sm dark:prose-invert max-w-none">
-                 {!selectedArtifact.content ? (
-                   <p className="text-muted-foreground italic">This artifact has no content.</p>
+                 {contentQuery.isLoading || contentQuery.error || !artifactContent ? (
+                   <ListState
+                     isLoading={contentQuery.isLoading}
+                     error={contentQuery.error}
+                     isEmpty
+                     loadingMessage="Loading this artifact…"
+                     emptyMessage="This artifact has no content."
+                     emptyAction={<p className="text-xs">Use Edit above to add some.</p>}
+                     onRetry={() => contentQuery.refetch()}
+                   />
                  ) : selectedArtifact.contentType?.startsWith("image/") ? (
                    <img
-                     src={`data:${selectedArtifact.contentType};base64,${selectedArtifact.content}`}
+                     src={`data:${selectedArtifact.contentType};base64,${artifactContent}`}
                      alt={selectedArtifact.name}
                      className="max-w-full rounded-md border"
                    />
                  ) : (
-                   <MarkdownRenderer content={selectedArtifact.content} />
+                   <MarkdownRenderer content={artifactContent} />
                  )}
                </div>
                )}

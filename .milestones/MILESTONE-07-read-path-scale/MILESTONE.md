@@ -1,12 +1,12 @@
 ---
 id: M07
 title: Read-Path Scale
-status: todo
+status: in-progress
 goal: No screen or endpoint loads an unbounded result set, and search is served by a real index rather than a leading-wildcard scan.
 depends_on: [M05]
 surfaces: [backend, gui, contract]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-15
 completed_at: null
 ---
 
@@ -53,12 +53,12 @@ that it is not adopted before measured need), caching layers, read replicas.
 
 ## 5. Task Breakdown
 
-- [ ] **M07-T01** — Add explicit column projection to `executePaginatedQuery` so
+- [x] **M07-T01** — Add explicit column projection to `executePaginatedQuery` so
       each caller names the columns it needs.
       - Files: `apps/backend/src/db/query-builder.ts`, all list handlers
       - Verify: an artifact list response carries no `content` field.
 
-- [ ] **M07-T02** — Split artifact content into `getArtifactContent`; the list
+- [x] **M07-T02** — Split artifact content into `getArtifactContent`; the list
       returns metadata and a size only.
       - Files: `modules/artifacts/artifacts.handler.ts`, `main.tsp`,
         `features/Artifacts/index.tsx`

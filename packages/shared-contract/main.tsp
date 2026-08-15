@@ -855,9 +855,38 @@ model Artifact {
   @field(2) folderId: string;
   @field(3) name: string;
   @field(4) description: string;
+
+  // Empty on `listArtifacts`, populated by `getArtifactContent`.
+  //
+  // The body is base64 and can reach ~15 MB, so returning it per row made a
+  // folder listing proportional to the size of its files rather than to the
+  // number of them: 50 images cost 2,008 KB to render 50 names. The list
+  // carries `sizeBytes` so a client can show how big a file is without
+  // transferring it (M07-T02).
   @field(5) content: string;
+
   @field(6) deletedAt?: string;
   @field(7) contentType: string;
+
+  // Length of the stored body, so a client can tell how big an artifact is
+  // without transferring it.
+  //
+  // Deliberately the *stored* length rather than a decoded one: uploads are
+  // base64 and text written in the editor is not, and the content type does not
+  // reliably say which — an uploaded `.md` is base64 with a text content type.
+  // A decoded figure would therefore be wrong for a whole class of artifacts,
+  // and being wrong quietly is worse than being coarse honestly.
+  @field(8) sizeBytes?: int64;
+}
+
+model GetArtifactContentRequest {
+  @field(1) artifactId: string;
+}
+
+model GetArtifactContentResponse {
+  @field(1) content: string;
+  @field(2) contentType: string;
+  @field(3) sizeBytes: int64;
 }
 
 model TaskArtifactLink {
@@ -1017,6 +1046,12 @@ interface ArtifactService {
     request: ListTaskArtifactLinksRequest,
   ): ListTaskArtifactLinksResponse;
   listArtifacts(request: ListArtifactsRequest): ListArtifactsResponse;
+
+  // One artifact's body, fetched only when something is about to render it.
+  getArtifactContent(
+    request: GetArtifactContentRequest,
+  ): GetArtifactContentResponse;
+
   listFolders(request: ListFoldersRequest): ListFoldersResponse;
   archiveArtifact(request: ArchiveArtifactRequest): ArchiveArtifactResponse;
   restoreArtifact(request: RestoreArtifactRequest): RestoreArtifactResponse;

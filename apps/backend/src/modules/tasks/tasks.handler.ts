@@ -210,7 +210,18 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
         db, types, eq((types as any).orgId, parsed.orgId), parsed.page,
-        (types as any).name, { name: (types as any).name, createdAt: (types as any).createdAt }
+        {
+          filterColumn: (types as any).name,
+          sortableColumns: { name: (types as any).name, createdAt: (types as any).createdAt },
+          select: {
+            id: (types as any).id,
+            orgId: (types as any).orgId,
+            projectId: (types as any).projectId,
+            parentId: (types as any).parentId,
+            name: (types as any).name,
+            createdAt: (types as any).createdAt,
+          },
+        },
       );
 
       return {
@@ -581,7 +592,23 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(tasks)) : notDeleted(tasks);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, and(eq((tasks as any).projectId, req.projectId), deletedFilter), req.page, (tasks as any).title, { title: (tasks as any).title, status: (tasks as any).status, createdAt: (tasks as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, and(eq((tasks as any).projectId, req.projectId), deletedFilter), req.page, {
+        filterColumn: (tasks as any).title,
+        sortableColumns: { title: (tasks as any).title, status: (tasks as any).status, createdAt: (tasks as any).createdAt },
+        // `description` is free text with no length bound and the list renders
+        // only the title. It is read back by `getTask` on the detail view.
+        select: {
+          id: (tasks as any).id,
+          projectId: (tasks as any).projectId,
+          displayId: (tasks as any).displayId,
+          taskTypeId: (tasks as any).taskTypeId,
+          createdBy: (tasks as any).createdBy,
+          title: (tasks as any).title,
+          status: (tasks as any).status,
+          createdAt: (tasks as any).createdAt,
+          deletedAt: (tasks as any).deletedAt,
+        },
+      });
       // Sorting by displayId is deliberately not offered: it is a string, so
       // "SEED-100" sorts before "SEED-99". Ids are assigned in creation order,
       // so createdAt is the same ordering done correctly (M05-T11).

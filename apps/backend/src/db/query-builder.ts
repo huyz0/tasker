@@ -186,9 +186,25 @@ function extractCursorValue(row: any, field: string): number | string {
  * cursors that decode to the wrong page, which is the kind of bug nobody sees
  * until a user reports skipped rows.
  */
-export interface PaginatedQueryShape {
-  /** Column map for the select, when the row is not the whole table. */
-  select?: Record<string, any>;
+export interface PaginatedQueryOptions {
+  /** Free-text filter target. A single column, or several OR'd together. */
+  filterColumn?: any;
+  /** Whitelist of `field -> column` the caller's `sort` may name. */
+  sortableColumns?: Record<string, any>;
+  /**
+   * The columns this list returns. **Required**, and required on purpose.
+   *
+   * When this was optional, omitting it meant `SELECT *`, and `SELECT *` on
+   * `artifacts` returns the base64 `content` of every row: listing a folder of
+   * 50 images transferred **2,008 KB** to render 50 file names (M07-T01). The
+   * defect is not that someone chose the wrong columns — it is that choosing
+   * was optional, so the default grew as the table grew.
+   *
+   * Making it a required property means a new list handler does not compile
+   * until it names its columns, and a large column added to an existing table
+   * cannot leak into a response that never asked for it.
+   */
+  select: Record<string, any>;
   /** A single inner join applied to both the page query and the count. */
   join?: { table: any; on: SQL };
   /** Tiebreak column, when the table has no `id` (e.g. a composite key). */
@@ -209,20 +225,19 @@ export async function executePaginatedQuery(
   table: any,
   baseCondition: SQL | undefined,
   pageOpts: any,
-  filterColumn?: any,
-  sortableColumns?: Record<string, any>,
-  shape?: PaginatedQueryShape
+  opts: PaginatedQueryOptions,
 ) {
+  const { filterColumn, sortableColumns, select, join, defaultSort } = opts;
   const limit = Math.min(Math.max(pageOpts?.limit || 50, 1), 100);
   const condition = applyFilter(baseCondition, filterColumn, pageOpts?.filter);
 
   const sort = parseSort(sortableColumns, pageOpts?.sort);
-  const sortField = sort?.field ?? shape?.defaultSort?.field ?? "createdAt";
-  const sortCol = sort?.column ?? shape?.defaultSort?.column ?? table.createdAt;
+  const sortField = sort?.field ?? defaultSort?.field ?? "createdAt";
+  const sortCol = sort?.column ?? defaultSort?.column ?? table.createdAt;
   const direction: SortDirection = sort?.direction ?? "desc";
 
-  const idColumn = shape?.idColumn ?? table.id;
-  const idField = shape?.idField ?? "id";
+  const idColumn = opts.idColumn ?? table.id;
+  const idField = opts.idField ?? "id";
 
   const cursorData = decodeCursor(pageOpts?.cursor);
   const whereClause = buildCursorPaginationWhere(cursorData, sortCol, idColumn, sortField, direction);
@@ -244,10 +259,10 @@ export async function executePaginatedQuery(
   // The join is applied to the count as well as the page. It has to be: the
   // filter may reference a joined column, and counting without the join would
   // report a total the caller can never page to.
-  const withJoin = (q: any) => (shape?.join ? q.innerJoin(shape.join.table, shape.join.on) : q);
+  const withJoin = (q: any) => (join ? q.innerJoin(join.table, join.on) : q);
 
   const [result, totalCount] = await Promise.all([
-    withJoin(db.select(shape?.select).from(table))
+    withJoin(db.select(select).from(table))
       .where(finalWhere)
       .limit(limit)
       .orderBy(...buildPaginationOrderBy(sortCol, idColumn, direction)),

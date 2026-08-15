@@ -1,6 +1,6 @@
 ---
 active_milestone: M07
-active_task: null
+active_task: M07-T03
 last_updated: 2026-08-15
 last_commit: 82b6a0f
 blocked: false
@@ -16,13 +16,14 @@ blocker: null
 ## Now
 
 - **Milestone**: M07 — Read-Path Scale
-- **Task**: none started — begin at M07-T01
-- **Branch**: M06 was delivered directly on `main` at the user's explicit
-  instruction ("just do it on main and push there"), overriding
-  `git-workflow-standard.md` and `milestone-standard.md` §5. **That instruction
-  was scoped to M06 and does not carry forward** — M07 starts on
-  `feature/m07-*` unless the user says otherwise. Recorded so the next session
-  reads the exception as a decision rather than as the new default.
+- **Task**: M07-T03 — per-column Kanban pagination
+- **Branch**: `main`, at the user's explicit instruction for this milestone
+  ("just do it on main and push there") — the same instruction was given
+  separately for M06. This overrides `git-workflow-standard.md` and
+  `milestone-standard.md` §5, which both require a `feature/m07-*` branch.
+  The instruction has been given per-milestone each time, so **it is not a
+  standing default**: a later milestone starts on a feature branch unless the
+  user says otherwise again. Recorded so the exception reads as a decision.
 - **Command to continue**: `/milestone-deliver M07`
 
 M06 closed 14/14 tasks and 7/7 exit criteria. The frontier is now M07
@@ -51,7 +52,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
 | M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
 | M06 | UX, Design System & A11y       | done   | M05        | 14    | 14   |
-| M07 | Read-Path Scale                | todo   | M05        | 11    | 0    |
+| M07 | Read-Path Scale                | in-progress | M05   | 11    | 2    |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
 | M10 | Teams & Policy-Based RBAC      | todo   | M03, M04   | 13    | 0    |

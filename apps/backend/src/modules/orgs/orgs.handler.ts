@@ -107,7 +107,19 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       }
 
       const deletedFilter = req.onlyDeleted ? not(notDeleted(orgs)) : notDeleted(orgs);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, orgs, and(inArray(orgs.id, memberOrgIds), deletedFilter), req.page, (orgs as any).name, { name: (orgs as any).name, createdAt: (orgs as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, orgs, and(inArray(orgs.id, memberOrgIds), deletedFilter), req.page, {
+        filterColumn: (orgs as any).name,
+        sortableColumns: { name: (orgs as any).name, createdAt: (orgs as any).createdAt },
+        select: {
+          id: (orgs as any).id,
+          name: (orgs as any).name,
+          slug: (orgs as any).slug,
+          parentOrgId: (orgs as any).parentOrgId,
+          binRetentionDays: (orgs as any).binRetentionDays,
+          createdAt: (orgs as any).createdAt,
+          deletedAt: (orgs as any).deletedAt,
+        },
+      });
 
       // The client nests by parentOrgId. A child whose parent landed on a
       // different page therefore has nothing to hang off, and disappears from
@@ -215,8 +227,19 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         invs,
         eq((invs as any).orgId, parsed.orgId),
         parsed.page,
-        (invs as any).email,
-        { email: (invs as any).email, role: (invs as any).role, createdAt: (invs as any).createdAt },
+        {
+          filterColumn: (invs as any).email,
+          sortableColumns: { email: (invs as any).email, role: (invs as any).role, createdAt: (invs as any).createdAt },
+          select: {
+            id: (invs as any).id,
+            orgId: (invs as any).orgId,
+            email: (invs as any).email,
+            invitedBy: (invs as any).invitedBy,
+            role: (invs as any).role,
+            createdAt: (invs as any).createdAt,
+            expiresAt: (invs as any).expiresAt,
+          },
+        },
       );
 
       const now = Date.now();
@@ -286,14 +309,14 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
           ? and(eq((members as any).orgId, parsed.orgId), roleFacet)
           : eq((members as any).orgId, parsed.orgId),
         parsed.page,
-        [(users as any).name, (users as any).email],
         {
-          name: (users as any).name,
-          email: (users as any).email,
-          role: (members as any).role,
-          joinedAt: (members as any).joinedAt,
-        },
-        {
+          filterColumn: [(users as any).name, (users as any).email],
+          sortableColumns: {
+            name: (users as any).name,
+            email: (users as any).email,
+            role: (members as any).role,
+            joinedAt: (members as any).joinedAt,
+          },
           select: {
             userId: (users as any).id,
             email: (users as any).email,

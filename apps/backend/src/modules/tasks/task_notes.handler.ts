@@ -102,7 +102,17 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       await authorizePrincipal(db, principal, orgId, { scope: 'tasks:read' });
 
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, notes, eq((notes as any).taskId, req.taskId), req.page);
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, notes, eq((notes as any).taskId, req.taskId), req.page, {
+        // `content` is the note. Same reasoning as comments: projecting it out
+        // would leave a list of empty rows.
+        select: {
+          id: (notes as any).id,
+          taskId: (notes as any).taskId,
+          agentId: (notes as any).agentId,
+          content: (notes as any).content,
+          createdAt: (notes as any).createdAt,
+        },
+      });
 
       return {
         taskNotes: items.map((n: any) => ({

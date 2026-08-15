@@ -217,14 +217,28 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
           db, 
           links, 
           eq((links as any).projectId, parsed.projectId), 
-          parsed.page
+          parsed.page,
+          {
+            // `accessTokenEncrypted` is deliberately absent. It used to be
+            // selected and then blanked with `accessTokenEncrypted: undefined`
+            // after the spread — the secret was read out of the database,
+            // carried through the handler, and removed by remembering to remove
+            // it. Naming the columns means it never leaves the database at all,
+            // and a future `...t` cannot reintroduce it (M07-T01).
+            select: {
+              id: (links as any).id,
+              projectId: (links as any).projectId,
+              provider: (links as any).provider,
+              remoteName: (links as any).remoteName,
+              authEmail: (links as any).authEmail,
+              createdAt: (links as any).createdAt,
+            },
+          },
       );
 
       return {
         links: items.map((t: any) => ({
           ...t,
-          // Mask the token in the API response!
-          accessTokenEncrypted: undefined, 
           createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
         })),
         page: { nextCursor, totalCount },

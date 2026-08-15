@@ -41,7 +41,7 @@ const READS: Record<string, string[]> = {
   taskManagement: ['listTasks', 'listTaskReviewers'],
   taskNotes: ['listTaskNotes'],
   agents: ['listAgentRoles', 'listAgents'],
-  artifacts: ['listFolders', 'listArtifacts', 'listTaskArtifactLinks'],
+  artifacts: ['listFolders', 'listArtifacts', 'getArtifactContent', 'listTaskArtifactLinks'],
   comments: ['listComments'],
   labels: ['listLabels', 'listEntityLabels'],
   repositories: ['listRepositoryLinks', 'listPullRequests', 'listBuilds', 'listDeployments'],

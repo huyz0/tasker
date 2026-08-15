@@ -183,8 +183,20 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
         roles,
         eq((roles as any).orgId, parsed.orgId),
         parsed.page,
-        (roles as any).name,
-        { name: (roles as any).name },
+        {
+          filterColumn: (roles as any).name,
+          sortableColumns: { name: (roles as any).name },
+          // systemPrompt and capabilities are the role's definition, and the
+          // roles editor renders both — this list IS the editor's data source.
+          select: {
+            id: (roles as any).id,
+            orgId: (roles as any).orgId,
+            name: (roles as any).name,
+            systemPrompt: (roles as any).systemPrompt,
+            capabilities: (roles as any).capabilities,
+            createdAt: (roles as any).createdAt,
+          },
+        },
       );
       return { roles: items, page: { nextCursor, totalCount } };
     },
@@ -251,7 +263,18 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(agentsSchema)) : notDeleted(agentsSchema);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, agentsSchema, and(eq((agentsSchema as any).orgId, req.orgId), deletedFilter), req.page, (agentsSchema as any).name, { name: (agentsSchema as any).name, createdAt: (agentsSchema as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, agentsSchema, and(eq((agentsSchema as any).orgId, req.orgId), deletedFilter), req.page, {
+        filterColumn: (agentsSchema as any).name,
+        sortableColumns: { name: (agentsSchema as any).name, createdAt: (agentsSchema as any).createdAt },
+        select: {
+          id: (agentsSchema as any).id,
+          orgId: (agentsSchema as any).orgId,
+          agentRoleId: (agentsSchema as any).agentRoleId,
+          name: (agentsSchema as any).name,
+          createdAt: (agentsSchema as any).createdAt,
+          deletedAt: (agentsSchema as any).deletedAt,
+        },
+      });
       return { agents: items, page: { nextCursor, totalCount } };
     },
     async archiveAgent(req: unknown, { values: contextValues }: { values: any }) {

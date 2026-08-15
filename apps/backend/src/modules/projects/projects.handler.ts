@@ -163,7 +163,20 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
 
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(ps)) : notDeleted(ps);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, ps, and(eq((ps as any).orgId, req.orgId), deletedFilter), req.page, (ps as any).name, { name: (ps as any).name, createdAt: (ps as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, ps, and(eq((ps as any).orgId, req.orgId), deletedFilter), req.page, {
+        filterColumn: (ps as any).name,
+        sortableColumns: { name: (ps as any).name, createdAt: (ps as any).createdAt },
+        select: {
+          id: (ps as any).id,
+          orgId: (ps as any).orgId,
+          templateId: (ps as any).templateId,
+          name: (ps as any).name,
+          key: (ps as any).key,
+          ownerId: (ps as any).ownerId,
+          createdAt: (ps as any).createdAt,
+          deletedAt: (ps as any).deletedAt,
+        },
+      });
 
       return {
         projects: items.map((p: any) => ({
@@ -341,7 +354,18 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read' });
 
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, req.orgId), req.page, (pts as any).name, { name: (pts as any).name, createdAt: (pts as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, req.orgId), req.page, {
+        filterColumn: (pts as any).name,
+        sortableColumns: { name: (pts as any).name, createdAt: (pts as any).createdAt },
+        select: {
+          id: (pts as any).id,
+          orgId: (pts as any).orgId,
+          name: (pts as any).name,
+          description: (pts as any).description,
+          rootTaskTypeId: (pts as any).rootTaskTypeId,
+          createdAt: (pts as any).createdAt,
+        },
+      });
 
       return {
         templates: items.map((t: any) => ({

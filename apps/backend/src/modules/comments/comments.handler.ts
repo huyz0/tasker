@@ -169,7 +169,19 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       await authorizePrincipal(db, principal, orgId, { scope: 'tasks:read' });
 
       const cmts = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, cmts, and(eq((cmts as any).entityId, req.entityId), eq((cmts as any).entityType, req.entityType)), req.page);
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, cmts, and(eq((cmts as any).entityId, req.entityId), eq((cmts as any).entityType, req.entityType)), req.page, {
+        // `content` is the comment. Unlike an artifact body it is the reason
+        // the list exists, so projecting it out would leave nothing to render.
+        select: {
+          id: (cmts as any).id,
+          entityId: (cmts as any).entityId,
+          entityType: (cmts as any).entityType,
+          userId: (cmts as any).userId,
+          agentId: (cmts as any).agentId,
+          content: (cmts as any).content,
+          createdAt: (cmts as any).createdAt,
+        },
+      });
 
       const withNames = await attachAuthorNames(db, isStandalone, items);
 

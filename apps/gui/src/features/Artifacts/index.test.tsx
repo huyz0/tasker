@@ -17,6 +17,7 @@ const {
   mockListComments,
   mockCreateComment,
   mockListTaskArtifactLinks,
+  mockGetArtifactContent,
 } = vi.hoisted(() => ({
   mockListFolders: vi.fn(),
   mockListArtifacts: vi.fn(),
@@ -31,6 +32,7 @@ const {
   mockListComments: vi.fn(),
   mockCreateComment: vi.fn(),
   mockListTaskArtifactLinks: vi.fn(),
+  mockGetArtifactContent: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -54,6 +56,7 @@ vi.mock('@connectrpc/connect', () => ({
     return {
       listFolders: mockListFolders,
       listArtifacts: mockListArtifacts,
+      getArtifactContent: mockGetArtifactContent,
       archiveFolder: mockArchiveFolder,
       archiveArtifact: mockArchiveArtifact,
       createFolder: mockCreateFolder,
@@ -131,6 +134,25 @@ describe('ArtifactsBrowser', () => {
     mockCreateComment.mockResolvedValue({ comment: { id: 'cmt-1' } });
     mockListTaskArtifactLinks.mockReset();
     mockListTaskArtifactLinks.mockResolvedValue({ links: [] });
+    mockGetArtifactContent.mockReset();
+    // The body is a separate RPC now (M07-T02), but the fixtures still declare
+    // it on the artifact they belong to — which is where a reader looks for it.
+    // Resolve it the way the server does: by id, from whatever the folder
+    // listing was configured to hold.
+    mockGetArtifactContent.mockImplementation(async ({ artifactId }: { artifactId: string }) => {
+      // Ask the listing rather than replaying its past calls: on a deep link
+      // the content query fires before any folder has been listed, so reading
+      // `mock.results` returned nothing and every deep-link test saw an empty
+      // body.
+      const { folders = [] } = (await mockListFolders({})) ?? {};
+      const folderIds = folders.length ? folders.map((f: any) => f.id) : [''];
+      for (const folderId of folderIds) {
+        const page = await mockListArtifacts({ folderId });
+        const match = (page?.artifacts ?? []).find((a: any) => a.id === artifactId);
+        if (match) return { content: match.content ?? '', contentType: match.contentType ?? 'text/markdown' };
+      }
+      return { content: '', contentType: 'text/markdown' };
+    });
   });
 
   it('expands a folder and selects an artifact to view its content', async () => {

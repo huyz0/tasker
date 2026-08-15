@@ -795,9 +795,31 @@ message Artifact {
   string folderId = 2;
   string name = 3;
   string description = 4;
+
+  // Empty on ListArtifacts, populated by GetArtifactContent. The body is
+  // base64 and can reach ~15 MB, so returning it per row made a folder
+  // listing proportional to the size of its files rather than the number of
+  // them (M07-T02).
   string content = 5;
+
   string deletedAt = 6;
   string contentType = 7;
+
+  // Length of the stored body, so a client can tell how big an artifact is
+  // without transferring it. The stored length, not a decoded one: uploads are
+  // base64 and editor text is not, and the content type does not reliably say
+  // which.
+  int64 sizeBytes = 8;
+}
+
+message GetArtifactContentRequest {
+  string artifactId = 1;
+}
+
+message GetArtifactContentResponse {
+  string content = 1;
+  string contentType = 2;
+  int64 sizeBytes = 3;
 }
 
 message TaskArtifactLink {
@@ -955,6 +977,7 @@ service ArtifactService {
   rpc UnlinkTaskArtifact(UnlinkTaskArtifactRequest) returns (UnlinkTaskArtifactResponse);
   rpc ListTaskArtifactLinks(ListTaskArtifactLinksRequest) returns (ListTaskArtifactLinksResponse);
   rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse);
+  rpc GetArtifactContent(GetArtifactContentRequest) returns (GetArtifactContentResponse);
   rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse);
   rpc ArchiveArtifact(ArchiveArtifactRequest) returns (ArchiveArtifactResponse);
   rpc RestoreArtifact(RestoreArtifactRequest) returns (RestoreArtifactResponse);

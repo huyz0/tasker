@@ -2,7 +2,7 @@ import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and, not, inArray } from "drizzle-orm";
+import { eq, and, not, inArray, sql } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -31,6 +31,10 @@ const CreateArtifactSchema = z.object({
   // CLI/GUI always send contentType: "" when the caller didn't pick one - so
   // "" must be treated the same as "not provided" for the default to apply.
   contentType: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(128).optional().default("text/markdown")),
+});
+
+const GetArtifactContentSchema = z.object({
+  artifactId: z.string().min(1, "artifactId is required"),
 });
 
 const UpdateArtifactContentSchema = z.object({
@@ -282,7 +286,24 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       const flds = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const deletedFolderFilter = req.onlyDeleted ? not(notDeleted(flds)) : notDeleted(flds);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, flds, and(eq((flds as any).projectId, req.projectId), deletedFolderFilter), req.page, (flds as any).name, { name: (flds as any).name, createdAt: (flds as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(
+        db,
+        flds,
+        and(eq((flds as any).projectId, req.projectId), deletedFolderFilter),
+        req.page,
+        {
+          filterColumn: (flds as any).name,
+          sortableColumns: { name: (flds as any).name, createdAt: (flds as any).createdAt },
+          select: {
+            id: (flds as any).id,
+            projectId: (flds as any).projectId,
+            parentId: (flds as any).parentId,
+            name: (flds as any).name,
+            createdAt: (flds as any).createdAt,
+            deletedAt: (flds as any).deletedAt,
+          },
+        },
+      );
 
       return {
         folders: items.map((f: any) => ({
@@ -300,14 +321,75 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const deletedArtifactFilter = req.onlyDeleted ? not(notDeleted(arts)) : notDeleted(arts);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, arts, and(eq((arts as any).folderId, req.folderId), deletedArtifactFilter), req.page, (arts as any).name, { name: (arts as any).name, createdAt: (arts as any).createdAt });
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(
+        db,
+        arts,
+        and(eq((arts as any).folderId, req.folderId), deletedArtifactFilter),
+        req.page,
+        {
+          filterColumn: (arts as any).name,
+          sortableColumns: { name: (arts as any).name, createdAt: (arts as any).createdAt },
+          // `content` is deliberately absent. It holds the artifact body — up
+          // to ~15 MB of base64 for an image — and a file listing needs the
+          // name, not the bytes. With `SELECT *` this response was 2,008 KB
+          // for 50 images (M07-T01).
+          select: {
+            id: (arts as any).id,
+            folderId: (arts as any).folderId,
+            name: (arts as any).name,
+            description: (arts as any).description,
+            contentType: (arts as any).contentType,
+            createdAt: (arts as any).createdAt,
+            deletedAt: (arts as any).deletedAt,
+            // `length()` is evaluated by the database; the body itself stays
+            // there. This is what lets a listing show a file's size without
+            // being proportional to it.
+            sizeBytes: sql<number>`length(${(arts as any).content})`,
+          },
+        },
+      );
 
       return {
         artifacts: items.map((a: any) => ({
           ...a,
           createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : a.createdAt,
+          sizeBytes: BigInt(a.sizeBytes ?? 0),
         })),
         page: { nextCursor, totalCount },
+      };
+    },
+    /**
+     * One artifact's body.
+     *
+     * `listArtifacts` no longer returns `content` (M07-T01), so this is how a
+     * viewer gets the bytes — one artifact at a time, when something is
+     * actually about to render it, rather than every body in the folder on the
+     * chance that one of them is opened.
+     */
+    async getArtifactContent(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = GetArtifactContentSchema.parse(req);
+      // Authorized against the artifact's own organization, exactly as the
+      // list is - a narrower response is not a weaker check.
+      const orgId = await getArtifactOrgId(db, parsed.artifactId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
+
+      const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+      const rows = await db
+        .select({
+          content: (arts as any).content,
+          contentType: (arts as any).contentType,
+        })
+        .from(arts)
+        .where(eq((arts as any).id, parsed.artifactId))
+        .limit(1);
+      if (!rows || rows.length === 0) throw new ConnectError("artifact not found", Code.NotFound);
+
+      const content = rows[0].content ?? "";
+      return {
+        content,
+        contentType: rows[0].contentType,
+        sizeBytes: BigInt(content.length),
       };
     },
     async archiveArtifact(req: unknown, { values: contextValues }: { values: any }) {
