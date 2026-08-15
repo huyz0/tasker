@@ -1010,3 +1010,96 @@ describe("Invitation expiry (M03-T11)", () => {
     expect(row.role).toBe("admin");
   });
 });
+
+describe("List and revoke invitations (M03-T12)", () => {
+  const seedInviteFixture = async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const suffix = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const orgId = "org-rv-" + suffix;
+    const otherOrgId = "org-rv-other-" + suffix;
+    const adminId = "user-rv-admin-" + suffix;
+    const memberId = "user-rv-member-" + suffix;
+    const otherAdminId = "user-rv-other-" + suffix;
+
+    for (const [oid, uid] of [[orgId, adminId], [otherOrgId, otherAdminId]] as const) {
+      await db.insert(schemaSqlite.organizations).values({ id: oid, name: oid, slug: oid, createdAt: new Date() });
+      await db.insert(schemaSqlite.users).values({ id: uid, email: `${uid}@t.local`, createdAt: new Date() });
+      await db.insert(schemaSqlite.organizationMembers).values({ orgId: oid, userId: uid, role: "admin", joinedAt: new Date() });
+    }
+    await db.insert(schemaSqlite.users).values({ id: memberId, email: `${memberId}@t.local`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
+
+    return { db, handler, orgId, otherOrgId, adminId, memberId, otherAdminId, ctx: makeAuthContext(adminId) };
+  };
+
+  test("an invitation can be listed, then revoked, and no longer applies", async () => {
+    const { db, handler, orgId, ctx } = await seedInviteFixture();
+    await handler.inviteUser({ orgId, email: "wanted@t.local", role: "viewer" }, ctx);
+
+    const listed = await handler.listInvitations({ orgId }, ctx);
+    expect(listed.invitations.map((i: any) => i.email)).toEqual(["wanted@t.local"]);
+    expect(listed.invitations[0].role).toBe("viewer");
+    expect(listed.invitations[0].expired).toBe(false);
+
+    await handler.revokeInvitation({ invitationId: listed.invitations[0].id }, ctx);
+
+    const after = await handler.listInvitations({ orgId }, ctx);
+    expect(after.invitations).toEqual([]);
+    // The verify line's "no longer applies": the row is gone, so a login for
+    // that address has nothing to redeem.
+    const rows = await db.select().from(schemaSqlite.invitations).where(eq(schemaSqlite.invitations.orgId, orgId));
+    expect(rows).toHaveLength(0);
+  });
+
+  test("the list marks a lapsed invitation as expired", async () => {
+    const { db, handler, orgId, ctx } = await seedInviteFixture();
+    await handler.inviteUser({ orgId, email: "lapsed@t.local" }, ctx);
+    await db.update(schemaSqlite.invitations)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schemaSqlite.invitations.orgId, orgId));
+
+    const listed = await handler.listInvitations({ orgId }, ctx);
+
+    // Computed server-side. Three clients comparing dates in three timezones
+    // will eventually disagree about whether an invite has lapsed.
+    expect(listed.invitations[0].expired).toBe(true);
+    expect(listed.invitations[0].expiresAt).toBeDefined();
+  });
+
+  test("a plain member cannot list invitations", async () => {
+    const { handler, orgId, memberId } = await seedInviteFixture();
+
+    await expect(handler.listInvitations({ orgId }, makeAuthContext(memberId))).rejects.toThrow();
+  });
+
+  test("an admin of another organization cannot revoke this one's invitation", async () => {
+    const { db, handler, orgId, otherAdminId, ctx } = await seedInviteFixture();
+    await handler.inviteUser({ orgId, email: "target@t.local" }, ctx);
+    const [invite] = await db.select().from(schemaSqlite.invitations).where(eq(schemaSqlite.invitations.orgId, orgId));
+
+    await expect(
+      handler.revokeInvitation({ invitationId: invite.id }, makeAuthContext(otherAdminId)),
+    ).rejects.toThrow();
+
+    const rows = await db.select().from(schemaSqlite.invitations).where(eq(schemaSqlite.invitations.id, invite.id));
+    expect(rows).toHaveLength(1);
+  });
+
+  test("revoking an invitation that does not exist is NotFound", async () => {
+    const { handler, ctx } = await seedInviteFixture();
+
+    await expect(handler.revokeInvitation({ invitationId: "nope" }, ctx)).rejects.toThrow(/not found/i);
+  });
+
+  test("the list is scoped to one organization", async () => {
+    const { handler, orgId, otherOrgId, otherAdminId, ctx } = await seedInviteFixture();
+    await handler.inviteUser({ orgId, email: "mine@t.local" }, ctx);
+    await handler.inviteUser({ orgId: otherOrgId, email: "theirs@t.local" }, makeAuthContext(otherAdminId));
+
+    const listed = await handler.listInvitations({ orgId }, ctx);
+
+    expect(listed.invitations.map((i: any) => i.email)).toEqual(["mine@t.local"]);
+    expect(listed.page.totalCount).toBe(1);
+  });
+});

@@ -162,6 +162,67 @@ var orgsLeaveCmd = &cobra.Command{
 	},
 }
 
+var orgsListInvitesCmd = &cobra.Command{
+	Use:   "list-invites [org_id]",
+	Short: "List outstanding invitations for an organization (requires org admin)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
+		limit, _ := cmd.Flags().GetInt32("limit")
+		cursor, _ := cmd.Flags().GetString("cursor")
+
+		client := backend.NewOrgServiceClient()
+		res, err := client.ListInvitations(context.Background(), connect.NewRequest(&healthv1.ListInvitationsRequest{
+			OrgId: args[0],
+			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to list invitations: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Invitations)
+			cmd.Println(string(jsonString))
+			return nil
+		}
+
+		if len(res.Msg.Invitations) == 0 {
+			cmd.Println("No outstanding invitations.")
+			return nil
+		}
+		cmd.Println("Invitations:")
+		for _, i := range res.Msg.Invitations {
+			// The expired marker is the reason to read this list at all - an
+			// invitation that lapsed unredeemed looks identical to a live one
+			// without it.
+			status := "pending"
+			if i.Expired {
+				status = "EXPIRED"
+			}
+			cmd.Printf(" - %s  role=%s  %s  (id: %s)\n", i.Email, i.Role, status, i.Id)
+		}
+		return nil
+	},
+}
+
+var orgsRevokeInviteCmd = &cobra.Command{
+	Use:   "revoke-invite [invitation_id]",
+	Short: "Withdraw an outstanding invitation (requires org admin)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := backend.NewOrgServiceClient()
+		if _, err := client.RevokeInvitation(context.Background(), connect.NewRequest(&healthv1.RevokeInvitationRequest{
+			InvitationId: args[0],
+		})); err != nil {
+			cmd.PrintErrf("Failed to revoke invitation: %v\n", err)
+			return err
+		}
+		cmd.Printf("Revoked invitation %s\n", args[0])
+		return nil
+	},
+}
+
 var orgsDeleteCmd = &cobra.Command{
 	Use:   "delete [org_id]",
 	Short: "Move an organization to the bin (requires org admin)",
@@ -238,6 +299,8 @@ func init() {
 	orgsCmd.AddCommand(orgsInviteCmd)
 	orgsCmd.AddCommand(orgsSetMemberRoleCmd)
 	orgsCmd.AddCommand(orgsLeaveCmd)
+	orgsCmd.AddCommand(orgsListInvitesCmd)
+	orgsCmd.AddCommand(orgsRevokeInviteCmd)
 	orgsCmd.AddCommand(orgsDeleteCmd)
 	orgsCmd.AddCommand(orgsRestoreCmd)
 	orgsCmd.AddCommand(orgsPurgeCmd)
@@ -247,6 +310,8 @@ func init() {
 	orgsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	orgsListCmd.Flags().StringP("filter", "f", "", "Substring match against organization name")
 	orgsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
+	orgsListInvitesCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
+	orgsListInvitesCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	orgsSetRetentionCmd.Flags().Int32("days", 30, "Number of days before archived items are automatically purged")
 	orgsSeedCmd.Flags().String("name", "", "Organization name")
 	orgsSeedCmd.Flags().String("slug", "", "Organization slug (unique, URL-safe)")

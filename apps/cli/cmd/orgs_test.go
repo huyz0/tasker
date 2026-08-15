@@ -17,10 +17,33 @@ import (
 
 type fakeOrgHandler struct {
 	v1connect.UnimplementedOrgServiceHandler
-	invitedEmail    string
-	invitedRole     string
-	updatedRoleArgs *healthv1.UpdateOrgMemberRoleRequest
-	removedArgs     *healthv1.RemoveOrgMemberRequest
+	invitedEmail      string
+	invitedRole       string
+	updatedRoleArgs   *healthv1.UpdateOrgMemberRoleRequest
+	removedArgs       *healthv1.RemoveOrgMemberRequest
+	listedInvitesFor  string
+	revokedInvitation string
+}
+
+func (f *fakeOrgHandler) ListInvitations(
+	_ context.Context,
+	req *connect.Request[healthv1.ListInvitationsRequest],
+) (*connect.Response[healthv1.ListInvitationsResponse], error) {
+	f.listedInvitesFor = req.Msg.OrgId
+	return connect.NewResponse(&healthv1.ListInvitationsResponse{
+		Invitations: []*healthv1.Invitation{
+			{Id: "inv_1", Email: "live@example.com", Role: "member", Expired: false},
+			{Id: "inv_2", Email: "lapsed@example.com", Role: "viewer", Expired: true},
+		},
+	}), nil
+}
+
+func (f *fakeOrgHandler) RevokeInvitation(
+	_ context.Context,
+	req *connect.Request[healthv1.RevokeInvitationRequest],
+) (*connect.Response[healthv1.RevokeInvitationResponse], error) {
+	f.revokedInvitation = req.Msg.InvitationId
+	return connect.NewResponse(&healthv1.RevokeInvitationResponse{Success: true}), nil
 }
 
 func (f *fakeOrgHandler) RemoveOrgMember(
@@ -250,4 +273,50 @@ func (refusingOrgHandler) RemoveOrgMember(
 	_ *connect.Request[healthv1.RemoveOrgMemberRequest],
 ) (*connect.Response[healthv1.RemoveOrgMemberResponse], error) {
 	return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot remove the organization's last owner"))
+}
+
+// M03-T12: the expired marker is the reason to read this list at all — a
+// lapsed invitation looks identical to a live one without it.
+func TestOrgsListInvitesCmdMarksExpiredInvitations(t *testing.T) {
+	fake := &fakeOrgHandler{}
+	withOrgServer(t, fake)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"orgs", "list-invites", "org_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.listedInvitesFor != "org_1" {
+		t.Fatalf("expected the org id to reach the server, got %q", fake.listedInvitesFor)
+	}
+	out := b.String()
+	if !strings.Contains(out, "live@example.com") || !strings.Contains(out, "lapsed@example.com") {
+		t.Fatalf("expected both invitations listed, got %s", out)
+	}
+	if !strings.Contains(out, "EXPIRED") {
+		t.Fatalf("expected the lapsed invitation to be marked expired, got %s", out)
+	}
+}
+
+func TestOrgsRevokeInviteCmd(t *testing.T) {
+	fake := &fakeOrgHandler{}
+	withOrgServer(t, fake)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"orgs", "revoke-invite", "inv_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.revokedInvitation != "inv_1" {
+		t.Fatalf("expected inv_1 to be revoked, got %q", fake.revokedInvitation)
+	}
+	if !strings.Contains(b.String(), "Revoked invitation inv_1") {
+		t.Fatalf("expected confirmation output, got %s", b.String())
+	}
 }

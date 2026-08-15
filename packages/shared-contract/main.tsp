@@ -138,6 +138,38 @@ model OrgMember {
   @field(4) role: string;
 }
 
+// An outstanding invitation. `expiresAt` is what makes the list actionable:
+// an admin needs to see that an invite lapsed unredeemed, not just that it
+// exists (M03-T11, M03-T12).
+model Invitation {
+  @field(1) id: string;
+  @field(2) orgId: string;
+  @field(3) email: string;
+  @field(4) role: string;
+  @field(5) invitedBy: string;
+  @field(6) createdAt: string;
+  @field(7) expiresAt?: string;
+  @field(8) expired: boolean;
+}
+
+model ListInvitationsRequest {
+  @field(1) orgId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListInvitationsResponse {
+  @field(1) invitations: Invitation[];
+  @field(2) page?: PageResponse;
+}
+
+model RevokeInvitationRequest {
+  @field(1) invitationId: string;
+}
+
+model RevokeInvitationResponse {
+  @field(1) success: boolean;
+}
+
 model ListOrgMembersRequest {
   @field(1) orgId: string;
   @field(2) page?: PageRequest;
@@ -180,6 +212,8 @@ interface OrgService {
   ): SetOrgRetentionDaysResponse;
 
   inviteUser(request: InviteUserRequest): InviteUserResponse;
+  listInvitations(request: ListInvitationsRequest): ListInvitationsResponse;
+  revokeInvitation(request: RevokeInvitationRequest): RevokeInvitationResponse;
   listOrgMembers(request: ListOrgMembersRequest): ListOrgMembersResponse;
   removeOrgMember(request: RemoveOrgMemberRequest): RemoveOrgMemberResponse;
   updateOrgMemberRole(

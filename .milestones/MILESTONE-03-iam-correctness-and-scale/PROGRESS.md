@@ -502,3 +502,39 @@ completes the task.
   of 14. Importing the constant into the test fixed both: the export has a
   consumer and the assertion tracks the value.
 - **Next**: M03-T12
+
+---
+
+## M03-T12 — List and revoke invitations
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: Invitations are write-only today — an admin can send one and
+  then has no way to see it, let alone withdraw it. Add admin-gated
+  `listInvitations` and `revokeInvitation` RPCs surfacing the expiry M03-T11
+  added, plus the CLI commands that mirror them.
+- **Weight**: heavy — new authorization surface, so
+  [the review](reviews/M03-T12-invitation-list-revoke-v1.md) runs.
+- **Changed**: both contract sources (3 messages, 2 RPCs), `orgs.handler.ts`,
+  `apps/cli/cmd/orgs.go` (+`list-invites`, `revoke-invite`), `orgs.test.ts`
+  (+6), `orgs_test.go` (+2), `viewer-denial.test.ts` (classification).
+- **Verified**: `moon check --all` — 23 tasks, 49 org tests. The verify line end
+  to end: list, revoke, list again (empty), and the row confirmed gone from the
+  table, so a login for that address has nothing to redeem.
+- **Notes**: **the M03-T01 sweep caught both new endpoints unprompted.** Adding
+  the handlers made it fail by name — `orgs.listInvitations`,
+  `orgs.revokeInvitation` — before a single test for them existed. That is the
+  first time the gate has fired on genuinely new work rather than on a fault I
+  injected to test it, which is the evidence ADR-0006's argument actually
+  wanted. Both are classified under `REQUESTS`, not `READS`: `READS` means
+  "a viewer may call this", not "this method does not write".
+
+  `revokeInvitation` takes only an `invitationId` and authorizes against the
+  row's own `orgId`. Accepting an `orgId` from the caller would let them name an
+  organization they administer while pointing the id at an invitation in one
+  they do not — tested with an admin of a second organization.
+
+  `expired` is computed server-side. Three clients comparing dates in three
+  timezones will eventually disagree about whether an invitation has lapsed,
+  and lapsing is the single fact the list exists to show.
+- **Next**: M03-T13

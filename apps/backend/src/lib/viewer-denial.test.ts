@@ -76,6 +76,7 @@ const ids = {
   agent: 'agt-viewer-sweep',
   note: 'note-viewer-sweep',
   repoLink: 'repo-viewer-sweep',
+  invitation: 'inv-viewer-sweep',
 };
 
 /**
@@ -96,6 +97,11 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     restoreOrg: { orgId: ids.org },
     purgeOrg: { orgId: ids.org },
     setOrgRetentionDays: { orgId: ids.org, binRetentionDays: 30 },
+    // Both are admin-gated (M03-T12), so a viewer is denied - they belong here
+    // rather than in READS even though listInvitations only reads. READS means
+    // "a viewer may call this", not "this method does not write".
+    listInvitations: { orgId: ids.org },
+    revokeInvitation: { invitationId: ids.invitation },
   },
   projects: {
     createProject: { orgId: ids.org, templateId: ids.template, name: 'P', ownerId: ids.viewer },
@@ -219,6 +225,10 @@ beforeAll(async () => {
   await db.insert(schema.repositoryLinks).values({
     id: ids.repoLink, projectId: ids.project, provider: 'github', remoteName: 'o/r',
     accessTokenEncrypted: 'x', createdAt: now,
+  });
+  await db.insert(schema.invitations).values({
+    id: ids.invitation, orgId: ids.org, email: 'invited@test.local',
+    invitedBy: 'someone-else', role: 'member', createdAt: now,
   });
 
   handlers = {

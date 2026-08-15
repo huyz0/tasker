@@ -51,6 +51,15 @@ const UpdateOrgSchema = z.object({
   message: "at least one of name or slug must be provided",
 });
 
+const ListInvitationsSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+  page: z.any().optional(),
+});
+
+const RevokeInvitationSchema = z.object({
+  invitationId: z.string().min(1, "invitationId is required"),
+});
+
 const ListOrgMembersSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   page: z.any().optional(),
@@ -189,6 +198,68 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const updated = { ...existing[0], ...updates };
       publishDomainEvent(nc, "domain.org.updated", updated);
       return { organization: updated };
+    },
+    /**
+     * Invitations were write-only: an admin could send one and then had no way
+     * to see it, let alone withdraw it. Admin-gated, because the list is every
+     * address someone has been asked to hand over.
+     */
+    async listInvitations(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = ListInvitationsSchema.parse(req);
+      await assertOrgAdmin(db, userId, parsed.orgId);
+
+      const invs = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(
+        db,
+        invs,
+        eq((invs as any).orgId, parsed.orgId),
+        parsed.page,
+        (invs as any).email,
+        { email: (invs as any).email, role: (invs as any).role, createdAt: (invs as any).createdAt },
+      );
+
+      const now = Date.now();
+      return {
+        invitations: items.map((i: any) => ({
+          id: i.id,
+          orgId: i.orgId,
+          email: i.email,
+          role: i.role,
+          invitedBy: i.invitedBy,
+          createdAt: i.createdAt instanceof Date ? i.createdAt.toISOString() : i.createdAt,
+          expiresAt: i.expiresAt instanceof Date ? i.expiresAt.toISOString() : (i.expiresAt ?? undefined),
+          // Computed server-side rather than left to each client to derive
+          // from a timestamp: an invitation lapsing is the single fact this
+          // list exists to show, and three clients comparing dates in three
+          // timezones will eventually disagree about it.
+          expired: !!i.expiresAt && new Date(i.expiresAt).getTime() <= now,
+        })),
+        page: { nextCursor, totalCount },
+      };
+    },
+    async revokeInvitation(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUserId(contextValues);
+      const parsed = RevokeInvitationSchema.parse(req);
+
+      const invs = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
+      const existing = await db.select().from(invs).where(eq((invs as any).id, parsed.invitationId)).limit(1);
+      if (!existing || existing.length === 0) {
+        throw new ConnectError("invitation not found", Code.NotFound);
+      }
+      // Scope from the row, not the request. A caller who sent their own orgId
+      // could otherwise name an organization they administer while pointing the
+      // id at an invitation in one they do not.
+      await assertOrgAdmin(db, userId, existing[0].orgId);
+
+      await db.delete(invs).where(eq((invs as any).id, parsed.invitationId));
+
+      publishDomainEvent(nc, "domain.org.invitation_revoked", {
+        orgId: existing[0].orgId,
+        invitationId: parsed.invitationId,
+        email: existing[0].email,
+      });
+      return { success: true };
     },
     async listOrgMembers(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUserId(contextValues);

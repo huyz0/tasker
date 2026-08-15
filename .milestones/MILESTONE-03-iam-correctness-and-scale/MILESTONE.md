@@ -115,7 +115,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
       - Files: `db/schema.*.ts`, migrations, `modules/auth/auth.ts`
       - Verify: an expired invitation does not join the user.
 
-- [ ] **M03-T12** — Add `listInvitations` and `revokeInvitation` RPCs, admin-gated,
+- [x] **M03-T12** — Add `listInvitations` and `revokeInvitation` RPCs, admin-gated,
       plus CLI commands.
       - Files: `packages/shared-contract/main.tsp`, `modules/orgs/orgs.handler.ts`,
         `apps/cli/cmd/orgs.go`

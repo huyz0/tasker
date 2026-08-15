@@ -80,6 +80,12 @@ const (
 	OrgServiceSetOrgRetentionDaysProcedure = "/tasker.health.v1.OrgService/SetOrgRetentionDays"
 	// OrgServiceInviteUserProcedure is the fully-qualified name of the OrgService's InviteUser RPC.
 	OrgServiceInviteUserProcedure = "/tasker.health.v1.OrgService/InviteUser"
+	// OrgServiceListInvitationsProcedure is the fully-qualified name of the OrgService's
+	// ListInvitations RPC.
+	OrgServiceListInvitationsProcedure = "/tasker.health.v1.OrgService/ListInvitations"
+	// OrgServiceRevokeInvitationProcedure is the fully-qualified name of the OrgService's
+	// RevokeInvitation RPC.
+	OrgServiceRevokeInvitationProcedure = "/tasker.health.v1.OrgService/RevokeInvitation"
 	// OrgServiceListOrgMembersProcedure is the fully-qualified name of the OrgService's ListOrgMembers
 	// RPC.
 	OrgServiceListOrgMembersProcedure = "/tasker.health.v1.OrgService/ListOrgMembers"
@@ -312,6 +318,8 @@ var (
 	orgServicePurgeOrgMethodDescriptor                        = orgServiceServiceDescriptor.Methods().ByName("PurgeOrg")
 	orgServiceSetOrgRetentionDaysMethodDescriptor             = orgServiceServiceDescriptor.Methods().ByName("SetOrgRetentionDays")
 	orgServiceInviteUserMethodDescriptor                      = orgServiceServiceDescriptor.Methods().ByName("InviteUser")
+	orgServiceListInvitationsMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("ListInvitations")
+	orgServiceRevokeInvitationMethodDescriptor                = orgServiceServiceDescriptor.Methods().ByName("RevokeInvitation")
 	orgServiceListOrgMembersMethodDescriptor                  = orgServiceServiceDescriptor.Methods().ByName("ListOrgMembers")
 	orgServiceRemoveOrgMemberMethodDescriptor                 = orgServiceServiceDescriptor.Methods().ByName("RemoveOrgMember")
 	orgServiceUpdateOrgMemberRoleMethodDescriptor             = orgServiceServiceDescriptor.Methods().ByName("UpdateOrgMemberRole")
@@ -546,6 +554,8 @@ type OrgServiceClient interface {
 	PurgeOrg(context.Context, *connect.Request[v1.PurgeOrgRequest]) (*connect.Response[v1.PurgeOrgResponse], error)
 	SetOrgRetentionDays(context.Context, *connect.Request[v1.SetOrgRetentionDaysRequest]) (*connect.Response[v1.SetOrgRetentionDaysResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
+	ListInvitations(context.Context, *connect.Request[v1.ListInvitationsRequest]) (*connect.Response[v1.ListInvitationsResponse], error)
+	RevokeInvitation(context.Context, *connect.Request[v1.RevokeInvitationRequest]) (*connect.Response[v1.RevokeInvitationResponse], error)
 	ListOrgMembers(context.Context, *connect.Request[v1.ListOrgMembersRequest]) (*connect.Response[v1.ListOrgMembersResponse], error)
 	RemoveOrgMember(context.Context, *connect.Request[v1.RemoveOrgMemberRequest]) (*connect.Response[v1.RemoveOrgMemberResponse], error)
 	UpdateOrgMemberRole(context.Context, *connect.Request[v1.UpdateOrgMemberRoleRequest]) (*connect.Response[v1.UpdateOrgMemberRoleResponse], error)
@@ -609,6 +619,18 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(orgServiceInviteUserMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listInvitations: connect.NewClient[v1.ListInvitationsRequest, v1.ListInvitationsResponse](
+			httpClient,
+			baseURL+OrgServiceListInvitationsProcedure,
+			connect.WithSchema(orgServiceListInvitationsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		revokeInvitation: connect.NewClient[v1.RevokeInvitationRequest, v1.RevokeInvitationResponse](
+			httpClient,
+			baseURL+OrgServiceRevokeInvitationProcedure,
+			connect.WithSchema(orgServiceRevokeInvitationMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		listOrgMembers: connect.NewClient[v1.ListOrgMembersRequest, v1.ListOrgMembersResponse](
 			httpClient,
 			baseURL+OrgServiceListOrgMembersProcedure,
@@ -640,6 +662,8 @@ type orgServiceClient struct {
 	purgeOrg            *connect.Client[v1.PurgeOrgRequest, v1.PurgeOrgResponse]
 	setOrgRetentionDays *connect.Client[v1.SetOrgRetentionDaysRequest, v1.SetOrgRetentionDaysResponse]
 	inviteUser          *connect.Client[v1.InviteUserRequest, v1.InviteUserResponse]
+	listInvitations     *connect.Client[v1.ListInvitationsRequest, v1.ListInvitationsResponse]
+	revokeInvitation    *connect.Client[v1.RevokeInvitationRequest, v1.RevokeInvitationResponse]
 	listOrgMembers      *connect.Client[v1.ListOrgMembersRequest, v1.ListOrgMembersResponse]
 	removeOrgMember     *connect.Client[v1.RemoveOrgMemberRequest, v1.RemoveOrgMemberResponse]
 	updateOrgMemberRole *connect.Client[v1.UpdateOrgMemberRoleRequest, v1.UpdateOrgMemberRoleResponse]
@@ -685,6 +709,16 @@ func (c *orgServiceClient) InviteUser(ctx context.Context, req *connect.Request[
 	return c.inviteUser.CallUnary(ctx, req)
 }
 
+// ListInvitations calls tasker.health.v1.OrgService.ListInvitations.
+func (c *orgServiceClient) ListInvitations(ctx context.Context, req *connect.Request[v1.ListInvitationsRequest]) (*connect.Response[v1.ListInvitationsResponse], error) {
+	return c.listInvitations.CallUnary(ctx, req)
+}
+
+// RevokeInvitation calls tasker.health.v1.OrgService.RevokeInvitation.
+func (c *orgServiceClient) RevokeInvitation(ctx context.Context, req *connect.Request[v1.RevokeInvitationRequest]) (*connect.Response[v1.RevokeInvitationResponse], error) {
+	return c.revokeInvitation.CallUnary(ctx, req)
+}
+
 // ListOrgMembers calls tasker.health.v1.OrgService.ListOrgMembers.
 func (c *orgServiceClient) ListOrgMembers(ctx context.Context, req *connect.Request[v1.ListOrgMembersRequest]) (*connect.Response[v1.ListOrgMembersResponse], error) {
 	return c.listOrgMembers.CallUnary(ctx, req)
@@ -710,6 +744,8 @@ type OrgServiceHandler interface {
 	PurgeOrg(context.Context, *connect.Request[v1.PurgeOrgRequest]) (*connect.Response[v1.PurgeOrgResponse], error)
 	SetOrgRetentionDays(context.Context, *connect.Request[v1.SetOrgRetentionDaysRequest]) (*connect.Response[v1.SetOrgRetentionDaysResponse], error)
 	InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error)
+	ListInvitations(context.Context, *connect.Request[v1.ListInvitationsRequest]) (*connect.Response[v1.ListInvitationsResponse], error)
+	RevokeInvitation(context.Context, *connect.Request[v1.RevokeInvitationRequest]) (*connect.Response[v1.RevokeInvitationResponse], error)
 	ListOrgMembers(context.Context, *connect.Request[v1.ListOrgMembersRequest]) (*connect.Response[v1.ListOrgMembersResponse], error)
 	RemoveOrgMember(context.Context, *connect.Request[v1.RemoveOrgMemberRequest]) (*connect.Response[v1.RemoveOrgMemberResponse], error)
 	UpdateOrgMemberRole(context.Context, *connect.Request[v1.UpdateOrgMemberRoleRequest]) (*connect.Response[v1.UpdateOrgMemberRoleResponse], error)
@@ -769,6 +805,18 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(orgServiceInviteUserMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	orgServiceListInvitationsHandler := connect.NewUnaryHandler(
+		OrgServiceListInvitationsProcedure,
+		svc.ListInvitations,
+		connect.WithSchema(orgServiceListInvitationsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	orgServiceRevokeInvitationHandler := connect.NewUnaryHandler(
+		OrgServiceRevokeInvitationProcedure,
+		svc.RevokeInvitation,
+		connect.WithSchema(orgServiceRevokeInvitationMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	orgServiceListOrgMembersHandler := connect.NewUnaryHandler(
 		OrgServiceListOrgMembersProcedure,
 		svc.ListOrgMembers,
@@ -805,6 +853,10 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 			orgServiceSetOrgRetentionDaysHandler.ServeHTTP(w, r)
 		case OrgServiceInviteUserProcedure:
 			orgServiceInviteUserHandler.ServeHTTP(w, r)
+		case OrgServiceListInvitationsProcedure:
+			orgServiceListInvitationsHandler.ServeHTTP(w, r)
+		case OrgServiceRevokeInvitationProcedure:
+			orgServiceRevokeInvitationHandler.ServeHTTP(w, r)
 		case OrgServiceListOrgMembersProcedure:
 			orgServiceListOrgMembersHandler.ServeHTTP(w, r)
 		case OrgServiceRemoveOrgMemberProcedure:
@@ -850,6 +902,14 @@ func (UnimplementedOrgServiceHandler) SetOrgRetentionDays(context.Context, *conn
 
 func (UnimplementedOrgServiceHandler) InviteUser(context.Context, *connect.Request[v1.InviteUserRequest]) (*connect.Response[v1.InviteUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.InviteUser is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) ListInvitations(context.Context, *connect.Request[v1.ListInvitationsRequest]) (*connect.Response[v1.ListInvitationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.ListInvitations is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) RevokeInvitation(context.Context, *connect.Request[v1.RevokeInvitationRequest]) (*connect.Response[v1.RevokeInvitationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.OrgService.RevokeInvitation is not implemented"))
 }
 
 func (UnimplementedOrgServiceHandler) ListOrgMembers(context.Context, *connect.Request[v1.ListOrgMembersRequest]) (*connect.Response[v1.ListOrgMembersResponse], error) {

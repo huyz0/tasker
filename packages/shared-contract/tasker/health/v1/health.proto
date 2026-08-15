@@ -121,6 +121,36 @@ message OrgMember {
   string role = 4;
 }
 
+// An outstanding invitation (M03-T12).
+message Invitation {
+  string id = 1;
+  string org_id = 2;
+  string email = 3;
+  string role = 4;
+  string invited_by = 5;
+  string created_at = 6;
+  string expires_at = 7;
+  bool expired = 8;
+}
+
+message ListInvitationsRequest {
+  string orgId = 1;
+  PageRequest page = 2;
+}
+
+message ListInvitationsResponse {
+  repeated Invitation invitations = 1;
+  PageResponse page = 2;
+}
+
+message RevokeInvitationRequest {
+  string invitationId = 1;
+}
+
+message RevokeInvitationResponse {
+  bool success = 1;
+}
+
 message ListOrgMembersRequest {
   string orgId = 1;
   PageRequest page = 2;
@@ -158,6 +188,8 @@ service OrgService {
   rpc PurgeOrg(PurgeOrgRequest) returns (PurgeOrgResponse);
   rpc SetOrgRetentionDays(SetOrgRetentionDaysRequest) returns (SetOrgRetentionDaysResponse);
   rpc InviteUser(InviteUserRequest) returns (InviteUserResponse);
+  rpc ListInvitations(ListInvitationsRequest) returns (ListInvitationsResponse);
+  rpc RevokeInvitation(RevokeInvitationRequest) returns (RevokeInvitationResponse);
   rpc ListOrgMembers(ListOrgMembersRequest) returns (ListOrgMembersResponse);
   rpc RemoveOrgMember(RemoveOrgMemberRequest) returns (RemoveOrgMemberResponse);
   rpc UpdateOrgMemberRole(UpdateOrgMemberRoleRequest) returns (UpdateOrgMemberRoleResponse);
