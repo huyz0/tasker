@@ -324,20 +324,61 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const projectTemplates = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
 
-      // projectTemplates.rootTaskTypeId references taskTypes, so it must be
-      // cleared before the taskTypes rows it points to are deleted below.
-      await db.delete(projectTemplates).where(eq((projectTemplates as any).orgId, parsed.orgId));
-      await db.delete(labels).where(eq((labels as any).orgId, parsed.orgId));
+      // Seven tables, one unit of work. Run as separate statements, a failure
+      // partway - a constraint, a lost connection, a deadlock - left the
+      // templates and labels deleted while the org row, its members and its
+      // invitations survived: an organization that is neither present nor
+      // gone, and that the same code path cannot finish purging.
+      //
+      // Ordering matters inside the transaction too, because these are deletes
+      // against live foreign keys rather than a deferred check:
+      // projectTemplates.rootTaskTypeId references taskTypes, so the templates
+      // go before the task types they point at.
+      //
+      // The two dialects need genuinely different code, which is why this is
+      // not one shared callback:
+      //
+      //   bun:sqlite's transaction is SYNCHRONOUS - drizzle hands the callback
+      //   to `client.transaction(fn)`, which commits as soon as `fn` returns.
+      //   An `async` callback returns a promise immediately, so the COMMIT
+      //   lands before a single delete has run and a later throw rolls back
+      //   nothing. The sqlite path therefore uses drizzle's sync `.run()` /
+      //   `.all()` and contains no `await` at all - even `await 0` would defer
+      //   past the commit.
+      //
+      //   mysql2's transaction is genuinely async and holds one pooled
+      //   connection for the duration, so it takes the ordinary awaited form.
+      if (isStandalone) {
+        db.transaction((tx: any) => {
+          tx.delete(projectTemplates).where(eq((projectTemplates as any).orgId, parsed.orgId)).run();
+          tx.delete(labels).where(eq((labels as any).orgId, parsed.orgId)).run();
 
-      const orgTaskTypes = await db.select().from(taskTypes).where(eq((taskTypes as any).orgId, parsed.orgId));
-      for (const taskType of orgTaskTypes) {
-        await db.delete(taskStatusTransitions).where(eq((taskStatusTransitions as any).taskTypeId, taskType.id));
-        await db.delete(taskStatuses).where(eq((taskStatuses as any).taskTypeId, taskType.id));
-        await db.delete(taskTypes).where(eq((taskTypes as any).id, taskType.id));
+          const orgTaskTypes = tx.select().from(taskTypes).where(eq((taskTypes as any).orgId, parsed.orgId)).all();
+          for (const taskType of orgTaskTypes) {
+            tx.delete(taskStatusTransitions).where(eq((taskStatusTransitions as any).taskTypeId, taskType.id)).run();
+            tx.delete(taskStatuses).where(eq((taskStatuses as any).taskTypeId, taskType.id)).run();
+            tx.delete(taskTypes).where(eq((taskTypes as any).id, taskType.id)).run();
+          }
+          tx.delete(members).where(eq((members as any).orgId, parsed.orgId)).run();
+          tx.delete(invitations).where(eq((invitations as any).orgId, parsed.orgId)).run();
+          tx.delete(orgs).where(eq((orgs as any).id, parsed.orgId)).run();
+        });
+      } else {
+        await db.transaction(async (tx: any) => {
+          await tx.delete(projectTemplates).where(eq((projectTemplates as any).orgId, parsed.orgId));
+          await tx.delete(labels).where(eq((labels as any).orgId, parsed.orgId));
+
+          const orgTaskTypes = await tx.select().from(taskTypes).where(eq((taskTypes as any).orgId, parsed.orgId));
+          for (const taskType of orgTaskTypes) {
+            await tx.delete(taskStatusTransitions).where(eq((taskStatusTransitions as any).taskTypeId, taskType.id));
+            await tx.delete(taskStatuses).where(eq((taskStatuses as any).taskTypeId, taskType.id));
+            await tx.delete(taskTypes).where(eq((taskTypes as any).id, taskType.id));
+          }
+          await tx.delete(members).where(eq((members as any).orgId, parsed.orgId));
+          await tx.delete(invitations).where(eq((invitations as any).orgId, parsed.orgId));
+          await tx.delete(orgs).where(eq((orgs as any).id, parsed.orgId));
+        });
       }
-      await db.delete(members).where(eq((members as any).orgId, parsed.orgId));
-      await db.delete(invitations).where(eq((invitations as any).orgId, parsed.orgId));
-      await db.delete(orgs).where(eq((orgs as any).id, parsed.orgId));
 
       publishDomainEvent(nc, "domain.org.purged", { orgId: parsed.orgId });
       return { success: true };

@@ -66,7 +66,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
       - Files: `modules/orgs/orgs.handler.ts`, `apps/cli/cmd/orgs.go`
       - Verify: a member removes themselves; a sole owner cannot.
 
-- [ ] **M03-T03** — Wrap `purgeOrg` in a single transaction.
+- [x] **M03-T03** — Wrap `purgeOrg` in a single transaction.
       - Files: `modules/orgs/orgs.handler.ts`
       - Verify: a forced mid-purge failure leaves the org intact.
 
@@ -125,6 +125,17 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
       a pending list with role and expiry, and a revoke action.
       - Files: `apps/gui/src/features/Organizations/index.tsx`
       - Verify: an administrator invites and revokes without touching the CLI.
+
+### Discovered during delivery
+
+- [ ] **M03-T15** — Make `createTask`'s task-number claim atomic on SQLite.
+      `db.transaction(async …)` is a no-op on `bun:sqlite`: drizzle hands the
+      callback to `client.transaction(fn)`, which commits as soon as `fn`
+      returns, so an async callback commits before its first statement runs.
+      Proven in M03-T03: eight concurrent `createTask` calls all returned
+      `ENG-1`. Audit every `db.transaction` call site for the same shape.
+      - Files: `modules/tasks/tasks.handler.ts`, any other `db.transaction` site
+      - Verify: concurrent `createTask` calls produce distinct display ids.
 
 ### Proof
 

@@ -93,3 +93,47 @@ completes the task.
   apply its owned-project reassignment guard to the leave path as well**, not
   only to the admin-removal path, or T04 will close a hole this task opened.
 - **Next**: M03-T03
+
+---
+
+## M03-T03 — Wrap purgeOrg in one transaction
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Approach**: `purgeOrg` issues six-plus independent deletes with no
+  transaction, so a failure partway leaves templates and labels gone while the
+  org, its members and its invitations remain. Move the whole delete sequence
+  into `db.transaction`, and prove it with a test that injects a failure at a
+  chosen delete and asserts nothing was removed.
+- **Weight**: judged not heavy at the outset. That judgement was wrong — see
+  below — but the escalation it would have triggered (an ADR) would not have
+  helped, because the finding was empirical, not a choice between options.
+- **Changed**: `modules/orgs/orgs.handler.ts`, `orgs.test.ts` (+3 cases).
+- **Verified**: `moon check --all` — 23 tasks green. The injected-failure case
+  went red → green: before the change it observed `templates: 0, labels: 0`
+  against an org that still had its members and its row; after, every count is
+  unchanged. A successful purge still removes all five.
+- **Notes**: **the obvious fix does nothing on SQLite, and that is the whole
+  content of this task.** Wrapping the deletes in
+  `await db.transaction(async (tx) => …)` left the test failing exactly as
+  before. Reading drizzle's `bun-sqlite/session.js` explains it: the callback
+  is handed to `client.transaction(fn)`, which is **synchronous** and commits
+  as soon as `fn` returns. An `async` callback returns a promise immediately,
+  so `COMMIT` lands before the first delete has run and the later throw rolls
+  back nothing at all.
+
+  The SQLite path is therefore written with drizzle's sync `.run()` / `.all()`
+  and contains no `await` — not even `await 0`, which would defer past the
+  commit. MySQL keeps the ordinary awaited form, where the transaction is
+  genuinely async and holds one pooled connection. Two code paths, with the
+  reason recorded inline, because a future reader will otherwise "tidy" them
+  back into one and silently restore the bug.
+- **Divergence — a pre-existing defect found and recorded, not fixed here**:
+  `modules/tasks/tasks.handler.ts:381` uses the same broken shape to claim a
+  project's `nextTaskNumber`. Its comment asserts the claim is atomic; it is
+  not. Proven rather than inferred: eight concurrent `createTask` calls against
+  one project all returned the display id **`ENG-1`**. Recorded as **M03-T15**
+  with its reproduction, which also calls for auditing every `db.transaction`
+  call site. Not folded into this task because it is a different handler with a
+  different fix, and burying it in a purge commit would hide it.
+- **Next**: M03-T04

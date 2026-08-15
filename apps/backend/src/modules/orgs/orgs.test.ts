@@ -484,3 +484,100 @@ describe("Leaving an organization (M03-T02)", () => {
     expect(nc.publishedMessages.map((m: any) => m.subject)).toContain("domain.org.member_removed");
   });
 });
+
+describe("purgeOrg atomicity (M03-T03)", () => {
+  /**
+   * purgeOrg deletes from seven tables. Without a transaction those are seven
+   * independent statements, so a failure partway through - a constraint, a
+   * dropped connection, a MySQL deadlock - leaves the organization's templates
+   * and labels gone while the org row, its members and its invitations remain.
+   * The org is then un-purgeable by the same code path and invisible to nobody:
+   * it is simply corrupt.
+   *
+   * The failure is injected rather than waited for, at the delete that removes
+   * members - late enough that earlier deletes have already run, which is what
+   * makes the partial state observable.
+   */
+  const failOnNthDelete = (db: any, n: number) => {
+    let calls = 0;
+    const wrap = (target: any) =>
+      new Proxy(target, {
+        get(t, prop, recv) {
+          if (prop === "delete") {
+            return (table: any) => {
+              calls += 1;
+              if (calls === n) throw new Error("injected mid-purge failure");
+              return t.delete(table);
+            };
+          }
+          if (prop === "transaction") {
+            return (cb: any) => t.transaction((tx: any) => cb(wrap(tx)));
+          }
+          return Reflect.get(t, prop, recv);
+        },
+      });
+    return wrap(db);
+  };
+
+  const seedPurgeableOrg = async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const suffix = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const adminId = "user-purge-" + suffix;
+    const orgId = "org-purge-" + suffix;
+
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@foo.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({
+      id: orgId, name: "Purge Me", slug: orgId, createdAt: new Date(), deletedAt: new Date(),
+    });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: adminId, role: "admin", joinedAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: "tmpl-" + suffix, orgId, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.labels).values({ id: "lbl-" + suffix, orgId, name: "L", createdAt: new Date() });
+    await db.insert(schemaSqlite.taskTypes).values({ id: "tt-" + suffix, orgId, name: "TT", createdAt: new Date() });
+
+    return { db, nc, orgId, adminId };
+  };
+
+  const countsFor = async (db: any, orgId: string) => {
+    const rows = await Promise.all([
+      db.select().from(schemaSqlite.organizations).where(eq(schemaSqlite.organizations.id, orgId)),
+      db.select().from(schemaSqlite.organizationMembers).where(eq(schemaSqlite.organizationMembers.orgId, orgId)),
+      db.select().from(schemaSqlite.projectTemplates).where(eq(schemaSqlite.projectTemplates.orgId, orgId)),
+      db.select().from(schemaSqlite.labels).where(eq(schemaSqlite.labels.orgId, orgId)),
+      db.select().from(schemaSqlite.taskTypes).where(eq(schemaSqlite.taskTypes.orgId, orgId)),
+    ]);
+    return { orgs: rows[0].length, members: rows[1].length, templates: rows[2].length, labels: rows[3].length, taskTypes: rows[4].length };
+  };
+
+  test("a purge that fails partway leaves the organization exactly as it was", async () => {
+    const { db, nc, orgId, adminId } = await seedPurgeableOrg();
+    const before = await countsFor(db, orgId);
+    expect(before).toEqual({ orgs: 1, members: 1, templates: 1, labels: 1, taskTypes: 1 });
+
+    // The 4th delete is the members delete: templates, labels and the task
+    // type's transitions/statuses have already gone by then.
+    const handler = createOrgsHandler(failOnNthDelete(db, 4), nc);
+    await expect(handler.purgeOrg({ orgId }, makeAuthContext(adminId))).rejects.toThrow(/injected mid-purge failure/);
+
+    expect(await countsFor(db, orgId)).toEqual(before);
+  });
+
+  test("a purge that succeeds still removes everything", async () => {
+    const { db, nc, orgId, adminId } = await seedPurgeableOrg();
+    const handler = createOrgsHandler(db, nc);
+
+    const res = await handler.purgeOrg({ orgId }, makeAuthContext(adminId));
+
+    expect(res.success).toBe(true);
+    expect(await countsFor(db, orgId)).toEqual({ orgs: 0, members: 0, templates: 0, labels: 0, taskTypes: 0 });
+  });
+
+  test("a failed purge publishes no purged event", async () => {
+    const { db, nc, orgId, adminId } = await seedPurgeableOrg();
+    nc.clear();
+    const handler = createOrgsHandler(failOnNthDelete(db, 4), nc);
+
+    await expect(handler.purgeOrg({ orgId }, makeAuthContext(adminId))).rejects.toThrow();
+
+    expect(nc.publishedMessages.map((m: any) => m.subject)).not.toContain("domain.org.purged");
+  });
+});

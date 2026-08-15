@@ -1,8 +1,8 @@
 ---
 active_milestone: M03
-active_task: M03-T03
+active_task: M03-T04
 last_updated: 2026-08-15
-last_commit: d72f873
+last_commit: 578d542
 blocked: false
 blocker: null
 ---
@@ -16,7 +16,7 @@ blocker: null
 ## Now
 
 - **Milestone**: M03 — IAM Correctness & Scale
-- **Task**: M03-T03 — wrap `purgeOrg` in one transaction
+- **Task**: M03-T04 — require reassignment of owned projects
 - **Branch**: `feature/m03-iam-correctness-and-scale`
 - **Command to continue**: `/milestone-deliver M03`
 
@@ -40,7 +40,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 |-----|--------------------------------|--------|------------|-------|------|
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
 | M02 | Specification Truth            | done   | M01        | 7     | 7    |
-| M03 | IAM Correctness & Scale        | in-progress | M01   | 14    | 2    |
+| M03 | IAM Correctness & Scale        | in-progress | M01   | 15    | 3    |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |
 | M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |
@@ -51,7 +51,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 
-**Total: 139 tasks across 12 milestones.**
+**Total: 140 tasks across 12 milestones.**
 
 ## Dependency graph
 
