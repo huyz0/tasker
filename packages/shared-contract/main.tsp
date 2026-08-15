@@ -832,6 +832,14 @@ model TaskArtifactLink {
   @field(1) id: string;
   @field(2) taskId: string;
   @field(3) artifactId: string;
+
+  // Both names are resolved server-side, for the same reason Assignee.name and
+  // TaskReviewer.name are. Here the argument is stronger: artifact rows carry
+  // their whole `content`, so a client resolving names itself would download
+  // every artifact body just to render a list of titles.
+  @field(4) artifactName: string;
+
+  @field(5) taskTitle: string;
 }
 
 model CreateFolderRequest {
@@ -877,6 +885,25 @@ model LinkTaskArtifactRequest {
 }
 model LinkTaskArtifactResponse {
   @field(1) link: TaskArtifactLink;
+}
+
+model UnlinkTaskArtifactRequest {
+  @field(1) taskId: string;
+  @field(2) artifactId: string;
+}
+model UnlinkTaskArtifactResponse {
+  @field(1) success: boolean;
+}
+
+// One relation read from either end. Exactly one of the two ids must be set;
+// two RPCs for one table would mean two authorization paths and two entries in
+// each deny-by-default sweep.
+model ListTaskArtifactLinksRequest {
+  @field(1) taskId?: string;
+  @field(2) artifactId?: string;
+}
+model ListTaskArtifactLinksResponse {
+  @field(1) links: TaskArtifactLink[];
 }
 
 model ListArtifactsRequest {
@@ -951,6 +978,12 @@ interface ArtifactService {
     request: UpdateArtifactContentRequest,
   ): UpdateArtifactContentResponse;
   linkTaskArtifact(request: LinkTaskArtifactRequest): LinkTaskArtifactResponse;
+  unlinkTaskArtifact(
+    request: UnlinkTaskArtifactRequest,
+  ): UnlinkTaskArtifactResponse;
+  listTaskArtifactLinks(
+    request: ListTaskArtifactLinksRequest,
+  ): ListTaskArtifactLinksResponse;
   listArtifacts(request: ListArtifactsRequest): ListArtifactsResponse;
   listFolders(request: ListFoldersRequest): ListFoldersResponse;
   archiveArtifact(request: ArchiveArtifactRequest): ArchiveArtifactResponse;

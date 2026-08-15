@@ -51,6 +51,9 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   // menu, so this module mock has to expose them too.
   OrgService: 'OrgService',
   AgentService: 'AgentService',
+  // TaskArtifactLinks (M05-T06) reads and searches from the task detail.
+  ArtifactService: 'ArtifactService',
+  SearchService: 'SearchService',
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({

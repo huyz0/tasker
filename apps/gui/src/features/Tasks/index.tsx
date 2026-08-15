@@ -12,6 +12,7 @@ import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
 import { AssigneePicker } from './AssigneePicker';
 import { ReviewerPicker } from './ReviewerPicker';
+import { TaskArtifactLinks } from './TaskArtifactLinks';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 
@@ -619,6 +620,10 @@ export function TasksWorkbench() {
              <div>
                <h3 className="text-sm font-semibold tracking-tight mb-3">Reviewers</h3>
                <ReviewerPicker taskId={expandedTask.id} orgId={activeOrgId} />
+             </div>
+             <div>
+               <h3 className="text-sm font-semibold tracking-tight mb-3">Artifacts</h3>
+               <TaskArtifactLinks taskId={expandedTask.id} orgId={activeOrgId} />
              </div>
              <div>
                <h3 className="text-sm font-semibold tracking-tight mb-3">Labels</h3>

@@ -80,6 +80,10 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     createArtifact: 'artifacts:write',
     updateArtifactContent: 'artifacts:write',
     linkTaskArtifact: 'artifacts:write',
+    listTaskArtifactLinks: 'artifacts:read',
+    // unlinkTaskArtifact is deliberately absent. An agent that can detach its
+    // own output from the task it was given can hide the work; the same
+    // argument that keeps unassignTask closed.
   },
   projects: {
     getProject: 'projects:read',

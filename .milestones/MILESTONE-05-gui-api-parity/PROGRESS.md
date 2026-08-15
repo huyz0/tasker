@@ -181,4 +181,31 @@ Append-only. Newest entry at the bottom.
   behaviours across both pickers: the "Showing N of M" line, the two distinct
   empty states, Cancel, and the name-or-email fallback for a member who was
   invited but never signed in. Fourth milestone running.
-- **Next**: M05-T06
+
+## M05-T06 — Task ↔ artifact links
+
+- **Done.** One control, mounted at both ends: "Artifacts" on the task detail
+  and "Tasks" in the artifact viewer (`TaskArtifactLinks.tsx`).
+  (`reviews/M05-T06-artifact-links-v1.md`) — approved, 2 medium, 1 low.
+- **The read path was missing again — third time this milestone.**
+  `linkTaskArtifact` has existed since M01 and nothing could list or undo a
+  link, so the feature was invisible and untested by use. Added
+  `listTaskArtifactLinks` (one RPC, either end) and `unlinkTaskArtifact`, plus
+  `artifactName`/`taskTitle` resolved server-side.
+- **The agent sweep made a security call I had got wrong.** I first wrote
+  `unlinkTaskArtifact` with `requirePrincipal` + `artifacts:write`; the sweep
+  failed with "reachable by a token despite being unmapped". It is now
+  user-only: an agent that can detach its own output from the task it was given
+  can hide the work.
+- **Linking was not idempotent.** Two clicks produced two rows, so the artifact
+  appeared twice and the second ✕ looked inert. Fixed, and proved by injection —
+  disabling the guard fails the test.
+- **Candidates come from `universalSearch`**, not a new listing RPC, so there is
+  no catalogue to enumerate. Measured on the fixture: a ten-result page returns
+  exactly five tasks, the per-type cap, so one type cannot crowd out the other.
+  The picker therefore requires a query and shows no total — `totalCount` sums
+  both types, and no count beats a misleading one.
+- **The name lookup selects two columns.** Artifact rows carry up to ~15MB of
+  base64 in `content`; `select *` would pull every linked artifact's body into
+  memory to render a list of file names.
+- **Next**: M05-T07

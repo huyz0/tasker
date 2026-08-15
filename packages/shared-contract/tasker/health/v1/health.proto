@@ -775,6 +775,12 @@ message TaskArtifactLink {
   string id = 1;
   string taskId = 2;
   string artifactId = 3;
+  // Both names are resolved server-side, for the same reason Assignee.name and
+  // TaskReviewer.name are. Here the argument is stronger: artifact rows carry
+  // their whole `content`, so a client resolving names itself would download
+  // every artifact body just to render a list of titles.
+  string artifactName = 4;
+  string taskTitle = 5;
 }
 
 message CreateFolderRequest {
@@ -824,6 +830,27 @@ message LinkTaskArtifactRequest {
 
 message LinkTaskArtifactResponse {
   TaskArtifactLink link = 1;
+}
+
+message UnlinkTaskArtifactRequest {
+  string taskId = 1;
+  string artifactId = 2;
+}
+
+message UnlinkTaskArtifactResponse {
+  bool success = 1;
+}
+
+// One relation read from either end. Exactly one of the two ids must be set;
+// two RPCs for one table would mean two authorization paths and two entries in
+// each deny-by-default sweep.
+message ListTaskArtifactLinksRequest {
+  optional string taskId = 1;
+  optional string artifactId = 2;
+}
+
+message ListTaskArtifactLinksResponse {
+  repeated TaskArtifactLink links = 1;
 }
 
 message ListArtifactsRequest {
@@ -896,6 +923,8 @@ service ArtifactService {
   rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
   rpc UpdateArtifactContent(UpdateArtifactContentRequest) returns (UpdateArtifactContentResponse);
   rpc LinkTaskArtifact(LinkTaskArtifactRequest) returns (LinkTaskArtifactResponse);
+  rpc UnlinkTaskArtifact(UnlinkTaskArtifactRequest) returns (UnlinkTaskArtifactResponse);
+  rpc ListTaskArtifactLinks(ListTaskArtifactLinksRequest) returns (ListTaskArtifactLinksResponse);
   rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse);
   rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse);
   rpc ArchiveArtifact(ArchiveArtifactRequest) returns (ArchiveArtifactResponse);

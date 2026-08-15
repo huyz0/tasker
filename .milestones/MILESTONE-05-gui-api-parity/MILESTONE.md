@@ -80,7 +80,7 @@ canvas is warranted.
       - Files: `apps/gui/src/features/Tasks/`
       - Verify: reviewers round-trip through the API.
 
-- [ ] **M05-T06** — Task-to-artifact links: link and unlink from both the task
+- [x] **M05-T06** — Task-to-artifact links: link and unlink from both the task
       detail and the artifact view.
       - Files: `apps/gui/src/features/Tasks/`, `features/Artifacts/index.tsx`
       - Verify: a linked artifact appears on the task.

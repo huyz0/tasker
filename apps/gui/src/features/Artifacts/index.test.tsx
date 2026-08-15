@@ -54,6 +54,8 @@ vi.mock('@connectrpc/connect', () => ({
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   ArtifactService: {},
   LabelService: 'LabelService',
+  // TaskArtifactLinks (M05-T06) searches for tasks to link from this view.
+  SearchService: 'SearchService',
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({

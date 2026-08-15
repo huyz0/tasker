@@ -2,7 +2,7 @@ import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and, not } from "drizzle-orm";
+import { eq, and, not, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -43,6 +43,20 @@ const LinkTaskArtifactSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   artifactId: z.string().min(1, "artifactId is required"),
 });
+
+const UnlinkTaskArtifactSchema = LinkTaskArtifactSchema;
+
+const ListTaskArtifactLinksSchema = z
+  .object({
+    taskId: z.string().optional(),
+    artifactId: z.string().optional(),
+  })
+  // Proto3 sends "" for an omitted string, so emptiness - not absence - is what
+  // "unset" means on the wire.
+  .transform((v) => ({ taskId: v.taskId || undefined, artifactId: v.artifactId || undefined }))
+  .refine((v) => Boolean(v.taskId) !== Boolean(v.artifactId), {
+    message: "exactly one of taskId or artifactId is required",
+  });
 
 const ArchiveArtifactSchema = z.object({
   artifactId: z.string().min(1, "artifactId is required"),
@@ -184,8 +198,81 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         artifactId: parsed.artifactId,
       };
 
+      // Clicking twice used to produce two rows, and the artifact then appeared
+      // twice on the task. Same treatment as assignTask: a duplicate is
+      // success, and the existing row is what comes back.
+      const existing = await db
+        .select()
+        .from(links)
+        .where(and(eq((links as any).taskId, parsed.taskId), eq((links as any).artifactId, parsed.artifactId)))
+        .limit(1);
+      if (existing.length > 0) return { link: existing[0] };
+
       await insertRecord(db, links, payload, isStandalone, false);
       return { link: payload };
+    },
+    async unlinkTaskArtifact(req: unknown, { values: contextValues }: { values: any }) {
+      // requireUser, not requirePrincipal: an agent that can detach its own
+      // output from the task it was given can hide the work. Same argument that
+      // keeps unassignTask closed to tokens.
+      const userId = requireUser(contextValues);
+      const parsed = UnlinkTaskArtifactSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgWriter(db, userId, orgId);
+
+      const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
+      // Matched on the exact pair. Matching on the task alone would unlink
+      // every artifact on it; on the artifact alone, every task.
+      await db
+        .delete(links)
+        .where(and(eq((links as any).taskId, parsed.taskId), eq((links as any).artifactId, parsed.artifactId)));
+      return { success: true };
+    },
+    async listTaskArtifactLinks(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = ListTaskArtifactLinksSchema.parse(req);
+      const orgId = parsed.taskId
+        ? await getTaskOrgId(db, parsed.taskId)
+        : await getArtifactOrgId(db, parsed.artifactId!);
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
+
+      const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
+      const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+      const tsks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+
+      const rows = await db
+        .select()
+        .from(links)
+        .where(parsed.taskId ? eq((links as any).taskId, parsed.taskId) : eq((links as any).artifactId, parsed.artifactId!));
+      if (rows.length === 0) return { links: [] };
+
+      // Two lookups for the whole set rather than two per row. Note the artifact
+      // select names its columns: `content` can hold ~15MB of base64 image, and
+      // a link list has no use for it.
+      const artifactIds = [...new Set(rows.map((r: any) => r.artifactId))];
+      const taskIds = [...new Set(rows.map((r: any) => r.taskId))];
+      const artifactRows = await db
+        .select({ id: (arts as any).id, name: (arts as any).name })
+        .from(arts)
+        .where(inArray((arts as any).id, artifactIds));
+      const taskRows = await db
+        .select({ id: (tsks as any).id, title: (tsks as any).title })
+        .from(tsks)
+        .where(inArray((tsks as any).id, taskIds));
+      const artifactName = new Map(artifactRows.map((a: any) => [a.id, a.name]));
+      const taskTitle = new Map(taskRows.map((t: any) => [t.id, t.title]));
+
+      return {
+        links: rows.map((r: any) => ({
+          id: r.id,
+          taskId: r.taskId,
+          artifactId: r.artifactId,
+          // The id is a poor label but an identifiable one; blank reads as a
+          // rendering bug.
+          artifactName: artifactName.get(r.artifactId) ?? r.artifactId,
+          taskTitle: taskTitle.get(r.taskId) ?? r.taskId,
+        })),
+      };
     },
     async listFolders(req: any, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);

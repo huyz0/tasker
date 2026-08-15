@@ -4,6 +4,7 @@ import { useLayoutStore } from '../../store/layout';
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
+import { TaskArtifactLinks } from "../Tasks/TaskArtifactLinks";
 import { transport } from "../../lib/connectTransport";
 import { ArtifactService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Label } from '../../components/ui/labels';
@@ -409,6 +410,10 @@ export function ArtifactsBrowser() {
                  )}
                </div>
                )}
+               <div className="mt-6 not-prose">
+                 <h3 className="text-sm font-semibold tracking-tight mb-3">Tasks</h3>
+                 <TaskArtifactLinks artifactId={selectedArtifact.id} orgId={activeOrgId} />
+               </div>
                <div className="mt-6 not-prose">
                  <h3 className="text-sm font-semibold tracking-tight mb-3">Labels</h3>
                  <Label.Provider entityId={selectedArtifact.id} entityType="artifact" orgId={activeOrgId}>

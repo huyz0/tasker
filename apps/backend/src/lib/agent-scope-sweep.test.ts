@@ -152,6 +152,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     createArtifact: { folderId: ids.folder, name: 'A' },
     updateArtifactContent: { artifactId: ids.artifact, content: 'x' },
     linkTaskArtifact: { taskId: ids.task, artifactId: ids.artifact },
+    unlinkTaskArtifact: { taskId: ids.task, artifactId: ids.artifact },
     archiveArtifact: { artifactId: ids.artifact },
     restoreArtifact: { artifactId: ids.artifact },
     archiveFolder: { folderId: ids.folder },
