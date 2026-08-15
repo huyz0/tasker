@@ -30,6 +30,12 @@ export function ArtifactsBrowser() {
 
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [isAddingFolder, setIsAddingFolder] = useState(false);
+  // Which folders show their children. Separate from selectedFolderId, which is
+  // the one folder whose artifacts are listed: reaching a folder three levels
+  // down means every folder above it is open at the same time, and one
+  // selection cannot express that.
+  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
+  const [addingSubfolderTo, setAddingSubfolderTo] = useState<string | null>(null);
   const [isAddingArtifact, setIsAddingArtifact] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
   const [editedContent, setEditedContent] = useState('');
@@ -162,6 +168,16 @@ export function ArtifactsBrowser() {
     },
   });
 
+  const createSubfolderMutation = useMutation({
+    mutationFn: async ({ parentId, name }: { parentId: string; name: string }) => {
+      await artifactClient.createFolder({ projectId: activeProjectId, parentId, name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['folders', activeProjectId] });
+      setAddingSubfolderTo(null);
+    },
+  });
+
   const createArtifactMutation = useMutation({
     mutationFn: async ({ folderId, name }: { folderId: string; name: string }) => {
       await artifactClient.createArtifact({ folderId, name });
@@ -192,43 +208,44 @@ export function ArtifactsBrowser() {
   const toggleFolder = (folderId: string) => {
     const collapsing = selectedFolderId === folderId;
     setSelectedFolderId(collapsing ? null : folderId);
+    setExpandedFolderIds((prev) => {
+      const next = new Set(prev);
+      if (collapsing) next.delete(folderId);
+      else next.add(folderId);
+      return next;
+    });
     setIsAddingArtifact(false);
+    setAddingSubfolderTo(null);
     // Collapsing the folder holding the open artifact closes the artifact too;
     // otherwise the deep-link lookup would immediately re-expand the folder.
     if (collapsing && artifactId) navigate('/artifacts');
   };
 
   const rootFolders = foldersData?.filter(f => !f.parentId) || [];
+  const childrenOf = (parentId: string) => (foldersData ?? []).filter((f: any) => f.parentId === parentId);
 
-  return (
-    <div className="flex h-full gap-6">
-      {/* File Tree Left Sidebar */}
-      <div className="w-64 flex-shrink-0 flex flex-col bg-card border rounded-lg overflow-hidden shadow-sm">
-        <div className="p-3 border-b text-sm font-semibold flex justify-between items-center">
-          Artifacts Explorer
-          <button
-            onClick={() => setIsAddingFolder(true)}
-            className="text-xs text-muted-foreground hover:text-foreground"
-            title="New folder"
-          >
-            + Folder
-          </button>
-        </div>
-        <div className="p-2 space-y-1 text-sm overflow-y-auto">
-          {isAddingFolder && (
-            <InlineCreateForm
-              placeholder="Folder name"
-              isSubmitting={createFolderMutation.isPending}
-              onSubmit={(name) => createFolderMutation.mutate(name)}
-              onCancel={() => setIsAddingFolder(false)}
-            />
-          )}
-          {isLoadingFolders && <p className="p-2 text-muted-foreground text-xs">Loading folders...</p>}
-          {!isLoadingFolders && rootFolders.length === 0 && !isAddingFolder && (
-             <p className="p-2 text-muted-foreground text-xs">No folders yet.</p>
-          )}
+  // A deep link lands on an artifact, not on a path. Every folder above it has
+  // to open or the artifact's own folder is not on screen to be selected.
+  useEffect(() => {
+    if (!selectedFolderId || !foldersData) return;
+    const byId = new Map(foldersData.map((f: any) => [f.id, f]));
+    const path: string[] = [];
+    let cursor: any = byId.get(selectedFolderId);
+    // Bounded by the number of folders: a parent cycle would otherwise spin
+    // here forever, and nothing in the schema forbids one.
+    for (let i = 0; cursor && i <= foldersData.length; i++) {
+      path.push(cursor.id);
+      cursor = cursor.parentId ? byId.get(cursor.parentId) : null;
+    }
+    setExpandedFolderIds((prev) => {
+      if (path.every((id) => prev.has(id))) return prev;
+      const next = new Set(prev);
+      path.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [selectedFolderId, foldersData]);
 
-          {rootFolders.map(folder => (
+  const renderFolder = (folder: any, depth: number) => (
             <div key={folder.id}>
               {editingFolderId === folder.id ? (
                 <form
@@ -258,7 +275,8 @@ export function ArtifactsBrowser() {
                     toggleFolder(folder.id);
                   }
                 }}
-                className={`px-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center justify-between gap-2 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-sm ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
+                style={{ paddingLeft: depth * 12 + 8 }}
+                className={`pr-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center justify-between gap-2 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-sm ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
               >
                 <span className="flex items-center gap-2">{selectedFolderId === folder.id ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />} {folder.name}</span>
                 <span className="flex items-center gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
@@ -346,8 +364,63 @@ export function ArtifactsBrowser() {
                   <ArtifactUpload folderId={folder.id} />
                 </div>
               )}
+              {/* Children, then this folder's own artifacts. The schema has
+                  stored parentId since M01 and the tree only ever rendered
+                  folders with none, so everything below the top level was
+                  invisible - not missing, unreachable. */}
+              {expandedFolderIds.has(folder.id) && childrenOf(folder.id).map((child: any) => renderFolder(child, depth + 1))}
+              {expandedFolderIds.has(folder.id) && (
+                addingSubfolderTo === folder.id ? (
+                  <div style={{ paddingLeft: (depth + 1) * 12 }}>
+                    <InlineCreateForm
+                      placeholder="Subfolder name"
+                      isSubmitting={createFolderMutation.isPending}
+                      onSubmit={(name) => createSubfolderMutation.mutate({ parentId: folder.id, name })}
+                      onCancel={() => setAddingSubfolderTo(null)}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setAddingSubfolderTo(folder.id)}
+                    style={{ paddingLeft: (depth + 1) * 12 + 8 }}
+                    className="w-full text-left py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm"
+                  >
+                    + Subfolder in {folder.name}
+                  </button>
+                )
+              )}
             </div>
-          ))}
+  );
+
+  return (
+    <div className="flex h-full gap-6">
+      {/* File Tree Left Sidebar */}
+      <div className="w-64 flex-shrink-0 flex flex-col bg-card border rounded-lg overflow-hidden shadow-sm">
+        <div className="p-3 border-b text-sm font-semibold flex justify-between items-center">
+          Artifacts Explorer
+          <button
+            onClick={() => setIsAddingFolder(true)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+            title="New folder"
+          >
+            + Folder
+          </button>
+        </div>
+        <div className="p-2 space-y-1 text-sm overflow-y-auto">
+          {isAddingFolder && (
+            <InlineCreateForm
+              placeholder="Folder name"
+              isSubmitting={createFolderMutation.isPending}
+              onSubmit={(name) => createFolderMutation.mutate(name)}
+              onCancel={() => setIsAddingFolder(false)}
+            />
+          )}
+          {isLoadingFolders && <p className="p-2 text-muted-foreground text-xs">Loading folders...</p>}
+          {!isLoadingFolders && rootFolders.length === 0 && !isAddingFolder && (
+             <p className="p-2 text-muted-foreground text-xs">No folders yet.</p>
+          )}
+
+          {rootFolders.map((folder: any) => renderFolder(folder, 0))}
         </div>
       </div>
 

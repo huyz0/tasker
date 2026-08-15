@@ -280,4 +280,25 @@ Append-only. Newest entry at the bottom.
   first status arrives with `position` absent rather than `0`. The GUI never
   reads it — the server returns the array ordered — but a client that sorts
   client-side must treat missing as 0.
-- **Next**: M05-T10
+
+## M05-T10 — Nested folder navigation
+
+- **Done.** The artifact tree renders children recursively, indented by depth,
+  and can create a subfolder under any folder.
+- **The hierarchy was stored and unreachable.** `folders.parentId` has existed
+  since M01, `createFolder` has always accepted a parent, and the tree rendered
+  `folders.filter(f => !f.parentId)` — so every folder below the top level was
+  invisible, and nothing in the GUI could have made one anyway.
+- **One selection could not express a path.** Reaching a folder three levels
+  down means every folder above it is open at once, so expansion is now a set,
+  separate from `selectedFolderId` (still the single folder whose artifacts are
+  listed).
+- **A deep link names an artifact, not a path.** Landing on
+  `/artifacts/:artifactId` now walks from the artifact's folder to the root and
+  opens each ancestor. The walk is bounded by the folder count: nothing in the
+  schema forbids a parent cycle, and an unbounded walk would hang the tab rather
+  than fail. A test builds a cycle deliberately.
+- **Verified in the browser end to end**: built Level1 → Level2 → Level3 through
+  the UI, created an artifact at the bottom, then cold-loaded its URL — all
+  three ancestors reopened.
+- **Next**: M05-T11

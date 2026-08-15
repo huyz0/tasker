@@ -642,6 +642,100 @@ describe('ArtifactsBrowser', () => {
       ));
     });
 
+    it('navigates a tree three levels deep', async () => {
+      mockListFolders.mockResolvedValue({
+        folders: [
+          { id: 'fld-1', name: 'docs', parentId: '' },
+          { id: 'fld-2', name: 'specs', parentId: 'fld-1' },
+          { id: 'fld-3', name: 'drafts', parentId: 'fld-2' },
+        ],
+      });
+      mockListArtifacts.mockImplementation(async ({ folderId }: { folderId: string }) =>
+        folderId === 'fld-3' ? { artifacts: [{ id: 'art-3', name: 'deep.md', content: 'Down here' }] } : { artifacts: [] });
+
+      renderPage();
+
+      // The schema has stored parentId since M01 and only folders without one
+      // were ever rendered, so everything below the top level was unreachable.
+      fireEvent.click(await screen.findByText('docs'));
+      fireEvent.click(await screen.findByText('specs'));
+      fireEvent.click(await screen.findByText('drafts'));
+      expect(await screen.findByText('deep.md')).toBeInTheDocument();
+    });
+
+    it('keeps the parents open when a deep link lands three levels down', async () => {
+      mockListFolders.mockResolvedValue({
+        folders: [
+          { id: 'fld-1', name: 'docs', parentId: '' },
+          { id: 'fld-2', name: 'specs', parentId: 'fld-1' },
+          { id: 'fld-3', name: 'drafts', parentId: 'fld-2' },
+        ],
+      });
+      mockListArtifacts.mockImplementation(async ({ folderId }: { folderId: string }) =>
+        folderId === 'fld-3' ? { artifacts: [{ id: 'art-3', name: 'deep.md', content: 'Down here' }] } : { artifacts: [] });
+
+      renderPage('/artifacts/art-3');
+
+      // A link lands on an artifact, not on a path: every folder above it has
+      // to open, or its own folder is not on screen to be selected.
+      await waitFor(() => expect(screen.getByText('Down here')).toBeInTheDocument());
+      // The path opens a render after the artifact resolves — the folder is
+      // located first, the ancestors expand from it.
+      await waitFor(() => expect(screen.getByText('specs')).toBeInTheDocument());
+      expect(screen.getByText('drafts')).toBeInTheDocument();
+    });
+
+    it('collapses a folder and hides its children', async () => {
+      mockListFolders.mockResolvedValue({
+        folders: [
+          { id: 'fld-1', name: 'docs', parentId: '' },
+          { id: 'fld-2', name: 'specs', parentId: 'fld-1' },
+        ],
+      });
+      mockListArtifacts.mockResolvedValue({ artifacts: [] });
+
+      renderPage();
+      fireEvent.click(await screen.findByText('docs'));
+      expect(await screen.findByText('specs')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('docs'));
+      await waitFor(() => expect(screen.queryByText('specs')).toBeNull());
+    });
+
+    it('creates a subfolder under the folder it was asked from', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [] });
+      mockCreateFolder.mockResolvedValue({ folder: { id: 'fld-9' } });
+
+      renderPage();
+      fireEvent.click(await screen.findByText('docs'));
+      fireEvent.click(await screen.findByText('+ Subfolder in docs'));
+      fireEvent.change(await screen.findByPlaceholderText('Subfolder name'), { target: { value: 'specs' } });
+      fireEvent.submit(screen.getByPlaceholderText('Subfolder name').closest('form')!);
+
+      // Without parentId this creates another root folder, and the tree looks
+      // the same until someone reloads.
+      await waitFor(() => expect(mockCreateFolder).toHaveBeenCalledWith(
+        expect.objectContaining({ parentId: 'fld-1', name: 'specs' }),
+      ));
+    });
+
+    it('survives a folder whose parent chain loops', async () => {
+      mockListFolders.mockResolvedValue({
+        folders: [
+          { id: 'fld-a', name: 'alpha', parentId: 'fld-b' },
+          { id: 'fld-b', name: 'beta', parentId: 'fld-a' },
+        ],
+      });
+      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-x', name: 'x.md', content: 'Looped' }] });
+
+      renderPage('/artifacts/art-x');
+
+      // Nothing in the schema forbids a cycle, and walking to the root without
+      // a bound would hang the tab rather than fail.
+      await waitFor(() => expect(screen.getByText('Looped')).toBeInTheDocument());
+    });
+
     it('shows the placeholder on a plain /artifacts URL', async () => {
       mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
       mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });

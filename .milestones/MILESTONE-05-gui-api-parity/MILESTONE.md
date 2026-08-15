@@ -100,7 +100,7 @@ canvas is warranted.
       - Files: new `apps/gui/src/features/TaskTypes/`, `App.tsx`
       - Verify: a custom state machine configured in the UI is enforced on status change.
 
-- [ ] **M05-T10** — Nested folder navigation in the artifact browser, matching the
+- [x] **M05-T10** — Nested folder navigation in the artifact browser, matching the
       hierarchy the schema already stores.
       - Files: `apps/gui/src/features/Artifacts/index.tsx`
       - Verify: a folder tree three levels deep is navigable.
