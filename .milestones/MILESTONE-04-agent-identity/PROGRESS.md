@@ -132,3 +132,56 @@ Append-only. Newest entry at the bottom.
   gone. Rewritten to say what it is actually for now (the `/api/debug/*` routes)
   and to warn against reaching for it out of convenience.
 - **Next**: M04-T04
+
+---
+
+## M04-T04 — Resolve agent tokens in the session interceptor
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `src/lib/agentToken.ts` (new), `src/lib/authenticate.ts` (new),
+  `src/index.ts` (interceptor), `src/lib/agentToken.test.ts` (new, 17 tests),
+  `src/lib/authenticate.test.ts` (new, 14 tests)
+- **Verified**: `moon run backend:test` — 495 pass / 7 skip / 0 fail (was 464).
+  `moon check --all` — 23 tasks pass. And the verify line end to end against a
+  running server, which is the part the unit tests cannot reach:
+
+  | Request | Response |
+  |---|---|
+  | live token | `permission_denied: This endpoint requires a human session` |
+  | same token, after `revokeToken` | `unauthenticated: Authentication required` |
+  | forged `tskr_…` string | `unauthenticated` |
+
+  `permission_denied` on the first line is the proof: the token authenticated,
+  and `requireUser` then refused it because no endpoint has been opened to
+  agents yet (T06/T07). No restart between the two calls. `lastUsedAt` was
+  stamped on the token row without the request waiting for it.
+- **The resolution logic is not in the interceptor.** `src/index.ts` is in
+  `coveragePathIgnorePatterns` and cannot be exercised by the suite, and the
+  decision about *who a caller is* is the last thing that should be untestable.
+  `resolvePrincipal(db, headers)` lives in `lib/authenticate.ts`; the
+  interceptor is now four lines that call it and set two context keys.
+- **A bad agent token does not fall back to the session.** A revoked token
+  presented with a valid cookie resolves to nothing, rather than quietly
+  downgrading to the human — otherwise a dead agent credential keeps working as
+  somebody else.
+- **A test that could not fail, found by injection.** The assertion above passed
+  even after the early return was removed, because `resolveSessionPayload`
+  prefers the `Authorization` header and so never reaches the cookie. The
+  outcome was right for a reason unrelated to the code it appeared to guard.
+  Added a second test pinning that ordering explicitly, so if someone makes
+  session resolution fall back to the cookie — the moment a dead token starts
+  borrowing a session — it fails instead of looking harmless. Kept both: two
+  layers enforce this, and a test per layer is what makes either failure visible.
+- **`lastUsedAt` is not stamped on a rejected token.** The token list is where an
+  operator confirms a revocation worked; "last used: just now" on a dead
+  credential reads as live. Verified by injection (stamping unconditionally goes
+  red).
+- **A deleted agent's token stops working**, checked in the same indexed query
+  as the hash lookup rather than as a second round trip.
+- **Divergence**: the task named `lib/sessionRevocation.ts`; it was not touched.
+  Agent revocation is a column on the token row, not a deny-list — a token is
+  already stateful, so it needs no `revokedSessions` equivalent (ADR-0008).
+- **knip caught an over-export**: `TokenRejection` was exported with no importer.
+  Unexported; the union is still reachable through `TokenResolution`.
+- **Next**: M04-T05

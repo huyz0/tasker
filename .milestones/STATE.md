@@ -1,6 +1,6 @@
 ---
 active_milestone: M04
-active_task: M04-T03
+active_task: M04-T04
 last_updated: 2026-08-15
 last_commit: 44248d8
 blocked: false
@@ -16,7 +16,7 @@ blocker: null
 ## Now
 
 - **Milestone**: M04 — Agent Identity & M2M Tokens
-- **Task**: M04-T03 — Principal type
+- **Task**: M04-T04 — token resolution in the interceptor
 - **Branch**: `feature/m03-iam-correctness-and-scale` — M03 is complete on it but
   **not yet merged to `main`**. Merge it before branching M04, which builds on
   M03's authorization work.
@@ -44,7 +44,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
 | M02 | Specification Truth            | done   | M01        | 7     | 7    |
 | M03 | IAM Correctness & Scale        | done   | M01        | 16    | 16   |
-| M04 | Agent Identity & M2M Tokens    | in-progress | M03   | 12    | 3    |
+| M04 | Agent Identity & M2M Tokens    | in-progress | M03   | 12    | 4    |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |
 | M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |
 | M07 | Read-Path Scale                | todo   | M05        | 11    | 0    |

@@ -5,8 +5,8 @@ import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
 import { createAuthRoutes } from "./modules/auth/auth";
-import { currentUserIdKey, resolveSessionPayload } from "./modules/auth/session";
-import { isSessionRevoked } from "./lib/sessionRevocation";
+import { currentUserIdKey, currentPrincipalKey } from "./modules/auth/session";
+import { resolvePrincipal } from "./lib/authenticate";
 import { createOrgsHandler } from "./modules/orgs/orgs.handler";
 import { createProjectTemplatesHandler, createProjectsHandler } from "./modules/projects/projects.handler";
 import { createTasksHandler, createTaskManagementHandler } from "./modules/tasks/tasks.handler";
@@ -54,15 +54,18 @@ try {
 }
 
 const sessionInterceptor: Interceptor = (next) => async (req) => {
-  const payload = resolveSessionPayload({
+  // The decision about who the caller is lives in lib/authenticate.ts, not
+  // here: this file is excluded from coverage, and authentication is the last
+  // thing that should be untestable.
+  const principal = await resolvePrincipal(db, {
     cookie: req.header.get("cookie"),
     authorization: req.header.get("authorization"),
   });
-  // A revoked session's token still verifies (signature/exp are unaffected
-  // by revocation), so this check is what actually makes logout - or any
-  // other revocation - take effect on subsequent requests.
-  const userId = payload && !(await isSessionRevoked(db, payload.jti)) ? payload.userId : null;
-  req.contextValues.set(currentUserIdKey, userId);
+  req.contextValues.set(currentPrincipalKey, principal);
+  // Still set for the human path: logging, telemetry and every handler that
+  // has not been migrated to requirePrincipal read this key. An agent leaves it
+  // null, which is what makes requireUser refuse a token by default.
+  req.contextValues.set(currentUserIdKey, principal?.kind === "user" ? principal.userId : null);
   return next(req);
 };
 

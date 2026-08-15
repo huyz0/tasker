@@ -70,7 +70,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
       - Files: `apps/backend/src/lib/authz.ts`, `modules/auth/session.ts`
       - Verify: existing human tests pass unchanged.
 
-- [ ] **M04-T04** — Extend the session interceptor to resolve an agent token from
+- [x] **M04-T04** — Extend the session interceptor to resolve an agent token from
       the `Authorization` header, rejecting revoked and expired tokens, and
       updating `lastUsedAt` without blocking the request path.
       - Files: `apps/backend/src/index.ts`, `lib/sessionRevocation.ts`
