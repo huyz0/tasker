@@ -47,7 +47,9 @@ rendering; see Dropped.
 ### UI components
 
 Hand-rolled primitives in `apps/gui/src/components/ui/`. **Shadcn and Radix are
-not installed**; the decision is recorded in `.specs/adr/` (M02-T03).
+not installed** — see
+[ADR-0005](../adr/ADR-0005-hand-rolled-ui-primitives-instead-of-shadcn-and-radix.md),
+which recommends Radix for overlay primitives only when M06 revisits it.
 
 ### Backend — `package.json`, `apps/backend/package.json`
 

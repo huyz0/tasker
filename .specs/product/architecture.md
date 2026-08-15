@@ -87,7 +87,8 @@ in `src/lib/`.
 
 An FTS5 virtual table named `search_index` is created in `db/db.ts:27` and is
 read only by the health probe. **Nothing writes to it.** It is scaffolding, not
-an index. A real search path is **M07**.
+an index. A real search path is **M07**. Decision:
+[ADR-0002](../adr/ADR-0002-like-scanning-instead-of-full-text-search.md).
 
 ### Events
 
@@ -128,7 +129,8 @@ at startup, with `config.test.ts` covering it.
 - `modules/telemetry/telemetry.ts` exposes these over `/api/debug/*`.
 - `lib/problemDetails.ts` shapes error responses as `application/problem+json`.
 
-Distributed tracing and OTLP export are **M11**.
+Distributed tracing and OTLP export are **M11**. Decision:
+[ADR-0004](../adr/ADR-0004-in-process-counters-instead-of-opentelemetry.md).
 
 ### Frontend
 
@@ -136,7 +138,9 @@ Distributed tracing and OTLP export are **M11**.
 rendering and no React Flow; routes are declared in `apps/gui/src/App.tsx` and
 data is fetched through TanStack Query against the generated Connect-RPC
 clients. Design tokens live in `apps/gui/src/index.css` and are enforced by
-`apps/gui/scripts/design-lint.mjs`.
+`apps/gui/scripts/design-lint.mjs`. UI primitives are hand-rolled rather than
+Shadcn/Radix — decision and the M06 revisit:
+[ADR-0005](../adr/ADR-0005-hand-rolled-ui-primitives-instead-of-shadcn-and-radix.md).
 
 ### CLI
 
@@ -172,7 +176,9 @@ What is actually buildable today:
 type-checking, `oxlint`, unit tests behind a 95% coverage threshold, `knip`,
 `tasker:skills-check`, `tasker:docs-lint` and `gui:design-lint`. Playwright
 end-to-end (`gui:e2e`) is `type: run` and executed explicitly in CI against a
-seeded backend.
+seeded backend. `oxlint` is the only TypeScript linter and no formatter runs —
+decision and its cost:
+[ADR-0001](../adr/ADR-0001-oxlint-instead-of-eslint-and-prettier.md).
 
 ### Non-functional characteristics
 
@@ -207,7 +213,8 @@ Today there is **one path**. Reads and writes both hit the transactional
 database, and search scans with `LIKE`. M07 decides between populating the
 existing FTS5 table and introducing a dedicated index; **OpenSearch is not
 installed and no milestone commits to it** — it is one candidate, to be chosen
-against measured need. See `.specs/adr/` (M02-T03).
+against measured need. Decision:
+[ADR-0003](../adr/ADR-0003-no-separate-read-store-before-measurement.md).
 
 ### Event consumers, audit trail and live updates — **M08**
 

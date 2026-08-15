@@ -111,3 +111,64 @@ ADR" is M02-T03; `.specs/adr/` currently holds only `README.md`. Note for T03:
 the task names `ADR-0003…ADR-0007`, but **ADR-0001 and ADR-0002 do not exist** —
 the numbering in the milestone plan assumed predecessors that were never
 written.
+
+---
+
+## M02-T03 — ADRs for the deviations already made
+
+**Date**: 2026-08-15
+**Status**: done
+**Approach**: Five decisions, one file each, in the format `.specs/adr/README.md`
+defines. Each must name the option actually rejected and the milestone that
+would revisit it — a file that cannot name the alternative is documenting an
+implementation, not a decision. Then link every one from `architecture.md`,
+which is the task's verify line.
+
+**Changed**: five new files in `.specs/adr/`, plus the linking edits in
+`.specs/product/architecture.md` and one forward reference in `tech-stack.md`.
+
+| ADR | Decision | Revisit |
+|-----|----------|---------|
+| 0001 | oxlint alone, no ESLint, no formatter | unowned |
+| 0002 | `LIKE` scanning; the FTS5 table is a capability probe | M07 |
+| 0003 | no separate read store before measurement | M07 |
+| 0004 | in-process counters over Pino, not OTel | M11 |
+| 0005 | hand-rolled UI primitives, not Shadcn/Radix | M06 |
+
+**Verified**: scripted. All 18 relative links in `architecture.md` and
+`tech-stack.md` resolve on disk, and every `ADR-*.md` file in `.specs/adr/` is
+referenced by name from `architecture.md` — checked in both directions, so a
+sixth ADR added later without a link fails the same check. `docs-lint` clean.
+
+**Divergence — numbering**: the task specifies `ADR-0003…ADR-0007`. **ADR-0001
+and ADR-0002 do not exist and never did**; the plan assumed predecessors that
+were never written. Using 0003–0007 would leave two permanent unexplained holes
+at the start of the sequence — spec drift of exactly the kind this milestone
+exists to remove. Numbered 0001–0005 instead. Filenames also carry a kebab title
+(`ADR-0001-oxlint-instead-of-eslint-and-prettier.md`) because
+`.specs/adr/README.md` requires `ADR-<4-digit>-<kebab-title>.md`, which the task
+line omitted.
+
+**What the evidence changed about the plan**:
+
+- The task frames ADR-0004 as "`LIKE` search in place of FTS5". The real
+  situation is worse and is now recorded as such: the FTS5 table is created with
+  `content=""` (contentless — rows must be inserted explicitly), nothing inserts
+  one, and its only reader is the health probe running `MATCH 'health'` to prove
+  the SQLite build has FTS5 compiled in. There is **no index on either dialect**.
+  ADR-0002 names the table a trap M07 must either populate or drop.
+- ADR-0001 could not honestly claim a rejection of ESLint, because none was
+  recorded. Written as a retroactive ratification, with the specific cost named:
+  oxlint runs no type-aware rules, so `no-floating-promises` and
+  `no-misused-promises` are unenforceable, and no formatter runs at all — there
+  is no `.oxlintrc.json` anywhere in the repository.
+- ADR-0005 gained a concrete recommendation rather than a preference, from two
+  failures already on record: `button.tsx`/`card.tsx` shipped as unstyled
+  passthroughs, and the app had no `:focus-visible` indicator at all. Both
+  hand-rolled overlays (`GlobalSearch.tsx:79`, `features/Tasks/index.tsx:485`)
+  handle `Escape` but declare neither `role="dialog"` nor `aria-modal` and trap
+  no focus. The ADR tells M06 to install Radix for overlay primitives only.
+- ADR-0003 and ADR-0004 turned out to lean on each other: ADR-0003 defers the
+  read-store decision to measurement, and ADR-0004 leaves that measurement
+  per-process and volatile. Stated explicitly in both files rather than left for
+  a reader to notice.

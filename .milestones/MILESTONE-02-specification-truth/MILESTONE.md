@@ -64,7 +64,7 @@ a later milestone and must be referenced, not built, here.
       - Files: `.specs/product/architecture.md`
       - Verify: each present-tense mechanism cites a file path.
 
-- [ ] **M02-T03** — Write ADRs for the deviations already made:
+- [x] **M02-T03** — Write ADRs for the deviations already made:
       oxlint in place of ESLint+Prettier; `LIKE` search in place of FTS5 until M07;
       no OpenSearch before measured need; Pino counters in place of OTel until M11;
       hand-rolled components in place of Shadcn/Radix (with the M06 revisit).
