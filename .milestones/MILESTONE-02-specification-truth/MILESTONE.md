@@ -1,13 +1,13 @@
 ---
 id: M02
 title: Specification Truth
-status: in-progress
+status: done
 goal: Every claim in .specs/ is traceable to running code, and every unbuilt ambition is a dated roadmap item owned by a specific milestone.
 depends_on: [M01]
 surfaces: [specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-15
-completed_at: null
+completed_at: 2026-08-15
 ---
 
 # M02 — Specification Truth
@@ -33,14 +33,14 @@ documents costs a day; leaving them wrong taxes every future task.
 
 ## 3. Exit Criteria
 
-- [ ] Every library named in `tech-stack.md` appears in a committed manifest,
+- [x] Every library named in `tech-stack.md` appears in a committed manifest,
       verified by an automated check.
-- [ ] Every architectural mechanism described in the present tense in
+- [x] Every architectural mechanism described in the present tense in
       `architecture.md` can be traced to a file path.
-- [ ] Each deliberate deviation from the original design has an ADR recording
+- [x] Each deliberate deviation from the original design has an ADR recording
       the decision, the reason, and the milestone that would revisit it.
-- [ ] `roadmap.md` links every unbuilt capability to the milestone that owns it.
-- [ ] A `spec-drift` CI check fails when a dependency is added without a
+- [x] `roadmap.md` links every unbuilt capability to the milestone that owns it.
+- [x] A `spec-drift` CI check fails when a dependency is added without a
       corresponding `tech-stack.md` entry.
 
 ## 4. Scope
@@ -86,7 +86,7 @@ a later milestone and must be referenced, not built, here.
       - Files: `README.md`
       - Verify: no README claim contradicts observable behaviour.
 
-- [ ] **M02-T07** — Run `/standards-index` to rebuild `index.yml` and confirm the
+- [x] **M02-T07** — Run `/standards-index` to rebuild `index.yml` and confirm the
       milestone standard is registered.
       - Files: `.specs/standards/index.yml`
       - Verify: index lists every file present in `.specs/standards/`.

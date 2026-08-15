@@ -1,41 +1,118 @@
 # API Architecture Standards
 
-## 1. RESTful Endpoints
+**This system does not serve a REST API.** It serves a contract-first RPC API:
+TypeSpec → protobuf → Connect-RPC, with generated clients in TypeScript and Go.
+Everything below describes that. An earlier revision of this file described
+REST resources, `/api/v1/` URI versioning and a `{ data, meta }` envelope, none
+of which exists — see the note at the end before reintroducing any of it.
 
-- **Nouns, not Verbs**: Use resources (`/api/v1/workspaces`), not verbs
-  (`/getWorkspaces`). Use standard HTTP verbs (`GET`, `POST`, `PUT`, `PATCH`,
-  `DELETE`).
-- **Pluralization**: Force plural resource names (`/users`, `/tasks`).
-- **Nesting Limit**: Max 1 level depth (`/workspaces/{id}/tasks`). For deeper
-  traversal, filter flat resources: `/tasks?workspaceId={id}`.
+## 1. Contract first, always
 
-## 2. Standardized JSON Envelope
+The contract is `packages/shared-contract/main.tsp`. It is the source; the
+TypeScript and Go clients and the server stubs are generated from it.
 
-- **Wrapper**: Wrap all responses in `{ data: any, meta?: any }`. Never return
-  bare primitives or arrays.
-- **Error Shape**: Format errors via strict RFC 7807 problem details inside
-  `error` key (omit `data`).
+- **Never hand-write a type that crosses the wire.** Add it to the TypeSpec
+  contract and regenerate. A type declared in a handler is a type the CLI and
+  GUI cannot see.
+- One `namespace Tasker.<Domain>.V1` per bounded context, with a matching
+  `@package({ name: "tasker.<domain>.v1" })`.
+- Services are declared as interfaces of methods:
 
-## 3. HTTP Status Codes
+  ```tsp
+  interface TaskService {
+    listTasks(request: ListTasksRequest): ListTasksResponse;
+  }
+  ```
 
-- `200 OK`: Standard success.
-- `201 Created`: ONLY after successful `POST`.
-- `204 No Content`: Successful `DELETE` or empty `PUT`.
-- `400 Bad Request`: Validation/Zod failures.
-- `401 Unauthorized`: Missing/invalid token.
-- `403 Forbidden`: RBAC failure (valid token, unauthorized action).
-- `404 Not Found`: Resource missing.
-- `409 Conflict`: Duplicates or locking failures.
+- **Methods, not resources.** `listTasks`, `archiveAgent`, `purgeArtifact`. The
+  REST instinct to force every operation into five HTTP verbs against a noun
+  does not apply and produces worse names here.
+- **Every method takes exactly one request message and returns exactly one
+  response message**, both named after it. This is what keeps a new optional
+  field from being a signature change.
+- All RPCs are **unary**. No streaming method exists in the contract; adding the
+  first one is an architectural decision, not a routine change.
 
-## 4. Versioning
+## 2. Field numbers are permanent
 
-- **URI Versioning**: Require namespace (`/api/v1/...`).
-- **Breaking Changes**: Require new version (e.g., `v2`). Optional fields are
-  non-breaking.
+Every field carries an explicit `@field(n)`. These are protobuf wire numbers.
 
-## 5. Pagination & Cursors
+- **Never renumber a field, and never reuse a retired number.** The wire format
+  keys on the number, not the name; a reused number silently decodes old data
+  into the wrong field.
+- Adding a new **optional** field with a fresh number is backward compatible.
+  Adding a required one, removing a field, or changing its type is not.
+- `@bufbuild/buf` runs breaking-change detection. If it objects, the answer is a
+  new field, not a suppressed warning.
 
-- **Limits**: Cap list endpoints (e.g., 20 or 50 items max). No unbounded data.
-- **Cursors**: Prefer cursor-based (`?cursor=xyz&limit=20`) over offset-based
-  (`?page=2`).
-- **Params**: Consistently use `limit` and `cursor`.
+## 3. Errors are Connect codes
+
+Throw `ConnectError` from `@connectrpc/connect` with an explicit `Code`. Do not
+return a success message carrying an error string, and do not throw bare
+`Error` — that surfaces as `Code.Internal` and leaks the message.
+
+| Code | Use for |
+|---|---|
+| `Code.InvalidArgument` | Zod validation failure, malformed id, bad enum |
+| `Code.NotFound` | The row does not exist, or the caller may not know it does |
+| `Code.PermissionDenied` | Authenticated, but not a member of the org or lacking the role |
+| `Code.Unauthenticated` | No session — `requireUserId` raises this |
+| `Code.AlreadyExists` | Uniqueness conflict |
+| `Code.FailedPrecondition` | The state machine forbids this transition right now |
+
+Prefer `NotFound` over `PermissionDenied` when revealing existence is itself a
+leak across org boundaries.
+
+The two Elysia route groups (`/api/auth/*`, `/api/debug/*`) are ordinary HTTP
+and **do** use status codes, with RFC 7807 bodies from `lib/problemDetails.ts`.
+That is the only place HTTP semantics apply.
+
+## 4. Versioning lives in the namespace
+
+Version is part of the protobuf package: `tasker.tasks.v1`. There is no
+`/api/v1/` URI segment, because there are no URI paths to put it in.
+
+A breaking change means a `v2` namespace running alongside `v1`, not an edit to
+`v1`. Optional-field additions are not breaking (see §2).
+
+## 5. Pagination
+
+The contract defines the shapes once — `PageRequest { limit, cursor, filter,
+sort }` and `PageResponse { nextCursor, totalCount }` — and every list method
+uses them. Do not invent per-endpoint pagination parameters.
+
+- **Cursor-based, never offset.** Cursors are opaque base64 to the caller;
+  `db/query-builder.ts` encodes the sort column, its value and the id, so a
+  cursor minted under one sort cannot be replayed under another.
+- **The server caps the page size.** `query-builder.ts:183` clamps to
+  `min(max(limit || 50, 1), 100)`. A caller asking for 10,000 rows gets 100.
+  Never add a list method that returns unbounded data.
+- `totalCount` is optional and is computed against the same filter as the page.
+
+## 6. Authorization is per handler
+
+There is no gateway that authorises requests. Every handler does it, in this
+order, before touching data:
+
+1. `requireUserId(contextValues)` — raises `Unauthenticated`.
+2. `assertOrgMember(db, userId, orgId)` or `getOrgMemberRole` for role-gated
+   operations — raises `PermissionDenied`.
+
+Omitting either in a new handler is a cross-tenant data leak, not a style
+issue. `lib/authz.ts` is the only place these rules live.
+
+## 7. Validation at the boundary
+
+Parse every request with Zod at the top of the handler and work with the parsed
+value. Protobuf guarantees the shape, not the meaning: it cannot express "this
+string is a uuid", "this range is non-empty", or "this status is reachable from
+that one".
+
+---
+
+**On the REST standard this replaced.** The previous version of this file
+specified resource URIs, HTTP verb semantics, a `{ data, meta }` envelope and
+URI versioning. None of it was ever built, and this file is auto-injected for
+API work — so an agent asked to add an endpoint was reading instructions for a
+different architecture. If REST is ever wanted as a public edge in front of the
+RPC contract, that is a decision for an ADR and a milestone, not a standard.

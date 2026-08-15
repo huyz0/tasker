@@ -347,3 +347,71 @@ observable behaviour", which is not decidable in general. Read as: every claim
 that *can* be executed was executed — the table above. Claims about intent
 ("built natively for AI Agents") are left as intent and labelled where they read
 as fact.
+
+---
+
+## M02-T07 — Rebuild the standards index
+
+**Date**: 2026-08-15
+**Status**: done
+**Approach**: Confirm the index covers `.specs/standards/` both ways, then read
+each `description` against the file it points at — the descriptions are tier-0
+routing text, so an inaccurate one misroutes work whether or not the file list
+is complete.
+
+**Changed**: `.specs/standards/index.yml` (header + 8 descriptions),
+`api-standard.md` (rewritten), `testing-standard.md`, `frontend-standard.md`,
+`coding-standard.md`, and `.specs/product/roadmap.md` (one stale row).
+
+**Verified**: 12 files, 12 entries, 0 mismatches in both directions;
+`milestone-standard` is registered. `moon run tasker:skills-check` passes — its
+standards-index rule already enforces this drift, so the criterion now has a
+gate behind it rather than a one-time check. `moon check --all` 23 tasks green.
+
+**Divergence — the command**: the task says "Run `/standards-index`". That
+command no longer exists; it was folded into `/standards-manage` in `index` mode
+during the harness consolidation. The index was also already complete, because
+`skills-check` has enforced file/entry parity since that consolidation. So the
+mechanical half of this task was a no-op and the real work was the content.
+
+**What the evidence changed about the plan**: reading the descriptions against
+their files found the standards themselves contradicting the code — the same
+defect as `tech-stack.md`, one directory over, and worse because these files are
+auto-injected.
+
+- **`api-standard.md` described a REST API that does not exist.** Resource URIs,
+  HTTP verb semantics, `/api/v1/` URI versioning, a `{ data, meta }` envelope.
+  The system serves contract-first Connect-RPC from
+  `packages/shared-contract/main.tsp`. An agent asked to add an endpoint was
+  reading instructions for a different architecture — and `AGENTS.md` §3 routes
+  API work to this file automatically. Rewritten around what exists: TypeSpec
+  first, permanent `@field(n)` wire numbers, `ConnectError` codes (the six the
+  codebase actually throws), namespace versioning, the `PageRequest`/
+  `PageResponse` pair with the server-side clamp at
+  `query-builder.ts:183`, and per-handler authorization via `lib/authz.ts`.
+- **Three standards told agents to run forbidden commands.** `npx moon run` in
+  `testing-standard.md`, `npx moon check --all` in `coding-standard.md`, and
+  `npm run storybook` in `frontend-standard.md`. `AGENTS.md` forbids `npm`,
+  `npx`, `yarn` and `pnpm` outright. Two always-loaded documents were in direct
+  contradiction.
+- **The coverage standard undershot the enforced gate.** It specified an 80%
+  minimum and a 90% target; `apps/gui/vitest.config.ts:16-20` fails the build
+  below **95%**. An agent following the standard would stop at 80% and then
+  watch CI reject it.
+- `frontend-standard.md` headed its architecture section "React/Next.js/Vite".
+  Next.js is not installed and SSR is dropped. It also told agents to mock with
+  MSW, which is not installed.
+
+**Exit criterion 4 was not owned by any task.** "`roadmap.md` links every
+unbuilt capability to the milestone that owns it" — no task in the breakdown
+touched `roadmap.md`. Checked it directly: 27 capability rows, 0 without an
+owner, so the criterion held. One row was stale post-M01 — universal search was
+still described as navigating to routes that do not exist, which M01 fixed
+(`GlobalSearch.tsx:55` filters unresolvable results). Corrected, with M07 left
+owning the missing index.
+
+**Scope note**: T07's file list is `index.yml` alone. Rewriting `api-standard.md`
+goes beyond it. Done deliberately: the milestone's goal is "every claim in
+`.specs/` is traceable to running code", and closing it while the auto-injected
+API standard describes REST would have left the largest remaining instance of
+exactly the defect the milestone exists to remove.

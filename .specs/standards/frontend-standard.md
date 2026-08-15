@@ -1,6 +1,9 @@
 # Frontend Specific Standards
 
-## 1. Application Architecture (React/Next.js/Vite)
+## 1. Application Architecture (React + Vite)
+
+**Next.js is not installed and there is no server-side rendering.** The GUI is a
+client-rendered SPA; see `.specs/product/tech-stack.md`.
 
 - **Container / Presentational**: Separate components fetching data/state
   ("Container") from UI-focused ones ("Presentational").
@@ -9,7 +12,7 @@
 - **Composition over Booleans**: Prefer `<Select.Trigger>` and explicit variants
   (`<Button variant="destructive">`) instead of excessive boolean props for UI
   customization.
-- **Storybook**: MANDATORY. All newly created or modified UI components, primitives, and screens MUST have a corresponding `.stories.tsx` file generated or updated. Document all visual states (Empty, Loading, Error, Populated). Launch the visual playground locally by running `npm run storybook` from within `apps/gui`.
+- **Storybook**: MANDATORY. All newly created or modified UI components, primitives, and screens MUST have a corresponding `.stories.tsx` file generated or updated. Document all visual states (Empty, Loading, Error, Populated). Launch the visual playground with `cd apps/gui && bun run storybook` (port 6006).
 
 ## 2. State Management Rules
 

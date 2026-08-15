@@ -11,20 +11,22 @@
 
 ## 2. Test Coverage Goals
 
-- **Minimum Base**: 80% combined (Statements/Branches/Functions).
-- **Target Strategy**: 90% strictly for Backend Bounded Contexts (Domain logic)
-  and complex Frontend hooks.
-- **Enforcement**: CI fails PRs if baseline drops.
-- **Agent Rule**: AI Agents MUST run local testing suites
-  (`npx moon run <project>:test` or `.agents/skills/local-ci-run/`) to
-  mechanically verify test passes before moving issues to 'Done'.
+- **Enforced gate: 95%** lines, branches, functions and statements
+  (`apps/gui/vitest.config.ts:16-20`). This is a build failure, not a target —
+  a change that drops coverage below it does not merge.
+- Aim above the gate rather than at it. A module sitting at exactly 95% fails
+  the moment anyone adds an untested line.
+- **Agent Rule**: run the suite locally before calling a task done —
+  `moon run <project>:test`, or `/local-ci-run` for the whole pipeline. Never
+  `npx`, `npm`, `yarn` or `pnpm`; this repository is bun-only and `AGENTS.md`
+  forbids the others outright.
 
 ## 3. Focus Areas
 
-- **Unit (Vitest)**: Fast, single-purpose testing. Bulk of the 80% coverage
-  goal.
-- **Integration**: Boundary tests (API Handlers against DB, React against Mock
-  Handlers).
+- **Unit (Vitest)**: Fast, single-purpose testing. Bulk of the coverage.
+- **Integration**: Boundary tests — handlers against a real SQLite database,
+  React against the generated ConnectRPC clients mocked directly. **MSW is not
+  installed**; do not reach for it.
 - **E2E (Playwright)**: Critical 'Happy Paths' only. Do not rely heavily on E2E
   for percentage goals due to runtime costs.
 

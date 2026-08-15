@@ -1,33 +1,41 @@
-# Agent OS Standards Index
+# Standards Index
+#
+# Tier-0 routing text: `description` is what a skill reads to decide whether a
+# standard binds the task in front of it, so a description that misdescribes its
+# file misroutes the work. `AGENTS.md` §3 carries the common surface → standard
+# routes; this index is the full catalogue behind them.
+#
+# `tasker:skills-check` fails when a file here has no entry, or an entry here
+# names a file that is not present.
 
 standards:
   - id: coding-standard
     title: Coding Standards
-    description: Core rules for file size, dependencies, cohesion, and linting.
+    description: File size and cohesion limits, comment policy, and the bun-only toolchain rule — npm, npx, yarn and pnpm are forbidden.
     file: coding-standard.md
   - id: testing-standard
     title: Testing & QA Standards
-    description: Requirements for Test-Driven Development (TDD) workflows and 80-90% coverage targets.
+    description: Red-green-refactor workflow and the enforced 95% coverage gate; what belongs in unit, integration and end-to-end tests.
     file: testing-standard.md
   - id: ui-testing-standard
     title: UI Testing Standards
-    description: Rules for Playwright end-to-end specs, selectors, and Storybook coverage.
+    description: Playwright end-to-end specs, selector policy (never assert CSS classes), and the per-page axe accessibility assertion.
     file: ui-testing-standard.md
   - id: ui-ux-standard
     title: UI/UX Standards
-    description: Standards for accessible, consistent, and responsive design systems.
+    description: Semantic design tokens, WCAG AA contrast, mobile-first breakpoints, reduced motion, and status never conveyed by colour alone.
     file: ui-ux-standard.md
   - id: frontend-standard
     title: Frontend Specific Standards
-    description: Architectural and best-practice standards for React/Next.js/Vite frontend apps.
+    description: React + Vite SPA architecture — container/presentational split, feature colocation, composition over boolean props, mandatory Storybook stories.
     file: frontend-standard.md
   - id: security-standard
     title: Security Standards
-    description: Critical security practices for vulnerability mitigation, RBAC, and input validation.
+    description: Input validation, org-scoped authorization, session and token handling, and what must never reach a log or an error body.
     file: security-standard.md
   - id: api-standard
     title: API Architecture Standards
-    description: Strict guidelines for designing, exposing, and consuming REST APIs.
+    description: Contract-first RPC — TypeSpec, protobuf field numbers, Connect error codes, cursor pagination, per-handler authorization. Not REST.
     file: api-standard.md
   - id: git-workflow-standard
     title: Git & Workflow Standards
@@ -35,7 +43,7 @@ standards:
     file: git-workflow-standard.md
   - id: observability-standard
     title: Observability & Error Handling
-    description: Telemetry, JSON structured logging, and standardized HTTP Problem Detail errors.
+    description: Pino structured logging, in-process counters, request correlation ids, and RFC 7807 problem details on the HTTP routes.
     file: observability-standard.md
   - id: milestone-standard
     title: Milestone Delivery Standards

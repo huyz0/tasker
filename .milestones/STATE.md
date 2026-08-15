@@ -1,8 +1,8 @@
 ---
-active_milestone: M02
-active_task: M02-T07
+active_milestone: M03
+active_task: null
 last_updated: 2026-08-15
-last_commit: f79e188
+last_commit: 49f7a99
 blocked: false
 blocker: null
 ---
@@ -15,13 +15,13 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M02 — Specification Truth
-- **Task**: M02-T07 — rebuild the standards index
-- **Branch**: `feature/m02-specification-truth`
-- **Command to continue**: `/milestone-deliver M02`
+- **Milestone**: M03 — IAM Correctness & Scale (not started)
+- **Task**: none in flight
+- **Branch**: `feature/m02-specification-truth` holds M02 and is **not merged**
+- **Command to continue**: `/milestone-deliver M03`
 
-M01 is done and merged: `main` is at `5c4ec47`, which carries M01 plus the
-agent-harness consolidation. CI is green on all six jobs.
+M02 closed 7/7 tasks and 5/5 exit criteria. M03 and M05 both have their
+dependencies satisfied and can run in parallel on separate branches.
 
 ## How to resume
 
@@ -39,7 +39,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | ID  | Milestone                      | Status | Depends on | Tasks | Done |
 |-----|--------------------------------|--------|------------|-------|------|
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
-| M02 | Specification Truth            | in-progress | M01   | 7     | 6    |
+| M02 | Specification Truth            | done   | M01        | 7     | 7    |
 | M03 | IAM Correctness & Scale        | todo   | M01        | 14    | 0    |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |
@@ -80,6 +80,57 @@ branches. M02 is intentionally cheap and unblocking — it can run alongside
 anything.
 
 ## Handoff notes
+
+**2026-08-15 — M02 Specification Truth closed (7/7 tasks, 5/5 exit criteria).**
+
+`.specs/` now describes the system that exists. What changed, and the three
+things a next session would otherwise rediscover the hard way:
+
+1. **`moon run :spec-drift` is a gate now** (`moon check --all` is 23 tasks;
+   CI Workspace job runs it). It compares every manifest identifier against the
+   **In Use** tables of `tech-stack.md`, both directions, and has 21 tests.
+   Adding a dependency without a table row fails the build — verified by
+   injecting `date-fns`. Prose does not count: the check reads table cells, and
+   four of the seven drifts it found on its first run were entries the document
+   described in prose the tables did not carry.
+2. **Do not conclude "unused" from a missing import.** M02-T01 marked
+   `better-sqlite3` and `@storybook/addon-onboarding` as removal candidates on
+   that reasoning. Both are load-bearing: `drizzle-kit` does
+   `import("better-sqlite3")` inside its own bundle for the sqlite dialect and
+   declares it as no kind of peer, and the addon is registered at
+   `apps/gui/.storybook/main.ts:13`. Removing the first would have broken
+   `drizzle-kit push --config drizzle.sqlite.config.ts`.
+3. **`api-standard.md` was rewritten and its previous contents are void.** It
+   described REST — resource URIs, HTTP verb semantics, `/api/v1/` versioning, a
+   `{ data, meta }` envelope — for a system that serves contract-first
+   Connect-RPC. It is auto-injected for API work by `AGENTS.md` §3, so any past
+   session that added an endpoint was reading the wrong architecture. Three
+   other standards told agents to run `npx`/`npm`, which `AGENTS.md` forbids,
+   and `testing-standard.md` specified 80% coverage against a 95% enforced gate.
+
+Five ADRs now exist in `.specs/adr/` (0001–0005), numbered from 1 rather than
+the 0003–0007 the plan assumed — its predecessors were never written. They
+record oxlint-only linting, `LIKE` search, no separate read store, in-process
+counters over OTel, and hand-rolled UI primitives. Each names what it forecloses
+and the milestone that would reverse it.
+
+**Hedged, deliberately**: exit criterion 5 says a *CI* check fails on an
+undocumented dependency. The check is verified locally by injection and the CI
+step is committed, but **no CI run has been observed** — this branch is not
+pushed. Treat it as configuration until a run is seen, the same distinction M01
+had to make about `gui:e2e`.
+
+**Deliberately deferred**: a permanent gate for `NAVIGATION.md`. Its route map
+was verified against `App.tsx` by a throwaway script (14 nodes, 14 routes) and
+will drift the moment someone adds a route. The same argument that justifies
+`spec-drift` applies, but M02's exit criteria name only the dependency check.
+Flagged for **M05**, which is the milestone that adds routes.
+
+**Two open decisions handed to later milestones**: `/settings` is a route that
+renders a placeholder and that nothing links to — M05 either gives it an entry
+point or deletes it. And the `search_index` FTS5 table is contentless with no
+writer, read only by the health probe — M07 must populate it or drop it, because
+a table named `search_index` that indexes nothing is a trap.
 
 **2026-08-15 — The gates are tested now.**
 

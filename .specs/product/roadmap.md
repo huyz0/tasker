@@ -47,7 +47,7 @@ The original MVP scope, with the milestone that owns each remaining gap.
 | Project ↔ repository links | Delivered | — |
 | Tasks displayed with linked pull requests | Delivered | — |
 | Build and deployment tracking | Live pass-through implemented; surfaced only in the project repository panel | M05 |
-| Universal search | Implemented; every result navigates to a route that does not exist | M01, M07 |
+| Universal search | Delivered — M01 made every shown result resolve to a real route, filtering out those that cannot. Still a `LIKE` scan with no index | M07 |
 
 ---
 
