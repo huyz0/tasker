@@ -1,6 +1,6 @@
 ---
 active_milestone: M06
-active_task: M06-T12
+active_task: M06-T13
 last_updated: 2026-08-15
 last_commit: 82b6a0f
 blocked: false
@@ -16,7 +16,7 @@ blocker: null
 ## Now
 
 - **Milestone**: M06 — UX, Design System & A11y
-- **Task**: M06-T11 — empty, loading and error states
+- **Task**: M06-T13 — Storybook a11y at `error`, wired into CI
 - **Branch**: `main`, at the user's explicit instruction. This overrides
   `git-workflow-standard.md` and `milestone-standard.md` §5, which both require
   a `feature/m06-*` branch; recorded so the next session knows it was a decision
@@ -47,7 +47,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M03 | IAM Correctness & Scale        | done   | M01        | 16    | 16   |
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
 | M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
-| M06 | UX, Design System & A11y       | in-progress | M05   | 13    | 11   |
+| M06 | UX, Design System & A11y       | in-progress | M05   | 13    | 12   |
 | M07 | Read-Path Scale                | todo   | M05        | 11    | 0    |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |

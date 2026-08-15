@@ -194,3 +194,41 @@ test('a clean component produces no findings at all', () => {
   const found = lint(`export const T = ({ n }: { n: string }) => <button className="bg-card text-foreground">{n}</button>;`);
   assert.deepEqual(found, []);
 });
+
+test('tokens: flags an opacity modifier on a border-width utility', () => {
+  // The exact class the sidebar footer carried: Tailwind generates nothing for
+  // it, so the element had no top border at all (M06-T12).
+  const found = lint(`export const T = () => <div className="p-4 border-t/50 mt-auto" />;`, { only: 'tokens' });
+  assert.deepEqual(rules(found), ['tokens']);
+  assert.match(found[0].msg, /does nothing/);
+});
+
+test('tokens: flags an opacity modifier on a radius utility', () => {
+  const found = lint(`export const T = () => <div className="rounded-lg/50" />;`, { only: 'tokens' });
+  assert.deepEqual(rules(found), ['tokens']);
+});
+
+test('tokens: does NOT flag an opacity modifier on a colour', () => {
+  // `border-border/50` and `bg-primary/10` are the correct spelling, and a rule
+  // that flagged them would be wrong far more often than right.
+  const found = lint(
+    `export const T = () => <div className="border-t border-border/50 bg-primary/10 ring-primary/50" />;`,
+    { only: 'tokens' },
+  );
+  assert.deepEqual(found, []);
+});
+
+test('tokens: flags a class name assembled at runtime', () => {
+  // Tailwind scans source text and never evaluates the template, so this
+  // element renders with no background at all.
+  const found = lint('export const T = ({ tone }) => <div className={`bg-${tone}-subtle`} />;', { only: 'tokens' });
+  assert.deepEqual(rules(found), ['tokens']);
+  assert.match(found[0].msg, /never generates it/);
+});
+
+test('tokens: does NOT flag interpolation of a whole class name', () => {
+  // The fix `statusStyles.ts` uses: the table holds complete class strings, so
+  // every one of them appears verbatim in the source Tailwind scans.
+  const found = lint('export const T = ({ cls }) => <div className={`px-2 ${cls}`} />;', { only: 'tokens' });
+  assert.deepEqual(found, []);
+});

@@ -134,7 +134,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
-          <div className="p-4 border-t/50 mt-auto">
+          {/* This carried an opacity modifier on the border-width utility,
+              which Tailwind never generates — so the sidebar footer had no top
+              border at all. The opacity belongs on the colour (M06-T12). */}
+          <div className="p-4 border-t border-border/50 mt-auto">
              <div className="flex items-center justify-between gap-3 py-2 px-3 text-sm text-muted-foreground">
                 {/* Was a hardcoded "Tuong Nguyen / Admin" - the same name and
                     the same role for every account that ever signed in. */}

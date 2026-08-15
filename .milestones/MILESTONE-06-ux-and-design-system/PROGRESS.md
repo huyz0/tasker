@@ -411,3 +411,31 @@ standard and wonder which one is wrong.
   downstream — also proving nothing. Only the third, one RPC per view with the
   abort counted, said anything.
 - **Next**: M06-T12
+
+## M06-T12 — Class names that do nothing
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `components/layout/AppShell.tsx`, `scripts/design-lint.mjs`
+  (two new `tokens` rules, + 5 tests — 22 total)
+- **Verified**: in a real browser, an element carrying the old class computes
+  `border-top-width: 0px`; the fixed one computes `1px solid` at 50% alpha. The
+  lint rules were proved by injecting a probe component that they flagged, and
+  the probe's fourth line — the *correct* spellings `border-border/50`,
+  `bg-primary/10`, `ring-primary/50` — was not flagged. `design-lint` — 128
+  files, 0 findings. `moon check --all` — 25 pass.
+- **Notes**: `border-t/50` is not a subtle border. Tailwind's `/opacity`
+  modifier applies to colour utilities, and `border-t` sets a *width*, so the
+  class was never generated and the sidebar footer had no top border at all.
+  Nothing failed and nothing warned — a missing divider reads as a design
+  choice, which is why this kind of defect survives.
+  The sweep found exactly one instance, so the rule is the deliverable rather
+  than the fix. Two rules, because there are two ways to write a class the
+  build never sees: an opacity modifier on a non-colour utility, and a class
+  assembled at runtime (`bg-${tone}-subtle`) — Tailwind scans source *text* and
+  never evaluates the template. The second is the mistake `statusStyles.ts`
+  was written to avoid in M06-T01, now enforced rather than remembered.
+  The first run of the fixed lint still reported `border-t/50` in `AppShell` —
+  from the comment I had just written explaining the fix. Reworded; a gate that
+  reads comments as code is a gate people learn to ignore.
+- **Next**: M06-T13

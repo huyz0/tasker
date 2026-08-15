@@ -85,6 +85,29 @@ const RE_ABSOLUTE = new RegExp(`(?<![\\w-])${TW_PREFIX}-(?:white|black)\\b`, 'g'
 const RE_HEX = /(?<![\w&#])#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}(?:[0-9a-fA-F]{2})?)?\b/g;
 const RE_FONT = /font-family\s*:\s*(?!.*var\()/;
 
+/**
+ * Utilities that set a *width, radius or size* — not a colour. Tailwind's
+ * `/opacity` modifier only applies to colour utilities, so appending one here
+ * produces a class Tailwind never generates: the declaration silently does
+ * nothing at all.
+ *
+ * The sidebar footer carried `border-t/50` and therefore had no top border of
+ * any kind. Nothing failed, nothing warned, and it read as an intentionally
+ * subtle divider that was simply absent (M06-T12).
+ */
+const RE_NOOP_OPACITY =
+  /(?<![\w-])(border-[trblxy]|border-[0248]|rounded(?:-[a-z]+)?|divide-[xy]|ring-[0248]|outline-[0248]|shadow-(?:sm|md|lg|xl|2xl|inner|none))\/\d+/g;
+
+/**
+ * A class name assembled at runtime.
+ *
+ * Tailwind scans source *text*: it never evaluates the template, so
+ * `bg-${tone}-subtle` generates nothing and the element renders unstyled. The
+ * fix is a lookup table holding whole class names — which is exactly why
+ * `statusStyles.ts` maps each tone to a complete string (M06-T01).
+ */
+const RE_INTERPOLATED_CLASS = /(?<![\w-])(?:bg|text|border|ring|fill|stroke|from|via|to|shadow|divide)-(?:[a-z0-9-]*)?\$\{/g;
+
 function checkTokens(file, lines) {
   if (isFixture(file)) return;
   // index.css is where tokens are *defined*, so raw values are the point there.
@@ -98,6 +121,10 @@ function checkTokens(file, lines) {
     for (const m of line.matchAll(RE_HEX))
       add('tokens', file, i + 1, `raw hex \`${m[0]}\` — use a semantic token`);
     if (RE_FONT.test(line)) add('tokens', file, i + 1, 'hardcoded font-family — use a token');
+    for (const m of line.matchAll(RE_NOOP_OPACITY))
+      add('tokens', file, i + 1, `\`${m[0]}\` is not a utility — /opacity applies to colours, so this does nothing`);
+    for (const m of line.matchAll(RE_INTERPOLATED_CLASS))
+      add('tokens', file, i + 1, `\`${m[0]}…\` is built at runtime — Tailwind scans source text and never generates it`);
   });
 }
 

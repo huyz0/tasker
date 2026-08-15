@@ -107,7 +107,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: all `features/*`
       - Verify: no view renders an unexplained blank region.
 
-- [ ] **M06-T12** — Fix the invalid `border-t/50` utility and sweep for other
+- [x] **M06-T12** — Fix the invalid `border-t/50` utility and sweep for other
       no-op class names.
       - Files: `apps/gui/src/components/layout/AppShell.tsx`
       - Verify: the token lint reports no unknown utilities.
