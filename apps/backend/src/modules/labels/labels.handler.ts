@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -51,7 +51,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
 
   return {
     async createLabel(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateLabelSchema.parse(req);
       await assertOrgWriter(db, userId, parsed.orgId);
 
@@ -90,7 +90,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
     },
 
     async updateLabel(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateLabelSchema.parse(req);
 
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
@@ -115,7 +115,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
     },
 
     async listLabels(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, req.orgId);
 
@@ -126,7 +126,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
     },
 
     async attachLabel(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = AttachLabelSchema.parse(req);
       const orgId = await getEntityOrgId(db, parsed.entityId, parsed.entityType);
       await assertOrgWriter(db, userId, orgId);
@@ -175,7 +175,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
     },
 
     async detachLabel(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = AttachLabelSchema.parse(req);
       const orgId = await getEntityOrgId(db, parsed.entityId, parsed.entityType);
       await assertOrgWriter(db, userId, orgId);
@@ -196,7 +196,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
     },
 
     async listEntityLabels(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = EntityRefSchema.parse(req);
       const orgId = await getEntityOrgId(db, parsed.entityId, parsed.entityType);
       await assertOrgMember(db, userId, orgId);

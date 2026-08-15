@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -75,7 +75,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
   return {
     async createFolder(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateFolderSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
       await assertOrgWriter(db, userId, orgId);
@@ -106,7 +106,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
 
     async updateFolder(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
       await assertOrgWriter(db, userId, orgId);
@@ -123,7 +123,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
 
     async createArtifact(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateArtifactSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
       await assertOrgWriter(db, userId, orgId);
@@ -146,7 +146,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
 
     async updateArtifactContent(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateArtifactContentSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
       await assertOrgWriter(db, userId, orgId);
@@ -167,7 +167,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     },
 
     async linkTaskArtifact(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = LinkTaskArtifactSchema.parse(req);
       const taskOrgId = await getTaskOrgId(db, parsed.taskId);
       const artifactOrgId = await getArtifactOrgId(db, parsed.artifactId);
@@ -188,7 +188,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       return { link: payload };
     },
     async listFolders(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       if (!req.projectId) throw new ConnectError("projectId is required", Code.InvalidArgument);
       const orgId = await getProjectOrgId(db, req.projectId);
       await assertOrgMember(db, userId, orgId);
@@ -206,7 +206,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       };
     },
     async listArtifacts(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       if (!req.folderId) throw new ConnectError("folderId is required", Code.InvalidArgument);
       const orgId = await getFolderOrgId(db, req.folderId);
       await assertOrgMember(db, userId, orgId);
@@ -224,7 +224,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       };
     },
     async archiveArtifact(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ArchiveArtifactSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
       await assertOrgAdmin(db, userId, orgId);
@@ -236,7 +236,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async restoreArtifact(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = RestoreArtifactSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId, true);
       await assertOrgAdmin(db, userId, orgId);
@@ -248,7 +248,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async archiveFolder(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ArchiveFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
       await assertOrgAdmin(db, userId, orgId);
@@ -260,7 +260,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async restoreFolder(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = RestoreFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId, true);
       await assertOrgAdmin(db, userId, orgId);
@@ -272,7 +272,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async purgeArtifact(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = PurgeArtifactSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId, true);
       await assertOrgAdmin(db, userId, orgId);
@@ -299,7 +299,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async purgeFolder(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = PurgeFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId, true);
       await assertOrgAdmin(db, userId, orgId);

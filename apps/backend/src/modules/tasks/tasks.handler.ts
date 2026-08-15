@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not, isNull } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getTaskOrgId } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getTaskOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -110,7 +110,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
     async getTaskType(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = GetTaskTypeSchema.parse(req);
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
       const result = await db.select().from(types).where(eq((types as any).id, parsed.id)).limit(1);
@@ -131,7 +131,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       };
     },
     async createTaskType(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateTaskTypeSchema.parse(req);
       await assertOrgWriter(db, userId, parsed.orgId);
 
@@ -176,7 +176,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       return { taskType: taskTypeResp };
     },
     async listTaskTypes(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       if (!(req as any)?.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       const parsed = ListTaskTypesSchema.parse(req);
       await assertOrgMember(db, userId, parsed.orgId);
@@ -196,7 +196,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       };
     },
     async updateTaskType(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateTaskTypeSchema.parse(req);
 
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
@@ -227,7 +227,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       return { taskType: taskTypeResp };
     },
     async createTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateTaskStatusSchema.parse(req);
 
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
@@ -256,7 +256,7 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       return { status: payload };
     },
     async createTaskStatusTransition(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateTaskStatusTransitionSchema.parse(req);
 
       const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
@@ -355,7 +355,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
     async createTask(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateTaskSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
       await assertOrgWriter(db, userId, orgId);
@@ -438,7 +438,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return { task: payload };
     },
     async listTasks(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       if (!req.projectId) throw new ConnectError("projectId is required", Code.InvalidArgument);
       const orgId = await getProjectOrgId(db, req.projectId);
       await assertOrgMember(db, userId, orgId);
@@ -456,7 +456,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       };
     },
     async assignTask(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = AssignTaskSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgWriter(db, userId, orgId);
@@ -515,7 +515,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = AddTaskReviewerSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgWriter(db, userId, orgId);
@@ -539,7 +539,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async removeTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = RemoveTaskReviewerSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgWriter(db, userId, orgId);
@@ -549,7 +549,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async listTaskReviewers(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ListTaskReviewersSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgMember(db, userId, orgId);
@@ -559,7 +559,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return { reviewers: rows };
     },
     async updateTask(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateTaskSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgWriter(db, userId, orgId);
@@ -589,7 +589,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return { task };
     },
     async updateTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateTaskStatusSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgWriter(db, userId, orgId);
@@ -610,7 +610,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return { task };
     },
     async deleteTask(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = DeleteTaskSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgAdmin(db, userId, orgId);
@@ -622,7 +622,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async restoreTask(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = RestoreTaskSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId, true);
       await assertOrgAdmin(db, userId, orgId);
@@ -634,7 +634,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async purgeTask(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = PurgeTaskSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId, true);
       await assertOrgAdmin(db, userId, orgId);

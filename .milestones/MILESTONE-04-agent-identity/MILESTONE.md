@@ -64,7 +64,7 @@ fixed scope vocabulary), audit persistence (M08), OAuth device flow.
       - Files: `db/schema.*.ts`, `drizzle-sqlite/`, `drizzle-mysql/`
       - Verify: migrations apply cleanly on both dialects.
 
-- [ ] **M04-T03** — Introduce a `Principal` type (`user` or `agent`) and replace
+- [x] **M04-T03** — Introduce a `Principal` type (`user` or `agent`) and replace
       `requireUserId` with `requirePrincipal`, keeping a `requireUser` for
       human-only endpoints.
       - Files: `apps/backend/src/lib/authz.ts`, `modules/auth/session.ts`

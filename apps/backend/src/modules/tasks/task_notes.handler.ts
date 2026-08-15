@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, assertOrgWriter, getTaskOrgId } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, getTaskOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schema ---
@@ -31,7 +31,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
 
   return {
     async createTaskNote(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateTaskNoteSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
       await assertOrgWriter(db, userId, orgId);
@@ -61,7 +61,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       return { taskNote: noteResp };
     },
     async updateTaskNote(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateTaskNoteSchema.parse(req);
 
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
@@ -77,7 +77,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       return { taskNote: updated };
     },
     async deleteTaskNote(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = DeleteTaskNoteSchema.parse(req);
 
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
@@ -92,7 +92,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async listTaskNotes(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       if (!req.taskId) throw new ConnectError("taskId is required", Code.InvalidArgument);
       const orgId = await getTaskOrgId(db, req.taskId);
       await assertOrgMember(db, userId, orgId);

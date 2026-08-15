@@ -6,7 +6,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import crypto from "node:crypto";
 import { logger } from "../../lib/logger";
-import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getRepositoryLinkOrgId } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getRepositoryLinkOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 import { encryptToken, decryptToken } from "../../lib/crypto";
 import {
@@ -88,7 +88,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
   
   return {
     async addRepositoryLink(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = AddRepositoryLinkSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
       await assertOrgAdmin(db, userId, orgId);
@@ -190,7 +190,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
     
     async removeRepositoryLink(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = RemoveRepositoryLinkSchema.parse(req);
       const orgId = await getRepositoryLinkOrgId(db, parsed.repositoryLinkId);
       await assertOrgAdmin(db, userId, orgId);
@@ -206,7 +206,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
 
     async listRepositoryLinks(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ListRepositoryLinksSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
       await assertOrgMember(db, userId, orgId);
@@ -232,7 +232,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
     
     async syncPullRequests(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = SyncPullRequestsSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
       await assertOrgWriter(db, userId, orgId);
@@ -340,7 +340,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
 
     async listPullRequests(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ListPullRequestsSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
       await assertOrgMember(db, userId, orgId);
@@ -363,7 +363,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
 
     async listBuilds(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ListBuildsSchema.parse(req);
       const orgId = await getRepositoryLinkOrgId(db, parsed.repositoryLinkId);
       await assertOrgMember(db, userId, orgId);
@@ -393,7 +393,7 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
     },
 
     async listDeployments(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ListDeploymentsSchema.parse(req);
       const orgId = await getRepositoryLinkOrgId(db, parsed.repositoryLinkId);
       await assertOrgMember(db, userId, orgId);

@@ -90,3 +90,45 @@ Append-only. Newest entry at the bottom.
   run, so `expires_at` was made nullable in the file to confirm the suite goes
   red (it did — one failure, the right one) before being restored.
 - **Next**: M04-T03
+
+---
+
+## M04-T03 — Introduce a `Principal` type
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `src/modules/auth/session.ts` (`Principal`, `currentPrincipalKey`),
+  `src/lib/authz.ts` (`requirePrincipal`, `requireUser`), 95 call sites across
+  12 handler modules, `src/lib/principal.test.ts` (new, 9 tests),
+  `src/lib/authz.test.ts` (two fixtures)
+- **Verified**: `moon run backend:test` — 464 pass / 7 skip / 0 fail (was 455).
+  `moon check --all` — 23 tasks pass.
+- **The rename is the security control.** `requireUserId` became `requireUser`,
+  which *refuses* agent principals, rather than becoming `requirePrincipal`,
+  which would accept them. Every one of the 95 existing call sites is therefore
+  closed to tokens by construction; an endpoint opens to agents only when
+  someone deliberately moves it to `requirePrincipal` in T06/T07. Deny-by-default
+  falls out of the rename instead of depending on anyone remembering — the same
+  shape as M03's viewer sweep.
+- **`requireUser` answers `PermissionDenied`, not `Unauthenticated`,** to an
+  agent. The agent *is* authenticated; a 401 would tell a correctly-credentialled
+  caller to authenticate again, which for an autonomous worker is an endless
+  retry loop rather than an error.
+- **`Principal` is a discriminated union, not one shape with optional fields.**
+  An agent has no `userId` and a user has no `scopes`; merging them would make
+  every consumer check a field that is only sometimes meaningful.
+- **Divergence from "existing human tests pass unchanged"**: one did not, and it
+  is worth being precise about why. `authz.test.ts` built its context from
+  `{ get: () => "user-1" }` — a stub answering *every* key with the same string,
+  so it also claimed `currentPrincipalKey` held a `Principal` whose `kind` was
+  the letter `"u"`. It failed on the shape of the stub, not on any behaviour a
+  caller can observe. Rebuilt on real `createContextValues()`. The alternative —
+  type-guarding `requirePrincipal` until the stub passed again — would have been
+  writing production code to satisfy a mock.
+- **Fixed in passing**: `assertOrgAdminOfAny`'s doc comment still explained
+  itself as guarding a global, tenant-shared `agentRoles` catalogue. M03-T05
+  scoped that table to one organization (ADR-0007), so the comment described a
+  schema that no longer exists and justified the function on grounds that had
+  gone. Rewritten to say what it is actually for now (the `/api/debug/*` routes)
+  and to warn against reaching for it out of convenience.
+- **Next**: M04-T04

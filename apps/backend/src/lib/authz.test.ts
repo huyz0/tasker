@@ -3,7 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { setupIntegrationTest } from "../test/setup";
 import * as schemaSqlite from "../db/schema.sqlite";
 import {
-  requireUserId,
+  requireUser,
   assertOrgMember,
   assertOrgAdmin,
   assertOrgOwner,
@@ -16,7 +16,8 @@ import {
   getArtifactOrgId,
   getRepositoryLinkOrgId,
 } from "./authz";
-import { ConnectError, Code } from "@connectrpc/connect";
+import { ConnectError, Code, createContextValues } from "@connectrpc/connect";
+import { currentUserIdKey } from "../modules/auth/session";
 
 async function seedProjectHierarchy(db: any, opts: { projectDeleted?: boolean } = {}) {
   const suffix = Date.now() + "-" + Math.random().toString(36).slice(2);
@@ -42,17 +43,23 @@ async function seedProjectHierarchy(db: any, opts: { projectDeleted?: boolean } 
   return { orgId, userId, projectId, taskId, folderId, artifactId };
 }
 
-describe("requireUserId", () => {
+describe("requireUser", () => {
   it("returns the userId when present in context values", () => {
-    const contextValues = { get: (_key: unknown) => "user-1" };
-    expect(requireUserId(contextValues)).toBe("user-1");
+    // Real context values, not a stub answering every key with the same
+    // string. The stub this replaced returned "user-1" for currentPrincipalKey
+    // too, so once a principal key existed it was claiming to hold a Principal
+    // whose kind was the letter "u" - and it failed for that reason rather than
+    // for any change in behaviour a caller could see.
+    const contextValues = createContextValues();
+    contextValues.set(currentUserIdKey, "user-1");
+    expect(requireUser(contextValues)).toBe("user-1");
   });
 
   it("throws Unauthenticated when there is no userId in context values", () => {
-    const contextValues = { get: (_key: unknown) => undefined };
-    expect(() => requireUserId(contextValues)).toThrow(ConnectError);
+    const contextValues = createContextValues();
+    expect(() => requireUser(contextValues)).toThrow(ConnectError);
     try {
-      requireUserId(contextValues);
+      requireUser(contextValues);
     } catch (e) {
       expect((e as ConnectError).code).toBe(Code.Unauthenticated);
     }

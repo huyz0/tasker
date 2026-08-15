@@ -81,3 +81,19 @@ export const resolveSessionUserId = (headers: { cookie: string | null; authoriza
 };
 
 export const currentUserIdKey = createContextKey<string | null>(null);
+
+/**
+ * Who is making the request. Two kinds, deliberately not collapsed into one
+ * shape with optional fields: an agent has no userId and a user has no scopes,
+ * so a merged type would make every consumer check a field that is only
+ * sometimes meaningful. A discriminated union makes the compiler ask.
+ *
+ * ADR-0008. The agent variant carries orgId and scopes from the token row
+ * rather than resolving them per call, because the interceptor has already
+ * loaded that row to authenticate the request at all.
+ */
+export type Principal =
+  | { kind: 'user'; userId: string }
+  | { kind: 'agent'; agentId: string; orgId: string; tokenId: string; scopes: string[] };
+
+export const currentPrincipalKey = createContextKey<Principal | null>(null);

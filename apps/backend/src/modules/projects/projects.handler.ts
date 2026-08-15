@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 /** Derives a short, human-typeable project key from its name, e.g. "Engineering Docs" -> "ED", "Backend" -> "BACKEN". */
@@ -97,7 +97,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
     async getProject(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = GetProjectSchema.parse(req);
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.id)).limit(1);
@@ -106,7 +106,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       return { project: result[0] };
     },
     async createProject(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateProjectSchema.parse(req);
       await assertOrgWriter(db, userId, parsed.orgId);
       try {
@@ -157,7 +157,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       throw lastError;
     },
     async listProjects(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, req.orgId);
 
@@ -174,7 +174,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       };
     },
     async updateProject(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateProjectSchema.parse(req);
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
@@ -188,7 +188,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       return { project: updated };
     },
     async archiveProject(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ArchiveProjectSchema.parse(req);
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
@@ -201,7 +201,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async restoreProject(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = RestoreProjectSchema.parse(req);
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
@@ -220,7 +220,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async purgeProject(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = PurgeProjectSchema.parse(req);
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
@@ -270,7 +270,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
     async getTemplate(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = GetTemplateSchema.parse(req);
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const result = await db.select().from(pts).where(eq((pts as any).id, parsed.id)).limit(1);
@@ -279,7 +279,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       return { template: result[0] };
     },
     async createTemplate(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateTemplateSchema.parse(req);
       await assertOrgWriter(db, userId, parsed.orgId);
 
@@ -308,7 +308,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       return { template: payload };
     },
     async updateTemplate(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateTemplateSchema.parse(req);
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const result = await db.select().from(pts).where(eq((pts as any).id, parsed.id)).limit(1);
@@ -336,7 +336,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       return { template: updated };
     },
     async listTemplates(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, req.orgId);
 

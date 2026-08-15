@@ -2,7 +2,7 @@ import { ConnectError, Code } from '@connectrpc/connect';
 import { eq, and, isNull, inArray } from 'drizzle-orm';
 import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
-import { currentUserIdKey } from '../modules/auth/session';
+import { currentUserIdKey, currentPrincipalKey, type Principal } from '../modules/auth/session';
 
 // Resolved lazily inside each function rather than once at module load, since
 // STANDALONE is set at test/runtime, not import time - freezing it here caused
@@ -12,12 +12,41 @@ function isStandalone(): boolean {
   return process.env.STANDALONE === 'true';
 }
 
-export function requireUserId(contextValues: any): string {
+/**
+ * The authenticated caller, human or agent. Use this on endpoints an agent is
+ * allowed to reach; use requireUser everywhere else.
+ */
+export function requirePrincipal(contextValues: any): Principal {
+  const principal = contextValues?.get(currentPrincipalKey);
+  if (principal) return principal;
+
+  // The human session path and every existing test set only currentUserIdKey.
+  // Deriving the user principal from it here is what lets this land without
+  // rewriting ~86 call sites' fixtures to prove a rename.
   const userId = contextValues?.get(currentUserIdKey);
-  if (!userId) {
-    throw new ConnectError('Authentication required', Code.Unauthenticated);
+  if (userId) return { kind: 'user', userId };
+
+  throw new ConnectError('Authentication required', Code.Unauthenticated);
+}
+
+/**
+ * The authenticated *human*. Refuses agent tokens.
+ *
+ * This is the former requireUserId, renamed rather than widened: every existing
+ * handler calls it, so an agent token reaches none of them until someone
+ * deliberately moves that endpoint to requirePrincipal. Deny-by-default for
+ * agents falls out of the rename instead of depending on anyone remembering
+ * (ADR-0008).
+ */
+export function requireUser(contextValues: any): string {
+  const principal = requirePrincipal(contextValues);
+  if (principal.kind !== 'user') {
+    // PermissionDenied, not Unauthenticated: the agent *is* authenticated, and
+    // telling a correctly-credentialled caller to authenticate again is both
+    // wrong and an endless retry loop for an autonomous worker.
+    throw new ConnectError('This endpoint requires a human session', Code.PermissionDenied);
   }
-  return userId;
+  return principal.userId;
 }
 
 export async function assertOrgMember(db: any, userId: string, orgId: string): Promise<void> {
@@ -106,12 +135,16 @@ export async function assertOrgOwner(db: any, userId: string, orgId: string): Pr
 }
 
 /**
- * agentRoles has no orgId column - it's a deliberately global, shared
- * catalog (every org's agents can reuse the same personas) - so there's no
- * single org to check admin-of. This instead requires the caller be an
- * admin (or owner) of at least one organization, so an authenticated
- * account with no real standing anywhere can't write into a catalog every
- * org shares.
+ * Requires the caller be an admin (or owner) of at least one organization,
+ * without naming which. Use only where the request genuinely has no org to
+ * scope to - today that is the /api/debug/* telemetry routes, which report on
+ * the process rather than on any tenant's data.
+ *
+ * This used to guard the agentRoles catalogue, back when that table was global
+ * and shared between tenants. M03-T05 scoped roles to one organization
+ * (ADR-0007), so that caller now uses assertOrgAdmin against a real orgId. Do
+ * not reach for this one because it is convenient: "admin of something,
+ * somewhere" is not an authorization decision about the resource in hand.
  */
 export async function assertOrgAdminOfAny(db: any, userId: string): Promise<void> {
   const members = isStandalone() ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;

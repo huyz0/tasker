@@ -4,7 +4,7 @@ import { eq, and, not } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUserId, assertOrgMember, assertOrgWriter, assertOrgAdmin } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin } from "../../lib/authz";
 import { notDeleted, softDeleteById, restoreById, executePaginatedQuery, insertRecord } from "../../db/query-builder";
 
 // --- Zod Request Schemas ---
@@ -62,7 +62,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
     async createAgentRole(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateAgentRoleSchema.parse(req);
       // ADR-0007: a role belongs to one organization, so this is an ordinary
       // org-scoped admin check. It used to be `assertOrgAdminOfAny` - admin of
@@ -84,7 +84,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       return { role: payload };
     },
     async updateAgentRole(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateAgentRoleSchema.parse(req);
 
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
@@ -107,7 +107,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       return { role: updated };
     },
     async listAgentRoles(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ListAgentRolesSchema.parse(req);
       // Reading is membership, not admin - a member picking a role for an agent
       // needs the list. Scoping it is what stops one tenant's catalogue leaking
@@ -125,7 +125,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       return { roles: items, page: { nextCursor, totalCount } };
     },
     async createAgent(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateAgentSchema.parse(req);
       await assertOrgWriter(db, userId, parsed.orgId);
 
@@ -156,7 +156,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       return { agent: payload };
     },
     async updateAgent(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateAgentSchema.parse(req);
 
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
@@ -181,7 +181,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       return { agent: updated };
     },
     async listAgents(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       await assertOrgMember(db, userId, req.orgId);
 
@@ -191,7 +191,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       return { agents: items, page: { nextCursor, totalCount } };
     },
     async archiveAgent(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ArchiveAgentSchema.parse(req);
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
@@ -204,7 +204,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async restoreAgent(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = RestoreAgentSchema.parse(req);
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
@@ -223,7 +223,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async purgeAgent(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = PurgeAgentSchema.parse(req);
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);

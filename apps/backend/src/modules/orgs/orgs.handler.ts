@@ -4,7 +4,7 @@ import { inArray, eq, and, not } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUserId, assertOrgAdmin, assertOrgMember, getOrgMemberRole, countOrgOwners } from "../../lib/authz";
+import { requireUser, assertOrgAdmin, assertOrgMember, getOrgMemberRole, countOrgOwners } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -96,7 +96,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
   return {
     async listOrgs(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
 
@@ -143,7 +143,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       };
     },
     async seedOrg(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = SeedOrgSchema.parse(req);
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
@@ -173,7 +173,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       return { organization: { ...orgPayload, role: "owner" } };
     },
     async updateOrg(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateOrgSchema.parse(req);
       await assertOrgAdmin(db, userId, parsed.orgId);
 
@@ -205,7 +205,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
      * address someone has been asked to hand over.
      */
     async listInvitations(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ListInvitationsSchema.parse(req);
       await assertOrgAdmin(db, userId, parsed.orgId);
 
@@ -239,7 +239,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       };
     },
     async revokeInvitation(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = RevokeInvitationSchema.parse(req);
 
       const invs = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
@@ -262,7 +262,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async listOrgMembers(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ListOrgMembersSchema.parse(req);
       await assertOrgMember(db, userId, parsed.orgId);
 
@@ -321,7 +321,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       };
     },
     async removeOrgMember(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = RemoveOrgMemberSchema.parse(req);
 
       // Authorization turns on the *target*, not the caller's role. Removing
@@ -375,7 +375,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async updateOrgMemberRole(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateOrgMemberRoleSchema.parse(req);
       await assertOrgAdmin(db, userId, parsed.orgId);
 
@@ -411,7 +411,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       };
     },
     async inviteUser(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = InviteUserSchema.parse(req);
       await assertOrgAdmin(db, userId, parsed.orgId);
 
@@ -447,7 +447,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async archiveOrg(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = ArchiveOrgSchema.parse(req);
       await assertOrgAdmin(db, userId, parsed.orgId);
 
@@ -458,7 +458,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async restoreOrg(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = RestoreOrgSchema.parse(req);
       await assertOrgAdmin(db, userId, parsed.orgId);
 
@@ -478,7 +478,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async purgeOrg(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = PurgeOrgSchema.parse(req);
       await assertOrgAdmin(db, userId, parsed.orgId);
 
@@ -570,7 +570,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async setOrgRetentionDays(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = SetOrgRetentionDaysSchema.parse(req);
       await assertOrgAdmin(db, userId, parsed.orgId);
 

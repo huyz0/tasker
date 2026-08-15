@@ -3,7 +3,7 @@ import { SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { or, and, eq, desc, sql } from "drizzle-orm";
-import { requireUserId, assertOrgMember } from "../../lib/authz";
+import { requireUser, assertOrgMember } from "../../lib/authz";
 import { notDeleted, encodeCursor, decodeCursor, buildCursorPaginationWhere } from "../../db/query-builder";
 
 // Search merges two independently-paginated entity types into one result
@@ -41,7 +41,7 @@ export default (router: ConnectRouter, db: any) => {
 
   router.service(SearchService as any, {
     async universalSearch(request: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const { query, orgId, page } = request;
       if (!orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       if (!query || !query.trim()) throw new ConnectError("query is required", Code.InvalidArgument);

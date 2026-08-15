@@ -4,7 +4,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUserId, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { requireUser, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // Resolves each comment's userId/agentId to a display name in two batched
@@ -78,7 +78,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
 
   return {
     async createComment(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = CreateCommentSchema.parse(req);
       const orgId = parsed.entityType === "task"
         ? await getTaskOrgId(db, parsed.entityId)
@@ -118,7 +118,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       return { comment: commentResp };
     },
     async updateComment(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = UpdateCommentSchema.parse(req);
 
       const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
@@ -138,7 +138,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       return { comment: commentResp };
     },
     async deleteComment(req: unknown, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       const parsed = DeleteCommentSchema.parse(req);
 
       const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
@@ -156,7 +156,7 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
     async listComments(req: any, { values: contextValues }: { values: any }) {
-      const userId = requireUserId(contextValues);
+      const userId = requireUser(contextValues);
       if (!req.entityId || !req.entityType) throw new ConnectError("entityId and entityType are required", Code.InvalidArgument);
       const orgId = req.entityType === "task"
         ? await getTaskOrgId(db, req.entityId)
