@@ -87,7 +87,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: `apps/gui/src/store/layout.ts`, `AppShell.tsx`, `index.css`
       - Verify: the choice survives reload and overrides the OS preference.
 
-- [ ] **M06-T08** — Build a `Breadcrumbs` component and mount it on every detail
+- [x] **M06-T08** — Build a `Breadcrumbs` component and mount it on every detail
       route introduced in M01, reflecting the path the user arrived by.
       - Files: `apps/gui/src/components/layout/Breadcrumbs.tsx`, route views
       - Verify: a deep-linked task shows project → task.

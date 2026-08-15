@@ -7,7 +7,7 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { TaskService, RepositoryService, TaskTypeService, TaskNoteService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { TaskService, RepositoryService, TaskTypeService, TaskNoteService, ProjectService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
@@ -18,11 +18,13 @@ import { Dialog } from '../../components/ui/Dialog';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { Breadcrumbs } from '../../components/layout/Breadcrumbs';
 
 const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
 const taskTypeClient = createClient(TaskTypeService, transport);
 const taskNoteClient = createClient(TaskNoteService, transport);
+const projectClient = createClient(ProjectService, transport);
 
 function TaskNotesPanel({ taskId }: { taskId: string }) {
   const { confirm, confirmDialog } = useConfirm();
@@ -203,6 +205,15 @@ export function TasksWorkbench() {
   });
 
   const expandedTask = tasksData?.find(t => t.id === expandedTaskId) ?? null;
+
+  // The project's own name, for the breadcrumb. `getProject` is the right call
+  // when all you hold is an id — the alternative is listing every project to
+  // find one.
+  const { data: projectData } = useQuery({
+    queryKey: ['project', activeProjectId],
+    enabled: !!activeProjectId,
+    queryFn: async () => (await projectClient.getProject({ id: activeProjectId })).project,
+  });
 
   useEffect(() => setIsEditingTask(false), [expandedTaskId]);
 
@@ -556,6 +567,16 @@ export function TasksWorkbench() {
             </div>
           }
         >
+           {/* A task reached by a deep link has no history behind it: the
+               browser's Back button leaves the app. */}
+           <Breadcrumbs
+             className="px-4 pt-3 shrink-0"
+             items={[
+               { label: projectData?.name ?? 'Project', to: '/projects' },
+               { label: 'Tasks', to: '/tasks' },
+               { label: expandedTask.displayId || expandedTask.title },
+             ]}
+           />
            {deleteTaskMutation.isError && (
              <p className="text-sm text-destructive px-4 pt-2 shrink-0">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
            )}

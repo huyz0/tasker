@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
-const { mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockUpdateTask, mockCreateTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests, mockGetTaskType, mockListTaskNotes, mockUpdateTaskNote, mockDeleteTaskNote } = vi.hoisted(() => ({
+const { mockGetProject, mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockUpdateTask, mockCreateTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests, mockGetTaskType, mockListTaskNotes, mockUpdateTaskNote, mockDeleteTaskNote } = vi.hoisted(() => ({
+  mockGetProject: vi.fn(),
   mockListTasks: vi.fn(),
   mockUpdateTaskStatus: vi.fn(),
   mockDeleteTask: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock('@connectrpc/connect', () => ({
     if (service === 'TaskTypeService') return { getTaskType: mockGetTaskType };
     if (service === 'TaskNoteService') return { listTaskNotes: mockListTaskNotes, updateTaskNote: mockUpdateTaskNote, deleteTaskNote: mockDeleteTaskNote };
     if (service === 'OrgService') return { listOrgMembers: vi.fn().mockResolvedValue({ members: [], page: {} }) };
+    if (service === 'ProjectService') return { getProject: mockGetProject };
     if (service === 'AgentService') return { listAgents: vi.fn().mockResolvedValue({ agents: [], page: {} }) };
     return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask, updateTask: mockUpdateTask, createTask: mockCreateTask, assignTask: vi.fn(), unassignTask: vi.fn(), listTaskReviewers: vi.fn().mockResolvedValue({ reviewers: [] }), addTaskReviewer: vi.fn(), removeTaskReviewer: vi.fn() };
   }),
@@ -54,6 +56,8 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   // TaskArtifactLinks (M05-T06) reads and searches from the task detail.
   ArtifactService: 'ArtifactService',
   SearchService: 'SearchService',
+  // The task breadcrumb resolves the project's name from its id (M06-T08).
+  ProjectService: 'ProjectService',
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
@@ -94,6 +98,8 @@ function renderPage(initialEntry = '/tasks') {
 describe('TasksWorkbench', () => {
   beforeEach(() => {
     mockListTasks.mockReset();
+    mockGetProject.mockReset();
+    mockGetProject.mockResolvedValue({ project: { id: 'proj-1', name: 'Seed Project' } });
     mockUpdateTaskStatus.mockReset();
     mockDeleteTask.mockReset();
     mockUpdateTask.mockReset();
@@ -332,6 +338,19 @@ describe('TasksWorkbench', () => {
     fireEvent.keyDown(window, { key: 'Tab' });
 
     expect(screen.getByText('Task Details')).toBeInTheDocument();
+  });
+
+  it('shows a breadcrumb from the project to the task', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'SEED-1' }] });
+    renderPage('/tasks/task-1');
+
+    const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
+    // The real project name, resolved from its id — the request that fetches it
+    // used the wrong field name at first and the fallback label hid it
+    // completely (M06-T08).
+    await waitFor(() => expect(crumbs.textContent).toContain('Seed Project'));
+    expect(crumbs.textContent).toContain('SEED-1');
+    expect(mockGetProject).toHaveBeenCalledWith({ id: 'proj-1' });
   });
 
   it('closes the detail overlay when clicking the backdrop', async () => {

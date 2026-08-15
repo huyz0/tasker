@@ -254,3 +254,39 @@ standard and wonder which one is wrong.
     read and write; the read falls back to `system` and the write still applies
     the choice for the session. Both have tests.
 - **Next**: M06-T08
+
+## M06-T08 — Breadcrumbs
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: new `components/layout/Breadcrumbs.tsx` (+ 7 tests),
+  `features/Tasks/index.tsx`, `features/Artifacts/index.tsx`,
+  `scripts/rpc-coverage.mjs`
+- **Verified**: cold-loading a task URL shows
+  `Seed Project › Tasks › SEED-145`, with the first two as links and `SEED-145`
+  carrying `aria-current="page"`. Cold-loading an artifact URL shows
+  `Artifacts › Design › upload-test.png`. `gui:test` — 583 pass, branches
+  95.06%. `moon check --all` — 24 pass.
+- **Notes**:
+  - **A deep-linked detail view has no history behind it** — the browser's Back
+    button leaves the app — so breadcrumbs are the only way out that works
+    whether the user clicked in from the board or pasted a URL. That is why the
+    verify line says *deep-linked*.
+  - **The last crumb is not a link.** A link to the page you are already on is a
+    control that appears to do nothing; it is plain text with
+    `aria-current="page"`.
+  - **The task breadcrumb needed the project's name from its id**, which is what
+    `getProject` is for — the RPC `rpc-coverage` listed as "redundant, the GUI
+    holds the list already". Using it made that exception stale, and **the gate
+    said so** on the next run ("listed in EXCEPTIONS but the GUI calls it"),
+    which is the case M05-T12 built it for. Exception removed: 93 of 95 now.
+  - **The first call used `{ projectId }`; the field is `id`.** The server
+    answered `internal`, not `invalid_argument`, because `ZodError` propagates
+    as internal across every handler — the defect recorded for **M12** in M04's
+    handoff, now observed for a second time from the client side. The breadcrumb
+    fell back to the label "Project" and hid it, so the test now asserts the
+    real name and the exact request.
+  - The artifact breadcrumb walks the folder chain to the root, bounded by the
+    folder count for the same reason M05-T10's expansion is: nothing in the
+    schema forbids a parent cycle.
+- **Next**: M06-T09

@@ -7,6 +7,7 @@ import { createClient } from "@connectrpc/connect";
 import { TaskArtifactLinks } from "../Tasks/TaskArtifactLinks";
 import { Comment } from "../../components/ui/comments";
 import { ArtifactUpload } from "./ArtifactUpload";
+import { Breadcrumbs } from "../../components/layout/Breadcrumbs";
 import { transport } from "../../lib/connectTransport";
 import { ArtifactService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Label } from '../../components/ui/labels';
@@ -247,6 +248,25 @@ export function ArtifactsBrowser() {
     });
   }, [selectedFolderId, foldersData]);
 
+  // docs / specs / drafts / readme.md — the artifact's own path, which is the
+  // only thing that tells two files of the same name apart (M05-T06 recorded
+  // the gap this fills).
+  const artifactCrumbs = (() => {
+    if (!selectedArtifact) return [];
+    const byId = new Map((foldersData ?? []).map((f: any) => [f.id, f]));
+    const path: any[] = [];
+    let cursor: any = byId.get((selectedArtifact as any).folderId ?? selectedFolderId ?? '');
+    for (let i = 0; cursor && i <= (foldersData?.length ?? 0); i++) {
+      path.unshift(cursor);
+      cursor = cursor.parentId ? byId.get(cursor.parentId) : null;
+    }
+    return [
+      { label: 'Artifacts', to: '/artifacts' },
+      ...path.map((f: any) => ({ label: f.name })),
+      { label: selectedArtifact.name },
+    ];
+  })();
+
   const renderFolder = (folder: any, depth: number) => (
             <div key={folder.id}>
               {editingFolderId === folder.id ? (
@@ -472,6 +492,7 @@ export function ArtifactsBrowser() {
                  )
                )}
             </div>
+            <Breadcrumbs className="px-6 pt-4" items={artifactCrumbs} />
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
                {updateContentMutation.isError && (
                  <p className="text-sm text-destructive mb-3">Failed to save: {(updateContentMutation.error as Error).message}</p>

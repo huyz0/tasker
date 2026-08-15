@@ -30,13 +30,12 @@ export const EXCEPTIONS = {
     'human author; M04 made the handler refuse a user principal outright, ' +
     'rather than let a human file a note under a worker that never wrote it. ' +
     'The GUI reads, edits and deletes notes.',
-  'ProjectService.getProject':
-    'Redundant here. The GUI lists projects and holds them in cache, so a ' +
-    'single-project read would be a second request for data already on the ' +
-    'client. Agents and the CLI, which hold no list, use it.',
   'ProjectTemplateService.getTemplate':
-    'Redundant here, for the same reason as getProject: the templates list is ' +
-    'already loaded wherever a template is shown.',
+    'Redundant here: the templates list is already loaded wherever a template ' +
+    'is shown, so a single-template read would be a second request for data ' +
+    'the client already holds. Agents and the CLI, which hold no list, use it. ' +
+    '(getProject was excepted for this reason too until M06-T08 gave the task ' +
+    'breadcrumb a project name to resolve from an id alone.)',
 };
 
 /** RPC names per service, read from the TypeSpec interfaces. */

@@ -581,7 +581,9 @@ describe('ArtifactsBrowser', () => {
       // No click anywhere: the folder expands and the content renders because
       // the id came in on the URL.
       await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
-      expect(screen.getByText('readme.md')).toBeInTheDocument();
+      // Twice, deliberately: once in the explorer and once as the last
+      // breadcrumb, which is how a deep-linked file says where it lives.
+      expect(screen.getAllByText('readme.md').length).toBeGreaterThanOrEqual(1);
     });
 
     it('finds the artifact in a later folder when the deep link gives no folder', async () => {
@@ -684,9 +686,15 @@ describe('ArtifactsBrowser', () => {
       // to open, or its own folder is not on screen to be selected.
       await waitFor(() => expect(screen.getByText('Down here')).toBeInTheDocument());
       // The path opens a render after the artifact resolves — the folder is
-      // located first, the ancestors expand from it.
-      await waitFor(() => expect(screen.getByText('specs')).toBeInTheDocument());
-      expect(screen.getByText('drafts')).toBeInTheDocument();
+      // located first, the ancestors expand from it. Each name now appears in
+      // the tree and again in the breadcrumb.
+      await waitFor(() => expect(screen.getAllByText('specs').length).toBeGreaterThan(0));
+      expect(screen.getAllByText('drafts').length).toBeGreaterThan(0);
+
+      // The breadcrumb specifically: the whole path, deepest last.
+      const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+      expect(crumbs.textContent).toContain('docs');
+      expect(crumbs.textContent).toContain('drafts');
     });
 
     it('collapses a folder and hides its children', async () => {
@@ -797,7 +805,8 @@ describe('ArtifactsBrowser', () => {
       renderPage('/artifacts/art-1');
 
       await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('docs'));
+      // The explorer's copy, not the breadcrumb's.
+      fireEvent.click(screen.getAllByText('docs')[0]);
 
       await waitFor(() => expect(locationRef.current).toBe('/artifacts'));
       expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
