@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"

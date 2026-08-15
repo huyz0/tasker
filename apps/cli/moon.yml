@@ -6,9 +6,10 @@ dependsOn:
 
 tasks:
   format:
-    command: 'gofmt -l .'
+    command: 'bash scripts/check-format.sh'
     inputs:
       - '**/*.go'
+      - 'scripts/check-format.sh'
 
   vet:
     command: 'go vet ./...'
