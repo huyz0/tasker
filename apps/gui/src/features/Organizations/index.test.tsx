@@ -73,7 +73,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('switches to the Roles & Permissions section and back to Organizations', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [] });
     renderPage();
 
@@ -247,7 +247,7 @@ describe('OrganizationsDashboard', () => {
 
   it('archives a root org after confirmation', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockArchiveOrg.mockResolvedValue({});
     renderPage();
 
@@ -259,7 +259,7 @@ describe('OrganizationsDashboard', () => {
 
   it('does not archive an org when confirmation is cancelled', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
@@ -270,7 +270,7 @@ describe('OrganizationsDashboard', () => {
 
   it('shows an error message when archiving an org fails', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockArchiveOrg.mockRejectedValue(new Error('cannot delete'));
     renderPage();
 
@@ -428,7 +428,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('renames an org through the GUI', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockUpdateOrg.mockResolvedValue({ organization: { id: 'org-1', name: 'Renamed Co', slug: 'renamed-co' } });
 
     renderPage();
@@ -446,7 +446,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('cancels editing an org without saving', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
 
     renderPage();
 
@@ -460,7 +460,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('shows an error message when renaming an org fails', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockUpdateOrg.mockRejectedValue(new Error('slug already exists'));
 
     renderPage();
@@ -474,7 +474,7 @@ describe('OrganizationsDashboard', () => {
 
   it('lists org members and removes one after confirmation', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
     mockRemoveOrgMember.mockResolvedValue({ success: true });
 
@@ -488,7 +488,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('shows "No members found." when the org has no members', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [] });
 
     renderPage();
@@ -499,7 +499,7 @@ describe('OrganizationsDashboard', () => {
 
   it('does not remove a member when confirmation is cancelled', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
 
     renderPage();
@@ -513,7 +513,7 @@ describe('OrganizationsDashboard', () => {
 
   it('shows an error message when removing a member fails', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
     mockRemoveOrgMember.mockRejectedValue(new Error("cannot remove the organization's last owner"));
 
@@ -530,7 +530,7 @@ describe('OrganizationsDashboard', () => {
   // show the first page and silently drop the rest. This mock returns two
   // pages; a component that ignores the cursor renders only Alice.
   it('follows the cursor until every member is loaded', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers
       .mockResolvedValueOnce({
         members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
@@ -555,7 +555,7 @@ describe('OrganizationsDashboard', () => {
   // over the loaded window would report "3 admins" for an org with 200 of them,
   // which reads as an answer rather than as a truncation.
   it('sends the search term to the server, debounced', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({
       members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
       page: { totalCount: 1 },
@@ -577,7 +577,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('sends the role facet to the server', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({
       members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
       page: { totalCount: 1 },
@@ -595,7 +595,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('reports the filtered total, not the page size', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({
       members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
       page: { totalCount: 100001 },
@@ -608,7 +608,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('names the query when a search matches nothing, and offers a way back', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers
       .mockResolvedValueOnce({
         members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
@@ -630,7 +630,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('exposes the true row count to assistive technology, not the windowed count', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({
       members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
       page: { totalCount: 100001 },
@@ -653,7 +653,7 @@ describe('OrganizationsDashboard', () => {
       name: `Member ${String(i).padStart(4, '0')}`,
       role: 'member',
     }));
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: many, page: { totalCount: 1000 } });
 
     renderPage();
@@ -668,12 +668,46 @@ describe('OrganizationsDashboard', () => {
     expect(rendered).toBeLessThan(100);
   });
 
+  // M03-T09: a child whose parent is on a later page arrives with a
+  // parentOrgId that matches nothing loaded, so the tree never draws it. The
+  // server sends the missing parent as an ancestor; this asserts the client
+  // uses it rather than dropping the child.
+  it('draws a sub-organization whose parent arrived as an ancestor', async () => {
+    mockListOrgs.mockResolvedValue({
+      organizations: [{ id: 'org-child', name: 'Alpha Child', slug: 'alpha-child', parentOrgId: 'org-parent' }],
+      ancestors: [{ id: 'org-parent', name: 'Zeta Parent', slug: 'zeta-parent' }],
+      page: {},
+    });
+    mockListOrgMembers.mockResolvedValue({ members: [], page: { totalCount: 0 } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Zeta Parent')).toBeInTheDocument());
+    expect(screen.getByText('Alpha Child')).toBeInTheDocument();
+  });
+
+  it('does not duplicate an organization that arrives as both a row and an ancestor', async () => {
+    mockListOrgs.mockResolvedValue({
+      organizations: [
+        { id: 'org-parent', name: 'Zeta Parent', slug: 'zeta-parent' },
+        { id: 'org-child', name: 'Alpha Child', slug: 'alpha-child', parentOrgId: 'org-parent' },
+      ],
+      ancestors: [{ id: 'org-parent', name: 'Zeta Parent', slug: 'zeta-parent' }],
+      page: {},
+    });
+    mockListOrgMembers.mockResolvedValue({ members: [], page: { totalCount: 0 } });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getAllByText('Zeta Parent')).toHaveLength(1));
+  });
+
   // M03-T04: the server refuses to remove a member who still owns projects and
   // names them in the refusal. The ids are the actionable part, so this asserts
   // they reach the screen rather than just that "something failed" was shown.
   it('shows which projects block a member removal', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
     mockRemoveOrgMember.mockRejectedValue(
       new Error('user still owns 2 project(s) in this organization - reassign them first: proj-alpha, proj-beta'),
@@ -690,7 +724,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('changes a member\'s role via the role dropdown', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'member' }] });
     mockUpdateOrgMemberRole.mockResolvedValue({ member: { userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' } });
 
@@ -704,7 +738,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('shows a plain "Owner" label instead of a role dropdown for an owner', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'owner' }] });
 
     renderPage();
@@ -716,7 +750,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('falls back to email, then userId, when a member has no name', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [
       { userId: 'user-2', email: 'noname@b.com', role: 'member' },
       { userId: 'user-3', role: 'viewer' },
@@ -732,7 +766,7 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('shows an error message when updating a member role fails', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'member' }] });
     mockUpdateOrgMemberRole.mockRejectedValue(new Error('owner role required'));
 

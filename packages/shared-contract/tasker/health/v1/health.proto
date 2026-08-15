@@ -54,6 +54,8 @@ message ListOrgsRequest {
 message ListOrgsResponse {
   repeated Organization organizations = 1;
   PageResponse page = 2;
+  // Parents of this page's organizations that did not fit on it (M03-T09).
+  repeated Organization ancestors = 3;
 }
 
 message ArchiveOrgRequest {

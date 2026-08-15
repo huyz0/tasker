@@ -75,6 +75,13 @@ model ListOrgsRequest {
 model ListOrgsResponse {
   @field(1) organizations: Organization[];
   @field(2) page?: PageResponse;
+
+  // Parents of organizations on this page that did not fit on it. The client
+  // nests by parentOrgId, so without them a child whose parent sits on a later
+  // page has nothing to hang off and vanishes from the tree (M03-T09).
+  // Restricted to organizations the caller is already a member of - this fixes
+  // a pagination defect, it does not widen what anyone can see.
+  @field(3) ancestors: Organization[];
 }
 
 model SeedOrgRequest {

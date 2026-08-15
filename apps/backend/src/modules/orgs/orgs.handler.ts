@@ -84,13 +84,38 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const memberRows = await db.select().from(members).where(inArray(members.userId, [userId]));
       const memberOrgIds = memberRows.map((m: any) => m.orgId);
       if (memberOrgIds.length === 0) {
-        return { organizations: [], page: {} };
+        return { organizations: [], ancestors: [], page: {} };
       }
 
       const deletedFilter = req.onlyDeleted ? not(notDeleted(orgs)) : notDeleted(orgs);
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, orgs, and(inArray(orgs.id, memberOrgIds), deletedFilter), req.page, (orgs as any).name, { name: (orgs as any).name, createdAt: (orgs as any).createdAt });
 
+      // The client nests by parentOrgId. A child whose parent landed on a
+      // different page therefore has nothing to hang off, and disappears from
+      // the tree entirely rather than rendering at the wrong depth - it is in
+      // the response and never drawn. Send the missing parents alongside.
+      //
+      // Restricted to organizations the caller is already a member of. Someone
+      // can be a member of a sub-organization without being a member of its
+      // parent, and this is a pagination fix, not a change to who may see what.
+      const loadedIds = new Set(items.map((o: any) => o.id));
+      const memberOrgIdSet = new Set(memberOrgIds);
+      const missingParentIds = [
+        ...new Set(
+          items
+            .map((o: any) => o.parentOrgId)
+            .filter((pid: string | null): pid is string => !!pid && !loadedIds.has(pid) && memberOrgIdSet.has(pid)),
+        ),
+      ];
+      const ancestorRows = missingParentIds.length
+        ? await db.select().from(orgs).where(inArray((orgs as any).id, missingParentIds))
+        : [];
+
       return {
+        ancestors: ancestorRows.map((o: any) => ({
+          ...o,
+          createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : o.createdAt,
+        })),
         organizations: items.map((o: any) => ({
           ...o,
           createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : o.createdAt,

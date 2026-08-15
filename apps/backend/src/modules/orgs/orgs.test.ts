@@ -857,3 +857,95 @@ describe("listOrgMembers role facet (M03-T08)", () => {
     await expect(handler.listOrgMembers({ orgId, role: "superuser" }, ctx)).rejects.toThrow();
   });
 });
+
+describe("listOrgs never drops a sub-organization (M03-T09)", () => {
+  /**
+   * The client nests by parentOrgId. A child whose parent landed on a different
+   * page had nothing to hang off, so it was present in the response and never
+   * drawn - the sub-organization simply vanished from the tree. Paging by one
+   * makes that certain rather than occasional.
+   */
+  const seedHierarchy = async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const suffix = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const userId = "user-tree-" + suffix;
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@t.local`, createdAt: new Date() });
+
+    // Names chosen so name:asc puts the children before their parents, which
+    // is the ordering that separates them across pages.
+    const rows = [
+      { id: "parent-a-" + suffix, name: "Zeta Parent", parentOrgId: null },
+      { id: "parent-b-" + suffix, name: "Yankee Parent", parentOrgId: null },
+      { id: "child-a-" + suffix, name: "Alpha Child", parentOrgId: "parent-a-" + suffix },
+      { id: "child-b-" + suffix, name: "Bravo Child", parentOrgId: "parent-b-" + suffix },
+    ];
+    for (const r of rows) {
+      await db.insert(schemaSqlite.organizations).values({ id: r.id, name: r.name, slug: r.id, parentOrgId: r.parentOrgId, createdAt: new Date() });
+      await db.insert(schemaSqlite.organizationMembers).values({ orgId: r.id, userId, role: "admin", joinedAt: new Date() });
+    }
+    return { db, handler, userId, ctx: makeAuthContext(userId), rows, suffix };
+  };
+
+  test("with limit=1, every organization still resolves to its correct depth", async () => {
+    const { handler: h, ctx: c, rows } = await seedHierarchy();
+
+    let cursor: string | undefined;
+    const drawn = new Map<string, number>(); // org id -> depth it could be drawn at
+    for (let guard = 0; guard < 20; guard++) {
+      const page: any = await h.listOrgs({ page: { limit: 1, sort: "name:asc", cursor } }, c);
+      // Exactly what the client can see on this page: the page plus ancestors.
+      const visible = new Map<string, any>();
+      for (const o of [...page.organizations, ...page.ancestors]) visible.set(o.id, o);
+
+      for (const o of page.organizations) {
+        // Depth is resolvable only if every ancestor up the chain is present.
+        let depth = 0;
+        let node = o;
+        while (node.parentOrgId) {
+          const parent = visible.get(node.parentOrgId);
+          expect(parent, `org ${node.id} has no resolvable parent on its page`).toBeDefined();
+          depth += 1;
+          node = parent;
+        }
+        drawn.set(o.id, depth);
+      }
+      cursor = page.page.nextCursor;
+      if (!cursor) break;
+    }
+
+    expect(drawn.size).toBe(rows.length);
+    expect(drawn.get(rows[2]!.id)).toBe(1); // Alpha Child under Zeta Parent
+    expect(drawn.get(rows[3]!.id)).toBe(1); // Bravo Child under Yankee Parent
+    expect(drawn.get(rows[0]!.id)).toBe(0);
+  });
+
+  test("ancestors are omitted when the parent is already on the page", async () => {
+    const { handler, ctx } = await seedHierarchy();
+
+    const page: any = await handler.listOrgs({ page: { limit: 100 } }, ctx);
+
+    expect(page.organizations.length).toBe(4);
+    expect(page.ancestors).toEqual([]);
+  });
+
+  test("a parent the caller is not a member of is not disclosed as an ancestor", async () => {
+    const { db, handler, suffix } = await seedHierarchy();
+    const outsiderId = "user-outsider-" + suffix;
+    const hiddenParentId = "parent-hidden-" + suffix;
+    const childId = "child-hidden-" + suffix;
+
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@t.local`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: hiddenParentId, name: "Secret Holdings", slug: hiddenParentId, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: childId, name: "Visible Child", slug: childId, parentOrgId: hiddenParentId, createdAt: new Date() });
+    // Member of the child only.
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: childId, userId: outsiderId, role: "member", joinedAt: new Date() });
+
+    const page: any = await handler.listOrgs({}, makeAuthContext(outsiderId));
+
+    expect(page.organizations.map((o: any) => o.id)).toEqual([childId]);
+    // The fix must not become a way to read the name of an organization you
+    // were never added to.
+    expect(page.ancestors).toEqual([]);
+  });
+});

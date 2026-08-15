@@ -392,3 +392,44 @@ completes the task.
   authorization rules drifting from `lib/authz.ts`. Written into the design note
   so the next person does not "fix" it by duplicating policy into the client.
 - **Next**: M03-T09
+
+---
+
+## M03-T09 — Never drop a sub-organization at a page boundary
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: `listOrgs` pages a flat list and the GUI nests by `parentOrgId`.
+  A child whose parent is on a later page therefore has no parent to hang off,
+  so it either disappears or renders at the wrong depth. Resolve every loaded
+  child's ancestors server-side and return them alongside the page.
+- **Weight**: not heavy on the decision axis;
+  [reviewed](reviews/M03-T09-org-tree-ancestors-v1.md) because it changes what a
+  paginated endpoint returns.
+- **Changed**: `main.tsp` + `health.proto` (`ListOrgsResponse.ancestors`, new
+  field number), `orgs.handler.ts`, `features/Organizations/index.tsx`,
+  `orgs.test.ts` (+3), the Organizations test (+2).
+- **Verified**: `moon check --all` — 23 tasks, 395 GUI tests, 44 org tests. The
+  verify line is tested as stated: page with `limit=1`, and for every
+  organization on every page walk its ancestor chain using **only what that page
+  made visible**. Proven capable of failing — with ancestor resolution stubbed
+  out it fails naming the dropped org.
+- **Notes**: the defect was invisible rather than wrong-looking. A child whose
+  parent was on another page arrived with a `parentOrgId` matching nothing
+  loaded, so the nesting loop filed it under a key nothing iterates: present in
+  the data, never drawn, nothing logged. It did not render at the wrong depth —
+  it was simply absent.
+
+  The task offered "return a tree **or** resolve ancestors". Ancestors, because
+  a tree and a cursor do not compose: a page is a slice of an ordering, and a
+  tree is not sliceable without either sending whole subtrees — unbounded,
+  which is the defect this milestone exists to remove — or inventing a second
+  traversal order.
+
+  **Ancestor resolution is restricted to organizations the caller is already a
+  member of.** Fetching parents unconditionally looks equivalent, because the
+  pagination defect only involves organizations the caller can already see. It
+  is not: a person can be a member of a sub-organization without being a member
+  of its parent, so the unrestricted version hands them the name of an
+  organization they were never added to. There is a test for exactly that shape.
+- **Next**: M03-T10

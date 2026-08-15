@@ -98,7 +98,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
       - Files: `apps/gui/src/features/Organizations/index.tsx`
       - Verify: scrolling 100,000 rows stays at 60 fps.
 
-- [ ] **M03-T09** — Return organizations as a tree, or resolve ancestors for every
+- [x] **M03-T09** — Return organizations as a tree, or resolve ancestors for every
       loaded child, so a sub-organization is never dropped at a page boundary.
       - Files: `modules/orgs/orgs.handler.ts`, `features/Organizations/index.tsx`
       - Verify: with `limit=1`, every org still renders at its correct depth.

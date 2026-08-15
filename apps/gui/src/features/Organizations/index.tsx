@@ -63,7 +63,20 @@ export function OrganizationsDashboard() {
     }
   }, [showNewOrgForm, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const orgsData = orgsPages?.pages.flatMap((page) => page.organizations);
+  // Ancestors are parents of loaded children that did not fit on the same page
+  // (M03-T09). Without them the tree drops those children entirely: they are in
+  // the response, have a parentOrgId nothing matches, and so are never drawn.
+  // Deduped by id, because a parent can arrive as an ancestor on one page and
+  // as an ordinary row on the next.
+  const orgsData = orgsPages
+    ? [
+        ...new Map(
+          orgsPages.pages
+            .flatMap((page) => [...page.organizations, ...(page.ancestors ?? [])])
+            .map((o) => [o.id, o]),
+        ).values(),
+      ]
+    : undefined;
   const nextCursor = orgsPages?.pages.at(-1)?.page?.nextCursor;
 
   // The active org is only ever a real default before the user's actual orgs
