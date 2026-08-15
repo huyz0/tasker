@@ -70,7 +70,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
       - Files: `modules/orgs/orgs.handler.ts`
       - Verify: a forced mid-purge failure leaves the org intact.
 
-- [ ] **M03-T04** — Require reassignment of owned projects when removing a member,
+- [x] **M03-T04** — Require reassignment of owned projects when removing a member,
       returning `FailedPrecondition` with the blocking project ids.
       - Files: `modules/orgs/orgs.handler.ts`, `features/Organizations/index.tsx`
       - Verify: removing a project owner is blocked until reassigned.

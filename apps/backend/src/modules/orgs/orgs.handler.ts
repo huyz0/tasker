@@ -197,6 +197,32 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         throw new ConnectError("cannot remove the organization's last owner", Code.FailedPrecondition);
       }
 
+      // Removing the membership used to be the whole operation, which left any
+      // project they owned pointing at somebody who is no longer in the
+      // organization. Nothing surfaced it: the foreign key is still satisfied
+      // - the user exists, they are simply not a member - so the project just
+      // had an owner who could not be assigned work and did not appear in the
+      // member list.
+      //
+      // Archived projects count. A binned project can be restored, and
+      // restoring one into a dangling owner would reintroduce the same state
+      // through the back door.
+      //
+      // The ids are in the message on purpose: "reassign their projects" without
+      // saying which ones makes the caller go hunting for them.
+      const projects = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
+      const owned = await db
+        .select({ id: (projects as any).id })
+        .from(projects)
+        .where(and(eq((projects as any).orgId, parsed.orgId), eq((projects as any).ownerId, parsed.userId)));
+      if (owned.length > 0) {
+        const ids = owned.map((p: any) => p.id).join(", ");
+        throw new ConnectError(
+          `user still owns ${owned.length} project(s) in this organization - reassign them first: ${ids}`,
+          Code.FailedPrecondition,
+        );
+      }
+
       const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
       await db.delete(members).where(and(eq((members as any).orgId, parsed.orgId), eq((members as any).userId, parsed.userId)));
 

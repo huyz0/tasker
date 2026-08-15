@@ -137,3 +137,42 @@ completes the task.
   call site. Not folded into this task because it is a different handler with a
   different fix, and burying it in a purge commit would hide it.
 - **Next**: M03-T04
+
+---
+
+## M03-T04 — Require reassignment of owned projects before removal
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: Before deleting a membership, look for projects in that org
+  owned by the target. If any exist, refuse with `FailedPrecondition` carrying
+  the blocking project ids so the caller can act on them rather than guess.
+  Applies to **both** paths the T02 review named: an admin removing someone,
+  and a member leaving. Surface the ids in the Organizations view.
+- **Weight**: not heavy on the decision axis, but it closes a hole T02 opened,
+  so [the review](reviews/M03-T04-owned-project-guard-v1.md) runs.
+- **Changed**: `modules/orgs/orgs.handler.ts`, `orgs.test.ts` (+6 cases),
+  `features/Organizations/index.test.tsx` (+1 case).
+- **Verified**: `moon check --all` — 23 tasks green; backend 4 fail → 0 with two
+  controls green throughout, GUI 386 tests pass.
+- **Notes**: two choices where the obvious option is wrong.
+
+  **Archived projects still block.** Filtering `deletedAt IS NULL` would let
+  someone leave while owning a binned project, and restoring it later
+  reintroduces the dangling owner through the back door. Tested.
+
+  **The query scopes on `orgId` *and* `ownerId`.** Scoping on owner alone would
+  block leaving org A because of work owned in org B.
+
+  The stranded state was invisible precisely because it was *legal*: the
+  project's `ownerId` foreign key stays satisfied when the membership goes —
+  the user still exists, they are simply not a member — so nothing complained
+  and the project just had an owner who could not be assigned work and did not
+  appear in the member list.
+- **Divergence**: the task lists `features/Organizations/index.tsx` as a file to
+  change; **no component change was needed**. The view already renders the
+  mutation error verbatim and the server message carries the ids. Parsing that
+  message to re-render it as a list would couple the component to server
+  wording for no gain. A GUI test asserts the ids reach the screen instead, so a
+  change that swallows or truncates the message fails.
+- **Next**: M03-T05

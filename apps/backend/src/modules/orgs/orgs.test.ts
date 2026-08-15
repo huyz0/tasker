@@ -1,8 +1,9 @@
 import { expect, test, describe } from "bun:test";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext, seedUser } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createOrgsHandler } from "./orgs.handler";
+import { Code } from "@connectrpc/connect";
 
 describe("Organizations Handler Integration Logic", () => {
   test("can execute seedOrg and listOrgs flows", async () => {
@@ -579,5 +580,121 @@ describe("purgeOrg atomicity (M03-T03)", () => {
     await expect(handler.purgeOrg({ orgId }, makeAuthContext(adminId))).rejects.toThrow();
 
     expect(nc.publishedMessages.map((m: any) => m.subject)).not.toContain("domain.org.purged");
+  });
+});
+
+describe("Owned-project reassignment guard (M03-T04)", () => {
+  /**
+   * Removing a member deleted their membership and nothing else, so any project
+   * they owned kept an ownerId pointing at somebody who is no longer in the
+   * organization. The row still satisfies its foreign key - the user exists,
+   * they are simply not a member - so nothing surfaced it. The project then has
+   * an owner who cannot be assigned work and does not appear in the member
+   * list.
+   *
+   * The guard covers both exits from an organization. M03-T02 made leaving
+   * self-service, which would otherwise have been a second, unguarded way to
+   * strand a project.
+   */
+  const seedOwnerFixture = async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const suffix = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const adminId = "user-own-admin-" + suffix;
+    const ownerId = "user-own-member-" + suffix;
+    const orgId = "org-own-" + suffix;
+
+    for (const id of [adminId, ownerId]) {
+      await db.insert(schemaSqlite.users).values({ id, email: `${id}@foo.com`, createdAt: new Date() });
+    }
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Own Org", slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values([
+      { orgId, userId: adminId, role: "admin", joinedAt: new Date() },
+      { orgId, userId: ownerId, role: "member", joinedAt: new Date() },
+    ]);
+    await db.insert(schemaSqlite.projectTemplates).values({ id: "tmpl-" + suffix, orgId, name: "T", createdAt: new Date() });
+    const projectIds = ["proj-a-" + suffix, "proj-b-" + suffix];
+    // Distinct keys: (orgId, key) is unique, and both would otherwise take the
+    // column default and collide.
+    for (const [i, id] of projectIds.entries()) {
+      await db.insert(schemaSqlite.projects).values({
+        id, orgId, templateId: "tmpl-" + suffix, ownerId, name: "P " + id, key: `K${i}`, createdAt: new Date(),
+      });
+    }
+    return { db, nc, handler, orgId, adminId, ownerId, projectIds };
+  };
+
+  const stillAMember = (db: any, orgId: string, userId: string) =>
+    db
+      .select()
+      .from(schemaSqlite.organizationMembers)
+      .where(and(eq(schemaSqlite.organizationMembers.orgId, orgId), eq(schemaSqlite.organizationMembers.userId, userId)))
+      .then((r: any[]) => r.length === 1);
+
+  test("an admin cannot remove a member who still owns projects", async () => {
+    const { db, handler, orgId, adminId, ownerId } = await seedOwnerFixture();
+
+    await expect(handler.removeOrgMember({ orgId, userId: ownerId }, makeAuthContext(adminId))).rejects.toThrow(
+      /owns .* project/i
+    );
+    expect(await stillAMember(db, orgId, ownerId)).toBe(true);
+  });
+
+  test("the refusal names the blocking projects, so the caller can act on it", async () => {
+    const { handler, orgId, adminId, ownerId, projectIds } = await seedOwnerFixture();
+
+    let err: any;
+    try {
+      await handler.removeOrgMember({ orgId, userId: ownerId }, makeAuthContext(adminId));
+    } catch (e) {
+      err = e;
+    }
+
+    expect(err.code).toBe(Code.FailedPrecondition);
+    // An error that says "reassign their projects" without saying which ones
+    // makes the caller hunt for them; the ids are the actionable part.
+    for (const id of projectIds) expect(err.message).toContain(id);
+  });
+
+  test("a member cannot leave while still owning projects — the T02 path is guarded too", async () => {
+    const { db, handler, orgId, ownerId } = await seedOwnerFixture();
+
+    await expect(handler.removeOrgMember({ orgId, userId: ownerId }, makeAuthContext(ownerId))).rejects.toThrow(
+      /owns .* project/i
+    );
+    expect(await stillAMember(db, orgId, ownerId)).toBe(true);
+  });
+
+  test("removal succeeds once the projects are reassigned", async () => {
+    const { db, handler, orgId, adminId, ownerId, projectIds } = await seedOwnerFixture();
+    await db.update(schemaSqlite.projects).set({ ownerId: adminId }).where(eq(schemaSqlite.projects.ownerId, ownerId));
+
+    await handler.removeOrgMember({ orgId, userId: ownerId }, makeAuthContext(adminId));
+
+    expect(await stillAMember(db, orgId, ownerId)).toBe(false);
+    for (const id of projectIds) {
+      const [row] = await db.select().from(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, id));
+      expect(row.ownerId).toBe(adminId);
+    }
+  });
+
+  test("an archived project still blocks removal — a binned project can be restored", async () => {
+    const { db, handler, orgId, adminId, ownerId, projectIds } = await seedOwnerFixture();
+    await db.update(schemaSqlite.projects).set({ deletedAt: new Date() }).where(eq(schemaSqlite.projects.id, projectIds[0]!));
+    await db.update(schemaSqlite.projects).set({ ownerId: adminId }).where(eq(schemaSqlite.projects.id, projectIds[1]!));
+
+    await expect(handler.removeOrgMember({ orgId, userId: ownerId }, makeAuthContext(adminId))).rejects.toThrow(
+      /owns .* project/i
+    );
+    expect(await stillAMember(db, orgId, ownerId)).toBe(true);
+  });
+
+  test("a member owning nothing is still removable", async () => {
+    const { db, handler, orgId, adminId, ownerId, projectIds } = await seedOwnerFixture();
+    await db.delete(schemaSqlite.projects).where(inArray(schemaSqlite.projects.id, projectIds));
+
+    await handler.removeOrgMember({ orgId, userId: ownerId }, makeAuthContext(adminId));
+
+    expect(await stillAMember(db, orgId, ownerId)).toBe(false);
   });
 });

@@ -526,6 +526,27 @@ describe('OrganizationsDashboard', () => {
     await waitFor(() => expect(screen.getByText(/Failed to remove member/)).toBeInTheDocument());
   });
 
+  // M03-T04: the server refuses to remove a member who still owns projects and
+  // names them in the refusal. The ids are the actionable part, so this asserts
+  // they reach the screen rather than just that "something failed" was shown.
+  it('shows which projects block a member removal', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
+    mockRemoveOrgMember.mockRejectedValue(
+      new Error('user still owns 2 project(s) in this organization - reassign them first: proj-alpha, proj-beta'),
+    );
+
+    renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Remove'));
+
+    await waitFor(() => expect(screen.getByText(/proj-alpha/)).toBeInTheDocument());
+    expect(screen.getByText(/proj-beta/)).toBeInTheDocument();
+  });
+
   it('changes a member\'s role via the role dropdown', async () => {
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'member' }] });
