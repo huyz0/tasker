@@ -1,8 +1,8 @@
 ---
-active_milestone: M04
-active_task: M04-T12
+active_milestone: M05
+active_task: null
 last_updated: 2026-08-15
-last_commit: 44248d8
+last_commit: d04d0b7
 blocked: false
 blocker: null
 ---
@@ -15,16 +15,15 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M04 — Agent Identity & M2M Tokens
-- **Task**: M04-T12 — security review
-- **Branch**: `feature/m03-iam-correctness-and-scale` — M03 is complete on it but
-  **not yet merged to `main`**. Merge it before branching M04, which builds on
-  M03's authorization work.
-- **Command to continue**: `/milestone-deliver M04`
+- **Milestone**: M05 — GUI / API Parity
+- **Task**: none started
+- **Branch**: `feature/m04-agent-identity` — M04 is complete on it but **not yet
+  merged to `main`**. Merge it before branching M05.
+- **Command to continue**: `/milestone-deliver M05`
 
-M03 closed 16/16 tasks and 8/8 exit criteria. M04 (unblocked by M03), M05 and
-M10 (needs M04) are the frontier; M04 and M05 can run in parallel on separate
-branches.
+M04 closed 12/12 tasks and 7/7 exit criteria. The frontier is now M05 (needs
+only M01) and M10 (needs M03 + M04, both done). M05 and M10 can run in parallel
+on separate branches.
 
 ## How to resume
 
@@ -44,7 +43,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
 | M02 | Specification Truth            | done   | M01        | 7     | 7    |
 | M03 | IAM Correctness & Scale        | done   | M01        | 16    | 16   |
-| M04 | Agent Identity & M2M Tokens    | in-progress | M03   | 12    | 12   |
+| M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |
 | M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |
 | M07 | Read-Path Scale                | todo   | M05        | 11    | 0    |
@@ -54,7 +53,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 
-**Total: 141 tasks across 12 milestones — 37 done (M01 14, M02 7, M03 16).**
+**Total: 141 tasks across 12 milestones — 49 done (M01 14, M02 7, M03 16, M04 12).**
 
 ## Dependency graph
 
@@ -83,6 +82,89 @@ branches. M02 is intentionally cheap and unblocking — it can run alongside
 anything.
 
 ## Handoff notes
+
+**2026-08-15 — M04 Agent Identity & M2M Tokens closed (12/12 tasks, 7/7 exit criteria).**
+
+An agent is now a principal. It holds a token issued for it, scoped to one
+organization and a fixed vocabulary of eight permissions, revocable on its own,
+rate-limited on its own, and everything it writes is attributed to it because of
+that credential rather than because the request said so. A scripted worker runs
+with no browser login anywhere — verified end to end against a backend started
+without `ENABLE_TEST_LOGIN`.
+
+Six things a next session would otherwise pay to rediscover:
+
+1. **`ADR-0008` is the contract for all of this.** Opaque 256-bit secret behind
+   a `tskr_` prefix, stored only as a SHA-256 hash, always expiring (90 days
+   default, 365 max, `NOT NULL`). SHA-256 rather than bcrypt is deliberate and
+   argued: a 256-bit random has no terminating offline attack, and a slow hash
+   would make the token unlookupable — every agent request becomes a table scan
+   plus ~100 ms of deliberate work, i.e. a DoS surface on the auth path bought
+   for nothing. Do not "harden" it to bcrypt without reading that section.
+2. **Two deny-by-default sweeps now guard authorization**, and adding an RPC
+   trips them on purpose. `viewer-denial.test.ts` (M03) and
+   `agent-scope-sweep.test.ts` (M04) each enumerate every method on every
+   handler and fail naming anything neither classified nor refusing. When your
+   new endpoint breaks the build, classify it — do not add it to the allowlist
+   to make the red go away. The agent sweep caught a real defect in its own map
+   on its first run (five methods filed under `tasks` that live in
+   `taskManagement`), which is the argument for writing the gate before the
+   migration.
+3. **`requireUser` refuses agents; `requirePrincipal` accepts them.** The rename
+   of `requireUserId` → `requireUser` *is* the security control: every endpoint
+   not deliberately migrated is closed to tokens by construction. If you want an
+   endpoint to accept an agent, move it to `authorizePrincipal(db, principal,
+   orgId, { scope, write })` and add it to `AGENT_RPC_SCOPES`. Scopes apply only
+   to agents — a human's authority is still their org role, and giving people a
+   parallel permission system is M10's decision.
+4. **Three gates were reporting success on things they never checked**, all
+   found this milestone and all fixed: the GUI tasks did not declare the
+   generated contract as an input (so a contract change left their caches valid
+   and `moon check --all` passed while `gui:build --force` failed with three
+   type errors); `cli:test` ran only `./cmd/...`, so `internal/backend`'s tests
+   had never executed; and `moon` caching generally keys on declared `inputs`,
+   which is now the third distinct instance of this class. **When you add a
+   gate, prove it fails.** And when you inject a fault to prove it, verify the
+   injection actually applied — one of mine silently did not (it matched
+   `assertOrgWriter` where the target used `assertOrgAdmin`) and the green run
+   nearly got written up as "the gate cannot catch this".
+5. **The security review found two live defects, not one.** A purged agent's
+   tokens kept authenticating — `purgeAgent` deleted the agent row but not its
+   tokens, and `resolveAgentToken` LEFT JOINs agents to check `deletedAt`, so a
+   missing agent row yields NULL and the check never fires. And the rate
+   limiter's bucket map was unbounded and reachable with no credential at all,
+   since it keys on the presented token's hash *before* authentication. On that
+   second one, note the eviction order: LRU is exactly wrong, because during a
+   flood the genuine credential is by definition the least recently used.
+6. **The contract is still two hand-maintained files** — `main.tsp` and
+   `packages/shared-contract/tasker/health/v1/health.proto`, which is the one
+   buf generates from. Every change edits both. `agentId` was removed from the
+   comment and task-note request models with field numbers `reserved`, so an old
+   client's field 4 cannot land in a future field.
+
+**Deliberately deferred, with owners.** `ZodError` propagates as `internal`
+rather than `invalid_argument` across *every* handler in the repo, so a
+malformed agent request is told the server broke — repository-wide, so fixing it
+means changing error semantics for every RPC (**M12**). Agent traffic is
+unattributed in logs: `requestLogging` binds `userId`, which is null for a token
+(**M11**). `createTask` stamps `createdBy: null` for an agent because the column
+references `users.id`, so which agent created a task is not recoverable from the
+row (**M08**). The rate limiter is per-instance; with N backends the effective
+limit is N times one (**M11**). `assignTask` stays closed to agents — a token
+that can reassign work to itself can help itself to any task (**M10**).
+
+**Still open from earlier milestones**: `/settings` renders a placeholder nothing
+links to (**M05** — now the active milestone, so this is its business);
+`search_index` is a contentless FTS5 table with no writer (**M07**); MySQL
+migrations have never been observed applying, here or in CI (**M12**); and the
+`Real Integration Tests` workflow fails for the reason recorded in the M03 note
+below — **not** missing secrets.
+
+Verified at close: `moon check --all` 23 tasks pass · backend 556 pass / 7 skip ·
+GUI 423 pass at 95.03% branch coverage · `cli:test` both packages · the
+milestone's own Verification block, including
+`TASKER_TOKEN=… ./apps/cli/cli tasks list --project … --json`, run against a
+backend with `ENABLE_TEST_LOGIN` unset.
 
 **2026-08-15 — M03 IAM Correctness & Scale closed (16/16 tasks, 8/8 exit criteria).**
 

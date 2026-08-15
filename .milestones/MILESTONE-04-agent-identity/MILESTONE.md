@@ -1,13 +1,13 @@
 ---
 id: M04
 title: Agent Identity & M2M Tokens
-status: in-progress
+status: done
 goal: An AI agent is a first-class authenticated principal with its own scoped, revocable, rate-limited credential, and attribution is derived from that credential rather than trusted from the request body.
 depends_on: [M03]
 surfaces: [backend, cli, gui, contract]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-15
-completed_at: null
+completed_at: 2026-08-15
 ---
 
 # M04 — Agent Identity & M2M Tokens
@@ -32,17 +32,39 @@ extends the same authorization helpers.
 
 ## 3. Exit Criteria
 
-- [ ] An agent can call every RPC it is scoped for using only its own token,
+- [x] An agent can call every RPC it is scoped for using only its own token,
       with no human session present anywhere in the request.
-- [ ] Attribution on comments, notes and tasks is derived from the authenticated
+      *Observed — a raw `curl` with only `Authorization: Bearer tskr_…`, no
+      cookie header at all, returns the org's tasks. Thirty endpoints are open
+      to tokens; the rest refuse by construction.*
+- [x] Attribution on comments, notes and tasks is derived from the authenticated
       principal; the `agentId` request field is removed from the contract.
-- [ ] A token is displayed exactly once at creation and stored only as a hash.
-- [ ] Revoking a token stops the next request; revoking one token does not
+      *Removed from `CreateComment`, `UpdateComment`, `DeleteComment` and
+      `CreateTaskNote`, with field numbers `reserved`. The `agentId` fields that
+      remain are subjects (which agent to archive, which agent a token is for)
+      or response attribution — plus `assignTask`, the assignee, kept
+      deliberately and recorded in T06.*
+- [x] A token is displayed exactly once at creation and stored only as a hash.
+      *`AgentToken` has no plaintext and no hash field on the wire at all, so
+      neither can leak by omission — proven by injection in T05. The stored row
+      holds a SHA-256 digest; the list shows a 6-character prefix.*
+- [x] Revoking a token stops the next request; revoking one token does not
       affect any other.
-- [ ] A token cannot act outside the organization it was issued for, proven by test.
-- [ ] Exceeding a token's rate limit returns `429` with RFC 7807 problem details
+      *Verified live in T04 and again from the CLI in T09: revoke, then the same
+      token returns `unauthenticated` on its very next call with no restart. A
+      sibling token keeps working.*
+- [x] A token cannot act outside the organization it was issued for, proven by test.
+      *`scope-enforcement.test.ts` — a token holding `tasks:write` presented
+      against another organization fails with `this token cannot act in that
+      organization`. The org binding is on the token row, checked every call.*
+- [x] Exceeding a token's rate limit returns `429` with RFC 7807 problem details
       and a `Retry-After` header.
-- [ ] `ENABLE_TEST_LOGIN` is no longer needed for agent or CLI workflows.
+      *Observed against a running server: five through, then
+      `429 / application/problem+json / Retry-After: 1`, recovering after the
+      wait. Human sessions are not throttled by it.*
+- [x] `ENABLE_TEST_LOGIN` is no longer needed for agent or CLI workflows.
+      *The whole close-out run above — mint, create, list — was performed against
+      a backend started **without** `ENABLE_TEST_LOGIN` set at all.*
 
 ## 4. Scope
 
