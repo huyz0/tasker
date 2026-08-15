@@ -546,7 +546,126 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Bob/)).toBeInTheDocument());
     expect(screen.getByText(/Alice/)).toBeInTheDocument();
-    expect(mockListOrgMembers).toHaveBeenCalledWith({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
+    expect(mockListOrgMembers).toHaveBeenLastCalledWith(
+      expect.objectContaining({ orgId: 'org-1', page: expect.objectContaining({ cursor: 'cursor-2' }) }),
+    );
+  });
+
+  // M03-T08: search and the role facet are server-side. A client-side filter
+  // over the loaded window would report "3 admins" for an org with 200 of them,
+  // which reads as an answer rather than as a truncation.
+  it('sends the search term to the server, debounced', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({
+      members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
+      page: { totalCount: 1 },
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Search members'), { target: { value: 'ali' } });
+
+    await waitFor(
+      () =>
+        expect(mockListOrgMembers).toHaveBeenLastCalledWith(
+          expect.objectContaining({ page: expect.objectContaining({ filter: 'ali' }) }),
+        ),
+      { timeout: 2000 },
+    );
+  });
+
+  it('sends the role facet to the server', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({
+      members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
+      page: { totalCount: 1 },
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'viewer' } });
+
+    await waitFor(() =>
+      expect(mockListOrgMembers).toHaveBeenLastCalledWith(expect.objectContaining({ role: 'viewer' })),
+    );
+  });
+
+  it('reports the filtered total, not the page size', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({
+      members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
+      page: { totalCount: 100001 },
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+
+    await waitFor(() => expect(screen.getByTestId('member-count')).toHaveTextContent('Showing 1 of 100001'));
+  });
+
+  it('names the query when a search matches nothing, and offers a way back', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers
+      .mockResolvedValueOnce({
+        members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
+        page: { totalCount: 1 },
+      })
+      .mockResolvedValue({ members: [], page: { totalCount: 0 } });
+
+    renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Search members'), { target: { value: 'zzz' } });
+
+    await waitFor(() => expect(screen.getByText(/No members match/)).toBeInTheDocument(), { timeout: 2000 });
+    // "No members found." would say the organization is empty. It is not — the
+    // search is.
+    expect(screen.getByText('zzz')).toBeInTheDocument();
+    expect(screen.getByText('Clear filters')).toBeInTheDocument();
+  });
+
+  it('exposes the true row count to assistive technology, not the windowed count', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({
+      members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }],
+      page: { totalCount: 100001 },
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+
+    await waitFor(() => expect(screen.getByRole('rowgroup')).toHaveAttribute('aria-rowcount', '100001'));
+  });
+
+  // The verify line for M03-T08 is a frame budget, which no jsdom test can
+  // measure. What is testable is the mechanism behind it: the number of rows in
+  // the DOM must not grow with the number of members. If windowing regresses,
+  // this fails long before anyone opens a profiler.
+  it('keeps the DOM bounded as the member count grows', async () => {
+    const many = Array.from({ length: 1000 }, (_, i) => ({
+      userId: `user-${i}`,
+      email: `m${i}@b.com`,
+      name: `Member ${String(i).padStart(4, '0')}`,
+      role: 'member',
+    }));
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }] });
+    mockListOrgMembers.mockResolvedValue({ members: many, page: { totalCount: 1000 } });
+
+    renderPage();
+    fireEvent.click(screen.getByText('Roles & Permissions'));
+
+    await waitFor(() => expect(screen.getByTestId('member-count')).toHaveTextContent('Showing 1000 of 1000'));
+
+    const rendered = screen.getByRole('rowgroup').querySelectorAll('[data-index]').length;
+    expect(rendered).toBeGreaterThan(0);
+    // Measured: 9 rows in the DOM for 1000 members. Without windowing it is
+    // 1000, so this bound is not decorative.
+    expect(rendered).toBeLessThan(100);
   });
 
   // M03-T04: the server refuses to remove a member who still owns projects and

@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
-import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { OrgService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { PaginationControls } from '../../components/PaginationControls';
-import { fetchAllPages } from '../../lib/fetchAllPages';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useDebounce } from 'use-debounce';
 
 const orgClient = createClient(OrgService, transport);
 
@@ -132,24 +133,60 @@ export function OrganizationsDashboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orgs'] }),
   });
 
-  // The server caps a page at 100 rows (M03-T06). Reading `resp.members` from a
-  // single call therefore showed the first 50 members of the organization with
-  // nothing on screen to say the rest existed - the roles table would simply
-  // have been wrong for anyone past that. Page until the cursor runs out.
-  //
-  // M03-T08 replaces this with a virtualized, server-filtered table; loading
-  // every member into memory is the honest interim, not the destination.
-  const { data: membersData, isLoading: isLoadingMembers } = useQuery({
-    queryKey: ['orgMembers', activeOrgId],
-    queryFn: async () => fetchAllPages(async (cursor) => {
-      const resp = await orgClient.listOrgMembers({
+  // Search and the role facet are both server-side, and both are part of the
+  // query key: a cursor minted against the unfiltered set means nothing against
+  // a filtered one, so changing either must start a new list rather than append
+  // to the old one.
+  const [memberSearch, setMemberSearch] = useState('');
+  const [debouncedMemberSearch] = useDebounce(memberSearch, 300);
+  const [roleFacet, setRoleFacet] = useState('');
+
+  const {
+    data: membersPages,
+    isLoading: isLoadingMembers,
+    isFetchingNextPage: isFetchingMoreMembers,
+    hasNextPage: hasMoreMembers,
+    fetchNextPage: fetchMoreMembers,
+  } = useInfiniteQuery({
+    queryKey: ['orgMembers', activeOrgId, debouncedMemberSearch, roleFacet],
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) =>
+      orgClient.listOrgMembers({
         orgId: activeOrgId,
-        page: cursor ? { cursor } : undefined,
-      });
-      return { items: resp.members, nextCursor: resp.page?.nextCursor || undefined };
-    }),
+        role: roleFacet || undefined,
+        page: {
+          limit: 100,
+          filter: debouncedMemberSearch || undefined,
+          cursor: pageParam,
+        },
+      }),
+    getNextPageParam: (last) => last.page?.nextCursor || undefined,
     enabled: !!activeOrgId,
   });
+
+  const membersData = membersPages?.pages.flatMap((p) => p.members);
+  // totalCount follows the filter, so this is "12 of 12" after a search that
+  // narrows - which is how a user tells a working search from a broken one.
+  const memberTotal = membersPages?.pages[0]?.page?.totalCount ?? 0;
+
+  const memberScrollRef = useRef<HTMLDivElement>(null);
+  const memberVirtualizer = useVirtualizer({
+    count: membersData?.length ?? 0,
+    getScrollElement: () => memberScrollRef.current,
+    estimateSize: () => 57,
+    overscan: 8,
+  });
+
+  // Fetch the next page while the user is still some rows from the end, so the
+  // list does not stall at the boundary.
+  const virtualMemberRows = memberVirtualizer.getVirtualItems();
+  useEffect(() => {
+    const last = virtualMemberRows[virtualMemberRows.length - 1];
+    if (!last || !membersData) return;
+    if (last.index >= membersData.length - 10 && hasMoreMembers && !isFetchingMoreMembers) {
+      fetchMoreMembers();
+    }
+  }, [virtualMemberRows, membersData, hasMoreMembers, isFetchingMoreMembers, fetchMoreMembers]);
 
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -430,18 +467,72 @@ export function OrganizationsDashboard() {
                   {activeOrg ? <>Members of <span className="font-medium text-foreground">{activeOrg.name}</span> and the role each one holds.</> : 'Select an organization to manage its members.'}
                 </p>
               </div>
+              <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-end">
+                <div className="flex-1 min-w-0">
+                  <label htmlFor="member-search" className="block text-xs font-medium text-muted-foreground mb-1">
+                    Search members
+                  </label>
+                  <input
+                    id="member-search"
+                    type="search"
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    placeholder="Name or email"
+                    className="w-full text-sm rounded-md border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="member-role-facet" className="block text-xs font-medium text-muted-foreground mb-1">
+                    Role
+                  </label>
+                  <select
+                    id="member-role-facet"
+                    value={roleFacet}
+                    onChange={(e) => setRoleFacet(e.target.value)}
+                    className="w-full md:w-40 text-sm rounded-md border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    <option value="">All roles</option>
+                    <option value="owner">Owner</option>
+                    <option value="admin">Admin</option>
+                    <option value="member">Member</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
+                </div>
+              </div>
+
+              {!isLoadingMembers && (
+                <p className="text-xs text-muted-foreground mb-2" data-testid="member-count">
+                  Showing {membersData?.length ?? 0} of {memberTotal}
+                </p>
+              )}
+
               <div className="border rounded-md overflow-hidden mb-4">
                 <div className="grid grid-cols-[1fr_160px_80px] gap-2 p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground bg-muted/30">
                   <span>User</span>
                   <span>Role</span>
                   <span className="text-right">Actions</span>
                 </div>
-                <div className="divide-y">
-                  {isLoadingMembers ? (
-                    <div className="p-3 text-sm text-center text-muted-foreground">Loading members...</div>
-                  ) : membersData && membersData.length > 0 ? (
-                    membersData.map((m) => (
-                      <div key={m.userId} className="grid grid-cols-[1fr_160px_80px] gap-2 p-3 text-sm items-center">
+                {isLoadingMembers ? (
+                  <div className="p-3 text-sm text-center text-muted-foreground">Loading members...</div>
+                ) : membersData && membersData.length > 0 ? (
+                  <div
+                    ref={memberScrollRef}
+                    // Only the visible rows exist in the DOM, so the real size
+                    // is not discoverable by tabbing - aria-rowcount carries it.
+                    role="rowgroup"
+                    aria-rowcount={memberTotal}
+                    className="max-h-[32rem] overflow-y-auto"
+                  >
+                    <div style={{ height: memberVirtualizer.getTotalSize(), position: 'relative' }}>
+                      {virtualMemberRows.map((virtualRow) => {
+                        const m = membersData[virtualRow.index]!;
+                        return (
+                      <div
+                        key={m.userId}
+                        ref={memberVirtualizer.measureElement}
+                        data-index={virtualRow.index}
+                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${virtualRow.start}px)` }}
+                        className="grid grid-cols-[1fr_160px_80px] gap-2 p-3 text-sm items-center border-b">
                         <div className="min-w-0">
                           <div className="truncate font-medium">{m.name || m.email || m.userId}</div>
                           {m.email && m.name && <div className="truncate text-xs text-muted-foreground">{m.email}</div>}
@@ -477,11 +568,32 @@ export function OrganizationsDashboard() {
                           </button>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="p-3 text-sm text-center text-muted-foreground">No members found.</div>
-                  )}
-                </div>
+                        );
+                      })}
+                    </div>
+                    {isFetchingMoreMembers && (
+                      <div className="p-3 text-sm text-center text-muted-foreground">Loading more...</div>
+                    )}
+                  </div>
+                ) : debouncedMemberSearch || roleFacet ? (
+                  // Naming the query matters: it tells the user the search ran
+                  // and matched nothing, rather than that the table broke.
+                  <div className="p-6 text-sm text-center text-muted-foreground">
+                    <p>
+                      No members match
+                      {debouncedMemberSearch ? <> &ldquo;<span className="text-foreground">{debouncedMemberSearch}</span>&rdquo;</> : null}
+                      {roleFacet ? <> with the <span className="text-foreground">{roleFacet}</span> role</> : null}.
+                    </p>
+                    <button
+                      onClick={() => { setMemberSearch(''); setRoleFacet(''); }}
+                      className="mt-2 text-primary hover:underline outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 text-sm text-center text-muted-foreground">No members found.</div>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 <strong className="text-foreground">Owner</strong> has full control (always at least one required). <strong className="text-foreground">Admin</strong> manages members and org settings. <strong className="text-foreground">Member</strong> is a normal contributor. <strong className="text-foreground">Viewer</strong> is read-only.

@@ -345,3 +345,50 @@ completes the task.
   the honest interim, not the destination — **M03-T08** replaces it with a
   virtualized, server-filtered table.
 - **Next**: M03-T08
+
+---
+
+## M03-T08 — Virtualize the members table with server-side search
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: Replace T07's fetch-every-page interim with a windowed list.
+  Search and the role facet bind to the server's `filter` (debounced), so the
+  browser holds a page rather than an organization, and `@tanstack/react-virtual`
+  renders only the visible rows. Infinite-scroll the cursor as the user reaches
+  the end.
+- **Weight**: heavy — it adds a screen behaviour a user has to learn, so it got
+  a [UX pass](design/M03-T08-members-table.md) covering the
+  empty/loading/error/permission states before the code, and
+  [a review](reviews/M03-T08-virtualized-members-v1.md) after.
+- **Changed**: `main.tsp` + `health.proto` (`ListOrgMembersRequest.role`, new
+  field number), `orgs.handler.ts`, `features/Organizations/index.tsx`,
+  `orgs.test.ts` (+4), the Organizations test (+6), and one correction to
+  `ui-ux-standard.md`.
+- **Verified**: `moon check --all` — 23 tasks, 393 GUI tests, 41 org tests.
+- **Notes**: the verify line is a frame budget, which no jsdom test can measure.
+  What is measured is the mechanism behind it: **9 DOM rows for 1000 members**.
+  Without windowing that is 1000. The number was obtained by forcing the
+  assertion to fail and reading the real count rather than assuming the window
+  worked — in jsdom a virtualizer with no layout can just as easily render
+  everything or nothing, and either would have made this test meaningless.
+
+  The role facet needed a contract field rather than a client-side filter.
+  Filtering the loaded window would report "3 admins" for an organization with
+  200 of them, which reads as an answer instead of as a truncation.
+
+  Both inputs are in the react-query key. A cursor minted against the
+  unfiltered set means nothing against a filtered one, so changing search or
+  facet must start a new list — keying on them makes that structural rather
+  than something to remember.
+- **Divergence**: `ui-ux-standard.md` §1 still instructed agents to "rely purely
+  on standard UI primitive libraries (**Shadcn UI**)". Shadcn is not installed
+  and ADR-0005 records why. Corrected while loading the standard for this task —
+  M02's sweep read the tech-stack tables and standards prose separately, and
+  this one slipped through both.
+- **Deferred to M06 with reasoning**: a viewer sees the role `<select>` and
+  Remove and can click them; the server refuses and the error line shows why.
+  Disabling them client-side by role would be a second copy of the
+  authorization rules drifting from `lib/authz.ts`. Written into the design note
+  so the next person does not "fix" it by duplicating policy into the client.
+- **Next**: M03-T09

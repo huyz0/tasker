@@ -789,3 +789,71 @@ describe("listOrgMembers at scale (M03-T06)", () => {
     expect(new Set(seen).size).toBe(121);
   });
 });
+
+describe("listOrgMembers role facet (M03-T08)", () => {
+  const seedMixedRoles = async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const suffix = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const orgId = "org-facet-" + suffix;
+    const rows = [
+      { id: "owner-" + suffix, role: "owner", name: "Olive" },
+      { id: "admin1-" + suffix, role: "admin", name: "Adam" },
+      { id: "admin2-" + suffix, role: "admin", name: "Ada" },
+      { id: "member-" + suffix, role: "member", name: "Mel" },
+      { id: "viewer-" + suffix, role: "viewer", name: "Vic" },
+    ];
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Facet Org", slug: orgId, createdAt: new Date() });
+    for (const r of rows) {
+      await db.insert(schemaSqlite.users).values({ id: r.id, email: `${r.id}@t.local`, name: r.name, createdAt: new Date() });
+      await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: r.id, role: r.role, joinedAt: new Date() });
+    }
+    return { handler, orgId, ctx: makeAuthContext(rows[0]!.id) };
+  };
+
+  test("filters to a single role, and counts only that role", async () => {
+    const { handler, orgId, ctx } = await seedMixedRoles();
+
+    const admins = await handler.listOrgMembers({ orgId, role: "admin" }, ctx);
+
+    expect(admins.members.map((m: any) => m.name).sort()).toEqual(["Ada", "Adam"]);
+    // The count has to follow the facet, or "Showing 2 of 5" tells the user
+    // their filter did not work.
+    expect(admins.page.totalCount).toBe(2);
+  });
+
+  test("an empty role means no facet, not a member with no role", async () => {
+    const { handler, orgId, ctx } = await seedMixedRoles();
+
+    const all = await handler.listOrgMembers({ orgId, role: "" }, ctx);
+
+    expect(all.members.length).toBe(5);
+    expect(all.page.totalCount).toBe(5);
+  });
+
+  test("the facet composes with search rather than replacing it", async () => {
+    const { handler, orgId, ctx } = await seedMixedRoles();
+
+    // "Ada" is a substring of "Adam", so both admins match the search - which
+    // is the point: the facet narrows to admins, the search narrows within
+    // them, and neither replaces the other.
+    const both = await handler.listOrgMembers({ orgId, role: "admin", page: { filter: "Ada" } }, ctx);
+    expect(both.members.map((m: any) => m.name).sort()).toEqual(["Ada", "Adam"]);
+    expect(both.page.totalCount).toBe(2);
+
+    // Same search without the facet would also match nobody else here, so
+    // prove the facet does work by searching a name that is not an admin.
+    const nonAdmin = await handler.listOrgMembers({ orgId, role: "admin", page: { filter: "Vic" } }, ctx);
+    expect(nonAdmin.members).toEqual([]);
+    expect(nonAdmin.page.totalCount).toBe(0);
+
+    const withoutFacet = await handler.listOrgMembers({ orgId, page: { filter: "Vic" } }, ctx);
+    expect(withoutFacet.members.map((m: any) => m.name)).toEqual(["Vic"]);
+  });
+
+  test("rejects a role that is not a real role", async () => {
+    const { handler, orgId, ctx } = await seedMixedRoles();
+
+    await expect(handler.listOrgMembers({ orgId, role: "superuser" }, ctx)).rejects.toThrow();
+  });
+});

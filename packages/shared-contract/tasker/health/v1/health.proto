@@ -122,6 +122,8 @@ message OrgMember {
 message ListOrgMembersRequest {
   string orgId = 1;
   PageRequest page = 2;
+  // Server-side role facet (M03-T08).
+  string role = 3;
 }
 message ListOrgMembersResponse {
   repeated OrgMember members = 1;

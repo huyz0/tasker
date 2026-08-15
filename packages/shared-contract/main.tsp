@@ -134,6 +134,10 @@ model OrgMember {
 model ListOrgMembersRequest {
   @field(1) orgId: string;
   @field(2) page?: PageRequest;
+
+  // Server-side role facet. Filtering the loaded window client-side would
+  // report "3 admins" for an org with 200 of them, which reads as an answer.
+  @field(3) role?: string;
 }
 model ListOrgMembersResponse {
   @field(1) members: OrgMember[];

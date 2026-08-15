@@ -93,7 +93,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
       - Files: `modules/orgs/orgs.handler.ts`, `packages/shared-contract/main.tsp`
       - Verify: paging through 100,000 members visits each exactly once.
 
-- [ ] **M03-T08** — Virtualize the members table and add a search input bound to
+- [x] **M03-T08** — Virtualize the members table and add a search input bound to
       the server-side filter, plus a role facet.
       - Files: `apps/gui/src/features/Organizations/index.tsx`
       - Verify: scrolling 100,000 rows stays at 60 fps.

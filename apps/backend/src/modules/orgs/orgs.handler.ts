@@ -54,6 +54,10 @@ const UpdateOrgSchema = z.object({
 const ListOrgMembersSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   page: z.any().optional(),
+  // Empty string means "no facet" rather than "a member with no role" - the
+  // GUI's <select> sends "" for its All option, and treating that as a value
+  // would return nothing at all.
+  role: z.preprocess((v) => (v === "" ? undefined : v), OrgRole.optional()),
 });
 
 const RemoveOrgMemberSchema = z.object({
@@ -167,10 +171,14 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       // One joined, cursor-paginated query instead. The join is inner: a
       // membership whose user row is missing is not a person anyone can act on,
       // and surfacing it as a blank-named row only produces a support question.
+      const roleFacet = parsed.role ? eq((members as any).role, parsed.role) : undefined;
+
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
         db,
         members,
-        eq((members as any).orgId, parsed.orgId),
+        roleFacet
+          ? and(eq((members as any).orgId, parsed.orgId), roleFacet)
+          : eq((members as any).orgId, parsed.orgId),
         parsed.page,
         [(users as any).name, (users as any).email],
         {
