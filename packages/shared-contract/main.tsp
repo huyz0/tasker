@@ -640,6 +640,25 @@ interface AgentService {
 
 // ==== Task Models ====
 
+// Who a task is assigned to. Exactly one of userId/agentId is set; the display
+// name is resolved server-side so a client does not need the member and agent
+// catalogues to render a task list (M05-T04).
+model Assignee {
+  @field(1) userId: string;
+  @field(2) agentId: string;
+  @field(3) name: string;
+}
+
+model UnassignTaskRequest {
+  @field(1) taskId: string;
+  @field(2) agentId?: string;
+  @field(3) userId?: string;
+}
+
+model UnassignTaskResponse {
+  @field(1) success: boolean;
+}
+
 model Task {
   @field(1) id: string;
   @field(2) projectId: string;
@@ -650,6 +669,10 @@ model Task {
   @field(7) displayId: string;
   @field(8) taskTypeId?: string;
   @field(9) createdBy?: string;
+
+  // task_assignments has stored these since M01 and nothing could read them,
+  // so the GUI showed a hardcoded avatar instead (M05-T02).
+  @field(10) assignees: Assignee[];
 }
 
 // ==== Task Services ====
@@ -763,6 +786,7 @@ model PurgeTaskResponse {
 interface TaskService {
   createTask(request: CreateTaskRequest): CreateTaskResponse;
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
+  unassignTask(request: UnassignTaskRequest): UnassignTaskResponse;
   listTasks(request: ListTasksRequest): ListTasksResponse;
   updateTask(request: UpdateTaskRequest): UpdateTaskResponse;
   updateTaskStatus(request: UpdateTaskStatusRequest): UpdateTaskStatusResponse;

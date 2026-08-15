@@ -108,6 +108,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     createTask: { projectId: ids.project, title: 'T' },
     listTasks: { projectId: ids.project },
     assignTask: { taskId: ids.task, agentId: ids.agent },
+    unassignTask: { taskId: ids.task, agentId: ids.agent },
     addTaskReviewer: { taskId: ids.task, userId: ids.user },
     removeTaskReviewer: { taskId: ids.task, userId: ids.user },
     listTaskReviewers: { taskId: ids.task },

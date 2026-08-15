@@ -1,6 +1,6 @@
 ---
 active_milestone: M05
-active_task: M05-T03
+active_task: M05-T04
 last_updated: 2026-08-15
 last_commit: d04d0b7
 blocked: false
@@ -16,7 +16,7 @@ blocker: null
 ## Now
 
 - **Milestone**: M05 — GUI / API Parity
-- **Task**: M05-T03 — render the signed-in user
+- **Task**: M05-T04 — assignment
 - **Branch**: `feature/m04-agent-identity` — M04 is complete on it but **not yet
   merged to `main`**. Merge it before branching M05.
 - **Command to continue**: `/milestone-deliver M05`
@@ -44,7 +44,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M02 | Specification Truth            | done   | M01        | 7     | 7    |
 | M03 | IAM Correctness & Scale        | done   | M01        | 16    | 16   |
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
-| M05 | GUI / API Parity               | in-progress | M01   | 12    | 3    |
+| M05 | GUI / API Parity               | in-progress | M01   | 12    | 4    |
 | M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |
 | M07 | Read-Path Scale                | todo   | M05        | 11    | 0    |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |

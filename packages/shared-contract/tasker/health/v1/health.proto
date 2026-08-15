@@ -582,6 +582,15 @@ message RevokeAgentTokenResponse {
   bool success = 1;
 }
 
+// Who a task is assigned to. Exactly one of userId/agentId is set; the display
+// name is resolved server-side so a client does not need the member and agent
+// catalogues to render a task list (M05-T04).
+message Assignee {
+  string userId = 1;
+  string agentId = 2;
+  string name = 3;
+}
+
 message Task {
   string id = 1;
   string project_id = 2;
@@ -592,6 +601,19 @@ message Task {
   string display_id = 7;
   string task_type_id = 8;
   string created_by = 9;
+  // task_assignments has stored these since M01 and nothing could read them,
+  // so the GUI showed a hardcoded avatar instead (M05-T02).
+  repeated Assignee assignees = 10;
+}
+
+message UnassignTaskRequest {
+  string task_id = 1;
+  string agent_id = 2;
+  string user_id = 3;
+}
+
+message UnassignTaskResponse {
+  bool success = 1;
 }
 
 message CreateTaskRequest {
@@ -714,6 +736,7 @@ message PurgeTaskResponse {
 service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
+  rpc UnassignTask(UnassignTaskRequest) returns (UnassignTaskResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
   rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse);

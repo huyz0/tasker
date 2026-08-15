@@ -54,10 +54,11 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     createTask: 'tasks:write',
     updateTask: 'tasks:write',
     updateTaskStatus: 'tasks:write',
-    // assignTask is deliberately absent. Deciding which worker picks up a piece
-    // of work is an orchestration decision, and a token that can reassign work
-    // to itself is a token that can help itself to any task in the
-    // organization. Revisit with M10, which owns delegation.
+    // assignTask and unassignTask are deliberately absent. Deciding which
+    // worker picks up a piece of work is an orchestration decision, and a token
+    // that can reassign work to itself is a token that can help itself to any
+    // task in the organization - or take itself off one it was given. Revisit
+    // with M10, which owns delegation.
   },
   taskNotes: {
     listTaskNotes: 'tasks:read',

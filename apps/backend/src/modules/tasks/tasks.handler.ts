@@ -2,7 +2,7 @@ import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and, not, isNull } from "drizzle-orm";
+import { eq, and, not, isNull, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getTaskOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -51,6 +51,16 @@ const CreateTaskStatusTransitionSchema = z.object({
   taskTypeId: z.string().min(1, "taskTypeId is required"),
   fromStatusId: z.string().min(1, "fromStatusId is required"),
   toStatusId: z.string().min(1, "toStatusId is required"),
+});
+
+// Naming nobody would match the "both null" row shape and delete an assignment
+// the caller never named, so at least one is required.
+const UnassignTaskSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+  agentId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  userId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+}).refine((v) => !!v.agentId || !!v.userId, {
+  message: "either agentId or userId is required",
 });
 
 const AssignTaskSchema = z.object({
@@ -353,6 +363,52 @@ async function validateStatusForTaskType(
 
 export const createTaskManagementHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
+
+  /**
+   * Resolves assignees for a page of tasks, with display names, in a fixed
+   * number of queries regardless of how many tasks there are.
+   *
+   * task_assignments has stored these since M01 and nothing could read them, so
+   * every card rendered a hardcoded avatar instead (M05-T02). One query per
+   * task would be correct and would also make a 100-task page cost 100 round
+   * trips, growing with the page size - the shape M03 spent a milestone
+   * removing elsewhere.
+   */
+  const assigneesByTask = async (taskIds: string[]): Promise<Map<string, any[]>> => {
+    const byTask = new Map<string, any[]>();
+    if (taskIds.length === 0) return byTask;
+
+    const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+    const usersTable = isStandalone ? schemaSqlite.users : schemaMysql.users;
+    const agentsTable = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+
+    const rows = await db.select().from(assignments).where(inArray((assignments as any).taskId, taskIds));
+    if (rows.length === 0) return byTask;
+
+    const userIds = [...new Set(rows.map((r: any) => r.userId).filter(Boolean))] as string[];
+    const agentIds = [...new Set(rows.map((r: any) => r.agentId).filter(Boolean))] as string[];
+    const [userRows, agentRows] = await Promise.all([
+      userIds.length ? db.select().from(usersTable).where(inArray((usersTable as any).id, userIds)) : [],
+      agentIds.length ? db.select().from(agentsTable).where(inArray((agentsTable as any).id, agentIds)) : [],
+    ]);
+    const userName = new Map(userRows.map((u: any) => [u.id, u.name || u.email]));
+    const agentName = new Map(agentRows.map((a: any) => [a.id, a.name]));
+
+    for (const r of rows) {
+      const list = byTask.get(r.taskId) ?? [];
+      list.push({
+        userId: r.userId ?? "",
+        agentId: r.agentId ?? "",
+        // Falling back to the id keeps a row visible when the referenced
+        // account has gone: "assigned to someone we cannot name" beats
+        // silently dropping the assignment and showing the task as unowned.
+        name: r.userId ? (userName.get(r.userId) ?? r.userId) : (agentName.get(r.agentId) ?? r.agentId),
+      });
+      byTask.set(r.taskId, list);
+    }
+    return byTask;
+  };
+
   return {
     async createTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
@@ -447,10 +503,13 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const deletedFilter = req.onlyDeleted ? not(notDeleted(tasks)) : notDeleted(tasks);
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, and(eq((tasks as any).projectId, req.projectId), deletedFilter), req.page, (tasks as any).title, { title: (tasks as any).title, status: (tasks as any).status, createdAt: (tasks as any).createdAt });
 
+      const assignees = await assigneesByTask(items.map((t: any) => t.id));
+
       return {
         tasks: items.map((t: any) => ({
           ...t,
           createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
+          assignees: assignees.get(t.id) ?? [],
         })),
         page: { nextCursor, totalCount },
       };
@@ -512,6 +571,27 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       };
 
       await db.insert(assignments).values(payload);
+      return { success: true };
+    },
+    async unassignTask(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUser(contextValues);
+      const parsed = UnassignTaskSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await assertOrgWriter(db, userId, orgId);
+
+      const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+      // Matched on the exact (agentId, userId) pair the assignment was created
+      // with, the same shape assignTask's duplicate check uses. Deleting on
+      // taskId plus whichever id happens to be set would remove a *different*
+      // assignment that shares the task.
+      await db.delete(assignments).where(and(
+        eq((assignments as any).taskId, parsed.taskId),
+        parsed.agentId ? eq((assignments as any).agentId, parsed.agentId) : isNull((assignments as any).agentId),
+        parsed.userId ? eq((assignments as any).userId, parsed.userId) : isNull((assignments as any).userId),
+      ));
+
+      // Idempotent: removing an assignment that is not there is the state the
+      // caller asked for, not an error.
       return { success: true };
     },
     async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {

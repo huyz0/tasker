@@ -71,7 +71,7 @@ canvas is warranted.
 
 ### Reach the API
 
-- [ ] **M05-T04** — Assignment: an assignee picker over org members and agents,
+- [x] **M05-T04** — Assignment: an assignee picker over org members and agents,
       calling `assignTask`, with the assignee shown on the card and detail view.
       - Files: `apps/gui/src/features/Tasks/`, new `AssigneePicker` component
       - Verify: assigning in the UI is visible via `cli tasks list`.

@@ -35,7 +35,9 @@ vi.mock('@connectrpc/connect', () => ({
     if (service === 'RepositoryService') return { listPullRequests: mockListPullRequests };
     if (service === 'TaskTypeService') return { getTaskType: mockGetTaskType };
     if (service === 'TaskNoteService') return { listTaskNotes: mockListTaskNotes, updateTaskNote: mockUpdateTaskNote, deleteTaskNote: mockDeleteTaskNote };
-    return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask, updateTask: mockUpdateTask, createTask: mockCreateTask };
+    if (service === 'OrgService') return { listOrgMembers: vi.fn().mockResolvedValue({ members: [], page: {} }) };
+    if (service === 'AgentService') return { listAgents: vi.fn().mockResolvedValue({ agents: [], page: {} }) };
+    return { listTasks: mockListTasks, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask, updateTask: mockUpdateTask, createTask: mockCreateTask, assignTask: vi.fn(), unassignTask: vi.fn() };
   }),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
@@ -45,6 +47,10 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   RepositoryService: 'RepositoryService',
   TaskTypeService: 'TaskTypeService',
   TaskNoteService: 'TaskNoteService',
+  // AssigneePicker (M05-T04) reads the member and agent catalogues to build its
+  // menu, so this module mock has to expose them too.
+  OrgService: 'OrgService',
+  AgentService: 'AgentService',
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({

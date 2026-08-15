@@ -110,3 +110,51 @@ Append-only. Newest entry at the bottom.
   (`label.charAt(0)`), so it is an initial rather than the literal `U` that
   M05-T02 deleted — and being an expression, it cannot trip the avatar rule.
 - **Next**: M05-T04
+
+---
+
+## M05-T04 — Assignment
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: both contract files (`Assignee`, `Task.assignees`,
+  `unassignTask`), `modules/tasks/tasks.handler.ts`,
+  `modules/tasks/assignment.test.ts` (new, 12 tests),
+  `features/Tasks/AssigneePicker.tsx` + `.test.tsx` (new, 14 tests),
+  `features/Tasks/index.tsx`, both authorization sweeps
+- **Verified**: `moon run backend:test` 569 pass · `moon run gui:test` 423 pass ·
+  `moon check --all` 23 pass. And the verify line end to end: assigned
+  `Member 0050000` to `SEED-145` in the browser, then
+  `cli tasks list --json` reported `SEED-145 -> Member 0050000 (person)`.
+- **Artifacts**: design note (`design/M05-T04-assignment.md`), review
+  (`reviews/M05-T04-assignment-v1.md`) — approved, 1 high, 1 medium, 2 low.
+- **The task's file list was incomplete, and the gap was the whole problem.**
+  `Task` carried no assignee field and there was no `listTaskAssignments`, so
+  "show the assignee" and "visible via `cli tasks list`" were both unreachable
+  from the GUI alone. The rows have existed since M01 and nothing could read
+  them — which is *why* the card rendered a hardcoded avatar. Added
+  `Task.assignees`, resolved server-side with display names, plus `unassignTask`:
+  a picker that cannot undo a mis-click is a trap.
+- **I reintroduced the exact defect M03 spent a milestone removing.** The first
+  picker paged through every member to fill a `<select>`; against the
+  100,001-member fixture that was ~2,000 requests and it never finished loading.
+  It now searches — one page of 10, the typed text passed to the server's
+  `filter`. **2 requests to open, measured.** The unit tests could not have
+  caught it: they mock the transport, so a page that costs two thousand calls
+  looks identical to one that costs two. Running it against the real fixture is
+  what showed it.
+- **That rework improved the design rather than patching it.** Server-side
+  filtering is this milestone's sixth exit criterion, so the fix moves toward
+  the milestone's goal instead of around it.
+- **Batching was designed in, not repaired.** `assigneesByTask` resolves a whole
+  page in a fixed number of queries, with a test asserting the count stays under
+  ten for 25 tasks — the defect is invisible in output, since the per-task
+  version returns identical data.
+- **A third fabrication turned up**: the task detail hardcoded `Assignee:
+  Unassigned` regardless of the actual assignments. Replaced with the real
+  control.
+- **Recorded for M06**: the Kanban card is a `<div role="button">`, so its
+  accessible name is now its entire text including the labels of the controls
+  inside it — `getByRole('button', {name: 'Assign…'})` matches the card. Found
+  while writing the browser check.
+- **Next**: M05-T05

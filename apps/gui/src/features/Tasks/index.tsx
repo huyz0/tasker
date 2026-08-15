@@ -10,6 +10,7 @@ import { TaskService, RepositoryService, TaskTypeService, TaskNoteService } from
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
+import { AssigneePicker } from './AssigneePicker';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 
@@ -437,6 +438,10 @@ export function TasksWorkbench() {
                       <h4 className="font-medium text-sm leading-tight mb-2">{task.title}</h4>
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{task.description || 'No description provided.'}</p>
 
+                      <div className="mb-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
+                        <AssigneePicker taskId={task.id} orgId={activeOrgId} assignees={task.assignees ?? []} />
+                      </div>
+
                       {(pullRequestsByTaskId.get(task.id)?.length ?? 0) > 0 && (
                         <div className="flex flex-wrap gap-2 mb-3">
                           {pullRequestsByTaskId.get(task.id)!.map(pr => (
@@ -601,7 +606,14 @@ export function TasksWorkbench() {
                 {updateStatusMutation.isError && (
                   <p className="text-destructive text-xs">Failed to update status: {(updateStatusMutation.error as Error).message}</p>
                 )}
-                <div className="flex justify-between"><span className="w-20">Assignee:</span> <span className="text-foreground">Unassigned</span></div>
+                {/* Was a hardcoded "Unassigned", shown whether or not the task
+                    had assignees — the detail view's version of M05-T02's chip. */}
+                <div className="flex justify-between gap-3">
+                  <span className="w-20 shrink-0">Assignee:</span>
+                  <div className="flex-1">
+                    <AssigneePicker taskId={expandedTask.id} orgId={activeOrgId} assignees={(expandedTask as any).assignees ?? []} />
+                  </div>
+                </div>
              </div>
              <div>
                <h3 className="text-sm font-semibold tracking-tight mb-3">Labels</h3>
