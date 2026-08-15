@@ -1,8 +1,8 @@
 ---
 active_milestone: M02
-active_task: M02-T06
+active_task: M02-T07
 last_updated: 2026-08-15
-last_commit: c39ecf0
+last_commit: f79e188
 blocked: false
 blocker: null
 ---
@@ -16,7 +16,7 @@ blocker: null
 ## Now
 
 - **Milestone**: M02 — Specification Truth
-- **Task**: M02-T06 — correct the README claims
+- **Task**: M02-T07 — rebuild the standards index
 - **Branch**: `feature/m02-specification-truth`
 - **Command to continue**: `/milestone-deliver M02`
 
@@ -39,7 +39,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | ID  | Milestone                      | Status | Depends on | Tasks | Done |
 |-----|--------------------------------|--------|------------|-------|------|
 | M01 | Stabilize the Build            | done   | —          | 14    | 14   |
-| M02 | Specification Truth            | in-progress | M01   | 7     | 5    |
+| M02 | Specification Truth            | in-progress | M01   | 7     | 6    |
 | M03 | IAM Correctness & Scale        | todo   | M01        | 14    | 0    |
 | M04 | Agent Identity & M2M Tokens    | todo   | M03        | 12    | 0    |
 | M05 | GUI / API Parity               | todo   | M01        | 12    | 0    |

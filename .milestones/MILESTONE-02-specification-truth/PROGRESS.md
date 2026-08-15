@@ -288,3 +288,62 @@ throwaway script. The same argument that justifies `spec-drift` applies here —
 belongs in `moon check`, but M02's exit criteria name only the dependency drift
 check, and T05's file list is `NAVIGATION.md` alone. Flagging it for M05, which
 is the milestone that will actually add routes.
+
+---
+
+## M02-T06 — Correct the README claims
+
+**Date**: 2026-08-15
+**Status**: done
+**Approach**: Take every checkable claim in `README.md` and run it. Correct what
+contradicts observable behaviour; point the aspirational claims at their owning
+milestone rather than deleting them.
+
+**Changed**: `README.md` — seven edits.
+
+**Verified**: each claim exercised, not read.
+
+| Claim | How checked | Result |
+|---|---|---|
+| 25 relative links | resolved on disk | all exist |
+| `moon setup` initialises the toolchain | ran it | **"Unable to setup, no toolchains are configured!"** |
+| `:setup-hooks`, `:dev`, `:test`, `gui:build`, `:spec-drift` | resolved as moon targets | all exist |
+| "near real-time GUI" | grep for `refetchInterval`, `EventSource`, `WebSocket` | **zero matches** |
+| 20,000 teams | grep `teams` in both schemas | **zero — no table** |
+| `STANDALONE` dev mode | `scripts/dev.sh:40` | accurate |
+| `ENABLE_TEST_LOGIN` refused in production | `config.ts:43` | accurate |
+| seed prints a session token | `scripts/seed.ts:107-108` | accurate |
+| `.archive/` holds 19 epics | counted | accurate |
+| `.env.example` for backend and gui | listed | both exist |
+
+**What the evidence changed about the plan**:
+
+- **The README told every new developer to run a no-op.** Step 2 was
+  `moon setup`, which prints "Unable to setup, no toolchains are configured!"
+  because every project here is `language: system` and moon 2 has no toolchain
+  of its own. M01's handoff note recorded this; the README was never corrected.
+  Now removed with the reason, and the real mechanism named — proto's
+  `auto-install`.
+- **"Near real-time interactive web GUI" is the flagship claim of the product
+  pitch and there is no mechanism behind it at all**: no polling interval, no
+  EventSource, no WebSocket. Rewritten to say what the GUI does, with M08 named.
+- **Teams have no table.** The scale paragraph asserted "natively supporting"
+  20,000 teams in the present tense. The whole paragraph is now labelled as
+  unmeasured design targets, with M07/M10/M12 named.
+- **The standalone-bundle confusion is real but was not where the task said.**
+  The README's `STANDALONE=true` statements are accurate — that flag selects the
+  SQLite dialect for an ordinarily-run backend. The false single-binary claims
+  were in `architecture.md` and were fixed in T02. What the README lacked was
+  anything distinguishing the two, so a reader would reasonably assume
+  `moon run :dev` demonstrates the portable binary. Added a note saying what
+  `build:standalone` actually produces and pointing at M09.
+- Trimmed three unfalsifiable claims — "100% declarative", "perfectly
+  replicate", "consistently flawless". A specification milestone cannot leave
+  the front page asserting things that cannot be checked. The replacement points
+  at `moon run :spec-drift`, which can.
+
+**Divergence**: the task's verify line is "no README claim contradicts
+observable behaviour", which is not decidable in general. Read as: every claim
+that *can* be executed was executed — the table above. Claims about intent
+("built natively for AI Agents") are left as intent and labelled where they read
+as fact.

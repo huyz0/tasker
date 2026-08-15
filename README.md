@@ -8,14 +8,25 @@ Tasker is a specialized Task Management System built natively for **AI Agents**.
 **Why we are building it**
 We are building Tasker to serve as the foundational task-and-knowledge infrastructure for high-scale AI and human collaboration. It allows AI agents to create, track, and update work internally via a highly optimized and secure Web API, bypassing clunky user interfaces.
 
-By design, humans are primarily shifted **"off the loop"**, empowered instead by a dedicated CLI and near real-time interactive web GUI. This allows managers to seamlessly step **"on the loop"** (for monitoring and feedback) or **"in the loop"** (for strict approvals) only when strictly necessary.
+By design, humans are shifted **"off the loop"**, empowered instead by a dedicated CLI and a web GUI, so managers step **"on the loop"** (monitoring and feedback) or **"in the loop"** (approvals) only when necessary.
+
+> **Today the GUI is not real-time.** It refreshes on navigation and after your
+> own mutations — there is no polling, no WebSocket and no server-sent events in
+> `apps/gui/`. The backend already publishes domain events to NATS and nothing
+> consumes them; live updates are **M08**.
 
 **The Mission Scale**
-This infrastructure is architected to scale aggressively, natively supporting:
+These are the design targets the architecture is aimed at. **None has been
+measured** — there is no load test or benchmark in the repository, and no
+deployment to measure. Read them as intent:
 
 - **20,000+ AI Agents** running concurrent tasks.
 - **20,000+ Human Users and Managers** providing oversight.
-- Complex hierarchy parsing up to **20,000 teams** (with up to 100 members each), delivering **2,000 projects concurrently**.
+- **20,000 teams** (up to 100 members each), delivering **2,000 projects**
+  concurrently. Teams have **no table in the schema yet** — they are **M10**.
+
+Read-path scale is **M07**; the numbers become claims when something measures
+them, which is **M12**.
 
 ---
 
@@ -23,7 +34,11 @@ This infrastructure is architected to scale aggressively, natively supporting:
 
 This codebase represents a multi-component system (housing a Backend, CLI, GUI, and shared contracts) structurally designed to be co-piloted by an advanced Agentic Autonomous Development ecosystem.
 
-Instead of hiding tribal knowledge in developer heads, this repository is 100% declarative. Every architectural rule, coding convention, and product goal is explicitly mapped out in Markdown files, allowing AI agents to read, understand, and perfectly replicate our team's engineering standards.
+Instead of hiding tribal knowledge in developer heads, the architectural rules,
+coding conventions and product goals are written down as Markdown that agents
+read directly. Where a document and the code disagree, the document is the bug:
+`moon run :spec-drift` fails the build when `tech-stack.md` and the manifests
+diverge.
 
 ---
 
@@ -40,9 +55,11 @@ committed to git, so a brand-new agent session can resume with no prior context.
 
 ```bash
 /milestone-status              # where are we?
-/milestone-deliver M01         # deliver the next task, with confirmation
-/milestone-deliver-auto M01    # deliver autonomously until done or blocked
+/milestone-deliver             # deliver the next task, with confirmation
+/milestone-deliver-auto        # deliver autonomously until done or blocked
 ```
+
+With no milestone id, both read `active_milestone` from `STATE.md`.
 
 The roadmap in [`.specs/product/roadmap.md`](.specs/product/roadmap.md) maps
 every remaining capability to the milestone that owns it.
@@ -63,7 +80,9 @@ These files explicitly govern *what* we are building and the overarching archite
 
 ### Engineering Standards (`.specs/standards/`)
 
-These standalone rulebooks are injected seamlessly into our automated agent workflows via the `context-inject` skill, ensuring generated code is consistently flawless.
+These standalone rulebooks are injected into agent workflows via the
+`context-inject` skill, so generated code is written against the conventions
+already in use rather than the model's defaults.
 
 - **System Design**: [`api-standard.md`](.specs/standards/api-standard.md) | [`milestone-standard.md`](.specs/standards/milestone-standard.md)
 - **Frontend & Design**: [`frontend-standard.md`](.specs/standards/frontend-standard.md) | [`ui-ux-standard.md`](.specs/standards/ui-ux-standard.md)
@@ -104,11 +123,14 @@ curl -fsSL https://moonrepo.dev/install/moon.sh | bash
 Once Moon is installed, navigate to the project root and run:
 
 ```bash
-moon setup
 moon run :setup-hooks
 ```
 
-Moon will automatically read `.prototools` and locally download the exact, pinned versions of Node.js, Bun, and Go required for this project natively into `~/.proto`.
+**Do not run `moon setup`** — it prints "Unable to setup, no toolchains are
+configured!" and does nothing. Every project here is `language: system`, so moon
+2 has no toolchain of its own to install. The versions come from proto instead:
+`.prototools` pins Node.js, Bun, moon and Go, and `auto-install = true` fetches
+each one into `~/.proto` the first time a command needs it.
 
 You do not need to run `bun install` yourself: every task that needs JavaScript
 dependencies depends on an `install-deps` task, so the first `moon run` or
@@ -136,9 +158,8 @@ moon run :test
 
 ### 4. Running Locally
 
-To start the backend and GUI together for local development (backend runs in
-STANDALONE mode against an embedded SQLite database - no Docker/MySQL setup
-required):
+To start the backend and GUI together for local development (backend runs with
+`STANDALONE=true` against a local SQLite file — no Docker or MySQL needed):
 
 ```bash
 moon run :dev
@@ -157,6 +178,13 @@ manual login step.
 This tails both processes' logs in one terminal, prefixed `[backend]` /
 `[gui]`; Ctrl-C stops both. The backend listens on `:8080`, the GUI dev
 server on `:5173`.
+
+> **`STANDALONE=true` is not the single-binary product.** It selects the SQLite
+> dialect for a normally-run backend. `bun run build:standalone` does compile a
+> binary, but it bundles the backend only — a `GET /` on it returns a
+> placeholder page, not the GUI, and the in-process transport is an unused stub.
+> A genuinely portable single binary is **M09**; see
+> [architecture.md](.specs/product/architecture.md).
 
 To change any of that - point at MySQL, configure real Google/GitHub OAuth,
 turn login enforcement on - copy the committed examples and edit them:

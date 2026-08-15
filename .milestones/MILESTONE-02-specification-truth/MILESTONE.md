@@ -81,7 +81,7 @@ a later milestone and must be referenced, not built, here.
       - Files: `.specs/design/NAVIGATION.md`
       - Verify: every route in the mermaid map exists in `App.tsx`.
 
-- [ ] **M02-T06** — Correct the claims in `README.md` about the standalone bundle
+- [x] **M02-T06** — Correct the claims in `README.md` about the standalone bundle
       and real-time GUI; point both at their owning milestones.
       - Files: `README.md`
       - Verify: no README claim contradicts observable behaviour.
