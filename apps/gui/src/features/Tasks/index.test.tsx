@@ -64,6 +64,7 @@ vi.mock('../../store/layout', () => ({
 }));
 
 import { TasksWorkbench } from './index';
+import { confirmAction, cancelAction } from '../../test/confirm';
 
 // The open task is a route param, so every render needs the same `/tasks` and
 // `/tasks/:taskId` pair the app mounts. `initialEntry` lets a test start on a
@@ -110,7 +111,6 @@ describe('TasksWorkbench', () => {
     mockListTaskNotes.mockReset();
     mockListTaskNotes.mockResolvedValue({ taskNotes: [] });
     mockGetTaskType.mockReset();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('updates a task status via the detail panel dropdown', async () => {
@@ -177,6 +177,7 @@ describe('TasksWorkbench', () => {
 
     const deleteButton = await screen.findByRole('button', { name: 'Delete' });
     fireEvent.click(deleteButton);
+    await confirmAction();
 
     await waitFor(() => expect(mockDeleteTask).toHaveBeenCalledWith({ taskId: 'task-1' }));
     await waitFor(() => expect(screen.queryByText('Task Details')).toBeNull());
@@ -184,7 +185,6 @@ describe('TasksWorkbench', () => {
 
   it('does not delete a task when the confirmation is dismissed', async () => {
     mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
 
     renderPage();
 
@@ -193,6 +193,7 @@ describe('TasksWorkbench', () => {
 
     const deleteButton = await screen.findByRole('button', { name: 'Delete' });
     fireEvent.click(deleteButton);
+    await cancelAction();
 
     expect(mockDeleteTask).not.toHaveBeenCalled();
   });
@@ -232,6 +233,7 @@ describe('TasksWorkbench', () => {
 
     const deleteButton = await screen.findByRole('button', { name: 'Delete' });
     fireEvent.click(deleteButton);
+    await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to delete task/)).toBeDefined());
   });
@@ -264,6 +266,7 @@ describe('TasksWorkbench', () => {
 
     const deleteButton = await screen.findByRole('button', { name: 'Delete' });
     fireEvent.click(deleteButton);
+    await confirmAction();
     await waitFor(() => expect(screen.getByText('Moving to bin...')).toBeInTheDocument());
     resolveDelete({ success: true });
   });
@@ -454,6 +457,7 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
     const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
     fireEvent.click(within(noteCard).getByText('Delete'));
+    await confirmAction();
 
     await waitFor(() => expect(mockDeleteTaskNote).toHaveBeenCalledWith({ taskNoteId: 'note-1' }));
   });
@@ -515,6 +519,7 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.getByText('Investigated root cause')).toBeInTheDocument());
     const noteCard = screen.getByText('Investigated root cause').closest('.p-3')! as HTMLElement;
     fireEvent.click(within(noteCard).getByText('Delete'));
+    await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to delete note/)).toBeInTheDocument());
   });

@@ -11,6 +11,7 @@ import {
   ArtifactService,
 } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { fetchAllPages } from '../../lib/fetchAllPages';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const orgClient = createClient(OrgService, transport);
 const projectClient = createClient(ProjectService, transport);
@@ -276,6 +277,8 @@ function BinList({ isLoading, items, onRestore, isRestoring, restoreError, onPur
   emptyMessage: string;
   labelKey?: string;
 }) {
+  const { confirm, confirmDialog } = useConfirm();
+
   if (isLoading) {
     return <p className="text-sm text-muted-foreground text-center py-8">Loading bin...</p>;
   }
@@ -307,8 +310,13 @@ function BinList({ isLoading, items, onRestore, isRestoring, restoreError, onPur
               {isRestoring ? 'Restoring...' : 'Restore'}
             </button>
             <button
-              onClick={() => {
-                if (window.confirm('Permanently delete this item? This cannot be undone.')) {
+              onClick={async () => {
+                if (await confirm({
+                  title: `Permanently delete "${item[labelKey] ?? item.id}"?`,
+                  consequence: 'It is removed from the database immediately.',
+                  undo: null,
+                  confirmLabel: 'Delete forever',
+                })) {
                   onPurge(item.id);
                 }
               }}
@@ -320,6 +328,7 @@ function BinList({ isLoading, items, onRestore, isRestoring, restoreError, onPur
           </div>
         </div>
       ))}
+      {confirmDialog}
     </div>
   );
 }

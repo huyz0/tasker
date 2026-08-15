@@ -63,6 +63,7 @@ vi.mock('../../store/layout', () => ({
 }));
 
 import { BinDashboard } from './index';
+import { confirmAction, cancelAction } from '../../test/confirm';
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -87,7 +88,6 @@ describe('BinDashboard', () => {
     }
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('lists archived organizations and restores one', async () => {
@@ -141,18 +141,19 @@ describe('BinDashboard', () => {
 
     await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    await confirmAction();
 
     await waitFor(() => expect(mockPurgeOrg).toHaveBeenCalledWith({ orgId: 'org-2' }));
   });
 
   it('does not purge when the confirmation is dismissed', async () => {
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
 
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    await cancelAction();
 
     expect(mockPurgeOrg).not.toHaveBeenCalled();
   });
@@ -165,6 +166,7 @@ describe('BinDashboard', () => {
 
     await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to delete forever/)).toBeDefined());
   });
@@ -210,6 +212,7 @@ describe('BinDashboard', () => {
     expect(mockListAgents).toHaveBeenCalledWith({ orgId: 'org-1', onlyDeleted: true, page: undefined });
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    await confirmAction();
     await waitFor(() => expect(mockPurgeAgent).toHaveBeenCalledWith({ agentId: 'agent-2' }));
   });
 
@@ -248,6 +251,7 @@ describe('BinDashboard', () => {
     expect(screen.getByText('Archived Artifact B')).toBeDefined();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete Forever' })[0]!);
+    await confirmAction();
     await waitFor(() => expect(mockPurgeArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
   });
 
@@ -371,6 +375,7 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('Archived Project')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    await confirmAction();
     await waitFor(() => expect(mockPurgeProject).toHaveBeenCalledWith({ projectId: 'proj-2' }));
   });
 
@@ -389,6 +394,7 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(mockRestoreTask).toHaveBeenCalledWith({ taskId: 'task-1' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    await confirmAction();
     await waitFor(() => expect(mockPurgeTask).toHaveBeenCalledWith({ taskId: 'task-1' }));
   });
 
@@ -417,6 +423,7 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('Archived Folder')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    await confirmAction();
     await waitFor(() => expect(mockPurgeFolder).toHaveBeenCalledWith({ folderId: 'fld-2' }));
   });
 

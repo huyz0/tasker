@@ -17,6 +17,7 @@ import { TaskArtifactLinks } from './TaskArtifactLinks';
 import { Dialog } from '../../components/ui/Dialog';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
@@ -24,6 +25,7 @@ const taskTypeClient = createClient(TaskTypeService, transport);
 const taskNoteClient = createClient(TaskNoteService, transport);
 
 function TaskNotesPanel({ taskId }: { taskId: string }) {
+  const { confirm, confirmDialog } = useConfirm();
   const queryClient = useQueryClient();
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editNoteContent, setEditNoteContent] = useState('');
@@ -96,8 +98,13 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
                   Edit
                 </button>
                 <button
-                  onClick={() => {
-                    if (window.confirm('Delete this note? This cannot be undone.')) {
+                  onClick={async () => {
+                    if (await confirm({
+                      title: 'Delete this note?',
+                      consequence: 'The note is removed from the task for everyone.',
+                      undo: null,
+                      confirmLabel: 'Delete',
+                    })) {
                       deleteNoteMutation.mutate(note.id);
                     }
                   }}
@@ -114,6 +121,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
       {deleteNoteMutation.isError && (
         <p className="text-xs text-destructive">Failed to delete note: {(deleteNoteMutation.error as Error).message}</p>
       )}
+      {confirmDialog}
     </div>
   );
 }
@@ -132,6 +140,7 @@ const DEFAULT_STATUS_OPTIONS = [
 ];
 
 export function TasksWorkbench() {
+  const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
@@ -528,8 +537,13 @@ export function TasksWorkbench() {
                  </button>
                )}
                <button
-                 onClick={() => {
-                   if (window.confirm(`Move "${expandedTask.title}" to the bin? You can restore it later.`)) {
+                 onClick={async () => {
+                   if (await confirm({
+                     title: `Move "${expandedTask.title}" to the bin?`,
+                     consequence: 'The task stops appearing on the board and in lists.',
+                     undo: 'You can restore it from the Bin.',
+                     confirmLabel: 'Move to bin',
+                   })) {
                      deleteTaskMutation.mutate(expandedTask.id);
                    }
                  }}
@@ -663,6 +677,7 @@ export function TasksWorkbench() {
            </div>
         </Dialog>
       )}
+      {confirmDialog}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { OrgService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { PaginationControls } from '../../components/PaginationControls';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDebounce } from 'use-debounce';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const orgClient = createClient(OrgService, transport);
 
@@ -86,6 +87,7 @@ function slugify(name: string): string {
 type Section = 'organizations' | 'members';
 
 export function OrganizationsDashboard() {
+  const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const setActiveOrgId = useLayoutStore((s) => s.setActiveOrgId);
@@ -329,10 +331,15 @@ export function OrganizationsDashboard() {
     [updateMemberRole],
   );
   const handleMemberRemove = useCallback(
-    (userId: string, label: string) => {
-      if (window.confirm(`Remove ${label} from "${activeOrgName}"?`)) removeMember(userId);
+    async (userId: string, label: string) => {
+      if (await confirm({
+        title: `Remove ${label} from "${activeOrgName}"?`,
+        consequence: 'They lose access to everything in this organization.',
+        undo: 'You can invite them back, but their role is not remembered.',
+        confirmLabel: 'Remove member',
+      })) removeMember(userId);
     },
-    [removeMember, activeOrgName],
+    [removeMember, activeOrgName, confirm],
   );
 
   const toggleCollapsed = (orgId: string) => {
@@ -431,9 +438,14 @@ export function OrganizationsDashboard() {
               Edit
             </button>
             <button
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation();
-                if (window.confirm(`Move "${org.name}" to the bin? You can restore it later.`)) {
+                if (await confirm({
+                  title: `Move "${org.name}" to the bin?`,
+                  consequence: 'The organization and everything inside it stop appearing in lists.',
+                  undo: 'You can restore it from the Bin.',
+                  confirmLabel: 'Move to bin',
+                })) {
                   archiveOrgMutation.mutate(org.id);
                 }
               }}
@@ -775,8 +787,13 @@ export function OrganizationsDashboard() {
                               <button
                                 aria-label={`Revoke invitation for ${inv.email}`}
                                 disabled={revokeInviteMutation.isPending}
-                                onClick={() => {
-                                  if (window.confirm(`Revoke the invitation for ${inv.email}?`)) {
+                                onClick={async () => {
+                                  if (await confirm({
+                                    title: `Revoke the invitation for ${inv.email}?`,
+                                    consequence: 'Their invitation link stops working.',
+                                    undo: 'You can invite the same address again.',
+                                    confirmLabel: 'Revoke invitation',
+                                  })) {
                                     revokeInviteMutation.mutate(inv.id);
                                   }
                                 }}
@@ -799,6 +816,7 @@ export function OrganizationsDashboard() {
           )}
         </div>
       </div>
+      {confirmDialog}
     </div>
   );
 }

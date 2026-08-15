@@ -24,6 +24,11 @@ vi.mock('@connectrpc/connect', () => ({
     archiveAgent: mockArchiveAgent,
     updateAgent: mockUpdateAgent,
     updateAgentRole: mockUpdateAgentRole,
+    // The tokens panel is part of this page: without it the toggle has no
+    // visible effect and the test cannot see whether it opened.
+    listAgentTokens: vi.fn(async () => ({ tokens: [] })),
+    createAgentToken: vi.fn(),
+    revokeAgentToken: vi.fn(),
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
@@ -37,6 +42,7 @@ vi.mock('../../store/layout', () => ({
 }));
 
 import { AgentsDashboard } from './index';
+import { confirmAction, cancelAction } from '../../test/confirm';
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -59,7 +65,6 @@ describe('AgentsDashboard', () => {
     mockUpdateAgent.mockReset();
     mockUpdateAgentRole.mockReset();
     mockListAgentRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'Researcher', systemPrompt: '', capabilities: '' }] });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('shows the resolved role name instead of the raw role ID', async () => {
@@ -123,6 +128,7 @@ describe('AgentsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
     fireEvent.click(screen.getByText('Delete'));
+    await confirmAction();
 
     await waitFor(() => expect(mockArchiveAgent).toHaveBeenCalledWith({ agentId: 'agent-1' }));
   });
@@ -136,19 +142,20 @@ describe('AgentsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
     fireEvent.click(screen.getByText('Delete'));
+    await confirmAction();
 
     await waitFor(() => expect(mockArchiveAgent).toHaveBeenCalled());
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agents', 'bin', 'org-1'] });
   });
 
   it('does not archive an agent when confirmation is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1', name: 'Agent Smith', agentRoleId: 'role-1' }] });
 
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
     fireEvent.click(screen.getByText('Delete'));
+    await cancelAction();
 
     expect(mockArchiveAgent).not.toHaveBeenCalled();
   });
@@ -161,6 +168,7 @@ describe('AgentsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText('Agent Smith')).toBeDefined());
     fireEvent.click(screen.getByText('Delete'));
+    await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to delete agent/)).toBeDefined());
   });
@@ -400,5 +408,22 @@ describe('AgentsDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
 
     expect(await screen.findByText(/Failed to create role: permission denied/)).toBeInTheDocument();
+  });
+
+  it('closes the token panel when the same agent is clicked again', async () => {
+    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1', name: 'Agent Smith', agentRoleId: 'role-1' }] });
+    mockListAgentRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'Coder', systemPrompt: '', capabilities: '' }] });
+    renderPage();
+
+    const toggle = await screen.findByLabelText('Tokens for Agent Smith');
+    fireEvent.click(toggle);
+    // The panel's own control, not its data: AgentTokens fetches, and this test
+    // is about the toggle rather than about tokens.
+    expect(await screen.findByRole('button', { name: 'New token' })).toBeInTheDocument();
+
+    // The same control opens and closes it; without the identity check it would
+    // only ever open, and the panel could not be dismissed.
+    fireEvent.click(toggle);
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'New token' })).toBeNull());
   });
 });

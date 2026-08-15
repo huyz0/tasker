@@ -3,6 +3,7 @@ import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Comment } from './index';
 import { useComments } from './CommentContext';
+import { confirmAction, cancelAction } from '../../../test/confirm';
 
 const { mockListComments, mockCreateComment, mockUpdateComment, mockDeleteComment } = vi.hoisted(() => ({
   mockListComments: vi.fn(),
@@ -200,12 +201,12 @@ describe('Comment Compound Component', () => {
       comments: [{ id: 'cmt-1', userId: 'user-1', content: 'Delete me', createdAt: new Date().toISOString() }],
     });
     mockDeleteComment.mockResolvedValue({ success: true });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     renderWithProvider(<Comment.List />);
 
     await waitFor(() => expect(screen.getByText('Delete me')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Delete'));
+    await confirmAction();
 
     await waitFor(() => expect(mockDeleteComment).toHaveBeenCalledWith(expect.objectContaining({ commentId: 'cmt-1' })));
   });
@@ -214,12 +215,12 @@ describe('Comment Compound Component', () => {
     mockListComments.mockResolvedValue({
       comments: [{ id: 'cmt-1', userId: 'user-1', content: 'Keep me', createdAt: new Date().toISOString() }],
     });
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
 
     renderWithProvider(<Comment.List />);
 
     await waitFor(() => expect(screen.getByText('Keep me')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Delete'));
+    await cancelAction();
 
     expect(mockDeleteComment).not.toHaveBeenCalled();
   });

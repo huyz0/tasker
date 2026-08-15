@@ -67,7 +67,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: `apps/gui/src/components/ui/Dialog.tsx`, call sites
       - Verify: tab cycles within the dialog; closing restores focus to the trigger.
 
-- [ ] **M06-T04** — Replace every `window.confirm` with a `ConfirmDialog` that
+- [x] **M06-T04** — Replace every `window.confirm` with a `ConfirmDialog` that
       names the consequence and the undo path.
       - Files: all `features/*` delete handlers
       - Verify: no `window.confirm` remains in `src/`.

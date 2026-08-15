@@ -4,8 +4,10 @@ import { useComments } from './CommentContext';
 import { useAuthSession } from '../../../hooks/useAuthSession';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 import { Bot } from 'lucide-react';
+import { useConfirm } from '../ConfirmDialog';
 
 export function CommentItem({ comment }: { comment: CommentData }) {
+  const { confirm, confirmDialog } = useConfirm();
   const { actions } = useComments();
   const { userId: currentUserId } = useAuthSession();
   const [isEditing, setIsEditing] = useState(false);
@@ -42,8 +44,13 @@ export function CommentItem({ comment }: { comment: CommentData }) {
                 Edit
               </button>
               <button
-                onClick={() => {
-                  if (window.confirm('Delete this comment? This cannot be undone.')) {
+                onClick={async () => {
+                  if (await confirm({
+                    title: 'Delete this comment?',
+                    consequence: 'The comment is removed for everyone who can see this item.',
+                    undo: null,
+                    confirmLabel: 'Delete',
+                  })) {
                     actions.deleteComment(comment.id);
                   }
                 }}
@@ -80,6 +87,7 @@ export function CommentItem({ comment }: { comment: CommentData }) {
       ) : (
         <MarkdownRenderer content={comment.content} />
       )}
+      {confirmDialog}
     </div>
   );
 }

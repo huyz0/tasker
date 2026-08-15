@@ -4,6 +4,7 @@ import { createClient } from "@connectrpc/connect";
 import { transport } from "../../../lib/connectTransport";
 import { RepositoryService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { TONE_CLASSES, buildTone, pullRequestTone } from '../statusStyles';
+import { useConfirm } from '../ConfirmDialog';
 
 const repositoryClient = createClient(RepositoryService, transport);
 
@@ -86,6 +87,7 @@ function BuildsPanel({ repositoryLinkId }: { repositoryLinkId: string }) {
 }
 
 export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegrationConfigProps) {
+  const { confirm, confirmDialog } = useConfirm();
 
   const [provider, setProvider] = useState('github');
   const [remoteName, setRemoteName] = useState('');
@@ -177,8 +179,13 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                     {syncMutation.isPending ? 'Syncing...' : 'Sync PRs'}
                   </button>
                   <button
-                    onClick={() => {
-                      if (window.confirm(`Unlink ${link.provider}: ${link.remoteName}? This cannot be undone.`)) {
+                    onClick={async () => {
+                      if (await confirm({
+                        title: `Unlink ${link.provider}: ${link.remoteName}?`,
+                        consequence: 'Pull requests and builds from this repository stop appearing on tasks.',
+                        undo: 'You can link the repository again, but the connection history is not kept.',
+                        confirmLabel: 'Unlink',
+                      })) {
                         removeLinkMutation.mutate(link.id);
                       }
                     }}
@@ -321,6 +328,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
           </button>
         </div>
       </div>
+      {confirmDialog}
     </div>
   );
 }

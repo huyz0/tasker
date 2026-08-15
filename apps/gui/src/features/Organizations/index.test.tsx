@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OrganizationsDashboard } from './index';
+import { confirmAction, cancelAction } from '../../test/confirm';
 
 const { mockListOrgs, mockSeedOrg, mockArchiveOrg, mockSetOrgRetentionDays, mockUpdateOrg, mockListOrgMembers, mockRemoveOrgMember, mockUpdateOrgMemberRole, mockListInvitations, mockInviteUser, mockRevokeInvitation } = vi.hoisted(() => ({
   mockListOrgs: vi.fn(),
@@ -258,42 +259,41 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('archives a root org after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockArchiveOrg.mockResolvedValue({});
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await confirmAction();
 
     await waitFor(() => expect(mockArchiveOrg).toHaveBeenCalledWith({ orgId: 'org-1' }));
   });
 
   it('does not archive an org when confirmation is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await cancelAction();
 
     expect(mockArchiveOrg).not.toHaveBeenCalled();
   });
 
   it('shows an error message when archiving an org fails', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockArchiveOrg.mockRejectedValue(new Error('cannot delete'));
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to delete organization/)).toBeDefined());
   });
 
   it('archives a child org after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockListOrgs.mockResolvedValue({
       organizations: [
         { id: 'org-root', name: 'Root Co', slug: 'root-co' },
@@ -305,6 +305,7 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText('Child Co')).toBeDefined());
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[1]);
+    await confirmAction();
 
     await waitFor(() => expect(mockArchiveOrg).toHaveBeenCalledWith({ orgId: 'org-child' }));
   });
@@ -485,7 +486,6 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('lists org members and removes one after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
     mockRemoveOrgMember.mockResolvedValue({ success: true });
@@ -495,6 +495,7 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
+    await confirmAction();
 
     await waitFor(() => expect(mockRemoveOrgMember).toHaveBeenCalledWith({ orgId: 'org-1', userId: 'user-1' }));
   });
@@ -510,7 +511,6 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('does not remove a member when confirmation is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
 
@@ -519,12 +519,12 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
+    await cancelAction();
 
     expect(mockRemoveOrgMember).not.toHaveBeenCalled();
   });
 
   it('shows an error message when removing a member fails', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
     mockRemoveOrgMember.mockRejectedValue(new Error("cannot remove the organization's last owner"));
@@ -534,6 +534,7 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
+    await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to remove member/)).toBeInTheDocument());
   });
@@ -639,6 +640,11 @@ describe('OrganizationsDashboard', () => {
     // search is.
     expect(screen.getByText('zzz')).toBeInTheDocument();
     expect(screen.getByText('Clear filters')).toBeInTheDocument();
+
+    // The button is the way out of an empty search; leaving it untested means a
+    // dead end nobody notices.
+    fireEvent.click(screen.getByText('Clear filters'));
+    await waitFor(() => expect((screen.getByLabelText('Search members') as HTMLInputElement).value).toBe(''));
   });
 
   it('exposes the true row count to assistive technology, not the windowed count', async () => {
@@ -764,7 +770,6 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('revokes an invitation after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockListInvitations.mockResolvedValue({
       invitations: [{ id: 'inv-1', email: 'ada@example.com', role: 'member', expired: false }],
     });
@@ -772,12 +777,12 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByLabelText('Revoke invitation for ada@example.com')).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText('Revoke invitation for ada@example.com'));
+    await confirmAction();
 
     await waitFor(() => expect(mockRevokeInvitation).toHaveBeenCalledWith({ invitationId: 'inv-1' }));
   });
 
   it('does not revoke when confirmation is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     mockListInvitations.mockResolvedValue({
       invitations: [{ id: 'inv-1', email: 'ada@example.com', role: 'member', expired: false }],
     });
@@ -785,12 +790,12 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByLabelText('Revoke invitation for ada@example.com')).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText('Revoke invitation for ada@example.com'));
+    await cancelAction();
 
     expect(mockRevokeInvitation).not.toHaveBeenCalled();
   });
 
   it('shows an error when revoking fails, and keeps the row', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockListInvitations.mockResolvedValue({
       invitations: [{ id: 'inv-1', email: 'ada@example.com', role: 'member', expired: false }],
     });
@@ -799,6 +804,7 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByLabelText('Revoke invitation for ada@example.com')).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText('Revoke invitation for ada@example.com'));
+    await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to revoke/)).toBeInTheDocument());
     // The row stays, because the invitation still exists.
@@ -821,7 +827,6 @@ describe('OrganizationsDashboard', () => {
   // names them in the refusal. The ids are the actionable part, so this asserts
   // they reach the screen rather than just that "something failed" was shown.
   it('shows which projects block a member removal', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
     mockRemoveOrgMember.mockRejectedValue(
@@ -833,6 +838,7 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
+    await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/proj-alpha/)).toBeInTheDocument());
     expect(screen.getByText(/proj-beta/)).toBeInTheDocument();

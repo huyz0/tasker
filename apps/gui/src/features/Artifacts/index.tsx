@@ -13,10 +13,12 @@ import { Label } from '../../components/ui/labels';
 import { Folder, FolderOpen, FileText, X } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const artifactClient = createClient(ArtifactService, transport);
 
 export function ArtifactsBrowser() {
+  const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
@@ -292,9 +294,14 @@ export function ArtifactsBrowser() {
                     Edit
                   </button>
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      if (window.confirm(`Move "${folder.name}" to the bin? You can restore it later.`)) {
+                      if (await confirm({
+                        title: `Move "${folder.name}" to the bin?`,
+                        consequence: 'The folder and the artifacts inside it stop appearing in the explorer.',
+                        undo: 'You can restore it from the Bin.',
+                        confirmLabel: 'Move to bin',
+                      })) {
                         deleteFolder(folder.id);
                       }
                     }}
@@ -328,9 +335,14 @@ export function ArtifactsBrowser() {
                     >
                       <span className="flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> {artifact.name}</span>
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          if (window.confirm(`Move "${artifact.name}" to the bin? You can restore it later.`)) {
+                          if (await confirm({
+                            title: `Move "${artifact.name}" to the bin?`,
+                            consequence: 'The artifact stops appearing in the explorer and on any task it is linked to.',
+                            undo: 'You can restore it from the Bin.',
+                            confirmLabel: 'Move to bin',
+                          })) {
                             deleteArtifact(artifact.id);
                           }
                         }}
@@ -518,6 +530,7 @@ export function ArtifactsBrowser() {
           </div>
         )}
       </div>
+      {confirmDialog}
     </div>
   );
 }

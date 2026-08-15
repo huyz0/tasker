@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgentTokens } from './AgentTokens';
+import { confirmAction, cancelAction } from '../../test/confirm';
 
 const mockList = vi.fn();
 const mockCreate = vi.fn();
@@ -189,19 +190,19 @@ describe('AgentTokens', () => {
   it('revokes after confirmation', async () => {
     mockList.mockResolvedValue({ tokens: [aToken()] });
     mockRevoke.mockResolvedValue({ success: true });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPanel();
 
     fireEvent.click(await screen.findByLabelText('Revoke token CI worker'));
+    await confirmAction();
     await waitFor(() => expect(mockRevoke).toHaveBeenCalledWith({ tokenId: 'tok-1' }));
   });
 
   it('does not revoke when the confirmation is cancelled', async () => {
     mockList.mockResolvedValue({ tokens: [aToken()] });
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     renderPanel();
 
     fireEvent.click(await screen.findByLabelText('Revoke token CI worker'));
+    await cancelAction();
     expect(mockRevoke).not.toHaveBeenCalled();
   });
 
@@ -259,10 +260,10 @@ describe('AgentTokens', () => {
   it('keeps the row and explains when revocation fails', async () => {
     mockList.mockResolvedValue({ tokens: [aToken()] });
     mockRevoke.mockRejectedValue(new Error('nope'));
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderPanel();
 
     fireEvent.click(await screen.findByLabelText('Revoke token CI worker'));
+    await confirmAction();
     expect(await screen.findByText(/Failed to revoke token/)).toBeInTheDocument();
     // The token still exists, so the row still belongs there.
     expect(screen.getByText('CI worker')).toBeInTheDocument();

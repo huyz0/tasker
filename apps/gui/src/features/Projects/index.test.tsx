@@ -54,6 +54,7 @@ vi.mock('../../store/layout', () => ({
 }));
 
 import { ProjectsWizard } from './index';
+import { confirmAction, cancelAction } from '../../test/confirm';
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -79,7 +80,6 @@ describe('ProjectsWizard', () => {
     mockUpdateTemplate.mockReset();
     mockUpdateTaskType.mockReset();
     mockAuthUserId = mockUserId;
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('disables project creation until a name is entered', async () => {
@@ -141,6 +141,7 @@ describe('ProjectsWizard', () => {
 
     await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
     fireEvent.click(screen.getByText('Delete'));
+    await confirmAction();
 
     await waitFor(() => expect(mockArchiveProject).toHaveBeenCalledWith({ projectId: 'proj-1' }));
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['projects', 'bin', 'org-1'] });
@@ -236,13 +237,13 @@ describe('ProjectsWizard', () => {
   });
 
   it('does not archive a project when confirmation is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     mockListTemplates.mockResolvedValue({ templates: [] });
     mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
     fireEvent.click(screen.getByText('Delete'));
+    await cancelAction();
 
     expect(mockArchiveProject).not.toHaveBeenCalled();
   });
@@ -255,6 +256,7 @@ describe('ProjectsWizard', () => {
 
     await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
     fireEvent.click(screen.getByText('Delete'));
+    await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to delete project/)).toBeDefined());
   });

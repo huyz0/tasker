@@ -112,3 +112,47 @@ standard and wonder which one is wrong.
     The backdrop moved inside `Dialog`, so they now use a `data-testid`: a class
     name is styling, not contract.
 - **Next**: M06-T04
+
+## M06-T04 — ConfirmDialog replaces window.confirm
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: new `components/ui/ConfirmDialog.tsx` (+ 12 tests) and
+  `src/test/confirm.ts`; thirteen call sites across nine components; the nine
+  suites that stubbed `window.confirm`
+- **Verified**: no `window.confirm` call remains in `src/` — and a test walks
+  the tree on every run to keep it that way, proved by reintroducing one and
+  watching it fail. In the browser, deleting an artifact shows the styled
+  dialog, **zero** native dialogs are raised, `role="dialog"`,
+  `aria-modal="true"`, focus starts on Cancel, Escape dismisses.
+  `moon run gui:test` — 564 pass, branches 95.06%. `moon check --all` — 24 pass.
+- **Notes**:
+  - **The shape is the point, not the styling.** `window.confirm` gives one line
+    and two identical buttons, so "you can restore it from the Bin" and "this
+    cannot be undone" arrived looking exactly alike. `ConfirmOptions` therefore
+    splits **consequence** from **undo path** and makes the undo path required —
+    `undo: null` is how a caller says "permanent", and it renders as such and
+    makes the action destructive without being told twice.
+  - **`useConfirm` returns a promise** so each of the thirteen sites stayed a
+    one-line conditional: `if (window.confirm(…))` became
+    `if (await confirm({…}))` rather than a state machine per button.
+  - **Every close path settles the promise.** Escape and the backdrop resolve
+    `false`; leaving it pending would hang the caller's `await` forever with the
+    button disabled and no error to explain it. There is a test for that.
+  - **The old tests could not have caught a bad dialog.** They stubbed
+    `window.confirm` to return `true`, which asserts nothing about what the user
+    was shown, so a dialog that said the wrong thing passed identically. The new
+    helpers act on the real dialog, so confirming an action also proves the
+    dialog appeared.
+  - **A scripted edit put `{confirmDialog}` in the wrong component** in
+    `Organizations` — my closing-tag anchor matched `MemberRow` before the
+    dashboard. It failed loudly (`confirmDialog is not defined`) rather than
+    silently, but it is the second time this milestone that a
+    "match the first occurrence" edit has landed somewhere unintended.
+  - **knip caught a premature export** (`confirmDialogText`), which is the
+    fourth time that gate has caught a speculative one. Removed.
+  - **Three coverage gaps the branch gate named** were real and pre-existing,
+    surfaced because the denominator grew: closing the token panel by clicking
+    its own toggle, abandoning a subfolder form, and the "Clear filters" way out
+    of an empty member search. All three are now tested.
+- **Next**: M06-T05

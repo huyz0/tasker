@@ -7,10 +7,12 @@ import { AgentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb"
 import { Bot } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { AgentTokens } from './AgentTokens';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const agentClient = createClient(AgentService, transport);
 
 export function AgentsDashboard() {
+  const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Agents Dashboard'), [setActivePageTitle]);
@@ -257,8 +259,13 @@ export function AgentsDashboard() {
                     Edit
                   </button>
                   <button
-                    onClick={() => {
-                      if (window.confirm(`Move "${a.name}" to the bin? You can restore it later.`)) {
+                    onClick={async () => {
+                      if (await confirm({
+                        title: `Move "${a.name}" to the bin?`,
+                        consequence: 'The agent stops appearing in lists and cannot be assigned work.',
+                        undo: 'You can restore it from the Bin.',
+                        confirmLabel: 'Move to bin',
+                      })) {
                         archiveAgentMutation.mutate(a.id);
                       }
                     }}
@@ -424,6 +431,7 @@ export function AgentsDashboard() {
           )}
         </div>
       </div>
+      {confirmDialog}
     </div>
   );
 }

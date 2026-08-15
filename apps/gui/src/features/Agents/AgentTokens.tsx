@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
 import { AgentService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const agentClient = createClient(AgentService, transport);
 
@@ -31,6 +32,7 @@ const relativeDays = (iso: string): string => {
 };
 
 export function AgentTokens({ agentId, agentName }: { agentId: string; agentName: string }) {
+  const { confirm, confirmDialog } = useConfirm();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
@@ -211,8 +213,13 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
                 {state === 'active' && (
                   <button
                     aria-label={`Revoke token ${t.name}`}
-                    onClick={() => {
-                      if (window.confirm(`Revoke "${t.name}"? Anything using it stops working immediately.`)) {
+                    onClick={async () => {
+                      if (await confirm({
+                        title: `Revoke "${t.name}"?`,
+                        consequence: 'Anything using this token stops working immediately.',
+                        undo: null,
+                        confirmLabel: 'Revoke token',
+                      })) {
                         revokeMutation.mutate(t.id);
                       }
                     }}
@@ -227,6 +234,7 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
           })}
         </ul>
       )}
+      {confirmDialog}
       <span className="sr-only">Tokens for {agentName}</span>
     </div>
   );

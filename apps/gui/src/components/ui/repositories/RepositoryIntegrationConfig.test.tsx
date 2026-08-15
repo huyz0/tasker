@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { RepositoryIntegrationConfig } from './RepositoryIntegrationConfig';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { confirmAction, cancelAction } from '../../../test/confirm';
 
 const { mockListRepositoryLinks, mockListPullRequests, mockSyncPullRequests, mockListBuilds, mockListDeployments, mockAddRepositoryLink, mockRemoveRepositoryLink } = vi.hoisted(() => ({
   mockListRepositoryLinks: vi.fn(),
@@ -338,12 +339,12 @@ describe('RepositoryIntegrationConfig', () => {
     mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
     mockListPullRequests.mockResolvedValue({ pullRequests: [] });
     mockRemoveRepositoryLink.mockResolvedValue({ success: true });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     renderComponent();
 
     await waitFor(() => expect(screen.getByText(/huyz0\/tasker/)).toBeDefined());
     fireEvent.click(screen.getByText('Unlink'));
+    await confirmAction();
 
     await waitFor(() => expect(mockRemoveRepositoryLink).toHaveBeenCalledWith({ repositoryLinkId: 'link-1' }));
   });
@@ -351,12 +352,12 @@ describe('RepositoryIntegrationConfig', () => {
   test('does not unlink a repository when confirmation is cancelled', async () => {
     mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
     mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
 
     renderComponent();
 
     await waitFor(() => expect(screen.getByText(/huyz0\/tasker/)).toBeDefined());
     fireEvent.click(screen.getByText('Unlink'));
+    await cancelAction();
 
     expect(mockRemoveRepositoryLink).not.toHaveBeenCalled();
   });
@@ -365,12 +366,12 @@ describe('RepositoryIntegrationConfig', () => {
     mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
     mockListPullRequests.mockResolvedValue({ pullRequests: [] });
     mockRemoveRepositoryLink.mockRejectedValue(new Error('link not found'));
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     renderComponent();
 
     await waitFor(() => expect(screen.getByText(/huyz0\/tasker/)).toBeDefined());
     fireEvent.click(screen.getByText('Unlink'));
+    await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to unlink repository/)).toBeInTheDocument());
   });

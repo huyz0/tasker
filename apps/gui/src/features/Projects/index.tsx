@@ -8,12 +8,14 @@ import { transport } from "../../lib/connectTransport";
 import { ProjectService, ProjectTemplateService, TaskTypeService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { PaginationControls } from '../../components/PaginationControls';
 import { Package } from 'lucide-react';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const projectClient = createClient(ProjectService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
 const taskTypeClient = createClient(TaskTypeService, transport);
 
 export function ProjectsWizard() {
+  const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const { userId: activeOwnerId } = useAuthSession();
@@ -442,8 +444,13 @@ export function ProjectsWizard() {
                         Edit
                       </button>
                       <button
-                        onClick={() => {
-                          if (window.confirm(`Move "${p.name}" to the bin? You can restore it later.`)) {
+                        onClick={async () => {
+                          if (await confirm({
+                            title: `Move "${p.name}" to the bin?`,
+                            consequence: 'The project and its contents stop appearing in lists.',
+                            undo: 'You can restore it from the Bin.',
+                            confirmLabel: 'Move to bin',
+                          })) {
                             archiveProjectMutation.mutate(p.id);
                           }
                         }}
@@ -474,6 +481,7 @@ export function ProjectsWizard() {
            <p className="text-sm text-muted-foreground">No projects found. Create one from a template above.</p>
         )}
       </section>
+      {confirmDialog}
     </div>
   );
 }

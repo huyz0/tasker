@@ -84,6 +84,7 @@ vi.mock('../../store/layout', () => ({
 }));
 
 import { ArtifactsBrowser } from './index';
+import { confirmAction, cancelAction } from '../../test/confirm';
 
 // The open artifact is a route param, so every render needs the same
 // `/artifacts` and `/artifacts/:artifactId` pair the app mounts.
@@ -130,7 +131,6 @@ describe('ArtifactsBrowser', () => {
     mockCreateComment.mockResolvedValue({ comment: { id: 'cmt-1' } });
     mockListTaskArtifactLinks.mockReset();
     mockListTaskArtifactLinks.mockResolvedValue({ links: [] });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('expands a folder and selects an artifact to view its content', async () => {
@@ -177,6 +177,7 @@ describe('ArtifactsBrowser', () => {
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
     fireEvent.click(screen.getByLabelText('Delete folder docs'));
+    await confirmAction();
 
     await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalledWith({ folderId: 'fld-1' }));
   });
@@ -190,6 +191,7 @@ describe('ArtifactsBrowser', () => {
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
     fireEvent.click(screen.getByLabelText('Delete folder docs'));
+    await confirmAction();
 
     await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalled());
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['folders', 'bin', 'proj-1'] });
@@ -211,6 +213,7 @@ describe('ArtifactsBrowser', () => {
     fireEvent.click(screen.getByText('docs'));
     await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
     fireEvent.click(screen.getByLabelText('Delete artifact readme.md'));
+    await confirmAction();
 
     await waitFor(() => expect(mockArchiveArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
     // The prefix matches every artifacts list, the Bin's included, whatever
@@ -386,17 +389,18 @@ describe('ArtifactsBrowser', () => {
     await waitFor(() => expect(screen.getByText('Hello')).toBeDefined());
 
     fireEvent.click(screen.getByLabelText('Delete artifact readme.md'));
+    await confirmAction();
     await waitFor(() => expect(mockArchiveArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
   });
 
   it('does not archive a folder when confirmation is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
 
     renderPage();
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
     fireEvent.click(screen.getByLabelText('Delete folder docs'));
+    await cancelAction();
 
     expect(mockArchiveFolder).not.toHaveBeenCalled();
   });
@@ -720,6 +724,21 @@ describe('ArtifactsBrowser', () => {
       ));
     });
 
+    it('abandons a subfolder when the form is cancelled', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [] });
+
+      renderPage();
+      fireEvent.click(await screen.findByText('docs'));
+      fireEvent.click(await screen.findByText('+ Subfolder in docs'));
+      // InlineCreateForm has no Cancel button: it withdraws on blur when the
+      // field is empty, so clicking away is how a user abandons it.
+      fireEvent.blur(await screen.findByPlaceholderText('Subfolder name'));
+
+      await waitFor(() => expect(screen.queryByPlaceholderText('Subfolder name')).toBeNull());
+      expect(mockCreateFolder).not.toHaveBeenCalled();
+    });
+
     it('survives a folder whose parent chain loops', async () => {
       mockListFolders.mockResolvedValue({
         folders: [
@@ -765,6 +784,7 @@ describe('ArtifactsBrowser', () => {
 
       await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
       fireEvent.click(screen.getByRole('button', { name: 'Delete folder docs' }));
+      await confirmAction();
 
       await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalledWith({ folderId: 'fld-1' }));
       await waitFor(() => expect(locationRef.current).toBe('/artifacts'));
