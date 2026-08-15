@@ -1,6 +1,6 @@
 ---
-active_milestone: M05
-active_task: M05-T04
+active_milestone: M06
+active_task: null
 last_updated: 2026-08-15
 last_commit: d04d0b7
 blocked: false
@@ -15,15 +15,15 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M05 — GUI / API Parity
-- **Task**: M05-T04 — assignment
-- **Branch**: `feature/m04-agent-identity` — M04 is complete on it but **not yet
-  merged to `main`**. Merge it before branching M05.
-- **Command to continue**: `/milestone-deliver M05`
+- **Milestone**: M06 — UX, Design System & A11y
+- **Task**: none started
+- **Branch**: `feature/m05-gui-api-parity` — M05 is complete on it but **not yet
+  merged to `main`**. Merge it before branching M06.
+- **Command to continue**: `/milestone-deliver M06`
 
-M04 closed 12/12 tasks and 7/7 exit criteria. The frontier is now M05 (needs
-only M01) and M10 (needs M03 + M04, both done). M05 and M10 can run in parallel
-on separate branches.
+M05 closed 12/12 tasks and 6/6 exit criteria. With M05 done the frontier is M06
+(UX & A11y), M07 (Read-Path Scale) and M10 (Teams & RBAC) — all three unblocked
+and independent of each other, so they can run in parallel on separate branches.
 
 ## How to resume
 
@@ -44,7 +44,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M02 | Specification Truth            | done   | M01        | 7     | 7    |
 | M03 | IAM Correctness & Scale        | done   | M01        | 16    | 16   |
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
-| M05 | GUI / API Parity               | in-progress | M01   | 12    | 4    |
+| M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
 | M06 | UX, Design System & A11y       | todo   | M05        | 13    | 0    |
 | M07 | Read-Path Scale                | todo   | M05        | 11    | 0    |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
@@ -53,7 +53,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 
-**Total: 141 tasks across 12 milestones — 49 done (M01 14, M02 7, M03 16, M04 12).**
+**Total: 141 tasks across 12 milestones — 61 done (M01 14, M02 7, M03 16, M04 12, M05 12).**
 
 ## Dependency graph
 
@@ -82,6 +82,85 @@ branches. M02 is intentionally cheap and unblocking — it can run alongside
 anything.
 
 ## Handoff notes
+
+**2026-08-15 — M05 GUI / API Parity closed (12/12 tasks, 6/6 exit criteria).**
+
+A manager can now do the whole job in the browser: assign a person or an agent,
+add reviewers, link artifacts to tasks in both directions, comment on and upload
+artifacts, navigate a nested folder tree, and configure a task type's state
+machine — with nothing on screen that the system does not actually know.
+
+Seven things a next session would otherwise pay to rediscover:
+
+1. **The recurring shape of this milestone was a missing read path, not a
+   missing feature.** Four times — assignees, reviewers, task↔artifact links,
+   artifact upload — the write path had existed since M01 and nothing could read
+   it back, so the capability was invisible and therefore never exercised. If a
+   later milestone finds a table nothing renders, check for this before assuming
+   the feature is unbuilt.
+2. **Names are resolved server-side, deliberately.** `Assignee.name`,
+   `TaskReviewer.name`, `TaskArtifactLink.artifactName`/`taskTitle`. The reason
+   is measured, not stylistic: the first assignee picker resolved names by
+   paging the member catalogue, which against the 100,001-member fixture issued
+   ~2,000 requests and never finished — the unbounded-list defect M03 spent a
+   milestone removing, reintroduced on the client. **Do not add a list field
+   that a client can only render by fetching a catalogue.** For artifacts the
+   argument is stronger still: artifact rows carry up to ~15 MB of base64 in
+   `content`, so a client resolving names itself downloads every body to render
+   a list of file names.
+3. **Pickers search, they do not enumerate.** Every one added here sends the
+   typed text to the server's `filter` and shows one bounded page. This is not
+   interchangeable with client-side filtering, and the unit tests cannot tell
+   the difference — they mock the transport, so a page costing two thousand
+   calls looks identical to one costing two. Run it against the seeded fixture.
+4. **`gui:rpc-coverage` is a new gate** and it will fail when you add an RPC.
+   That is the point: 92 of 95 RPCs are reached from the GUI, and an RPC added
+   later and reachable only from the CLI is the exact defect this milestone
+   existed to remove. Wire it up, or add it to `EXCEPTIONS` **with a reason** —
+   the gate's own tests assert the reasons are real, and also catch a *stale*
+   exception (one listed as unreachable that the GUI now calls), which is worse
+   than no list.
+5. **The deny-by-default sweeps caught a live hole again**, and this one was
+   subtle: `deleteTaskStatusTransition` originally looked the edge up, returned
+   success when it was missing, and authorized afterwards — so any id at all
+   returned success with no authorization check, and because it never threw the
+   sweeps would have counted it as classified. It now names the task type too
+   and authorizes against that. **Authorize on something that exists
+   independently of the row you are deleting.**
+6. **`task_statuses` gained a `position` column** with migrations in both
+   dialects (`0024` sqlite, `0011` mysql), backfilled by rowid and by id
+   respectively. `reorderTaskStatuses` demands the complete list — a partial one
+   leaves the unnamed statuses at stale positions, which is how two end up
+   sharing one. Also: proto3 omits zero-valued scalars, so the first status
+   arrives with `position` absent rather than `0`; the GUI never reads the
+   number because the server returns the array ordered, but a client sorting
+   client-side must treat missing as 0.
+7. **The 95% GUI branch gate named real behaviour five milestones running**, and
+   did so four separate times in this one. When it fires, read what it names —
+   in this milestone it found the two distinct empty states in every picker, the
+   name-or-email fallback for an invited member who has never signed in, an
+   unreadable file, and moving a status *down* as distinct from moving it up.
+
+**Deliberately deferred, with owners.** Deleting a task *status* is not built:
+tasks store their status by name, so a delete would leave tasks in a status
+their own type no longer contains, and the migration story (reassign? block?
+soft-delete?) belongs to **M08**, which owns the data model — renaming a status
+is the same problem. The Kanban card is a `<div role="button">`, so its
+accessible name is its entire text including the labels of the controls nested
+inside it (**M06**). Nothing fails the build for an inert control: "Filter
+Tasks" was a button with no handler for three milestones, and `design-lint`'s
+fabrication check does not match it because it looks for invented *state*, not
+dead controls (**M06**). `rpc-coverage` matches method names textually, so a
+local helper sharing an RPC's name would count as a call — the failure mode is a
+false pass on one RPC, and resolving the client object per call is a
+type-checker's job (**M12**).
+
+**Verification method worth keeping.** Every exit criterion here was checked by
+driving the real browser against a real backend and then reading the result back
+through a *second* HTTP client — not through the page's own cache. Twice that
+distinction mattered: the reviewer round-trip and the artifact-link round-trip
+both look identical from inside the page whether or not the server stored
+anything.
 
 **2026-08-15 — M04 Agent Identity & M2M Tokens closed (12/12 tasks, 7/7 exit criteria).**
 

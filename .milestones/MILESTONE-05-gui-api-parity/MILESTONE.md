@@ -1,13 +1,13 @@
 ---
 id: M05
 title: GUI / API Parity
-status: in-progress
+status: done
 goal: Every capability the backend implements is reachable from the web interface, and nothing on screen is fabricated.
 depends_on: [M01]
 surfaces: [gui, contract]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-15
-completed_at: null
+completed_at: 2026-08-15
 ---
 
 # M05 — GUI / API Parity
@@ -31,14 +31,38 @@ screens are being touched.
 
 ## 3. Exit Criteria
 
-- [ ] Every RPC in the contract is either called by the GUI or explicitly listed
+- [x] Every RPC in the contract is either called by the GUI or explicitly listed
       in this milestone as agent-only, with a reason.
-- [ ] No component renders a hardcoded status, priority, assignee or user name.
-- [ ] A task can be assigned to a human or an agent, and reviewers added and
+      *92 of 95 called; 3 listed below and enforced by `gui:rpc-coverage` on
+      every build. One correction to the criterion's wording: only one of the
+      three is agent-only. The other two are single-entity reads the GUI already
+      holds from its lists — a reason, but not that reason.*
+- [x] No component renders a hardcoded status, priority, assignee or user name.
+      *`gui:design-lint`'s fabrication check enforces it: 114 files, 0 findings.
+      T11 also removed a "Filter Tasks" button with no handler — an inert
+      control rather than invented state, which the lint does not match.
+      Recorded for M06. The Agents view still has a labelled placeholder panel
+      ("to be implemented fully with reactflow"), which states its own absence
+      rather than fabricating data.*
+- [x] A task can be assigned to a human or an agent, and reviewers added and
       removed, entirely from the browser.
-- [ ] An artifact can be uploaded, commented on, and linked to a task from the browser.
-- [ ] A task type's statuses and transitions can be configured from the browser.
-- [ ] List filtering and sorting are performed by the server, not the client.
+      *Observed: assigned `Member 0050000` to `SEED-145` in the browser and read
+      it back with `cli tasks list`; added and removed a reviewer in the browser
+      and read each change back over HTTP from a second client.*
+- [x] An artifact can be uploaded, commented on, and linked to a task from the browser.
+      *Observed: a 64×64 PNG uploaded and, after a reload, decoded by the
+      browser at `naturalWidth` 64; a comment posted and still present after a
+      reload; `Seed spec.md` linked from a task and unlinked from the artifact
+      view, each change confirmed by a separate HTTP client.*
+- [x] A task type's statuses and transitions can be configured from the browser.
+      *Observed: built `triage / mitigating / resolved` with one edge
+      `triage → mitigating`; the server then refused `todo` (not a status of
+      this type), refused `resolved` (no edge), and accepted `mitigating`.*
+- [x] List filtering and sorting are performed by the server, not the client.
+      *Observed on the 150-task fixture: 151 cards, one further `ListTasks`
+      request carrying the filter, one card. Sorting sends `title:asc`. The
+      client-side sort is deleted. The members list has been server-side since
+      M03; no other view has a filter or sort control.*
 
 ## 4. Scope
 

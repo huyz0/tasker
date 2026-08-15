@@ -353,4 +353,21 @@ Append-only. Newest entry at the bottom.
 - **Recorded**: the check matches method names textually, so a local helper
   sharing an RPC's name would count as a call. The failure mode is a false pass
   on one RPC, and resolving the client object per call is a type-checker's job.
-- **Next**: close the milestone
+
+## Milestone closed
+
+- **12/12 tasks, 6/6 exit criteria**, each verified by observation rather than
+  by assertion — the browser drove the change and a *second* HTTP client read it
+  back. Twice that distinction mattered: reviewers and artifact links look
+  identical from inside the page whether or not the server stored anything.
+- `moon check --all` — 24 tasks pass. `gui:test` 521 tests, branches 95.13%.
+  `gui:e2e` 13 tests. `gui:design-lint` 114 files, 0 findings.
+  `gui:rpc-coverage` 92 of 95 RPCs reached, 3 excepted with reasons.
+- **One correction to an exit criterion's wording**, recorded rather than
+  papered over: it says exceptions are "agent-only", and only one of the three
+  is. The other two are single-entity reads the GUI already holds from its
+  lists — a reason, but not that reason.
+- **Two new gates** now defend this milestone's work after it ends:
+  `gui:rpc-coverage` (an RPC added later and reachable only from the CLI fails
+  the build) and, from T01, `design-lint`'s fabrication check.
+- **Next**: M06 — UX, Design System & A11y.
