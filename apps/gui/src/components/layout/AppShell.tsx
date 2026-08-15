@@ -15,6 +15,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { GlobalSearch, GlobalSearchTrigger } from './GlobalSearch';
+import { ThemeToggle } from './ThemeToggle';
 import { CurrentUser } from './CurrentUser';
 import { OrgProjectSwitcher } from './OrgProjectSwitcher';
 import { logout } from '../../lib/authSession';
@@ -57,6 +58,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="flex items-center gap-2">
           <GlobalSearchTrigger />
+          <ThemeToggle />
           <CurrentUser />
         </div>
       </header>
@@ -68,8 +70,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Activity className="h-5 w-5 text-primary" />
             Tasker
           </div>
-          <div className="hidden md:block px-4 py-3 border-b">
+          <div className="hidden md:flex flex-col gap-3 px-4 py-3 border-b">
             <GlobalSearchTrigger />
+            {/* The header above is `md:hidden`, so a desktop user would never
+                have seen the toggle if it only lived there. */}
+            <ThemeToggle />
           </div>
           <OrgProjectSwitcher />
           <nav className="flex-1 space-y-1 p-4">

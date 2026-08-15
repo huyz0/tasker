@@ -120,6 +120,31 @@ test('fabrication: does NOT flag an initial derived from a name', () => {
   assert.deepEqual(found, []);
 });
 
+test('contrast: checks the dark theme, not only the light one', () => {
+  // The dark block is `:root[data-theme='dark']`, not a bare `:root` inside a
+  // media query. A regex matching only `:root {` reads the file, finds one
+  // theme, reports success, and never looks at dark again (M06-T07).
+  const css = [
+    ':root {',
+    '  --background: 0 0% 100%;',
+    '  --foreground: 0 0% 0%;',
+    '  --card: 0 0% 100%;',
+    '  --card-foreground: 0 0% 0%;',
+    '}',
+    ":root[data-theme='dark'] {",
+    '  --background: 0 0% 0%;',
+    '  --foreground: 0 0% 100%;',
+    '  --card: 0 0% 4%;',
+    '  --card-foreground: 0 0% 10%;',
+    '}',
+  ].join('\n');
+  const found = lint('export const T = () => <div />;', { only: 'contrast', css }).map((f) => f.msg);
+  assert.ok(
+    found.some((f) => /dark/.test(f)),
+    `expected a dark-theme contrast failure, got: ${JSON.stringify(found)}`,
+  );
+});
+
 test('tokens: flags a raw hex colour', () => {
   const found = lint(`export const T = () => <div style={{ color: '#ff0000' }} />;`, { only: 'tokens' });
   assert.ok(found.length >= 1, 'expected a raw hex to be caught');

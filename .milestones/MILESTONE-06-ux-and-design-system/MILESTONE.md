@@ -82,7 +82,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: `.oxlintrc.json` or `scripts/check-tokens.ts`, `moon.yml`
       - Verify: adding `bg-blue-600` fails the lint task.
 
-- [ ] **M06-T07** — Add a theme toggle (light / dark / system) persisted to
+- [x] **M06-T07** — Add a theme toggle (light / dark / system) persisted to
       local storage and applied via a root attribute.
       - Files: `apps/gui/src/store/layout.ts`, `AppShell.tsx`, `index.css`
       - Verify: the choice survives reload and overrides the OS preference.

@@ -141,7 +141,11 @@ function contrast(fg, bg) {
 /** Token declarations inside a `:root { … }` block, in source order. */
 function themes(css) {
   const out = [];
-  const re = /:root\s*\{([\s\S]*?)\n\s*\}/g;
+  // `:root` optionally followed by a selector suffix — `:root[data-theme='dark']`
+  // is the dark block since M06-T07. Matching only bare `:root {` would have
+  // silently stopped checking dark the moment the theme moved off a media
+  // query, which is the failure mode this whole gate exists to prevent.
+  const re = /:root(?:[^{\n]*)?\s*\{([\s\S]*?)\n\s*\}/g;
   let m;
   while ((m = re.exec(css))) {
     const vars = new Map();

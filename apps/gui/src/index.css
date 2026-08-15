@@ -119,58 +119,49 @@
     --radius: 0.5rem;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: 222.2 84% 4.9%;
-      --foreground: 210 40% 98%;
-
-      --card: 222.2 84% 4.9%;
-      --card-foreground: 210 40% 98%;
-
-      --popover: 222.2 84% 4.9%;
-      --popover-foreground: 210 40% 98%;
-
-      --primary: 271 100% 75%;
-      --primary-foreground: 271 80% 12%;
-
-      --secondary: 217.2 32.6% 17.5%;
-      --secondary-foreground: 210 40% 98%;
-
-      --muted: 217.2 32.6% 17.5%;
-      --muted-foreground: 215 20.2% 65.1%;
-
-      --accent: 271 100% 75% / 0.15;
-      --accent-foreground: 210 40% 98%;
-
-      --destructive: 0 62.8% 30.6%;
-      --destructive-foreground: 210 40% 98%;
-      --destructive-subtle: 0 60% 16%;
-      --destructive-subtle-foreground: 0 91% 78%;
-
-      --success: 142 69% 58%;
-      --success-foreground: 144 80% 8%;
-      --success-subtle: 143 64% 13%;
-      --success-subtle-foreground: 141 79% 75%;
-
-      --warning: 43 96% 56%;
-      --warning-foreground: 26 83% 10%;
-      --warning-subtle: 30 70% 14%;
-      --warning-subtle-foreground: 48 96% 76%;
-
-      --info: 213 94% 68%;
-      --info-foreground: 226 71% 10%;
-      --info-subtle: 226 57% 17%;
-      --info-subtle-foreground: 213 97% 80%;
-
-      --neutral: 215 20% 72%;
-      --neutral-foreground: 215 30% 12%;
-      --neutral-subtle: 217 33% 18%;
-      --neutral-subtle-foreground: 214 32% 80%;
-
-      --border: 217.2 32.6% 17.5%;
-      --input: 217.2 32.6% 17.5%;
-      --ring: 271 100% 75%;
-    }
+  /* Dark is applied by an attribute, never by a media query.
+     "System" is resolved in JavaScript (`applyTheme` in store/layout.ts) and
+     written to the same attribute, so there is exactly one dark block rather
+     than one per trigger. Two copies of every dark token is two copies that
+     drift, and the second copy is the one nobody updates. */
+  :root[data-theme='dark'] {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 271 100% 75%;
+    --primary-foreground: 271 80% 12%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 271 100% 75% / 0.15;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --destructive-subtle: 0 60% 16%;
+    --destructive-subtle-foreground: 0 91% 78%;
+    --success: 142 69% 58%;
+    --success-foreground: 144 80% 8%;
+    --success-subtle: 143 64% 13%;
+    --success-subtle-foreground: 141 79% 75%;
+    --warning: 43 96% 56%;
+    --warning-foreground: 26 83% 10%;
+    --warning-subtle: 30 70% 14%;
+    --warning-subtle-foreground: 48 96% 76%;
+    --info: 213 94% 68%;
+    --info-foreground: 226 71% 10%;
+    --info-subtle: 226 57% 17%;
+    --info-subtle-foreground: 213 97% 80%;
+    --neutral: 215 20% 72%;
+    --neutral-foreground: 215 30% 12%;
+    --neutral-subtle: 217 33% 18%;
+    --neutral-subtle-foreground: 214 32% 80%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 271 100% 75%;
   }
 
   * {

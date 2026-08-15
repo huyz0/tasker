@@ -217,3 +217,40 @@ standard and wonder which one is wrong.
     `design-lint-disable-next-line tokens` for GitHub's brand colour — white on
     that colour is the vendor's button, not this app's chrome.
 - **Next**: M06-T07
+
+## M06-T07 — Theme toggle
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `src/index.css`, `store/layout.ts`, `main.tsx`,
+  new `components/layout/ThemeToggle.tsx` (+ 11 tests),
+  `AppShell.tsx`, `scripts/design-lint.mjs`, `scripts/design-lint.test.mjs`
+- **Verified**: in a browser with the machine set to **dark** throughout —
+  no choice → `dark`; choosing Light → `light`, `rgb(255,255,255)`, stored;
+  full reload → still `light`; System → back to `dark`; Dark → `dark`. So the
+  choice both survives a reload and overrides the OS, which is the task's line.
+  `gui:test` — 576 pass, branches 95.18%. `moon check --all` — 24 pass.
+- **Notes**:
+  - **"System" is resolved in JavaScript, not in CSS.** The alternative keeps
+    the media query and adds an attribute block, which is two copies of every
+    dark token — and the second copy is the one nobody updates. Now there is one
+    `:root` and one `:root[data-theme='dark']`, and `applyTheme` decides which.
+  - **I nearly disabled the contrast gate while doing it.** `design-lint`'s
+    `themes()` matched `/:root\s*\{/`, which the old `@media { :root { … } }`
+    satisfied and the new `:root[data-theme='dark']` does not. The gate would
+    have found one theme, checked light, and reported success — the exact class
+    of silent pass this milestone keeps running into. Regex widened, and there
+    is now a test that feeds it a dark-only contrast failure; it fails against
+    the old regex, which is how I know it pins the fix rather than describing
+    it.
+  - **The toggle lives in the sidebar as well as the header**, because the
+    header is `md:hidden` — mounting it only there would have hidden it from
+    every desktop user. Found by the browser check timing out on a click, not by
+    reading.
+  - **Three choices, not a switch.** A two-state switch cannot say "follow the
+    machine", so it either ignores the preference the user already expressed at
+    OS level or silently overrides it the first time they touch it.
+  - **Storage failures do not break the theme.** Private browsing throws on both
+    read and write; the read falls back to `system` and the write still applies
+    the choice for the session. Both have tests.
+- **Next**: M06-T08
