@@ -1,138 +1,234 @@
-import { useState, useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { createClient } from "@connectrpc/connect";
-import { transport } from "../lib/connectTransport";
-import { HealthService, OrgService, ProjectService, TaskService, AgentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { createClient } from '@connectrpc/connect';
+import { transport } from '../lib/connectTransport';
+import { DashboardService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore, type LayoutState } from '../store/layout';
+import { ListState } from '../components/ui/ListState';
 
-const healthClient = createClient(HealthService, transport);
-const orgClient = createClient(OrgService, transport);
-const projectClient = createClient(ProjectService, transport);
-const taskClient = createClient(TaskService, transport);
-const agentClient = createClient(AgentService, transport);
+const dashboardClient = createClient(DashboardService, transport);
 
-const STATUS_LABELS: Record<string, string> = {
-  todo: 'Todo',
-  'in-progress': 'In Progress',
-  done: 'Done',
-};
+/**
+ * The home screen answers "what needs me", not "what exists".
+ *
+ * It used to show four entity counts — organizations, projects, agents, tasks —
+ * and the database's latency. Counts of things that exist only ever climb, and
+ * none of the four survived the question "what will you do differently because
+ * of this number?". They were also at three different scopes on one row, so
+ * switching project changed one card and left three still.
+ *
+ * A supervisor of agent work has three questions, and the panels are them in
+ * order: what is waiting on my judgement, where does the record disagree with
+ * reality, and which agents have gone quiet. Everything here is one RPC — the
+ * server does the joins rather than the browser doing four round trips.
+ */
 
-function StatCard({ label, value, icon, error }: { label: string; value: number | string; icon: string; error?: Error | null }) {
+/** Beyond this an agent has stopped rather than paused. */
+const SILENT_AFTER_HOURS = 24;
+
+function Panel({ title, subtitle, action, children }: {
+  title: string;
+  subtitle: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <div className="p-4 border rounded-lg bg-card shadow-sm flex items-center justify-between">
-      <div>
-        <div className="text-muted-foreground text-sm font-medium mb-1">{label}</div>
-        {error ? (
-          <div className="text-destructive text-xs font-medium" title={error.message}>Failed to load</div>
-        ) : (
-          <div className="text-3xl font-bold">{value}</div>
-        )}
+    <section className="border rounded-lg bg-card shadow-sm flex flex-col">
+      <div className="p-4 border-b flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-medium">{title}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        </div>
+        {action}
       </div>
-      <div className="w-10 h-10 rounded-full bg-primary-subtle text-primary-subtle-foreground flex items-center justify-center text-lg">{icon}</div>
-    </div>
+      <div className="p-2 flex-1">{children}</div>
+    </section>
   );
+}
+
+function TaskRow({ task, children }: { task: any; children?: ReactNode }) {
+  return (
+    <Link
+      to={`/tasks/${task.id}`}
+      className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+    >
+      <span className="font-mono text-xs text-muted-foreground shrink-0 pt-0.5">{task.displayId}</span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm truncate">{task.title}</span>
+        {children}
+      </span>
+    </Link>
+  );
+}
+
+/** "9 days ago", or "never" — the distinction the fleet panel exists to draw. */
+function sinceLabel(iso?: string): { text: string; silent: boolean } {
+  if (!iso) return { text: 'never called', silent: true };
+  const ms = Date.now() - new Date(iso).getTime();
+  const hours = ms / 3_600_000;
+  const silent = hours > SILENT_AFTER_HOURS;
+  if (hours < 1) return { text: 'active in the last hour', silent };
+  if (hours < 24) return { text: `${Math.floor(hours)}h ago`, silent };
+  return { text: `${Math.floor(hours / 24)}d ago`, silent };
 }
 
 export function Dashboard() {
   const setActivePageTitle = useLayoutStore((s: LayoutState) => s.setActivePageTitle);
-  const activeOrgId = useLayoutStore((s) => s.activeOrgId);
-  const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const activeOrgId = useLayoutStore((s: LayoutState) => s.activeOrgId);
+  const activeProjectId = useLayoutStore((s: LayoutState) => s.activeProjectId);
   useEffect(() => setActivePageTitle('Dashboard'), [setActivePageTitle]);
 
-  const [timestamp, setTimestamp] = useState(() => Date.now());
-  const { data: health, error: healthError, isLoading: isHealthLoading } = useQuery({
-    queryKey: ['healthPing', timestamp],
-    queryFn: async () => {
-      const res = await healthClient.ping({});
-      return res as { message: string, dbStatus: string, dbLatencyMs?: number, natsStatus: string, natsLatencyMs?: number };
-    }
-  });
-
-  // Distinct query keys from OrgProjectSwitcher's ['orgs'] / ['projects', orgId]
-  // are required here, not just cosmetic - that component's queries return a
-  // flattened array (it walks every page via fetchAllPages), while this one
-  // needs the raw single-page response for its page.totalCount. Sharing a key
-  // would let whichever query wins the cache silently feed its shape to the
-  // other's consumer.
-  const { data: orgsResp, error: orgsError } = useQuery({
-    queryKey: ['orgs', 'dashboardStats'],
-    queryFn: async () => orgClient.listOrgs({}),
-  });
-
-  const { data: projectsResp, error: projectsError } = useQuery({
-    queryKey: ['projects', 'dashboardStats', activeOrgId],
-    queryFn: async () => projectClient.listProjects({ orgId: activeOrgId }),
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['dashboard', activeOrgId, activeProjectId],
     enabled: !!activeOrgId,
+    queryFn: async () => dashboardClient.getDashboard({ orgId: activeOrgId, projectId: activeProjectId || undefined }),
   });
 
-  const { data: agentsResp, error: agentsError } = useQuery({
-    queryKey: ['agents', 'dashboardStats', activeOrgId],
-    queryFn: async () => agentClient.listAgents({ orgId: activeOrgId }),
-    enabled: !!activeOrgId,
-  });
-
-  const { data: tasksResp, error: tasksError } = useQuery({
-    queryKey: ['tasks', 'dashboardStats', activeProjectId],
-    queryFn: async () => taskClient.listTasks({ projectId: activeProjectId }),
-    enabled: !!activeProjectId,
-  });
-  const tasks = tasksResp?.tasks;
-
-  const tasksByStatus = (tasks ?? []).reduce<Record<string, number>>((acc, t) => {
-    const status = t.status || 'todo';
-    acc[status] = (acc[status] || 0) + 1;
-    return acc;
-  }, {});
+  if (!activeOrgId) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+        <ListState
+          isLoading={false}
+          error={null}
+          isEmpty
+          emptyMessage="No organization selected."
+          emptyAction={<p className="text-xs">Pick one in the sidebar to see what needs you.</p>}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Dashboard Overview</h1>
-        <p className="text-muted-foreground mt-1">Manage your tasks and monitor system health.</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">What needs you, and what your agents have been doing.</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Organizations" value={orgsResp?.page?.totalCount ?? '—'} icon="🏢" error={orgsError as Error | null} />
-        <StatCard label="Projects" value={activeOrgId ? (projectsResp?.page?.totalCount ?? '—') : '—'} icon="📁" error={activeOrgId ? (projectsError as Error | null) : null} />
-        <StatCard label="Agents" value={activeOrgId ? (agentsResp?.page?.totalCount ?? '—') : '—'} icon="🤖" error={activeOrgId ? (agentsError as Error | null) : null} />
-        <StatCard label="Tasks" value={activeProjectId ? (tasksResp?.page?.totalCount ?? '—') : '—'} icon="✅" error={activeProjectId ? (tasksError as Error | null) : null} />
-      </div>
-
-      {activeProjectId && tasks && tasks.length > 0 && (
-        <div className="p-6 border rounded-lg bg-card text-card-foreground shadow-sm">
-          <h2 className="text-xl font-medium mb-4">Tasks by Status</h2>
-          <div className="flex gap-6">
-            {Object.entries(STATUS_LABELS).map(([key, label]) => (
-              <div key={key} className="flex flex-col items-center">
-                <div className="text-2xl font-bold">{tasksByStatus[key] ?? 0}</div>
-                <div className="text-xs text-muted-foreground">{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {(isLoading || error) && (
+        <ListState
+          isLoading={isLoading}
+          error={error}
+          isEmpty={false}
+          loadingMessage="Loading your dashboard…"
+          emptyMessage=""
+          onRetry={() => refetch()}
+        />
       )}
 
-      <div className="p-6 border rounded-lg bg-card text-card-foreground shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-medium">System Health</h2>
-          <button
-            onClick={() => setTimestamp(Date.now())}
-            className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
+      {!isLoading && !error && data && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Panel
+            title="Waiting on you"
+            subtitle="Tasks you are a reviewer on that are not finished"
+            action={
+              <span className="text-2xl font-semibold tabular-nums">{Number(data.awaitingReviewCount)}</span>
+            }
           >
-            Ping Backend
-          </button>
-        </div>
+            <ListState
+              isLoading={false}
+              error={null}
+              isEmpty={data.awaitingReview.length === 0}
+              emptyMessage="Nothing is waiting on your review."
+              emptyAction={<p className="text-xs">Add yourself as a reviewer on a task to see it here.</p>}
+            >
+              {data.awaitingReview.map((t: any) => (
+                <TaskRow key={t.id} task={t}>
+                  <span className="text-xs text-muted-foreground">{t.status}</span>
+                </TaskRow>
+              ))}
+            </ListState>
+          </Panel>
 
-        {isHealthLoading && <p className="text-muted-foreground text-sm">Loading telemetry...</p>}
-        {healthError && <p className="text-destructive text-sm font-medium">Error: {healthError.message}</p>}
-        {health && (
-          <div className="bg-muted p-4 rounded-md text-sm font-mono flex flex-col gap-2">
-            <p><span className="text-muted-foreground">Message:</span> {health.message}</p>
-            <p><span className="text-muted-foreground">DB Status:</span> {health.dbStatus}{health.dbLatencyMs !== undefined ? ` (${health.dbLatencyMs}ms)` : ''}</p>
-            <p><span className="text-muted-foreground">NATS Status:</span> {health.natsStatus}{health.natsLatencyMs !== undefined ? ` (${health.natsLatencyMs}ms)` : ''}</p>
-          </div>
-        )}
-      </div>
+          <Panel
+            title="Done, but the PR is open"
+            subtitle="Where the recorded status contradicts the pull request"
+            action={
+              <span className="text-2xl font-semibold tabular-nums">{Number(data.disagreementCount)}</span>
+            }
+          >
+            <ListState
+              isLoading={false}
+              error={null}
+              isEmpty={data.disagreements.length === 0}
+              emptyMessage="Every finished task has a settled pull request."
+              emptyAction={<p className="text-xs">Tasks marked done with an open PR appear here.</p>}
+            >
+              {data.disagreements.map((d: any) => (
+                <TaskRow key={d.task.id} task={d.task}>
+                  <span className="text-xs text-warning-subtle-foreground bg-warning-subtle rounded px-1.5 py-0.5 inline-block mt-1">
+                    PR #{d.pullRequestId} {d.pullRequestStatus}
+                  </span>
+                </TaskRow>
+              ))}
+            </ListState>
+          </Panel>
+
+          <Panel title="Agents" subtitle="When each was last heard from, and what it is holding">
+            <ListState
+              isLoading={false}
+              error={null}
+              isEmpty={data.agents.length === 0}
+              emptyMessage="No agents in this organization."
+              emptyAction={<Link to="/agents" className="text-xs text-primary hover:underline">Deploy one</Link>}
+            >
+              {data.agents.map((a: any) => {
+                const since = sinceLabel(a.lastUsedAt);
+                return (
+                  <Link
+                    key={a.id}
+                    to="/agents"
+                    className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  >
+                    <span className="flex-1 min-w-0 truncate text-sm">{a.name}</span>
+                    {Number(a.openTaskCount) > 0 && (
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {Number(a.openTaskCount)} open
+                      </span>
+                    )}
+                    <span
+                      className={`text-xs shrink-0 rounded px-1.5 py-0.5 ${
+                        since.silent
+                          ? 'bg-warning-subtle text-warning-subtle-foreground'
+                          : 'bg-success-subtle text-success-subtle-foreground'
+                      }`}
+                    >
+                      {since.text}
+                    </span>
+                  </Link>
+                );
+              })}
+            </ListState>
+          </Panel>
+
+          <Panel title="Recent agent activity" subtitle="Notes and comments your agents have written">
+            <ListState
+              isLoading={false}
+              error={null}
+              isEmpty={data.recentActivity.length === 0}
+              emptyMessage="No agent activity yet."
+              emptyAction={<p className="text-xs">Notes and comments agents write appear here.</p>}
+            >
+              {data.recentActivity.map((a: any, i: number) => (
+                <Link
+                  key={`${a.taskId}-${a.createdAt}-${i}`}
+                  to={`/tasks/${a.taskId}`}
+                  className="block p-2 rounded-md hover:bg-muted/50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                >
+                  <span className="flex items-baseline gap-2 text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{a.agentName}</span>
+                    <span>{a.kind === 'note' ? 'noted on' : 'commented on'}</span>
+                    <span className="font-mono">{a.taskDisplayId}</span>
+                  </span>
+                  <span className="block text-sm truncate mt-0.5">{a.excerpt}</span>
+                </Link>
+              ))}
+            </ListState>
+          </Panel>
+        </div>
+      )}
     </div>
   );
 }

@@ -55,6 +55,7 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   LabelService: {},
   RepositoryService: {},
   SearchService: {},
+  DashboardService: {},
 }));
 
 // -------------------------------------------------------------------
@@ -80,49 +81,27 @@ describe('App', () => {
     </MemoryRouter>
   );
 
-  it('renders the heading', () => {
+  it('lands on the dashboard, not on backend telemetry', () => {
     healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp();
-    expect(screen.getByRole('heading', { name: 'Dashboard Overview' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeDefined();
+    // System Health moved to /settings: database latency is an operator's
+    // concern and was the only thing on the home screen that ever changed.
+    expect(screen.queryByRole('button', { name: 'Ping Backend' })).toBeNull();
   });
 
-  it('shows a Ping Backend button', () => {
-    healthQueryResult = { data: undefined, error: null, isLoading: false };
-    renderApp();
+  it('serves backend telemetry at /settings, which used to be a placeholder', () => {
+    healthQueryResult = { data: { message: 'pong', dbStatus: 'ok' }, error: null, isLoading: false };
+    renderApp('/settings');
     expect(screen.getByRole('button', { name: 'Ping Backend' })).toBeDefined();
-  });
-
-  it('shows loading indicator while fetching', () => {
-    healthQueryResult = { data: undefined, error: null, isLoading: true };
-    renderApp();
-    expect(screen.getByText('Loading telemetry...')).toBeDefined();
-  });
-
-  it('shows error message when the query fails', () => {
-    healthQueryResult = {
-      data: undefined,
-      error: new Error('connection refused'),
-      isLoading: false,
-    };
-    renderApp();
-    expect(screen.getByText(/Error: connection refused/)).toBeDefined();
-  });
-
-  it('shows message and DB status when data is returned', () => {
-    healthQueryResult = {
-      data: { message: 'pong', dbStatus: 'ok' },
-      error: null,
-      isLoading: false,
-    };
-    renderApp();
     expect(screen.getByText(/pong/)).toBeDefined();
-    expect(screen.getByText(/ok/)).toBeDefined();
+    // The route used to render "Settings module placeholder area".
+    expect(screen.queryByText(/placeholder area/)).toBeNull();
   });
 
-  it('clicking Ping Backend updates the queryKey (triggers refetch)', async () => {
+  it('clicking Ping Backend on /settings triggers a refetch', async () => {
     healthQueryResult = { data: undefined, error: null, isLoading: false };
-
-    renderApp();
+    renderApp('/settings');
     const before = mockUseQuery.mock.calls.length;
 
     fireEvent.click(screen.getByRole('button', { name: 'Ping Backend' }));

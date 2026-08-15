@@ -14,6 +14,8 @@ import { createLabelsHandler } from '../modules/labels/labels.handler';
 import { createRepositoriesHandler } from '../modules/repositories/repositories.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
+import createDashboardHandler from '../modules/dashboard/dashboard.handler';
+import createSearchHandler from '../modules/search/search.handler';
 
 /**
  * Exhaustive proof that `viewer` cannot write. See ADR-0006.
@@ -39,6 +41,9 @@ const READS: Record<string, string[]> = {
   projectTemplates: ['getTemplate', 'listTemplates'],
   tasks: ['getTaskType', 'listTaskTypes'],
   taskManagement: ['listTasks', 'getTask', 'listTaskReviewers'],
+  // Read-only supervision console; a viewer may look at it.
+  dashboard: ['getDashboard'],
+  search: ['universalSearch'],
   taskNotes: ['listTaskNotes'],
   agents: ['listAgentRoles', 'listAgents'],
   artifacts: ['listFolders', 'listArtifacts', 'getArtifactContent', 'listTaskArtifactLinks'],
@@ -265,8 +270,21 @@ beforeAll(async () => {
     repositories: createRepositoriesHandler(db, nc),
     health: createHealthHandler(db, nc),
     auth: createAuthHandler(db, nc),
+    // These two register onto a ConnectRouter rather than returning their
+    // methods, so they were invisible to this sweep entirely — a read-only
+    // sweep that cannot see a handler cannot vouch for it. Recovered from a
+    // stub router, the same way the agent sweep already does it.
+    dashboard: captureRouterMethods(createDashboardHandler, db),
+    search: captureRouterMethods(createSearchHandler, db),
   };
 });
+
+/** Recovers the method map from a handler that registers onto a router. */
+function captureRouterMethods(register: (router: any, db: any) => void, db: any) {
+  const captured: Record<string, any> = {};
+  register({ service: (_svc: unknown, impl: Record<string, any>) => Object.assign(captured, impl) } as any, db);
+  return captured;
+}
 
 const methodsOf = (h: any) => Object.keys(h).filter((k) => typeof h[k] === 'function');
 

@@ -1,6 +1,6 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
@@ -20,6 +20,7 @@ import { createCommentsHandler } from "./modules/comments/comments.handler";
 import { createLabelsHandler } from "./modules/labels/labels.handler";
 import { createRepositoriesHandler } from "./modules/repositories/repositories.handler";
 import createSearchHandler from "./modules/search/search.handler";
+import createDashboardHandler from "./modules/dashboard/dashboard.handler";
 import { setupDatabase } from "./db/db";
 import { connect as natsConnect } from "nats";
 import { logger } from "./lib/logger";
@@ -119,6 +120,7 @@ const handler = connectNodeAdapter({
     router.service(LabelService as any, createLabelsHandler(db, nc));
     router.service(RepositoryService as any, createRepositoriesHandler(db, nc));
     createSearchHandler(router, db);
+    createDashboardHandler(router, db);
   },
 });
 

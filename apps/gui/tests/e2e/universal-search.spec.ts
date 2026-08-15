@@ -8,7 +8,7 @@ test.describe('Universal Search E2E', () => {
     // brand is rendered twice (mobile header and sidebar) and the first match
     // in DOM order is the `md:hidden` one, which is never visible at the
     // desktop viewport these tests run at.
-    await expect(page.getByRole('heading', { name: 'Dashboard Overview' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Same duplication for the search trigger - keep the visible one.
     const searchBtn = page

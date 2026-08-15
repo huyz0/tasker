@@ -1,177 +1,181 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 
-const { mockPing, mockListOrgs, mockListProjects, mockListAgents, mockListTasks } = vi.hoisted(() => ({
-  mockPing: vi.fn(),
-  mockListOrgs: vi.fn(),
-  mockListProjects: vi.fn(),
-  mockListAgents: vi.fn(),
-  mockListTasks: vi.fn(),
-}));
+const { mockGetDashboard } = vi.hoisted(() => ({ mockGetDashboard: vi.fn() }));
 
-vi.mock('@connectrpc/connect-web', () => ({
-  createConnectTransport: vi.fn(() => ({})),
-}));
+vi.mock('@connectrpc/connect-web', () => ({ createConnectTransport: vi.fn(() => ({})) }));
 vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn((service: unknown) => {
-    if (service === 'OrgService') return { listOrgs: mockListOrgs };
-    if (service === 'ProjectService') return { listProjects: mockListProjects };
-    if (service === 'AgentService') return { listAgents: mockListAgents };
-    if (service === 'TaskService') return { listTasks: mockListTasks };
-    return { ping: mockPing };
-  }),
+  createClient: vi.fn(() => ({ getDashboard: mockGetDashboard })),
 }));
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  HealthService: 'HealthService',
-  OrgService: 'OrgService',
-  ProjectService: 'ProjectService',
-  AgentService: 'AgentService',
-  TaskService: 'TaskService',
-}));
+vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ DashboardService: {} }));
+
+let mockActiveOrgId = 'org-1';
+let mockActiveProjectId = 'proj-1';
 vi.mock('../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
     setActivePageTitle: vi.fn(),
-    activeOrgId: 'org-1',
-    activeProjectId: 'proj-1',
+    get activeOrgId() { return mockActiveOrgId; },
+    get activeProjectId() { return mockActiveProjectId; },
   })),
 }));
 
 import { Dashboard } from './Dashboard';
-import { expectNoA11yViolations } from '../test/a11y';
+
+const EMPTY = {
+  awaitingReview: [], awaitingReviewCount: 0n,
+  disagreements: [], disagreementCount: 0n,
+  agents: [], recentActivity: [],
+};
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <Dashboard />
-    </QueryClientProvider>
+      <MemoryRouter><Dashboard /></MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
 describe('Dashboard', () => {
   beforeEach(() => {
-    mockPing.mockReset();
-    mockListOrgs.mockReset();
-    mockListProjects.mockReset();
-    mockListAgents.mockReset();
-    mockListTasks.mockReset();
-    mockPing.mockResolvedValue({ message: 'pong', dbStatus: 'ok' });
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1' }, { id: 'org-2' }], page: { totalCount: 2 } });
-    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1' }], page: { totalCount: 1 } });
-    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-1' }, { id: 'agent-2' }, { id: 'agent-3' }], page: { totalCount: 3 } });
-    mockListTasks.mockResolvedValue({
-      tasks: [
-        { id: 't1', status: 'todo' },
-        { id: 't2', status: 'in-progress' },
-        { id: 't3', status: 'in-progress' },
-        { id: 't4', status: 'done' },
+    mockGetDashboard.mockReset();
+    mockActiveOrgId = 'org-1';
+    mockActiveProjectId = 'proj-1';
+  });
+
+  it('asks the server once, rather than counting entities itself', async () => {
+    mockGetDashboard.mockResolvedValue(EMPTY);
+    renderPage();
+    await waitFor(() => expect(mockGetDashboard).toHaveBeenCalledTimes(1));
+    expect(mockGetDashboard).toHaveBeenCalledWith({ orgId: 'org-1', projectId: 'proj-1' });
+  });
+
+  it('shows the review queue with the count of everything behind it', async () => {
+    // The panel lists a page; the number is the whole queue. Showing the
+    // rendered count instead would understate the backlog, which is the
+    // mistake the old board made before per-column counts (M07-T03).
+    mockGetDashboard.mockResolvedValue({
+      ...EMPTY,
+      awaitingReview: [{ id: 't1', displayId: 'ENG-1', title: 'Needs a look', status: 'in-progress', projectId: 'proj-1' }],
+      awaitingReviewCount: 17n,
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Needs a look')).toBeInTheDocument());
+    expect(screen.getByText('17')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Needs a look/ })).toHaveAttribute('href', '/tasks/t1');
+  });
+
+  it('reports a task claiming done while its pull request is open', async () => {
+    mockGetDashboard.mockResolvedValue({
+      ...EMPTY,
+      disagreements: [{
+        task: { id: 't9', displayId: 'ENG-9', title: 'Claimed finished', status: 'done', projectId: 'proj-1' },
+        pullRequestId: '42', pullRequestTitle: 'wip', pullRequestStatus: 'open', pullRequestUrl: 'http://x/42',
+      }],
+      disagreementCount: 1n,
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Claimed finished')).toBeInTheDocument());
+    expect(screen.getByText(/PR #42 open/)).toBeInTheDocument();
+  });
+
+  it('marks an agent silent past a day, and one that never called at all', async () => {
+    mockGetDashboard.mockResolvedValue({
+      ...EMPTY,
+      agents: [
+        { id: 'a1', name: 'Quiet', lastUsedAt: new Date(Date.now() - 9 * 86_400_000).toISOString(), openTaskCount: 3n },
+        { id: 'a2', name: 'Busy', lastUsedAt: new Date().toISOString(), openTaskCount: 0n },
+        { id: 'a3', name: 'NeverStarted', lastUsedAt: undefined, openTaskCount: 0n },
       ],
-      page: { totalCount: 4 },
-    });
-  });
-
-  it('shows counts for organizations, projects, agents, and tasks', async () => {
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Organizations').nextElementSibling?.textContent).toBe('2'));
-    expect(screen.getByText('Agents').nextElementSibling?.textContent).toBe('3');
-    expect(screen.getByText('Tasks').nextElementSibling?.textContent).toBe('4');
-  });
-
-  it('shows the total count across all pages, not just the fetched page size', async () => {
-    mockListTasks.mockResolvedValue({
-      tasks: [{ id: 't1', status: 'todo' }],
-      page: { totalCount: 137 },
     });
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('Tasks').nextElementSibling?.textContent).toBe('137'));
+    await waitFor(() => expect(screen.getByText('Quiet')).toBeInTheDocument());
+    expect(screen.getByText('9d ago')).toBeInTheDocument();
+    expect(screen.getByText('active in the last hour')).toBeInTheDocument();
+    // "never called" is a deployment that did not start — a different failure
+    // from one that stopped, and it must not read as simply old.
+    expect(screen.getByText('never called')).toBeInTheDocument();
+    expect(screen.getByText('3 open')).toBeInTheDocument();
   });
 
-  it('breaks tasks down by status', async () => {
+  it('does not show an open-work count for an agent holding nothing', async () => {
+    mockGetDashboard.mockResolvedValue({
+      ...EMPTY,
+      agents: [{ id: 'a2', name: 'Idle', lastUsedAt: new Date().toISOString(), openTaskCount: 0n }],
+    });
     renderPage();
-
-    await waitFor(() => expect(screen.getByText('Tasks by Status')).toBeDefined());
-    expect(screen.getByText('Todo')).toBeDefined();
-    expect(screen.getByText('In Progress')).toBeDefined();
-    expect(screen.getByText('Done')).toBeDefined();
+    await waitFor(() => expect(screen.getByText('Idle')).toBeInTheDocument());
+    expect(screen.queryByText('0 open')).toBeNull();
   });
 
-  it('still shows the health ping card', async () => {
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText(/pong/)).toBeDefined());
-    expect(screen.getByText(/ok/)).toBeDefined();
-  });
-
-  it('shows db and nats latency when provided', async () => {
-    mockPing.mockResolvedValue({ message: 'pong', dbStatus: 'ok', dbLatencyMs: 12, natsStatus: 'ok', natsLatencyMs: 3 });
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText(/ok \(12ms\)/)).toBeDefined());
-    expect(screen.getByText(/ok \(3ms\)/)).toBeDefined();
-  });
-
-  it('shows an error message when the health ping fails', async () => {
-    mockPing.mockRejectedValue(new Error('backend unreachable'));
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText(/backend unreachable/)).toBeDefined());
-  });
-
-  it('re-pings the backend when the button is clicked', async () => {
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText(/pong/)).toBeDefined());
-    mockPing.mockClear();
-    screen.getByRole('button', { name: 'Ping Backend' }).click();
-
-    await waitFor(() => expect(mockPing).toHaveBeenCalled());
-  });
-
-  it('shows a failed-to-load indicator when the organizations query errors', async () => {
-    mockListOrgs.mockRejectedValue(new Error('orgs unavailable'));
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Organizations').nextElementSibling?.textContent).toBe('Failed to load'));
-  });
-
-  it('shows a failed-to-load indicator when the projects query errors', async () => {
-    mockListProjects.mockRejectedValue(new Error('projects unavailable'));
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Projects').nextElementSibling?.textContent).toBe('Failed to load'));
-  });
-
-  it('shows a failed-to-load indicator when the agents query errors', async () => {
-    mockListAgents.mockRejectedValue(new Error('agents unavailable'));
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Agents').nextElementSibling?.textContent).toBe('Failed to load'));
-  });
-
-  it('shows a failed-to-load indicator when the tasks query errors', async () => {
-    mockListTasks.mockRejectedValue(new Error('tasks unavailable'));
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Tasks').nextElementSibling?.textContent).toBe('Failed to load'));
-  });
-
-  it('defaults a task with no status to the todo bucket', async () => {
-    mockListTasks.mockResolvedValue({
-      tasks: [{ id: 't1' }],
-      page: { totalCount: 1 },
+  it('distinguishes a note from a comment in the activity feed', async () => {
+    mockGetDashboard.mockResolvedValue({
+      ...EMPTY,
+      recentActivity: [
+        { taskId: 't1', taskDisplayId: 'ENG-1', taskTitle: 'T', agentId: 'a1', agentName: 'Scout', kind: 'note', excerpt: 'ran the migration', createdAt: new Date().toISOString() },
+        { taskId: 't2', taskDisplayId: 'ENG-2', taskTitle: 'T', agentId: 'a1', agentName: 'Scout', kind: 'comment', excerpt: 'opened a PR', createdAt: new Date().toISOString() },
+      ],
     });
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('Tasks by Status')).toBeDefined());
-    expect(screen.getByText('Todo').previousElementSibling?.textContent).toBe('1');
+    await waitFor(() => expect(screen.getByText('ran the migration')).toBeInTheDocument());
+    expect(screen.getByText('noted on')).toBeInTheDocument();
+    expect(screen.getByText('commented on')).toBeInTheDocument();
   });
 
-  it('has no accessibility violations once loaded', async () => {
-    const { container } = renderPage();
-    await waitFor(() => expect(screen.queryByText('Loading telemetry...')).toBeNull());
-    await expectNoA11yViolations(container);
+  it('says each panel is empty rather than leaving a blank card', async () => {
+    mockGetDashboard.mockResolvedValue(EMPTY);
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Nothing is waiting on your review.')).toBeInTheDocument());
+    expect(screen.getByText('Every finished task has a settled pull request.')).toBeInTheDocument();
+    expect(screen.getByText('No agents in this organization.')).toBeInTheDocument();
+    expect(screen.getByText('No agent activity yet.')).toBeInTheDocument();
+  });
+
+  it('scopes to the organization alone when no project is chosen', async () => {
+    mockActiveProjectId = '';
+    mockGetDashboard.mockResolvedValue(EMPTY);
+    renderPage();
+    await waitFor(() => expect(mockGetDashboard).toHaveBeenCalledTimes(1));
+    // `projectId: ''` would narrow to a project that does not exist and return
+    // an empty screen; the org-wide answer is the right default.
+    expect(mockGetDashboard).toHaveBeenCalledWith({ orgId: 'org-1', projectId: undefined });
+  });
+
+  it('reads an hours-old agent as still active', async () => {
+    mockGetDashboard.mockResolvedValue({
+      ...EMPTY,
+      agents: [{ id: 'a1', name: 'Recent', lastUsedAt: new Date(Date.now() - 5 * 3_600_000).toISOString(), openTaskCount: 0n }],
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('5h ago')).toBeInTheDocument());
+  });
+
+  it('surfaces a failed load with a way to retry, instead of empty panels', async () => {
+    mockGetDashboard.mockRejectedValue(new Error('unavailable'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('unavailable'));
+    // Empty panels would read as "nothing needs you", which is the opposite of
+    // what a failed load means (M06-T11).
+    expect(screen.queryByText('Nothing is waiting on your review.')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(mockGetDashboard).toHaveBeenCalledTimes(2));
+  });
+
+  it('asks for nothing until an organization is chosen', async () => {
+    mockActiveOrgId = '';
+    mockGetDashboard.mockResolvedValue(EMPTY);
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('No organization selected.')).toBeInTheDocument());
+    expect(mockGetDashboard).not.toHaveBeenCalled();
   });
 });

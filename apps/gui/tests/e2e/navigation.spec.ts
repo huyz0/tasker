@@ -10,13 +10,16 @@ import { test, expect } from '@playwright/test';
 // renders its own view - which is also M01's exit criterion that no reachable
 // URL leaves the content area empty.
 const ROUTES = [
-  { path: '/', heading: 'Dashboard Overview' },
+  { path: '/', heading: 'Dashboard' },
   { path: '/organizations', heading: 'Organizations & Settings' },
   { path: '/projects', heading: 'Projects' },
   { path: '/agents', heading: 'AI Agents' },
   { path: '/tasks', heading: 'Tasks Workbench' },
   { path: '/labels', heading: 'Labels' },
   { path: '/bin', heading: 'Bin' },
+  // System Health moved here off the home screen; the route used to render
+  // "Settings module placeholder area".
+  { path: '/settings', heading: 'Settings' },
 ];
 
 test.describe('Shell navigation', () => {
@@ -54,6 +57,6 @@ test.describe('Shell navigation', () => {
     await page.goto('/definitely-not-a-route');
     await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
     await page.getByRole('link', { name: 'Back to dashboard' }).click();
-    await expect(page.getByRole('heading', { name: 'Dashboard Overview' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
   });
 });

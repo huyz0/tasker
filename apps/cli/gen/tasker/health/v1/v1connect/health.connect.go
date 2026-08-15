@@ -49,6 +49,8 @@ const (
 	RepositoryServiceName = "tasker.health.v1.RepositoryService"
 	// SearchServiceName is the fully-qualified name of the SearchService service.
 	SearchServiceName = "tasker.health.v1.SearchService"
+	// DashboardServiceName is the fully-qualified name of the DashboardService service.
+	DashboardServiceName = "tasker.health.v1.DashboardService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -330,6 +332,9 @@ const (
 	// SearchServiceUniversalSearchProcedure is the fully-qualified name of the SearchService's
 	// UniversalSearch RPC.
 	SearchServiceUniversalSearchProcedure = "/tasker.health.v1.SearchService/UniversalSearch"
+	// DashboardServiceGetDashboardProcedure is the fully-qualified name of the DashboardService's
+	// GetDashboard RPC.
+	DashboardServiceGetDashboardProcedure = "/tasker.health.v1.DashboardService/GetDashboard"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -445,6 +450,8 @@ var (
 	repositoryServiceListDeploymentsMethodDescriptor          = repositoryServiceServiceDescriptor.Methods().ByName("ListDeployments")
 	searchServiceServiceDescriptor                            = v1.File_tasker_health_v1_health_proto.Services().ByName("SearchService")
 	searchServiceUniversalSearchMethodDescriptor              = searchServiceServiceDescriptor.Methods().ByName("UniversalSearch")
+	dashboardServiceServiceDescriptor                         = v1.File_tasker_health_v1_health_proto.Services().ByName("DashboardService")
+	dashboardServiceGetDashboardMethodDescriptor              = dashboardServiceServiceDescriptor.Methods().ByName("GetDashboard")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -3556,4 +3563,72 @@ type UnimplementedSearchServiceHandler struct{}
 
 func (UnimplementedSearchServiceHandler) UniversalSearch(context.Context, *connect.Request[v1.UniversalSearchRequest]) (*connect.Response[v1.UniversalSearchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.SearchService.UniversalSearch is not implemented"))
+}
+
+// DashboardServiceClient is a client for the tasker.health.v1.DashboardService service.
+type DashboardServiceClient interface {
+	GetDashboard(context.Context, *connect.Request[v1.GetDashboardRequest]) (*connect.Response[v1.GetDashboardResponse], error)
+}
+
+// NewDashboardServiceClient constructs a client for the tasker.health.v1.DashboardService service.
+// By default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped
+// responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewDashboardServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) DashboardServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &dashboardServiceClient{
+		getDashboard: connect.NewClient[v1.GetDashboardRequest, v1.GetDashboardResponse](
+			httpClient,
+			baseURL+DashboardServiceGetDashboardProcedure,
+			connect.WithSchema(dashboardServiceGetDashboardMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// dashboardServiceClient implements DashboardServiceClient.
+type dashboardServiceClient struct {
+	getDashboard *connect.Client[v1.GetDashboardRequest, v1.GetDashboardResponse]
+}
+
+// GetDashboard calls tasker.health.v1.DashboardService.GetDashboard.
+func (c *dashboardServiceClient) GetDashboard(ctx context.Context, req *connect.Request[v1.GetDashboardRequest]) (*connect.Response[v1.GetDashboardResponse], error) {
+	return c.getDashboard.CallUnary(ctx, req)
+}
+
+// DashboardServiceHandler is an implementation of the tasker.health.v1.DashboardService service.
+type DashboardServiceHandler interface {
+	GetDashboard(context.Context, *connect.Request[v1.GetDashboardRequest]) (*connect.Response[v1.GetDashboardResponse], error)
+}
+
+// NewDashboardServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewDashboardServiceHandler(svc DashboardServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	dashboardServiceGetDashboardHandler := connect.NewUnaryHandler(
+		DashboardServiceGetDashboardProcedure,
+		svc.GetDashboard,
+		connect.WithSchema(dashboardServiceGetDashboardMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.DashboardService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case DashboardServiceGetDashboardProcedure:
+			dashboardServiceGetDashboardHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedDashboardServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedDashboardServiceHandler struct{}
+
+func (UnimplementedDashboardServiceHandler) GetDashboard(context.Context, *connect.Request[v1.GetDashboardRequest]) (*connect.Response[v1.GetDashboardResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.DashboardService.GetDashboard is not implemented"))
 }

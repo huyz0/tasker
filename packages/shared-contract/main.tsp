@@ -1415,3 +1415,92 @@ model UniversalSearchResponse {
 interface SearchService {
   universalSearch(request: UniversalSearchRequest): UniversalSearchResponse;
 }
+
+// ── Dashboard ───────────────────────────────────────────────────────────────
+//
+// The home screen used to show four entity counts and the database's latency.
+// Counts of things that exist only ever climb, and none of them answered a
+// question anyone had — the standard test being "what will you do differently
+// because of this number?".
+//
+// What a supervisor of agent work actually needs is closer to an on-call
+// console than to a personal task list: what is waiting on my judgement, where
+// does the record disagree with reality, and which agents have gone quiet.
+// One RPC rather than four, because the alternative is a client issuing four
+// round trips and doing the joins itself — the shape M05 spent a milestone
+// removing.
+//
+// Every list here is deliberately short. This is a place to notice something,
+// not to work through it; the counts say how much is behind each one.
+model DashboardTask {
+  @field(1) id: string;
+  @field(2) displayId: string;
+  @field(3) title: string;
+  @field(4) status: string;
+  @field(5) projectId: string;
+}
+
+// A task whose recorded status is contradicted by its pull request — "done"
+// with the PR still open. Nothing else in the product notices this, and it is
+// the most common way agent work looks finished without being finished.
+model DashboardDisagreement {
+  @field(1) task: DashboardTask;
+  @field(2) pullRequestId: string;
+  @field(3) pullRequestTitle: string;
+  @field(4) pullRequestStatus: string;
+  @field(5) pullRequestUrl: string;
+}
+
+model DashboardAgent {
+  @field(1) id: string;
+  @field(2) name: string;
+
+  // The most recent time any of this agent's tokens was used. Already stored
+  // on `api_tokens` and, until now, displayed nowhere — so "Agents: 5" was on
+  // the home screen while "one of them has been silent for nine days" was not.
+  @field(3) lastUsedAt?: string;
+
+  // Assigned and not done. An agent holding work while silent is the shape
+  // worth noticing.
+  @field(4) openTaskCount: int64;
+}
+
+// Derived from task notes and agent comments, which is what the system already
+// records. When M08 lands an event log this should be re-pointed at it — the
+// panel is the same, the source is better.
+model DashboardActivity {
+  @field(1) taskId: string;
+  @field(2) taskDisplayId: string;
+  @field(3) taskTitle: string;
+  @field(4) agentId: string;
+  @field(5) agentName: string;
+  @field(6) kind: string;
+  @field(7) excerpt: string;
+  @field(8) createdAt: string;
+}
+
+model GetDashboardRequest {
+  @field(1) orgId: string;
+
+  // Optional. Without it the answer spans the organization; with it, the
+  // review queue and disagreements narrow to one project.
+  @field(2) projectId?: string;
+}
+
+model GetDashboardResponse {
+  // Tasks the caller is a reviewer on that are not yet done. Reviews carry no
+  // outcome of their own yet, so "not done" is the drain condition — a real
+  // queue that empties, but one that cannot distinguish "reviewed and approved"
+  // from "not looked at". Giving `task_reviewers` an outcome is the follow-up.
+  @field(1) awaitingReview: DashboardTask[];
+
+  @field(2) awaitingReviewCount: int64;
+  @field(3) disagreements: DashboardDisagreement[];
+  @field(4) disagreementCount: int64;
+  @field(5) agents: DashboardAgent[];
+  @field(6) recentActivity: DashboardActivity[];
+}
+
+interface DashboardService {
+  getDashboard(request: GetDashboardRequest): GetDashboardResponse;
+}

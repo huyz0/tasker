@@ -186,3 +186,57 @@ index (T05 indexes `name` and `description`). Indexing 15 MB base64 bodies would
 be a large index of unsearchable noise, so the sensible reading is that artifact
 *bodies* stop being searched and that is a deliberate, recorded narrowing — but
 it is a behaviour change and belongs in T06's journal entry, not silently.
+
+---
+
+## Out-of-band — dashboard rework (not an M07 task)
+
+Requested directly by the user between T05 and T06, after a feature review of
+the product from a user's point of view. **`active_task` stays `M07-T06`**; this
+entry is here because it is where the next reader looks chronologically, not
+because it belongs to the milestone.
+
+- **Problem**: the home screen showed four entity counts — organizations,
+  projects, agents, tasks — plus database latency. Counts of things that exist
+  only ever climb, and none of the four survived the question "what will you do
+  differently because of this number?". The four were also at three different
+  scopes on one row, so switching project changed one card and left three still.
+- **Change**: one new RPC, `DashboardService.GetDashboard`, and four panels that
+  answer a supervisor's actual questions in order — what is waiting on my
+  judgement, where does the record disagree with reality, which agents have gone
+  quiet, and what have they been writing. The server does the joins; the browser
+  makes one round trip rather than four.
+  The "disagreement" panel is the one worth keeping: `status = 'done'` joined
+  against a pull request still `open`/`draft`. Industry writing on agent-native
+  trackers is consistent that the bottleneck is verification capacity, not
+  production — a panel that surfaces where the *record* and the *diff* contradict
+  each other is the exit-side gate this product otherwise only has at the
+  entrance.
+- **Verify**: `moon check --all` — 26 tasks pass, `gui:test` 619 pass at 95.00%
+  branches, `backend:test` 608 pass. Playwright: 18 pass.
+- **Notes**: three defects here were invisible to jsdom and only a browser found
+  them, which is why this work added `apps/gui/tests/e2e/dashboard.spec.ts`
+  rather than stopping at unit tests.
+  1. `max(apiTokens.lastUsedAt)` bypasses drizzle's decoding and returns the raw
+     column. That column is `mode: "timestamp"` — **seconds** — so reading it as
+     milliseconds reported every agent as last seen in 1970. There is now an
+     e2e assertion that no agent renders a five-digit day count.
+  2. Moving System Health to `/settings` was only half a move: the route was
+     reachable by URL but had **no sidebar entry**, so telemetry would have been
+     effectively deleted rather than relocated. Caught by looking at a
+     screenshot, not by any test — every test navigated by URL. The spec now
+     navigates by *click*.
+  3. Seeding the wrong organization produced four plausible empty panels. The
+     GUI picks `orgs[0]`, which was not the first org `dev-user` belongs to;
+     the fixtures had to be pointed at the org the running app actually asks
+     for. An empty panel and a broken join look identical from the outside.
+  Both deny-by-default sweeps (`viewer-denial`, `agent-scope-sweep`) needed a
+  new helper to enumerate a handler that registers onto a router; they then
+  caught `getDashboard` immediately. `getDashboard` is `requireUser` — a
+  supervision console is a human's screen, and agents have no business reading
+  it.
+  Two pre-existing e2e specs asserted the old `Dashboard Overview` heading and
+  were updated. One spec, `comments.spec.ts`, **fails and is left failing**: its
+  task-detail dialog assertion is stale drift from an earlier milestone. It was
+  confirmed to fail identically on a clean tree with fresh servers, so it is not
+  caused by this work and fixing it is not in this scope.

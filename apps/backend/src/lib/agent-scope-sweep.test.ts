@@ -17,6 +17,7 @@ import { createRepositoriesHandler } from '../modules/repositories/repositories.
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
 import createSearchHandler from '../modules/search/search.handler';
+import createDashboardHandler from '../modules/dashboard/dashboard.handler';
 
 /**
  * Deny-by-default for agent tokens, the sibling of `viewer-denial.test.ts`.
@@ -81,6 +82,10 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
   // looking. It is closed to agents today only because it still calls
   // requireUser; nothing would have caught a future migration.
   search: { universalSearch: { orgId: ids.org, query: 'x' } },
+  // Refused to agents on purpose: a supervision console answers "what is
+  // waiting on *your* review", which is not a question an agent has. It uses
+  // requireUser, so the denial is structural rather than a scope omission.
+  dashboard: { getDashboard: { orgId: ids.org } },
   projects: {
     getProject: { id: ids.project },
     listProjects: { orgId: ids.org },
@@ -235,6 +240,11 @@ beforeAll(async () => {
     health: createHealthHandler(db, null),
     // createSearchHandler takes a ConnectRouter and registers onto it, so the
     // methods are recovered from a stub router rather than from a return value.
+    dashboard: (() => {
+      const captured: Record<string, any> = {};
+      createDashboardHandler({ service: (_svc: unknown, impl: Record<string, any>) => Object.assign(captured, impl) } as any, db);
+      return captured;
+    })(),
     search: (() => {
       const captured: Record<string, any> = {};
       createSearchHandler({ service: (_svc: unknown, impl: Record<string, any>) => Object.assign(captured, impl) } as any, db);

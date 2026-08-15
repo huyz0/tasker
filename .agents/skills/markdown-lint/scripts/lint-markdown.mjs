@@ -72,6 +72,11 @@ const IGNORE      = [
   '**/dist/**',
   '**/coverage/**',
   '**/playwright-report/**',
+  // Playwright writes an `error-context.md` beside the video for every failed
+  // test. It is generated and gitignored, but this script globs the filesystem
+  // rather than the git index, so without this a single failing e2e test blocks
+  // every subsequent commit on a trailing newline in a file nobody wrote.
+  '**/test-results/**',
 ];
 
 // `dot: true` matters more than it looks: without it glob skips every

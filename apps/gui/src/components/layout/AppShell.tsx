@@ -10,6 +10,7 @@ import {
   Trash2,
   Tag,
   Workflow,
+  Settings,
   LogOut
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
@@ -32,6 +33,10 @@ const NAVIGATION_ITEMS = [
   { name: 'Task Types', path: '/task-types', icon: Workflow },
   { name: 'Labels', path: '/labels', icon: Tag },
   { name: 'Bin', path: '/bin', icon: Trash2 },
+  // System Health lives here now. `/settings` was routable but unlinked, so
+  // moving backend telemetry off the dashboard would otherwise have hidden it
+  // behind a URL nobody types.
+  { name: 'Settings', path: '/settings', icon: Settings },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

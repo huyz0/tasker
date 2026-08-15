@@ -1331,3 +1331,61 @@ message UniversalSearchResponse {
 service SearchService {
   rpc UniversalSearch(UniversalSearchRequest) returns (UniversalSearchResponse);
 }
+
+// ── Dashboard ───────────────────────────────────────────────────────────────
+// The home screen answers "what needs me", not "what exists". One RPC rather
+// than four, so the server does the joins instead of the client.
+message DashboardTask {
+  string id = 1;
+  string displayId = 2;
+  string title = 3;
+  string status = 4;
+  string projectId = 5;
+}
+
+// A task whose recorded status is contradicted by its pull request.
+message DashboardDisagreement {
+  DashboardTask task = 1;
+  string pullRequestId = 2;
+  string pullRequestTitle = 3;
+  string pullRequestStatus = 4;
+  string pullRequestUrl = 5;
+}
+
+message DashboardAgent {
+  string id = 1;
+  string name = 2;
+  // Most recent use of any of this agent's tokens — already stored, never shown.
+  string lastUsedAt = 3;
+  int64 openTaskCount = 4;
+}
+
+// Derived from task notes and agent comments. Re-point at the event log in M08.
+message DashboardActivity {
+  string taskId = 1;
+  string taskDisplayId = 2;
+  string taskTitle = 3;
+  string agentId = 4;
+  string agentName = 5;
+  string kind = 6;
+  string excerpt = 7;
+  string createdAt = 8;
+}
+
+message GetDashboardRequest {
+  string orgId = 1;
+  string projectId = 2;
+}
+
+message GetDashboardResponse {
+  repeated DashboardTask awaitingReview = 1;
+  int64 awaitingReviewCount = 2;
+  repeated DashboardDisagreement disagreements = 3;
+  int64 disagreementCount = 4;
+  repeated DashboardAgent agents = 5;
+  repeated DashboardActivity recentActivity = 6;
+}
+
+service DashboardService {
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
+}

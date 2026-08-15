@@ -9,7 +9,7 @@ import { LabelsManager } from './features/Labels';
 import { TaskTypesEditor } from './features/TaskTypes';
 import { BinDashboard } from './features/Bin';
 import { Dashboard } from './pages/Dashboard';
-import { GenericPlaceholder } from './components/ui/GenericPlaceholder';
+import { SystemHealthPage } from './pages/SystemHealth';
 import { OAuthCallback } from './pages/OAuthCallback';
 import { NotFound } from './pages/NotFound';
 import LoginPage from './pages/Login';
@@ -38,7 +38,7 @@ function App() {
                 <Route path="/task-types" element={<TaskTypesEditor />} />
                 <Route path="/labels" element={<LabelsManager />} />
                 <Route path="/bin" element={<BinDashboard />} />
-                <Route path="/settings" element={<GenericPlaceholder title="Settings" description="Global application preferences." />} />
+                <Route path="/settings" element={<SystemHealthPage />} />
                 <Route path="/oauth/callback" element={<OAuthCallback />} />
                 {/* Catch-all inside the shell: an unknown URL gets a Not Found
                     view with a route back, never an empty content area. */}
