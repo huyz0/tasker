@@ -83,7 +83,7 @@ credentials (M04), audit log persistence (M08), email delivery infrastructure
 
 ### Scale
 
-- [ ] **M03-T06** — Rewrite `listOrgMembers` on `executePaginatedQuery` with a join
+- [x] **M03-T06** — Rewrite `listOrgMembers` on `executePaginatedQuery` with a join
       to `users`, eliminating the `IN` clause; support filter and sort.
       - Files: `modules/orgs/orgs.handler.ts`, `db/query-builder.ts`
       - Verify: 100,000-member org returns page 1 in under 200 ms.

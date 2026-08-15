@@ -698,3 +698,94 @@ describe("Owned-project reassignment guard (M03-T04)", () => {
     expect(await stillAMember(db, orgId, ownerId)).toBe(false);
   });
 });
+
+describe("listOrgMembers at scale (M03-T06)", () => {
+  /**
+   * The old implementation selected every membership row and then fetched the
+   * users with `inArray(users.id, userIds)`, binding one SQL parameter per
+   * member. SQLite's default parameter ceiling is 32,766, so an organization
+   * past roughly that size did not return a slow answer - it threw. Below the
+   * ceiling it still shipped the entire organization in one response.
+   */
+  const seedMembers = async (count: number) => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const suffix = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const orgId = "org-scale-" + suffix;
+    const adminId = "user-scale-admin-" + suffix;
+
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Scale Org", slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@t.local`, name: "Admin", createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: adminId, role: "admin", joinedAt: new Date() });
+
+    // Batched: one insert per row is minutes at this size, and a single
+    // 100k-row statement exceeds the very parameter limit this task is about.
+    const BATCH = 500;
+    for (let start = 0; start < count; start += BATCH) {
+      const size = Math.min(BATCH, count - start);
+      const users = Array.from({ length: size }, (_, i) => {
+        const n = start + i;
+        return {
+          id: `u-${suffix}-${n}`,
+          email: `member${n}@t.local`,
+          name: `Member ${String(n).padStart(6, "0")}`,
+          createdAt: new Date(),
+        };
+      });
+      await db.insert(schemaSqlite.users).values(users);
+      await db.insert(schemaSqlite.organizationMembers).values(
+        users.map((u) => ({ orgId, userId: u.id, role: "member", joinedAt: new Date() })),
+      );
+    }
+    return { db, handler, orgId, adminId, ctx: makeAuthContext(adminId) };
+  };
+
+  test("returns a bounded page, not the whole organization", async () => {
+    const { handler, orgId, ctx } = await seedMembers(250);
+
+    const res = await handler.listOrgMembers({ orgId }, ctx);
+
+    expect(res.members.length).toBe(50); // the server's default page size
+    expect(res.page.totalCount).toBe(251); // 250 members + the admin
+    expect(res.page.nextCursor).toBeDefined();
+  });
+
+  test("searches name and email server-side, not just one of them", async () => {
+    const { handler, orgId, ctx } = await seedMembers(60);
+
+    const byName = await handler.listOrgMembers({ orgId, page: { filter: "Member 000042" } }, ctx);
+    expect(byName.members.map((m: any) => m.name)).toEqual(["Member 000042"]);
+
+    const byEmail = await handler.listOrgMembers({ orgId, page: { filter: "member17@" } }, ctx);
+    expect(byEmail.members.map((m: any) => m.email)).toEqual(["member17@t.local"]);
+
+    // totalCount describes the filtered set, or the caller cannot tell whether
+    // their search matched one person or a thousand.
+    expect(byName.page.totalCount).toBe(1);
+  });
+
+  test("sorts by a joined column", async () => {
+    const { handler, orgId, ctx } = await seedMembers(5);
+
+    const asc = await handler.listOrgMembers({ orgId, page: { sort: "name:asc", limit: 3 } }, ctx);
+    const names = asc.members.map((m: any) => m.name);
+
+    expect(names).toEqual([...names].sort());
+  });
+
+  test("paging visits every member exactly once", async () => {
+    const { handler, orgId, ctx } = await seedMembers(120);
+
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    for (let guard = 0; guard < 50; guard++) {
+      const page: any = await handler.listOrgMembers({ orgId, page: { limit: 25, sort: "name:asc", cursor } }, ctx);
+      seen.push(...page.members.map((m: any) => m.userId));
+      cursor = page.page.nextCursor;
+      if (!cursor) break;
+    }
+
+    expect(seen.length).toBe(121);
+    expect(new Set(seen).size).toBe(121);
+  });
+});

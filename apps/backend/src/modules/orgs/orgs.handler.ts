@@ -53,6 +53,7 @@ const UpdateOrgSchema = z.object({
 
 const ListOrgMembersSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
+  page: z.any().optional(),
 });
 
 const RemoveOrgMemberSchema = z.object({
@@ -158,21 +159,51 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
       const users = isStandalone ? schemaSqlite.users : schemaMysql.users;
 
-      const memberRows = await db.select().from(members).where(eq((members as any).orgId, parsed.orgId));
-      const userIds = memberRows.map((m: any) => m.userId);
-      const userRows = userIds.length
-        ? await db.select().from(users).where(inArray((users as any).id, userIds))
-        : [];
-      const userById = new Map<string, any>(userRows.map((u: any) => [u.id, u]));
+      // This used to select every membership row and then fetch the users with
+      // `inArray(users.id, userIds)` - one bound parameter per member. Past
+      // SQLite's variable limit that throws outright, and below it the endpoint
+      // still returned the entire organization in one response.
+      //
+      // One joined, cursor-paginated query instead. The join is inner: a
+      // membership whose user row is missing is not a person anyone can act on,
+      // and surfacing it as a blank-named row only produces a support question.
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(
+        db,
+        members,
+        eq((members as any).orgId, parsed.orgId),
+        parsed.page,
+        [(users as any).name, (users as any).email],
+        {
+          name: (users as any).name,
+          email: (users as any).email,
+          role: (members as any).role,
+          joinedAt: (members as any).joinedAt,
+        },
+        {
+          select: {
+            userId: (users as any).id,
+            email: (users as any).email,
+            name: (users as any).name,
+            role: (members as any).role,
+            joinedAt: (members as any).joinedAt,
+          },
+          join: { table: users, on: eq((members as any).userId, (users as any).id) },
+          // organization_members is keyed on (orgId, userId) and has no `id`,
+          // so the cursor's tiebreak is the user id.
+          idColumn: (users as any).id,
+          idField: "userId",
+          defaultSort: { field: "joinedAt", column: (members as any).joinedAt },
+        },
+      );
 
       return {
-        members: memberRows.map((m: any) => ({
+        members: items.map((m: any) => ({
           userId: m.userId,
-          email: userById.get(m.userId)?.email ?? "",
-          name: userById.get(m.userId)?.name ?? "",
+          email: m.email ?? "",
+          name: m.name ?? "",
           role: m.role,
         })),
-        page: {},
+        page: { nextCursor, totalCount },
       };
     },
     async removeOrgMember(req: unknown, { values: contextValues }: { values: any }) {

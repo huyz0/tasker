@@ -132,13 +132,19 @@ function escapeLikePattern(raw: string): string {
 }
 
 /**
- * Applies pageOpts.filter as a case-sensitive substring match against filterColumn,
- * combining it with an existing base condition. filterColumn is optional because
- * not every entity has an obvious free-text column to filter on.
+ * Applies pageOpts.filter as a case-sensitive substring match against
+ * filterColumn, combining it with an existing base condition. filterColumn is
+ * optional because not every entity has an obvious free-text column to filter
+ * on, and may be an array - the member list searches name OR email, and a
+ * person looking for a colleague does not know or care which one they typed.
  */
 function applyFilter(baseCondition: SQL | undefined, filterColumn: any, filterValue: string | undefined): SQL | undefined {
   if (!filterValue || !filterColumn) return baseCondition;
-  const filterClause = sql`${filterColumn} LIKE ${`%${escapeLikePattern(filterValue)}%`} ESCAPE '\\'`;
+  const columns = Array.isArray(filterColumn) ? filterColumn : [filterColumn];
+  if (columns.length === 0) return baseCondition;
+  const pattern = `%${escapeLikePattern(filterValue)}%`;
+  const clauses = columns.map((column) => sql`${column} LIKE ${pattern} ESCAPE '\\'`);
+  const filterClause = clauses.length === 1 ? clauses[0]! : or(...clauses)!;
   return baseCondition ? and(baseCondition, filterClause) : filterClause;
 }
 
@@ -172,24 +178,54 @@ function extractCursorValue(row: any, field: string): number | string {
   return raw instanceof Date ? raw.getTime() : raw;
 }
 
+/**
+ * Shape options for endpoints whose rows are not simply `SELECT * FROM table`.
+ *
+ * These exist so a joined list can still use this function rather than growing
+ * its own cursor implementation. Two cursor encoders that drift apart produce
+ * cursors that decode to the wrong page, which is the kind of bug nobody sees
+ * until a user reports skipped rows.
+ */
+export interface PaginatedQueryShape {
+  /** Column map for the select, when the row is not the whole table. */
+  select?: Record<string, any>;
+  /** A single inner join applied to both the page query and the count. */
+  join?: { table: any; on: SQL };
+  /** Tiebreak column, when the table has no `id` (e.g. a composite key). */
+  idColumn?: any;
+  /** Key on the result row holding that id, when `select` renames it. */
+  idField?: string;
+  /**
+   * Default ordering when the caller sends no sort. Needed for any table
+   * without a `createdAt` - `organization_members` records `joinedAt`, and
+   * defaulting to a column that does not exist produced "no such column: desc"
+   * as drizzle interpolated an undefined column into the ORDER BY.
+   */
+  defaultSort?: { field: string; column: any };
+}
+
 export async function executePaginatedQuery(
   db: any,
   table: any,
   baseCondition: SQL | undefined,
   pageOpts: any,
   filterColumn?: any,
-  sortableColumns?: Record<string, any>
+  sortableColumns?: Record<string, any>,
+  shape?: PaginatedQueryShape
 ) {
   const limit = Math.min(Math.max(pageOpts?.limit || 50, 1), 100);
   const condition = applyFilter(baseCondition, filterColumn, pageOpts?.filter);
 
   const sort = parseSort(sortableColumns, pageOpts?.sort);
-  const sortField = sort?.field ?? "createdAt";
-  const sortCol = sort?.column ?? table.createdAt;
+  const sortField = sort?.field ?? shape?.defaultSort?.field ?? "createdAt";
+  const sortCol = sort?.column ?? shape?.defaultSort?.column ?? table.createdAt;
   const direction: SortDirection = sort?.direction ?? "desc";
 
+  const idColumn = shape?.idColumn ?? table.id;
+  const idField = shape?.idField ?? "id";
+
   const cursorData = decodeCursor(pageOpts?.cursor);
-  const whereClause = buildCursorPaginationWhere(cursorData, sortCol, table.id, sortField, direction);
+  const whereClause = buildCursorPaginationWhere(cursorData, sortCol, idColumn, sortField, direction);
   const finalWhere = whereClause ? (condition ? and(condition, whereClause) : whereClause) : condition;
 
   // totalCount reflects the filtered set (base condition + filter), not the
@@ -205,21 +241,26 @@ export async function executePaginatedQuery(
   const currentFilter = pageOpts?.filter || undefined;
   const canReuseCursorCount = cursorData?.totalCount !== undefined && cursorData.filter === currentFilter;
 
+  // The join is applied to the count as well as the page. It has to be: the
+  // filter may reference a joined column, and counting without the join would
+  // report a total the caller can never page to.
+  const withJoin = (q: any) => (shape?.join ? q.innerJoin(shape.join.table, shape.join.on) : q);
+
   const [result, totalCount] = await Promise.all([
-    db
-      .select()
-      .from(table)
+    withJoin(db.select(shape?.select).from(table))
       .where(finalWhere)
       .limit(limit)
-      .orderBy(...buildPaginationOrderBy(sortCol, table.id, direction)),
+      .orderBy(...buildPaginationOrderBy(sortCol, idColumn, direction)),
     canReuseCursorCount
       ? Promise.resolve(cursorData!.totalCount!)
-      : db.select({ count: sql<number>`count(*)` }).from(table).where(condition).then((rows: any[]) => Number(rows[0]?.count ?? 0)),
+      : withJoin(db.select({ count: sql<number>`count(*)` }).from(table))
+          .where(condition)
+          .then((rows: any[]) => Number(rows[0]?.count ?? 0)),
   ]);
 
   const lastItem = result[result.length - 1];
   const nextCursor = lastItem && result.length === limit
-    ? encodeCursor(extractCursorValue(lastItem, sortField), lastItem.id, sortField, totalCount, currentFilter)
+    ? encodeCursor(extractCursorValue(lastItem, sortField), lastItem[idField], sortField, totalCount, currentFilter)
     : undefined;
 
   return { items: result, nextCursor, totalCount };

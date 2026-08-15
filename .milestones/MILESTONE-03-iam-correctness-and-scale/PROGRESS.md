@@ -236,3 +236,63 @@ completes the task.
   entirely". It does not — `telemetry.ts` still uses it for `/api/debug/*`,
   which is platform-wide rather than org-scoped. The ADR now says so.
 - **Next**: M03-T06
+
+---
+
+## M03-T06 — Rewrite listOrgMembers on the paginated query
+
+- **Status**: in-progress
+- **Date**: 2026-08-15
+- **Approach**: `listOrgMembers` loads every membership row, then fetches the
+  users with `inArray(users.id, userIds)` — one SQL placeholder per member, so
+  it throws outright past SQLite's variable limit and is unbounded before that.
+  Replace it with one joined, cursor-paginated query. `executePaginatedQuery`
+  cannot express that today (no join, and it assumes a single `id` column, which
+  `organization_members` does not have), so the helper is generalised rather
+  than bypassed — a second cursor implementation is how cursor formats drift.
+- **Weight**: not heavy — no alternative worth an ADR.
+  [Reviewed](reviews/M03-T06-list-org-members-v1.md) anyway because it changes a
+  shared helper every list endpoint uses.
+- **Changed**: `db/query-builder.ts` (`PaginatedQueryShape`, OR-filter across
+  several columns, configurable id column / default sort),
+  `modules/orgs/orgs.handler.ts`, `orgs.test.ts` (+4 cases).
+- **Verified**: `moon check --all` — 23 tasks, 415 backend tests. The verify
+  line is **measured against 100,001 members**:
+
+  | Query | Median |
+  |---|---|
+  | page 1, default sort | 62.8 ms |
+  | page 1, sorted by name | 76.3 ms |
+  | filtered search | 117.0 ms |
+  | deep page via cursor | 28.5 ms |
+
+  All inside the 200 ms budget. The old implementation was run at the same size
+  to confirm it **throws** rather than merely being slow:
+  `SQLite query expected 34464 values, received 100000`. The plan estimated the
+  ceiling at "roughly 32,000"; measured, it is **34,464** in this bun:sqlite
+  build.
+- **Notes**: the helper was generalised rather than bypassed. Writing a second,
+  member-specific cursor implementation would have been quicker and is how
+  cursor formats drift — two encoders that disagree produce cursors decoding to
+  the wrong page, and nobody notices until a user reports skipped rows.
+  `executePaginatedQuery` now takes an optional shape: a select map, one inner
+  join, an id column for tables without `id`, and a default sort.
+
+  The join is applied to the **count** as well as the page, because the filter
+  references joined columns and counting without it reports a total the caller
+  can never page to.
+
+  One defect the tests caught: with no default sort the helper fell back to
+  `table.createdAt`, which `organization_members` does not have — it records
+  `joinedAt`. SQLite reported `no such column: desc`, naming neither the table
+  nor the problem.
+
+  The paging test asserts distinctness as well as count. Counting alone passes
+  if a cursor skips one member and repeats another, which is the characteristic
+  cursor bug.
+- **Divergence**: the 100k measurement lives in the journal as numbers rather
+  than in the suite as a test. Seeding 100,000 rows costs ~1.7 s and the
+  assertion is a latency budget, which makes a flaky gate on a shared machine.
+  The committed tests use hundreds of rows and assert behaviour. **M03-T14**
+  owns making these numbers reproducible from the seed script.
+- **Next**: M03-T07
