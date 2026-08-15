@@ -233,6 +233,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
         <h4 className="text-sm font-medium">Add New Link</h4>
         <div className="flex gap-2">
           <select
+            aria-label="Repository provider"
             value={provider}
             onChange={e => setProvider(e.target.value)}
             className="border p-2 rounded text-sm bg-background"

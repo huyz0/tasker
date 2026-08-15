@@ -112,7 +112,7 @@ a graphical workflow canvas unless the ADR in M06-T02 concludes it is warranted.
       - Files: `apps/gui/src/components/layout/AppShell.tsx`
       - Verify: the token lint reports no unknown utilities.
 
-- [ ] **M06-T13** — Set Storybook's a11y addon to `error` and add
+- [x] **M06-T13** — Set Storybook's a11y addon to `error` and add
       `moon run gui:storybook-test` to CI.
       - Files: `apps/gui/.storybook/preview.tsx`, `moon.yml`, `.github/workflows/ci.yml`
       - Verify: a component with a contrast violation fails CI.

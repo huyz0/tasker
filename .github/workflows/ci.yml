@@ -84,6 +84,13 @@ jobs:
       # suite passing and the 95% coverage thresholds in vitest.config.ts.
       - name: Build & Test (Cached)
         run: moon run gui:lint gui:design-lint gui:typecheck gui:test gui:build
+      # Storybook's a11y addon is set to `test: 'error'`, which only means
+      # something if something runs the stories. This does, in a real browser,
+      # so `color-contrast` can actually be evaluated (M06-T13).
+      - name: Install Playwright browser
+        run: cd apps/gui && bunx playwright install --with-deps chromium
+      - name: Storybook a11y
+        run: moon run gui:storybook-test
 
   gui-e2e:
     name: GUI E2E (Playwright)

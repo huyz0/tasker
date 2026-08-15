@@ -439,3 +439,44 @@ standard and wonder which one is wrong.
   from the comment I had just written explaining the fix. Reworded; a gate that
   reads comments as code is a gate people learn to ignore.
 - **Next**: M06-T13
+
+## M06-T13 — Storybook a11y that can actually fail
+
+- **Status**: done
+- **Date**: 2026-08-15
+- **Changed**: `.storybook/preview.tsx` (`test: 'todo'` → `'error'`), new
+  `scripts/storybook-a11y.mjs` + `.test.mjs` (7 tests), two `moon.yml` tasks
+  (`storybook-test`, `storybook-a11y-config`), `.github/workflows/ci.yml`,
+  `components/ui/repositories/RepositoryIntegrationConfig.tsx`
+- **Verified**: the gate's **first run failed** on a real critical violation —
+  a `<select>` with no accessible name — which is the proof it was not a no-op.
+  Then a probe story with `#f0f0f0` on `#ffffff` was added and the gate failed
+  with `[color-contrast] … (serious)`; removed, and it passes: 21 stories, 0
+  violations, exit 0. `moon check --all` — 26 pass (25 before).
+- **Notes**: `test: 'todo'` is indistinguishable from `off` to anyone who does
+  not open the Storybook UI. Violations were reported to a panel nobody was
+  watching, and no run ever failed because of one — which is why a critical
+  violation had been sitting in a story the whole time.
+  Setting it to `error` is half the task; the other half is that **something has
+  to run the stories**. Storybook's Vitest addon wants `@vitest/browser`, and
+  installing a dependency is not this task's call (AGENTS.md), so the runner is
+  built from what is already here: `storybook build`, `playwright`, `axe-core`
+  and node's own http server.
+  **A real browser, not jsdom, and that is load-bearing.** `color-contrast` is
+  the rule the verify line names, and axe cannot evaluate it without layout and
+  computed colour — under jsdom it returns `incomplete` and the gate passes. A
+  jsdom version of this gate would have been a gate that cannot fail, which is
+  the exact thing being replaced.
+  The four-minute cost is the Storybook build, so the browser gate is `type:
+  run` (out of `moon check`, explicit in CI, `runInCI: true` — `type: run`
+  implies `false` and silently filters the target out, which M05 already paid
+  for once). `storybook-a11y-config` is the cheap half: 7 tests pinning the
+  settings whose quiet reversal would restore the no-op — the addon reset to
+  `todo`, a missing `process.exit(1)`, `runInCI` dropped, CI no longer calling
+  it, or the render wait removed (an unpainted story has an empty root, and an
+  empty root has no violations).
+  One self-inflicted failure worth keeping: the test asserting the runner does
+  not mention jsdom failed against the runner's own comment explaining why jsdom
+  is wrong. Asserting on `chromium.launch` instead — the same lesson as T12's
+  comment tripping the lint.
+- **Next**: close M06

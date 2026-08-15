@@ -94,6 +94,40 @@ tasks:
       # is set. The type is here to keep e2e out of `moon check`, not out of CI.
       runInCI: true
 
+  # The browser-free half of M06-T13: everything that would quietly turn the
+  # a11y gate back into one that cannot fail — the addon reset to `todo`, a
+  # missing `process.exit(1)`, `runInCI` dropped, CI no longer calling it. Cheap
+  # and cached, so it runs in `moon check` where the four-minute gate cannot.
+  storybook-a11y-config:
+    script: 'node scripts/storybook-a11y.test.mjs'
+    inputs:
+      - 'scripts/storybook-a11y.mjs'
+      - 'scripts/storybook-a11y.test.mjs'
+      - '.storybook/preview.tsx'
+      - 'moon.yml'
+      - '/.github/workflows/ci.yml'
+
+  # Runs axe over every story in a real browser. `type: run` for the same reason
+  # as e2e: it launches chromium and builds a static Storybook first, and a
+  # commit must not require installed browsers. CI runs it explicitly.
+  #
+  # A real browser is the whole point — `color-contrast` is the rule this exists
+  # to catch, and axe reports it as `incomplete` under jsdom because there is no
+  # layout to measure (M06-T13).
+  storybook-test:
+    deps:
+      - 'shared-contract:install-deps'
+    type: 'run'
+    script: 'bunx storybook build -o storybook-static --quiet && node scripts/storybook-a11y.mjs'
+    inputs:
+      - 'src/**/*'
+      - '.storybook/**/*'
+      - 'scripts/storybook-a11y.mjs'
+      - 'package.json'
+    options:
+      cache: false
+      runInCI: true
+
   build:
     deps:
       - 'shared-contract:install-deps'
