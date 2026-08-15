@@ -238,58 +238,60 @@ it is a behaviour change and belongs in T06's journal entry, not silently.
   ADR-0010 and asserted by a test so the loss is visible.
 - **Next**: M07-T07
 
-## M07-T07 — MySQL FULLTEXT branch — BLOCKED, cannot be verified here
+## M07-T07 — MySQL FULLTEXT, and the two dialects measured against each other
 
-- **Status**: blocked
+- **Status**: done
 - **Date**: 2026-08-16
-- **Changed**: new `drizzle-mysql/0012_fulltext_search_index.sql` (+ journal
-  entry in `meta/_journal.json`), `modules/search/search.handler.ts` (dialect
+- **Changed**: new `drizzle-mysql/0012_fulltext_search_index.sql` (+ its
+  `meta/_journal.json` entry), `modules/search/search.handler.ts` (dialect
   split, LIKE branch deleted), new `modules/search/search.mysql.test.ts`
-  (2 tests, gated), `db/query-builder.ts` (un-export), `schema.sqlite.ts`
-  (knip annotation), `knip.json` (`tags`)
-- **Verify line**: *the MySQL integration test returns the same ranking.*
-  **Not run.** There is no MySQL in this environment: no `mysql` client, and
-  Docker Desktop's daemon is not reachable from this WSL distro
-  (`failed to connect to the docker API at npipe:////./pipe/…`). The test is
-  written and gated behind `TASKER_MYSQL_INTEGRATION=1`, matching the existing
-  `tasks.mysql.test.ts` convention, so it runs the moment a MySQL is present —
-  but it has **never executed**, and the box stays unchecked because of it.
-- **What was verified**: the SQLite branch still ranks correctly through the
-  GUI after the dialect refactor (the 2020 task still outranks the 2030 one),
-  `backend:test` 618 pass with the 2 MySQL tests skipped, `moon check --all`
-  26 pass.
-- **Notes**: the shared code is deliberate. Only the match expression and the
-  four statements differ per dialect; trimming, offsets and the stop condition
-  are shared, because that is exactly where T06's High finding lived and two
-  copies would drift.
-  **The relevance sort runs in opposite directions.** SQLite's `bm25()` is
-  negative and *falls* as a match improves, so it sorts ascending; MySQL's
-  relevance is positive and *rises*, so it sorts descending. Getting this
-  backwards ranks the worst match first while every membership assertion still
-  passes — which is why the gated test asserts order, not presence.
-  MySQL needs no triggers: InnoDB `FULLTEXT` is part of the table, so the index
-  update is already inside the write's transaction. The SQLite side needed six
-  triggers for the guarantee this dialect gets for free.
-  **Two named risks in the unexecuted path**, both of which the gated test
-  exists to catch:
-  1. `LIMIT ?` / `OFFSET ?` as bound parameters. mysql2 uses prepared
-     statements for `execute`, and MySQL has historically refused placeholders
-     in `LIMIT`. If it does, this fails loudly on the first clustered search.
-  2. `innodb_ft_min_token_size` defaults to **3**, so two-character words are
-     not indexed at all. SQLite's unicode61 tokenizer has no such floor. The
-     dialects will disagree on short terms, and that is a real behavioural
-     difference rather than a bug to fix blindly.
-  **The `LIKE` fallback was deleted, not left dead.** After the dialect split it
-  was unreachable in both branches, and unreachable code is not a fallback. The
-  consequence is stated plainly: clustered-mode search now runs a path no test
-  has executed. Deleting it also revealed two exports that the removed namespace
-  import had been hiding from knip — `buildCursorPaginationWhere`, which is used
-  internally by `executePaginatedQuery` and only needed its `export` dropped,
-  and `testSchema`, which is kept and annotated because removing it would make
-  the next generated migration propose `DROP`ping a live table.
-- **Next**: M07-T07 stays open. Run
-  `docker compose up -d mysql && TASKER_MYSQL_INTEGRATION=1 bun test src/modules/search/search.mysql.test.ts`
-  from `apps/backend`, fix what it finds, then check the box.
+  (4 tests, gated), `db/query-builder.ts` (un-export),
+  `schema.sqlite.ts` (knip annotation), `knip.json` (`tags`)
+- **Verified**: against **MySQL 8.0.46** in Docker. The verify line — *the
+  MySQL integration test returns the same ranking* — passes: the task created
+  **2020** outranks the one created **2030**, the same fixture and the same
+  outcome as the SQLite branch. `SHOW INDEX` confirms `tasks_fts_idx` on
+  (title, description) and `artifacts_fts_idx` on (name, description), both
+  `FULLTEXT`. Full suite with MySQL enabled — **624 pass, 0 fail**.
+  `moon check --all` — 26 pass.
+- **Notes**: this entry was `blocked` for one commit. Docker was unavailable, so
+  the code and a gated test were committed **unrun** and the box left unchecked;
+  when Docker came back the test ran and both of the risks recorded at that
+  point turned out to be answerable rather than speculative. Recording both
+  outcomes, because a named risk that is never resolved is just a worry:
+  1. **`LIMIT ?` / `OFFSET ?` bind fine** through mysql2's prepared statements.
+     The first page could never have shown this — page one is always `OFFSET 0`
+     — so there is now a paging test that walks seven rows at limit 2 and
+     asserts no repeats, which is what actually exercises a non-zero offset.
+  2. **`innodb_ft_min_token_size` is 3, and it bites.** A two-character term
+     matches nothing in MySQL while SQLite's unicode61 tokenizer finds it. This
+     is a real divergence between the dialects, not a bug: it is now asserted in
+     both directions ("go" misses, "somewhere" hits the same row), so the
+     difference is documented by a test rather than discovered by a user.
+     Changing it means changing server configuration, which is a deployment
+     decision and not this task's.
+  **The relevance sorts run in opposite directions.** SQLite's `bm25()` is
+  negative and *falls* as a match improves; MySQL's relevance is positive and
+  *rises*. The `ORDER BY` directions differ to match, and the test asserts
+  **order rather than presence** — inverting the sort would rank the worst match
+  first while every membership assertion still passed.
+  Boolean mode, not natural-language mode: the latter drops any word appearing
+  in more than half the rows, which on a small table returns nothing for a
+  perfectly good term and reads as a broken index.
+  MySQL needs no triggers. InnoDB `FULLTEXT` is part of the table, so the index
+  update is already inside the write's transaction — the guarantee the SQLite
+  side needed six triggers to get.
+  **The `LIKE` fallback was deleted rather than left dead**: after the dialect
+  split it was unreachable in both branches, and unreachable code is not a
+  fallback. Removing it exposed two exports the namespace import had hidden from
+  knip — `buildCursorPaginationWhere`, which `executePaginatedQuery` still uses
+  internally and only needed its `export` dropped, and `testSchema`, which is
+  kept and annotated because deleting it would make the next generated migration
+  propose `DROP`ping a live table.
+  Only the match expression and the four statements differ per dialect; the
+  trimming, offsets and stop condition are shared on purpose — that is where
+  T06's High finding lived, and two copies would drift.
+- **Next**: M07-T08
 
 ---
 

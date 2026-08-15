@@ -1,10 +1,10 @@
 ---
 active_milestone: M07
-active_task: M07-T07
+active_task: M07-T08
 last_updated: 2026-08-16
-last_commit: ed8b7d1
-blocked: true
-blocker: "M07-T07's verify line needs a MySQL instance; no mysql client and Docker's daemon is unreachable from this WSL distro. Code and a gated test are committed and unrun."
+last_commit: 6e56ba9
+blocked: false
+blocker: null
 ---
 
 # Delivery State
@@ -16,7 +16,7 @@ blocker: "M07-T07's verify line needs a MySQL instance; no mysql client and Dock
 ## Now
 
 - **Milestone**: M07 — Read-Path Scale
-- **Task**: M07-T07 — add MySQL FULLTEXT indexes and the MATCH … AGAINST branch
+- **Task**: M07-T08 — extend search to projects, agents and comments
 - **Branch**: `main`, at the user's explicit instruction for this milestone
   ("just do it on main and push there") — the same instruction was given
   separately for M06. This overrides `git-workflow-standard.md` and
@@ -52,14 +52,14 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
 | M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
 | M06 | UX, Design System & A11y       | done   | M05        | 14    | 14   |
-| M07 | Read-Path Scale                | in-progress | M05   | 11    | 6    |
+| M07 | Read-Path Scale                | in-progress | M05   | 11    | 7    |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
 | M10 | Teams & Policy-Based RBAC      | todo   | M03, M04   | 13    | 0    |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 
-**Total: 142 tasks across 12 milestones — 81 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 6).**
+**Total: 142 tasks across 12 milestones — 82 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 7).**
 
 ## Dependency graph
 

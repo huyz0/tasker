@@ -30,24 +30,42 @@ function captureServiceImpl(db: any) {
   return impl;
 }
 
+/** A fresh org/project against the real server, plus a handler bound to it. */
+async function withMysqlFixture(key: string) {
+  const db = (await setupDatabase("mysql")) as any;
+  const impl = captureServiceImpl(db);
+
+  const orgId = "org-" + crypto.randomUUID();
+  const userId = "user-" + crypto.randomUUID();
+  const templateId = "tmpl-" + crypto.randomUUID();
+  const projectId = "proj-" + crypto.randomUUID();
+  const folderId = "fld-" + crypto.randomUUID();
+
+  await db.insert(schemaMysql.organizations).values({ id: orgId, name: "Org", slug: "org-" + crypto.randomUUID() });
+  await db.insert(schemaMysql.users).values({ id: userId, email: `${userId}@test.com` });
+  await db.insert(schemaMysql.organizationMembers).values({ orgId, userId, role: "admin" });
+  await db.insert(schemaMysql.projectTemplates).values({ id: templateId, orgId, name: "Tmpl" });
+  await db.insert(schemaMysql.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", key });
+  await db.insert(schemaMysql.folders).values({ id: folderId, projectId, name: "Folder" });
+
+  return { db, impl, orgId, projectId, folderId, ctx: makeAuthContext(userId) };
+}
+
+/** The MySQL branch is only selected when STANDALONE is not "true". */
+async function asClustered<T>(run: () => Promise<T>): Promise<T> {
+  const previous = process.env.STANDALONE;
+  process.env.STANDALONE = "false";
+  try {
+    return await run();
+  } finally {
+    process.env.STANDALONE = previous;
+  }
+}
+
 testIf("universalSearch (mysql FULLTEXT)", () => {
   it("ranks by relevance rather than creation date, as the SQLite branch does", async () => {
-    const previousStandalone = process.env.STANDALONE;
-    process.env.STANDALONE = "false";
-    try {
-      const db = (await setupDatabase("mysql")) as any;
-      const impl = captureServiceImpl(db);
-
-      const orgId = "org-" + crypto.randomUUID();
-      const userId = "user-" + crypto.randomUUID();
-      const templateId = "tmpl-" + crypto.randomUUID();
-      const projectId = "proj-" + crypto.randomUUID();
-
-      await db.insert(schemaMysql.organizations).values({ id: orgId, name: "Org", slug: "org-" + Date.now() });
-      await db.insert(schemaMysql.users).values({ id: userId, email: `${userId}@test.com` });
-      await db.insert(schemaMysql.organizationMembers).values({ orgId, userId, role: "admin" });
-      await db.insert(schemaMysql.projectTemplates).values({ id: templateId, orgId, name: "Tmpl" });
-      await db.insert(schemaMysql.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", key: "SRCH" });
+    await asClustered(async () => {
+      const { db, impl, orgId, projectId, ctx } = await withMysqlFixture("SRCH");
 
       // Same fixture as the SQLite test: the STRONG match is the OLDER row, so
       // a pass cannot be explained by creation-date ordering.
@@ -63,43 +81,76 @@ testIf("universalSearch (mysql FULLTEXT)", () => {
         createdAt: new Date("2030-01-01"),
       });
 
-      const res: any = await impl.universalSearch({ query: "rankable", orgId }, makeAuthContext(userId));
+      const res: any = await impl.universalSearch({ query: "rankable", orgId }, ctx);
       const ids = res.results.map((r: any) => r.id);
 
       expect(ids).toContain(strongId);
       expect(ids).toContain(weakId);
       expect(ids.indexOf(strongId)).toBeLessThan(ids.indexOf(weakId));
-    } finally {
-      process.env.STANDALONE = previousStandalone;
-    }
+    });
   });
 
   it("matches whole words, so 'cat' does not find 'concatenate'", async () => {
-    const previousStandalone = process.env.STANDALONE;
-    process.env.STANDALONE = "false";
-    try {
-      const db = (await setupDatabase("mysql")) as any;
-      const impl = captureServiceImpl(db);
-
-      const orgId = "org-" + crypto.randomUUID();
-      const userId = "user-" + crypto.randomUUID();
-      const templateId = "tmpl-" + crypto.randomUUID();
-      const projectId = "proj-" + crypto.randomUUID();
-
-      await db.insert(schemaMysql.organizations).values({ id: orgId, name: "Org", slug: "org-" + Date.now() });
-      await db.insert(schemaMysql.users).values({ id: userId, email: `${userId}@test.com` });
-      await db.insert(schemaMysql.organizationMembers).values({ orgId, userId, role: "admin" });
-      await db.insert(schemaMysql.projectTemplates).values({ id: templateId, orgId, name: "Tmpl" });
-      await db.insert(schemaMysql.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", key: "SRCH2" });
+    await asClustered(async () => {
+      const { db, impl, orgId, projectId, ctx } = await withMysqlFixture("SRCH2");
       await db.insert(schemaMysql.tasks).values({
         id: "tsk-concat-" + crypto.randomUUID(), projectId,
         title: "concatenate the buffers", status: "todo", createdAt: new Date(),
       });
 
-      const res: any = await impl.universalSearch({ query: "cat", orgId }, makeAuthContext(userId));
+      const res: any = await impl.universalSearch({ query: "cat", orgId }, ctx);
       expect(res.results.map((r: any) => r.title)).not.toContain("concatenate the buffers");
-    } finally {
-      process.env.STANDALONE = previousStandalone;
-    }
+    });
+  });
+
+  it("pages with a non-zero OFFSET without repeating a row", async () => {
+    // mysql2 sends `execute` as a prepared statement, and MySQL has
+    // historically refused placeholders in LIMIT/OFFSET. The first page alone
+    // would not prove OFFSET binds, since page one is always OFFSET 0.
+    await asClustered(async () => {
+      const { db, impl, orgId, projectId, ctx } = await withMysqlFixture("SRCH3");
+      await db.insert(schemaMysql.tasks).values(
+        Array.from({ length: 7 }, (_, i) => ({
+          id: `tsk-paged-${i}-` + crypto.randomUUID(), projectId,
+          title: `Paginatable item ${i}`, status: "todo", createdAt: new Date(),
+        })),
+      );
+
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      for (let guard = 0; guard < 20; guard++) {
+        const res: any = await impl.universalSearch({ query: "Paginatable", orgId, page: { limit: 2, cursor } }, ctx);
+        seen.push(...res.results.map((r: any) => r.id));
+        cursor = res.page.nextCursor;
+        if (!cursor) break;
+      }
+
+      expect(new Set(seen).size).toBe(seen.length);
+      expect(seen.length).toBe(7);
+    });
+  });
+
+  it("does not index words shorter than innodb_ft_min_token_size, unlike SQLite", async () => {
+    // A real, measured divergence between the dialects rather than a bug:
+    // `innodb_ft_min_token_size` defaults to 3, so a two-character term matches
+    // nothing here while SQLite's unicode61 tokenizer, which has no such floor,
+    // finds it. Asserted so the difference is documented and discovered by a
+    // test rather than by a user; changing it means changing server config,
+    // which is a deployment decision.
+    await asClustered(async () => {
+      const { db, impl, orgId, projectId, ctx } = await withMysqlFixture("SRCH4");
+      await db.insert(schemaMysql.tasks).values({
+        id: "tsk-short-" + crypto.randomUUID(), projectId,
+        title: "go somewhere", status: "todo", createdAt: new Date(),
+      });
+
+      const short: any = await impl.universalSearch({ query: "go", orgId }, ctx);
+      expect(short.results.map((r: any) => r.title)).not.toContain("go somewhere");
+
+      // The same row is found by a word at or over the floor, proving the miss
+      // is the token size and not a broken fixture.
+      const long: any = await impl.universalSearch({ query: "somewhere", orgId }, ctx);
+      expect(long.results.map((r: any) => r.title)).toContain("go somewhere");
+    });
   });
 });

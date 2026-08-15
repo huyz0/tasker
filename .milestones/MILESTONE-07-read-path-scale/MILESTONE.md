@@ -84,7 +84,7 @@ that it is not adopted before measured need), caching layers, read replicas.
       - Files: `modules/search/search.handler.ts`
       - Verify: results are ranked by relevance, not creation date.
 
-- [ ] **M07-T07** — Add MySQL `FULLTEXT` indexes and the `MATCH … AGAINST` branch
+- [x] **M07-T07** — Add MySQL `FULLTEXT` indexes and the `MATCH … AGAINST` branch
       for the clustered dialect.
       - Files: `drizzle-mysql/`, `modules/search/search.handler.ts`
       - Verify: the MySQL integration test returns the same ranking.
