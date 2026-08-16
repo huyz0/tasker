@@ -47,6 +47,21 @@ function parseOauthStateCookie(cookieHeader: string | null): string | null {
 // browser session. Must match apps/cli/cmd/auth.go's local listener.
 const CLI_CALLBACK_PORT = 3952;
 
+/**
+ * M13-T14 (security review). Refuses a request whose Content-Type isn't
+ * application/json, returning the problem-details response to send as-is,
+ * or `null` when the request may proceed. See the long comment above the
+ * password routes for why: a non-JSON content type is exactly what a
+ * cross-site HTML form submits without a CORS preflight, and this is what
+ * closes that off. `startsWith` rather than an exact match so a client that
+ * adds `; charset=utf-8` (as `fetch` does by default) still passes.
+ */
+function requireJsonContentType(request: Request): Response | null {
+  const contentType = request.headers.get('content-type') || '';
+  if (contentType.toLowerCase().startsWith('application/json')) return null;
+  return problemDetails(415, 'Unsupported content type', 'This endpoint only accepts application/json.');
+}
+
 interface GoogleProfile {
   id: string;
   email: string;
@@ -72,11 +87,20 @@ function authTables() {
  * An invitation targets exactly one of email/username (M13-T09's Zod
  * refine on `inviteUser` enforces this at creation), so `email` and
  * `username` here are matched independently rather than as a combined
- * filter - passing both covers a caller (local registration) that has
- * both, without accidentally requiring an invitation to match on both at
- * once. A no-op when neither is given. Runs on every login, not just the
+ * filter. A no-op when neither is given. Runs on every login, not just the
  * first, since a user may accept new invitations sent after their account
  * already exists.
+ *
+ * SECURITY (M13-T14): only pass `email` here when it came from a
+ * provider-verified source (Google's OAuth profile). `completeLogin` does
+ * this correctly; `registerLocalUser` deliberately does NOT pass its
+ * caller-typed `email` here - an unauthenticated `/register` request can
+ * type *anyone's* email with no proof of ownership, and consuming an
+ * email-targeted invitation on that basis would let an attacker who merely
+ * knows a pending invitee's address race them for the org membership (up
+ * to admin) that invitation carries. Local registration may still consume
+ * a *username*-targeted invitation, since a username is exactly what the
+ * registrant just proved control of by claiming it.
  */
 async function consumePendingInvitations(
   db: any,
@@ -250,10 +274,11 @@ async function registerLocalUser(db: any, input: { username: string; password: s
     mustChangePassword: false,
   });
 
-  // Both, unlike the Google path: a locally-registered user's username is
-  // one they (or the admin inviting them) actually chose, so it is a real
-  // match target for a username-only invitation, not a coincidence.
-  await consumePendingInvitations(db, userId, { email: input.email, username });
+  // username only, deliberately - see consumePendingInvitations' SECURITY
+  // note (M13-T14). input.email is self-typed and unverified here, so it
+  // must never be used to claim an email-targeted invitation; username is
+  // what this registration just proved control of by claiming it.
+  await consumePendingInvitations(db, userId, { username });
   return userId;
 }
 
@@ -544,7 +569,22 @@ export function createAuthRoutes(db: any) {
   // "converge on the same session issuance path" ADR-0012 asks for: both
   // login methods end up with an identical cookie, checked by the identical
   // `/api/auth/session` route and the identical ConnectRPC interceptor.
-  .post('/api/auth/password/register', async ({ body }) => {
+  //
+  // SECURITY (M13-T14): both routes below require Content-Type: application/
+  // json before touching the body. Without this, Elysia's parser accepts
+  // application/x-www-form-urlencoded too - a "simple" content type a plain
+  // cross-site <form> can POST without ever triggering a CORS preflight, so
+  // the existing corsAllowedOrigins check (which only governs whether
+  // cross-origin JS may *read* a response) never runs at all. A forged
+  // auto-submitting form could log a visiting victim into an
+  // attacker-chosen account via the resulting Set-Cookie - login CSRF - the
+  // exact class of attack the Google flow's oauth_state nonce already
+  // defends against on that path. Requiring JSON forces any genuine
+  // cross-origin caller through a real preflight, which the origin
+  // allowlist already gates correctly.
+  .post('/api/auth/password/register', async ({ body, request }) => {
+    const contentTypeProblem = requireJsonContentType(request);
+    if (contentTypeProblem) return contentTypeProblem;
     const { username, password, email, name } = (body as any) || {};
     if (typeof username !== 'string' || typeof password !== 'string') {
       return problemDetails(400, 'Invalid request', 'username and password are required');
@@ -565,7 +605,9 @@ export function createAuthRoutes(db: any) {
       return problemDetails(400, 'Registration failed', e?.message || 'Unknown error');
     }
   })
-  .post('/api/auth/password/login', async ({ body }) => {
+  .post('/api/auth/password/login', async ({ body, request }) => {
+    const contentTypeProblem = requireJsonContentType(request);
+    if (contentTypeProblem) return contentTypeProblem;
     const { username, password } = (body as any) || {};
     if (typeof username !== 'string' || typeof password !== 'string') {
       return problemDetails(400, 'Invalid request', 'username and password are required');

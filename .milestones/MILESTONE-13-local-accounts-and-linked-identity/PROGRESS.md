@@ -682,3 +682,62 @@
   (security review of the full credential path) and T15 (exhaustive auth
   test matrix), both verification-only — no new behavior, gating the
   close.
+
+## M13-T14 — Security review of the full credential path
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `apps/backend/src/modules/auth/auth.ts` (invitation-consumption
+  fix, `requireJsonContentType` + both password routes), `auth.test.ts` (2
+  new regression describe blocks),
+  `.milestones/MILESTONE-13-local-accounts-and-linked-identity/reviews/SECURITY-REVIEW-v1.md`
+  (new)
+- **Verified**: Multi-agent review per `/security-review`'s own protocol —
+  one agent read the full credential path and produced 4 candidate
+  findings; each was independently re-verified by a second agent scoring
+  1–10. Two cleared the ≥8 bar and were fixed; two scored 2/10 and are
+  recorded as checked-but-not-actionable in the review file, not silently
+  dropped. `bun test src/modules/auth/` — 103 pass, 99.75% line coverage.
+  Full backend suite: 751 pass, 0 fail. `bunx knip` clean. GUI/CLI
+  unaffected (both already send `application/json`) — spot-checked GUI
+  auth tests (27 pass) rather than re-running the full suite for a
+  backend-only change.
+- **Notes**:
+  - **Vuln 1 (High, confidence 9/10) — invitation hijack via unverified
+    email, fixed.** `registerLocalUser` no longer passes its caller-typed
+    `email` to `consumePendingInvitations`; local registration now only
+    ever auto-joins via a **username**-targeted invitation (the identifier
+    the registrant just proved control of by claiming it). An
+    email-targeted invitation is consumable only through Google OAuth,
+    where the email is provider-verified. This was a real gap the milestone's
+    own test suite proved end-to-end (`auth.test.ts`'s original "consumes a
+    pending email invitation on local registration" test), rewritten to
+    assert the fixed behavior, plus a new test confirming the Google path
+    still works.
+  - **Vuln 3 (Medium, confidence 8/10) — login CSRF via form-encoded POST,
+    fixed.** Both password routes now call `requireJsonContentType(request)`
+    before touching the body, returning `415` for anything but
+    `application/json` (with or without a charset parameter). This closes
+    the plain-`<form>` vector outright (form submissions can't set
+    `application/json`) and forces any genuine cross-origin JS caller
+    through a real CORS preflight, bringing it back under the existing
+    origin allowlist. Verified: the same class of protection the
+    pre-existing Google OAuth flow already had via its `oauth_state` nonce
+    — this closes the gap between the two paths rather than inventing a
+    new mechanism.
+  - **Two findings checked and NOT fixed, with reasons recorded rather
+    than silently dropped** (both confidence 2/10 on independent
+    re-verification): a timing side-channel between "unknown username"
+    and "wrong password" (real, but `registerLocalUser`'s "username
+    already taken" response already gives a zero-noise oracle for the same
+    information, per this milestone's own ADR-0012, so mitigating the
+    weaker channel first would be backwards); and CLI flags accepting
+    passwords in plaintext (real, but consistent with this codebase's
+    existing `--token` precedent on every command, and the masked prompt
+    is the default when the flag is omitted).
+  - This is the first task in this milestone where the review process
+    itself found something to fix, not just documented a decision — both
+    fixes are small, targeted, and land with their own regression tests
+    rather than a broad rewrite, matching the review's own instruction to
+    minimize false positives and act only on high-confidence findings.
+- **Next**: M13-T15 — exhaustive auth-path test matrix; then close M13.

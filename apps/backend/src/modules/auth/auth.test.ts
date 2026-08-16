@@ -684,20 +684,69 @@ describe('Auth Routes (local password)', () => {
     expect(rows[0].email).toBe('has-email@example.com');
   });
 
-  it('consumes a pending email invitation on local registration, same as Google login does', async () => {
+  /**
+   * M13-T14 (security review, Vuln 1). Local registration must NOT consume
+   * an email-targeted invitation: `email` here is self-typed by the caller
+   * with no proof of ownership, unlike Google's provider-verified profile.
+   * Before this fix, an attacker who merely knew a pending invitee's email
+   * address could register with that email first and steal the invited
+   * org membership - up to admin - racing the real invitee. Renamed from
+   * "consumes a pending email invitation..." (T09's original, now-wrong
+   * assertion) to assert the opposite.
+   */
+  it('does NOT consume a pending email-targeted invitation on local registration — prevents invite hijack via an unverified email', async () => {
     await db.insert(schemaSqlite.organizations).values({ id: 'org-local-invite', name: 'Org', slug: 'org-local-invite', createdAt: new Date() });
     await db.insert(schemaSqlite.users).values({ id: 'inviter-local', email: 'inviter-local@example.com', createdAt: new Date() });
     await db.insert(schemaSqlite.invitations).values({
       id: 'inv-local', orgId: 'org-local-invite', email: 'invitee-local@example.com', invitedBy: 'inviter-local', role: 'admin', createdAt: new Date(),
     });
 
-    const res = await register({ username: 'invitee-local-user', password: 'a-strong-password-123', email: 'invitee-local@example.com' });
+    // The attacker: registers first, typing the real invitee's email - no
+    // proof of ownership is possible or required by the endpoint itself.
+    const res = await register({ username: 'attacker-user', password: 'a-strong-password-123', email: 'invitee-local@example.com' });
     const { userId } = await res.json();
 
     const membership = await db.select().from(schemaSqlite.organizationMembers)
       .where(eq(schemaSqlite.organizationMembers.userId, userId));
+    expect(membership).toHaveLength(0); // the attacker gained no org access
+
+    // And the invitation survives, untouched, for the real invitee to
+    // redeem later (by username, or by an eventual verified Google login).
+    const remaining = await db.select().from(schemaSqlite.invitations).where(eq(schemaSqlite.invitations.id, 'inv-local'));
+    expect(remaining).toHaveLength(1);
+  });
+
+  it('Google login still consumes an email-targeted invitation — email is provider-verified on that path', async () => {
+    await db.insert(schemaSqlite.organizations).values({ id: 'org-google-invite', name: 'Org', slug: 'org-google-invite', createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: 'inviter-google2', email: 'inviter-google2@example.com', createdAt: new Date() });
+    await db.insert(schemaSqlite.invitations).values({
+      id: 'inv-google2', orgId: 'org-google-invite', email: 'real-invitee@example.com', invitedBy: 'inviter-google2', role: 'admin', createdAt: new Date(),
+    });
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') {
+        return new Response(JSON.stringify({ access_token: 'mock_access_token' }), { status: 200 });
+      }
+      if (urlStr === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        return new Response(JSON.stringify({ id: 'real-invitee-google-id', email: 'real-invitee@example.com' }), { status: 200 });
+      }
+      return originalFetch(url);
+    }) as unknown as typeof fetch;
+
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state, cookie } = extractLoginFlow(loginRes);
+    await authRoutes.handle(new Request(
+      `http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`,
+      { headers: { cookie } },
+    ));
+    globalThis.fetch = originalFetch;
+
+    const membership = await db.select().from(schemaSqlite.organizationMembers)
+      .where(eq(schemaSqlite.organizationMembers.userId, 'real-invitee-google-id'));
     expect(membership).toHaveLength(1);
-    expect(membership[0].orgId).toBe('org-local-invite');
+    expect(membership[0].orgId).toBe('org-google-invite');
     expect(membership[0].role).toBe('admin');
   });
 
@@ -864,6 +913,59 @@ describe('Auth Routes (local password)', () => {
         .where(eq(schemaSqlite.passwordCredentials.userId, rows[0].id));
 
       const res = await login({ username: 'lockout-expires', password: 'a-strong-password-123' });
+      expect(res.status).toBe(200);
+    });
+  });
+
+  /**
+   * M13-T14 (security review, Vuln 3). Before this fix, both routes parsed
+   * whatever content-type Elysia's body parser recognized, including
+   * application/x-www-form-urlencoded - a "simple" content type a plain
+   * cross-site <form> submits with no CORS preflight, so the origin
+   * allowlist never ran. A forged auto-submitting form could log a
+   * visiting victim into an attacker-chosen account (login CSRF).
+   */
+  describe('rejects a non-JSON Content-Type (CSRF hardening)', () => {
+    it('rejects a form-encoded login POST with 415, and does not authenticate it', async () => {
+      await register({ username: 'csrf-target-user', password: 'a-strong-password-123' });
+
+      const res = await authRoutes.handle(new Request('http://localhost/api/auth/password/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'username=csrf-target-user&password=a-strong-password-123',
+      }));
+
+      expect(res.status).toBe(415);
+      expect(res.headers.get('set-cookie')).toBeNull();
+    });
+
+    it('rejects a form-encoded register POST with 415, and creates no account', async () => {
+      const res = await authRoutes.handle(new Request('http://localhost/api/auth/password/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'username=csrf-attacker-account&password=a-strong-password-123',
+      }));
+
+      expect(res.status).toBe(415);
+      const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.username, 'csrf-attacker-account'));
+      expect(rows).toHaveLength(0);
+    });
+
+    it('rejects text/plain — the Content-Type the Fetch API defaults a string body to when the caller never sets one explicitly', async () => {
+      const res = await authRoutes.handle(new Request('http://localhost/api/auth/password/login', {
+        method: 'POST',
+        body: JSON.stringify({ username: 'csrf-target-user', password: 'a-strong-password-123' }),
+      }));
+      expect(res.status).toBe(415);
+    });
+
+    it('still accepts application/json, including with a charset parameter', async () => {
+      await register({ username: 'csrf-target-user', password: 'a-strong-password-123' });
+      const res = await authRoutes.handle(new Request('http://localhost/api/auth/password/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({ username: 'csrf-target-user', password: 'a-strong-password-123' }),
+      }));
       expect(res.status).toBe(200);
     });
   });

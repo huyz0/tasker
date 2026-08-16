@@ -186,7 +186,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
 
 ### Verify end-to-end
 
-- [ ] **M13-T14** — Security review of the full credential path — hashing,
+- [x] **M13-T14** — Security review of the full credential path — hashing,
       storage, rate limiting, lockout, session issuance, admin reset — before
       the milestone closes.
       - Files: `.milestones/MILESTONE-13-local-accounts-and-linked-identity/reviews/SECURITY-REVIEW-v1.md`
