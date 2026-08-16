@@ -134,7 +134,7 @@ SCIM provisioning, delegated administration.
       - Files: `apps/gui/src/features/Roles/`
       - Verify: 100 roles × the full permission set renders smoothly.
 
-- [ ] **M10-T12** — Team management UI with member search reusing the M03 member picker.
+- [x] **M10-T12** — Team management UI with member search reusing the M03 member picker.
       - Files: `apps/gui/src/features/Teams/`
       - Verify: a team of 100 members is manageable.
 

@@ -7,6 +7,7 @@ import { AgentsDashboard } from './features/Agents';
 import { ArtifactsBrowser } from './features/Artifacts';
 import { LabelsManager } from './features/Labels';
 import { RolesManager } from './features/Roles';
+import { TeamsManager } from './features/Teams';
 import { TaskTypesEditor } from './features/TaskTypes';
 import { BinDashboard } from './features/Bin';
 import { Dashboard } from './pages/Dashboard';
@@ -41,6 +42,7 @@ function App() {
                 <Route path="/task-types" element={<TaskTypesEditor />} />
                 <Route path="/labels" element={<LabelsManager />} />
                 <Route path="/roles" element={<RolesManager />} />
+                <Route path="/teams" element={<TeamsManager />} />
                 <Route path="/bin" element={<BinDashboard />} />
                 <Route path="/settings" element={<SystemHealthPage />} />
                 <Route path="/oauth/callback" element={<OAuthCallback />} />

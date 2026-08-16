@@ -44,62 +44,6 @@ export const EXCEPTIONS = {
     'real gap, not yet scheduled. Wire it into the Organizations member ' +
     'list (an admin action per row, alongside role/remove) and remove this ' +
     'exception when that lands.',
-  'TeamService.createTeam':
-    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
-    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
-    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
-    'eight TeamService methods. Remove this exception when that lands.',
-  'TeamService.updateTeam':
-    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
-    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
-    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
-    'eight TeamService methods. Remove this exception when that lands.',
-  'TeamService.archiveTeam':
-    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
-    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
-    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
-    'eight TeamService methods. Remove this exception when that lands.',
-  'TeamService.restoreTeam':
-    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
-    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
-    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
-    'eight TeamService methods. Remove this exception when that lands.',
-  'TeamService.listTeams':
-    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
-    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
-    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
-    'eight TeamService methods. Remove this exception when that lands.',
-  'TeamService.addTeamMember':
-    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
-    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
-    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
-    'eight TeamService methods. Remove this exception when that lands.',
-  'TeamService.removeTeamMember':
-    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
-    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
-    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
-    'eight TeamService methods. Remove this exception when that lands.',
-  'TeamService.listTeamMembers':
-    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
-    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
-    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
-    'eight TeamService methods. Remove this exception when that lands.',
-  'RoleService.grantRole':
-    'M10-T11 (features/Roles/) covers role definitions and the permission ' +
-    'matrix - createRole/updateRole/deleteRole/listRoles/listPermissions ' +
-    'are all wired up. Assigning a role to a user or team needs the same ' +
-    'subject-search UI M10-T12 (Team management) is already building for ' +
-    'picking team members, so grantRole/revokeGrant/listGrants are left ' +
-    'for that task rather than duplicating a second search control here. ' +
-    'Remove this exception when T12 wires it in.',
-  'RoleService.revokeGrant':
-    'See RoleService.grantRole above - same M10-T12 dependency, same ' +
-    'reasoning: revoking a grant needs the list of existing grants ' +
-    '(listGrants) surfaced first, which lands with the subject-search UI.',
-  'RoleService.listGrants':
-    'See RoleService.grantRole above - the grant-assignment view (who ' +
-    'holds which role at which scope) is scheduled for M10-T12, alongside ' +
-    'the team member picker it shares its subject-search needs with.',
 };
 
 /** RPC names per service, read from the TypeSpec interfaces. */

@@ -844,3 +844,109 @@
 - **Next**: M10-T12 — Team management UI (member search/picker,
   `TeamService`'s eight methods, and `RoleService.{grantRole,revokeGrant,
   listGrants}` alongside it).
+
+## M10-T12 — team management GUI, with member search reused as the grant-assignment subject picker
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**:
+  - `apps/gui/src/features/Teams/index.tsx` (+ `.stories.tsx`) — new.
+    `TeamsManager`: a master/detail layout - a `VirtualList` of teams on
+    the left (`TeamRow`, inline-editable name via the row-actions menu
+    only, not also the name click, since the name click here selects the
+    team instead), a selected team's roster and role grants on the
+    right. No `getTeam` RPC exists (`TeamService`'s own shape), so
+    `TeamDetail` takes the selected `Team` as a prop from the
+    already-loaded list rather than a second fetch for data the parent
+    already holds - the same reasoning `gui:rpc-coverage`'s
+    `ProjectTemplateService.getTemplate` exception records elsewhere.
+    `AddMemberPicker` mirrors `Tasks/AssigneePicker.tsx`'s search-on-demand
+    pattern near verbatim: a debounced `orgClient.listOrgMembers({page:
+    {filter}})` query, not a `<select>` enumerating every member, against
+    the exact 100,001-member-org defect M03 spent a milestone removing -
+    this task's own verify line ("a team of 100 members is manageable")
+    is that defect's smaller, in-scope cousin.
+  - **Role-grant assignment, reusing the roster instead of a second
+    search control**: a "Role grants" section lists grants scoped to the
+    selected team (`roleClient.listGrants({scopeType: 'team', scopeId:
+    team.id})`) and a form grants a role to one of the team's own
+    members - a `<select>` over the roster query already in memory, not
+    a second `AddMemberPicker`. T11's own reasoning for deferring
+    `grantRole`/`revokeGrant`/`listGrants` here assumed a second
+    subject-search control would be needed; once the roster existed as
+    data already on screen, picking from it was simpler than searching
+    for someone twice. `subjectLabel()` resolves a grant's subject to a
+    name: a `user` subject resolves through the roster
+    (`memberNameById`), falling back to the raw id for a grant held by
+    someone no longer on the team; a `team` subject (a team's own
+    identity holding a role, structurally valid per ADR-0013 though not
+    this task's main path) resolves to the team's own name or `Team:
+    <id>`.
+  - Archive/restore stays inside this feature rather than folding into
+    `features/Bin/`, a deliberate scope boundary, not an oversight:
+    `TeamService` has no `purgeTeam` (only `archiveTeam`/`restoreTeam`),
+    so it doesn't fit Bin's existing per-entity restore-and-purge shape
+    without a restore-only variant Bin doesn't have yet - a "Show
+    archived teams" toggle plus an inline Restore action self-contains
+    it instead. Recorded as a real, unscheduled gap if a later task wants
+    every entity's trash in one place.
+  - `apps/gui/src/App.tsx` — `/teams` route.
+    `apps/gui/src/components/layout/AppShell.tsx` — "Teams" nav entry
+    (Configuration group, between Organizations and Roles).
+    `apps/gui/src/App.test.tsx` — `TeamService: {}` added to the
+    hardcoded contract mock (a pre-existing gap from T07 flagged but not
+    yet fixed at the time - noted in T11's own summary - since no GUI
+    component imported `TeamService` until now).
+  - `apps/gui/scripts/rpc-coverage.mjs` — all 11 `EXCEPTIONS` entries
+    naming this task removed (`TeamService`'s eight methods plus
+    `RoleService.{grantRole,revokeGrant,listGrants}`, added in T07 and
+    T11 respectively). `moon run gui:rpc-coverage` — 116 of 119 RPCs
+    reached, 3 excepted with reasons (down from 14; the 3 remaining
+    predate this milestone entirely - `TaskNoteService.createTaskNote`,
+    `ProjectTemplateService.getTemplate`, `AuthService.adminResetPassword`).
+  - `apps/gui/src/features/Teams/index.test.tsx` — new, 36 tests,
+    100% statement / 94.52% branch coverage on `Teams/index.tsx` (global
+    branch coverage 95.06%, clears the 95% gate). Covers every CRUD/
+    membership/grant path and its error alert, both rename entry points,
+    Enter/Escape/no-op rename, the add-member picker's search failure +
+    retry, empty-search and narrowing-hint states, independent pagination
+    of the team list, the member roster and the grants list, an archived
+    team's detail-header badge, and a team-subject grant's two display
+    branches (self and another team).
+  - No CLI counterpart for the newly-wired `RoleService` grant RPCs -
+    `apps/cli/cmd/teams.go` already exists from T07 for `TeamService`
+    itself; extending it to grant assignment is real, unscheduled future
+    work, named here rather than assumed out of scope silently.
+- **Verified**:
+  - `bunx vitest run src/features/Teams/index.test.tsx` — 36/36 pass.
+  - `moon run gui:test` — 709 -> 745 tests pass (36 new); global branch
+    coverage 95.06% (was at risk of dropping below 95% before the
+    coverage-driven tests above closed `Teams/index.tsx`'s gaps from
+    76.71% to 94.52%).
+  - `moon run gui:rpc-coverage` — 116/119, 3 excepted (see above).
+  - `bunx knip` (repo root) — clean.
+  - `moon check --all` — 27/27 tasks green.
+- **Notes**:
+  - **A real, unplanned bug in `RowActionsMenu` (T11) got a second,
+    independent consumer here rather than a second bug.** `TeamRow`'s
+    "Rename" row action uses the exact same `managesFocusOnSelect` flag
+    T11 added to fix the Radix focus-trap race - proof the fix generalises
+    rather than papering over one symptom, and evidence the fix belonged
+    in the shared component (not a Roles-local workaround) was the right
+    call.
+  - **The ambiguous-text lesson from testing this feature, worth naming
+    since it cost real iteration time**: a role's name, a member's name,
+    and a grant's subject label all legitimately render in more than one
+    place at once on this screen (a roster row, a `<select><option>`, a
+    grant row) - `getByText('X')` alone is not enough once two features'
+    worth of independently-reasonable UI share a viewport. Scoping every
+    such query with `{selector: 'span'}` (or a specific ancestor) is now
+    the pattern for any test on a screen this dense, not just this one.
+  - `RoleService.grantRole`'s `subjectType` is hardcoded to `'user'` in
+    this task's grant form - the roster it picks from is a member list,
+    never a team, so a team-as-subject grant (structurally valid, and
+    exercised in `roles.test.ts` since T11) has no GUI path to create one
+    yet. `subjectLabel()` can *display* a team-subject grant; nothing yet
+    *creates* one from the GUI. Named rather than silently narrowed.
+- **Next**: M10-T13 — Build the exhaustive authorization test matrix:
+  every role x permission x scope, generated rather than hand-enumerated.
