@@ -292,7 +292,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
           <button
             disabled={!remoteName || !apiToken || (provider === 'bitbucket' && !bitbucketEmail) || addLinkMutation.isPending}
             onClick={() => addLinkMutation.mutate()}
-            className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground transition-colors"
           >
             {addLinkMutation.isPending ? 'Linking...' : 'Link with API token'}
           </button>

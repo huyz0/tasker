@@ -538,7 +538,7 @@ export function ArtifactsBrowser() {
                      <button
                        onClick={() => updateContentMutation.mutate({ artifactId: selectedArtifact.id, content: editedContent })}
                        disabled={updateContentMutation.isPending}
-                       className="text-xs px-3 py-1 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+                       className="text-xs px-3 py-1 rounded-md bg-primary text-primary-foreground disabled:bg-muted disabled:text-muted-foreground"
                      >
                        {updateContentMutation.isPending ? 'Saving...' : 'Save'}
                      </button>

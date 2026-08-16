@@ -66,6 +66,23 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+
+  /* The primary nav's own width, named so a change to it is a one-line
+     decision rather than a find-and-replace of `w-64` — which is also just
+     Tailwind's generic 16rem step, indistinguishable by name from every
+     other unrelated thing in the app that happens to want a 256px box. */
+  --width-sidebar: 16rem;
+
+  /* A named z-index scale. `z-30`/`z-40`/`z-50` were three numbers picked far
+     enough apart to not collide, with nothing recording *why* a mobile header
+     was 30 and a drawer was 40 — the layout that makes "a new floating panel
+     renders under an existing one" an easy mistake to introduce and a hard
+     one to notice, since both compile and neither errors. Each name is what
+     the layer *is*, so the next overlay picks a name instead of guessing a
+     number close to what is already there. */
+  --z-index-header: 30;   /* the sticky mobile header, and the drawer's own backdrop */
+  --z-index-drawer: 40;   /* the sidebar drawer, and menus anchored inside it */
+  --z-index-overlay: 50;  /* Dialog, and anything that must sit above the drawer too */
 }
 
 @layer base {
@@ -223,5 +240,42 @@
   optgroup {
     background-color: var(--color-popover);
     color: var(--color-popover-foreground);
+  }
+}
+
+@layer utilities {
+  /* An `overflow-x-auto` row with no visible track reads as broken, not
+     scrollable — a review of the task board found its third column clipped
+     at rest on a 1280px screen with nothing on screen to say more was one
+     scroll away. Both properties are needed: `scrollbar-width` covers
+     Firefox and current Chromium, the `::-webkit-scrollbar` rules cover
+     Safari and older Chromium, which ignore it. */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: var(--radius-sm);
+  }
+
+  /* A soft bottom edge for a fixed-height scroll area whose content is
+   * variable-height rows across a variable number of grouped sections — the
+   * search palette's result list, task title plus an optional snippet times
+   * a handful of type headings, has no height a `max-h` can land on exactly
+   * for every possible result set. `scrollbar-thin` already says "more below,
+   * scroll for it"; this keeps whatever row lands on the boundary from
+   * reading as an error rather than as a normal, deliberate scroll edge.
+   */
+  .fade-bottom {
+    mask-image: linear-gradient(to bottom, black calc(100% - 20px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 20px), transparent 100%);
   }
 }

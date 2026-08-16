@@ -40,7 +40,14 @@ export const Button = ({
       'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium',
       // Colour is the only thing that changes on hover, so name it rather than
       // reaching for transition-all.
-      'transition-colors disabled:pointer-events-none disabled:opacity-50',
+      //
+      // Disabled is a dedicated muted look, not a fade of whatever variant
+      // was chosen: `disabled:opacity-50` on `default` (bg-primary) rendered
+      // as a pale lavender wash that a review flagged as indistinguishable
+      // from broken — three real buttons (a create action, a save action, a
+      // link action) all looked like they had failed to load rather than
+      // like they were correctly waiting on required input.
+      'transition-colors disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground',
       VARIANTS[variant],
       SIZES[size],
       className,

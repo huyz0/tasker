@@ -138,7 +138,7 @@ export function TaskTypesEditor() {
             placeholder="New type"
             className="text-sm rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
           />
-          <button type="submit" disabled={createType.isPending} className="text-sm px-3 py-1 rounded-md bg-primary text-primary-foreground disabled:opacity-50">
+          <button type="submit" disabled={createType.isPending} className="text-sm px-3 py-1 rounded-md bg-primary text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
             Add type
           </button>
         </form>

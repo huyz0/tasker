@@ -24,7 +24,7 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
       <button 
         onClick={() => onNextPage(nextCursor)}
         disabled={isLoading}
-        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
+        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
       >
         {isLoading ? "Loading…" : "Load More"}
       </button>

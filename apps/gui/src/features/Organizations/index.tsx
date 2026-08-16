@@ -9,6 +9,8 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDebounce } from 'use-debounce';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ListState } from '../../components/ui/ListState';
+import { RowActionsMenu } from '../../components/ui/RowActionsMenu';
+import * as Tabs from '@radix-ui/react-tabs';
 
 const orgClient = createClient(OrgService, transport);
 
@@ -393,7 +395,7 @@ export function OrganizationsDashboard() {
           <button
             type="submit"
             disabled={!editName.trim() || !editSlug.trim() || updateOrgMutation.isPending}
-            className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium"
+            className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
           >
             {updateOrgMutation.isPending ? 'Saving...' : 'Save'}
           </button>
@@ -441,30 +443,33 @@ export function OrganizationsDashboard() {
             </button>
             {activeOrgId === org.id && <span className="text-xs bg-primary-subtle text-primary-subtle-foreground px-2 rounded-full shrink-0">Active</span>}
           </span>
-          <span className="flex items-center gap-3 shrink-0">
-            <span className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{org.slug}</span>
-            <button
-              onClick={() => startEditing(org)}
-              className="text-muted-foreground hover:text-foreground text-xs"
-            >
-              Edit
-            </button>
-            <button
-              onClick={async () => {
-                if (await confirm({
-                  title: `Move "${org.name}" to the bin?`,
-                  consequence: 'The organization and everything inside it stop appearing in lists.',
-                  undo: 'You can restore it from the Bin.',
-                  confirmLabel: 'Move to bin',
-                })) {
-                  archiveOrgMutation.mutate(org.id);
-                }
-              }}
-              disabled={archiveOrgMutation.isPending}
-              className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
-            >
-              Delete
-            </button>
+          <span className="flex items-center gap-2 shrink-0">
+            {/* The slug pill hides below `sm:` rather than joining the
+                overflow this row used to have — it is metadata, not a
+                control, and dropping it first is what keeps the remaining
+                icon-only trigger from ever being the thing that overflows. */}
+            <span className="hidden sm:inline px-2 py-0.5 rounded-full bg-secondary/50 text-xs text-secondary-foreground">{org.slug}</span>
+            <RowActionsMenu
+              label={`Actions for ${org.name}`}
+              actions={[
+                { label: 'Edit', onClick: () => startEditing(org) },
+                {
+                  label: 'Delete',
+                  destructive: true,
+                  disabled: archiveOrgMutation.isPending,
+                  onClick: async () => {
+                    if (await confirm({
+                      title: `Move "${org.name}" to the bin?`,
+                      consequence: 'The organization and everything inside it stop appearing in lists.',
+                      undo: 'You can restore it from the Bin.',
+                      confirmLabel: 'Move to bin',
+                    })) {
+                      archiveOrgMutation.mutate(org.id);
+                    }
+                  },
+                },
+              ]}
+            />
           </span>
         </div>
         {hasChildren && !isCollapsed && children.map((child) => renderOrgNode(child, depth + 1))}
@@ -478,29 +483,37 @@ export function OrganizationsDashboard() {
         <h1 className="text-3xl font-semibold tracking-tight">Organizations & Settings</h1>
         <p className="text-muted-foreground mt-1">Manage hierarchical organizational structure and teams.</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="col-span-1 border rounded-lg bg-card p-4 shadow-sm h-fit">
-          <ul className="space-y-2">
-            <li>
-              <button
-                onClick={() => setSection('organizations')}
-                className={`w-full text-left p-2 rounded text-sm ${section === 'organizations' ? 'font-medium bg-muted' : 'hover:bg-muted/50'}`}
-              >
-                Organizations
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={() => setSection('members')}
-                className={`w-full text-left p-2 rounded text-sm ${section === 'members' ? 'font-medium bg-muted' : 'hover:bg-muted/50'}`}
-              >
-                Roles & Permissions
-              </button>
-            </li>
-          </ul>
-        </div>
-        <div className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
-          {section === 'organizations' ? (
+      {/* Two tabs, hand-rolled as a `useState` toggle with no `role="tablist"`,
+          no `aria-selected`, and no arrow-key navigation between them — the
+          exact "second tab implementation" `design-system.md` §4 now says not
+          to build. `value`/`onValueChange` replace `section`/`setSection`
+          one-for-one; Radix mounts only the active panel's content by
+          default, same as the ternary this replaces, so the members query
+          still does not fire until that tab is actually selected. */}
+      <Tabs.Root
+        value={section}
+        onValueChange={(value) => setSection(value as Section)}
+        orientation="vertical"
+        className="grid grid-cols-1 md:grid-cols-4 gap-6"
+      >
+        <Tabs.List
+          aria-label="Organization settings sections"
+          className="col-span-1 flex flex-col gap-2 border rounded-lg bg-card p-4 shadow-sm h-fit"
+        >
+          <Tabs.Trigger
+            value="organizations"
+            className="w-full text-left p-2 rounded text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50 data-[state=active]:font-medium data-[state=active]:bg-muted data-[state=inactive]:hover:bg-muted/50"
+          >
+            Organizations
+          </Tabs.Trigger>
+          <Tabs.Trigger
+            value="members"
+            className="w-full text-left p-2 rounded text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50 data-[state=active]:font-medium data-[state=active]:bg-muted data-[state=inactive]:hover:bg-muted/50"
+          >
+            Roles & Permissions
+          </Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="organizations" className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
             <>
               <div className="flex justify-between mb-4">
                 <h2 className="text-xl font-medium">Your Organizations</h2>
@@ -540,7 +553,7 @@ export function OrganizationsDashboard() {
                   <button
                     type="submit"
                     disabled={!newOrgName.trim() || createOrgMutation.isPending}
-                    className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-sm font-medium transition-colors"
+                    className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-sm font-medium transition-colors"
                   >
                     {createOrgMutation.isPending ? 'Creating...' : 'Create'}
                   </button>
@@ -625,7 +638,8 @@ export function OrganizationsDashboard() {
                 </div>
               )}
             </>
-          ) : (
+        </Tabs.Content>
+        <Tabs.Content value="members" className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
             <>
               <div className="mb-4">
                 <h2 className="text-xl font-medium">Roles & Permissions</h2>
@@ -785,7 +799,7 @@ export function OrganizationsDashboard() {
                     <button
                       type="submit"
                       disabled={inviteMutation.isPending || !inviteEmail.trim()}
-                      className="text-sm rounded-md bg-primary text-primary-foreground px-4 py-2 disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="text-sm rounded-md bg-primary text-primary-foreground px-4 py-2 disabled:bg-muted disabled:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
                       {inviteMutation.isPending ? 'Sending...' : 'Send invite'}
                     </button>
@@ -841,9 +855,8 @@ export function OrganizationsDashboard() {
                 </div>
               )}
             </>
-          )}
-        </div>
-      </div>
+        </Tabs.Content>
+      </Tabs.Root>
       {confirmDialog}
     </div>
   );

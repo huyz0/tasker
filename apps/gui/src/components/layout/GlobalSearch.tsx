@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
@@ -76,6 +76,16 @@ const ICON_BY_RESULT_TYPE: Record<string, typeof CheckSquare> = {
   comment: MessageSquare,
 };
 
+/** Section order and heading, so five entity types read as a scan, not a jumble. */
+const TYPE_LABEL: Record<string, string> = {
+  task: 'Tasks',
+  artifact: 'Artifacts',
+  project: 'Projects',
+  agent: 'Agents',
+  comment: 'Comments',
+};
+const TYPE_ORDER = ['task', 'artifact', 'project', 'agent', 'comment'];
+
 /**
  * The button that opens the palette. Rendered twice — once in the header for
  * desktop, once in the sidebar for mobile — which is exactly why the palette
@@ -110,6 +120,11 @@ export function GlobalSearch() {
   const [debouncedQuery] = useDebounce(query, 300);
   const navigate = useNavigate();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
+  // The result the keyboard (or a mouse hover, which shares this state rather
+  // than owning a separate `:hover` treatment) currently points at. Reset
+  // whenever the result set changes — carrying an old index into a shorter
+  // list highlighted nothing, or the wrong row.
+  const [highlighted, setHighlighted] = useState(0);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -138,7 +153,53 @@ export function GlobalSearch() {
     enabled: debouncedQuery.length > 0 && isOpen,
   });
 
+  useEffect(() => setHighlighted(0), [data]);
+
+  // Grouped for display, in a fixed type order — but each item keeps its
+  // position in the *flat* `data` order (`flatIndex`), which is what
+  // `highlighted` indexes. Arrow keys move through the flat order regardless
+  // of which section a row happens to render under, so Down always means
+  // "the next result", not "the next result in this section".
+  const groups = useMemo(() => {
+    if (!data) return [];
+    const byType = new Map<string, { result: NonNullable<typeof data>[number]; flatIndex: number }[]>();
+    data.forEach((result, flatIndex) => {
+      const list = byType.get(result.type) ?? [];
+      list.push({ result, flatIndex });
+      byType.set(result.type, list);
+    });
+    return TYPE_ORDER.filter((type) => byType.has(type)).map((type) => ({ type, items: byType.get(type)! }));
+  }, [data]);
+
+  const openResult = (result: NonNullable<typeof data>[number]) => {
+    setIsOpen(false);
+    navigate(resultRoute(result)!);
+  };
+
+  const onInputKeyDown = (e: React.KeyboardEvent) => {
+    if (!data || data.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlighted((i) => (i + 1) % data.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlighted((i) => (i - 1 + data.length) % data.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      // No fallback: `highlighted` resets to 0 whenever `data` changes and
+      // the arrow branches above always keep it inside `[0, data.length)`,
+      // so `data[highlighted]` is defined whenever this line runs — the
+      // guard this used to have could not be exercised by any real sequence
+      // of key presses, only asserted never to fire.
+      openResult(data[highlighted]!);
+    }
+    // Escape is still `Dialog`'s job — it never reaches this handler because
+    // the keydown that closes the dialog is caught on `document`, not here.
+  };
+
   if (!isOpen) return null;
+
+  const hasResults = !!data && data.length > 0;
 
   // On `Dialog` since M06-T03. This palette handled Escape and nothing else:
   // no role, no aria-modal, no focus trap, and closing it dropped the keyboard
@@ -159,51 +220,109 @@ export function GlobalSearch() {
               which element opened the palette, so closing dropped the keyboard
               user on <body> (M06-T03). */}
           <input
-            placeholder="Type a command or search..."
+            role="combobox"
+            aria-expanded={hasResults}
+            aria-controls="global-search-listbox"
+            aria-autocomplete="list"
+            aria-activedescendant={hasResults ? `search-result-${highlighted}` : undefined}
+            placeholder="Search tasks, artifacts, projects, agents…"
             className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onInputKeyDown}
           />
           <button onClick={() => setIsOpen(false)} aria-label="Close search" className="rounded-full p-1 hover:bg-muted">
             <X className="h-4 w-4 opacity-50" />
           </button>
         </div>
-        
-        <div className="max-h-[300px] min-h-[52px] overflow-y-auto p-2">
+
+        <div
+          id="global-search-listbox"
+          role="listbox"
+          aria-label="Search results"
+          // Roughly five rows of the tallest result (one with a snippet,
+          // measured at 52px) before scrolling kicks in. Grouped headings and
+          // a mix of one- and two-line rows mean no fixed height lands on a
+          // row boundary for every possible result set — `scrollbar-thin`
+          // says "more below, scroll for it", and `fade-bottom` keeps
+          // whichever row the boundary happens to land on from reading as an
+          // error rather than a normal, deliberate scroll edge.
+          className="max-h-[296px] min-h-[52px] overflow-y-auto scrollbar-thin fade-bottom p-2"
+        >
+          {debouncedQuery.length === 0 && (
+            <div className="p-3 text-sm text-muted-foreground" role="presentation">
+              <p>Search across tasks, artifacts, projects, agents and comments.</p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded border bg-muted px-1 font-mono">↑</kbd>
+                  <kbd className="rounded border bg-muted px-1 font-mono">↓</kbd>
+                  to navigate
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded border bg-muted px-1 font-mono">↵</kbd>
+                  to open
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded border bg-muted px-1 font-mono">esc</kbd>
+                  to close
+                </span>
+              </div>
+            </div>
+          )}
           {isLoading && <p className="p-4 text-center text-sm text-muted-foreground">Searching...</p>}
           {!isLoading && data && data.length === 0 && debouncedQuery && (
             <p className="p-4 text-center text-sm text-muted-foreground">No results found.</p>
           )}
-          {!isLoading && data && data.length > 0 && (
+          {!isLoading && hasResults && (
             <div className="space-y-1">
-              {data.map((result) => (
-                <button
-                  key={result.id}
-                  onClick={() => {
-                    setIsOpen(false);
-                    navigate(resultRoute(result)!);
-                  }}
-                  className="flex w-full items-start gap-3 rounded-md p-2 hover:bg-accent hover:text-accent-foreground text-left"
-                >
-                  <div className="mt-0.5 text-muted-foreground shrink-0">
-                    {(() => {
-                      // No fallback: a result whose type has no route is
-                      // filtered out before it reaches here, and every routable
-                      // type has an icon — so a `??` branch would be dead code
-                      // that only exists to be untested.
-                      const Icon = ICON_BY_RESULT_TYPE[result.type]!;
-                      return <Icon className="h-4 w-4" />;
-                    })()}
+              {/* One number a user can trust at a glance, above the sections
+                  that add up to it — five entity types in one undifferentiated
+                  list gave no sense of how much was cut off by the 300px box,
+                  or how much of it was, say, comments rather than tasks. */}
+              <p className="px-2 pb-1 text-xs text-muted-foreground">
+                {data!.length} result{data!.length === 1 ? '' : 's'}
+              </p>
+              {groups.map((group) => (
+                <div key={group.type} role="group" aria-labelledby={`search-group-${group.type}`}>
+                  <div
+                    id={`search-group-${group.type}`}
+                    className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide"
+                  >
+                    {TYPE_LABEL[group.type]} · {group.items.length}
                   </div>
-                  <div className="flex flex-col overflow-hidden">
-                    <span className="font-medium text-sm truncate">{result.title}</span>
-                    {result.snippet && (
-                      <span className="text-xs text-muted-foreground truncate">
-                        <HighlightedSnippet text={result.snippet} matches={result.snippetMatches ?? []} />
-                      </span>
-                    )}
-                  </div>
-                </button>
+                  {group.items.map(({ result, flatIndex }) => (
+                    <button
+                      key={result.id}
+                      id={`search-result-${flatIndex}`}
+                      role="option"
+                      aria-selected={flatIndex === highlighted}
+                      onMouseEnter={() => setHighlighted(flatIndex)}
+                      onClick={() => openResult(result)}
+                      className={`flex w-full items-start gap-3 rounded-md p-2 text-left ${
+                        flatIndex === highlighted ? 'bg-accent text-accent-foreground' : ''
+                      }`}
+                    >
+                      <div className="mt-0.5 text-muted-foreground shrink-0">
+                        {(() => {
+                          // No fallback: a result whose type has no route is
+                          // filtered out before it reaches here, and every routable
+                          // type has an icon — so a `??` branch would be dead code
+                          // that only exists to be untested.
+                          const Icon = ICON_BY_RESULT_TYPE[result.type]!;
+                          return <Icon className="h-4 w-4" />;
+                        })()}
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="font-medium text-sm truncate">{result.title}</span>
+                        {result.snippet && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            <HighlightedSnippet text={result.snippet} matches={result.snippetMatches ?? []} />
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               ))}
             </div>
           )}

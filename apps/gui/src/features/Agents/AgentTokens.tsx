@@ -183,7 +183,7 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
           <button
             type="submit"
             disabled={createMutation.isPending || !name.trim() || scopes.length === 0}
-            className="self-end px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-xs font-medium disabled:opacity-50"
+            className="self-end px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-xs font-medium disabled:bg-muted disabled:text-muted-foreground"
           >
             {createMutation.isPending ? 'Creating...' : 'Create'}
           </button>

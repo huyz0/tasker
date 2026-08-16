@@ -104,7 +104,7 @@ function SearchSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute z-40 mt-1 w-full rounded-md border bg-card shadow-lg p-1 flex flex-col gap-1">
+        <div className="absolute z-drawer mt-1 w-full rounded-md border bg-card shadow-lg p-1 flex flex-col gap-1">
           <input
             autoFocus
             role="combobox"

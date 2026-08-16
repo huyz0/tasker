@@ -1,6 +1,6 @@
 ---
 id: ADR-0009
-status: accepted
+status: superseded by ADR-0011
 date: 2026-08-15
 milestone: M06
 ---

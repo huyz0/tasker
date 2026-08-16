@@ -13,7 +13,7 @@ export function InlineCreateForm({
   isSubmitting = false,
   className = 'flex gap-1 px-1 pb-1',
   inputClassName = 'border p-1 rounded text-xs flex-1 bg-background',
-  buttonClassName = 'text-xs px-2 rounded bg-primary text-primary-foreground disabled:opacity-50',
+  buttonClassName = 'text-xs px-2 rounded bg-primary text-primary-foreground disabled:bg-muted disabled:text-muted-foreground',
 }: {
   placeholder: string;
   onSubmit: (value: string) => void;

@@ -213,7 +213,7 @@ export function AgentsDashboard() {
               <button
                 type="submit"
                 disabled={createAgentMutation.isPending || !newAgentName.trim() || !newAgentRoleId}
-                className="self-end px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium disabled:opacity-50"
+                className="self-end px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium disabled:bg-muted disabled:text-muted-foreground"
               >
                 {createAgentMutation.isPending ? 'Deploying...' : 'Deploy'}
               </button>
@@ -396,7 +396,7 @@ export function AgentsDashboard() {
             <button
               type="submit"
               disabled={createAgentRoleMutation.isPending || !newRoleName.trim() || !newRoleSystemPrompt.trim() || !newRoleCapabilities.trim()}
-              className="self-end px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium disabled:opacity-50"
+              className="self-end px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium disabled:bg-muted disabled:text-muted-foreground"
             >
               {createAgentRoleMutation.isPending ? 'Creating...' : 'Create role'}
             </button>
@@ -456,7 +456,7 @@ export function AgentsDashboard() {
                     <button
                       type="submit"
                       disabled={!editRoleName.trim() || !editRoleSystemPrompt.trim() || !editRoleCapabilities.trim() || updateAgentRoleMutation.isPending}
-                      className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium"
+                      className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
                     >
                       {updateAgentRoleMutation.isPending ? 'Saving...' : 'Save'}
                     </button>

@@ -213,7 +213,7 @@ export function ProjectsWizard() {
             <button
               type="submit"
               disabled={createTemplateMutation.isPending || !newTemplateName.trim()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:bg-muted disabled:text-muted-foreground"
             >
               {createTemplateMutation.isPending ? 'Creating...' : 'Create Template'}
             </button>
@@ -276,7 +276,7 @@ export function ProjectsWizard() {
                        <button
                          type="submit"
                          disabled={!editTemplateName.trim() || updateTemplateMutation.isPending}
-                         className="flex-1 px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium"
+                         className="flex-1 px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
                        >
                          {updateTemplateMutation.isPending ? 'Saving...' : 'Save'}
                        </button>
@@ -349,7 +349,7 @@ export function ProjectsWizard() {
             <button
               type="submit"
               disabled={createTaskTypeMutation.isPending || !newTaskTypeName.trim()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:bg-muted disabled:text-muted-foreground"
             >
               {createTaskTypeMutation.isPending ? 'Creating...' : 'Create'}
             </button>
@@ -447,7 +447,7 @@ export function ProjectsWizard() {
                       <button
                         type="submit"
                         disabled={!editProjectName.trim() || updateProjectMutation.isPending}
-                        className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium"
+                        className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
                       >
                         {updateProjectMutation.isPending ? 'Saving...' : 'Save'}
                       </button>

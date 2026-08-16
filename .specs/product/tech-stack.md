@@ -46,21 +46,26 @@ rendering; see Dropped.
 
 ### UI components
 
-Hand-rolled primitives in `apps/gui/src/components/ui/`. **Shadcn and Radix are
-not installed, by decision** — see
-[ADR-0009](../adr/ADR-0009-component-primitives.md), which settled the question
-M06 inherited from
-[ADR-0005](../adr/ADR-0005-hand-rolled-ui-primitives-instead-of-shadcn-and-radix.md).
+Primitives in `apps/gui/src/components/ui/`, mostly hand-rolled, with Radix
+underneath the ones that need real focus/menu/tab semantics — see
+[ADR-0011](../adr/ADR-0011-adopt-radix-for-overlay-and-navigation-primitives.md),
+which reversed [ADR-0009](../adr/ADR-0009-component-primitives.md) on the
+condition ADR-0009 itself named for reversal: user authorization, plus a second
+overlay pattern (the search palette) that needed it.
 
 Overlays go through one primitive, `components/ui/Dialog.tsx`, which owns the
 seven behaviours ADR-0009 lists (`role="dialog"`, `aria-modal`, an accessible
 name, focus in, focus trapped, `Escape` to close, focus restored) and has a test
-for each. **Do not hand-roll a second overlay** — that is how the two
-pre-M06 overlays ended up with no focus trap between them.
+for each — now backed by `@radix-ui/react-dialog` rather than a hand-rolled
+focus trap. **Do not hand-roll a second overlay** — that is how the two
+pre-M06 overlays ended up with no focus trap between them, and it is exactly
+what Radix now exists in this repo to prevent.
 
-Adopting Radix later is deliberately cheap: call sites depend on `Dialog`'s
-props, not its internals. ADR-0009 names the three conditions that would
-reverse the decision.
+| Technology | Version | Role |
+|---|---|---|
+| `@radix-ui/react-dialog` | ^1.1.23 | `Dialog.tsx` — the task detail overlay and the search palette |
+| `@radix-ui/react-dropdown-menu` | ^2.1.24 | Row action menus (mobile-clipped actions), the sidebar overflow menu |
+| `@radix-ui/react-tabs` | ^1.1.21 | Organizations' in-page sections, now routable tabs instead of local `useState` |
 
 ### Backend — `package.json`, `apps/backend/package.json`
 

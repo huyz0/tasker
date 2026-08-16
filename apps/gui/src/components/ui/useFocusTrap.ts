@@ -47,6 +47,17 @@ if (typeof document !== 'undefined') {
   );
 }
 
+/**
+ * The element `lastFocusOutside` tracks, for anything that needs the same
+ * "what opened this" answer without running the rest of this hook — `Dialog`
+ * marks its Radix-backed panel with the same `data-focus-trap="on"` this file
+ * already excludes, and reuses this single shared tracker rather than a second
+ * capture-phase listener.
+ */
+export function getLastFocusOutside(): HTMLElement | null {
+  return lastFocusOutside;
+}
+
 export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   active: boolean,

@@ -93,11 +93,11 @@ describe('OrganizationsDashboard', () => {
     await waitFor(() => expect(screen.getByText('Root Co')).toBeInTheDocument());
     expect(screen.getByText('Your Organizations')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
     await waitFor(() => expect(screen.getByText('No members found.')).toBeInTheDocument());
     expect(screen.queryByText('Your Organizations')).toBeNull();
 
-    fireEvent.click(screen.getByText('Organizations'));
+    fireEvent.mouseDown(screen.getByText('Organizations'), { button: 0 });
     expect(screen.getByText('Your Organizations')).toBeInTheDocument();
   });
 
@@ -264,7 +264,8 @@ describe('OrganizationsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Actions for Root Co' }), { button: 0 });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
     await confirmAction();
 
     await waitFor(() => expect(mockArchiveOrg).toHaveBeenCalledWith({ orgId: 'org-1' }));
@@ -275,7 +276,8 @@ describe('OrganizationsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Actions for Root Co' }), { button: 0 });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
     await cancelAction();
 
     expect(mockArchiveOrg).not.toHaveBeenCalled();
@@ -287,7 +289,8 @@ describe('OrganizationsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Actions for Root Co' }), { button: 0 });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
     await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to delete organization/)).toBeDefined());
@@ -304,7 +307,8 @@ describe('OrganizationsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Child Co')).toBeDefined());
-    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[1]);
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Actions for Child Co' }), { button: 0 });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
     await confirmAction();
 
     await waitFor(() => expect(mockArchiveOrg).toHaveBeenCalledWith({ orgId: 'org-child' }));
@@ -461,7 +465,8 @@ describe('OrganizationsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Actions for Root Co' }), { button: 0 });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }));
 
     const nameInput = screen.getByDisplayValue('Root Co');
     const slugInput = screen.getByDisplayValue('root-co');
@@ -478,7 +483,8 @@ describe('OrganizationsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Actions for Root Co' }), { button: 0 });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }));
     expect(screen.getByDisplayValue('Root Co')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Cancel'));
@@ -493,7 +499,8 @@ describe('OrganizationsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeDefined());
-    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Actions for Root Co' }), { button: 0 });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }));
     fireEvent.click(screen.getAllByText('Save')[0]);
 
     await waitFor(() => expect(screen.getByText(/Failed to update organization/)).toBeInTheDocument());
@@ -505,7 +512,7 @@ describe('OrganizationsDashboard', () => {
     mockRemoveOrgMember.mockResolvedValue({ success: true });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -519,7 +526,7 @@ describe('OrganizationsDashboard', () => {
     mockListOrgMembers.mockResolvedValue({ members: [] });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText('No members found.')).toBeInTheDocument());
   });
@@ -529,7 +536,7 @@ describe('OrganizationsDashboard', () => {
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -544,7 +551,7 @@ describe('OrganizationsDashboard', () => {
     mockRemoveOrgMember.mockRejectedValue(new Error("cannot remove the organization's last owner"));
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -569,7 +576,7 @@ describe('OrganizationsDashboard', () => {
       });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Bob/)).toBeInTheDocument());
     expect(screen.getByText(/Alice/)).toBeInTheDocument();
@@ -589,7 +596,7 @@ describe('OrganizationsDashboard', () => {
     });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText('Search members'), { target: { value: 'ali' } });
@@ -611,7 +618,7 @@ describe('OrganizationsDashboard', () => {
     });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText('Filter by role'), { target: { value: 'viewer' } });
@@ -629,7 +636,7 @@ describe('OrganizationsDashboard', () => {
     });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByTestId('member-count')).toHaveTextContent('Showing 1 of 100001'));
   });
@@ -644,7 +651,7 @@ describe('OrganizationsDashboard', () => {
       .mockResolvedValue({ members: [], page: { totalCount: 0 } });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText('Search members'), { target: { value: 'zzz' } });
@@ -669,7 +676,7 @@ describe('OrganizationsDashboard', () => {
     });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByRole('rowgroup')).toHaveAttribute('aria-rowcount', '100001'));
   });
@@ -689,7 +696,7 @@ describe('OrganizationsDashboard', () => {
     mockListOrgMembers.mockResolvedValue({ members: many, page: { totalCount: 1000 } });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByTestId('member-count')).toHaveTextContent('Showing 1000 of 1000'));
 
@@ -739,7 +746,7 @@ describe('OrganizationsDashboard', () => {
     mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockListOrgMembers.mockResolvedValue({ members: [], page: { totalCount: 0 } });
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
   };
 
   it('sends an invitation with the chosen role and clears the field', async () => {
@@ -848,7 +855,7 @@ describe('OrganizationsDashboard', () => {
     );
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -864,7 +871,7 @@ describe('OrganizationsDashboard', () => {
     mockUpdateOrgMemberRole.mockResolvedValue({ member: { userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' } });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.change(screen.getByLabelText('Role for Alice'), { target: { value: 'admin' } });
@@ -877,7 +884,7 @@ describe('OrganizationsDashboard', () => {
     mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'owner' }] });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     expect(screen.getByText('Owner', { selector: 'span' })).toBeInTheDocument();
@@ -892,7 +899,7 @@ describe('OrganizationsDashboard', () => {
     ] });
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText('noname@b.com')).toBeInTheDocument());
     expect(screen.getByText('user-3')).toBeInTheDocument();
@@ -906,7 +913,7 @@ describe('OrganizationsDashboard', () => {
     mockUpdateOrgMemberRole.mockRejectedValue(new Error('owner role required'));
 
     renderPage();
-    fireEvent.click(screen.getByText('Roles & Permissions'));
+    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.change(screen.getByLabelText('Role for Alice'), { target: { value: 'viewer' } });

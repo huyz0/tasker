@@ -79,6 +79,15 @@ data — carries `design-lint-disable-next-line tokens — <reason>`.
 
 ## 4. Components Rules (Atomic)
 
-- **Shadcn UI Base**: Leverage Shadcn UI patterns. When building generic inputs, buttons, or dialogs, place them in `apps/gui/src/components/ui/`.
+- Generic inputs, buttons, and dialogs live in `apps/gui/src/components/ui/`.
 - Do not build complex business logic into generic `ui/` components.
-- Rely on accessible Radix primitives (or similar accessible ARIA-compliant base structures) whenever possible.
+- Where a component needs real focus, menu, or tab semantics — an overlay, a
+  dropdown, a tab set — build it on **Radix** (`@radix-ui/react-*`), per
+  [ADR-0011](../adr/ADR-0011-adopt-radix-for-overlay-and-navigation-primitives.md).
+  Simple presentational primitives (`Button`, `Card`) stay hand-rolled; the
+  line is whether the component needs to manage focus or keyboard
+  interaction on behalf of its children.
+- **Do not hand-roll a second overlay, menu, or tab implementation.**
+  `components/ui/Dialog.tsx` is the one overlay primitive; a new dropdown or
+  tab set is a new Radix-backed primitive in `ui/`, not a bespoke
+  `useState` toggle inside a feature.

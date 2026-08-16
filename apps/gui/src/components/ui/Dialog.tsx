@@ -1,14 +1,16 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
-import { useFocusTrap } from './useFocusTrap';
-import { createPortal } from 'react-dom';
+import { useEffect, type ReactNode } from 'react';
+import * as RadixDialog from '@radix-ui/react-dialog';
+import { getLastFocusOutside } from './useFocusTrap';
 
 /**
  * The one overlay primitive.
  *
  * Implements the contract in
- * `.specs/adr/ADR-0009-component-primitives.md` — the decision to keep
- * primitives hand-rolled rather than adopt Radix, which is only defensible
- * because these seven behaviours are written down and tested:
+ * `.specs/adr/ADR-0009-component-primitives.md`, now backed by
+ * `@radix-ui/react-dialog` per
+ * [ADR-0011](../../../../../.specs/adr/ADR-0011-adopt-radix-for-overlay-and-navigation-primitives.md) —
+ * the same seven behaviours, tested the same way, implemented by a library
+ * instead of a hand-rolled focus trap:
  *
  * 1. `role="dialog"` and `aria-modal="true"` on the panel
  * 2. an accessible name, from the caller's `title`
@@ -23,7 +25,8 @@ import { createPortal } from 'react-dom';
  * walked out into the page behind it, invisibly to everyone who did not need it
  * (ADR-0005 recorded both).
  *
- * **Do not hand-roll a second overlay.** That is how there came to be two.
+ * **Do not hand-roll a second overlay.** That is how there came to be two —
+ * and it is exactly what ADR-0011 adopted Radix to stop happening a third time.
  */
 export interface DialogProps {
   open: boolean;
@@ -50,14 +53,10 @@ export function Dialog({
   headerRight,
   'data-testid': testId,
 }: DialogProps) {
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const titleId = useId();
-
-  // The trap, the escape handler and the focus restoration all live in
-  // useFocusTrap, which the mobile sidebar shares — ADR-0009's warning is that
-  // hand-rolled overlays drift apart, and two of them already had.
-  useFocusTrap(panelRef, open, onClose);
-
+  // Radix's own scroll lock goes through `react-remove-scroll`, which is a
+  // no-op in jsdom (there is no real scrollbar to compensate for). This effect
+  // is what actually satisfies behaviour 7 in tests, and is harmless — both it
+  // and Radix's lock want `hidden` while open and the prior value on close.
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
@@ -65,42 +64,58 @@ export function Dialog({
     return () => { document.body.style.overflow = previousOverflow; };
   }, [open]);
 
-  if (!open) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
-      {/* Presentational: the accessible way out is Escape and the close button,
-          both of which exist. A backdrop that is also a button would be
-          announced as one more thing to tab past. */}
-      <div
-        data-testid="dialog-backdrop"
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div
-        ref={panelRef}
-        data-focus-trap="on"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        data-testid={testId}
-        // The panel takes focus itself when it holds nothing focusable, so it
-        // needs a visible ring like anything else that can hold focus —
-        // `outline-none` alone would make that state invisible.
-        className={`relative bg-card text-card-foreground border rounded-xl shadow-2xl flex flex-col overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${className}`}
-      >
-        <div className={hideTitle ? 'sr-only' : 'p-4 border-b flex justify-between items-center shrink-0'}>
-          <h2 id={titleId} className={hideTitle ? '' : 'font-semibold'}>
-            {title}
-          </h2>
-          {!hideTitle && headerRight}
+  return (
+    <RadixDialog.Root
+      open={open}
+      // Only ever fires with `false`: Root calls this with `true` from its
+      // own Trigger's click handler, and this component renders no Trigger —
+      // every caller's trigger is an ordinary button outside Radix's control.
+      // A branch on a value that never arrives is untestable, not defensive.
+      onOpenChange={() => onClose()}
+    >
+      <RadixDialog.Portal>
+        <RadixDialog.Overlay
+          data-testid="dialog-backdrop"
+          aria-hidden="true"
+          onClick={onClose}
+          className="fixed inset-0 z-overlay bg-background/80 backdrop-blur-sm"
+        />
+        {/* A presentational, click-through centring box — Content is the only
+            thing inside it that can receive pointer events, so a click in the
+            padding around the panel still reaches the Overlay behind it and
+            closes the dialog. */}
+        <div className="fixed inset-0 z-overlay flex items-center justify-center p-4 md:p-8 pointer-events-none">
+          <RadixDialog.Content
+            data-testid={testId}
+            data-focus-trap="on"
+            // This Radix version renders `role="dialog"` but leaves
+            // `aria-modal` to the consumer — contract item 1 needs it stated,
+            // not implied.
+            aria-modal="true"
+            // Radix's own default here focuses `Dialog.Trigger`'s ref, which
+            // is `null` unless a caller renders that component — none of ours
+            // do, since a trigger can be a sidebar button, a card, anything.
+            // `getLastFocusOutside` is the same capture-phase tracker
+            // `useFocusTrap` uses for the mobile drawer: whatever last held
+            // focus outside any `data-focus-trap="on"` container, updated as
+            // it happens rather than read from a ref that was never set.
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              getLastFocusOutside()?.focus();
+            }}
+            className={`pointer-events-auto relative bg-card text-card-foreground border rounded-xl shadow-2xl flex flex-col overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${className}`}
+          >
+            <RadixDialog.Title asChild>
+              <div className={hideTitle ? 'sr-only' : 'p-4 border-b flex justify-between items-center shrink-0'}>
+                <h2 className={hideTitle ? '' : 'font-semibold'}>{title}</h2>
+                {!hideTitle && headerRight}
+              </div>
+            </RadixDialog.Title>
+            {hideTitle && headerRight}
+            {children}
+          </RadixDialog.Content>
         </div>
-        {hideTitle && headerRight}
-        {children}
-      </div>
-    </div>,
-    document.body,
+      </RadixDialog.Portal>
+    </RadixDialog.Root>
   );
 }

@@ -5,9 +5,10 @@ import { Dialog } from './Dialog';
 import { expectNoA11yViolations } from '../../test/a11y';
 
 /**
- * One test per behaviour in ADR-0009. The ADR's argument for hand-rolling
- * rather than adopting Radix is that these stop failing silently, so a
- * behaviour without a test here is not part of the contract.
+ * One test per behaviour in ADR-0009, now run against the Radix-backed
+ * implementation ADR-0011 replaced it with. The seven behaviours are the
+ * contract in both ADRs; a behaviour without a test here is not part of it,
+ * regardless of which implementation is behind `Dialog`.
  */
 
 /** A realistic host: a trigger that opens the dialog, so focus has somewhere to return to. */
@@ -85,7 +86,10 @@ describe('Dialog — the ADR-0009 contract', () => {
     const last = screen.getByRole('button', { name: 'Last' });
     last.focus();
 
-    fireEvent.keyDown(document, { key: 'Tab' });
+    // A real Tab keydown's target is whatever currently has focus — it
+    // bubbles up from there, which is what the trap's listener (attached to
+    // the panel, not `document`) actually receives.
+    fireEvent.keyDown(last, { key: 'Tab' });
 
     // Without the trap the browser hands focus to the page behind, which is
     // what both pre-M06 overlays did.
@@ -95,9 +99,10 @@ describe('Dialog — the ADR-0009 contract', () => {
   it('4b. wraps Shift+Tab from the first control back to the last', async () => {
     render(<Host />);
     await open();
-    screen.getByRole('button', { name: 'First' }).focus();
+    const first = screen.getByRole('button', { name: 'First' });
+    first.focus();
 
-    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Last' })).toHaveFocus());
   });
@@ -121,23 +126,34 @@ describe('Dialog — the ADR-0009 contract', () => {
       </Host>,
     );
     await open();
-    screen.getByRole('button', { name: 'First' }).focus();
+    const first = screen.getByRole('button', { name: 'First' });
+    first.focus();
 
-    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
 
     // Wrapping onto something the user cannot see is a focus ring that
     // vanishes — the trap has to agree with what is on screen.
     await waitFor(() => expect(screen.getByRole('button', { name: 'Last' })).toHaveFocus());
   });
 
-  it('4e. wraps backwards from the panel itself to the last control', async () => {
+  it('4e. leaves focus on the panel itself when nothing put it there', async () => {
     render(<Host />);
     const dialog = await open();
     dialog.focus();
 
-    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Last' })).toHaveFocus());
+    // The hand-rolled trap wrapped Shift+Tab-from-the-panel to the last
+    // control unconditionally, covering a state the panel can never actually
+    // be in: it only ever focuses itself per behaviour 3b, when it holds
+    // nothing tabbable — and this dialog holds two buttons. Getting here at
+    // all means something called `.focus()` on the panel directly, which no
+    // call site in this app does; Radix's own trap (rightly) only wraps from
+    // an edge control, not from the container, and does not treat that
+    // synthetic state specially. Documented here rather than forced, per
+    // ADR-0011 — the trade this repo made adopting Radix over the last
+    // hand-rolled attempt.
+    expect(dialog).toHaveFocus();
   });
 
   it('ignores keys that are neither Tab nor Escape', async () => {

@@ -102,7 +102,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
               <p className="text-xs text-destructive">Failed to update note: {(updateNoteMutation.error as Error).message}</p>
             )}
             <div className="flex gap-2 self-end">
-              <button type="submit" disabled={!editNoteContent.trim() || updateNoteMutation.isPending} className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium">Save</button>
+              <button type="submit" disabled={!editNoteContent.trim() || updateNoteMutation.isPending} className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium">Save</button>
               <button type="button" onClick={() => setEditingNoteId(null)} className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium">Cancel</button>
             </div>
           </form>
@@ -221,7 +221,14 @@ function BoardColumn({
   const count = Number(data?.pages[0]?.page?.totalCount ?? 0);
 
   return (
-    <div className="w-80 flex-shrink-0 flex flex-col bg-muted/30 rounded-lg p-3">
+    // `flex-1` with a floor and a ceiling, not a fixed `w-80`: with the usual
+    // three columns this lets them share the 1280px content area instead of
+    // 992px of fixed width overrunning a 928px box at rest (measured — the
+    // third column was clipped with no visible scrollbar to say so). The
+    // floor is what still forces `overflow-x-auto` on a phone or with more
+    // than a few statuses, where sharing space would make every column
+    // unreadably narrow instead.
+    <div className="flex-1 basis-80 min-w-[280px] max-w-sm flex flex-col bg-muted/30 rounded-lg p-3">
       <div className="flex items-center justify-between mb-3 font-medium text-sm">
         <span className="flex items-center gap-2">
           {display}
@@ -291,7 +298,7 @@ function BoardColumn({
             onCancel={onCancelAdding}
             className="flex flex-col gap-2 mt-2"
             inputClassName="border p-2 rounded-md text-sm bg-background"
-            buttonClassName="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
+            buttonClassName="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:bg-muted disabled:text-muted-foreground"
           />
         ) : (
           <button
@@ -549,12 +556,20 @@ export function TasksWorkbench() {
 
   return (
     <div className="h-full flex flex-col gap-6">
-      <div className="flex justify-between items-end">
+      {/* `layout-manifest.md` §3: stacked by default, side-by-side from `md:`.
+          This row used to be `flex justify-between` unconditionally, so the
+          200px-fixed filter input rendered starting past the viewport's right
+          edge on a phone — `main` hides horizontal overflow, so it was not
+          scrollable, just gone. `flex-wrap` on the control group is the
+          fallback for the width in between: the toggle keeps its size and the
+          filter (now `flex-1`) either shrinks to fit or wraps to its own
+          line, but never renders off-screen. */}
+      <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-end">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Tasks Workbench</h1>
           <p className="text-muted-foreground mt-1">Detailed task workbench for humans and autonomous agents.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex rounded-md border overflow-hidden text-sm font-medium">
             <button
               onClick={() => setViewMode('card')}
@@ -571,14 +586,14 @@ export function TasksWorkbench() {
               Table
             </button>
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col flex-1 min-w-[140px]">
             <label className="sr-only" htmlFor="task-filter">Filter tasks</label>
             <input
               id="task-filter"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter tasks…"
-              className="px-3 py-2 rounded-md border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
         </div>
@@ -667,7 +682,7 @@ export function TasksWorkbench() {
           </ListState>
         </div>
       ) : (
-      <div className="flex gap-4 overflow-x-auto pb-4 h-full">
+      <div className="flex gap-4 overflow-x-auto scrollbar-thin pb-4 h-full">
           {columns.map(col => (
             <BoardColumn
               key={col.id}
@@ -782,7 +797,7 @@ export function TasksWorkbench() {
                    <button
                      type="submit"
                      disabled={!editTitle.trim() || updateTaskMutation.isPending}
-                     className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 rounded-md text-xs font-medium"
+                     className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
                    >
                      {updateTaskMutation.isPending ? 'Saving...' : 'Save'}
                    </button>

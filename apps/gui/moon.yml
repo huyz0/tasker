@@ -107,22 +107,36 @@ tasks:
       - 'moon.yml'
       - '/.github/workflows/ci.yml'
 
-  # Runs axe over every story in a real browser. `type: run` for the same reason
-  # as e2e: it launches chromium and builds a static Storybook first, and a
-  # commit must not require installed browsers. CI runs it explicitly.
+  # The browser-free half of the mobile-overflow gate, same trade as
+  # storybook-a11y-config above: cheap and cached, so it can run in
+  # `moon check` where the browser gate below cannot.
+  mobile-overflow-config:
+    script: 'node scripts/mobile-overflow.test.mjs'
+    inputs:
+      - 'scripts/mobile-overflow.mjs'
+      - 'scripts/mobile-overflow.test.mjs'
+      - 'moon.yml'
+      - '/.github/workflows/ci.yml'
+
+  # Runs axe, then the 375px overflow check, over every story in a real
+  # browser — one Storybook build shared by both. `type: run` for the same
+  # reason as e2e: it launches chromium, and a commit must not require
+  # installed browsers. CI runs it explicitly.
   #
-  # A real browser is the whole point — `color-contrast` is the rule this exists
-  # to catch, and axe reports it as `incomplete` under jsdom because there is no
-  # layout to measure (M06-T13).
+  # A real browser is the whole point — `color-contrast` and layout overflow
+  # both need one. axe reports contrast as `incomplete` under jsdom, and
+  # jsdom's zero-size bounding rects mean nothing could ever be measured as
+  # overflowing (M06-T13, and the finding that added mobile-overflow.mjs).
   storybook-test:
     deps:
       - 'shared-contract:install-deps'
     type: 'run'
-    script: 'bunx storybook build -o storybook-static --quiet && node scripts/storybook-a11y.mjs'
+    script: 'bunx storybook build -o storybook-static --quiet && node scripts/storybook-a11y.mjs && node scripts/mobile-overflow.mjs'
     inputs:
       - 'src/**/*'
       - '.storybook/**/*'
       - 'scripts/storybook-a11y.mjs'
+      - 'scripts/mobile-overflow.mjs'
       - 'package.json'
     options:
       cache: false
