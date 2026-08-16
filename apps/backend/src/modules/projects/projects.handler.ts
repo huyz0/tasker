@@ -103,7 +103,11 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.id)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await authorizePrincipal(db, principal, result[0].orgId, { scope: 'projects:read', permission: 'project:read' });
+      // Project scope, not organization scope: a project-scoped grant (M10-T10)
+      // must reach this on its own, without also holding org-wide access.
+      // can()'s project->org ancestor climbing means an org-level grant still
+      // works too - this only widens what's accepted, never narrows it.
+      await authorizePrincipal(db, principal, result[0].orgId, { scope: 'projects:read', permission: 'project:read' }, { type: 'project', id: parsed.id });
       return { project: result[0] };
     },
     async createProject(req: unknown, { values: contextValues }: { values: any }) {
@@ -192,8 +196,11 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const parsed = UpdateProjectSchema.parse(req);
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
+      // Project scope, not organization scope: a project-scoped grant
+      // (M10-T10) must reach this on its own. can()'s project->org ancestor
+      // climbing means an org-level grant still works too.
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertCan(db, { kind: "user", userId }, { type: "organization", id: result[0].orgId }, "project:write");
+      await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:write");
 
       await db.update(ps).set({ name: parsed.name }).where(eq((ps as any).id, parsed.projectId));
 
@@ -207,7 +214,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertCan(db, { kind: "user", userId }, { type: "organization", id: result[0].orgId }, "project:admin");
+      await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:admin");
 
       await softDeleteById(db, ps, parsed.projectId);
 
@@ -220,7 +227,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertCan(db, { kind: "user", userId }, { type: "organization", id: result[0].orgId }, "project:admin");
+      await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:admin");
 
       const orgsTable = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       const orgRows = await db.select().from(orgsTable).where(eq((orgsTable as any).id, result[0].orgId)).limit(1);
@@ -239,7 +246,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertCan(db, { kind: "user", userId }, { type: "organization", id: result[0].orgId }, "project:admin");
+      await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:admin");
       if (!result[0].deletedAt) {
         throw new ConnectError("project must be archived before it can be purged", Code.FailedPrecondition);
       }

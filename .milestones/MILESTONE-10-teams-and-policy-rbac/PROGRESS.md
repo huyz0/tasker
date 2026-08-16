@@ -647,3 +647,70 @@
   access to one project without the whole organization (already true since
   T04's `can()`; this task's own remaining work is likely verification-only,
   the same shape T08 turned out to be for team-derived grants).
+
+## M10-T10 — enforce project-scope grants
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**:
+  - **Not verification-only, unlike T08** - a real gap surfaced: `can()`
+    has supported a `project`-scope check since T04, but nothing in
+    `projects.handler.ts` ever actually *asked* for one. Every single-
+    project RPC checked `{type: 'organization', id: orgId}`, so a project-
+    scoped grant (with no org-level access) could not reach any of them at
+    all, regardless of what `can()` itself could already resolve.
+  - `apps/backend/src/lib/authz.ts` — `authorizePrincipal` gained an
+    optional 5th parameter, `humanScope?: Scope`, so a caller can check the
+    human path against a narrower scope than `{type: 'organization', id:
+    orgId}` while the agent path keeps resolving against `orgId` exactly
+    as before (a token's org binding is not a `can()` scope, unaffected).
+    Omitted, both paths behave exactly as pre-T10 - every other
+    `authorizePrincipal` call site in the codebase needed no change.
+  - `apps/backend/src/modules/projects/projects.handler.ts` —
+    `getProject` (via the new `humanScope` param), and `updateProject`/
+    `archiveProject`/`restoreProject`/`purgeProject` (already using
+    `assertCan` directly, which already took a generic `Scope`) now check
+    `{type: 'project', id: projectId}` instead of the project's owning
+    org. `createProject` and `listProjects` are unchanged and stay
+    organization-scoped deliberately: there is no project to scope a
+    permission to before one exists, and listing across an org is
+    inherently an org-wide operation - per-row filtering by scoped grant
+    is a materially different feature this task's own file scope
+    (`lib/policy.ts`, `modules/projects/projects.handler.ts`) does not ask
+    for. This is strictly additive: `can()`'s existing project→org
+    ancestor climbing (T04) means an org-level grant keeps working exactly
+    as before - proven by the full existing test suite passing unmodified.
+  - `apps/backend/src/modules/projects/projects.test.ts` — 2 new tests
+    (`Project-scope grants (M10-T10)`): a project-scoped grant, with *no*
+    `organization_members` row at all, reaches get/update/archive/
+    restore/purge on that one project end to end; and a project-scoped
+    grant does not reach a sibling project under the same org - this
+    task's own verify line, and exit criterion 6's wording exactly.
+- **Verified**:
+  - `bun test src/modules/projects/projects.test.ts` — 16/16 pass (up
+    from 14), 100% coverage on `projects.handler.ts`.
+  - `STANDALONE=true bun test` (full backend suite) — 859 pass, 0 fail -
+    including every existing organization-scoped project test, unmodified,
+    proving the ancestor-climb fallback keeps org-level access working.
+  - `bunx knip` (repo root) — clean.
+  - `moon check --all` — 27/27 tasks green; `authz.ts`/`policy.ts`/
+    `requestContext.ts` all back at 100% line/function coverage.
+- **Notes**:
+  - This is the one task in the "Teams and hierarchy" group that turned
+    out to need real production code, not just a verification pass -
+    worth naming since T08 and (mostly) T09 did not. The gap here was
+    genuinely invisible from `policy.ts` alone: `can()` was already
+    correct for a project-scope check, but no handler had ever been
+    updated to ask it one, since every project RPC predates ADR-0013 and
+    was written when "the project's org" was the only scope that existed.
+  - Task/artifact/comment/label RPCs that operate *within* a project still
+    check organization scope only, unchanged - out of this task's own file
+    scope (`modules/projects/projects.handler.ts` specifically, not the
+    whole project-adjacent surface). A user holding only a project-scoped
+    grant can now manage the project itself but still cannot create a task
+    inside it without also holding org-level `task:write`. Named here
+    rather than assumed away: extending scoped grants to task/artifact/
+    comment/label RPCs is real future work this milestone's stated scope
+    does not cover, and would be its own task if picked up later.
+- **Next**: M10-T11 — Role management UI: create, clone and edit roles,
+  with a virtualized permission matrix.

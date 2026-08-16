@@ -122,7 +122,7 @@ SCIM provisioning, delegated administration.
       - Files: `modules/orgs/orgs.handler.ts`, `lib/policy.ts`
       - Verify: a parent-org admin can administer a grandchild org.
 
-- [ ] **M10-T10** — Enforce project-scope grants so a member can be given access
+- [x] **M10-T10** — Enforce project-scope grants so a member can be given access
       to one project without the whole organization.
       - Files: `lib/policy.ts`, `modules/projects/projects.handler.ts`
       - Verify: a project-scoped grant does not reach a sibling project.

@@ -3,7 +3,7 @@ import { eq, and, isNull, inArray } from 'drizzle-orm';
 import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
 import { currentUserIdKey, currentPrincipalKey, type Principal } from '../modules/auth/session';
-import { assertCan } from './policy';
+import { assertCan, type Scope } from './policy';
 
 // Resolved lazily inside each function rather than once at module load, since
 // STANDALONE is set at test/runtime, not import time - freezing it here caused
@@ -56,16 +56,24 @@ export function requireUser(contextValues: any): string {
  * An agent is governed by its token: the organization it was issued for, and
  * ADR-0008's closed scope vocabulary (`opts.scope`) on it - unchanged by M10
  * (ADR-0013 Option 4: agent tokens stay their own system, deliberately not
- * folded into `grants`). A human is governed by `can()` against
- * `opts.permission`, ADR-0013's real permission vocabulary - a materially
- * different, larger vocabulary than `opts.scope`'s, which is why both fields
- * exist side by side rather than one doing double duty.
+ * folded into `grants`) and always resolved against `orgId`, regardless of
+ * `humanScope` below - a token's org binding is not a `can()` scope. A human
+ * is governed by `can()` against `opts.permission`, ADR-0013's real
+ * permission vocabulary - a materially different, larger vocabulary than
+ * `opts.scope`'s, which is why both fields exist side by side rather than
+ * one doing double duty.
+ *
+ * `humanScope` (M10-T10) lets a caller check the human path against a
+ * narrower scope than `{type: 'organization', id: orgId}` - a project, once
+ * one exists to name - while the agent path keeps resolving against `orgId`
+ * exactly as before. Omit it and both paths behave exactly as pre-T10.
  */
 export async function authorizePrincipal(
   db: any,
   principal: Principal,
   orgId: string,
   opts: { scope: string; write?: boolean; permission: string },
+  humanScope?: Scope,
 ): Promise<void> {
   if (principal.kind === 'agent') {
     if (principal.orgId !== orgId) {
@@ -76,7 +84,7 @@ export async function authorizePrincipal(
     }
     return;
   }
-  await assertCan(db, principal, { type: 'organization', id: orgId }, opts.permission);
+  await assertCan(db, principal, humanScope ?? { type: 'organization', id: orgId }, opts.permission);
 }
 
 export async function assertOrgMember(db: any, userId: string, orgId: string): Promise<void> {
