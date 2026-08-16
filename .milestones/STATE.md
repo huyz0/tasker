@@ -1,8 +1,8 @@
 ---
 active_milestone: M10
-active_task: M10-T12
+active_task: M10-T13
 last_updated: 2026-08-17
-last_commit: abaecd9
+last_commit: ccb1d13
 blocked: false
 blocker: null
 ---
@@ -16,15 +16,16 @@ blocker: null
 ## Now
 
 - **Milestone**: M10 — Teams & Policy-Based RBAC
-- **Task**: M10-T11 done — M10-T12 (Team management UI, member search
-  reusing the M03 member picker pattern) is next. T11 built the
-  `RoleService` grant-assignment RPCs (`grantRole`/`revokeGrant`/
-  `listGrants`) but left them GUI-uncalled on purpose: they need the same
-  subject-search control T12 is already building for picking team
-  members, so T12 is the natural place to wire grant assignment in
-  rather than duplicating a second search control. See T11's PROGRESS
-  entry for the `RowActionsMenu` focus-trap bug found and fixed along
-  the way.
+- **Task**: M10-T12 done — M10-T13 (the exhaustive generated
+  authorization test matrix: every role x permission x scope) is next,
+  the milestone's last task. T12 built the Team management GUI and
+  wired `RoleService.grantRole`/`revokeGrant`/`listGrants` (deferred
+  from T11) by reusing the roster query already in memory as the
+  grant-assignment subject picker, rather than a second search control -
+  `gui:rpc-coverage` is now at 116/119. See T12's PROGRESS entry for a
+  second, independent consumer of T11's `RowActionsMenu` focus-trap fix,
+  and for the deliberate scope boundary around not folding team
+  archive/restore into `features/Bin/`.
 - **Branch**: `feature/m10-teams-and-policy-rbac`, per the default in
   `git-workflow-standard.md` / `milestone-standard.md` §5.
 - **Command to continue**: `/milestone-deliver M10` (or `/milestone-deliver-auto M10`)
@@ -63,12 +64,12 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M07 | Read-Path Scale                | done   | M05        | 14    | 14   |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
-| M10 | Teams & Policy-Based RBAC      | in-progress | M03, M04 | 13  | 11   |
+| M10 | Teams & Policy-Based RBAC      | in-progress | M03, M04 | 13  | 12   |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 | M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
 
-**Total: 160 tasks across 13 milestones — 115 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 11, M13 15).**
+**Total: 160 tasks across 13 milestones — 116 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 12, M13 15).**
 
 ## Dependency graph
 
