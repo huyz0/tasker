@@ -353,3 +353,66 @@
     their own credentials regardless of org role; denied to agents
     categorically via `NO_AGENT_ACCESS`).
 - **Next**: M13-T09 — username-keyed invitations.
+
+## M13-T09 — Username-keyed invitations
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `packages/shared-contract/main.tsp` + `.../health.proto` +
+  regenerated `gen/` (TS and Go), `db/schema.sqlite.ts`,
+  `db/schema.mysql.ts`, `drizzle-sqlite/0032_invitations_username.sql`,
+  `drizzle-mysql/0019_invitations_username.sql`, both `meta/_journal.json`,
+  `src/db/migrate-invitations-username.test.ts`,
+  `src/modules/orgs/orgs.handler.ts` (`InviteUserSchema`, `inviteUser`,
+  `listInvitations`), `src/modules/orgs/orgs.test.ts`,
+  `src/modules/auth/auth.ts` (`consumePendingInvitations` generalized),
+  `src/modules/auth/auth.test.ts`, `apps/cli/cmd/orgs.go` (`--username`
+  flag), `apps/cli/cmd/orgs_test.go`
+- **Verified**: `bun test src/modules/auth/ src/modules/orgs/
+  src/db/migrate-invitations-username.test.ts` — 146 pass. Full backend
+  suite: 728 pass, 0 fail. `go build ./...` and `go test ./...` clean (both
+  broke first, from the contract's `email` field going `optional` — see
+  Notes). `bunx knip`, `gui:typecheck`, `tsp format --check` all clean.
+- **Notes**:
+  - **`invitations.email` had to become nullable too**, mirroring `users` in
+    T02 — an invitation targeting a bare username has no email at all, not
+    an empty one. Zod's `.refine()` on `InviteUserSchema` enforces **exactly
+    one** of email/username at the API boundary (not "at least one"): the
+    two are alternate keys, not a combinable filter, and `consumePendingInvitations`
+    matches each independently. Same table-rebuild-on-SQLite dance as T02's
+    `users` migration, hand-written for the same stale-snapshot reason,
+    verified against a hand-built pre-migration fixture the same way.
+  - **`consumePendingInvitations` takes an `identity` object now, not a
+    bare `email` string** — every call site updated. Deliberately
+    asymmetric between the two callers: `completeLogin` (Google) passes
+    only `{ email }`, never the derived username a brand-new Google user
+    gets, because that username was never chosen by the person or typed by
+    an inviting admin — matching against it would accept an invite on a
+    coincidence of the derivation scheme, not on intent. `registerLocalUser`
+    passes both, since a local user's username is a real, chosen identifier.
+    Covered by a test that seeds an invitation using the exact string
+    `deriveUsernameFromEmail` would produce for an incoming Google profile,
+    and asserts it is *not* consumed.
+  - **The CLI broke on this change**, discovered by `go build`, not
+    predicted: proto3 `optional string email` became `*string` in the
+    generated Go struct (it was a plain, always-present `string` before),
+    so `apps/cli/cmd/orgs.go` no longer compiled. Fixed by adding a
+    `--username` flag alongside `--email` with the same exactly-one
+    validation the server enforces, checked client-side first for a
+    CLI-shaped error message rather than a raw RPC rejection. This is the
+    kind of gap `gui:typecheck`-equivalent gates exist to catch on the Go
+    side — `go build`/`go test` are part of `moon check --all` for exactly
+    this reason, and it fired as designed.
+  - `listInvitations`' `filterColumn` was widened from `email` alone to
+    `[email, username]` so an admin's search box finds a username-only
+    invitation too — a small, directly-motivated fix, not scope creep: an
+    invitation type the list can't be searched by is a regression relative
+    to the email flow it's replacing half of.
+  - `orgsInviteCmd`'s Cobra flags are a package-level singleton that
+    persists between `Execute()` calls within one test binary run (not
+    reset automatically) — three new CLI tests needed explicit
+    `Flags().Set(..., "")` resets to avoid a prior test's `--email` value
+    leaking into a `--username`-only invocation and tripping the new
+    exactly-one check. Recorded because it is exactly the kind of thing a
+    future CLI test in this file will rediscover the hard way otherwise.
+- **Next**: M13-T10 — admin-driven password reset.

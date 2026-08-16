@@ -158,7 +158,13 @@ export const taskStatusTransitions = sqliteTable("task_status_transitions", {
 export const invitations = sqliteTable("invitations", {
   id: text("id").primaryKey(),
   orgId: text("org_id").notNull().references(() => organizations.id),
-  email: text("email").notNull(),
+  // M13-T09: exactly one of email/username is set at the app layer - an
+  // invitation targets an address or a bare local handle, never both.
+  // `email` therefore drops NOT NULL here; the app-level XOR is what keeps
+  // a row from having neither, the same "logically required, DB-nullable"
+  // convention `users.username` already uses.
+  email: text("email"),
+  username: text("username"),
   invitedBy: text("invited_by").notNull().references(() => users.id),
   // The role the invitee gets on accept - 'admin' | 'member' | 'viewer'
   // (never 'owner': ownership isn't handed out through an email invite).

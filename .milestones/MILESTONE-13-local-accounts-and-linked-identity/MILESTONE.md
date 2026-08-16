@@ -146,7 +146,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: unlinking the sole remaining method is rejected; the same call
         succeeds once a second method exists.
 
-- [ ] **M13-T09** — Rework invitation acceptance to key on username or email:
+- [x] **M13-T09** — Rework invitation acceptance to key on username or email:
       `invitations.username` as a nullable alternate key to `email`;
       registration and `completeLogin` both consume a matching pending invite.
       - Files: `apps/backend/src/modules/orgs/orgs.handler.ts`,

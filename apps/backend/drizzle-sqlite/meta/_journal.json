@@ -225,6 +225,13 @@
       "when": 1786920000000,
       "tag": "0031_backfill_google_linked_identities",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1786930000000,
+      "tag": "0032_invitations_username",
+      "breakpoints": true
     }
   ]
 }

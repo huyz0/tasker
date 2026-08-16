@@ -661,6 +661,78 @@ describe('Auth Routes (local password)', () => {
     expect(membership[0].role).toBe('admin');
   });
 
+  /** M13-T09. */
+  it('consumes a pending username-only invitation on local registration', async () => {
+    await db.insert(schemaSqlite.organizations).values({ id: 'org-username-invite', name: 'Org', slug: 'org-username-invite', createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: 'inviter-username', email: 'inviter-username@example.com', createdAt: new Date() });
+    await db.insert(schemaSqlite.invitations).values({
+      id: 'inv-username', orgId: 'org-username-invite', username: 'invited-handle', invitedBy: 'inviter-username', role: 'viewer', createdAt: new Date(),
+    });
+
+    const res = await register({ username: 'invited-handle', password: 'a-strong-password-123' });
+    const { userId } = await res.json();
+
+    const membership = await db.select().from(schemaSqlite.organizationMembers)
+      .where(eq(schemaSqlite.organizationMembers.userId, userId));
+    expect(membership).toHaveLength(1);
+    expect(membership[0].orgId).toBe('org-username-invite');
+    expect(membership[0].role).toBe('viewer');
+
+    const remaining = await db.select().from(schemaSqlite.invitations).where(eq(schemaSqlite.invitations.id, 'inv-username'));
+    expect(remaining).toHaveLength(0);
+  });
+
+  it('does not consume a username-only invitation for a different username', async () => {
+    await db.insert(schemaSqlite.organizations).values({ id: 'org-username-mismatch', name: 'Org', slug: 'org-username-mismatch', createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: 'inviter-mismatch', email: 'inviter-mismatch@example.com', createdAt: new Date() });
+    await db.insert(schemaSqlite.invitations).values({
+      id: 'inv-mismatch', orgId: 'org-username-mismatch', username: 'the-invited-one', invitedBy: 'inviter-mismatch', createdAt: new Date(),
+    });
+
+    const res = await register({ username: 'a-completely-different-user', password: 'a-strong-password-123' });
+    const { userId } = await res.json();
+    const membership = await db.select().from(schemaSqlite.organizationMembers)
+      .where(eq(schemaSqlite.organizationMembers.userId, userId));
+    expect(membership).toHaveLength(0);
+  });
+
+  it('does NOT consume a username-only invitation via Google login — a derived username is not a real match', async () => {
+    await db.insert(schemaSqlite.organizations).values({ id: 'org-username-google', name: 'Org', slug: 'org-username-google', createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: 'inviter-google-username', email: 'inviter-gu@example.com', createdAt: new Date() });
+    // The exact username deriveUsernameFromEmail would produce for this
+    // profile, to prove the Google path never even tries to match by
+    // username, not merely that some unrelated username doesn't hit.
+    await db.insert(schemaSqlite.invitations).values({
+      id: 'inv-google-username', orgId: 'org-username-google', username: 'newgoogleuser-google-new-guser-1',
+      invitedBy: 'inviter-google-username', createdAt: new Date(),
+    });
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') {
+        return new Response(JSON.stringify({ access_token: 'mock_access_token' }), { status: 200 });
+      }
+      if (urlStr === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        return new Response(JSON.stringify({ id: 'google-new-guser-1', email: 'newgoogleuser@example.com' }), { status: 200 });
+      }
+      return originalFetch(url);
+    }) as unknown as typeof fetch;
+
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state, cookie: stateCookie } = extractLoginFlow(loginRes);
+    const res = await authRoutes.handle(new Request(
+      `http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`,
+      { headers: { cookie: stateCookie } },
+    ));
+    globalThis.fetch = originalFetch;
+
+    expect(res.status).toBe(302);
+    const membership = await db.select().from(schemaSqlite.organizationMembers)
+      .where(eq(schemaSqlite.organizationMembers.userId, 'google-new-guser-1'));
+    expect(membership).toHaveLength(0);
+  });
+
   /**
    * M13-T07. The threshold is 5 consecutive failures; these tests drive it
    * directly rather than mocking time, so the lockout math is exercised for

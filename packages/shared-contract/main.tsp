@@ -198,6 +198,13 @@ model Invitation {
   @field(6) createdAt: string;
   @field(7) expiresAt?: string;
   @field(8) expired: boolean;
+
+  // M13-T09. Exactly one of email/username is ever set - an invitation
+  // targets an address (accepted on Google login or local registration with
+  // a matching email) or a bare local handle (accepted on local
+  // registration with a matching username), never both. Plain string, same
+  // convention as User.username: empty means absent.
+  @field(9) username: string;
 }
 
 model ListInvitationsRequest {
@@ -271,7 +278,12 @@ interface OrgService {
 
 model InviteUserRequest {
   @field(1) orgId: string;
-  @field(2) email: string;
+
+  // Exactly one of email/username is required (M13-T09) - an admin invites
+  // either an address or a bare local handle, never both at once.
+  @field(2) email?: string;
+
+  @field(4) username?: string;
 
   // Role the invitee gets on accept - "admin" | "member" | "viewer"
   // (never "owner"). Defaults to "member" server-side if omitted.

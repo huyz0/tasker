@@ -131,8 +131,10 @@ message SeedOrgResponse {
 
 message InviteUserRequest {
   string orgId = 1;
-  string email = 2;
+  optional string email = 2;
   optional string role = 3;
+  // M13-T09. Exactly one of email/username is required.
+  optional string username = 4;
 }
 message InviteUserResponse {
   bool success = 1;
@@ -164,6 +166,9 @@ message Invitation {
   string created_at = 6;
   string expires_at = 7;
   bool expired = 8;
+  // M13-T09. See main.tsp's Invitation model for the exactly-one-of-
+  // email/username reasoning.
+  string username = 9;
 }
 
 message ListInvitationsRequest {

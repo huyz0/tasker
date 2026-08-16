@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import * as schemaMysql from '../../db/schema.mysql';
 import * as schemaSqlite from '../../db/schema.sqlite';
 import { config } from '../../config';
@@ -62,22 +62,35 @@ function authTables() {
 }
 
 /**
- * Accepts every pending invitation matching `email`, joining the invited org
- * and consuming the invite. Shared by every path that can create or resolve
- * a user (Google login, local registration) so "accept an invite" is one
- * piece of logic rather than one per auth method (M13-T06 / ADR-0012's
- * "converge on the same session issuance path", extended to invitation
- * acceptance too, since both flows need it).
+ * Accepts every pending invitation matching `email` or `username`, joining
+ * the invited org and consuming the invite. Shared by every path that can
+ * create or resolve a user (Google login, local registration) so "accept an
+ * invite" is one piece of logic rather than one per auth method (M13-T06 /
+ * ADR-0012's "converge on the same session issuance path", extended to
+ * invitation acceptance too, since both flows need it).
  *
- * A no-op when `email` is absent, which is the normal case for a local
- * account registered with no email at all - matching by username instead is
- * M13-T09's job. Runs on every login, not just the first, since a user may
- * accept new invitations sent after their account already exists.
+ * An invitation targets exactly one of email/username (M13-T09's Zod
+ * refine on `inviteUser` enforces this at creation), so `email` and
+ * `username` here are matched independently rather than as a combined
+ * filter - passing both covers a caller (local registration) that has
+ * both, without accidentally requiring an invitation to match on both at
+ * once. A no-op when neither is given. Runs on every login, not just the
+ * first, since a user may accept new invitations sent after their account
+ * already exists.
  */
-async function consumePendingInvitations(db: any, userId: string, email: string | null | undefined): Promise<void> {
-  if (!email) return;
+async function consumePendingInvitations(
+  db: any,
+  userId: string,
+  identity: { email?: string | null; username?: string | null },
+): Promise<void> {
   const { invitations, members } = authTables();
-  const pendingInvites = await db.select().from(invitations).where(eq((invitations as any).email, email));
+  const conditions = [];
+  if (identity.email) conditions.push(eq((invitations as any).email, identity.email));
+  if (identity.username) conditions.push(eq((invitations as any).username, identity.username));
+  if (conditions.length === 0) return;
+
+  const pendingInvites = await db.select().from(invitations)
+    .where(conditions.length === 1 ? conditions[0] : or(...conditions));
   const now = Date.now();
   for (const invite of pendingInvites) {
     // Expired invitations are skipped rather than deleted. They stay visible to
@@ -186,7 +199,11 @@ async function completeLogin(db: any, profile: GoogleProfile): Promise<string> {
     }
   }
 
-  await consumePendingInvitations(db, userId, profile.email);
+  // Only email, deliberately: a brand-new Google user gets a *derived*
+  // username (deriveUsernameFromEmail above), not one they chose or an
+  // admin could have typed when creating a username-only invitation.
+  // Matching against it would accept an invite on a coincidence, not intent.
+  await consumePendingInvitations(db, userId, { email: profile.email });
   return userId;
 }
 
@@ -233,7 +250,10 @@ async function registerLocalUser(db: any, input: { username: string; password: s
     mustChangePassword: false,
   });
 
-  await consumePendingInvitations(db, userId, input.email);
+  // Both, unlike the Google path: a locally-registered user's username is
+  // one they (or the admin inviting them) actually chose, so it is a real
+  // match target for a username-only invitation, not a coincidence.
+  await consumePendingInvitations(db, userId, { email: input.email, username });
   return userId;
 }
 

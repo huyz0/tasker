@@ -112,7 +112,10 @@ export const taskStatusTransitions = mysqlTable("task_status_transitions", {
 export const invitations = mysqlTable("invitations", {
   id: varchar("id", { length: 256 }).primaryKey(),
   orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
-  email: varchar("email", { length: 256 }).notNull(),
+  // M13-T09: see the SQLite counterpart - exactly one of email/username is
+  // set at the app layer, so email drops NOT NULL here.
+  email: varchar("email", { length: 256 }),
+  username: varchar("username", { length: 256 }),
   invitedBy: varchar("invited_by", { length: 256 }).notNull().references(() => users.id),
   // The role the invitee gets on accept - never 'owner': ownership isn't
   // handed out through an email invite.
