@@ -756,3 +756,182 @@ describe('Auth Routes (local password)', () => {
     });
   });
 });
+
+/**
+ * M13-T08. Linking reuses /api/auth/google/callback (the `link:` state
+ * prefix) rather than a second registered redirect URI - see auth.ts's
+ * comment on /api/auth/google/link for why.
+ */
+describe('Auth Routes (link/unlink Google)', () => {
+  const register = (body: Record<string, unknown>) =>
+    authRoutes.handle(new Request('http://localhost/api/auth/password/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }));
+
+  const mockGoogle = (profile: { id: string; email: string }) => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') {
+        return new Response(JSON.stringify({ access_token: 'mock_access_token' }), { status: 200 });
+      }
+      if (urlStr === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        return new Response(JSON.stringify(profile), { status: 200 });
+      }
+      return originalFetch(url);
+    }) as unknown as typeof fetch;
+    return () => { globalThis.fetch = originalFetch; };
+  };
+
+  const registerAndGetSession = async (username: string) => {
+    const res = await register({ username, password: 'a-strong-password-123' });
+    const cookie = res.headers.get('set-cookie')!.split(';')[0];
+    const { userId } = await res.json();
+    return { cookie, userId };
+  };
+
+  it('refuses to start a link flow with no session', async () => {
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/link'));
+    expect(res.status).toBe(401);
+  });
+
+  it('redirects to Google consent with a link: state when authenticated', async () => {
+    const { cookie } = await registerAndGetSession('link-flow-start');
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/link', {
+      headers: { cookie },
+    }));
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toContain('accounts.google.com/o/oauth2/v2/auth');
+    expect(res.headers.get('location')).toContain('state=link%3A');
+    expect(res.headers.get('set-cookie')).toContain('oauth_state=');
+  });
+
+  it('links a Google identity to the already-logged-in local account, not a new one', async () => {
+    const { cookie, userId } = await registerAndGetSession('link-flow-success');
+    const linkRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/link', { headers: { cookie } }));
+    const { state, cookie: stateCookie } = extractLoginFlow(linkRes);
+
+    const restoreFetch = mockGoogle({ id: 'google-linked-1', email: 'linked@example.com' });
+    const combinedCookie = `${cookie}; ${stateCookie}`;
+    const callbackRes = await authRoutes.handle(new Request(
+      `http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`,
+      { headers: { cookie: combinedCookie } },
+    ));
+    restoreFetch();
+
+    expect(callbackRes.status).toBe(302);
+    // No session cookie set by the link callback - the caller was already
+    // logged in; linking must not silently rotate their session.
+    expect(callbackRes.headers.get('set-cookie')).not.toContain('session=');
+
+    const links = await db.select().from(schemaSqlite.linkedIdentities)
+      .where(eq(schemaSqlite.linkedIdentities.userId, userId));
+    expect(links).toHaveLength(1);
+    expect(links[0].provider).toBe('google');
+    expect(links[0].providerUserId).toBe('google-linked-1');
+
+    // And no second `users` row was created for the Google identity.
+    const allUsersWithThatId = await db.select().from(schemaSqlite.users)
+      .where(eq(schemaSqlite.users.id, 'google-linked-1'));
+    expect(allUsersWithThatId).toHaveLength(0);
+  });
+
+  it('refuses to link a Google identity already linked to a different user', async () => {
+    const { userId: firstUserId } = await registerAndGetSession('link-conflict-first');
+    await db.insert(schemaSqlite.linkedIdentities).values({
+      id: 'li-conflict', userId: firstUserId, provider: 'google', providerUserId: 'google-taken', linkedAt: new Date(),
+    });
+
+    const { cookie: secondCookie } = await registerAndGetSession('link-conflict-second');
+    const linkRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/link', { headers: { cookie: secondCookie } }));
+    const { state, cookie: stateCookie } = extractLoginFlow(linkRes);
+
+    const restoreFetch = mockGoogle({ id: 'google-taken', email: 'taken@example.com' });
+    const res = await authRoutes.handle(new Request(
+      `http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`,
+      { headers: { cookie: `${secondCookie}; ${stateCookie}` } },
+    ));
+    restoreFetch();
+
+    expect(res.status).toBe(409);
+    const links = await db.select().from(schemaSqlite.linkedIdentities).where(eq(schemaSqlite.linkedIdentities.providerUserId, 'google-taken'));
+    expect(links).toHaveLength(1); // still only the original link
+  });
+
+  it('is idempotent — linking the same Google identity to the same account twice does not duplicate', async () => {
+    const { cookie, userId } = await registerAndGetSession('link-idempotent');
+    const restoreFetch = mockGoogle({ id: 'google-idempotent', email: 'idempotent@example.com' });
+
+    for (let i = 0; i < 2; i++) {
+      const linkRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/link', { headers: { cookie } }));
+      const { state, cookie: stateCookie } = extractLoginFlow(linkRes);
+      const res = await authRoutes.handle(new Request(
+        `http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`,
+        { headers: { cookie: `${cookie}; ${stateCookie}` } },
+      ));
+      expect(res.status).toBe(302);
+    }
+    restoreFetch();
+
+    const links = await db.select().from(schemaSqlite.linkedIdentities).where(eq(schemaSqlite.linkedIdentities.userId, userId));
+    expect(links).toHaveLength(1);
+  });
+
+  it('refuses the link callback once the session has ended, even with a valid state/nonce', async () => {
+    const { cookie } = await registerAndGetSession('link-expired-session');
+    const linkRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/link', { headers: { cookie } }));
+    const { state, cookie: stateCookie } = extractLoginFlow(linkRes);
+
+    // Log out before completing the flow.
+    await authRoutes.handle(new Request('http://localhost/api/auth/logout', { method: 'POST', headers: { cookie } }));
+
+    const restoreFetch = mockGoogle({ id: 'google-session-ended', email: 'ended@example.com' });
+    const res = await authRoutes.handle(new Request(
+      `http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`,
+      { headers: { cookie: `${cookie}; ${stateCookie}` } },
+    ));
+    restoreFetch();
+
+    expect(res.status).toBe(401);
+  });
+
+  /**
+   * The defect linking would otherwise introduce: before this fix,
+   * `completeLogin` resolved purely by `users.id === profile.id`, so a
+   * locally-registered user who links Google and later clicks "Sign in
+   * with Google" again would silently get a brand-new second account
+   * instead of logging into the one they linked.
+   */
+  it('logging in via Google after linking resolves to the SAME account, not a new one', async () => {
+    const { cookie, userId } = await registerAndGetSession('link-then-login');
+    const linkRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/link', { headers: { cookie } }));
+    const { state: linkState, cookie: linkStateCookie } = extractLoginFlow(linkRes);
+    const restoreFetchForLink = mockGoogle({ id: 'google-link-then-login', email: 'linkthenlogin@example.com' });
+    await authRoutes.handle(new Request(
+      `http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(linkState)}`,
+      { headers: { cookie: `${cookie}; ${linkStateCookie}` } },
+    ));
+    restoreFetchForLink();
+
+    // Now log in fresh via plain Google login (no session, no `link:` state) —
+    // exactly what clicking "Sign in with Google" from a logged-out state does.
+    const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+    const { state: loginState, cookie: loginStateCookie } = extractLoginFlow(loginRes);
+    const restoreFetchForLogin = mockGoogle({ id: 'google-link-then-login', email: 'linkthenlogin@example.com' });
+    const callbackRes = await authRoutes.handle(new Request(
+      `http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(loginState)}`,
+      { headers: { cookie: loginStateCookie } },
+    ));
+    restoreFetchForLogin();
+
+    expect(callbackRes.status).toBe(302);
+    const sessionCookieHeader = callbackRes.headers.get('set-cookie')!;
+    const session = verifySessionToken(parseSessionCookie(sessionCookieHeader)!);
+    expect(session?.userId).toBe(userId); // the original local account, not a new one
+
+    const allUsers = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.id, 'google-link-then-login'));
+    expect(allUsers).toHaveLength(0); // no duplicate account was created
+  });
+});

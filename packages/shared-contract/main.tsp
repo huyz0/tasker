@@ -84,9 +84,36 @@ model SetPasswordResponse {
   @field(1) success: boolean;
 }
 
+// M13-T08. Linking itself isn't an RPC: proving ownership of a Google
+// account needs the OAuth redirect dance, so `GET /api/auth/google/link`
+// and its callback (plain HTTP routes, like the login flow) do the actual
+// linking. These two RPCs are the read/remove half - listing what's linked
+// and removing one - which don't need a redirect.
+model LinkedIdentity {
+  @field(1) provider: string;
+  @field(2) linkedAt: string;
+}
+model ListLinkedIdentitiesRequest {}
+model ListLinkedIdentitiesResponse {
+  @field(1) identities: LinkedIdentity[];
+}
+
+// ADR-0012 §5: refused if this would leave the caller with no working
+// sign-in method at all.
+model UnlinkIdentityRequest {
+  @field(1) provider: string;
+}
+model UnlinkIdentityResponse {
+  @field(1) success: boolean;
+}
+
 interface AuthService {
   getIdentity(request: GetIdentityRequest): GetIdentityResponse;
   setPassword(request: SetPasswordRequest): SetPasswordResponse;
+  listLinkedIdentities(
+    request: ListLinkedIdentitiesRequest,
+  ): ListLinkedIdentitiesResponse;
+  unlinkIdentity(request: UnlinkIdentityRequest): UnlinkIdentityResponse;
 }
 
 model ListOrgsRequest {

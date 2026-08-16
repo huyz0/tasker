@@ -281,3 +281,75 @@
     mechanics it's built on.
 - **Next**: M13-T08 — `linkIdentity`/`unlinkIdentity` RPCs with the
   last-sign-in-method guard.
+
+## M13-T08 — Link/unlink Google, with a correctness fix to Google login itself
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `packages/shared-contract/main.tsp` + `.../health.proto` +
+  regenerated `gen/`, `src/lib/authz.ts` (`countActiveSignInMethods`,
+  `assertNotLastSignInMethod`), `src/lib/authz.test.ts`,
+  `src/modules/auth/auth.ts` (`completeLogin` reworked, `/google/link` HTTP
+  route added, `/google/callback` grew a `link:` branch),
+  `src/modules/auth/auth.handler.ts` (`listLinkedIdentities`,
+  `unlinkIdentity`), `src/modules/auth/auth.handler.test.ts`,
+  `src/modules/auth/auth.test.ts`, `src/lib/viewer-denial.test.ts`,
+  `src/lib/agent-scope-sweep.test.ts`, `apps/gui/scripts/rpc-coverage.mjs`
+- **Verified**: `bun test src/modules/auth/ src/lib/authz.test.ts` — 110
+  pass, ~100% coverage on every touched file. Full suite: 713 pass, 0 fail.
+  `bunx knip`, `gui:typecheck`, `gui:rpc-coverage` (2 new exceptions,
+  reasoned, owned by T12), `go build`/`go test`, `tsp format --check` all
+  clean.
+- **Notes**:
+  - **Linking reuses `/api/auth/google/callback`, not a second registered
+    redirect URI.** Proving ownership of a Google account needs the OAuth
+    redirect dance no RPC can do, so `GET /api/auth/google/link` (requires
+    an existing session, then redirects to Google with `state=link:<nonce>`)
+    feeds into the *same* callback login already uses, branching on the
+    `link:` prefix. Registering a second redirect URI with Google would be
+    a permanent operational cost (another Console entry, another env var)
+    for a URL that does 90% the same thing. `linkIdentity` never became an
+    RPC at all for this reason — recorded divergence from the task's
+    literal naming, same shape as T06's `loginWithPassword`/
+    `registerLocalUser` divergence.
+  - **The defect this task would otherwise have shipped, and its fix.**
+    Before this task, `completeLogin` resolved a Google login purely by
+    `users.id === profile.id`. Once linking exists, a locally-registered
+    user who links Google and later clicks "Sign in with Google" again
+    would have silently gotten a **second, duplicate account** — the
+    lookup would find nothing at `users.id === profile.id` (their real id
+    is `u-<uuid>`, not the Google sub) and create one. `completeLogin` now
+    resolves through `linked_identities` first, falling back to the legacy
+    `users.id === profile.id` path only for a Google identity truly never
+    seen before. Covered by a test that links, logs out, logs back in via
+    plain Google, and asserts the *same* userId comes back with no second
+    `users` row created. This was necessary to ship linking correctly, not
+    scope creep — flagged here because it touches `completeLogin` itself,
+    outside T08's literal Files list.
+  - Both call sites that used to pass `profile.id` directly to
+    `sessionCookie()`/`createSessionToken()` now use `completeLogin`'s
+    *returned* userId instead — the specific line that would have kept the
+    bug alive even with the resolution fix in place.
+  - A **new** Google identity (never linked, never seen) still gets
+    `users.id = profile.id` exactly as before M13, plus a `linked_identities`
+    row alongside it (so it resolves through the fast path from then on)
+    and a derived `username` (same provably-unique email-local-part + id
+    scheme as T02's backfill), keeping the "every user-creating path sets a
+    username" invariant intact across all three paths now
+    (`registerLocalUser`, the backfill, and this one).
+  - **`unlinkIdentity`'s last-method guard computes "count after removal"
+    explicitly** (`countActiveSignInMethods(...) - 1`) rather than special
+    -casing "count is 1" — the same shape `assertNotLastSignInMethod` will
+    reuse for T10's admin password reset, which removes from the *other*
+    direction (clearing a password, not a linked identity).
+  - Conflict handling: linking a Google identity already linked to a
+    *different* account returns `409` and does not re-point the link —
+    silently stealing a link would let anyone who can complete that
+    account's consent screen take over its linked identity. Linking the
+    *same* identity to the *same* account twice is a no-op success, since a
+    doubled callback (browser back-button, retry) is normal, not an attack.
+  - `listLinkedIdentities`/`unlinkIdentity` classified in both sweeps the
+    same way `setPassword` was in T06 (`NOT_ORG_SCOPED` — a viewer manages
+    their own credentials regardless of org role; denied to agents
+    categorically via `NO_AGENT_ACCESS`).
+- **Next**: M13-T09 — username-keyed invitations.

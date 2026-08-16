@@ -100,30 +100,94 @@ async function consumePendingInvitations(db: any, userId: string, email: string 
 }
 
 /**
- * Upserts the users row for this Google profile (login was previously never
- * persisting one at all - getIdentity and every users.id foreign key would
- * only work for rows a test had inserted by hand), then accepts pending
+ * Derives a username the same provably-unique way the M13-T02 backfill
+ * migration does (email local part + the user's own id), for a brand-new
+ * account created by a path other than `registerLocalUser` - so every
+ * user-creating path leaves `username` set, not just the local one.
+ */
+function deriveUsernameFromEmail(email: string, userId: string): string {
+  const localPart = email.split('@')[0]?.toLowerCase() || 'user';
+  return `${localPart}-${userId}`;
+}
+
+/**
+ * Upserts the users row for this Google profile and returns the resolved
+ * `userId` - the caller must use this, not `profile.id`, to issue the
+ * session (M13-T08 note below explains why they can now differ).
+ *
+ * Resolution order (M13-T08):
+ * 1. A `linked_identities` row for `(provider: 'google', providerUserId:
+ *    profile.id)` - if one exists, its `userId` is authoritative. This
+ *    covers every user who existed before M13 (T04's migration backfilled
+ *    one for each) and anyone who has since linked Google to a local
+ *    account (T08's `linkIdentity` flow). Resolving `users.id ===
+ *    profile.id` instead here would silently create a second, duplicate
+ *    account the first time such a person used "Sign in with Google" again
+ *    - the exact defect linking would otherwise introduce.
+ * 2. No linked identity: a Google id genuinely never seen before. Same
+ *    shape as every Google login before M13 - `users.id` becomes
+ *    `profile.id` - plus a `linked_identities` row is created alongside it,
+ *    so this account resolves through step 1 from here on rather than
+ *    falling through this branch (and the "no username" gap) every time.
+ *
+ * Login was previously never persisting a users row at all - getIdentity
+ * and every users.id foreign key would only work for rows a test had
+ * inserted by hand - and every branch here still ends by accepting pending
  * invitations for this email via `consumePendingInvitations`.
  */
-async function completeLogin(db: any, profile: GoogleProfile): Promise<void> {
-  const { users } = authTables();
+async function completeLogin(db: any, profile: GoogleProfile): Promise<string> {
+  const { users, linkedIdentities } = authTables();
 
-  const existing = await db.select().from(users).where(eq((users as any).id, profile.id)).limit(1);
-  if (existing.length === 0) {
-    await db.insert(users).values({
-      id: profile.id,
-      email: profile.email,
-      name: profile.name || null,
-      avatarUrl: profile.picture || null,
-      createdAt: new Date(),
-    });
+  const linked = await db.select().from(linkedIdentities)
+    .where(and(eq((linkedIdentities as any).provider, 'google'), eq((linkedIdentities as any).providerUserId, profile.id)))
+    .limit(1);
+
+  let userId: string;
+  if (linked.length > 0) {
+    userId = linked[0].userId;
+    const existing = await db.select().from(users).where(eq((users as any).id, userId)).limit(1);
+    if (existing.length > 0) {
+      await db.update(users)
+        .set({ name: profile.name || existing[0].name, avatarUrl: profile.picture || existing[0].avatarUrl })
+        .where(eq((users as any).id, userId));
+    }
+    // existing.length === 0 would mean a dangling linked_identities row
+    // pointing at a deleted user - defensive; nothing purges users today,
+    // so this is not reachable, and this function is not the place to
+    // decide what "a link to nobody" means.
   } else {
-    await db.update(users)
-      .set({ name: profile.name || existing[0].name, avatarUrl: profile.picture || existing[0].avatarUrl })
-      .where(eq((users as any).id, profile.id));
+    userId = profile.id;
+    const existingById = await db.select().from(users).where(eq((users as any).id, userId)).limit(1);
+    if (existingById.length === 0) {
+      await db.insert(users).values({
+        id: userId,
+        email: profile.email,
+        username: profile.email ? deriveUsernameFromEmail(profile.email, userId) : null,
+        name: profile.name || null,
+        avatarUrl: profile.picture || null,
+        createdAt: new Date(),
+      });
+      await db.insert(linkedIdentities).values({
+        id: `li-${crypto.randomUUID()}`,
+        userId,
+        provider: 'google',
+        providerUserId: profile.id,
+        linkedAt: new Date(),
+      });
+    } else {
+      // A users.id equal to this Google id already exists with no linked
+      // row - a pre-M13 account T04's backfill has not (yet) reached.
+      // Preserve the exact pre-M13 behavior rather than erroring, and do
+      // not mint a second linked_identities row here: the backfill
+      // migration, not a login request, is responsible for that row.
+      await db.update(users)
+        .set({ name: profile.name || existingById[0].name, avatarUrl: profile.picture || existingById[0].avatarUrl })
+        .where(eq((users as any).id, userId));
+    }
   }
 
-  await consumePendingInvitations(db, profile.id, profile.email);
+  await consumePendingInvitations(db, userId, profile.email);
+  return userId;
 }
 
 /**
@@ -292,6 +356,7 @@ export function createAuthRoutes(db: any) {
     const state = (query.state as string) || '';
     const [flow, nonce, cliNonce] = state.split(':');
     const isCli = flow === 'cli';
+    const isLink = flow === 'link';
 
     if (error) {
       return new Response(`Authentication failed: ${error}`, { status: 400 });
@@ -307,6 +372,24 @@ export function createAuthRoutes(db: any) {
         status: 400,
         headers: { 'set-cookie': clearOauthStateCookie() },
       });
+    }
+
+    // M13-T08. Re-checked here, not only on `/google/link`: the browser
+    // navigates away to Google's consent screen and back, long enough for
+    // the session that started a link flow to have been logged out or to
+    // have expired in the meantime, and the state/nonce pair alone only
+    // proves this callback belongs to a flow this browser started - not
+    // that the session is still valid.
+    let linkingUserId: string | null = null;
+    if (isLink) {
+      const payload = resolveSessionPayload({
+        cookie: request.headers.get('cookie'),
+        authorization: request.headers.get('authorization'),
+      });
+      if (!payload || await isSessionRevoked(db, payload.jti)) {
+        return problemDetails(401, 'Authentication required', 'Your session ended before linking finished. Log in and try again.');
+      }
+      linkingUserId = payload.userId;
     }
 
     try {
@@ -327,20 +410,52 @@ export function createAuthRoutes(db: any) {
       }
 
       const tokens = (await tokenResponse.json()) as any;
-      
+
       const profileResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: { Authorization: `Bearer ${tokens.access_token}` },
       });
-      
+
       if (!profileResponse.ok) {
         throw new Error('Failed to fetch user profile');
       }
-      
+
       const profile = (await profileResponse.json()) as any;
-      await completeLogin(db, profile);
+
+      if (isLink && linkingUserId) {
+        const { linkedIdentities } = authTables();
+        const existingLink = await db.select().from(linkedIdentities)
+          .where(and(eq((linkedIdentities as any).provider, 'google'), eq((linkedIdentities as any).providerUserId, profile.id)))
+          .limit(1);
+
+        if (existingLink.length > 0 && existingLink[0].userId !== linkingUserId) {
+          // Refuse rather than silently re-pointing the link: doing so
+          // would let anyone who can complete Google's consent screen for
+          // an address steal that identity away from whichever account it
+          // was already linked to.
+          return problemDetails(409, 'Already linked', 'This Google account is already linked to a different user.');
+        }
+        if (existingLink.length === 0) {
+          await db.insert(linkedIdentities).values({
+            id: `li-${crypto.randomUUID()}`,
+            userId: linkingUserId,
+            provider: 'google',
+            providerUserId: profile.id,
+            linkedAt: new Date(),
+          });
+        }
+        // existingLink.length > 0 && existingLink[0].userId === linkingUserId:
+        // already linked to this same account - idempotent no-op success,
+        // not an error, since a double-click or a retried callback happens.
+
+        const headers = new Headers({ location: '/' });
+        headers.append('set-cookie', clearOauthStateCookie());
+        return new Response('', { status: 302, headers });
+      }
+
+      const userId = await completeLogin(db, profile);
 
       if (isCli) {
-        const token = createSessionToken(profile.id);
+        const token = createSessionToken(userId);
         const callbackParams = new URLSearchParams({ token });
         if (cliNonce) callbackParams.set('nonce', cliNonce);
         const headers = new Headers({ location: `http://localhost:${CLI_CALLBACK_PORT}/callback?${callbackParams.toString()}` });
@@ -349,13 +464,54 @@ export function createAuthRoutes(db: any) {
       }
 
       const headers = new Headers({ location: '/' });
-      headers.append('set-cookie', sessionCookie(profile.id));
+      headers.append('set-cookie', sessionCookie(userId));
       headers.append('set-cookie', clearOauthStateCookie());
       return new Response('', { status: 302, headers });
     } catch (e: any) {
-      logger.error({ err: e }, 'auth.google_callback_failed');
+      logger.error({ err: e, isLink }, 'auth.google_callback_failed');
       return new Response('Authentication failed due to server error', { status: 500 });
     }
+  })
+  // M13-T08. "Link an existing Google account to my (already logged in)
+  // account" needs the same OAuth redirect dance as login - there is no way
+  // to prove ownership of a Google account without one - so this reuses
+  // `/api/auth/google/callback` rather than registering a second redirect
+  // URI with Google (an operational cost for every deployer, for a URL that
+  // would do almost the same thing). The `link:` state prefix is what tells
+  // the shared callback which of the two to do; see the callback's own
+  // comment for the branch. The linkIdentity/unlinkIdentity RPCs are the
+  // read/remove half of this feature - see main.tsp's note on why they
+  // don't cover linking itself.
+  .get('/api/auth/google/link', ({ request }) => {
+    const payload = resolveSessionPayload({
+      cookie: request.headers.get('cookie'),
+      authorization: request.headers.get('authorization'),
+    });
+    if (!payload) {
+      return problemDetails(401, 'Authentication required', 'Log in before linking a Google account.');
+    }
+
+    const nonce = crypto.randomUUID();
+    const params = new URLSearchParams({
+      client_id: config.googleClientId,
+      redirect_uri: config.googleRedirectUri,
+      response_type: 'code',
+      scope: 'email profile',
+      access_type: 'offline',
+      prompt: 'consent',
+      state: `link:${nonce}`,
+    });
+
+    return new Response('', {
+      status: 302,
+      headers: {
+        location: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+        // Reuses the same oauth_state cookie as login: only one OAuth
+        // round-trip is ever in flight per browser at a time, so there is
+        // nothing to disambiguate beyond what `state`'s prefix already does.
+        'set-cookie': oauthStateCookie(nonce),
+      },
+    });
   })
   // M13-T06. JSON endpoints, not the OAuth redirect dance Google's flow
   // needs - a form POSTs here directly and reads the response, so these

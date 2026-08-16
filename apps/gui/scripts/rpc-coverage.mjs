@@ -40,6 +40,15 @@ export const EXCEPTIONS = {
     'M13-T06 added the RPC; the account settings screen that calls it ' +
     '(change password, link/unlink Google) is M13-T12. Remove this exception ' +
     "in that task's commit, when it stops being true.",
+  'AuthService.listLinkedIdentities':
+    'M13-T08 added the RPC; linking itself is the HTTP redirect flow at ' +
+    '/api/auth/google/link (see main.tsp), and the settings screen that ' +
+    'calls this to show what is linked is M13-T12. Remove this exception ' +
+    "in that task's commit.",
+  'AuthService.unlinkIdentity':
+    'M13-T08 added the RPC; its GUI caller (the same account settings ' +
+    'screen as setPassword and listLinkedIdentities) is M13-T12. Remove ' +
+    "this exception in that task's commit.",
 };
 
 /** RPC names per service, read from the TypeSpec interfaces. */

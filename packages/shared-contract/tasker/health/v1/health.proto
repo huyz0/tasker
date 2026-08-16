@@ -56,9 +56,28 @@ message SetPasswordResponse {
   bool success = 1;
 }
 
+// M13-T08. See main.tsp for why linking itself is an HTTP redirect flow, not
+// an RPC - these two cover list/remove only.
+message LinkedIdentity {
+  string provider = 1;
+  string linkedAt = 2;
+}
+message ListLinkedIdentitiesRequest {}
+message ListLinkedIdentitiesResponse {
+  repeated LinkedIdentity identities = 1;
+}
+message UnlinkIdentityRequest {
+  string provider = 1;
+}
+message UnlinkIdentityResponse {
+  bool success = 1;
+}
+
 service AuthService {
   rpc GetIdentity(GetIdentityRequest) returns (GetIdentityResponse);
   rpc SetPassword(SetPasswordRequest) returns (SetPasswordResponse);
+  rpc ListLinkedIdentities(ListLinkedIdentitiesRequest) returns (ListLinkedIdentitiesResponse);
+  rpc UnlinkIdentity(UnlinkIdentityRequest) returns (UnlinkIdentityResponse);
 }
 
 message ListOrgsRequest {

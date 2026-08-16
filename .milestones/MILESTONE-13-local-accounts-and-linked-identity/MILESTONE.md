@@ -137,7 +137,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: a flood test trips the lockout and a correct login succeeds
         again only after the cooldown.
 
-- [ ] **M13-T08** — Add `linkIdentity` / `unlinkIdentity` RPCs generalizing
+- [x] **M13-T08** — Add `linkIdentity` / `unlinkIdentity` RPCs generalizing
       "Google login" into "a linked identity provider"; refuse unlinking the
       last remaining sign-in method or clearing the password when it is the
       only method left.

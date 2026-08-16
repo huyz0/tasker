@@ -76,7 +76,12 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     purgeOrg: { orgId: ids.org },
     setOrgRetentionDays: { orgId: ids.org, binRetentionDays: 5 },
   },
-  auth: { getIdentity: {}, setPassword: { newPassword: 'a-new-password-12' } },
+  auth: {
+    getIdentity: {},
+    setPassword: { newPassword: 'a-new-password-12' },
+    listLinkedIdentities: {},
+    unlinkIdentity: { provider: 'google' },
+  },
   // Registered through a router rather than as a handler factory, which is why
   // it was absent from this sweep and from viewer-denial's until M04-T12 went
   // looking. It is closed to agents today only because it still calls

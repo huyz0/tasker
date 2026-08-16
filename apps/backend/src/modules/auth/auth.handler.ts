@@ -1,14 +1,15 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUser } from "../../lib/authz";
+import { requireUser, countActiveSignInMethods, assertNotLastSignInMethod } from "../../lib/authz";
 import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from "../../lib/credentials";
 
 export const createAuthHandler = (db: any) => {
   const isStandalone = process.env.STANDALONE === "true";
   const usersTable = isStandalone ? schemaSqlite.users : schemaMysql.users;
   const passwordCredentialsTable = isStandalone ? schemaSqlite.passwordCredentials : schemaMysql.passwordCredentials;
+  const linkedIdentitiesTable = isStandalone ? schemaSqlite.linkedIdentities : schemaMysql.linkedIdentities;
 
   return {
     async getIdentity(_req: unknown, { values: contextValues }: { values: any }) {
@@ -59,6 +60,47 @@ export const createAuthHandler = (db: any) => {
         });
       }
 
+      return { success: true };
+    },
+
+    /** Every provider identity linked to the caller's own account (M13-T08). */
+    async listLinkedIdentities(_req: unknown, { values: contextValues }: { values: any }) {
+      const currentUserId = requireUser(contextValues);
+      const rows = await db.select().from(linkedIdentitiesTable)
+        .where(eq((linkedIdentitiesTable as any).userId, currentUserId));
+      return {
+        identities: rows.map((r: any) => ({
+          provider: r.provider,
+          linkedAt: r.linkedAt instanceof Date ? r.linkedAt.toISOString() : r.linkedAt,
+        })),
+      };
+    },
+
+    /**
+     * Removes a linked provider identity from the caller's own account
+     * (M13-T08). Refused if this is the account's last sign-in method
+     * (ADR-0012 §5) - checked by counting what remains *after* this row is
+     * gone, not merely how many exist now, so the guard cannot be
+     * off-by-one against its own removal.
+     */
+    async unlinkIdentity(req: { provider: string }, { values: contextValues }: { values: any }) {
+      const currentUserId = requireUser(contextValues);
+      if (!req.provider) {
+        throw new ConnectError("provider is required", Code.InvalidArgument);
+      }
+
+      const existing = await db.select().from(linkedIdentitiesTable)
+        .where(and(eq((linkedIdentitiesTable as any).userId, currentUserId), eq((linkedIdentitiesTable as any).provider, req.provider)))
+        .limit(1);
+      if (existing.length === 0) {
+        throw new ConnectError(`no linked ${req.provider} identity on this account`, Code.NotFound);
+      }
+
+      const totalMethods = await countActiveSignInMethods(db, currentUserId);
+      assertNotLastSignInMethod(totalMethods - 1);
+
+      await db.delete(linkedIdentitiesTable)
+        .where(and(eq((linkedIdentitiesTable as any).userId, currentUserId), eq((linkedIdentitiesTable as any).provider, req.provider)));
       return { success: true };
     },
   };

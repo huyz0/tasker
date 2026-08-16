@@ -161,3 +161,84 @@ describe('auth handler setPassword', () => {
       .rejects.toThrow();
   });
 });
+
+describe('auth handler listLinkedIdentities / unlinkIdentity', () => {
+  let db: any;
+  let handler: ReturnType<typeof createAuthHandler>;
+
+  beforeEach(async () => {
+    const setup = await setupIntegrationTest();
+    db = setup.db;
+    handler = createAuthHandler(db);
+    await db.insert(schemaSqlite.users).values({ id: 'user-links', email: 'links@example.com', createdAt: new Date() });
+  });
+
+  const ctxFor = (userId: string) => {
+    const contextValues = createContextValues();
+    contextValues.set(currentUserIdKey, userId);
+    return { values: contextValues } as any;
+  };
+
+  const linkGoogle = (userId: string, providerUserId = `google-${userId}`) =>
+    db.insert(schemaSqlite.linkedIdentities).values({
+      id: `li-${providerUserId}`, userId, provider: 'google', providerUserId, linkedAt: new Date(),
+    });
+
+  it('lists nothing for an account with no linked identity', async () => {
+    const result = await handler.listLinkedIdentities({}, ctxFor('user-links'));
+    expect(result.identities).toEqual([]);
+  });
+
+  it('lists a linked identity', async () => {
+    await linkGoogle('user-links');
+    const result = await handler.listLinkedIdentities({}, ctxFor('user-links'));
+    expect(result.identities).toHaveLength(1);
+    expect(result.identities[0].provider).toBe('google');
+  });
+
+  it('only lists the caller\'s own linked identities, not another user\'s', async () => {
+    await db.insert(schemaSqlite.users).values({ id: 'user-other-links', email: 'other@example.com', createdAt: new Date() });
+    await linkGoogle('user-other-links');
+    const result = await handler.listLinkedIdentities({}, ctxFor('user-links'));
+    expect(result.identities).toEqual([]);
+  });
+
+  it('unlinks a provider identity when another sign-in method remains', async () => {
+    await linkGoogle('user-links');
+    await db.insert(schemaSqlite.passwordCredentials).values({
+      userId: 'user-links', passwordHash: 'irrelevant', updatedAt: new Date(),
+    });
+    const result = await handler.unlinkIdentity({ provider: 'google' }, ctxFor('user-links'));
+    expect(result).toEqual({ success: true });
+    const rows = await db.select().from(schemaSqlite.linkedIdentities).where(eq(schemaSqlite.linkedIdentities.userId, 'user-links'));
+    expect(rows).toHaveLength(0);
+  });
+
+  it('refuses to unlink the account\'s last remaining sign-in method (ADR-0012 SS5)', async () => {
+    await linkGoogle('user-links'); // no password credential — this is the only method
+    await expect(handler.unlinkIdentity({ provider: 'google' }, ctxFor('user-links'))).rejects.toThrow();
+    const rows = await db.select().from(schemaSqlite.linkedIdentities).where(eq(schemaSqlite.linkedIdentities.userId, 'user-links'));
+    expect(rows).toHaveLength(1); // not removed
+  });
+
+  it('allows unlinking one of two linked identities, keeping the other', async () => {
+    await linkGoogle('user-links', 'google-a');
+    await db.insert(schemaSqlite.linkedIdentities).values({
+      id: 'li-github-a', userId: 'user-links', provider: 'github', providerUserId: 'github-a', linkedAt: new Date(),
+    });
+    await handler.unlinkIdentity({ provider: 'google' }, ctxFor('user-links'));
+    const rows = await db.select().from(schemaSqlite.linkedIdentities).where(eq(schemaSqlite.linkedIdentities.userId, 'user-links'));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].provider).toBe('github');
+  });
+
+  it('errors with NotFound when unlinking a provider that is not actually linked', async () => {
+    await expect(handler.unlinkIdentity({ provider: 'google' }, ctxFor('user-links'))).rejects.toThrow();
+  });
+
+  it('rejects listLinkedIdentities/unlinkIdentity with no session', async () => {
+    const contextValues = createContextValues();
+    await expect(handler.listLinkedIdentities({}, { values: contextValues } as any)).rejects.toThrow();
+    await expect(handler.unlinkIdentity({ provider: 'google' }, { values: contextValues } as any)).rejects.toThrow();
+  });
+});

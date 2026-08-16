@@ -283,3 +283,41 @@ export async function getRepositoryLinkOrgId(db: any, repositoryLinkId: string):
   }
   return getProjectOrgId(db, rows[0].projectId);
 }
+
+/**
+ * Counts how many ways a user can currently sign in: one for a password
+ * credential (if set), plus one per linked identity (Google today; any
+ * future provider the same way). ADR-0012 §5's invariant - a user can never
+ * be left with zero - is enforced from both directions this can be lost:
+ * `unlinkIdentity` (M13-T08) removing the last linked identity, and clearing
+ * a password that is the only credential (M13-T10's admin reset touches the
+ * same guard). Mirrors `countOrgOwners`'s shape: a plain count the caller
+ * does the "would this go to zero" arithmetic against, not a boolean, so
+ * each caller can name what it is about to remove in its own error message.
+ */
+export async function countActiveSignInMethods(db: any, userId: string): Promise<number> {
+  const { passwordCredentials, linkedIdentities } = isStandalone()
+    ? { passwordCredentials: schemaSqlite.passwordCredentials, linkedIdentities: schemaSqlite.linkedIdentities }
+    : { passwordCredentials: schemaMysql.passwordCredentials, linkedIdentities: schemaMysql.linkedIdentities };
+
+  const [passwordRows, linkedRows] = await Promise.all([
+    db.select().from(passwordCredentials).where(eq(passwordCredentials.userId, userId)).limit(1),
+    db.select().from(linkedIdentities).where(eq(linkedIdentities.userId, userId)),
+  ]);
+  return (passwordRows.length > 0 ? 1 : 0) + linkedRows.length;
+}
+
+/**
+ * Refuses an action that would remove a user's last sign-in method.
+ * `methodsAfterRemoval` is the caller's own count post-removal (not
+ * recomputed here), so the same function serves an unlink (linked count - 1)
+ * and a password clear (linked count + 0, password no longer counted) alike.
+ */
+export function assertNotLastSignInMethod(methodsAfterRemoval: number): void {
+  if (methodsAfterRemoval < 1) {
+    throw new ConnectError(
+      'cannot remove your last sign-in method - link another identity or set a password first',
+      Code.FailedPrecondition,
+    );
+  }
+}
