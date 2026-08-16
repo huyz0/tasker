@@ -829,6 +829,17 @@ message Artifact {
   int64 sizeBytes = 8;
 }
 
+// A deep link carries an artifact id and nothing else. Without this, the GUI
+// located the artifact by walking every folder in the project and every page of
+// each — O(folders x pages) requests to find one row (M07-T12).
+message GetArtifactRequest {
+  string artifactId = 1;
+}
+
+message GetArtifactResponse {
+  Artifact artifact = 1;
+}
+
 message GetArtifactContentRequest {
   string artifactId = 1;
 }
@@ -998,6 +1009,7 @@ service ArtifactService {
   rpc UnlinkTaskArtifact(UnlinkTaskArtifactRequest) returns (UnlinkTaskArtifactResponse);
   rpc ListTaskArtifactLinks(ListTaskArtifactLinksRequest) returns (ListTaskArtifactLinksResponse);
   rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse);
+  rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
   rpc GetArtifactContent(GetArtifactContentRequest) returns (GetArtifactContentResponse);
   rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse);
   rpc ArchiveArtifact(ArchiveArtifactRequest) returns (ArchiveArtifactResponse);

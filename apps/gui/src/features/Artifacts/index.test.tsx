@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 const {
   mockListFolders,
   mockListArtifacts,
+  mockGetArtifact,
   mockArchiveFolder,
   mockArchiveArtifact,
   mockCreateFolder,
@@ -21,6 +22,7 @@ const {
 } = vi.hoisted(() => ({
   mockListFolders: vi.fn(),
   mockListArtifacts: vi.fn(),
+  mockGetArtifact: vi.fn(),
   mockArchiveFolder: vi.fn(),
   mockArchiveArtifact: vi.fn(),
   mockCreateFolder: vi.fn(),
@@ -56,6 +58,7 @@ vi.mock('@connectrpc/connect', () => ({
     return {
       listFolders: mockListFolders,
       listArtifacts: mockListArtifacts,
+      getArtifact: mockGetArtifact,
       getArtifactContent: mockGetArtifactContent,
       archiveFolder: mockArchiveFolder,
       archiveArtifact: mockArchiveArtifact,
@@ -118,6 +121,7 @@ describe('ArtifactsBrowser', () => {
   beforeEach(() => {
     mockListFolders.mockReset();
     mockListArtifacts.mockReset();
+    mockGetArtifact.mockReset();
     mockArchiveFolder.mockReset();
     mockArchiveArtifact.mockReset();
     mockCreateFolder.mockReset();
@@ -139,6 +143,20 @@ describe('ArtifactsBrowser', () => {
     // it on the artifact they belong to — which is where a reader looks for it.
     // Resolve it the way the server does: by id, from whatever the folder
     // listing was configured to hold.
+    // A deep link now resolves through `getArtifact` in one request instead of
+    // walking every folder (M07-T12). Resolved from the configured listings so
+    // each test still describes its world in one place.
+    mockGetArtifact.mockImplementation(async ({ artifactId }: { artifactId: string }) => {
+      const { folders = [] } = (await mockListFolders({})) ?? {};
+      const folderIds = folders.length ? folders.map((f: any) => f.id) : [''];
+      for (const folderId of folderIds) {
+        const page = await mockListArtifacts({ folderId });
+        const match = (page?.artifacts ?? []).find((a: any) => a.id === artifactId);
+        if (match) return { artifact: { ...match, folderId } };
+      }
+      return { artifact: undefined };
+    });
+
     mockGetArtifactContent.mockImplementation(async ({ artifactId }: { artifactId: string }) => {
       // Ask the listing rather than replaying its past calls: on a deep link
       // the content query fires before any folder has been listed, so reading
@@ -170,7 +188,7 @@ describe('ArtifactsBrowser', () => {
     await waitFor(() => expect(screen.getByText('Hello world')).toBeDefined());
   });
 
-  it('auto-loads later pages so folders and artifacts past the first page are not hidden', async () => {
+  it('auto-loads later folder pages, and pages artifacts on demand rather than fetching every page', async () => {
     mockListFolders
       .mockResolvedValueOnce({ folders: [{ id: 'fld-1', name: 'Page One Folder', parentId: '' }], page: { nextCursor: 'cursor-2' } })
       .mockResolvedValueOnce({ folders: [{ id: 'fld-2', name: 'Page Two Folder', parentId: '' }], page: {} });
@@ -186,7 +204,13 @@ describe('ArtifactsBrowser', () => {
 
     fireEvent.click(screen.getByText('Page One Folder'));
 
+    // A folder is unbounded — the scale fixture puts 100,000 artifacts in one —
+    // so later pages are fetched when asked for, not automatically (M07-T12).
     await waitFor(() => expect(screen.getByText('Page One Artifact')).toBeDefined());
+    expect(screen.queryByText('Page Two Artifact')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load more artifacts' }));
+
     await waitFor(() => expect(screen.getByText('Page Two Artifact')).toBeDefined());
     expect(mockListArtifacts).toHaveBeenCalledWith({ folderId: 'fld-1', page: { cursor: 'cursor-2' } });
   });

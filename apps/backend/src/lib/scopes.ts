@@ -76,6 +76,7 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
   artifacts: {
     listFolders: 'artifacts:read',
     listArtifacts: 'artifacts:read',
+    getArtifact: 'artifacts:read',
     getArtifactContent: 'artifacts:read',
     createFolder: 'artifacts:write',
     updateFolder: 'artifacts:write',

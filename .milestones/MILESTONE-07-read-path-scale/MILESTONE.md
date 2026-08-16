@@ -109,7 +109,7 @@ that it is not adopted before measured need), caching layers, read replicas.
       - Files: `.specs/standards/api-standard.md`
       - Verify: each list endpoint has a stated budget.
 
-- [ ] **M07-T12** — Remove or justify every remaining `fetchAllPages`. The
+- [x] **M07-T12** — Remove or justify every remaining `fetchAllPages`. The
       artifacts view walks all pages of a folder that can hold 100,000 rows, and
       the task-notes loop carries no justification at all.
       - Files: `features/Artifacts/index.tsx`, `features/Tasks/index.tsx`

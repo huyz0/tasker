@@ -381,6 +381,39 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
      * actually about to render it, rather than every body in the folder on the
      * chance that one of them is opened.
      */
+    /**
+     * One artifact by id, without its body.
+     *
+     * Exists because a deep link carries an artifact id and nothing else. The
+     * GUI used to resolve that by listing every folder in the project and every
+     * page of each until the row turned up — O(folders x pages) requests to
+     * find one row (M07-T12).
+     */
+    async getArtifact(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = GetArtifactContentSchema.parse(req);
+      const orgId = await getArtifactOrgId(db, parsed.artifactId);
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
+
+      const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+      // Names its columns for the same reason the list does: `content` can hold
+      // ~15 MB of base64, and this response is not where it belongs.
+      const rows = await db
+        .select({
+          id: (arts as any).id,
+          folderId: (arts as any).folderId,
+          name: (arts as any).name,
+          description: (arts as any).description,
+          contentType: (arts as any).contentType,
+        })
+        .from(arts)
+        .where(and(eq((arts as any).id, parsed.artifactId), notDeleted(arts)))
+        .limit(1);
+      if (rows.length === 0) throw new ConnectError("Artifact not found", Code.NotFound);
+
+      return { artifact: rows[0] };
+    },
+
     async getArtifactContent(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = GetArtifactContentSchema.parse(req);

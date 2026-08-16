@@ -502,6 +502,44 @@ it is a behaviour change and belongs in T06's journal entry, not silently.
   passed in milliseconds.
 - **Next**: close M07
 
+## M07-T12 — The last unbounded fetches, and a deep link that walked the tree
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `main.tsp` **and** `health.proto` (new `getArtifact`),
+  `modules/artifacts/artifacts.handler.ts`, `lib/scopes.ts`,
+  `lib/viewer-denial.test.ts`, `features/Artifacts/index.tsx` and its test
+  (2 rewritten), `features/Tasks/index.tsx`
+- **Verified**: in a real browser against the seeded scale fixture. Opening a
+  folder holding **100,000 artifacts** issues **one** `ListArtifacts` and offers
+  "Load more artifacts"; before this it walked every page. Deep-linking
+  `/artifacts/:id` to an artifact **500 rows deep** issues **one**
+  `GetArtifact` and renders it. `gui:test` 620 pass; `moon check --all` 26 pass.
+- **Notes**: exit criterion 1 asks that each remaining `fetchAllPages` be
+  justified. Reading them showed two that could not be:
+  the artifacts list walked **every page of a folder**, and a folder is
+  unbounded — the scale fixture puts 100,000 in one, which is ~2,000 sequential
+  requests to render a list nobody scrolls to the end of. It is a paged
+  `useInfiniteQuery` now.
+  Worse, the **deep-link locate walked every folder in the project and every
+  page of each** until the row turned up. The comment above it said why —
+  *"the contract exposes no GetArtifact RPC"* — which is a description of a
+  missing endpoint, not a justification. Adding `getArtifact` turns
+  O(folders x pages) into one request, and it returns the `folderId` the tree
+  needs to expand, which is the only reason the walk existed.
+  **A comment explaining what the code does is not a justification.** All three
+  of these had comments and passed a reading; the criterion asks why the *full
+  set* is required, and only one of the three could answer it.
+  Three uses remain, each stating why: the folder **tree** (a tree missing a
+  branch is not partially loaded, it is wrong, and folders are navigation
+  structure a person maintains by hand), the agents list (already justified in
+  T04), and one task's notes (bounded by what agents wrote about a single task,
+  and a chronological record that reads wrongly if it stops partway).
+  `getArtifact` names its columns and excludes `content`, for the same reason
+  the list does — it is not the response a 15 MB body belongs in. Both
+  deny-by-default sweeps needed it classified before they would pass.
+- **Next**: M07-T13
+
 ---
 
 ## Out-of-band — dashboard rework (not an M07 task)

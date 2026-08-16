@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { TaskArtifactLinks } from "../Tasks/TaskArtifactLinks";
 import { Comment } from "../../components/ui/comments";
@@ -47,8 +47,12 @@ export function ArtifactsBrowser() {
   const [editFolderName, setEditFolderName] = useState('');
   const queryClient = useQueryClient();
 
-  // Fetch all folders for the project - loop through every page, not just
-  // the first, or folders past the default page size become unreachable.
+  // The one remaining `fetchAllPages` in this view, and a deliberate one
+  // (M07 exit criterion 1): this renders a *tree*, and a tree with some of its
+  // branches missing is not a partially-loaded tree, it is a wrong one — a
+  // folder absent from the list is indistinguishable from a folder that does
+  // not exist. Bounded by the project's folder count, which is navigation
+  // structure a person maintains by hand, not per-item data.
   const { data: foldersData, isLoading: isLoadingFolders, error: foldersError, refetch: refetchFolders } = useQuery({
     queryKey: ['folders', activeProjectId],
     queryFn: async () => fetchAllPages(async (cursor) => {
@@ -58,36 +62,45 @@ export function ArtifactsBrowser() {
     enabled: !!activeProjectId,
   });
 
-  // Fetch artifacts for the selected folder, likewise across all pages.
-  const { data: artifactsData, isLoading: isLoadingArtifacts, error: artifactsError, refetch: refetchArtifacts } = useQuery({
+  // Paged, not fetch-all: a folder is unbounded. The seeded scale fixture puts
+  // 100,000 artifacts in one folder, and walking every page of that to render a
+  // list took as many round trips as the folder had pages (M07-T12).
+  const {
+    data: artifactPages,
+    isLoading: isLoadingArtifacts,
+    error: artifactsError,
+    refetch: refetchArtifacts,
+    fetchNextPage: fetchNextArtifactPage,
+    hasNextPage: hasMoreArtifacts,
+    isFetchingNextPage: isFetchingMoreArtifacts,
+  } = useInfiniteQuery({
     queryKey: ['artifacts', selectedFolderId],
-    queryFn: async () => {
-      if (!selectedFolderId) return [];
-      return fetchAllPages(async (cursor) => {
-        const resp = await artifactClient.listArtifacts({ folderId: selectedFolderId, page: cursor ? { cursor } : undefined });
-        return { items: resp.artifacts, nextCursor: resp.page?.nextCursor || undefined };
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const resp = await artifactClient.listArtifacts({
+        // `enabled` below gates on a selected folder, so this is never null
+        // when the query runs.
+        folderId: selectedFolderId!,
+        page: pageParam ? { cursor: pageParam } : undefined,
       });
+      return { items: resp.artifacts, nextCursor: resp.page?.nextCursor || undefined };
     },
+    getNextPageParam: (last) => last.nextCursor,
     enabled: !!selectedFolderId,
   });
+  const artifactsData = artifactPages?.pages.flatMap((p) => p.items);
 
-  // A deep link carries the artifact id but not its folder, and the contract
-  // exposes no GetArtifact RPC - walk the project's folders until the artifact
-  // turns up, then expand that folder so the tree matches the open document.
+  // A deep link carries the artifact id but not its folder. This used to walk
+  // every folder in the project and every page of each until the row turned up
+  // — O(folders x pages) requests to find one. `getArtifact` answers it in one
+  // (M07-T12), and it returns the folderId that the tree needs to expand.
   const { data: locatedArtifact } = useQuery({
-    queryKey: ['artifactLocate', activeProjectId, artifactId],
+    queryKey: ['artifactLocate', artifactId],
     queryFn: async () => {
-      for (const folder of foldersData ?? []) {
-        const artifacts = await fetchAllPages(async (cursor) => {
-          const resp = await artifactClient.listArtifacts({ folderId: folder.id, page: cursor ? { cursor } : undefined });
-          return { items: resp.artifacts, nextCursor: resp.page?.nextCursor || undefined };
-        });
-        const match = artifacts.find(a => a.id === artifactId);
-        if (match) return { artifact: match, folderId: folder.id };
-      }
-      return null;
+      const resp = await artifactClient.getArtifact({ artifactId: artifactId! });
+      return resp.artifact ? { artifact: resp.artifact, folderId: resp.artifact.folderId } : null;
     },
-    enabled: !!artifactId && !!foldersData && !artifactsData?.some(a => a.id === artifactId),
+    enabled: !!artifactId && !artifactsData?.some(a => a.id === artifactId),
   });
 
   useEffect(() => {
@@ -399,6 +412,16 @@ export function ArtifactsBrowser() {
                   ))}
                   {!isLoadingArtifacts && artifactsData?.length === 0 && !isAddingArtifact && (
                     <div className="text-xs text-muted-foreground/50 px-2 py-1 italic">Empty folder</div>
+                  )}
+                  {hasMoreArtifacts && (
+                    <button
+                      type="button"
+                      onClick={() => fetchNextArtifactPage()}
+                      disabled={isFetchingMoreArtifacts}
+                      className="text-xs text-primary hover:underline px-2 py-1 disabled:opacity-50"
+                    >
+                      {isFetchingMoreArtifacts ? 'Loading…' : 'Load more artifacts'}
+                    </button>
                   )}
                   {isAddingArtifact ? (
                     <InlineCreateForm

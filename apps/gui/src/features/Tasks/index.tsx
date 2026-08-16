@@ -34,6 +34,12 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
   const [editNoteContent, setEditNoteContent] = useState('');
   const queryKey = ['taskNotes', taskId];
 
+  // A deliberate remaining use of `fetchAllPages` (M07 exit criterion 1). The
+  // set is one task's notes — bounded by what agents wrote about a single task,
+  // not by the size of the project — and the panel is a chronological record
+  // that reads wrongly if it silently stops partway. Unlike a folder, there is
+  // no realistic shape where this is tens of thousands of rows; if agents ever
+  // make it one, this becomes a paged list like the artifacts one.
   const { data: notesData, isLoading, error: notesError, refetch: refetchNotes } = useQuery({
     queryKey,
     queryFn: async () => fetchAllPages(async (cursor) => {

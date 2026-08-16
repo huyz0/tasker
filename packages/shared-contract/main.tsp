@@ -903,6 +903,17 @@ model Artifact {
   @field(8) sizeBytes?: int64;
 }
 
+// A deep link carries an artifact id and nothing else. Without this, the GUI
+// located the artifact by walking every folder in the project and every page of
+// each — O(folders x pages) requests to find one row (M07-T12).
+model GetArtifactRequest {
+  @field(1) artifactId: string;
+}
+
+model GetArtifactResponse {
+  @field(1) artifact: Artifact;
+}
+
 model GetArtifactContentRequest {
   @field(1) artifactId: string;
 }
@@ -1079,6 +1090,8 @@ interface ArtifactService {
   listArtifacts(request: ListArtifactsRequest): ListArtifactsResponse;
 
   // One artifact's body, fetched only when something is about to render it.
+  getArtifact(request: GetArtifactRequest): GetArtifactResponse;
+
   getArtifactContent(
     request: GetArtifactContentRequest,
   ): GetArtifactContentResponse;
