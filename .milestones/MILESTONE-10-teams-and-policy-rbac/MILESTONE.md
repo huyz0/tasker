@@ -100,7 +100,7 @@ SCIM provisioning, delegated administration.
       - Files: all `modules/*/*.handler.ts`
       - Verify: no handler references a role name literal.
 
-- [ ] **M10-T06** — Cache policy resolution per request so the added indirection
+- [x] **M10-T06** — Cache policy resolution per request so the added indirection
       does not multiply queries.
       - Files: `apps/backend/src/lib/policy.ts`, `lib/requestContext.ts`
       - Verify: an authorization-heavy RPC issues no more queries than before.

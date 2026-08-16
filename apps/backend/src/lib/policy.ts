@@ -4,6 +4,7 @@ import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
 import type { Principal } from '../modules/auth/session';
 import { getProjectOrgId } from './authz';
+import { getPolicyCache } from './requestContext';
 
 // Resolved lazily, same reasoning as authz.ts's isStandalone(): freezing
 // this at module load caught the wrong schema when this module loaded
@@ -75,6 +76,24 @@ export interface Scope {
  * preserve, so whether a given team operation should check `organization`
  * scope, `team` scope, or both is each RPC's own mapping decision (T05/T07),
  * not something `can()` decides on their behalf by auto-climbing.
+ *
+ * M10-T06: every query below reads through `requestContext.ts`'s
+ * `PolicyCache` first, memoized per request (team memberships and grants by
+ * userId, the organization_members fallback by (userId, orgId), a role's
+ * permission set by roleId) - a second `can()` call in the same request for
+ * the same principal against a *different* scope or permission reuses
+ * whatever it can rather than re-querying. Outside a request (no
+ * `runWithRequestContext` on the call stack - a script, or a test calling
+ * `can()` directly) the cache is simply absent and every call queries
+ * fresh, same as before T06.
+ *
+ * The cache is request-scoped and never invalidated mid-request: a handler
+ * that both mutates `grants`/`organization_members`/`team_members` *and*
+ * re-checks a permission for the same principal later in the same request
+ * would see the pre-mutation view. No handler does that today - every
+ * `assertCan`/`authorizePrincipal` call happens before any mutation in its
+ * own RPC - but it is the tradeoff this cache makes, worth knowing before
+ * relying on a same-request read-after-write for policy data specifically.
  */
 export async function can(db: any, principal: Principal, scope: Scope, permission: string): Promise<boolean> {
   if (principal.kind !== 'user') return false;
@@ -92,47 +111,99 @@ export async function can(db: any, principal: Principal, scope: Scope, permissio
     scopesToCheck.push({ type: 'organization', id: orgId });
   }
 
-  const teamRows = await db.select({ teamId: teamMembers.teamId }).from(teamMembers).where(eq(teamMembers.userId, principal.userId));
-  const teamIds: string[] = teamRows.map((r: any) => r.teamId);
+  const userId = principal.userId;
+  // `null` outside a request (a script, or a test calling can() directly) -
+  // every cache read/write below is guarded with `cache?.`, so this
+  // degrades to exactly T05's always-fresh behavior, never an error.
+  const cache = getPolicyCache();
 
-  const subjectCondition = teamIds.length > 0
-    ? or(
-        and(eq(grants.subjectType, 'user'), eq(grants.subjectId, principal.userId)),
-        and(eq(grants.subjectType, 'team'), inArray(grants.subjectId, teamIds)),
-      )
-    : and(eq(grants.subjectType, 'user'), eq(grants.subjectId, principal.userId));
+  // Team memberships are constant for this principal for the life of the
+  // request, so cached by userId alone.
+  let teamIds: string[];
+  if (cache?.teamIds.has(userId)) {
+    teamIds = cache.teamIds.get(userId)!;
+  } else {
+    const teamRows = await db.select({ teamId: teamMembers.teamId }).from(teamMembers).where(eq(teamMembers.userId, userId));
+    teamIds = teamRows.map((r: any) => r.teamId);
+    cache?.teamIds.set(userId, teamIds);
+  }
 
-  // scopesToCheck has at most one 'organization' entry (the scope itself, or
-  // - for a project scope - its owning org), so this is at most one extra
-  // query, not one per candidate.
+  // Every grant held by this user or a team they belong to, *unfiltered by
+  // scope* - identical regardless of which scope this particular call is
+  // checking, so it's cached by userId alone and reused across every
+  // scope/permission this principal is checked against in the same
+  // request (scope matching happens below, in application code, not here -
+  // the scope set is at most two entries, so a second round trip to filter
+  // it in SQL would cost more than it saves).
+  let candidateGrants: any[];
+  if (cache?.candidateGrants.has(userId)) {
+    candidateGrants = cache.candidateGrants.get(userId)!;
+  } else {
+    const subjectCondition = teamIds.length > 0
+      ? or(
+          and(eq(grants.subjectType, 'user'), eq(grants.subjectId, userId)),
+          and(eq(grants.subjectType, 'team'), inArray(grants.subjectId, teamIds)),
+        )
+      : and(eq(grants.subjectType, 'user'), eq(grants.subjectId, userId));
+    candidateGrants = await db.select().from(grants).where(subjectCondition);
+    cache?.candidateGrants.set(userId, candidateGrants);
+  }
+
+  // organization_members fallback (§4 above): cached per (userId, orgId)
+  // pair, since one request can legitimately check permissions against more
+  // than one organization (e.g. moving a project between two orgs).
+  // scopesToCheck has at most one 'organization' entry (the scope itself,
+  // or - for a project scope - its owning org).
   const orgScope = scopesToCheck.find((s) => s.type === 'organization');
-  const [candidateGrants, orgMemberRows] = await Promise.all([
-    db.select().from(grants).where(subjectCondition),
-    orgScope
-      ? db.select({ role: organizationMembers.role }).from(organizationMembers)
-          .where(and(eq(organizationMembers.orgId, orgScope.id), eq(organizationMembers.userId, principal.userId)))
-          .limit(1)
-      : Promise.resolve([]),
-  ]);
+  let orgMemberRole: string | null = null;
+  if (orgScope) {
+    const cacheKey = `${userId}:${orgScope.id}`;
+    if (cache?.orgMemberRole.has(cacheKey)) {
+      orgMemberRole = cache.orgMemberRole.get(cacheKey)!;
+    } else {
+      const rows = await db.select({ role: organizationMembers.role }).from(organizationMembers)
+        .where(and(eq(organizationMembers.orgId, orgScope.id), eq(organizationMembers.userId, userId)))
+        .limit(1);
+      orgMemberRole = rows.length > 0 ? rows[0].role : null;
+      cache?.orgMemberRole.set(cacheKey, orgMemberRole);
+    }
+  }
 
-  // Scope matching happens in application code, not the query: the set of
-  // scopes to check is at most two entries (this scope, plus its owning org
-  // for a project), so a second round trip to filter it in SQL would cost
-  // more than it saves. T06 revisits this whole function's query shape for
-  // caching; this is the correct-first version it optimizes.
   const matchingGrants = candidateGrants.filter((g: any) =>
     scopesToCheck.some((s) => s.type === g.scopeType && s.id === g.scopeId));
 
   const roleIds = new Set(matchingGrants.map((g: any) => g.roleId));
-  if (orgMemberRows.length > 0) roleIds.add(`role-${orgMemberRows[0].role}`);
+  if (orgMemberRole) roleIds.add(`role-${orgMemberRole}`);
   if (roleIds.size === 0) return false;
 
-  const permissionRows = await db
-    .select()
-    .from(rolePermissions)
-    .where(and(inArray(rolePermissions.roleId, [...roleIds]), eq(rolePermissions.permissionKey, permission)))
-    .limit(1);
-  return permissionRows.length > 0;
+  // A role's *entire* permission set is cached per roleId, not "does this
+  // role have permission X" per (roleId, permission) pair: the same role is
+  // often checked against several different permissions across one request
+  // (e.g. a list endpoint's per-row read/write/admin checks), and caching
+  // the full set turns every check after the first into a Set.has() with no
+  // query at all, instead of caching a single true/false that only answers
+  // the one permission first asked about.
+  const uncachedRoleIds: string[] = [];
+  const heldPermissions = new Set<string>();
+  for (const roleId of roleIds) {
+    const cached = cache?.rolePermissions.get(roleId);
+    if (cached) {
+      for (const p of cached) heldPermissions.add(p);
+    } else {
+      uncachedRoleIds.push(roleId);
+    }
+  }
+  if (uncachedRoleIds.length > 0) {
+    const rows = await db.select().from(rolePermissions).where(inArray(rolePermissions.roleId, uncachedRoleIds));
+    const byRole = new Map<string, Set<string>>(uncachedRoleIds.map((id) => [id, new Set<string>()]));
+    for (const r of rows) byRole.get(r.roleId)?.add(r.permissionKey);
+    for (const [roleId, perms] of byRole) {
+      cache?.rolePermissions.set(roleId, perms);
+      for (const p of perms) heldPermissions.add(p);
+    }
+  }
+
+  return heldPermissions.has(permission);
 }
 
 /**

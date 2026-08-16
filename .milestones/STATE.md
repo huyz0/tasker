@@ -1,6 +1,6 @@
 ---
 active_milestone: M10
-active_task: M10-T06
+active_task: M10-T07
 last_updated: 2026-08-17
 last_commit: 18f966d
 blocked: false
@@ -16,8 +16,8 @@ blocker: null
 ## Now
 
 - **Milestone**: M10 — Teams & Policy-Based RBAC
-- **Task**: M10-T05 done — M10-T06 (cache policy resolution per request)
-  is next
+- **Task**: M10-T06 done — M10-T07 (team CRUD + membership RPCs + CLI) is
+  next
 - **Branch**: `feature/m10-teams-and-policy-rbac`, per the default in
   `git-workflow-standard.md` / `milestone-standard.md` §5.
 - **Command to continue**: `/milestone-deliver M10` (or `/milestone-deliver-auto M10`)
@@ -56,12 +56,12 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M07 | Read-Path Scale                | done   | M05        | 14    | 14   |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
-| M10 | Teams & Policy-Based RBAC      | in-progress | M03, M04 | 13  | 5    |
+| M10 | Teams & Policy-Based RBAC      | in-progress | M03, M04 | 13  | 6    |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 | M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
 
-**Total: 160 tasks across 13 milestones — 109 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 5, M13 15).**
+**Total: 160 tasks across 13 milestones — 110 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 6, M13 15).**
 
 ## Dependency graph
 

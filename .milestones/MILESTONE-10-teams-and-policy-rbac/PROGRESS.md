@@ -359,3 +359,92 @@
 - **Next**: M10-T06 — cache policy resolution per request so `can()`'s added
   indirection does not multiply queries (the query-count budgets bumped
   above are exactly what this brings back down).
+
+## M10-T06 — cache policy resolution per request
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**:
+  - `apps/backend/src/lib/requestContext.ts` — new `PolicyCache` interface
+    (four maps: `teamIds`, `candidateGrants`, `orgMemberRole`,
+    `rolePermissions`) added to `RequestContext`, and a new
+    `getPolicyCache()` that lazily creates and returns the current
+    request's cache, or `null` outside a request (a script or a test
+    calling `can()` directly, never wrapped in `runWithRequestContext`).
+    Already live in production with no further wiring: every real RPC
+    already runs inside `runWithRequestContext` via
+    `requestLogging.ts`'s interceptor (unchanged), so `can()` reading
+    through this cache is automatically active for every request, not an
+    opt-in a handler has to request.
+  - `apps/backend/src/lib/policy.ts` — `can()` rewritten to read/write
+    through the cache at each of its four lookups: team memberships (keyed
+    by `userId`), candidate grants - the whole unfiltered set, scope
+    matching still happens in application code as before (keyed by
+    `userId`), the `organization_members` fallback (keyed by `userId:orgId`,
+    since one request can legitimately check more than one org), and -
+    the one worth the most - a role's *entire* permission set rather than
+    a single true/false per (role, permission) pair (keyed by `roleId`),
+    so a second permission check against a role already resolved this
+    request costs a `Set.has()`, not a query, regardless of which
+    permission it asks about. Doc comment expanded with the caching
+    behavior and an explicit staleness caveat (a handler that mutates
+    `grants`/`organization_members`/`team_members` and then re-checks a
+    permission for the same principal later in the same request would see
+    the pre-mutation view - true of no handler today, but worth stating
+    rather than discovering later).
+  - `apps/backend/src/lib/policy.test.ts` — five new tests
+    (`can() - per-request caching (T06)`): a second call for the same
+    principal against a different scope/permission costs zero selects; a
+    cached denial also costs zero on the second check; two different
+    principals in one request stay isolated from each other's cache
+    entries; two separate `runWithRequestContext` calls (simulating two
+    requests) do not share a cache; and outside any request context,
+    behavior is unchanged from before T06 (both calls query, symmetric
+    cost). 29 tests total, up from 24, still 100% coverage on `policy.ts`;
+    `requestContext.ts` also reaches 100%.
+  - `apps/backend/src/modules/tasks/reviewers.test.ts`,
+    `apps/backend/src/modules/artifacts/links.test.ts` — corrected the
+    forward-looking comment T05 left on these two files' bumped
+    query-count budgets. It said T06 "is expected to bring this back
+    down"; that turned out not to be true for *these specific* RPCs and is
+    corrected here rather than left standing as a wrong prediction:
+    `listTaskReviewers`/`listTaskArtifactLinks` each call
+    `authorizePrincipal` exactly once per request, so there is no second
+    `can()` call in the same request for the cache to save anything
+    against. The cache's real payoff is a request that checks the same
+    principal many times - a permission-matrix view (T11) or a bulk
+    operation - which is what the new dedicated tests above prove, not
+    something visible in either of these single-check handlers.
+- **Verified**:
+  - `bun test src/lib/policy.test.ts` — 29/29 pass, including the five new
+    T06-specific tests proving zero-query cache hits, per-principal
+    isolation, per-request isolation, and unchanged behavior outside a
+    request context.
+  - `STANDALONE=true bun test` (full backend suite) — 830 pass, 0 fail (up
+    from 825 - the 5 new tests).
+  - `bunx knip` (repo root) — clean.
+  - `moon check --all` — 27/27 tasks green; `policy.ts` and
+    `requestContext.ts` both at 100% line/function coverage.
+- **Notes**:
+  - **Corrected a prediction from T05's own commit message, not silently**:
+    T05 assumed per-request caching would generally bring authorization
+    query counts back down, without checking whether any *current* handler
+    actually calls `can()`/`authorizePrincipal` more than once per request
+    for the same principal. None do - every RPC in this codebase
+    authorizes once, at the top, before doing any work. T06's cache is
+    real and already live for whichever future RPC needs it (T11's
+    permission matrix, most likely), but it does not and was never going
+    to change `reviewers.test.ts`/`links.test.ts`'s specific counts - both
+    comments there are now honest about why, instead of pointing at a
+    task that turned out not to touch them.
+  - Deliberately did **not** cache across requests (e.g. a role's
+    permission set with a TTL, invalidated when `role_permissions`
+    changes) - that is a materially larger commitment (explicit
+    invalidation on every write path that touches `roles`/
+    `role_permissions`/`grants`, or a staleness window bounded by a TTL
+    instead of a request boundary) that the milestone's task text does not
+    ask for ("cache policy resolution per request," not across them) and
+    that a per-request cache trivially avoids ever needing: it cannot
+    ever go stale, because it never outlives the request it was built for.
+- **Next**: M10-T07 — team CRUD and membership RPCs with pagination, plus
+  CLI commands.

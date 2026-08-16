@@ -4,6 +4,15 @@ import { ConnectError, Code } from '@connectrpc/connect';
 import { setupIntegrationTest, seedUser, seedOrgWithAdmin, seedProject } from '../test/setup';
 import * as schema from '../db/schema.sqlite';
 import { can, assertCan } from './policy';
+import { runWithRequestContext } from './requestContext';
+
+/** Counts every `db.select(...)` call made inside `fn`, without changing behavior. */
+async function countSelects<T>(db: any, fn: (countingDb: any) => Promise<T>): Promise<{ result: T; selects: number }> {
+  let selects = 0;
+  const countingDb = new Proxy(db, { get(t, p) { if (p === 'select') selects++; return (t as any)[p]; } });
+  const result = await fn(countingDb);
+  return { result, selects };
+}
 
 // T04/T05's verify criterion: "unit tests cover every resolution path" -
 // ADR-0013 §3's algorithm (direct grant, team-derived grant, project→org
@@ -316,5 +325,108 @@ describe('assertCan()', () => {
       expect((err as ConnectError).code).toBe(Code.PermissionDenied);
       expect((err as ConnectError).message).toContain('org:owner');
     }
+  });
+});
+
+// M10-T06. None of today's handlers call can()/assertCan() more than once
+// per request for the same principal (see MILESTONE-10's PROGRESS.md T06
+// entry) - every RPC authorizes once, at the top, before doing any work -
+// so the cache's benefit is invisible in any of the tests above, all of
+// which call can() exactly once. These tests construct the multi-check
+// scenario directly, wrapped in the same runWithRequestContext(...) the
+// request-logging interceptor uses in production, to verify the caching
+// mechanism itself: what a genuinely authorization-heavy RPC (e.g. a
+// permission-matrix view checking many roles, or a bulk operation checking
+// many rows) will actually get from it.
+describe('can() - per-request caching (T06)', () => {
+  it('reuses team memberships, grants, and a role\'s permission set across two calls for the same principal', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
+    await seedTeam(db, { teamId: 'team-1', orgId });
+    await addTeamMember(db, { teamId: 'team-1', userId });
+    await seedGrant(db, { subjectType: 'team', subjectId: 'team-1', scopeType: 'organization', scopeId: orgId, roleId: 'role-member' });
+
+    await runWithRequestContext({ requestId: 'req-1' }, async () => {
+      const first = await countSelects(db, (countingDb) =>
+        can(countingDb, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'task:write'));
+      expect(first.result).toBe(true);
+      expect(first.selects).toBeGreaterThan(0);
+
+      // Same principal, same org, a *different* permission the same role
+      // also holds - every input this second call needs (team memberships,
+      // candidate grants, the role's permission set) was already cached by
+      // the first call, so this one should query nothing at all.
+      const second = await countSelects(db, (countingDb) =>
+        can(countingDb, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'task:read'));
+      expect(second.result).toBe(true);
+      expect(second.selects).toBe(0);
+    });
+  });
+
+  it('caches a "no access" result too - a denied second check still costs nothing', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
+    await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-viewer' });
+
+    await runWithRequestContext({ requestId: 'req-1' }, async () => {
+      await can(db, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'task:read');
+
+      const { result, selects } = await countSelects(db, (countingDb) =>
+        can(countingDb, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'org:owner'));
+      expect(result).toBe(false);
+      expect(selects).toBe(0);
+    });
+  });
+
+  it('keeps two different principals in one request separate - no cross-user contamination', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId: owner } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'owner-1' });
+    await seedUser(db, 'viewer-1');
+    await seedGrant(db, { subjectId: 'viewer-1', scopeType: 'organization', scopeId: orgId, roleId: 'role-viewer' });
+
+    await runWithRequestContext({ requestId: 'req-1' }, async () => {
+      expect(await can(db, { kind: 'user', userId: owner }, { type: 'organization', id: orgId }, 'org:admin')).toBe(true);
+      expect(await can(db, { kind: 'user', userId: 'viewer-1' }, { type: 'organization', id: orgId }, 'org:admin')).toBe(false);
+      // Re-checking the first principal still reflects *their* access, not
+      // something bled over from caching the second principal's lookups.
+      expect(await can(db, { kind: 'user', userId: owner }, { type: 'organization', id: orgId }, 'org:admin')).toBe(true);
+    });
+  });
+
+  it('does not share a cache across two separate requests', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
+    await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-member' });
+
+    await runWithRequestContext({ requestId: 'req-1' }, () =>
+      can(db, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'task:write'));
+
+    // A fresh runWithRequestContext is a fresh AsyncLocalStorage store, so
+    // this is a new, empty PolicyCache - the query this makes is real, not
+    // served from req-1's cache.
+    await runWithRequestContext({ requestId: 'req-2' }, async () => {
+      const { result, selects } = await countSelects(db, (countingDb) =>
+        can(countingDb, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'task:write'));
+      expect(result).toBe(true);
+      expect(selects).toBeGreaterThan(0);
+    });
+  });
+
+  it('outside any request context, behaves exactly as before T06 - no cache, always fresh', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
+    await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-member' });
+
+    // Every test elsewhere in this file calls can() this way already - this
+    // one just makes the "no wrapping context" case explicit and asserts
+    // both calls genuinely query, rather than relying on the total test
+    // count above to prove it indirectly.
+    const first = await countSelects(db, (countingDb) =>
+      can(countingDb, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'task:write'));
+    const second = await countSelects(db, (countingDb) =>
+      can(countingDb, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'task:write'));
+    expect(first.result).toBe(true);
+    expect(second.result).toBe(true);
+    expect(second.selects).toBe(first.selects);
   });
 });
