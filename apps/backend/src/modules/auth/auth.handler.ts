@@ -64,16 +64,25 @@ export const createAuthHandler = (db: any) => {
       return { success: true };
     },
 
-    /** Every provider identity linked to the caller's own account (M13-T08). */
+    /**
+     * Every provider identity linked to the caller's own account (M13-T08),
+     * plus `hasPassword` (M13-T12) - the GUI's last-sign-in-method guard
+     * needs to know whether a password exists to disable an "unlink"
+     * control *before* it's clicked, not just how many identities are
+     * linked.
+     */
     async listLinkedIdentities(_req: unknown, { values: contextValues }: { values: any }) {
       const currentUserId = requireUser(contextValues);
-      const rows = await db.select().from(linkedIdentitiesTable)
-        .where(eq((linkedIdentitiesTable as any).userId, currentUserId));
+      const [rows, passwordRows] = await Promise.all([
+        db.select().from(linkedIdentitiesTable).where(eq((linkedIdentitiesTable as any).userId, currentUserId)),
+        db.select().from(passwordCredentialsTable).where(eq((passwordCredentialsTable as any).userId, currentUserId)).limit(1),
+      ]);
       return {
         identities: rows.map((r: any) => ({
           provider: r.provider,
           linkedAt: r.linkedAt instanceof Date ? r.linkedAt.toISOString() : r.linkedAt,
         })),
+        hasPassword: passwordRows.length > 0,
       };
     },
 

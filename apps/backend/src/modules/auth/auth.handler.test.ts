@@ -189,6 +189,18 @@ describe('auth handler listLinkedIdentities / unlinkIdentity', () => {
     expect(result.identities).toEqual([]);
   });
 
+  /** M13-T12. */
+  it('reports hasPassword: false when the caller has never set one', async () => {
+    const result = await handler.listLinkedIdentities({}, ctxFor('user-links'));
+    expect(result.hasPassword).toBe(false);
+  });
+
+  it('reports hasPassword: true once one exists', async () => {
+    await handler.setPassword({ newPassword: 'a-brand-new-password-1' }, ctxFor('user-links'));
+    const result = await handler.listLinkedIdentities({}, ctxFor('user-links'));
+    expect(result.hasPassword).toBe(true);
+  });
+
   it('lists a linked identity', async () => {
     await linkGoogle('user-links');
     const result = await handler.listLinkedIdentities({}, ctxFor('user-links'));

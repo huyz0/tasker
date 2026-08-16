@@ -5,6 +5,7 @@ import { transport } from '../lib/connectTransport';
 import { HealthService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore, type LayoutState } from '../store/layout';
 import { ListState } from '../components/ui/ListState';
+import { AccountSettings } from '../features/Settings/AccountSettings';
 
 const healthClient = createClient(HealthService, transport);
 
@@ -34,8 +35,10 @@ export function SystemHealthPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">Backend status and connection telemetry.</p>
+        <p className="text-muted-foreground mt-1">Account, backend status and connection telemetry.</p>
       </div>
+
+      <AccountSettings />
 
       <div className="p-6 border rounded-lg bg-card text-card-foreground shadow-sm max-w-2xl">
         <div className="flex items-center justify-between mb-4">

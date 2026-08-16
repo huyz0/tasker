@@ -606,7 +606,21 @@ export function createAuthRoutes(db: any) {
       authorization: request.headers.get('authorization'),
     });
     const userId = payload && !(await isSessionRevoked(db, payload.jti)) ? payload.userId : null;
-    return Response.json({ authenticated: !!userId, userId });
+
+    // M13-T12. mustChangePassword (M13-T10's admin reset) is otherwise only
+    // ever returned once, in the login response body - a page reload loses
+    // it entirely, which is exactly when a client needs to know to keep
+    // routing to the change-password screen. Session state, not identity
+    // data, so it belongs here rather than on GetIdentityResponse.
+    let mustChangePassword = false;
+    if (userId) {
+      const { passwordCredentials } = authTables();
+      const rows = await db.select().from(passwordCredentials)
+        .where(eq((passwordCredentials as any).userId, userId)).limit(1);
+      mustChangePassword = !!rows[0]?.mustChangePassword;
+    }
+
+    return Response.json({ authenticated: !!userId, userId, mustChangePassword });
   })
   // There was previously no way to end a browser session at all - the
   // cookie just sat there, valid, until it hit its 7-day Max-Age. This both

@@ -540,3 +540,77 @@
     per the same convention M03/M04 handoff notes used for out-of-scope
     findings.
 - **Next**: M13-T12 — GUI account settings.
+
+## M13-T12 — GUI account settings (password, link/unlink Google)
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `packages/shared-contract/main.tsp` + `.../health.proto` +
+  regenerated `gen/` (`ListLinkedIdentitiesResponse.hasPassword`),
+  `apps/backend/src/modules/auth/auth.handler.ts` (`listLinkedIdentities`
+  now returns `hasPassword`), `apps/backend/src/modules/auth/auth.handler.test.ts`,
+  `apps/backend/src/modules/auth/auth.ts` (`/api/auth/session` now returns
+  `mustChangePassword`), `apps/backend/src/modules/auth/auth.test.ts`,
+  `apps/gui/src/features/Settings/AccountSettings.{tsx,test.tsx,stories.tsx}`
+  (new), `apps/gui/src/pages/SystemHealth.tsx` (+ its test), `apps/gui/src/lib/authSession.ts`
+  (+ test), `apps/gui/src/hooks/useAuthSession.ts` (+ test),
+  `apps/gui/src/components/auth/ProtectedRoute.tsx` (+ test),
+  `apps/gui/scripts/rpc-coverage.mjs` (3 exceptions resolved, 1 corrected)
+- **Verified**: `bun test src/modules/auth/` — 98 pass. Full backend suite:
+  746 pass, 0 fail. `bunx vitest run --coverage` — 691 pass,
+  97.9%/95.05%/96%/98.16% stmt/branch/func/line (above the 95% gate on
+  every dimension). `gui:typecheck`, `oxlint`, `gui:design-lint` (0
+  findings, 145 files), `gui:rpc-coverage` (**100 of 103 RPCs now
+  reached**, up from 97 — this task's own three RPCs stopped needing their
+  T06/T08/T10 exceptions), `gui:query-error-coverage` (13 reading views,
+  unaffected), `go build`/`go test`, `tsp format --check` all clean.
+- **Notes**:
+  - **Two backend gaps discovered and closed, not deferred** — both
+    necessary for the milestone's own exit criteria, outside T12's literal
+    Files list:
+    1. **`ListLinkedIdentitiesResponse` gained `hasPassword: boolean`.**
+       The exit criterion is explicit: "the last-method guard surfaced
+       before the action is attempted, not only as a server error after."
+       Disabling an "Unlink" button pre-emptively needs to know whether a
+       password exists, not just how many identities are linked — nothing
+       exposed that. Added on the response this exact screen already
+       calls, not on `User`, since it's this screen's concern specifically.
+    2. **`GET /api/auth/session` gained `mustChangePassword: boolean`.**
+       `mustChangePassword` (M13-T10) was previously returned only once, in
+       the login response body — a page reload lost it entirely, so
+       `ProtectedRoute` had no durable signal to redirect on. Extended the
+       session-status endpoint (already polled by `useAuthSession`, so no
+       new round trip) rather than `GetIdentityResponse`, since this is
+       session state, not identity data.
+  - **`ProtectedRoute` now redirects to `/settings` whenever
+    `mustChangePassword` is true**, guarded against redirecting away from
+    `/settings` itself (no loop). This is the enforcement T11's `LoginForm`
+    comment explicitly deferred to this task.
+  - **`AccountSettings` lives in `features/Settings/` and is rendered as a
+    new section inside the existing `/settings` route** (`SystemHealthPage`),
+    not a new route — that page already carries the layout scaffold and the
+    milestone's own Files hint pointed at `features/Settings/`, not a new
+    page.
+  - **The last-method guard is genuinely pre-emptive, not just styled to
+    look that way**: `totalMethods = identities.length + (hasPassword ? 1
+    : 0)`; "Unlink" is `disabled` with a `title` explaining why whenever
+    `totalMethods <= 1`, computed from data already on screen — no click,
+    no server round trip, no error message needed to discover the
+    constraint. `unlinkIdentity` itself is still guarded server-side
+    (T08) as defense in depth.
+  - **A real, corrected gap, recorded rather than silently left wrong**:
+    T10's `gui:rpc-coverage` exception for `adminResetPassword` had assumed
+    its GUI caller would land "in M13-T12, alongside the other new auth
+    surfaces" — it doesn't. T12's actual scope (confirmed against the
+    milestone doc) is self-service only; nothing in M13's 15 tasks wires
+    an admin-facing reset into the Organizations member list. The
+    exception's reason was rewritten to say so plainly, rather than
+    quietly renewing a since-falsified assumption. `setPassword`/
+    `listLinkedIdentities`/`unlinkIdentity`'s exceptions were removed —
+    genuinely resolved.
+  - **`ConfirmDialog`'s `useConfirm()` is reused for unlinking**, matching
+    `Organizations/index.tsx`'s existing pattern (`destructive: true`,
+    `undo` names the actual recovery path — "You can link X again from
+    this screen" — since unlinking is reversible, unlike most of that
+    hook's other call sites).
+- **Next**: M13-T13 — CLI username/password login.

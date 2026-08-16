@@ -25,6 +25,18 @@ describe('authSession', () => {
 
     const session = await fetchAuthSession();
 
-    expect(session).toEqual({ authenticated: false, userId: null });
+    expect(session).toEqual({ authenticated: false, userId: null, mustChangePassword: false });
+  });
+
+  /** M13-T12. */
+  it('surfaces mustChangePassword from the backend response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ authenticated: true, userId: 'user-1', mustChangePassword: true }),
+    }));
+
+    const session = await fetchAuthSession();
+
+    expect(session.mustChangePassword).toBe(true);
   });
 });

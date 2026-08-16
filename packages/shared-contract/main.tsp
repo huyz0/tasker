@@ -96,6 +96,13 @@ model LinkedIdentity {
 model ListLinkedIdentitiesRequest {}
 model ListLinkedIdentitiesResponse {
   @field(1) identities: LinkedIdentity[];
+
+  // M13-T12. The GUI's last-sign-in-method guard (ADR-0012 §5) needs to
+  // disable an "unlink" control *before* it's clicked, not only catch the
+  // server's refusal after - which needs knowing whether a password
+  // exists, not just how many identities are linked. Exposed here rather
+  // than on `User` since it's specifically this screen's concern.
+  @field(2) hasPassword: boolean;
 }
 
 // ADR-0012 §5: refused if this would leave the caller with no working

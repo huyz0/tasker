@@ -170,7 +170,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Files: `apps/gui/src/features/Auth/`
       - Verify: e2e login as a local user with no Google identity at all.
 
-- [ ] **M13-T12** — GUI account settings: change password, link/unlink Google,
+- [x] **M13-T12** — GUI account settings: change password, link/unlink Google,
       with the last-method guard surfaced before the action is attempted, not
       only as a server error after.
       - Files: `apps/gui/src/features/Settings/`

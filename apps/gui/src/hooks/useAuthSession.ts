@@ -12,5 +12,6 @@ export function useAuthSession() {
     isLoading: query.isLoading,
     authenticated: query.data?.authenticated ?? false,
     userId: query.data?.userId ?? null,
+    mustChangePassword: query.data?.mustChangePassword ?? false,
   };
 }

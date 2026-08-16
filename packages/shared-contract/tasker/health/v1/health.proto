@@ -65,6 +65,8 @@ message LinkedIdentity {
 message ListLinkedIdentitiesRequest {}
 message ListLinkedIdentitiesResponse {
   repeated LinkedIdentity identities = 1;
+  // M13-T12. See main.tsp for why this is exposed here.
+  bool hasPassword = 2;
 }
 message UnlinkIdentityRequest {
   string provider = 1;

@@ -18,7 +18,7 @@ beforeEach(async () => {
 describe('Auth session status', () => {
   it('reports unauthenticated when there is no session cookie', async () => {
     const res = await authRoutes.handle(new Request('http://localhost/api/auth/session'));
-    expect(await res.json()).toEqual({ authenticated: false, userId: null });
+    expect(await res.json()).toEqual({ authenticated: false, userId: null, mustChangePassword: false });
   });
 
   it('reports the authenticated user when a valid session cookie is present', async () => {
@@ -26,7 +26,7 @@ describe('Auth session status', () => {
     const res = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
       headers: { cookie: `session=${token}` },
     }));
-    expect(await res.json()).toEqual({ authenticated: true, userId: 'user-42' });
+    expect(await res.json()).toEqual({ authenticated: true, userId: 'user-42', mustChangePassword: false });
   });
 
   it('reports the authenticated user for a Bearer token, same as every RPC, even with no cookie jar', async () => {
@@ -34,7 +34,28 @@ describe('Auth session status', () => {
     const res = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
       headers: { authorization: `Bearer ${token}` },
     }));
-    expect(await res.json()).toEqual({ authenticated: true, userId: 'user-cli-42' });
+    expect(await res.json()).toEqual({ authenticated: true, userId: 'user-cli-42', mustChangePassword: false });
+  });
+
+  /** M13-T12. */
+  it('reports mustChangePassword: true when the session user\'s credential is flagged — survives what a one-shot login response cannot', async () => {
+    await db.insert(schemaSqlite.users).values({ id: 'user-must-change', email: 'mc@example.com', createdAt: new Date() });
+    await db.insert(schemaSqlite.passwordCredentials).values({
+      userId: 'user-must-change', passwordHash: 'irrelevant', updatedAt: new Date(), mustChangePassword: true,
+    });
+    const token = createSessionToken('user-must-change');
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
+      headers: { cookie: `session=${token}` },
+    }));
+    expect(await res.json()).toEqual({ authenticated: true, userId: 'user-must-change', mustChangePassword: true });
+  });
+
+  it('reports mustChangePassword: false for a user with no password credential at all (e.g. Google-only)', async () => {
+    const token = createSessionToken('user-google-only-session');
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
+      headers: { cookie: `session=${token}` },
+    }));
+    expect((await res.json()).mustChangePassword).toBe(false);
   });
 });
 
@@ -54,7 +75,7 @@ describe('Auth logout', () => {
     const sessionRes = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
       headers: { cookie: clearedCookie || `session=${token}` },
     }));
-    expect(await sessionRes.json()).toEqual({ authenticated: false, userId: null });
+    expect(await sessionRes.json()).toEqual({ authenticated: false, userId: null, mustChangePassword: false });
   });
 
   it('records the jti in revokedSessions so it revokes for real, not just clearing the cookie', async () => {
@@ -80,7 +101,7 @@ describe('Auth logout', () => {
     const res = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
       headers: { authorization: `Bearer ${token}` },
     }));
-    expect(await res.json()).toEqual({ authenticated: false, userId: null });
+    expect(await res.json()).toEqual({ authenticated: false, userId: null, mustChangePassword: false });
   });
 
   it('is a no-op when logging out with no active session (no token to revoke)', async () => {
