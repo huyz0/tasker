@@ -26,6 +26,9 @@ message User {
   string name = 3;
   string avatarUrl = 4;
   string createdAt = 5;
+  // M13: the stable local handle. See main.tsp's User model for the
+  // empty-string-means-absent convention this shares with email/name.
+  string username = 6;
 }
 
 message Organization {
@@ -43,8 +46,19 @@ message GetIdentityResponse {
   User user = 1;
 }
 
+// M13-T06. See main.tsp's SetPasswordRequest for the currentPassword /
+// last-sign-in-method reasoning.
+message SetPasswordRequest {
+  string currentPassword = 1;
+  string newPassword = 2;
+}
+message SetPasswordResponse {
+  bool success = 1;
+}
+
 service AuthService {
   rpc GetIdentity(GetIdentityRequest) returns (GetIdentityResponse);
+  rpc SetPassword(SetPasswordRequest) returns (SetPasswordResponse);
 }
 
 message ListOrgsRequest {

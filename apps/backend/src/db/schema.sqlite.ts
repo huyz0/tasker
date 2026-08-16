@@ -48,12 +48,6 @@ export const users = sqliteTable("users", {
  * ADR-0012 §4). `userId` is the primary key rather than a surrogate `id`
  * because the relationship is 1:1 by construction - a user has at most one
  * local password.
- *
- * Not yet imported anywhere: the table lands in T03, its handler
- * (`loginWithPassword`, `registerLocalUser`, `setPassword`) in T06. Remove
- * this tag in that task's commit, when it stops being true.
- *
- * @knipignore
  */
 export const passwordCredentials = sqliteTable("password_credentials", {
   userId: text("user_id").primaryKey().references(() => users.id),
@@ -71,10 +65,8 @@ export const passwordCredentials = sqliteTable("password_credentials", {
  * is that provider's own identifier for the person (for Google, its `sub`
  * claim - the value `users.id` held directly before this milestone). T04's
  * migration populates this table in raw SQL for every pre-existing user;
- * nothing imports the table as a TS symbol until `completeLogin` and the new
- * `linkIdentity`/`unlinkIdentity` RPCs land in T06/T08.
- *
- * @knipignore
+ * the `linkIdentity`/`unlinkIdentity` RPCs that read/write it as a TS symbol
+ * land in T08.
  */
 export const linkedIdentities = sqliteTable("linked_identities", {
   id: text("id").primaryKey(),

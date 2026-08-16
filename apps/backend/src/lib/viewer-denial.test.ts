@@ -62,6 +62,10 @@ const READS: Record<string, string[]> = {
  */
 const NOT_ORG_SCOPED: Record<string, string[]> = {
   orgs: ['seedOrg'],
+  // M13-T06. Managing one's own login credential has nothing to do with any
+  // org's role - a viewer of every org they belong to may still set their
+  // own password, the same way they may already call getIdentity.
+  auth: ['setPassword'],
 };
 
 const ids = {

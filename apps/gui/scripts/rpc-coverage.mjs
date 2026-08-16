@@ -36,6 +36,10 @@ export const EXCEPTIONS = {
     'the client already holds. Agents and the CLI, which hold no list, use it. ' +
     '(getProject was excepted for this reason too until M06-T08 gave the task ' +
     'breadcrumb a project name to resolve from an id alone.)',
+  'AuthService.setPassword':
+    'M13-T06 added the RPC; the account settings screen that calls it ' +
+    '(change password, link/unlink Google) is M13-T12. Remove this exception ' +
+    "in that task's commit, when it stops being true.",
 };
 
 /** RPC names per service, read from the TypeSpec interfaces. */

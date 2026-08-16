@@ -7,6 +7,7 @@ import { createSessionToken, resolveSessionPayload, SESSION_TTL_MS } from './ses
 import { logger } from '../../lib/logger';
 import { problemDetails } from '../../lib/problemDetails';
 import { revokeSession, isSessionRevoked } from '../../lib/sessionRevocation';
+import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from '../../lib/credentials';
 
 function sessionCookie(userId: string): string {
   const secure = config.nodeEnv === 'production' ? '; Secure' : '';
@@ -52,19 +53,59 @@ interface GoogleProfile {
   picture?: string;
 }
 
+function authTables() {
+  const isStandalone = process.env.STANDALONE === "true";
+  return isStandalone
+    ? { users: schemaSqlite.users, invitations: schemaSqlite.invitations, members: schemaSqlite.organizationMembers, linkedIdentities: schemaSqlite.linkedIdentities, passwordCredentials: schemaSqlite.passwordCredentials }
+    : { users: schemaMysql.users, invitations: schemaMysql.invitations, members: schemaMysql.organizationMembers, linkedIdentities: schemaMysql.linkedIdentities, passwordCredentials: schemaMysql.passwordCredentials };
+}
+
+/**
+ * Accepts every pending invitation matching `email`, joining the invited org
+ * and consuming the invite. Shared by every path that can create or resolve
+ * a user (Google login, local registration) so "accept an invite" is one
+ * piece of logic rather than one per auth method (M13-T06 / ADR-0012's
+ * "converge on the same session issuance path", extended to invitation
+ * acceptance too, since both flows need it).
+ *
+ * A no-op when `email` is absent, which is the normal case for a local
+ * account registered with no email at all - matching by username instead is
+ * M13-T09's job. Runs on every login, not just the first, since a user may
+ * accept new invitations sent after their account already exists.
+ */
+async function consumePendingInvitations(db: any, userId: string, email: string | null | undefined): Promise<void> {
+  if (!email) return;
+  const { invitations, members } = authTables();
+  const pendingInvites = await db.select().from(invitations).where(eq((invitations as any).email, email));
+  const now = Date.now();
+  for (const invite of pendingInvites) {
+    // Expired invitations are skipped rather than deleted. They stay visible to
+    // an admin through listInvitations (M03-T12), where an invite that lapsed
+    // unredeemed is useful information; deleting it here would make it vanish
+    // at the moment the person finally tried to use it.
+    //
+    // A null expiresAt is an invitation issued before M03-T11 and remains
+    // valid - see the migration's note.
+    if (invite.expiresAt && new Date(invite.expiresAt).getTime() <= now) continue;
+
+    const alreadyMember = await db.select().from(members)
+      .where(and(eq((members as any).orgId, invite.orgId), eq((members as any).userId, userId)))
+      .limit(1);
+    if (alreadyMember.length === 0) {
+      await db.insert(members).values({ orgId: invite.orgId, userId, role: invite.role || 'member', joinedAt: new Date() });
+    }
+    await db.delete(invitations).where(eq((invitations as any).id, invite.id));
+  }
+}
+
 /**
  * Upserts the users row for this Google profile (login was previously never
  * persisting one at all - getIdentity and every users.id foreign key would
- * only work for rows a test had inserted by hand), then accepts any pending
- * invitations for this email: joins the invited org and consumes the invite.
- * Runs on every login, not just the first, since a user may accept new
- * invitations sent after their account already exists.
+ * only work for rows a test had inserted by hand), then accepts pending
+ * invitations for this email via `consumePendingInvitations`.
  */
 async function completeLogin(db: any, profile: GoogleProfile): Promise<void> {
-  const isStandalone = process.env.STANDALONE === "true";
-  const users = isStandalone ? schemaSqlite.users : schemaMysql.users;
-  const invitations = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
-  const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
+  const { users } = authTables();
 
   const existing = await db.select().from(users).where(eq((users as any).id, profile.id)).limit(1);
   if (existing.length === 0) {
@@ -81,26 +122,79 @@ async function completeLogin(db: any, profile: GoogleProfile): Promise<void> {
       .where(eq((users as any).id, profile.id));
   }
 
-  const pendingInvites = await db.select().from(invitations).where(eq((invitations as any).email, profile.email));
-  const now = Date.now();
-  for (const invite of pendingInvites) {
-    // Expired invitations are skipped rather than deleted. They stay visible to
-    // an admin through listInvitations (M03-T12), where an invite that lapsed
-    // unredeemed is useful information; deleting it here would make it vanish
-    // at the moment the person finally tried to use it.
-    //
-    // A null expiresAt is an invitation issued before M03-T11 and remains
-    // valid - see the migration's note.
-    if (invite.expiresAt && new Date(invite.expiresAt).getTime() <= now) continue;
+  await consumePendingInvitations(db, profile.id, profile.email);
+}
 
-    const alreadyMember = await db.select().from(members)
-      .where(and(eq((members as any).orgId, invite.orgId), eq((members as any).userId, profile.id)))
-      .limit(1);
-    if (alreadyMember.length === 0) {
-      await db.insert(members).values({ orgId: invite.orgId, userId: profile.id, role: invite.role || 'member', joinedAt: new Date() });
-    }
-    await db.delete(invitations).where(eq((invitations as any).id, invite.id));
+/**
+ * Creates a local account: a username and password, no email or external
+ * provider required at all (ADR-0012). `email` is optional - when given, it
+ * both goes on the `users` row and is used to resolve any pending
+ * invitation, the same way Google's flow already does.
+ *
+ * Throws with a message rather than a `ConnectError`/status code: this is
+ * called from an Elysia HTTP route (unauthenticated, so it cannot use the
+ * ConnectRPC principal/error machinery the rest of the backend does), and
+ * the route maps the message to a `problemDetails` response.
+ */
+async function registerLocalUser(db: any, input: { username: string; password: string; email?: string; name?: string }): Promise<string> {
+  const { users, passwordCredentials } = authTables();
+  const username = input.username.trim();
+  if (username.length < 3) throw new Error('username must be at least 3 characters');
+  if (input.password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
+
+  const existingUsername = await db.select().from(users).where(eq((users as any).username, username)).limit(1);
+  if (existingUsername.length > 0) throw new Error('username is already taken');
+
+  const userId = `u-${crypto.randomUUID()}`;
+  const passwordHash = await hashPassword(input.password);
+  const now = new Date();
+
+  await db.insert(users).values({
+    id: userId,
+    email: input.email || null,
+    username,
+    name: input.name || null,
+    avatarUrl: null,
+    createdAt: now,
+  });
+  await db.insert(passwordCredentials).values({
+    userId,
+    passwordHash,
+    updatedAt: now,
+    failedAttempts: 0,
+    lockedUntil: null,
+    mustChangePassword: false,
+  });
+
+  await consumePendingInvitations(db, userId, input.email);
+  return userId;
+}
+
+/**
+ * Verifies a username/password pair and returns the matching userId, or
+ * `null` for any reason at all (unknown username, no password credential on
+ * the account - e.g. a Google-only user, or a wrong password). One
+ * undifferentiated failure mode on purpose: telling an attacker which part
+ * was wrong turns a login form into a username-enumeration oracle.
+ *
+ * No lockout/rate-limiting here - M13-T07 owns that, layered on top of this
+ * function rather than inside it, so this stays a pure "is this pair
+ * correct" check the lockout logic can wrap.
+ */
+async function verifyPasswordLogin(db: any, username: string, password: string): Promise<string | null> {
+  const { users, passwordCredentials } = authTables();
+  const userRows = await db.select().from(users).where(eq((users as any).username, username)).limit(1);
+  if (userRows.length === 0) return null;
+  const userId = userRows[0].id;
+
+  const credRows = await db.select().from(passwordCredentials)
+    .where(eq((passwordCredentials as any).userId, userId)).limit(1);
+  if (credRows.length === 0) return null;
+
+  const ok = await verifyPassword(password, credRows[0].passwordHash);
+  return ok ? userId : null;
 }
 
 export function createAuthRoutes(db: any) {
@@ -207,6 +301,52 @@ export function createAuthRoutes(db: any) {
       logger.error({ err: e }, 'auth.google_callback_failed');
       return new Response('Authentication failed due to server error', { status: 500 });
     }
+  })
+  // M13-T06. JSON endpoints, not the OAuth redirect dance Google's flow
+  // needs - a form POSTs here directly and reads the response, so these
+  // return `problemDetails` on failure (the convention this file already
+  // uses for the non-browser-navigation routes) and, on success, the same
+  // `sessionCookie(...)` the Google callback sets. That shared call is the
+  // "converge on the same session issuance path" ADR-0012 asks for: both
+  // login methods end up with an identical cookie, checked by the identical
+  // `/api/auth/session` route and the identical ConnectRPC interceptor.
+  .post('/api/auth/password/register', async ({ body }) => {
+    const { username, password, email, name } = (body as any) || {};
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return problemDetails(400, 'Invalid request', 'username and password are required');
+    }
+    try {
+      const userId = await registerLocalUser(db, {
+        username,
+        password,
+        email: typeof email === 'string' ? email : undefined,
+        name: typeof name === 'string' ? name : undefined,
+      });
+      return new Response(JSON.stringify({ userId }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json', 'set-cookie': sessionCookie(userId) },
+      });
+    } catch (e: any) {
+      logger.error({ err: e }, 'auth.password_register_failed');
+      return problemDetails(400, 'Registration failed', e?.message || 'Unknown error');
+    }
+  })
+  .post('/api/auth/password/login', async ({ body }) => {
+    const { username, password } = (body as any) || {};
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return problemDetails(400, 'Invalid request', 'username and password are required');
+    }
+    const userId = await verifyPasswordLogin(db, username, password);
+    if (!userId) {
+      // Same message whether the username doesn't exist, has no password
+      // credential, or the password is wrong - see verifyPasswordLogin's
+      // comment on why that's deliberate, not an omission.
+      return problemDetails(401, 'Invalid credentials', 'The username or password is incorrect.');
+    }
+    return new Response(JSON.stringify({ userId }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'set-cookie': sessionCookie(userId) },
+    });
   })
   .get('/api/auth/session', async ({ request }) => {
     // Every RPC checks the Authorization: Bearer header first, then falls

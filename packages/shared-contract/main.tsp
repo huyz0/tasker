@@ -45,6 +45,12 @@ model User {
   @field(3) name: string;
   @field(4) avatarUrl: string;
   @field(5) createdAt: string;
+
+  // M13: the stable local handle. Always present for a user created after
+  // M13 (registerLocalUser or a Google login both set one); a proto3 empty
+  // string reads the same as an absent value, the same convention already
+  // used for `email`/`name` on this message.
+  @field(6) username: string;
 }
 
 model Organization {
@@ -64,8 +70,23 @@ model GetIdentityResponse {
   @field(1) user: User;
 }
 
+// M13-T06. `currentPassword` is required when the caller already has a
+// password credential (verified before it is replaced) and ignored when
+// they don't (a Google-only account setting a password for the first time
+// has nothing to prove yet). ADR-0012 §5's last-sign-in-method invariant
+// does not apply here - setPassword only ever adds or replaces a credential,
+// never removes the only one.
+model SetPasswordRequest {
+  @field(1) currentPassword?: string;
+  @field(2) newPassword: string;
+}
+model SetPasswordResponse {
+  @field(1) success: boolean;
+}
+
 interface AuthService {
   getIdentity(request: GetIdentityRequest): GetIdentityResponse;
+  setPassword(request: SetPasswordRequest): SetPasswordResponse;
 }
 
 model ListOrgsRequest {

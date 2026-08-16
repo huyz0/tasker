@@ -65,6 +65,8 @@ const (
 	HealthServicePingProcedure = "/tasker.health.v1.HealthService/Ping"
 	// AuthServiceGetIdentityProcedure is the fully-qualified name of the AuthService's GetIdentity RPC.
 	AuthServiceGetIdentityProcedure = "/tasker.health.v1.AuthService/GetIdentity"
+	// AuthServiceSetPasswordProcedure is the fully-qualified name of the AuthService's SetPassword RPC.
+	AuthServiceSetPasswordProcedure = "/tasker.health.v1.AuthService/SetPassword"
 	// OrgServiceListOrgsProcedure is the fully-qualified name of the OrgService's ListOrgs RPC.
 	OrgServiceListOrgsProcedure = "/tasker.health.v1.OrgService/ListOrgs"
 	// OrgServiceSeedOrgProcedure is the fully-qualified name of the OrgService's SeedOrg RPC.
@@ -346,6 +348,7 @@ var (
 	healthServicePingMethodDescriptor                         = healthServiceServiceDescriptor.Methods().ByName("Ping")
 	authServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("AuthService")
 	authServiceGetIdentityMethodDescriptor                    = authServiceServiceDescriptor.Methods().ByName("GetIdentity")
+	authServiceSetPasswordMethodDescriptor                    = authServiceServiceDescriptor.Methods().ByName("SetPassword")
 	orgServiceServiceDescriptor                               = v1.File_tasker_health_v1_health_proto.Services().ByName("OrgService")
 	orgServiceListOrgsMethodDescriptor                        = orgServiceServiceDescriptor.Methods().ByName("ListOrgs")
 	orgServiceSeedOrgMethodDescriptor                         = orgServiceServiceDescriptor.Methods().ByName("SeedOrg")
@@ -529,6 +532,7 @@ func (UnimplementedHealthServiceHandler) Ping(context.Context, *connect.Request[
 // AuthServiceClient is a client for the tasker.health.v1.AuthService service.
 type AuthServiceClient interface {
 	GetIdentity(context.Context, *connect.Request[v1.GetIdentityRequest]) (*connect.Response[v1.GetIdentityResponse], error)
+	SetPassword(context.Context, *connect.Request[v1.SetPasswordRequest]) (*connect.Response[v1.SetPasswordResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the tasker.health.v1.AuthService service. By
@@ -547,12 +551,19 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceGetIdentityMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		setPassword: connect.NewClient[v1.SetPasswordRequest, v1.SetPasswordResponse](
+			httpClient,
+			baseURL+AuthServiceSetPasswordProcedure,
+			connect.WithSchema(authServiceSetPasswordMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
 	getIdentity *connect.Client[v1.GetIdentityRequest, v1.GetIdentityResponse]
+	setPassword *connect.Client[v1.SetPasswordRequest, v1.SetPasswordResponse]
 }
 
 // GetIdentity calls tasker.health.v1.AuthService.GetIdentity.
@@ -560,9 +571,15 @@ func (c *authServiceClient) GetIdentity(ctx context.Context, req *connect.Reques
 	return c.getIdentity.CallUnary(ctx, req)
 }
 
+// SetPassword calls tasker.health.v1.AuthService.SetPassword.
+func (c *authServiceClient) SetPassword(ctx context.Context, req *connect.Request[v1.SetPasswordRequest]) (*connect.Response[v1.SetPasswordResponse], error) {
+	return c.setPassword.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the tasker.health.v1.AuthService service.
 type AuthServiceHandler interface {
 	GetIdentity(context.Context, *connect.Request[v1.GetIdentityRequest]) (*connect.Response[v1.GetIdentityResponse], error)
+	SetPassword(context.Context, *connect.Request[v1.SetPasswordRequest]) (*connect.Response[v1.SetPasswordResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -577,10 +594,18 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceGetIdentityMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceSetPasswordHandler := connect.NewUnaryHandler(
+		AuthServiceSetPasswordProcedure,
+		svc.SetPassword,
+		connect.WithSchema(authServiceSetPasswordMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceGetIdentityProcedure:
 			authServiceGetIdentityHandler.ServeHTTP(w, r)
+		case AuthServiceSetPasswordProcedure:
+			authServiceSetPasswordHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -592,6 +617,10 @@ type UnimplementedAuthServiceHandler struct{}
 
 func (UnimplementedAuthServiceHandler) GetIdentity(context.Context, *connect.Request[v1.GetIdentityRequest]) (*connect.Response[v1.GetIdentityResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AuthService.GetIdentity is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) SetPassword(context.Context, *connect.Request[v1.SetPasswordRequest]) (*connect.Response[v1.SetPasswordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AuthService.SetPassword is not implemented"))
 }
 
 // OrgServiceClient is a client for the tasker.health.v1.OrgService service.

@@ -152,3 +152,82 @@
   without raising guess-resistance.
 - **Next**: M13-T06 — `loginWithPassword`/`registerLocalUser`/
   `setPassword`/`changePassword` RPCs, converging with `completeLogin`.
+
+## M13-T06 — Login/register/setPassword, converged with completeLogin
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `packages/shared-contract/main.tsp`,
+  `packages/shared-contract/tasker/health/v1/health.proto` (both hand-
+  maintained contract files, per M04's note that every change edits both),
+  regenerated `packages/shared-contract/gen/ts/...`,
+  `apps/cli/gen/tasker/health/v1/...`, `src/lib/authz.ts` not touched,
+  `src/modules/auth/auth.ts`, `src/modules/auth/auth.handler.ts`,
+  `src/modules/auth/auth.test.ts`, `src/modules/auth/auth.handler.test.ts`,
+  `src/lib/viewer-denial.test.ts`, `src/lib/agent-scope-sweep.test.ts`
+- **Verified**: `bun test src/modules/auth/` — 61 pass, 100% line/function
+  coverage on `auth.ts` and `auth.handler.ts`. Full suite: 683 pass, 0 fail.
+  `bunx knip --workspace apps/backend` clean (see Notes). `gui:typecheck`
+  (`tsc -b`) clean after the `User.username` field landed. `go build ./...`
+  and `go test ./...` clean after regenerating the Go client from the
+  updated `.proto`. `tsp format --check` clean after auto-formatting.
+- **Notes**:
+  - **Two RPCs became two HTTP routes + one RPC, not three RPCs.**
+    `loginWithPassword`/`registerLocalUser` are unauthenticated (there is no
+    principal yet — that's the whole point of logging in) and need to set a
+    `Set-Cookie` header, exactly like the existing Google callback. This
+    repo already splits "session establishment" into plain Elysia HTTP
+    routes (`auth.ts`) from "everything else" as authenticated ConnectRPC
+    (`auth.handler.ts`) — forcing login into an RPC would mean either a
+    ConnectRPC method that skips `requireUser` (a new, unprecedented shape)
+    or awkward header-setting through the RPC context. Added
+    `POST /api/auth/password/register` and `POST /api/auth/password/login`
+    as HTTP routes instead, both calling the *same* `sessionCookie(...)`
+    helper the Google callback already uses — that shared call is the
+    literal "converge on the same session issuance path" the task asked
+    for. `setPassword` (authenticated, acting on the caller's own account)
+    stayed a ConnectRPC method on `AuthService`, consistent with the rest
+    of the app. Divergence from the task's literal RPC-only wording,
+    recorded here rather than silently reinterpreted.
+  - **One `setPassword`, not two (`setPassword`/`changePassword`).** A
+    single RPC covers both: `currentPassword` is required and verified when
+    a credential already exists, ignored when it doesn't (a Google-only
+    account setting a password for the first time has nothing to prove).
+    Two RPCs would have meant the client deciding which one to call by
+    first checking whether a credential exists — logic the server already
+    has to do internally either way.
+  - **`consumePendingInvitations` extracted from `completeLogin`.** Both
+    Google login and local registration now call the same function; it's a
+    no-op when no email is given, which is the normal case for a bare
+    local registration. Username-keyed invitations are still T09's job —
+    this only makes email-keyed acceptance shared rather than duplicated.
+  - **Contract note**: `User.username` was added as plain `string` (not
+    `string?`) — matching this message's existing convention for
+    `name`/`avatarUrl`, which are also nullable in the DB but non-optional
+    in the contract; a proto3 empty string already reads as "absent" and
+    the GUI's existing `member.name || member.email` fallback pattern
+    already treats empty string as falsy. This meant `email` needed **no**
+    contract type change at all to become "optional" — it already tolerates
+    an empty/absent value the same way.
+  - **GUI fallback labels intentionally NOT touched here.**
+    `AssigneePicker`/`ReviewerPicker`/`CurrentUser`/`Organizations` all
+    fall back `name || email` today; a member with neither now shows a
+    blank label until they're extended to also fall back to `username`.
+    That's a real gap, but it needs `OrgMember` in the contract (a
+    different model from `User`) to carry `username` too, plus the
+    `listOrgMembers` query to select it — wider than this task's Files list
+    and squarely GUI-screen territory. Flagged for **T11/T12**, which own
+    the GUI login/settings surfaces, rather than expanded into here
+    unbounded.
+  - **Sweep tests updated, not bypassed.** `setPassword` added to
+    `viewer-denial.test.ts`'s `NOT_ORG_SCOPED.auth` (managing one's own
+    credential has nothing to do with any org role — a viewer may call it,
+    same as `getIdentity`) and to `agent-scope-sweep.test.ts`'s `REQUESTS`
+    (denied to agents categorically, since the whole `auth` handler is in
+    `NO_AGENT_ACCESS` per ADR-0008).
+  - Login/register failures return one generic "Invalid credentials"
+    message regardless of which part was wrong (unknown username, no
+    password credential on the account, wrong password) — tested
+    explicitly, since a differentiated message is a username-enumeration
+    oracle.
+- **Next**: M13-T07 — rate limit and lock out password login.

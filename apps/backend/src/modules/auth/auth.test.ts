@@ -535,3 +535,129 @@ describe('Auth Routes (Google OAuth 2.1)', () => {
     require('../../config').config.enableTestLogin = originalEnable;
   });
 });
+
+/**
+ * M13-T06. `email` in these fixtures is deliberately used only where the
+ * test is *about* email interaction (invitations); most cases register with
+ * none at all, since "no email, no Google account" is this milestone's own
+ * exit criterion.
+ */
+describe('Auth Routes (local password)', () => {
+  const register = (body: Record<string, unknown>) =>
+    authRoutes.handle(new Request('http://localhost/api/auth/password/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }));
+
+  const login = (body: Record<string, unknown>) =>
+    authRoutes.handle(new Request('http://localhost/api/auth/password/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }));
+
+  it('registers a user with only a username and password — no email, no Google identity at all', async () => {
+    const res = await register({ username: 'no-email-user', password: 'a-strong-password-123' });
+    expect(res.status).toBe(201);
+    const { userId } = await res.json();
+
+    const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.id, userId));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].email).toBeNull();
+    expect(rows[0].username).toBe('no-email-user');
+
+    const creds = await db.select().from(schemaSqlite.passwordCredentials)
+      .where(eq(schemaSqlite.passwordCredentials.userId, userId));
+    expect(creds).toHaveLength(1);
+    expect(creds[0].passwordHash).not.toContain('a-strong-password-123');
+  });
+
+  it('sets a session cookie on registration, the same shape Google login sets', async () => {
+    const res = await register({ username: 'cookie-check-user', password: 'a-strong-password-123' });
+    const cookie = res.headers.get('set-cookie')!;
+    expect(cookie).toContain('HttpOnly');
+    const session = verifySessionToken(parseSessionCookie(cookie)!);
+    expect(session?.userId).toBeTruthy();
+  });
+
+  it('logs a locally-registered user back in with their username and password', async () => {
+    await register({ username: 'login-check-user', password: 'a-strong-password-123' });
+    const res = await login({ username: 'login-check-user', password: 'a-strong-password-123' });
+    expect(res.status).toBe(200);
+    const cookie = res.headers.get('set-cookie')!;
+    const session = verifySessionToken(parseSessionCookie(cookie)!);
+
+    const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.username, 'login-check-user'));
+    expect(session?.userId).toBe(rows[0].id);
+  });
+
+  it('rejects the wrong password with a generic message, not "wrong password" specifically', async () => {
+    await register({ username: 'wrong-pw-user', password: 'a-strong-password-123' });
+    const res = await login({ username: 'wrong-pw-user', password: 'totally-different-password' });
+    expect(res.status).toBe(401);
+    expect(res.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('rejects an unknown username with the same generic message as a wrong password', async () => {
+    const wrongPw = await login({ username: 'nobody-registered-this', password: 'irrelevant-password-1' });
+    const wrongUser = await (async () => {
+      await register({ username: 'known-user', password: 'a-strong-password-123' });
+      return login({ username: 'known-user', password: 'wrong-one-entirely' });
+    })();
+    const [a, b] = await Promise.all([wrongPw.json(), wrongUser.json()]);
+    expect(a.title).toBe(b.title);
+    expect(wrongPw.status).toBe(401);
+    expect(wrongUser.status).toBe(401);
+  });
+
+  it('refuses to log in via password for a Google-only account that has never set one', async () => {
+    await db.insert(schemaSqlite.users).values({
+      id: 'google-only-1', email: 'g@example.com', username: 'google-only-1', createdAt: new Date(),
+    });
+    const res = await login({ username: 'google-only-1', password: 'anything-at-all-123' });
+    expect(res.status).toBe(401);
+  });
+
+  it('refuses a username already taken', async () => {
+    await register({ username: 'taken-name', password: 'a-strong-password-123' });
+    const res = await register({ username: 'taken-name', password: 'a-different-password-456' });
+    expect(res.status).toBe(400);
+  });
+
+  it('refuses a password shorter than the minimum', async () => {
+    const res = await register({ username: 'short-pw-user', password: 'short' });
+    expect(res.status).toBe(400);
+  });
+
+  it('refuses a request missing username or password entirely', async () => {
+    expect((await register({ password: 'a-strong-password-123' })).status).toBe(400);
+    expect((await register({ username: 'no-password-user' })).status).toBe(400);
+    expect((await login({ password: 'a-strong-password-123' })).status).toBe(400);
+  });
+
+  it('accepts an optional email on registration and stores it', async () => {
+    const res = await register({ username: 'has-email-user', password: 'a-strong-password-123', email: 'has-email@example.com' });
+    expect(res.status).toBe(201);
+    const { userId } = await res.json();
+    const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.id, userId));
+    expect(rows[0].email).toBe('has-email@example.com');
+  });
+
+  it('consumes a pending email invitation on local registration, same as Google login does', async () => {
+    await db.insert(schemaSqlite.organizations).values({ id: 'org-local-invite', name: 'Org', slug: 'org-local-invite', createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: 'inviter-local', email: 'inviter-local@example.com', createdAt: new Date() });
+    await db.insert(schemaSqlite.invitations).values({
+      id: 'inv-local', orgId: 'org-local-invite', email: 'invitee-local@example.com', invitedBy: 'inviter-local', role: 'admin', createdAt: new Date(),
+    });
+
+    const res = await register({ username: 'invitee-local-user', password: 'a-strong-password-123', email: 'invitee-local@example.com' });
+    const { userId } = await res.json();
+
+    const membership = await db.select().from(schemaSqlite.organizationMembers)
+      .where(eq(schemaSqlite.organizationMembers.userId, userId));
+    expect(membership).toHaveLength(1);
+    expect(membership[0].orgId).toBe('org-local-invite');
+    expect(membership[0].role).toBe('admin');
+  });
+});

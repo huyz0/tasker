@@ -120,7 +120,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: unit tests for hash/verify round-trip and for verifying a hash
         produced under an older parameter version.
 
-- [ ] **M13-T06** — Add `loginWithPassword`, `registerLocalUser`, and
+- [x] **M13-T06** — Add `loginWithPassword`, `registerLocalUser`, and
       `setPassword`/`changePassword` RPCs; extend `completeLogin` so Google
       OAuth and password login converge on the same session issuance path.
       - Files: `main.tsp`, `apps/backend/src/modules/auth/auth.handler.ts`,
