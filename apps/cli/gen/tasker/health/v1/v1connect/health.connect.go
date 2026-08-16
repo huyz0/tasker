@@ -51,6 +51,8 @@ const (
 	SearchServiceName = "tasker.health.v1.SearchService"
 	// DashboardServiceName is the fully-qualified name of the DashboardService service.
 	DashboardServiceName = "tasker.health.v1.DashboardService"
+	// TeamServiceName is the fully-qualified name of the TeamService service.
+	TeamServiceName = "tasker.health.v1.TeamService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -349,6 +351,25 @@ const (
 	// DashboardServiceGetDashboardProcedure is the fully-qualified name of the DashboardService's
 	// GetDashboard RPC.
 	DashboardServiceGetDashboardProcedure = "/tasker.health.v1.DashboardService/GetDashboard"
+	// TeamServiceCreateTeamProcedure is the fully-qualified name of the TeamService's CreateTeam RPC.
+	TeamServiceCreateTeamProcedure = "/tasker.health.v1.TeamService/CreateTeam"
+	// TeamServiceUpdateTeamProcedure is the fully-qualified name of the TeamService's UpdateTeam RPC.
+	TeamServiceUpdateTeamProcedure = "/tasker.health.v1.TeamService/UpdateTeam"
+	// TeamServiceArchiveTeamProcedure is the fully-qualified name of the TeamService's ArchiveTeam RPC.
+	TeamServiceArchiveTeamProcedure = "/tasker.health.v1.TeamService/ArchiveTeam"
+	// TeamServiceRestoreTeamProcedure is the fully-qualified name of the TeamService's RestoreTeam RPC.
+	TeamServiceRestoreTeamProcedure = "/tasker.health.v1.TeamService/RestoreTeam"
+	// TeamServiceListTeamsProcedure is the fully-qualified name of the TeamService's ListTeams RPC.
+	TeamServiceListTeamsProcedure = "/tasker.health.v1.TeamService/ListTeams"
+	// TeamServiceAddTeamMemberProcedure is the fully-qualified name of the TeamService's AddTeamMember
+	// RPC.
+	TeamServiceAddTeamMemberProcedure = "/tasker.health.v1.TeamService/AddTeamMember"
+	// TeamServiceRemoveTeamMemberProcedure is the fully-qualified name of the TeamService's
+	// RemoveTeamMember RPC.
+	TeamServiceRemoveTeamMemberProcedure = "/tasker.health.v1.TeamService/RemoveTeamMember"
+	// TeamServiceListTeamMembersProcedure is the fully-qualified name of the TeamService's
+	// ListTeamMembers RPC.
+	TeamServiceListTeamMembersProcedure = "/tasker.health.v1.TeamService/ListTeamMembers"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -471,6 +492,15 @@ var (
 	searchServiceUniversalSearchMethodDescriptor              = searchServiceServiceDescriptor.Methods().ByName("UniversalSearch")
 	dashboardServiceServiceDescriptor                         = v1.File_tasker_health_v1_health_proto.Services().ByName("DashboardService")
 	dashboardServiceGetDashboardMethodDescriptor              = dashboardServiceServiceDescriptor.Methods().ByName("GetDashboard")
+	teamServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("TeamService")
+	teamServiceCreateTeamMethodDescriptor                     = teamServiceServiceDescriptor.Methods().ByName("CreateTeam")
+	teamServiceUpdateTeamMethodDescriptor                     = teamServiceServiceDescriptor.Methods().ByName("UpdateTeam")
+	teamServiceArchiveTeamMethodDescriptor                    = teamServiceServiceDescriptor.Methods().ByName("ArchiveTeam")
+	teamServiceRestoreTeamMethodDescriptor                    = teamServiceServiceDescriptor.Methods().ByName("RestoreTeam")
+	teamServiceListTeamsMethodDescriptor                      = teamServiceServiceDescriptor.Methods().ByName("ListTeams")
+	teamServiceAddTeamMemberMethodDescriptor                  = teamServiceServiceDescriptor.Methods().ByName("AddTeamMember")
+	teamServiceRemoveTeamMemberMethodDescriptor               = teamServiceServiceDescriptor.Methods().ByName("RemoveTeamMember")
+	teamServiceListTeamMembersMethodDescriptor                = teamServiceServiceDescriptor.Methods().ByName("ListTeamMembers")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -3780,4 +3810,254 @@ type UnimplementedDashboardServiceHandler struct{}
 
 func (UnimplementedDashboardServiceHandler) GetDashboard(context.Context, *connect.Request[v1.GetDashboardRequest]) (*connect.Response[v1.GetDashboardResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.DashboardService.GetDashboard is not implemented"))
+}
+
+// TeamServiceClient is a client for the tasker.health.v1.TeamService service.
+type TeamServiceClient interface {
+	CreateTeam(context.Context, *connect.Request[v1.CreateTeamRequest]) (*connect.Response[v1.CreateTeamResponse], error)
+	UpdateTeam(context.Context, *connect.Request[v1.UpdateTeamRequest]) (*connect.Response[v1.UpdateTeamResponse], error)
+	ArchiveTeam(context.Context, *connect.Request[v1.ArchiveTeamRequest]) (*connect.Response[v1.ArchiveTeamResponse], error)
+	RestoreTeam(context.Context, *connect.Request[v1.RestoreTeamRequest]) (*connect.Response[v1.RestoreTeamResponse], error)
+	ListTeams(context.Context, *connect.Request[v1.ListTeamsRequest]) (*connect.Response[v1.ListTeamsResponse], error)
+	AddTeamMember(context.Context, *connect.Request[v1.AddTeamMemberRequest]) (*connect.Response[v1.AddTeamMemberResponse], error)
+	RemoveTeamMember(context.Context, *connect.Request[v1.RemoveTeamMemberRequest]) (*connect.Response[v1.RemoveTeamMemberResponse], error)
+	ListTeamMembers(context.Context, *connect.Request[v1.ListTeamMembersRequest]) (*connect.Response[v1.ListTeamMembersResponse], error)
+}
+
+// NewTeamServiceClient constructs a client for the tasker.health.v1.TeamService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewTeamServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) TeamServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &teamServiceClient{
+		createTeam: connect.NewClient[v1.CreateTeamRequest, v1.CreateTeamResponse](
+			httpClient,
+			baseURL+TeamServiceCreateTeamProcedure,
+			connect.WithSchema(teamServiceCreateTeamMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateTeam: connect.NewClient[v1.UpdateTeamRequest, v1.UpdateTeamResponse](
+			httpClient,
+			baseURL+TeamServiceUpdateTeamProcedure,
+			connect.WithSchema(teamServiceUpdateTeamMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		archiveTeam: connect.NewClient[v1.ArchiveTeamRequest, v1.ArchiveTeamResponse](
+			httpClient,
+			baseURL+TeamServiceArchiveTeamProcedure,
+			connect.WithSchema(teamServiceArchiveTeamMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		restoreTeam: connect.NewClient[v1.RestoreTeamRequest, v1.RestoreTeamResponse](
+			httpClient,
+			baseURL+TeamServiceRestoreTeamProcedure,
+			connect.WithSchema(teamServiceRestoreTeamMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listTeams: connect.NewClient[v1.ListTeamsRequest, v1.ListTeamsResponse](
+			httpClient,
+			baseURL+TeamServiceListTeamsProcedure,
+			connect.WithSchema(teamServiceListTeamsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		addTeamMember: connect.NewClient[v1.AddTeamMemberRequest, v1.AddTeamMemberResponse](
+			httpClient,
+			baseURL+TeamServiceAddTeamMemberProcedure,
+			connect.WithSchema(teamServiceAddTeamMemberMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		removeTeamMember: connect.NewClient[v1.RemoveTeamMemberRequest, v1.RemoveTeamMemberResponse](
+			httpClient,
+			baseURL+TeamServiceRemoveTeamMemberProcedure,
+			connect.WithSchema(teamServiceRemoveTeamMemberMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listTeamMembers: connect.NewClient[v1.ListTeamMembersRequest, v1.ListTeamMembersResponse](
+			httpClient,
+			baseURL+TeamServiceListTeamMembersProcedure,
+			connect.WithSchema(teamServiceListTeamMembersMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// teamServiceClient implements TeamServiceClient.
+type teamServiceClient struct {
+	createTeam       *connect.Client[v1.CreateTeamRequest, v1.CreateTeamResponse]
+	updateTeam       *connect.Client[v1.UpdateTeamRequest, v1.UpdateTeamResponse]
+	archiveTeam      *connect.Client[v1.ArchiveTeamRequest, v1.ArchiveTeamResponse]
+	restoreTeam      *connect.Client[v1.RestoreTeamRequest, v1.RestoreTeamResponse]
+	listTeams        *connect.Client[v1.ListTeamsRequest, v1.ListTeamsResponse]
+	addTeamMember    *connect.Client[v1.AddTeamMemberRequest, v1.AddTeamMemberResponse]
+	removeTeamMember *connect.Client[v1.RemoveTeamMemberRequest, v1.RemoveTeamMemberResponse]
+	listTeamMembers  *connect.Client[v1.ListTeamMembersRequest, v1.ListTeamMembersResponse]
+}
+
+// CreateTeam calls tasker.health.v1.TeamService.CreateTeam.
+func (c *teamServiceClient) CreateTeam(ctx context.Context, req *connect.Request[v1.CreateTeamRequest]) (*connect.Response[v1.CreateTeamResponse], error) {
+	return c.createTeam.CallUnary(ctx, req)
+}
+
+// UpdateTeam calls tasker.health.v1.TeamService.UpdateTeam.
+func (c *teamServiceClient) UpdateTeam(ctx context.Context, req *connect.Request[v1.UpdateTeamRequest]) (*connect.Response[v1.UpdateTeamResponse], error) {
+	return c.updateTeam.CallUnary(ctx, req)
+}
+
+// ArchiveTeam calls tasker.health.v1.TeamService.ArchiveTeam.
+func (c *teamServiceClient) ArchiveTeam(ctx context.Context, req *connect.Request[v1.ArchiveTeamRequest]) (*connect.Response[v1.ArchiveTeamResponse], error) {
+	return c.archiveTeam.CallUnary(ctx, req)
+}
+
+// RestoreTeam calls tasker.health.v1.TeamService.RestoreTeam.
+func (c *teamServiceClient) RestoreTeam(ctx context.Context, req *connect.Request[v1.RestoreTeamRequest]) (*connect.Response[v1.RestoreTeamResponse], error) {
+	return c.restoreTeam.CallUnary(ctx, req)
+}
+
+// ListTeams calls tasker.health.v1.TeamService.ListTeams.
+func (c *teamServiceClient) ListTeams(ctx context.Context, req *connect.Request[v1.ListTeamsRequest]) (*connect.Response[v1.ListTeamsResponse], error) {
+	return c.listTeams.CallUnary(ctx, req)
+}
+
+// AddTeamMember calls tasker.health.v1.TeamService.AddTeamMember.
+func (c *teamServiceClient) AddTeamMember(ctx context.Context, req *connect.Request[v1.AddTeamMemberRequest]) (*connect.Response[v1.AddTeamMemberResponse], error) {
+	return c.addTeamMember.CallUnary(ctx, req)
+}
+
+// RemoveTeamMember calls tasker.health.v1.TeamService.RemoveTeamMember.
+func (c *teamServiceClient) RemoveTeamMember(ctx context.Context, req *connect.Request[v1.RemoveTeamMemberRequest]) (*connect.Response[v1.RemoveTeamMemberResponse], error) {
+	return c.removeTeamMember.CallUnary(ctx, req)
+}
+
+// ListTeamMembers calls tasker.health.v1.TeamService.ListTeamMembers.
+func (c *teamServiceClient) ListTeamMembers(ctx context.Context, req *connect.Request[v1.ListTeamMembersRequest]) (*connect.Response[v1.ListTeamMembersResponse], error) {
+	return c.listTeamMembers.CallUnary(ctx, req)
+}
+
+// TeamServiceHandler is an implementation of the tasker.health.v1.TeamService service.
+type TeamServiceHandler interface {
+	CreateTeam(context.Context, *connect.Request[v1.CreateTeamRequest]) (*connect.Response[v1.CreateTeamResponse], error)
+	UpdateTeam(context.Context, *connect.Request[v1.UpdateTeamRequest]) (*connect.Response[v1.UpdateTeamResponse], error)
+	ArchiveTeam(context.Context, *connect.Request[v1.ArchiveTeamRequest]) (*connect.Response[v1.ArchiveTeamResponse], error)
+	RestoreTeam(context.Context, *connect.Request[v1.RestoreTeamRequest]) (*connect.Response[v1.RestoreTeamResponse], error)
+	ListTeams(context.Context, *connect.Request[v1.ListTeamsRequest]) (*connect.Response[v1.ListTeamsResponse], error)
+	AddTeamMember(context.Context, *connect.Request[v1.AddTeamMemberRequest]) (*connect.Response[v1.AddTeamMemberResponse], error)
+	RemoveTeamMember(context.Context, *connect.Request[v1.RemoveTeamMemberRequest]) (*connect.Response[v1.RemoveTeamMemberResponse], error)
+	ListTeamMembers(context.Context, *connect.Request[v1.ListTeamMembersRequest]) (*connect.Response[v1.ListTeamMembersResponse], error)
+}
+
+// NewTeamServiceHandler builds an HTTP handler from the service implementation. It returns the path
+// on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	teamServiceCreateTeamHandler := connect.NewUnaryHandler(
+		TeamServiceCreateTeamProcedure,
+		svc.CreateTeam,
+		connect.WithSchema(teamServiceCreateTeamMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceUpdateTeamHandler := connect.NewUnaryHandler(
+		TeamServiceUpdateTeamProcedure,
+		svc.UpdateTeam,
+		connect.WithSchema(teamServiceUpdateTeamMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceArchiveTeamHandler := connect.NewUnaryHandler(
+		TeamServiceArchiveTeamProcedure,
+		svc.ArchiveTeam,
+		connect.WithSchema(teamServiceArchiveTeamMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceRestoreTeamHandler := connect.NewUnaryHandler(
+		TeamServiceRestoreTeamProcedure,
+		svc.RestoreTeam,
+		connect.WithSchema(teamServiceRestoreTeamMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceListTeamsHandler := connect.NewUnaryHandler(
+		TeamServiceListTeamsProcedure,
+		svc.ListTeams,
+		connect.WithSchema(teamServiceListTeamsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceAddTeamMemberHandler := connect.NewUnaryHandler(
+		TeamServiceAddTeamMemberProcedure,
+		svc.AddTeamMember,
+		connect.WithSchema(teamServiceAddTeamMemberMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceRemoveTeamMemberHandler := connect.NewUnaryHandler(
+		TeamServiceRemoveTeamMemberProcedure,
+		svc.RemoveTeamMember,
+		connect.WithSchema(teamServiceRemoveTeamMemberMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceListTeamMembersHandler := connect.NewUnaryHandler(
+		TeamServiceListTeamMembersProcedure,
+		svc.ListTeamMembers,
+		connect.WithSchema(teamServiceListTeamMembersMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.TeamService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case TeamServiceCreateTeamProcedure:
+			teamServiceCreateTeamHandler.ServeHTTP(w, r)
+		case TeamServiceUpdateTeamProcedure:
+			teamServiceUpdateTeamHandler.ServeHTTP(w, r)
+		case TeamServiceArchiveTeamProcedure:
+			teamServiceArchiveTeamHandler.ServeHTTP(w, r)
+		case TeamServiceRestoreTeamProcedure:
+			teamServiceRestoreTeamHandler.ServeHTTP(w, r)
+		case TeamServiceListTeamsProcedure:
+			teamServiceListTeamsHandler.ServeHTTP(w, r)
+		case TeamServiceAddTeamMemberProcedure:
+			teamServiceAddTeamMemberHandler.ServeHTTP(w, r)
+		case TeamServiceRemoveTeamMemberProcedure:
+			teamServiceRemoveTeamMemberHandler.ServeHTTP(w, r)
+		case TeamServiceListTeamMembersProcedure:
+			teamServiceListTeamMembersHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedTeamServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedTeamServiceHandler struct{}
+
+func (UnimplementedTeamServiceHandler) CreateTeam(context.Context, *connect.Request[v1.CreateTeamRequest]) (*connect.Response[v1.CreateTeamResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TeamService.CreateTeam is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) UpdateTeam(context.Context, *connect.Request[v1.UpdateTeamRequest]) (*connect.Response[v1.UpdateTeamResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TeamService.UpdateTeam is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) ArchiveTeam(context.Context, *connect.Request[v1.ArchiveTeamRequest]) (*connect.Response[v1.ArchiveTeamResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TeamService.ArchiveTeam is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) RestoreTeam(context.Context, *connect.Request[v1.RestoreTeamRequest]) (*connect.Response[v1.RestoreTeamResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TeamService.RestoreTeam is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) ListTeams(context.Context, *connect.Request[v1.ListTeamsRequest]) (*connect.Response[v1.ListTeamsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TeamService.ListTeams is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) AddTeamMember(context.Context, *connect.Request[v1.AddTeamMemberRequest]) (*connect.Response[v1.AddTeamMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TeamService.AddTeamMember is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) RemoveTeamMember(context.Context, *connect.Request[v1.RemoveTeamMemberRequest]) (*connect.Response[v1.RemoveTeamMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TeamService.RemoveTeamMember is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) ListTeamMembers(context.Context, *connect.Request[v1.ListTeamMembersRequest]) (*connect.Response[v1.ListTeamMembersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TeamService.ListTeamMembers is not implemented"))
 }

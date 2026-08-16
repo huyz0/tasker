@@ -1624,3 +1624,101 @@ model GetDashboardResponse {
 interface DashboardService {
   getDashboard(request: GetDashboardRequest): GetDashboardResponse;
 }
+
+// ==== Teams (M10-T07, ADR-0013) ====
+
+model Team {
+  @field(1) id: string;
+  @field(2) orgId: string;
+  @field(3) name: string;
+  @field(4) createdAt: string;
+  @field(5) deletedAt?: string;
+}
+
+// Mirrors OrgMember's shape - a team's roster is a member list the same way
+// an organization's is, minus `role`: team membership itself carries no
+// role (ADR-0013 §3 - what a member *can do* comes from whatever role is
+// granted to the team as a subject, a separate concept team_members does
+// not encode).
+model TeamMember {
+  @field(1) userId: string;
+  @field(2) email: string;
+  @field(3) name: string;
+  @field(4) joinedAt: string;
+}
+
+model CreateTeamRequest {
+  @field(1) orgId: string;
+  @field(2) name: string;
+}
+model CreateTeamResponse {
+  @field(1) team: Team;
+}
+
+model UpdateTeamRequest {
+  @field(1) teamId: string;
+  @field(2) name: string;
+}
+model UpdateTeamResponse {
+  @field(1) team: Team;
+}
+
+model ArchiveTeamRequest {
+  @field(1) teamId: string;
+}
+model ArchiveTeamResponse {
+  @field(1) success: boolean;
+}
+
+model RestoreTeamRequest {
+  @field(1) teamId: string;
+}
+model RestoreTeamResponse {
+  @field(1) success: boolean;
+}
+
+model ListTeamsRequest {
+  @field(1) orgId: string;
+  @field(2) page?: PageRequest;
+  @field(3) onlyDeleted?: boolean;
+}
+model ListTeamsResponse {
+  @field(1) teams: Team[];
+  @field(2) page?: PageResponse;
+}
+
+model AddTeamMemberRequest {
+  @field(1) teamId: string;
+  @field(2) userId: string;
+}
+model AddTeamMemberResponse {
+  @field(1) success: boolean;
+}
+
+model RemoveTeamMemberRequest {
+  @field(1) teamId: string;
+  @field(2) userId: string;
+}
+model RemoveTeamMemberResponse {
+  @field(1) success: boolean;
+}
+
+model ListTeamMembersRequest {
+  @field(1) teamId: string;
+  @field(2) page?: PageRequest;
+}
+model ListTeamMembersResponse {
+  @field(1) members: TeamMember[];
+  @field(2) page?: PageResponse;
+}
+
+interface TeamService {
+  createTeam(request: CreateTeamRequest): CreateTeamResponse;
+  updateTeam(request: UpdateTeamRequest): UpdateTeamResponse;
+  archiveTeam(request: ArchiveTeamRequest): ArchiveTeamResponse;
+  restoreTeam(request: RestoreTeamRequest): RestoreTeamResponse;
+  listTeams(request: ListTeamsRequest): ListTeamsResponse;
+  addTeamMember(request: AddTeamMemberRequest): AddTeamMemberResponse;
+  removeTeamMember(request: RemoveTeamMemberRequest): RemoveTeamMemberResponse;
+  listTeamMembers(request: ListTeamMembersRequest): ListTeamMembersResponse;
+}

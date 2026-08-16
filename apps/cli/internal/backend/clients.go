@@ -66,3 +66,7 @@ func NewTaskNoteServiceClient() v1connect.TaskNoteServiceClient {
 func NewTaskTypeServiceClient() v1connect.TaskTypeServiceClient {
 	return v1connect.NewTaskTypeServiceClient(http.DefaultClient, URL(), ClientOptions()...)
 }
+
+func NewTeamServiceClient() v1connect.TeamServiceClient {
+	return v1connect.NewTeamServiceClient(http.DefaultClient, URL(), ClientOptions()...)
+}

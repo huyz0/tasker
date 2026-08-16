@@ -44,6 +44,46 @@ export const EXCEPTIONS = {
     'real gap, not yet scheduled. Wire it into the Organizations member ' +
     'list (an admin action per row, alongside role/remove) and remove this ' +
     'exception when that lands.',
+  'TeamService.createTeam':
+    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
+    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
+    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
+    'eight TeamService methods. Remove this exception when that lands.',
+  'TeamService.updateTeam':
+    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
+    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
+    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
+    'eight TeamService methods. Remove this exception when that lands.',
+  'TeamService.archiveTeam':
+    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
+    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
+    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
+    'eight TeamService methods. Remove this exception when that lands.',
+  'TeamService.restoreTeam':
+    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
+    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
+    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
+    'eight TeamService methods. Remove this exception when that lands.',
+  'TeamService.listTeams':
+    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
+    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
+    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
+    'eight TeamService methods. Remove this exception when that lands.',
+  'TeamService.addTeamMember':
+    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
+    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
+    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
+    'eight TeamService methods. Remove this exception when that lands.',
+  'TeamService.removeTeamMember':
+    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
+    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
+    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
+    'eight TeamService methods. Remove this exception when that lands.',
+  'TeamService.listTeamMembers':
+    'M10-T07 added team CRUD and membership RPCs, with a CLI caller ' +
+    '(apps/cli/cmd/teams.go) but no GUI one yet - M10-T12 (Team management ' +
+    'UI, apps/gui/src/features/Teams/) is the scheduled caller for all ' +
+    'eight TeamService methods. Remove this exception when that lands.',
 };
 
 /** RPC names per service, read from the TypeSpec interfaces. */

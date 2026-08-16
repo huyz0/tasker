@@ -1467,3 +1467,96 @@ message GetDashboardResponse {
 service DashboardService {
   rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
 }
+
+// ==== Teams (M10-T07, ADR-0013) ====
+
+message Team {
+  string id = 1;
+  string orgId = 2;
+  string name = 3;
+  string createdAt = 4;
+  string deletedAt = 5;
+}
+
+message TeamMember {
+  string userId = 1;
+  string email = 2;
+  string name = 3;
+  string joinedAt = 4;
+}
+
+message CreateTeamRequest {
+  string orgId = 1;
+  string name = 2;
+}
+message CreateTeamResponse {
+  Team team = 1;
+}
+
+message UpdateTeamRequest {
+  string teamId = 1;
+  string name = 2;
+}
+message UpdateTeamResponse {
+  Team team = 1;
+}
+
+message ArchiveTeamRequest {
+  string teamId = 1;
+}
+message ArchiveTeamResponse {
+  bool success = 1;
+}
+
+message RestoreTeamRequest {
+  string teamId = 1;
+}
+message RestoreTeamResponse {
+  bool success = 1;
+}
+
+message ListTeamsRequest {
+  string orgId = 1;
+  PageRequest page = 2;
+  bool onlyDeleted = 3;
+}
+message ListTeamsResponse {
+  repeated Team teams = 1;
+  PageResponse page = 2;
+}
+
+message AddTeamMemberRequest {
+  string teamId = 1;
+  string userId = 2;
+}
+message AddTeamMemberResponse {
+  bool success = 1;
+}
+
+message RemoveTeamMemberRequest {
+  string teamId = 1;
+  string userId = 2;
+}
+message RemoveTeamMemberResponse {
+  bool success = 1;
+}
+
+message ListTeamMembersRequest {
+  string teamId = 1;
+  PageRequest page = 2;
+}
+message ListTeamMembersResponse {
+  repeated TeamMember members = 1;
+  PageResponse page = 2;
+}
+
+service TeamService {
+  rpc CreateTeam(CreateTeamRequest) returns (CreateTeamResponse);
+  rpc UpdateTeam(UpdateTeamRequest) returns (UpdateTeamResponse);
+  rpc ArchiveTeam(ArchiveTeamRequest) returns (ArchiveTeamResponse);
+  rpc RestoreTeam(RestoreTeamRequest) returns (RestoreTeamResponse);
+  rpc ListTeams(ListTeamsRequest) returns (ListTeamsResponse);
+  rpc AddTeamMember(AddTeamMemberRequest) returns (AddTeamMemberResponse);
+  rpc RemoveTeamMember(RemoveTeamMemberRequest) returns (RemoveTeamMemberResponse);
+  rpc ListTeamMembers(ListTeamMembersRequest) returns (ListTeamMembersResponse);
+}

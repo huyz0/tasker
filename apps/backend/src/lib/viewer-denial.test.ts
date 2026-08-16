@@ -11,6 +11,7 @@ import { createAgentsHandler } from '../modules/agents/agents.handler';
 import { createArtifactsHandler } from '../modules/artifacts/artifacts.handler';
 import { createCommentsHandler } from '../modules/comments/comments.handler';
 import { createLabelsHandler } from '../modules/labels/labels.handler';
+import { createTeamsHandler } from '../modules/teams/teams.handler';
 import { createRepositoriesHandler } from '../modules/repositories/repositories.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
@@ -49,6 +50,7 @@ const READS: Record<string, string[]> = {
   artifacts: ['listFolders', 'listArtifacts', 'getArtifact', 'getArtifactContent', 'listTaskArtifactLinks'],
   comments: ['listComments'],
   labels: ['listLabels', 'listEntityLabels'],
+  teams: ['listTeams', 'listTeamMembers'],
   repositories: ['listRepositoryLinks', 'listPullRequests', 'listBuilds', 'listDeployments'],
   health: ['ping'],
   auth: ['getIdentity'],
@@ -88,6 +90,7 @@ const ids = {
   repoLink: 'repo-viewer-sweep',
   invitation: 'inv-viewer-sweep',
   apiToken: 'tok-viewer-sweep',
+  team: 'team-viewer-sweep',
 };
 
 /**
@@ -190,6 +193,14 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     attachLabel: { labelId: ids.label, entityId: ids.task, entityType: 'task' },
     detachLabel: { labelId: ids.label, entityId: ids.task, entityType: 'task' },
   },
+  teams: {
+    createTeam: { orgId: ids.org, name: 'T' },
+    updateTeam: { teamId: ids.team, name: 'T2' },
+    archiveTeam: { teamId: ids.team },
+    restoreTeam: { teamId: ids.team },
+    addTeamMember: { teamId: ids.team, userId: 'someone-else' },
+    removeTeamMember: { teamId: ids.team, userId: 'someone-else' },
+  },
   repositories: {
     addRepositoryLink: { projectId: ids.project, provider: 'github', remoteName: 'o/r', apiToken: 't' },
     removeRepositoryLink: { repositoryLinkId: ids.repoLink },
@@ -267,6 +278,7 @@ beforeAll(async () => {
     id: ids.invitation, orgId: ids.org, email: 'invited@test.local',
     invitedBy: 'someone-else', role: 'member', createdAt: now,
   });
+  await db.insert(schema.teams).values({ id: ids.team, orgId: ids.org, name: 'Team', createdAt: now });
 
   handlers = {
     orgs: createOrgsHandler(db, nc),
@@ -279,6 +291,7 @@ beforeAll(async () => {
     artifacts: createArtifactsHandler(db, nc),
     comments: createCommentsHandler(db, nc),
     labels: createLabelsHandler(db, nc),
+    teams: createTeamsHandler(db, nc),
     repositories: createRepositoriesHandler(db, nc),
     health: createHealthHandler(db, nc),
     auth: createAuthHandler(db, nc),

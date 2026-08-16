@@ -107,7 +107,7 @@ SCIM provisioning, delegated administration.
 
 ### Teams and hierarchy
 
-- [ ] **M10-T07** — Add team CRUD and membership RPCs with pagination, plus
+- [x] **M10-T07** — Add team CRUD and membership RPCs with pagination, plus
       CLI commands.
       - Files: `main.tsp`, `modules/teams/teams.handler.ts`, `apps/cli/cmd/teams.go`
       - Verify: a team of 100 members pages correctly.

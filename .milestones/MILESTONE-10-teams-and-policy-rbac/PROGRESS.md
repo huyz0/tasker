@@ -448,3 +448,87 @@
     ever go stale, because it never outlives the request it was built for.
 - **Next**: M10-T07 — team CRUD and membership RPCs with pagination, plus
   CLI commands.
+
+## M10-T07 — team CRUD and membership RPCs with pagination, plus CLI
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**:
+  - `packages/shared-contract/main.tsp`,
+    `packages/shared-contract/tasker/health/v1/health.proto` (both editions,
+    per M04's precedent) — `Team`/`TeamMember` models and `TeamService`
+    (createTeam, updateTeam, archiveTeam, restoreTeam, listTeams,
+    addTeamMember, removeTeamMember, listTeamMembers), regenerated into
+    `gen/ts/...` and `apps/cli/gen/...`.
+  - `apps/backend/src/modules/teams/teams.handler.ts` — new. Every RPC
+    checked with `assertCan(..., {type: 'organization', id: orgId},
+    'team:<verb>')` - a deliberate reading of `policy.ts`'s own note that
+    team-scope operations are each RPC's mapping decision, not something
+    `can()` auto-climbs: team CRUD and rostering are organization-level
+    administrative acts, the same shape project/task-type CRUD already
+    take against their owning org. `listTeamMembers` mirrors
+    `listOrgMembers`'s one joined, cursor-paginated query rather than a
+    membership select followed by a per-id user fetch. `restoreTeam`
+    refuses restoring into an archived org, same guard `restoreProject`/
+    `restoreAgent` already have. `addTeamMember` is idempotent (a second
+    add is a no-op success, matching `attachLabel`'s convention);
+    `removeTeamMember` is idempotent by construction (an unconditional
+    delete on a possibly-absent row).
+  - `apps/backend/src/index.ts` — `TeamService` registered.
+  - `apps/backend/src/modules/teams/teams.test.ts` — new, 12 tests:
+    every CRUD/membership path, cross-org isolation, the archived-org
+    restore guard, both idempotency guarantees, and this task's own verify
+    line - **a team of 100 members pages correctly** (three pages at
+    limit 40, correct `totalCount`, no id repeated or dropped across
+    pages). 100% coverage on `teams.handler.ts`.
+  - `apps/backend/src/lib/viewer-denial.test.ts` — `teams` added to the
+    sweep: `listTeams`/`listTeamMembers` in READS, the other six in
+    REQUESTS with a real team fixture. All six correctly deny a viewer
+    through the `organization_members` fallback alone (viewer's role has
+    no `team:write`/`team:admin`) - no team-specific fixture beyond the
+    team itself was needed to prove it.
+  - `apps/cli/cmd/teams.go` — new (`teams list|create|rename|delete|
+    restore|add-member|remove-member|list-members`), plus
+    `apps/cli/cmd/teams_test.go` (8 tests, one fake `TeamServiceHandler`
+    behind an `httptest` server, matching `orgs_test.go`'s pattern).
+    `apps/cli/internal/backend/clients.go` gained `NewTeamServiceClient()`.
+  - `apps/gui/scripts/rpc-coverage.mjs` — all eight `TeamService` methods
+    added to `EXCEPTIONS`, each naming M10-T12 (Team management UI) as the
+    scheduled caller; a real ≥40-character reason for each, not a
+    cross-reference shortcut (`rpc-coverage.test.mjs`'s own quality gate
+    on `EXCEPTIONS` catches and rejects a lazy "see the other one").
+- **Verified**:
+  - `moon run shared-contract:format` / `shared-contract:compile` - clean;
+    `TeamService`/`CreateTeam`/etc. confirmed present in all three codegen
+    targets (`gen/ts/...`, `apps/cli/gen/...pb.go`,
+    `apps/cli/gen/...connect.go`).
+  - `bun test src/modules/teams/teams.test.ts` — 12/12 pass, 100% coverage.
+  - `bun test src/lib/viewer-denial.test.ts` — 78/78 pass (up from the
+    previous milestone's count, six new denial cases for teams).
+  - `bun test src/lib/agent-scope-sweep.test.ts` — 7/7 pass unchanged;
+    teams RPCs are `requireUser`-only (never `requirePrincipal`), so
+    they're outside this sweep's scope entirely, same as
+    `attachLabel`/`detachLabel` per ADR-0013's findings section.
+  - `STANDALONE=true bun test` (full backend suite) — 848 pass, 0 fail.
+  - `go build ./... && go vet ./... && gofmt -l .` — clean;
+    `go test ./...` — all packages pass, including the 8 new
+    `TestTeams*` cases.
+  - `moon run gui:rpc-coverage` — 100/111 RPCs reached, 11 excepted with
+    reasons (up from 100/103 pre-T07 - the count grew by exactly the 8
+    new excepted `TeamService` methods).
+  - `moon check --all` — 27/27 tasks green, fully cached on a second run.
+- **Notes**:
+  - **A real backend gap named, not silently deferred**: nothing anywhere
+    in the product can create a `grants` row through an RPC - the only
+    ways one exists today are T03's one-time historical migration and
+    `scripts/migrate-roles.ts`'s reconciliation. T07's own file scope is
+    team CRUD/membership only, not grant management, so this is left for
+    T08 (whose files list already names `lib/policy.ts` - done since T04 -
+    and `modules/teams/` - now real) or, if T08 stays scoped to
+    verification only, for T11 (Role management UI), which cannot ship
+    "assign this role to a user or team" without some backing RPC either.
+    Recorded here so it isn't rediscovered as a surprise later.
+- **Next**: M10-T08 — allow grants to a team as subject (already true since
+  T04's `can()`; verify end-to-end against the real `teams.handler.ts`
+  infrastructure this task just built, not just synthetic `policy.test.ts`
+  fixtures).
