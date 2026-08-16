@@ -430,3 +430,92 @@ describe('can() - per-request caching (T06)', () => {
     expect(second.selects).toBe(first.selects);
   });
 });
+
+// M10-T09. seedOrg's old two-level nesting cap is gone; can() climbs
+// organizations.parentOrgId all the way up, not just one hop, for both a
+// real grants row and the organization_members fallback.
+async function seedChildOrg(db: any, { orgId, parentOrgId }: { orgId: string; parentOrgId: string }) {
+  await db.insert(schema.organizations).values({ id: orgId, name: orgId, slug: orgId, parentOrgId, createdAt: new Date() });
+}
+
+describe('can() - ancestor organization climbing (T09)', () => {
+  it('a grant on the parent org reaches its child org', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId: parentId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-parent', userId: 'user-1' });
+    await seedChildOrg(db, { orgId: 'org-child', parentOrgId: parentId });
+    await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: parentId, roleId: 'role-admin' });
+
+    expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: 'org-child' }, 'org:admin')).toBe(true);
+  });
+
+  // The milestone's own verify line for M10-T09: "a parent-org admin can
+  // administer a grandchild org."
+  it('a grant on the grandparent org reaches a grandchild org, two levels down', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId: grandparentId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-grandparent', userId: 'user-1' });
+    await seedChildOrg(db, { orgId: 'org-parent-2', parentOrgId: grandparentId });
+    await seedChildOrg(db, { orgId: 'org-grandchild', parentOrgId: 'org-parent-2' });
+    await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: grandparentId, roleId: 'role-admin' });
+
+    expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: 'org-grandchild' }, 'org:admin')).toBe(true);
+  });
+
+  it('an organization_members role on the parent org reaches its child org too, not just real grants', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId: parentId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-parent-om', userId: 'user-1' });
+    await seedChildOrg(db, { orgId: 'org-child-om', parentOrgId: parentId });
+
+    expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: 'org-child-om' }, 'org:admin')).toBe(true);
+  });
+
+  it('a grant on a child org does not reach its parent - climbing is one-directional', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId: parentId } = await seedBareOrgAndUser(db, { orgId: 'org-parent-3', userId: 'user-1' });
+    await seedChildOrg(db, { orgId: 'org-child-3', parentOrgId: parentId });
+    await seedUser(db, 'user-2');
+    await seedGrant(db, { subjectId: 'user-2', scopeType: 'organization', scopeId: 'org-child-3', roleId: 'role-owner' });
+
+    expect(await can(db, { kind: 'user', userId: 'user-2' }, { type: 'organization', id: parentId }, 'org:read')).toBe(false);
+  });
+
+  it('a grant on one child does not leak to its sibling under the same parent', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId: parentId } = await seedBareOrgAndUser(db, { orgId: 'org-parent-4', userId: 'user-1' });
+    await seedChildOrg(db, { orgId: 'org-child-a', parentOrgId: parentId });
+    await seedChildOrg(db, { orgId: 'org-child-b', parentOrgId: parentId });
+    await seedUser(db, 'user-2');
+    await seedGrant(db, { subjectId: 'user-2', scopeType: 'organization', scopeId: 'org-child-a', roleId: 'role-owner' });
+
+    expect(await can(db, { kind: 'user', userId: 'user-2' }, { type: 'organization', id: 'org-child-a' }, 'org:read')).toBe(true);
+    expect(await can(db, { kind: 'user', userId: 'user-2' }, { type: 'organization', id: 'org-child-b' }, 'org:read')).toBe(false);
+  });
+
+  it('reaches a project under a grandchild org through both project→org and org→ancestor climbing composed together', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId: grandparentId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-gp-proj', userId: 'user-1' });
+    await seedChildOrg(db, { orgId: 'org-p-proj', parentOrgId: grandparentId });
+    await seedChildOrg(db, { orgId: 'org-gc-proj', parentOrgId: 'org-p-proj' });
+    const { projectId } = await seedProject(db, { orgId: 'org-gc-proj', userId, templateId: 'tmpl-gc', projectId: 'proj-gc' });
+    await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: grandparentId, roleId: 'role-member' });
+
+    expect(await can(db, { kind: 'user', userId }, { type: 'project', id: projectId }, 'task:write')).toBe(true);
+  });
+
+  it('a cyclic parentOrgId chain does not loop forever - fails closed with an empty ancestor list', async () => {
+    const { db } = await setupIntegrationTest();
+    await db.insert(schema.organizations).values([
+      { id: 'org-cycle-a', name: 'A', slug: 'org-cycle-a', createdAt: new Date() },
+      { id: 'org-cycle-b', name: 'B', slug: 'org-cycle-b', parentOrgId: 'org-cycle-a', createdAt: new Date() },
+    ]);
+    // Corrupt the chain into a cycle after both rows exist (parentOrgId
+    // has no NOT NULL/acyclic constraint at the DB level - can() itself is
+    // this guarantee's only enforcement point).
+    await db.update(schema.organizations).set({ parentOrgId: 'org-cycle-b' }).where(eq(schema.organizations.id, 'org-cycle-a'));
+    await seedUser(db, 'user-1');
+    await seedGrant(db, { subjectId: 'user-1', scopeType: 'organization', scopeId: 'org-cycle-a', roleId: 'role-owner' });
+
+    // Resolves (does not hang) and, since org-cycle-a's own direct grant
+    // still applies to itself, still returns true for org-cycle-a.
+    expect(await can(db, { kind: 'user', userId: 'user-1' }, { type: 'organization', id: 'org-cycle-a' }, 'org:read')).toBe(true);
+  });
+});

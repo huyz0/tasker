@@ -570,3 +570,80 @@
 - **Next**: M10-T09 — lift the two-level organization nesting cap and
   implement inheritance: a grant on a parent organization applies to its
   descendants.
+
+## M10-T09 — lift the org nesting cap, implement ancestor-org inheritance
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**:
+  - `apps/backend/src/lib/requestContext.ts` — `PolicyCache` gained
+    `orgAncestors: Map<string, string[]>`.
+  - `apps/backend/src/lib/policy.ts` — new `getAncestorOrgIds(db, orgId,
+    organizations, cache)`: walks `organizations.parentOrgId` up as far as
+    it goes (one query per level, cached per orgId per request - the
+    correct-first shape T06 already established, not a recursive CTE),
+    bounded at 50 levels and guarded against a cycle so a corrupt chain
+    fails closed instead of looping forever. `can()` now runs this for
+    every organization-type scope it reaches (the scope itself, or a
+    project's owning org) and adds each ancestor as its own scope entry to
+    check - both against real `grants` rows and the `organization_members`
+    fallback, which previously only ever checked a single org and now
+    loops over however many org-type entries `scopesToCheck` holds.
+  - `apps/backend/src/modules/orgs/orgs.handler.ts` — `seedOrg`'s
+    `parentRows[0].parentOrgId` check ("nested sub-organizations are not
+    supported yet") removed outright. The remaining `assertCan(...,
+    'org:admin')` against the immediate parent is now, by itself, the
+    correct gate at any depth: `can()`'s own ancestor climbing means an
+    admin of *any* ancestor of that parent passes too, with no separate
+    logic needed in the handler.
+  - `apps/backend/src/lib/policy.test.ts` — 7 new tests (`can() - ancestor
+    organization climbing (T09)`): a parent-org grant reaches its child; a
+    *grandparent*-org grant reaches a grandchild two levels down (this
+    task's own verify line); the `organization_members` fallback climbs
+    too, not just real grants; climbing is one-directional (a child's
+    grant does not reach its parent); no leak between siblings under the
+    same parent; project→org and org→ancestor composed together (a grant
+    on a grandparent reaches a project under a grandchild org); and a
+    cyclic `parentOrgId` chain resolves instead of hanging. 36 tests
+    total, up from 29, still 100% coverage on `policy.ts`.
+  - `apps/backend/src/modules/orgs/orgs.test.ts` — the old test asserting
+    a grandchild org creation was *rejected* is corrected (that assertion
+    described the cap this task removes, not a rule that survived it) and
+    a new test added proving the milestone's verify line directly through
+    the real `seedOrg`/`updateOrg` RPCs: a grandparent's admin - never
+    added as a member of the parent or the grandchild - can rename the
+    grandchild directly, and can found a great-grandchild under it too.
+  - `apps/backend/src/modules/tasks/assignment.test.ts` — one query-count
+    budget bumped by one, same class of change T05 already made
+    `reviewers.test.ts`/`links.test.ts` absorb: resolving whether an org
+    has a parent at all costs a select even when the answer is no, so
+    every organization-scope permission check costs one more query than
+    before this task, for every org regardless of whether it is actually
+    nested. Accepted and documented rather than optimized away - the same
+    tradeoff T06 already made deliberately for the rest of `can()`, not a
+    new decision.
+- **Verified**:
+  - `bun test src/lib/policy.test.ts` — 36/36 pass, 100% coverage.
+  - `bun test src/modules/orgs/orgs.test.ts` — 56/56 pass.
+  - `STANDALONE=true bun test` (full backend suite) — 857 pass, 0 fail.
+  - `bunx knip` (repo root) — clean.
+  - `moon check --all` — 27/27 tasks green; `policy.ts` and
+    `requestContext.ts` both at 100% line/function coverage.
+  - Checked the GUI for anything assuming the old cap (nesting-depth text,
+    validation) - nothing found; the Organizations tree already renders
+    arbitrary `parentOrgId` depth (M06), so no GUI change was needed here.
+- **Notes**:
+  - **A real, permanent per-check cost, not a one-time transitional one**:
+    unlike T05's query-count bumps (temporary until T06's cache), this
+    extra select is paid by every organization-scope permission check
+    forever, for every organization, nested or not - there is no way to
+    know an org has no parent without asking. Request-scoped caching (T06)
+    eliminates the *redundant* cost within one request but not this first
+    query. Named explicitly rather than chased into a further optimization
+    this task's scope did not ask for; a future task could denormalize
+    "has no parent" onto a cheaper-to-check field if this ever shows up as
+    a real bottleneck.
+- **Next**: M10-T10 — enforce project-scope grants so a member can be given
+  access to one project without the whole organization (already true since
+  T04's `can()`; this task's own remaining work is likely verification-only,
+  the same shape T08 turned out to be for team-derived grants).

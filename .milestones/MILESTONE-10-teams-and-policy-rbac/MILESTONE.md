@@ -117,7 +117,7 @@ SCIM provisioning, delegated administration.
       - Files: `apps/backend/src/lib/policy.ts`, `modules/teams/`
       - Verify: removing someone from a team removes the derived access.
 
-- [ ] **M10-T09** — Lift the two-level organization nesting cap and implement
+- [x] **M10-T09** — Lift the two-level organization nesting cap and implement
       inheritance: a grant on a parent organization applies to its descendants.
       - Files: `modules/orgs/orgs.handler.ts`, `lib/policy.ts`
       - Verify: a parent-org admin can administer a grandchild org.

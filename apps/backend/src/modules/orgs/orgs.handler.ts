@@ -174,9 +174,14 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         if (!parentRows || parentRows.length === 0) {
           throw new ConnectError("parent organization not found", Code.NotFound);
         }
-        if (parentRows[0].parentOrgId) {
-          throw new ConnectError("nested sub-organizations are not supported yet", Code.InvalidArgument);
-        }
+        // M10-T09: the two-level nesting cap this used to enforce here
+        // ("parentRows[0].parentOrgId must be null") is gone - organizations
+        // can nest to any depth now. The permission check below is the only
+        // gate left, and it already reaches further than "admin of the
+        // immediate parent": can()'s ancestor-organization climbing means an
+        // admin of *any* ancestor of parsed.parentOrgId (its parent, its
+        // parent's parent, ...) passes too, the same as any other org:admin
+        // check against that org.
         await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.parentOrgId }, "org:admin");
       }
 

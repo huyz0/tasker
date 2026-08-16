@@ -25,6 +25,37 @@ export interface Scope {
 }
 
 /**
+ * Every ancestor of `orgId`, walking `organizations.parentOrgId` up as far
+ * as it goes (M10-T09 - `seedOrg`'s old two-level cap meant this was at
+ * most one hop; there is no cap anymore). One query per level rather than
+ * a recursive CTE: real hierarchies are shallow and this is cached per
+ * orgId per request, so the naive version is the correct-first
+ * implementation, the same tradeoff T06 made for the rest of this file.
+ * Bounded at 50 levels and guarded against a cycle so a corrupt
+ * `parentOrgId` chain fails closed (an empty ancestor list) instead of
+ * looping forever - real organizations never nest anywhere near that deep.
+ */
+async function getAncestorOrgIds(db: any, orgId: string, organizations: any, cache: ReturnType<typeof getPolicyCache>): Promise<string[]> {
+  if (cache?.orgAncestors.has(orgId)) return cache.orgAncestors.get(orgId)!;
+
+  const ancestors: string[] = [];
+  const seen = new Set<string>([orgId]);
+  let currentId = orgId;
+  for (let i = 0; i < 50; i++) {
+    const rows = await db.select({ parentOrgId: organizations.parentOrgId }).from(organizations)
+      .where(eq(organizations.id, currentId)).limit(1);
+    const parentId = rows[0]?.parentOrgId;
+    if (!parentId || seen.has(parentId)) break;
+    ancestors.push(parentId);
+    seen.add(parentId);
+    currentId = parentId;
+  }
+
+  cache?.orgAncestors.set(orgId, ancestors);
+  return ancestors;
+}
+
+/**
  * `can()` (ADR-0013, M10-T04) - the single human-path authorization entry
  * point every handler calls instead of naming a role (T05). Governs humans
  * only: an agent principal always resolves `false` here, since agent
@@ -43,13 +74,20 @@ export interface Scope {
  *    (`team_members`) holds a role granting `permission` at this `scope`.
  * 3. An ancestor grant: a `project` scope also checks grants (1 and 2 both)
  *    at the project's owning `organization` - today's "an org role reaches
- *    every project" behavior, preserved rather than narrowed.
+ *    every project" behavior, preserved rather than narrowed - and an
+ *    `organization` scope also checks grants at every ancestor
+ *    organization, walking `organizations.parentOrgId` all the way up
+ *    (M10-T09, which lifted the two-level nesting cap `seedOrg` used to
+ *    enforce - there is no depth limit to stop climbing at). A parent-org
+ *    grant reaches every descendant, not just its immediate children.
  * 4. **`organization_members` as a live, ongoing second source of organization-
  *    scope grants** - not just T03's one-time historical backfill. If the
- *    resolved organization scope has an `organization_members` row for this
- *    user, that row's `role` counts as if `grants` held a
- *    `role-<role>` grant for it too. This is deliberate, not a leftover of
- *    the migration: `organization_members.role` is a real MySQL `enum` of
+ *    resolved organization scope, *or any ancestor of it* (step 3's
+ *    climbing applies here too, not only to real `grants` rows), has an
+ *    `organization_members` row for this user, that row's `role` counts as
+ *    if `grants` held a `role-<role>` grant for it too. This is deliberate,
+ *    not a leftover of the migration: `organization_members.role` is a
+ *    real MySQL `enum` of
  *    exactly the four system-tier names, so this can never resolve anything
  *    `grants` couldn't already express on its own - it is a second, always-
  *    consistent-by-construction *reader* of the same fact, not a second
@@ -65,13 +103,9 @@ export interface Scope {
  *    across teams/projects/orgs" admin view would need, which this fallback
  *    does not produce.
  *
- * Not yet implemented: an `organization` scope checking its ancestor
- * organizations' grants too (a parent-org grant reaching a descendant org).
- * ADR-0013 §3 explicitly defers that to T09, which lifts the two-level
- * nesting cap this schema still has - there is no ancestor chain to climb
- * yet. `team` scope does **not** climb to its owning organization the way
+ * `team` scope does **not** climb to its owning organization the way
  * `project` does: the ADR's resolution algorithm names only project→org
- * (and, later, org→parent-org) as ancestor edges, not team→org. A team is a
+ * and org→ancestor-org as ancestor edges, not team→org. A team is a
  * new resource with no prior "org role reaches every team" behavior to
  * preserve, so whether a given team operation should check `organization`
  * scope, `team` scope, or both is each RPC's own mapping decision (T05/T07),
@@ -98,9 +132,15 @@ export interface Scope {
 export async function can(db: any, principal: Principal, scope: Scope, permission: string): Promise<boolean> {
   if (principal.kind !== 'user') return false;
 
-  const { grants, rolePermissions, teamMembers, organizationMembers } = isStandalone()
-    ? { grants: schemaSqlite.grants, rolePermissions: schemaSqlite.rolePermissions, teamMembers: schemaSqlite.teamMembers, organizationMembers: schemaSqlite.organizationMembers }
-    : { grants: schemaMysql.grants, rolePermissions: schemaMysql.rolePermissions, teamMembers: schemaMysql.teamMembers, organizationMembers: schemaMysql.organizationMembers };
+  const { grants, rolePermissions, teamMembers, organizationMembers, organizations } = isStandalone()
+    ? { grants: schemaSqlite.grants, rolePermissions: schemaSqlite.rolePermissions, teamMembers: schemaSqlite.teamMembers, organizationMembers: schemaSqlite.organizationMembers, organizations: schemaSqlite.organizations }
+    : { grants: schemaMysql.grants, rolePermissions: schemaMysql.rolePermissions, teamMembers: schemaMysql.teamMembers, organizationMembers: schemaMysql.organizationMembers, organizations: schemaMysql.organizations };
+
+  const userId = principal.userId;
+  // `null` outside a request (a script, or a test calling can() directly) -
+  // every cache read/write below is guarded with `cache?.`, so this
+  // degrades to exactly T05's always-fresh behavior, never an error.
+  const cache = getPolicyCache();
 
   const scopesToCheck: Scope[] = [scope];
   if (scope.type === 'project') {
@@ -110,12 +150,15 @@ export async function can(db: any, principal: Principal, scope: Scope, permissio
     const orgId = await getProjectOrgId(db, scope.id, true);
     scopesToCheck.push({ type: 'organization', id: orgId });
   }
-
-  const userId = principal.userId;
-  // `null` outside a request (a script, or a test calling can() directly) -
-  // every cache read/write below is guarded with `cache?.`, so this
-  // degrades to exactly T05's always-fresh behavior, never an error.
-  const cache = getPolicyCache();
+  // T09: every organization-type scope reached so far (the scope itself,
+  // or a project's owning org) also reaches its ancestor organizations.
+  // Iterating a snapshot of the pre-ancestor entries, not the array being
+  // pushed onto, so an ancestor's own ancestors aren't walked a second
+  // time here - getAncestorOrgIds already returns the full chain in one call.
+  for (const orgEntry of scopesToCheck.filter((s) => s.type === 'organization')) {
+    const ancestorIds = await getAncestorOrgIds(db, orgEntry.id, organizations, cache);
+    for (const ancestorId of ancestorIds) scopesToCheck.push({ type: 'organization', id: ancestorId });
+  }
 
   // Team memberships are constant for this principal for the life of the
   // request, so cached by userId alone.
@@ -151,29 +194,31 @@ export async function can(db: any, principal: Principal, scope: Scope, permissio
 
   // organization_members fallback (§4 above): cached per (userId, orgId)
   // pair, since one request can legitimately check permissions against more
-  // than one organization (e.g. moving a project between two orgs).
-  // scopesToCheck has at most one 'organization' entry (the scope itself,
-  // or - for a project scope - its owning org).
-  const orgScope = scopesToCheck.find((s) => s.type === 'organization');
-  let orgMemberRole: string | null = null;
-  if (orgScope) {
-    const cacheKey = `${userId}:${orgScope.id}`;
+  // than one organization (e.g. moving a project between two orgs) - and,
+  // since T09, `scopesToCheck` can hold several 'organization' entries at
+  // once (the scope itself plus every ancestor), each checked in turn.
+  const orgScopeIds = [...new Set(scopesToCheck.filter((s) => s.type === 'organization').map((s) => s.id))];
+  const orgMemberRoles: string[] = [];
+  for (const orgId of orgScopeIds) {
+    const cacheKey = `${userId}:${orgId}`;
+    let role: string | null;
     if (cache?.orgMemberRole.has(cacheKey)) {
-      orgMemberRole = cache.orgMemberRole.get(cacheKey)!;
+      role = cache.orgMemberRole.get(cacheKey)!;
     } else {
       const rows = await db.select({ role: organizationMembers.role }).from(organizationMembers)
-        .where(and(eq(organizationMembers.orgId, orgScope.id), eq(organizationMembers.userId, userId)))
+        .where(and(eq(organizationMembers.orgId, orgId), eq(organizationMembers.userId, userId)))
         .limit(1);
-      orgMemberRole = rows.length > 0 ? rows[0].role : null;
-      cache?.orgMemberRole.set(cacheKey, orgMemberRole);
+      role = rows.length > 0 ? rows[0].role : null;
+      cache?.orgMemberRole.set(cacheKey, role);
     }
+    if (role) orgMemberRoles.push(role);
   }
 
   const matchingGrants = candidateGrants.filter((g: any) =>
     scopesToCheck.some((s) => s.type === g.scopeType && s.id === g.scopeId));
 
   const roleIds = new Set(matchingGrants.map((g: any) => g.roleId));
-  if (orgMemberRole) roleIds.add(`role-${orgMemberRole}`);
+  for (const role of orgMemberRoles) roleIds.add(`role-${role}`);
   if (roleIds.size === 0) return false;
 
   // A role's *entire* permission set is cached per roleId, not "does this

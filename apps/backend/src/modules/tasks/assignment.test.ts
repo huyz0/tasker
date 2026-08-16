@@ -101,7 +101,11 @@ describe("assignees are readable", () => {
 
     // The page itself, the count, the assignment rows and the name lookups —
     // a handful. One per task would be 26+ and would grow with the page size.
-    expect(queries).toBeLessThan(10);
+    // M10-T09: can()'s ancestor-organization climbing (lib/policy.ts) adds
+    // one more select per authorization check - resolving whether an org
+    // has a parent at all costs a query even when the answer is no - same
+    // class of bump T05 already made this test's siblings absorb.
+    expect(queries).toBeLessThan(11);
   });
 });
 

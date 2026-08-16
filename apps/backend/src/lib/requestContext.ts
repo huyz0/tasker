@@ -14,6 +14,7 @@ export interface PolicyCache {
   candidateGrants: Map<string, unknown[]>;
   orgMemberRole: Map<string, string | null>;
   rolePermissions: Map<string, Set<string>>;
+  orgAncestors: Map<string, string[]>;
 }
 
 export interface RequestContext {
@@ -52,6 +53,7 @@ export function getPolicyCache(): PolicyCache | null {
       candidateGrants: new Map(),
       orgMemberRole: new Map(),
       rolePermissions: new Map(),
+      orgAncestors: new Map(),
     };
   }
   return ctx.policyCache;

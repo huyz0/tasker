@@ -104,7 +104,7 @@ describe("Organizations Handler Integration Logic", () => {
     expect(res.success).toBe(true);
   });
 
-  test("seedOrg supports creating a child org under a parent, with depth-1 and admin enforcement", async () => {
+  test("seedOrg supports creating a child org under a parent, with admin enforcement", async () => {
     const { db, nc } = await setupIntegrationTest();
     const handler = createOrgsHandler(db, nc);
 
@@ -131,19 +131,49 @@ describe("Organizations Handler Integration Logic", () => {
       parentOrgId: parent.organization.id,
     }, makeAuthContext(memberId))).rejects.toThrow();
 
-    // A grandchild (nesting under an org that already has a parent) is rejected.
-    await expect(handler.seedOrg({
-      name: "Grandchild",
-      slug: "grandchild-" + Date.now(),
-      parentOrgId: child.organization.id,
-    }, makeAuthContext(adminId))).rejects.toThrow();
-
     // A parentOrgId that doesn't exist is rejected.
     await expect(handler.seedOrg({
       name: "Orphan",
       slug: "orphan-" + Date.now(),
       parentOrgId: "org-does-not-exist",
     }, makeAuthContext(adminId))).rejects.toThrow();
+  });
+
+  // M10-T09. seedOrg's old two-level nesting cap ("a grandchild - nesting
+  // under an org that already has a parent - is rejected") is gone:
+  // organizations can nest to any depth, and can()'s ancestor-organization
+  // climbing means an admin of the top-level org can administer every
+  // descendant, not just its immediate children. This is the milestone's
+  // own verify line for T09: "a parent-org admin can administer a
+  // grandchild org."
+  test("seedOrg supports nesting an organization arbitrarily deep, and a top-level admin reaches every descendant", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+
+    const adminId = "user-deep-nest-admin";
+    await db.insert(schemaSqlite.users).values({ id: adminId, email: `${adminId}@foo.com`, createdAt: new Date() });
+
+    const grandparent = await handler.seedOrg({ name: "Grandparent", slug: "gp-" + Date.now() }, makeAuthContext(adminId));
+    const parent = await handler.seedOrg({
+      name: "Parent", slug: "p-" + Date.now(), parentOrgId: grandparent.organization.id,
+    }, makeAuthContext(adminId));
+    const child = await handler.seedOrg({
+      name: "Grandchild", slug: "gc-" + Date.now(), parentOrgId: parent.organization.id,
+    }, makeAuthContext(adminId));
+    expect(child.organization.parentOrgId).toBe(parent.organization.id);
+
+    // The grandparent's admin can administer the grandchild directly -
+    // update it, without ever having been added as a member of either the
+    // parent or the grandchild itself.
+    const updated = await handler.updateOrg({ orgId: child.organization.id, name: "Renamed Grandchild" }, makeAuthContext(adminId));
+    expect(updated.organization.name).toBe("Renamed Grandchild");
+
+    // ...and can found a great-grandchild under it too, the same permission
+    // check reaching one level further still.
+    const greatGrandchild = await handler.seedOrg({
+      name: "Great-grandchild", slug: "ggc-" + Date.now(), parentOrgId: child.organization.id,
+    }, makeAuthContext(adminId));
+    expect(greatGrandchild.organization.parentOrgId).toBe(child.organization.id);
   });
 
   test("restoreOrg rejects restoring a sub-org into an archived parent org", async () => {
