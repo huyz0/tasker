@@ -331,3 +331,325 @@ func TestLogoutCommandClearsSavedCredentials(t *testing.T) {
 		t.Errorf("expected credentials file to be removed after logout, stat err: %v", err)
 	}
 }
+
+// M13-T13. loginWithPassword is the pure HTTP logic behind
+// `auth login --username`, tested directly against httptest servers -
+// same shape as debug_test.go's checkSessionWithServer tests, since this
+// is also a plain HTTP route, not a Connect procedure.
+
+func TestLoginWithPasswordExtractsTokenFromSetCookie(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/auth/password/login" {
+			t.Errorf("expected request to /api/auth/password/login, got %s", r.URL.Path)
+		}
+		var body map[string]string
+		json.NewDecoder(r.Body).Decode(&body)
+		if body["username"] != "alice" || body["password"] != "a-strong-password-123" {
+			t.Errorf("expected the posted username/password, got %+v", body)
+		}
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "the-session-token"})
+		json.NewEncoder(w).Encode(passwordLoginResponse{UserID: "user-1", MustChangePassword: false})
+	}))
+	defer srv.Close()
+
+	token, mustChange, err := loginWithPassword(srv.Client(), srv.URL, "alice", "a-strong-password-123")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if token != "the-session-token" {
+		t.Errorf("expected the session cookie's value, got %q", token)
+	}
+	if mustChange {
+		t.Error("expected mustChangePassword false")
+	}
+}
+
+func TestLoginWithPasswordSurfacesMustChangePassword(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "tok"})
+		json.NewEncoder(w).Encode(passwordLoginResponse{UserID: "user-1", MustChangePassword: true})
+	}))
+	defer srv.Close()
+
+	_, mustChange, err := loginWithPassword(srv.Client(), srv.URL, "alice", "pw")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !mustChange {
+		t.Error("expected mustChangePassword true")
+	}
+}
+
+func TestLoginWithPasswordReportsInvalidCredentials(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/problem+json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(problemDetailsBody{
+			Title: "Invalid credentials", Status: 401, Detail: "The username or password is incorrect.",
+		})
+	}))
+	defer srv.Close()
+
+	_, _, err := loginWithPassword(srv.Client(), srv.URL, "alice", "wrong")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if err.Error() != "The username or password is incorrect." {
+		t.Errorf("expected the server's own detail message, got: %v", err)
+	}
+}
+
+func TestLoginWithPasswordReportsLockout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "30")
+		w.WriteHeader(http.StatusTooManyRequests)
+		json.NewEncoder(w).Encode(problemDetailsBody{
+			Title: "Account temporarily locked", Status: 429, Detail: "Too many failed attempts. Try again in 30 seconds.",
+		})
+	}))
+	defer srv.Close()
+
+	_, _, err := loginWithPassword(srv.Client(), srv.URL, "alice", "wrong")
+	if err == nil || !strings.Contains(err.Error(), "Try again in 30 seconds") {
+		t.Errorf("expected the lockout detail message, got: %v", err)
+	}
+}
+
+func TestLoginWithPasswordErrorsWhenNoCookieIsReturned(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A malformed/misconfigured backend that answers 200 with no
+		// Set-Cookie at all - must not report success with an empty token.
+		json.NewEncoder(w).Encode(passwordLoginResponse{UserID: "user-1"})
+	}))
+	defer srv.Close()
+
+	_, _, err := loginWithPassword(srv.Client(), srv.URL, "alice", "pw")
+	if err == nil {
+		t.Fatal("expected an error when no session cookie is returned")
+	}
+}
+
+func TestLoginWithPasswordFallsBackToRawBodyOnAnUnrecognizedErrorShape(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		fmt.Fprint(w, "upstream error")
+	}))
+	defer srv.Close()
+
+	_, _, err := loginWithPassword(srv.Client(), srv.URL, "alice", "pw")
+	if err == nil || !strings.Contains(err.Error(), "upstream error") {
+		t.Errorf("expected the raw body in the error, got: %v", err)
+	}
+}
+
+// runPasswordLogin / the `auth login --username` command end to end.
+
+func TestAuthLoginWithUsernameSavesCredentialsFromTheSessionCookie(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "session-from-password-login"})
+		json.NewEncoder(w).Encode(passwordLoginResponse{UserID: "user-1"})
+	}))
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	credPath := filepath.Join(t.TempDir(), "credentials.json")
+	t.Setenv("TASKER_CREDENTIALS_PATH", credPath)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"auth", "login", "--username", "alice", "--password", "a-strong-password-123"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := backend.LoadCredentials()
+	if err != nil {
+		t.Fatalf("expected LoadCredentials to succeed, got: %v", err)
+	}
+	if loaded != "session-from-password-login" {
+		t.Errorf("expected the session cookie's value to be saved, got %q", loaded)
+	}
+	if !strings.Contains(b.String(), "Success!") {
+		t.Errorf("expected a success message, got: %s", b.String())
+	}
+}
+
+func TestAuthLoginWithUsernameReportsMustChangePassword(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: "tok"})
+		json.NewEncoder(w).Encode(passwordLoginResponse{UserID: "user-1", MustChangePassword: true})
+	}))
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "credentials.json"))
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"auth", "login", "--username", "alice", "--password", "pw"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(b.String(), "set-password") {
+		t.Errorf("expected a prompt to run set-password, got: %s", b.String())
+	}
+}
+
+func TestAuthLoginWithUsernameFailsCleanlyOnWrongPassword(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(problemDetailsBody{Detail: "The username or password is incorrect."})
+	}))
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "does-not-exist.json"))
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"auth", "login", "--username", "alice", "--password", "wrong"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error for a failed login")
+	}
+
+	loaded, _ := backend.LoadCredentials()
+	if loaded != "" {
+		t.Errorf("expected no credentials to be saved on a failed login, got %q", loaded)
+	}
+}
+
+func TestReadLineFromANormalStream(t *testing.T) {
+	line, err := readLine(strings.NewReader("hunter2\n"))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if line != "hunter2" {
+		t.Errorf("expected %q, got %q", "hunter2", line)
+	}
+}
+
+func TestReadLineWithNoTrailingNewline(t *testing.T) {
+	// A stream that closes right after the line, with no trailing \n -
+	// still a real line, not a failure to read one.
+	line, err := readLine(strings.NewReader("hunter2"))
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if line != "hunter2" {
+		t.Errorf("expected %q, got %q", "hunter2", line)
+	}
+}
+
+func TestReadLineFromAnEmptyStream(t *testing.T) {
+	line, err := readLine(strings.NewReader(""))
+	if err == nil {
+		t.Fatal("expected an error reading a line from an empty stream")
+	}
+	if line != "" {
+		t.Errorf("expected an empty line, got %q", line)
+	}
+}
+
+func TestAuthLoginRequiresAPasswordWhenThePromptYieldsNone(t *testing.T) {
+	// loginCmd's --password flag is a package-level singleton Cobra does
+	// not reset between Execute() calls (the same gotcha orgs_test.go
+	// documents for --email/--username) - an earlier test's real password
+	// would otherwise leak in here, skip the prompt entirely, and this
+	// test would actually be exercising a real login attempt instead of
+	// the empty-password path it's named for.
+	loginCmd.Flags().Set("password", "")
+
+	// Substitutes a real OS pipe, closed on the write end, for os.Stdin -
+	// an immediate, deterministic EOF, rather than relying on whatever the
+	// test process's real stdin happens to be (which may block indefinitely
+	// on a read instead of failing fast, depending on the environment).
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+	originalStdin := os.Stdin
+	os.Stdin = r
+	defer func() { os.Stdin = originalStdin; r.Close() }()
+
+	// A real, reachable server the test can prove was never called - safer
+	// than an address chosen to be unreachable (e.g. 127.0.0.1:1), which in
+	// a sandboxed/proxied network environment is not guaranteed to fail
+	// fast rather than hang until some outer timeout.
+	var called bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	}))
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"auth", "login", "--username", "alice"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error when no password can be obtained")
+	}
+	if called {
+		t.Error("expected the backend to never be called when no password could be obtained")
+	}
+}
+
+// `auth set-password`
+
+type fakeSetPasswordHandler struct {
+	v1connect.UnimplementedAuthServiceHandler
+	received *healthv1.SetPasswordRequest
+}
+
+func (f *fakeSetPasswordHandler) SetPassword(
+	ctx context.Context,
+	req *connect.Request[healthv1.SetPasswordRequest],
+) (*connect.Response[healthv1.SetPasswordResponse], error) {
+	f.received = req.Msg
+	return connect.NewResponse(&healthv1.SetPasswordResponse{Success: true}), nil
+}
+
+func TestSetPasswordCommandSendsBothFields(t *testing.T) {
+	fake := &fakeSetPasswordHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewAuthServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "credentials.json"))
+	backend.SaveCredentials("a-token")
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"auth", "set-password", "--current-password", "old-pw", "--new-password", "new-strong-password-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.received.CurrentPassword != "old-pw" || fake.received.NewPassword != "new-strong-password-1" {
+		t.Errorf("expected both fields forwarded, got %+v", fake.received)
+	}
+	if !strings.Contains(b.String(), "Password updated") {
+		t.Errorf("expected a success message, got: %s", b.String())
+	}
+}
+
+func TestSetPasswordCommandSurfacesServerRejection(t *testing.T) {
+	setPasswordCmd.Flags().Set("current-password", "") // see the note in the empty-password login test above
+	fake := &fakeAuthHandler{}                         // does not implement SetPassword -> falls through to Unimplemented
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewAuthServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "credentials.json"))
+	backend.SaveCredentials("a-token")
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"auth", "set-password", "--new-password", "new-strong-password-1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error when the server rejects the call")
+	}
+}

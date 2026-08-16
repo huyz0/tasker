@@ -177,7 +177,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: e2e sets a password, unlinks Google, then confirms the unlink
         control is disabled (with a reason) once only one method remains.
 
-- [ ] **M13-T13** — CLI `login --username` path alongside the existing
+- [x] **M13-T13** — CLI `login --username` path alongside the existing
       token/Google flow.
       - Files: `apps/cli/cmd/auth.go`
       - Verify: CLI logs in with username/password against a backend started

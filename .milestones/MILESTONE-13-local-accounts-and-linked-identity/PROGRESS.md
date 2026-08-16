@@ -614,3 +614,71 @@
     this screen" — since unlinking is reversible, unlike most of that
     hook's other call sites).
 - **Next**: M13-T13 — CLI username/password login.
+
+## M13-T13 — CLI username/password login
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `apps/cli/cmd/auth.go` (`loginWithPassword`, `promptSecret`,
+  `readLine`, `runPasswordLogin`, `setPasswordCmd`, `--username`/
+  `--password`/`--current-password`/`--new-password` flags on `loginCmd`/
+  `setPasswordCmd`), `apps/cli/cmd/auth_test.go`, `apps/cli/go.mod`/`go.sum`
+  (`golang.org/x/term` added, direct), `.specs/product/tech-stack.md`
+- **Verified**: `go build ./...`, `go vet ./...`, `gofmt -l .` (clean),
+  `go test ./...` — full CLI suite green, `cmd` package in ~1.2s (see the
+  flaky-test story in Notes). `moon run :spec-drift` clean after `go mod
+  tidy` promoted `golang.org/x/term` to a direct dependency. **Real
+  end-to-end run against a live backend, `ENABLE_TEST_LOGIN` unset**,
+  matching M04's verification bar exactly: registered a fresh local user
+  with no email at all via `POST /api/auth/password/register`, then ran
+  the actual built CLI binary —
+  `tasker auth login --username e2e-cli-user --password ...` → saved a
+  working session token extracted from `Set-Cookie` → `tasker auth whoami`
+  resolved the identity → `tasker auth set-password` changed the password
+  → logging in with the *old* password then failed
+  (`The username or password is incorrect.`, exit 1) while the *new* one
+  succeeded.
+- **Notes**:
+  - **One new CLI dependency, justified and recorded**: `golang.org/x/term`,
+    for a masked (non-echoing) password prompt — not a stdlib one-liner
+    cross-platform, so it clears `dependency-standard.md`'s minimalism bar
+    on its own merits. Added to `tech-stack.md`'s CLI table with a reason,
+    verified against `moon run :spec-drift`.
+  - **`loginCmd` grew `--username`/`--password` rather than becoming a
+    second command** — `--username` alone selects the local-account path
+    entirely (Google login never takes flags), matching `orgs invite`'s
+    established one-command-two-paths pattern from T09 rather than a new
+    verb.
+  - **The session token lives only in `Set-Cookie`, not the JSON body** —
+    confirmed against the real backend, not assumed: `loginWithPassword`
+    reads it via `res.Cookies()`, the same parsing `net/http` already does
+    for you, and errors explicitly if a 200 response carries no `session`
+    cookie at all rather than silently saving an empty token.
+  - **Added `auth set-password`, beyond T13's literal scope, to close a
+    real gap**: without it, a CLI-only user — registered locally, or
+    handed a `mustChangePassword` temporary password by an admin — would
+    have no way to ever change their password; the GUI's equivalent
+    (`AccountSettings.tsx`, T12) has no CLI counterpart otherwise. Uses
+    `AuthService.SetPassword` directly, the same client-construction
+    pattern `whoamiCmd` already established.
+  - **A real bug, found and fixed by the second test-run, not a flaky
+    test worked around**: a new test (`...WhenThePromptYieldsNone`) first
+    read as environment flakiness — 30s in the full suite, instant alone —
+    but the actual cause was a genuine defect in the *test*, not the
+    environment: `loginCmd`'s `--password` flag is a package-level Cobra
+    singleton that persists across `Execute()` calls (the exact hazard
+    T09's `orgs_test.go` notes already flagged), so an earlier test's real
+    password leaked in, skipped the empty-password guard entirely, and the
+    command made a real network call the test never intended. Diagnosed by
+    swapping the "unreachable address" assumption for an `httptest` server
+    that asserts it was *never called* — which failed loudly instead of
+    merely timing out — then fixed with the same explicit `Flags().Set(...,
+    "")` reset T09 already established as the house pattern for this
+    class of leak. Also extracted `readLine` as a pure function so the
+    non-terminal stdin fallback is unit-testable against a
+    `strings.Reader` instead of the real (environment-dependent, possibly
+    blocking) `os.Stdin`.
+- **Milestone-level checkpoint**: 13/15 tasks done. Remaining: T14
+  (security review of the full credential path) and T15 (exhaustive auth
+  test matrix), both verification-only — no new behavior, gating the
+  close.
