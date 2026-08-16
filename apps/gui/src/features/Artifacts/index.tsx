@@ -16,6 +16,12 @@ import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ListState } from '../../components/ui/ListState';
+import { VirtualList } from '../../components/ui/VirtualList';
+
+// Artifact rows are `px-2 py-1` around a 12px line — a fixed height, which is
+// what lets the virtualizer skip per-row measurement. Kept beside the row's own
+// classes so the two cannot drift apart silently.
+const ARTIFACT_ROW_HEIGHT = 28;
 
 const artifactClient = createClient(ArtifactService, transport);
 
@@ -375,41 +381,48 @@ export function ArtifactsBrowser() {
                       onRetry={() => refetchArtifacts()}
                     />
                   )}
-                  {artifactsData?.map(artifact => (
-                    <div
-                      key={artifact.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => selectArtifact(artifact)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          selectArtifact(artifact);
-                        }
-                      }}
-                      className={`px-2 py-1 hover:bg-muted cursor-pointer flex items-center justify-between gap-2 rounded-sm text-xs group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${selectedArtifact?.id === artifact.id ? 'bg-primary-subtle text-primary-subtle-foreground font-medium' : 'text-muted-foreground'}`}
-                    >
-                      <span className="flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> {artifact.name}</span>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (await confirm({
-                            title: `Move "${artifact.name}" to the bin?`,
-                            consequence: 'The artifact stops appearing in the explorer and on any task it is linked to.',
-                            undo: 'You can restore it from the Bin.',
-                            confirmLabel: 'Move to bin',
-                          })) {
-                            deleteArtifact(artifact.id);
+                  {/* Virtualized: a folder holds up to 100,000 artifacts and
+                      every one of them used to become a DOM node (M07-T14). */}
+                  <VirtualList
+                    items={artifactsData ?? []}
+                    rowHeight={ARTIFACT_ROW_HEIGHT}
+                    className="max-h-64 overflow-y-auto"
+                    renderRow={(artifact) => (
+                                      <div
+                        key={artifact.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => selectArtifact(artifact)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            selectArtifact(artifact);
                           }
                         }}
-                        disabled={archiveArtifactMutation.isPending}
-                        aria-label={`Delete artifact ${artifact.name}`}
-                        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-destructive disabled:opacity-50"
+                        className={`px-2 py-1 hover:bg-muted cursor-pointer flex items-center justify-between gap-2 rounded-sm text-xs group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${selectedArtifact?.id === artifact.id ? 'bg-primary-subtle text-primary-subtle-foreground font-medium' : 'text-muted-foreground'}`}
                       >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <span className="flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> {artifact.name}</span>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (await confirm({
+                              title: `Move "${artifact.name}" to the bin?`,
+                              consequence: 'The artifact stops appearing in the explorer and on any task it is linked to.',
+                              undo: 'You can restore it from the Bin.',
+                              confirmLabel: 'Move to bin',
+                            })) {
+                              deleteArtifact(artifact.id);
+                            }
+                          }}
+                          disabled={archiveArtifactMutation.isPending}
+                          aria-label={`Delete artifact ${artifact.name}`}
+                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-destructive disabled:opacity-50"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  />
                   {!isLoadingArtifacts && artifactsData?.length === 0 && !isAddingArtifact && (
                     <div className="text-xs text-muted-foreground/50 px-2 py-1 italic">Empty folder</div>
                   )}
