@@ -1,12 +1,12 @@
 ---
 id: M10
 title: Teams & Policy-Based RBAC
-status: todo
+status: in-progress
 goal: Roles and permissions are data rather than a hardcoded enum, teams group people below the organization, and access can be granted at project and team scope.
 depends_on: [M03, M04]
 surfaces: [backend, gui, cli, contract]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-16
 completed_at: null
 ---
 
@@ -69,9 +69,12 @@ SCIM provisioning, delegated administration.
 
 ### Decide and model
 
-- [ ] **M10-T01** — Write the ADR choosing policy-based RBAC over fixed tiers,
+- [x] **M10-T01** — Write the ADR choosing policy-based RBAC over fixed tiers,
       naming the permission vocabulary and the scope hierarchy.
-      - Files: `.specs/adr/ADR-0011-rbac-model.md`
+      - Files: `.specs/adr/ADR-0013-rbac-model.md` (renumbered from the
+        plan's `ADR-0011` — that id was taken by the Radix-adoption ADR,
+        landed after this milestone was planned; `.specs/adr/README.md`'s
+        numbering is first-come, ids are never reused)
       - Verify: the ADR enumerates every permission key.
 
 - [ ] **M10-T02** — Add `roles`, `permissions`, `role_permissions`, `teams`,
