@@ -112,7 +112,7 @@ SCIM provisioning, delegated administration.
       - Files: `main.tsp`, `modules/teams/teams.handler.ts`, `apps/cli/cmd/teams.go`
       - Verify: a team of 100 members pages correctly.
 
-- [ ] **M10-T08** — Allow grants to a team as subject, so adding a person to a
+- [x] **M10-T08** — Allow grants to a team as subject, so adding a person to a
       team confers the team's access.
       - Files: `apps/backend/src/lib/policy.ts`, `modules/teams/`
       - Verify: removing someone from a team removes the derived access.

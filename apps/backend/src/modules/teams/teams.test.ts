@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin, seedUser } from "../../test/setup";
 import * as schema from "../../db/schema.sqlite";
 import { createTeamsHandler } from "./teams.handler";
+import { can } from "../../lib/policy";
 
 describe("Teams Handler Integration Logic", () => {
   let db: any;
@@ -141,5 +142,61 @@ describe("Teams Handler Integration Logic", () => {
 
   test("listTeamMembers on a nonexistent team throws NotFound", async () => {
     await expect(handler.listTeamMembers({ teamId: "team-nope" }, ctx)).rejects.toMatchObject({ code: Code.NotFound });
+  });
+});
+
+// M10-T08 (ADR-0013 §3, step 2). Team-derived grant resolution was already
+// built and unit-tested against synthetic fixtures in policy.test.ts back
+// in T04 - this proves the same guarantee end-to-end through the real
+// createTeam/addTeamMember/removeTeamMember RPCs teams.handler.ts (T07)
+// actually exposes, not a direct schema.teams/schema.teamMembers insert.
+// The one piece still seeded directly is the grant itself: nothing in the
+// product can create a `grants` row through an RPC yet (T07's own PROGRESS
+// note names this gap explicitly, left for T11's Role management UI).
+describe("Team-derived grants (M10-T08)", () => {
+  test("adding someone to a team via the real RPC confers the team's granted access, and removing them via the real RPC revokes it", async () => {
+    const setup = await setupIntegrationTest();
+    const { db, nc } = setup;
+    const handler = createTeamsHandler(db, nc);
+
+    const orgId = "org-t08";
+    const adminId = "user-t08-admin";
+    const memberId = "user-t08-member";
+    await seedOrgWithAdmin(db, { orgId, userId: adminId });
+    await seedUser(db, memberId);
+
+    const memberPrincipal = { kind: "user" as const, userId: memberId };
+    const orgScope = { type: "organization" as const, id: orgId };
+
+    // Before joining the team: the org's own organization_members fallback
+    // never granted this user anything (they were never added as a plain
+    // org member either), so they hold nothing.
+    expect(await can(db, memberPrincipal, orgScope, "task:write")).toBe(false);
+
+    const adminCtx = makeAuthContext(adminId);
+    const created: any = await handler.createTeam({ orgId, name: "Derived Access Team" }, adminCtx);
+    const teamId = created.team.id;
+
+    // The one piece with no RPC yet (see this file's header note) - grant
+    // role-member to the team directly at organization scope.
+    await db.insert(schema.grants).values({
+      id: "grant-t08", subjectType: "team", subjectId: teamId,
+      scopeType: "organization", scopeId: orgId, roleId: "role-member", createdAt: new Date(),
+    });
+
+    // Still nothing before joining - a grant on a team confers nothing to
+    // someone not yet on it.
+    expect(await can(db, memberPrincipal, orgScope, "task:write")).toBe(false);
+
+    await handler.addTeamMember({ teamId, userId: memberId }, adminCtx);
+    expect(await can(db, memberPrincipal, orgScope, "task:write")).toBe(true);
+    // role-member's reads too, not just the one permission checked above.
+    expect(await can(db, memberPrincipal, orgScope, "task:read")).toBe(true);
+    // role-member does not hold org:admin - the team's grant is real and
+    // specific, not a stand-in for "this user can do anything now".
+    expect(await can(db, memberPrincipal, orgScope, "org:admin")).toBe(false);
+
+    await handler.removeTeamMember({ teamId, userId: memberId }, adminCtx);
+    expect(await can(db, memberPrincipal, orgScope, "task:write")).toBe(false);
   });
 });

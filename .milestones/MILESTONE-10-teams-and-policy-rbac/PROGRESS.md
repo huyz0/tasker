@@ -532,3 +532,41 @@
   T04's `can()`; verify end-to-end against the real `teams.handler.ts`
   infrastructure this task just built, not just synthetic `policy.test.ts`
   fixtures).
+
+## M10-T08 — verify grants-to-team-as-subject end-to-end
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**:
+  - `apps/backend/src/modules/teams/teams.test.ts` — one new integration
+    test (`Team-derived grants (M10-T08)`) exercising the full real path:
+    `createTeamsHandler`'s actual `createTeam`/`addTeamMember`/
+    `removeTeamMember` RPCs (not a direct `schema.teams`/
+    `schema.teamMembers` insert, unlike T04's `policy.test.ts` fixtures),
+    a directly-seeded `grants` row for the team subject (the one piece
+    with no RPC yet - see T07's note below), and `can()` checked before
+    joining, after joining, and after leaving. Confirms the team's exact
+    permission set applies (`task:read`/`task:write` true, `org:admin`
+    false - the grant is specific, not a stand-in for blanket access) and
+    that removal revokes it immediately.
+- **Verified**:
+  - `bun test src/modules/teams/teams.test.ts` — 13/13 pass (up from 12),
+    `teams.handler.ts` still at 100% coverage.
+  - `STANDALONE=true bun test` (full backend suite) — 849 pass, 0 fail.
+  - `bunx knip` (repo root) — clean.
+  - `moon check --all` — 27/27 tasks green.
+- **Notes**:
+  - **No new production code** - `can()`'s team-derived resolution (ADR-0013
+    §3 step 2) was already implemented and unit-tested in T04, and nothing
+    about it needed to change once real teams existed. This task's actual
+    content was proving that against real infrastructure instead of
+    leaving it asserted only against synthetic fixtures - the gap T07's
+    own PROGRESS entry named going in.
+  - The grant-management gap named in T07 stands as recorded: still no RPC
+    anywhere creates a `grants` row. This test seeds one directly, the
+    same as T07 flagged would be necessary. Left for T11 (Role management
+    UI), which needs "assign this role to a user or team" as a real
+    backend surface regardless of what T08 needed for its own verify line.
+- **Next**: M10-T09 — lift the two-level organization nesting cap and
+  implement inheritance: a grant on a parent organization applies to its
+  descendants.
