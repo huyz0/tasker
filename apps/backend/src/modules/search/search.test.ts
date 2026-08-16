@@ -105,7 +105,7 @@ describe("Search Handler", () => {
     expect(res.page.totalCount).toBe(2);
   });
 
-  it("respects page.limit, splitting it across task and artifact results, and reports the full totalCount regardless", async () => {
+  it("respects page.limit and reports the full totalCount regardless", async () => {
     for (let i = 0; i < 4; i++) {
       await db.insert(schemaSqlite.tasks).values({ id: `tsk-limit-${i}`, projectId, title: `UniquelyLimitable Task ${i}`, status: "todo", createdAt: new Date() });
     }
@@ -125,17 +125,18 @@ describe("Search Handler", () => {
       await db.insert(schemaSqlite.artifacts).values({ id: `art-odd-${i}`, folderId, name: `OddLimitable Artifact ${i}`, createdAt: new Date() });
     }
 
-    // perTypeLimit = ceil(3/2) = 2 per type; with >=2 matches of each type
-    // available, the merged total must still be capped at 3, not 4.
+    // Allocation is round-robin across the entity types (M07-T08), so with
+    // matches of both types available the merged page must still stop at
+    // exactly 3 rather than rounding up to 4.
     const res = await impl.universalSearch({ query: "OddLimitable", orgId, page: { limit: 3 } }, ctx);
     expect(res.results.length).toBe(3);
   });
 
   it("does not skip an artifact trimmed off by an odd page.limit when paging through all results", async () => {
-    // perTypeLimit = ceil(3/2) = 2 per type; with 2 tasks + 2 artifacts
-    // matching, the first page fetches 2+2=4 and trims to 3, dropping one
-    // artifact. That artifact must still surface on a later page instead of
-    // being permanently skipped by a cursor that points past it.
+    // With 2 tasks + 2 artifacts matching and a limit of 3, round-robin
+    // allocation keeps 2 tasks and 1 artifact, dropping one artifact. That
+    // artifact must still surface on a later page instead of being permanently
+    // skipped by a cursor that advanced past a row it never returned.
     for (let i = 0; i < 2; i++) {
       await db.insert(schemaSqlite.tasks).values({ id: `tsk-oddpage-${i}`, projectId, title: `OddPageable Task ${i}`, status: "todo", createdAt: new Date(Date.now() - i * 1000) });
     }
@@ -363,6 +364,98 @@ describe("Search Handler", () => {
 
     expect(new Set(seen).size).toBe(seen.length);
     expect(seen.length).toBe(6);
+  });
+
+  // ---------------------------------------------------------------------
+  // M07-T08 — projects, agents and comments are searchable too.
+  // ---------------------------------------------------------------------
+
+  async function seedAgent(name: string) {
+    const roleId = "role-" + crypto.randomUUID();
+    const agentId = "agt-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.agentRoles).values({ id: roleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]", createdAt: new Date() });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId: roleId, name, createdAt: new Date() });
+    return agentId;
+  }
+
+  it("finds an agent by its name", async () => {
+    // The task's verify line.
+    const agentId = await seedAgent("Cartographer");
+    const res = await impl.universalSearch({ query: "Cartographer", orgId }, ctx);
+    const hit = res.results.find((r: any) => r.type === "agent");
+    expect(hit).toBeDefined();
+    expect(hit.id).toBe(agentId);
+    expect(hit.title).toBe("Cartographer");
+  });
+
+  it("does not return an agent from another organization", async () => {
+    // Agents are org-scoped directly rather than through a project, so this is
+    // a different join from the task and artifact paths and needs its own test.
+    const otherOrgId = "org-" + crypto.randomUUID();
+    const otherUserId = "user-" + crypto.randomUUID();
+    const otherRoleId = "role-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: "other-" + crypto.randomUUID(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    await db.insert(schemaSqlite.agentRoles).values({ id: otherRoleId, orgId: otherOrgId, name: "Role", systemPrompt: "p", capabilities: "[]", createdAt: new Date() });
+    await db.insert(schemaSqlite.agents).values({ id: "agt-other-" + crypto.randomUUID(), orgId: otherOrgId, agentRoleId: otherRoleId, name: "Interloper", createdAt: new Date() });
+
+    const res = await impl.universalSearch({ query: "Interloper", orgId }, ctx);
+    expect(res.results).toHaveLength(0);
+  });
+
+  it("finds a project by its name", async () => {
+    const res = await impl.universalSearch({ query: "Proj", orgId }, ctx);
+    const hit = res.results.find((r: any) => r.type === "project");
+    expect(hit).toBeDefined();
+    expect(hit.id).toBe(projectId);
+  });
+
+  it("finds a comment and points it at the task it hangs off", async () => {
+    // A comment has no screen of its own, so the result carries its parent.
+    // Without that the GUI has an id it cannot route to.
+    const taskId = "tsk-commented-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: "Host task", status: "todo", createdAt: new Date() });
+    await db.insert(schemaSqlite.comments).values({
+      id: "cmt-" + crypto.randomUUID(), entityId: taskId, entityType: "task",
+      content: "the pelican migration needs a second pass", createdAt: new Date(),
+    });
+
+    const res = await impl.universalSearch({ query: "pelican", orgId }, ctx);
+    const hit = res.results.find((r: any) => r.type === "comment");
+    expect(hit).toBeDefined();
+    expect(hit.parentType).toBe("task");
+    expect(hit.parentId).toBe(taskId);
+    expect(hit.title).toBe("Host task");
+    expect(hit.snippet).toContain("pelican");
+  });
+
+  it("excludes a comment whose parent task has been binned", async () => {
+    const taskId = "tsk-binned-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: "Binned host", status: "todo", createdAt: new Date(), deletedAt: new Date() });
+    await db.insert(schemaSqlite.comments).values({
+      id: "cmt-binned-" + crypto.randomUUID(), entityId: taskId, entityType: "task",
+      content: "mentions okapi once", createdAt: new Date(),
+    });
+
+    const res = await impl.universalSearch({ query: "okapi", orgId }, ctx);
+    expect(res.results).toHaveLength(0);
+  });
+
+  it("fills the page from the types that matched, rather than reserving space for those that did not", async () => {
+    // An even split of the limit across five types looks fair and under-fills
+    // every page: a term matching only tasks used to return ceil(limit/5)
+    // results and a next cursor. The share is redistributed instead.
+    await db.insert(schemaSqlite.tasks).values(
+      Array.from({ length: 9 }, (_, i) => ({
+        id: `tsk-fill-${i}-` + crypto.randomUUID(), projectId,
+        title: `Fillable item ${i}`, status: "todo", createdAt: new Date(),
+      })),
+    );
+
+    const res = await impl.universalSearch({ query: "Fillable", orgId, page: { limit: 5 } }, ctx);
+    expect(res.results).toHaveLength(5);
+    expect(res.results.every((r: any) => r.type === "task")).toBe(true);
   });
 
   it("stops offering pages past the depth cap, while still reporting the true total", async () => {

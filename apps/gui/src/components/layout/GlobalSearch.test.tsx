@@ -162,7 +162,7 @@ describe('GlobalSearch', () => {
     mockUniversalSearch.mockResolvedValue({
       results: [
         { id: 'tsk-1', type: 'task', title: 'Fix login bug', snippet: '' },
-        { id: 'prj-1', type: 'project', title: 'Some future type', snippet: '' },
+        { id: 'xyz-1', type: 'workflow', title: 'Some future type', snippet: '' },
       ],
     });
     renderSearch();
@@ -175,10 +175,29 @@ describe('GlobalSearch', () => {
   });
 
   it('maps every result type the backend emits to a route, and nothing else', () => {
-    // universalSearch pushes exactly these two types (search.handler.ts).
+    // universalSearch pushes exactly these five types (search.handler.ts).
     expect(resultRoute({ type: 'task', id: 'tsk-1' })).toBe('/tasks/tsk-1');
     expect(resultRoute({ type: 'artifact', id: 'art-1' })).toBe('/artifacts/art-1');
-    expect(resultRoute({ type: 'project', id: 'prj-1' })).toBeNull();
+    // Neither has a detail screen, so both land on their list. Routing a
+    // project to `/projects/prj-1` would match no route and drop the user on
+    // Not Found — a dead link that looks like a working one.
+    expect(resultRoute({ type: 'project', id: 'prj-1' })).toBe('/projects');
+    expect(resultRoute({ type: 'agent', id: 'agt-1' })).toBe('/agents');
+    expect(resultRoute({ type: 'workflow', id: 'xyz-1' })).toBeNull();
+  });
+
+  it('routes a comment to the entity it hangs off, not to its own id', () => {
+    // A comment has no screen. Its own id leads nowhere, which is why the
+    // backend sends the parent alongside it.
+    expect(resultRoute({ type: 'comment', id: 'cmt-1', parentType: 'task', parentId: 'tsk-9' })).toBe('/tasks/tsk-9');
+    expect(resultRoute({ type: 'comment', id: 'cmt-2', parentType: 'artifact', parentId: 'art-9' })).toBe('/artifacts/art-9');
+    // A comment with no parent is unroutable rather than routed to itself, so
+    // it is filtered out instead of offering a click that goes nowhere.
+    expect(resultRoute({ type: 'comment', id: 'cmt-3' })).toBeNull();
+    // Same for a parent type this build cannot render. Comments can hang off
+    // anything the backend decides to support later, so this is a live
+    // defensive path rather than a theoretical one.
+    expect(resultRoute({ type: 'comment', id: 'cmt-4', parentType: 'workflow', parentId: 'wf-1' })).toBeNull();
   });
 
   it('navigates to an artifact result on click', async () => {

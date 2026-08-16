@@ -183,6 +183,13 @@
       "when": 1786790010000,
       "tag": "0025_fts5_search_index",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1786790020000,
+      "tag": "0026_fts5_projects_agents_comments",
+      "breakpoints": true
     }
   ]
 }

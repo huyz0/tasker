@@ -1312,9 +1312,14 @@ service RepositoryService {
 
 message SearchResult {
   string id = 1;
-  string type = 2; // "task" | "artifact"
+  string type = 2; // "task" | "artifact" | "project" | "agent" | "comment"
   string title = 3;
   string snippet = 4;
+  // Where to go when the result is not itself a destination. A comment has no
+  // screen of its own, so it carries the task or artifact it hangs off; every
+  // other type leaves these empty and routes by its own id.
+  string parentType = 5;
+  string parentId = 6;
 }
 
 message UniversalSearchRequest {

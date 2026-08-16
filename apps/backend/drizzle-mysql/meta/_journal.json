@@ -92,6 +92,13 @@
       "when": 1786800000000,
       "tag": "0012_fulltext_search_index",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1786800010000,
+      "tag": "0013_fulltext_projects_agents_comments",
+      "breakpoints": true
     }
   ]
 }

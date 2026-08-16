@@ -89,7 +89,7 @@ that it is not adopted before measured need), caching layers, read replicas.
       - Files: `drizzle-mysql/`, `modules/search/search.handler.ts`
       - Verify: the MySQL integration test returns the same ranking.
 
-- [ ] **M07-T08** — Extend search to projects, agents and comments now that it is
+- [x] **M07-T08** — Extend search to projects, agents and comments now that it is
       index-backed, keeping the per-type cursor design.
       - Files: `modules/search/search.handler.ts`, `main.tsp`, `GlobalSearch.tsx`
       - Verify: searching an agent name finds the agent.

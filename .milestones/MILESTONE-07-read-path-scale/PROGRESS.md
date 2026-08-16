@@ -293,6 +293,53 @@ it is a behaviour change and belongs in T06's journal entry, not silently.
   T06's High finding lived, and two copies would drift.
 - **Next**: M07-T08
 
+## M07-T08 — Five entity types behind one index-backed search
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: new `drizzle-sqlite/0026_fts5_projects_agents_comments.sql`
+  (3 FTS5 tables, 9 triggers, 3 backfills) and
+  `drizzle-mysql/0013_fulltext_projects_agents_comments.sql` (+ both journal
+  entries), `main.tsp` **and** `health.proto` (`SearchResult.parentType`,
+  `.parentId`), `modules/search/search.handler.ts` (entity-driven rewrite),
+  `search.test.ts` (+7), `search.mysql.test.ts` (+1),
+  `components/layout/GlobalSearch.tsx` and its test (+1, 2 rewritten)
+- **Verified**: in a real browser — searching `Seed Agent` returns **5 agents**
+  (the verify line), and searching a word inside a comment returns the comment
+  titled with its **parent task**, snippet from the comment body, and
+  `parentType`/`parentId` set. Both dialects tested for all five types;
+  full suite with MySQL enabled — **630 pass**. `gui:test` — 620 pass, branches
+  95.01%. `moon check --all` — 26 pass.
+- **Notes**: the handler is now a list of `SearchEntity` values rather than two
+  hard-coded blocks. Only the match expression and each type's SQL vary; the
+  allocation, offsets and stop condition are shared, because that is where
+  T06's High finding lived and five copies would drift.
+  **The even split was a real defect, not just a thing to generalise.** Dividing
+  the caller's limit evenly up front looks fair and quietly under-fills every
+  page: with five types and a limit of 20, a term matching only tasks returned
+  **four** results and a next cursor. It was already wrong at two types — the
+  same search returned ten. Allocation is round-robin now: one row per type per
+  pass until the page is full, which keeps the fairness (no type crowds out
+  another that still has rows) and hands unused capacity to the types that
+  actually matched. Presentation stays grouped by type.
+  **A comment has no screen of its own**, so `SearchResult` gained
+  `parentType`/`parentId` and the GUI routes on those. Overloading `id` would
+  have produced a result that navigates to a URL matching no route.
+  The same trap caught projects: the obvious `\`/projects/${id}\`` matches **no
+  route** — there is no project detail view — so a project result would have
+  landed on Not Found. Projects and agents both route to their list.
+  Projects and agents are small enough that a `LIKE` scan would have been fast
+  enough. They are indexed anyway so search *behaves* the same whatever it
+  finds: a mixed implementation would have `cat` matching `concatenate` for a
+  project and not for a task, which is worse than a slow query because it is
+  invisible.
+  Two GUI tests used `project` as their stand-in for "a type with no route".
+  That type is routable now, so both were rewritten rather than deleted.
+  Branch coverage needed two dead branches removed to stay at 95: an icon `??`
+  fallback (unmapped types are filtered before render) and an empty-query guard
+  inside a `queryFn` that `enabled` already gates.
+- **Next**: M07-T09
+
 ---
 
 ## Out-of-band — dashboard rework (not an M07 task)

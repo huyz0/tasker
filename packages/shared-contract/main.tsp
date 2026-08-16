@@ -1396,9 +1396,16 @@ interface RepositoryService {
 
 model SearchResult {
   @field(1) id: string;
-  @field(2) type: string; // "task" | "artifact"
+  @field(2) type: string; // "task" | "artifact" | "project" | "agent" | "comment"
   @field(3) title: string;
   @field(4) snippet: string;
+
+  // Where to go when the result is not itself a destination. A comment has no
+  // screen of its own, so it carries the task or artifact it hangs off; every
+  // other type leaves these empty and routes by its own id.
+  @field(5) parentType: string;
+
+  @field(6) parentId: string;
 }
 
 model UniversalSearchRequest {

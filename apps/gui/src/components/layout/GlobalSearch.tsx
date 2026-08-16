@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
-import { Search, CheckSquare, FileBox, X } from 'lucide-react';
+import { Search, CheckSquare, FileBox, FolderKanban, Bot, MessageSquare, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
 import { useLayoutStore } from '../../store/layout';
@@ -11,18 +11,40 @@ import { Dialog } from '../ui/Dialog';
 
 const searchClient = createClient(SearchService, transport);
 
-// The only result types the backend's universalSearch emits, each mapped to
-// the route that actually renders that entity. Keeping the mapping in one
-// place is what lets a test prove every rendered result has somewhere to go:
-// a result with no route here is never rendered, so no click is ever dead.
+// The result types the backend's universalSearch emits, each mapped to the
+// route that actually renders that entity. Keeping the mapping in one place is
+// what lets a test prove every rendered result has somewhere to go: a result
+// with no route here is never rendered, so no click is ever dead.
 const ROUTE_BY_RESULT_TYPE: Record<string, (id: string) => string> = {
   task: (id) => `/tasks/${id}`,
   artifact: (id) => `/artifacts/${id}`,
+  // Neither projects nor agents have a detail screen, so both land on their
+  // list. Routing a project to `/projects/<id>` would have matched no route and
+  // dropped the user on Not Found — a dead link that looks like a working one.
+  project: () => '/projects',
+  agent: () => '/agents',
 };
 
-export function resultRoute(result: { type: string; id: string }): string | null {
+/**
+ * A comment has no screen of its own, so it routes to the task or artifact it
+ * hangs off — which the backend supplies as `parentType`/`parentId` precisely
+ * because the comment's own id leads nowhere.
+ */
+export function resultRoute(result: { type: string; id: string; parentType?: string; parentId?: string }): string | null {
+  if (result.type === 'comment') {
+    if (!result.parentType || !result.parentId) return null;
+    return ROUTE_BY_RESULT_TYPE[result.parentType]?.(result.parentId) ?? null;
+  }
   return ROUTE_BY_RESULT_TYPE[result.type]?.(result.id) ?? null;
 }
+
+const ICON_BY_RESULT_TYPE: Record<string, typeof CheckSquare> = {
+  task: CheckSquare,
+  artifact: FileBox,
+  project: FolderKanban,
+  agent: Bot,
+  comment: MessageSquare,
+};
 
 /**
  * The button that opens the palette. Rendered twice — once in the header for
@@ -75,7 +97,9 @@ export function GlobalSearch() {
   const { data, isLoading } = useQuery({
     queryKey: ['universalSearch', debouncedQuery, activeOrgId],
     queryFn: async () => {
-      if (!debouncedQuery) return [];
+      // No empty-query guard here: `enabled` below already gates on
+      // `debouncedQuery.length > 0`, so react-query never calls this with an
+      // empty query. The guard that used to sit here was unreachable.
       const resp = await searchClient.universalSearch({ query: debouncedQuery, orgId: activeOrgId });
       // Drop anything this build has no route for rather than offering the
       // user a result that does nothing when clicked.
@@ -93,7 +117,7 @@ export function GlobalSearch() {
     <Dialog
       open
       onClose={() => setIsOpen(false)}
-      title="Search tasks and artifacts"
+      title="Search tasks, artifacts, projects, agents and comments"
       hideTitle
       className="w-full max-w-lg self-start mt-[10vh]"
     >
@@ -132,7 +156,14 @@ export function GlobalSearch() {
                   className="flex w-full items-start gap-3 rounded-md p-2 hover:bg-accent hover:text-accent-foreground text-left"
                 >
                   <div className="mt-0.5 text-muted-foreground shrink-0">
-                    {result.type === 'task' ? <CheckSquare className="h-4 w-4" /> : <FileBox className="h-4 w-4" />}
+                    {(() => {
+                      // No fallback: a result whose type has no route is
+                      // filtered out before it reaches here, and every routable
+                      // type has an icon — so a `??` branch would be dead code
+                      // that only exists to be untested.
+                      const Icon = ICON_BY_RESULT_TYPE[result.type]!;
+                      return <Icon className="h-4 w-4" />;
+                    })()}
                   </div>
                   <div className="flex flex-col overflow-hidden">
                     <span className="font-medium text-sm truncate">{result.title}</span>

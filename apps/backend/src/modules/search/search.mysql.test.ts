@@ -130,6 +130,39 @@ testIf("universalSearch (mysql FULLTEXT)", () => {
     });
   });
 
+  it("finds an agent, a project and a comment, the types M07-T08 added", async () => {
+    // These three entities are separate SQL in each dialect, so passing on
+    // SQLite says nothing about MySQL. The agent case is M07-T08's verify line.
+    await asClustered(async () => {
+      const { db, impl, orgId, projectId, ctx } = await withMysqlFixture("SRCH5");
+
+      const roleId = "role-" + crypto.randomUUID();
+      const agentId = "agt-" + crypto.randomUUID();
+      await db.insert(schemaMysql.agentRoles).values({ id: roleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+      await db.insert(schemaMysql.agents).values({ id: agentId, orgId, agentRoleId: roleId, name: "Cartographer" });
+
+      const taskId = "tsk-host-" + crypto.randomUUID();
+      await db.insert(schemaMysql.tasks).values({ id: taskId, projectId, title: "Host task", status: "todo", createdAt: new Date() });
+      await db.insert(schemaMysql.comments).values({
+        id: "cmt-" + crypto.randomUUID(), entityId: taskId, entityType: "task",
+        content: "the pelican migration needs a second pass",
+      });
+
+      const agentHit: any = await impl.universalSearch({ query: "Cartographer", orgId }, ctx);
+      expect(agentHit.results.find((r: any) => r.type === "agent")?.id).toBe(agentId);
+
+      // The fixture project is named "Proj".
+      const projectHit: any = await impl.universalSearch({ query: "Proj", orgId }, ctx);
+      expect(projectHit.results.find((r: any) => r.type === "project")?.id).toBe(projectId);
+
+      const commentHit: any = await impl.universalSearch({ query: "pelican", orgId }, ctx);
+      const comment = commentHit.results.find((r: any) => r.type === "comment");
+      expect(comment).toBeDefined();
+      expect(comment.parentType).toBe("task");
+      expect(comment.parentId).toBe(taskId);
+    });
+  });
+
   it("does not index words shorter than innodb_ft_min_token_size, unlike SQLite", async () => {
     // A real, measured divergence between the dialects rather than a bug:
     // `innodb_ft_min_token_size` defaults to 3, so a two-character term matches
