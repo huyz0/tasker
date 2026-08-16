@@ -30,6 +30,14 @@ after M04 (so agent principals are already modelled and can carry grants too).
 Doing it before M07 and M08 would mean re-testing the authorization surface
 against a moving read path.
 
+By product priority this now lands after **M13** (Local Accounts & Linked
+Identity), not because M13 blocks it technically — grants and team membership
+key on `userId`, never on how that user authenticates — but so the roles/teams
+model is built against a user model that already tolerates no-email accounts
+rather than assuming every member row has one. If M13 has not landed yet when
+this starts, treat any GUI text or query that filters members by email as
+needing a username fallback.
+
 ## 3. Exit Criteria
 
 - [ ] An organization can create, edit and delete custom roles; 100 roles in one

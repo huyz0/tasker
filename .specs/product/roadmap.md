@@ -22,6 +22,8 @@ The original MVP scope, with the milestone that owns each remaining gap.
 | Organizations & users, admin / non-admin roles | Delivered | — |
 | Teams | Not modelled | M10 |
 | Google login | Delivered | — |
+| Local username/password accounts, no email required | Not modelled — every user is a Google identity today | M13 |
+| Linking/unlinking an external identity to an existing account | Not modelled | M13 |
 | Invite users by email | Record created; never sent, no UI, no expiry or revocation | M03 invite surface, M11 delivery |
 | Hierarchical organization structure | Delivered, capped at two levels, no inheritance | M10 |
 | Task types and status enums | Delivered | — |
@@ -67,6 +69,7 @@ The original MVP scope, with the milestone that owns each remaining gap.
 | **M10** | [Teams & Policy-Based RBAC](../../.milestones/MILESTONE-10-teams-and-policy-rbac/MILESTONE.md) | Roles and permissions are data; teams group people; access scopes below the org. | M03, M04 |
 | **M11** | [Observability & Deployability](../../.milestones/MILESTONE-11-observability-and-deployability/MILESTONE.md) | Deployable to a real environment and debuggable there. | M08 |
 | **M12** | [Test Depth & Release](../../.milestones/MILESTONE-12-test-depth-and-release/MILESTONE.md) | The client–server seam is tested, journeys are covered, the product is distributable. | M06, M09, M11 |
+| **M13** | [Local Accounts & Linked Identity](../../.milestones/MILESTONE-13-local-accounts-and-linked-identity/MILESTONE.md) | A user can exist and log in on a local username and password with no email or external provider required; Google is one optional linked identity among possibly several. | M01, M03 |
 
 ## Sequencing rationale
 
@@ -88,6 +91,15 @@ portable binary should not ship a weaker search than the clustered deployment.
 
 **M12 is last** because it certifies everything else, and closing the
 client–server test gap is cheapest once the contract has stopped moving.
+
+**M13 leads M10 by product priority, not by a technical dependency.** Both are
+IAM-surface work and both are unblocked by M03 alone. M13 redefines what a
+`users` row is (a local identity that may or may not have an email, may or may
+not be linked to Google); M10 redefines how access is granted on top of
+whatever a `users` row is. Building M10's teams/grants model after M13 means
+it is designed against a user model that already tolerates no-email accounts,
+rather than assuming — as the current member picker and invitation flow do —
+that every member has an email.
 
 ## Parallelism
 

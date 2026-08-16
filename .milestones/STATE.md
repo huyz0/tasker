@@ -1,5 +1,5 @@
 ---
-active_milestone: M08
+active_milestone: M13
 active_task: null
 last_updated: 2026-08-16
 last_commit: d808a68
@@ -15,21 +15,23 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M08 — Events, Audit & Real-Time
-- **Task**: none — M08's first task is next
-- **Branch**: `main`, at the user's explicit instruction for this milestone
-  ("just do it on main and push there") — the same instruction was given
-  separately for M06. This overrides `git-workflow-standard.md` and
-  `milestone-standard.md` §5, which both require a `feature/m07-*` branch.
-  The instruction has been given per-milestone each time, so **it is not a
-  standing default**: a later milestone starts on a feature branch unless the
-  user says otherwise again. Recorded so the exception reads as a decision.
-- **Command to continue**: `/milestone-deliver M08`
+- **Milestone**: M13 — Local Accounts & Linked Identity
+- **Task**: none — M13's first task is next
+- **Branch**: `feature/m13-local-accounts-and-linked-identity`, per the
+  default in `git-workflow-standard.md` / `milestone-standard.md` §5. No
+  main-branch exception has been given for this milestone.
+- **Command to continue**: `/milestone-deliver M13` (or `/milestone-deliver-auto M13`)
 
-M06 closed 14/14 tasks and 7/7 exit criteria. The frontier is now M07
-(Read-Path Scale) and M10 (Teams & RBAC) — both unblocked and independent of
-each other, so they can run in parallel. M07 is the wider unblock: M08 and M09
-both wait on it, and M12 waits on those.
+**2026-08-16 — Re-prioritized by explicit product direction.** M08 had not
+started (`active_task: null`, no commits against it), so it was safe to
+re-sequence with no work abandoned. M13 is new (see Handoff notes below) and
+now leads; M10 (Teams & Policy-Based RBAC) follows it by the same instruction.
+M08, M09, M11, M12 are unchanged and resume in their prior order once M13 and
+M10 close — nothing in their `depends_on` required M08 to run before either.
+
+M07 (Read-Path Scale) closed 14/14 tasks and 7/7 exit criteria. M10 (Teams &
+RBAC) is unblocked and independent of M13 technically, but is sequenced after
+it by product priority — see M10's "Why Now".
 
 ## How to resume
 
@@ -58,8 +60,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M10 | Teams & Policy-Based RBAC      | todo   | M03, M04   | 13    | 0    |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
+| M13 | Local Accounts & Linked Identity| todo  | M01, M03   | 15    | 0    |
 
-**Total: 145 tasks across 12 milestones — 89 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14).**
+**Total: 160 tasks across 13 milestones — 89 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14).**
 
 ## Dependency graph
 
@@ -81,13 +84,51 @@ graph LR
   M06 --> M12[M12 Test & Release]
   M09 --> M12
   M11 --> M12
+  M01 --> M13[M13 Local Accounts]
+  M03 --> M13
 ```
 
 Milestones with no dependency edge between them may run in parallel on separate
 branches. M02 is intentionally cheap and unblocking — it can run alongside
-anything.
+anything. M13 has no dependency edge to M10 — they are independent — but are
+delivered in that order (M13 then M10) by product priority, recorded in both
+milestones' "Why Now" sections rather than as a `depends_on` entry, since
+neither actually blocks the other.
 
 ## Handoff notes
+
+**2026-08-16 — M13 (Local Accounts & Linked Identity) added and prioritized
+ahead of M08, by explicit product direction.**
+
+Three things were asked for together: users that don't require an email or a
+Google account and can log in with a local password (disable-able per account
+once an external identity is linked — a Windows local-account /
+Microsoft-account relationship); a Team concept; and a real, data-driven
+role/permission system. The second and third were already fully planned as
+**M10 (Teams & Policy-Based RBAC)** — 13 tasks, unstarted, unblocked. The
+first had no milestone, so **M13** was created for it (15 tasks) and set to
+lead, with M10 following.
+
+1. **Why a new milestone rather than a task inside M10.** M13 changes what a
+   `users` row *is* — `users.id` today is literally the caller's Google
+   profile id, and `email` is required. M10's grants/teams model keys on
+   `userId` and does not care how that user authenticates, so the two are
+   independent — M13 is sequenced first by priority, not by a real
+   `depends_on` edge. Encoding it as a hard dependency would have overstated
+   a requirement that does not exist; see M10's "Why Now" for the note left
+   there instead.
+2. **The load-bearing design decision, made without asking**: `users.id`
+   does not change during migration. Every existing Google user gets a new
+   `linked_identities` row (`provider='google'`, `providerUserId` = their
+   current id); the `users.id` they already have stays their id. This is what
+   keeps the migration from touching every other table's `userId` foreign key
+   — the alternative (mint a new internal id, re-point every FK) would have
+   made this a second M10-sized rewrite for no behavioural gain.
+3. **M08 was not started** (`active_task: null`, no commits recorded against
+   it) when this re-plan landed, so re-sequencing ahead of it abandoned no
+   in-flight work. It resumes in its prior position once M13 and M10 close.
+4. Full plan, exit criteria and task breakdown:
+   `.milestones/MILESTONE-13-local-accounts-and-linked-identity/MILESTONE.md`.
 
 **2026-08-16 — M07 Read-Path Scale closed (14/14 tasks; 5 of 6 exit criteria
 met outright, the sixth met with a stated deviation).**
