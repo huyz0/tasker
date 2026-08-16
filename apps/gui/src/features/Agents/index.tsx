@@ -8,7 +8,12 @@ import { Bot } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { AgentTokens } from './AgentTokens';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { VirtualList } from '../../components/ui/VirtualList';
 import { ListState } from '../../components/ui/ListState';
+
+// Only the pre-measurement estimate; `measureRows` reads the real height,
+// because a row grows when its edit form opens.
+const AGENT_ROW_HEIGHT = 76;
 
 const agentClient = createClient(AgentService, transport);
 
@@ -234,7 +239,14 @@ export function AgentsDashboard() {
               emptyAction={<p className="text-xs">Deploy one with the form above.</p>}
               onRetry={() => refetchAgents()}
             >
-              {(agentsData ?? []).map(a => (
+              {/* Measured: an agent row becomes an edit form when opened, so
+                  a fixed height would misplace every row below it (M07-T14). */}
+              <VirtualList
+                items={agentsData ?? []}
+                rowHeight={AGENT_ROW_HEIGHT}
+                measureRows
+                className="max-h-[70vh] overflow-y-auto"
+                renderRow={(a: any) => (
                 editingAgentId === a.id ? (
                   <form
                     key={a.id}
@@ -308,7 +320,8 @@ export function AgentsDashboard() {
                 {tokensAgentId === a.id && <AgentTokens agentId={a.id} agentName={a.name} />}
                 </div>
                 )
-              ))}
+                )}
+              />
               {hasMoreAgents && (
                 <button
                   onClick={() => fetchMoreAgents()}

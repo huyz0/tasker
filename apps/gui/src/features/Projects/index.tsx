@@ -9,7 +9,12 @@ import { ProjectService, ProjectTemplateService, TaskTypeService } from "shared-
 import { PaginationControls } from '../../components/PaginationControls';
 import { Package } from 'lucide-react';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { VirtualList } from '../../components/ui/VirtualList';
 import { ListState } from '../../components/ui/ListState';
+
+// Only the estimate used before a card has been measured — `measureRows` reads
+// the real height, because a card grows when its edit form opens.
+const PROJECT_ROW_HEIGHT = 220;
 
 const projectClient = createClient(ProjectService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
@@ -414,7 +419,15 @@ export function ProjectsWizard() {
           onRetry={() => refetchProjects()}
         >
           <div className="flex flex-col gap-6">
-            {(projectsData ?? []).map(p => (
+            {/* Measured rather than fixed-height: a project card grows an
+                inline edit form when opened, and a fixed height would misplace
+                every card below the one being edited (M07-T14). */}
+            <VirtualList
+              items={projectsData ?? []}
+              rowHeight={PROJECT_ROW_HEIGHT}
+              measureRows
+              className="max-h-[70vh] overflow-y-auto"
+              renderRow={(p: any) => (
               <div key={p.id} className="border rounded-lg bg-card p-6 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   {editingProjectId === p.id ? (
@@ -484,7 +497,8 @@ export function ProjectsWizard() {
                 )}
                 <RepositoryIntegrationConfig projectId={p.id} />
               </div>
-            ))}
+              )}
+            />
             {archiveProjectMutation.isError && (
               <p className="text-sm text-destructive">Failed to delete project: {(archiveProjectMutation.error as Error).message}</p>
             )}

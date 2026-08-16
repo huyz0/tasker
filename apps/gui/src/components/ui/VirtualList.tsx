@@ -27,6 +27,7 @@ export function VirtualList<T>({
   className,
   overscan = 8,
   emptyState,
+  measureRows = false,
 }: {
   items: readonly T[];
   rowHeight: number;
@@ -34,6 +35,15 @@ export function VirtualList<T>({
   className?: string;
   overscan?: number;
   emptyState?: ReactNode;
+  /**
+   * Measure each row instead of trusting `rowHeight`.
+   *
+   * For rows that change height — a card that grows an inline edit form, say —
+   * a fixed height misplaces every row below the one that changed. Costs a
+   * layout read per row, so it is off unless a view needs it, and `rowHeight`
+   * remains the estimate used before a row has been measured.
+   */
+  measureRows?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -41,6 +51,7 @@ export function VirtualList<T>({
     getScrollElement: () => scrollRef.current,
     estimateSize: () => rowHeight,
     overscan,
+    measureElement: measureRows ? (el) => el.getBoundingClientRect().height : undefined,
   });
 
   const virtualRows = virtualizer.getVirtualItems();
@@ -54,12 +65,15 @@ export function VirtualList<T>({
           <div
             key={row.key}
             data-index={row.index}
+            ref={measureRows ? virtualizer.measureElement : undefined}
             style={{
               position: 'absolute',
               top: 0,
               left: 0,
               width: '100%',
-              height: row.size,
+              // A measured row sizes itself; forcing a height would defeat the
+              // measurement it was just asked to perform.
+              ...(measureRows ? {} : { height: row.size }),
               transform: `translateY(${row.start}px)`,
             }}
           >

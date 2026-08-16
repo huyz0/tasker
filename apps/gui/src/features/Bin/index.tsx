@@ -10,6 +10,7 @@ import {
   AgentService,
   ArtifactService,
 } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { VirtualList } from '../../components/ui/VirtualList';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ListState } from '../../components/ui/ListState';
 
@@ -348,7 +349,13 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
       {purgeError && (
         <p className="text-sm text-destructive p-3">Failed to delete forever: {purgeError.message}</p>
       )}
-      {items.map((item) => (
+      {/* Virtualized: the bin holds everything ever deleted in the org, which
+          is unbounded and grows with use (M07-T14). */}
+      <VirtualList
+        items={items}
+        rowHeight={BIN_ROW_HEIGHT}
+        className="max-h-[60vh] overflow-y-auto divide-y"
+        renderRow={(item: any) => (
         <div key={item.id} className="p-3 text-sm flex justify-between items-center">
           <div>
             <span className="font-medium">{item[labelKey] ?? item.id}</span>
@@ -382,7 +389,8 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
             </button>
           </div>
         </div>
-      ))}
+        )}
+      />
       {hasMore && (
         <button
           onClick={onLoadMore}
@@ -396,6 +404,10 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
     </div>
   );
 }
+
+// Bin rows are `p-3` around a single line of text with buttons — a fixed
+// height, kept beside the row's own classes so the two cannot drift.
+const BIN_ROW_HEIGHT = 57;
 
 export function BinDashboard() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);

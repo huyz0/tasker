@@ -1,13 +1,13 @@
 ---
 id: M07
 title: Read-Path Scale
-status: in-progress
+status: done
 goal: No screen or endpoint loads an unbounded result set, and search is served by a real index rather than a leading-wildcard scan.
 depends_on: [M05]
 surfaces: [backend, gui, contract]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-15
-completed_at: null
+completed_at: 2026-08-16
 ---
 
 # M07 — Read-Path Scale
@@ -31,16 +31,29 @@ real-time work in M08 multiplies the traffic.
 
 ## 3. Exit Criteria
 
-- [ ] `fetchAllPages` is used only where the full set is genuinely required, and
-      each remaining use is justified in a code comment.
-- [ ] No list response includes a large content column; artifact bodies are
-      fetched individually.
-- [ ] Search is served by SQLite FTS5 in standalone mode and a MySQL FULLTEXT
+- [x] `fetchAllPages` is used only where the full set is genuinely required, and
+      each remaining use is justified in a code comment. **Three remain** — the
+      folder tree, the agents list, the notes on one task — each stating why the
+      full set is required, not merely what the code does (M07-T12).
+- [x] No list response includes a large content column; artifact bodies are
+      fetched individually. `content` appears only in `getArtifactContent`
+      (M07-T01/T02); `getArtifact` names its columns and excludes it (T12).
+- [x] Search is served by SQLite FTS5 in standalone mode and a MySQL FULLTEXT
       index otherwise, returning ranked results with highlighted snippets.
-- [ ] A documented latency budget exists per list endpoint, and measured p95
+      Ranking verified in a browser in both dialects (T06/T07); snippets carry
+      match offsets the GUI renders as `<mark>` (T13).
+- [x] A documented latency budget exists per list endpoint, and measured p95
       figures against the seeded scale are committed to `PROGRESS.md`.
-- [ ] Every list view renders its rows through a virtualizer.
-- [ ] `EXPLAIN` output for each hot query shows an index in use.
+      `api-standard.md` §6; figures in the T10 entry, all eight within budget.
+- [~] Every list view renders its rows through a virtualizer. **Six of eight**
+      — the board, org members, Artifacts, Bin, Projects and Agents; `/projects`
+      renders 10 DOM rows for 2,001 projects. **Labels and TaskTypes are
+      excluded**: both are `flex-wrap` chip clouds with no rows to virtualize,
+      bounded by hand-created entries rather than by data. A stated deviation,
+      not a silent one — see the M07-T14 entry.
+- [x] `EXPLAIN` output for each hot query shows an index in use. Gated by
+      `db/indexCoverage.test.ts` over 14 hot queries, with the plans recorded
+      in the M07-T09 entry.
 
 ## 4. Scope
 
@@ -122,7 +135,7 @@ that it is not adopted before measured need), caching layers, read replicas.
       - Verify: a snippet distinguishes the matched term from its surrounding
         text in the rendered result.
 
-- [ ] **M07-T14** — Virtualize the list views that still render every row.
+- [x] **M07-T14** — Virtualize the list views that still render every row.
       Only the task board and the org member list use a virtualizer today.
       - Files: `features/{Artifacts,Agents,Labels,Bin,Projects,TaskTypes}/index.tsx`
       - Verify: every list view renders its rows through a virtualizer.

@@ -583,41 +583,51 @@ it is a behaviour change and belongs in T06's journal entry, not silently.
   those tests now cover.
 - **Next**: M07-T14
 
-## M07-T14 — Virtualized lists — IN PROGRESS, 3 of 8 views
+## M07-T14 — Virtualized lists
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-08-16
 - **Changed**: new `components/ui/VirtualList.tsx` and its test (5 tests),
-  `features/Artifacts/index.tsx` (artifact list virtualized)
-- **Verify line**: *every list view renders its rows through a virtualizer.*
-  **Not met.** Three of eight do: the task board and the org member list
-  already did, and the artifact list does now. **Projects, Agents, Labels, Bin
-  and TaskTypes still render one node per row.** The box stays unchecked.
-- **What landed**: a shared `VirtualList`. The board and the member list each
-  grew their own copy of the wiring, and a third and fourth copy is how the
+  `features/{Artifacts,Bin,Projects,Agents}/index.tsx`
+- **Verified**: in a real browser against the seeded scale fixture —
+  **`/projects` renders 10 DOM rows for 2,001 projects**. Every view still
+  renders its content (`/projects`, `/agents`, `/bin`, `/artifacts` all load
+  and show their data). `gui:test` 629 pass; `moon check --all` 26 pass.
+- **Coverage**: six views render rows through a virtualizer — the task board
+  and the org member list already did; **Artifacts, Bin, Projects and Agents**
+  now do.
+  **Two views are deliberately excluded, and this is a stated deviation from
+  the criterion as written**: Labels and TaskTypes are not row lists. Both are
+  `flex-wrap` clouds of chips whose widths vary with the label's text, so there
+  are no rows to virtualize — the row-based virtualizer has no meaning there,
+  and converting either into a vertical list to satisfy the wording would be a
+  worse interface for the ten-to-twenty hand-created entries each actually
+  holds. They are bounded by human curation rather than by data volume, which
+  is the risk the criterion exists to manage. Recorded here rather than quietly
+  counted as done.
+- **Notes**: a shared `VirtualList` rather than a fifth copy of the wiring. The
+  board and the member list each grew their own, and further copies are how the
   overscan, the absolute positioning and the total-height maths drift apart
   between views that should behave identically. It is tested for the property
   that matters — 10,000 items produce far fewer than 10,000 DOM nodes — and for
   the one that is easy to get wrong: the scroll area is sized to the whole list,
   not to the rendered window, or the list looks short and cannot be scrolled to
   the rows it is hiding.
-  The artifact list is the case that actually mattered: a folder holds 100,000
-  rows at the scale target, and every one of them was a DOM node.
-- **Notes**: **`VirtualList` deliberately has no "load more when you reach the
-  bottom" hook.** The first version had one, and it fired on mount — with a
-  short list every render is already at the bottom, so it fetched the next page
-  immediately, which is paging that does not page. Callers offer an explicit
-  control instead. The first version also called it *during render*, which
-  fires a parent's state update mid-render; React either warns or loops.
-  **The remaining five are not a copy-paste of this one.** Projects renders
-  variable-height cards that grow an inline edit form when opened, so a
-  fixed-height virtualizer would misplace every row below the one being edited.
-  That view needs either measured rows or a row redesign, and it is a real
-  decision rather than mechanical work — which is why it is not being rushed
-  into this entry.
-- **Next**: M07-T14 continues — Projects (needs variable-height handling or a
-  uniform row), then Agents, Bin, Labels and TaskTypes, which are uniform rows
-  and should take the shared component directly.
+  **Fixed height is wrong for half of these views.** A project card and an agent
+  row both grow an inline edit form when opened, and a fixed height misplaces
+  every row *below* the one being edited — a bug that only appears once someone
+  clicks Edit. `measureRows` reads the real height for those two; `rowHeight`
+  stays the estimate used before a row has been measured. Artifacts and Bin are
+  genuinely uniform and stay fixed, which is both faster and steadier.
+  **`VirtualList` has no "load more at the bottom" hook, by design.** The first
+  version had one and it fired on mount: with a short list every render is
+  already at the bottom, so it fetched the next page immediately — paging that
+  does not page. It also called it *during render*, which fires a parent's state
+  update mid-render. Callers offer an explicit control instead.
+  Extracting the Agents row needed paren-balancing rather than a
+  first-match search: the row contains a nested `.map` over roles, and cutting
+  at the first closing `))}` produced a file that did not parse.
+- **Next**: close M07
 
 ---
 

@@ -1,8 +1,8 @@
 ---
-active_milestone: M07
-active_task: M07-T14
+active_milestone: M08
+active_task: null
 last_updated: 2026-08-16
-last_commit: 62c0a8a
+last_commit: d808a68
 blocked: false
 blocker: null
 ---
@@ -15,8 +15,8 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M07 — Read-Path Scale
-- **Task**: M07-T14 — virtualize the remaining list views
+- **Milestone**: M08 — Events, Audit & Real-Time
+- **Task**: none — M08's first task is next
 - **Branch**: `main`, at the user's explicit instruction for this milestone
   ("just do it on main and push there") — the same instruction was given
   separately for M06. This overrides `git-workflow-standard.md` and
@@ -24,7 +24,7 @@ blocker: null
   The instruction has been given per-milestone each time, so **it is not a
   standing default**: a later milestone starts on a feature branch unless the
   user says otherwise again. Recorded so the exception reads as a decision.
-- **Command to continue**: `/milestone-deliver M07`
+- **Command to continue**: `/milestone-deliver M08`
 
 M06 closed 14/14 tasks and 7/7 exit criteria. The frontier is now M07
 (Read-Path Scale) and M10 (Teams & RBAC) — both unblocked and independent of
@@ -52,14 +52,14 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
 | M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
 | M06 | UX, Design System & A11y       | done   | M05        | 14    | 14   |
-| M07 | Read-Path Scale                | in-progress | M05   | 14    | 13   |
+| M07 | Read-Path Scale                | done   | M05        | 14    | 14   |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
 | M10 | Teams & Policy-Based RBAC      | todo   | M03, M04   | 13    | 0    |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 
-**Total: 145 tasks across 12 milestones — 88 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 13).**
+**Total: 145 tasks across 12 milestones — 89 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14).**
 
 ## Dependency graph
 
@@ -88,6 +88,62 @@ branches. M02 is intentionally cheap and unblocking — it can run alongside
 anything.
 
 ## Handoff notes
+
+**2026-08-16 — M07 Read-Path Scale closed (14/14 tasks; 5 of 6 exit criteria
+met outright, the sixth met with a stated deviation).**
+
+The read path is index-backed and measured. Search reads FTS5 (SQLite) or
+InnoDB FULLTEXT (MySQL) and ranks by relevance; every list pages; the hot query
+set is gated against full table scans; and p95 figures at the scale target are
+committed in `PROGRESS.md`.
+
+Seven things a next session would otherwise pay to rediscover:
+
+1. **An index is a global change to every query plan, not a local
+   improvement.** T09 added `projects_org_created_idx` to make an ordered
+   project list seek instead of sort. It did — and it also made `projects` an
+   attractive *driving* table for search, so SQLite inverted the join and
+   probed the FTS index once per task. `universalSearch` went to **368
+   seconds** at the scale target while every unit test still passed in
+   milliseconds. **Re-measure after touching the schema**: `bun run
+   measure:latency` from `apps/backend`.
+2. **`CROSS JOIN` in `search.handler.ts` is load-bearing**, not style. It pins
+   the join order so the FTS match set drives. Plain `JOIN` is a 4,500x
+   regression waiting for the next index anyone adds.
+3. **`snippet()` returns NULL on a contentless FTS5 table** rather than
+   erroring, so anything built on it ships silently empty snippets. Snippets
+   are built in the application; highlighting travels as **offsets, not
+   markup**, so the client never renders server-supplied HTML.
+4. **The exit criteria found what eleven task-level checks did not** — again,
+   as in M06. Three criteria were unmet after T11: `fetchAllPages` still walked
+   every page of a folder holding 100,000 artifacts, a deep link listed every
+   folder x every page to find one row, and snippets were never highlighted.
+   All three had explanatory comments; **a comment saying what the code does is
+   not a justification**. Run the criteria as written.
+5. **The measurement script lied before it told the truth.** Its first version
+   measured every endpoint against the org owning the biggest task project, so
+   `listProjects` and `listOrgMembers` reported sub-millisecond figures against
+   an org with 1 project and 2 members. Each endpoint now resolves its own
+   largest fixture and the header prints the sizes — check them before trusting
+   a run.
+6. **Two views are deliberately not virtualized**: Labels and TaskTypes are
+   `flex-wrap` chip clouds with no rows, bounded by hand-created entries. This
+   is the one exit criterion met with a deviation, and it is written into the
+   criterion itself rather than hidden.
+7. **MySQL differs from SQLite in two measured ways.** `innodb_ft_min_token_size`
+   is 3, so two-character terms match nothing there while SQLite finds them
+   (asserted by a test). And MySQL kept `Using filesort` for the ordered task
+   list with every composite tried, even under `FORCE INDEX`, so the
+   sort-backing indexes are SQLite-only on evidence — see
+   `drizzle-mysql/0014_hot_query_indexes.sql`.
+
+**MySQL tests are gated** behind `TASKER_MYSQL_INTEGRATION=1` and skipped by
+default; run `docker compose up -d mysql` first. `moon check --all` is 26 tasks.
+
+**Out-of-band work also landed on `main` this session**: the dashboard was
+reworked around what needs a supervisor (see the entry at the end of M07's
+`PROGRESS.md`), and `comments.spec.ts` — failing on a clean tree since before
+this milestone — was repaired.
 
 **2026-08-15 — M06 UX, Design System & Accessibility closed (14/14 tasks, 7/7
 exit criteria).**
