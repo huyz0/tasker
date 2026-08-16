@@ -89,7 +89,57 @@ uses them. Do not invent per-endpoint pagination parameters.
   Never add a list method that returns unbounded data.
 - `totalCount` is optional and is computed against the same filter as the page.
 
-## 6. Authorization is per handler
+## 6. Latency budgets
+
+Every list endpoint has a stated budget, measured as **p95 of the handler's own
+answer time** — the query plus its serialisation, not the round trip. A number
+that includes the socket measures the machine's networking as much as the read
+path.
+
+**Every list endpoint is 150 ms unless named below.** Stating it as a default
+rather than a table of 22 rows means an endpoint added next month has a budget
+the day it is written, instead of being absent from a list nobody remembered to
+update.
+
+| Endpoint | Budget (p95) | Why it differs |
+|---|---|---|
+| *every `list*` method* | 150 ms | the default |
+| `universalSearch` | 300 ms | ranks its whole match set on every page (ADR-0010) |
+| `getDashboard` | 300 ms | answers four questions in one round trip instead of four |
+
+The eight measured at the scale target are `listTasks` (both the project list
+and one board column), `listArtifacts`, `listProjects`, `listAgents`,
+`listOrgMembers`, `universalSearch` and `getDashboard` — the endpoints a user
+waits on before a screen paints. The rest inherit the default and are measured
+when they become hot enough to matter.
+
+150 ms is the default because the browser still has to render what it gets, and
+the bar it has to clear is a screen painted within a second.
+
+Budgets are measured against the product's scale targets — 2,000 projects,
+50,000 tasks in one project, 100,000 artifacts, 100,000 members in an org — not
+against a fixture small enough to be fast by accident:
+
+```bash
+cd apps/backend
+bun run seed -- --scale large
+bun run measure:latency
+```
+
+`measure:latency` exits non-zero if any endpoint is over budget, so this is a
+check rather than a report. Committed figures live in the milestone journal
+that produced them (`.milestones/MILESTONE-07-read-path-scale/PROGRESS.md`),
+because a number without the fixture it was measured against is an anecdote.
+
+**A budget is not a target to sit against.** The measurement exists to catch
+the shape of failure that hides at small scale: `universalSearch` was
+**368 seconds** at the scale target while every unit test passed in
+milliseconds, because SQLite had inverted a join. Adding an index for one query
+changes the plan of every other, so re-measure after touching the schema —
+that regression was caused by an index added two tasks earlier in the same
+milestone.
+
+## 7. Authorization is per handler
 
 There is no gateway that authorises requests. Every handler does it, in this
 order, before touching data:
@@ -101,7 +151,7 @@ order, before touching data:
 Omitting either in a new handler is a cross-tenant data leak, not a style
 issue. `lib/authz.ts` is the only place these rules live.
 
-## 7. Validation at the boundary
+## 8. Validation at the boundary
 
 Parse every request with Zod at the top of the handler and work with the parsed
 value. Protobuf guarantees the shape, not the meaning: it cannot express "this

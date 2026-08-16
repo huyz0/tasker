@@ -473,6 +473,35 @@ it is a behaviour change and belongs in T06's journal entry, not silently.
   watch if the budget tightens.
 - **Next**: M07-T11
 
+## M07-T11 — A latency budget per endpoint, in the standard
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `.specs/standards/api-standard.md` (new §6 "Latency budgets";
+  the two sections after it renumbered)
+- **Verified**: the verify line — *each list endpoint has a stated budget*.
+  There are **22** `list*` methods across the handlers, so the budget is stated
+  as a **default that binds all of them** (150 ms) plus two named exceptions
+  (`universalSearch` and `getDashboard`, 300 ms), rather than a 22-row table.
+  `moon run tasker:docs-lint` — 189 files pass. `moon check --all` — 26 pass.
+- **Notes**: a table of 22 rows would have been literally complete and wrong in
+  practice: the twenty-third endpoint arrives without a budget, and nobody
+  notices because the list looks thorough. A default binds an endpoint written
+  next month on the day it is written.
+  The budget is defined as **p95 of the handler's own answer time**, not the
+  round trip, because a figure that includes the socket measures the machine's
+  networking as much as the read path — and the browser-side number is already
+  measured separately, in a real browser (T03).
+  The standard points at `bun run measure:latency` and says plainly that it
+  **exits non-zero** over budget, so the budget is a check rather than a
+  report. It points at this journal for the committed figures, on the grounds
+  that a number without the fixture it was measured against is an anecdote.
+  It also carries the warning T10 earned: re-measure after touching the schema,
+  because an index added for one query changes the plan of every other — which
+  is exactly how `universalSearch` reached 368 seconds while every unit test
+  passed in milliseconds.
+- **Next**: close M07
+
 ---
 
 ## Out-of-band — dashboard rework (not an M07 task)

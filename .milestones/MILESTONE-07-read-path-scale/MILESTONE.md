@@ -104,10 +104,28 @@ that it is not adopted before measured need), caching layers, read replicas.
       - Files: `apps/backend/scripts/seed.ts`, `scripts/measure-latency.ts`
       - Verify: measured p95 numbers are committed.
 
-- [ ] **M07-T11** — Document the latency budget per endpoint in
+- [x] **M07-T11** — Document the latency budget per endpoint in
       `.specs/standards/api-standard.md`.
       - Files: `.specs/standards/api-standard.md`
       - Verify: each list endpoint has a stated budget.
+
+- [ ] **M07-T12** — Remove or justify every remaining `fetchAllPages`. The
+      artifacts view walks all pages of a folder that can hold 100,000 rows, and
+      the task-notes loop carries no justification at all.
+      - Files: `features/Artifacts/index.tsx`, `features/Tasks/index.tsx`
+      - Verify: no remaining use fetches an unbounded set, and each one that
+        stays states in a comment why the full set is required.
+
+- [ ] **M07-T13** — Mark the matched term inside a search snippet, which exit
+      criterion 3 asks for and T06 did not deliver.
+      - Files: `modules/search/search.handler.ts`, `main.tsp`, `GlobalSearch.tsx`
+      - Verify: a snippet distinguishes the matched term from its surrounding
+        text in the rendered result.
+
+- [ ] **M07-T14** — Virtualize the list views that still render every row.
+      Only the task board and the org member list use a virtualizer today.
+      - Files: `features/{Artifacts,Agents,Labels,Bin,Projects,TaskTypes}/index.tsx`
+      - Verify: every list view renders its rows through a virtualizer.
 
 ## 6. Verification
 
