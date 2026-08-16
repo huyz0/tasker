@@ -98,3 +98,31 @@
   consumer in T06/T08). Each tag names the task that removes it; `bunx knip
   --workspace apps/backend` is clean with them in place.
 - **Next**: M13-T04 — migrate existing users onto `linked_identities`.
+
+## M13-T04 — Backfill linked_identities for every pre-existing (Google) user
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `drizzle-sqlite/0031_backfill_google_linked_identities.sql`,
+  `drizzle-mysql/0018_backfill_google_linked_identities.sql`, both
+  `meta/_journal.json`,
+  `src/db/migrate-backfill-google-linked-identities.test.ts`
+- **Verified**: `bun test src/db/migrate-backfill-google-linked-identities.test.ts`
+  — 6 pass, including that `linked_identities.provider_user_id` for a
+  backfilled row equals the user's own (unchanged) `id` — the load-bearing
+  claim in ADR-0012 §3 — and that re-running the migration is a no-op
+  (idempotency guard). `TASKER_MYSQL_INTEGRATION=1 bun test src/db/db.mysql.test.ts`
+  — 1 pass; a direct `COUNT(*)` against the live container showed
+  `linked_identities` and `users` at parity (28/28) after applying. Full
+  suite: 658 pass, 0 fail.
+- **Notes**: Pure data migration, no handler change — `completeLogin` still
+  authenticates by `users.id === profile.id` exactly as before, unaffected by
+  whether a `linked_identities` row exists yet. That's deliberate: this task
+  only needs the *fact* of the link to exist so T06/T08 can query it; making
+  login logic actually consult `linked_identities` is T06's job. Exit
+  criterion "every user who could log in via Google before this milestone
+  can still do so afterward... no id change" is trivially satisfied right
+  now for exactly that reason, and stays satisfied through T06 because the
+  Google path there is additive (a lookup-by-linked-identity that falls back
+  to id-equality), not a replacement.
+- **Next**: M13-T05 — password hashing module (`Bun.password`, argon2id).

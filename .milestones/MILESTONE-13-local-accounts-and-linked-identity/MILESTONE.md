@@ -102,7 +102,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: migrations apply; the unique constraint is exercised by a test
         that tries to link the same Google id to two accounts.
 
-- [ ] **M13-T04** — Migrate existing users: for every current row (whose id is
+- [x] **M13-T04** — Migrate existing users: for every current row (whose id is
       today's Google profile id), insert a `linked_identities` row
       (`provider='google'`, `providerUserId=users.id`); `users.id` itself does
       not change, so no other foreign key in the schema needs touching.
