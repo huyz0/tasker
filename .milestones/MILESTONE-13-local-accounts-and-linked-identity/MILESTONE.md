@@ -1,12 +1,12 @@
 ---
 id: M13
 title: Local Accounts & Linked Identity
-status: todo
+status: in-progress
 goal: A user can exist, be invited and log in entirely on a local username and password with no email address and no dependency on any external provider; Google becomes one optional linked identity per account rather than the account itself, and the system always keeps at least one active sign-in method per user.
 depends_on: [M01, M03]
 surfaces: [backend, gui, cli, contract]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-16
 completed_at: null
 ---
 
@@ -77,7 +77,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
 
 ### Decide and model
 
-- [ ] **M13-T01** — Write the ADR choosing local password credentials plus a
+- [x] **M13-T01** — Write the ADR choosing local password credentials plus a
       generalized linked-identity model over the current Google-only design;
       name the hashing algorithm and parameters, the migration path for
       existing users, and the "at least one active sign-in method" invariant.
