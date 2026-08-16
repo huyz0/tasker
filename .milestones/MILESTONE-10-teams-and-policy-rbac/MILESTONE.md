@@ -95,7 +95,7 @@ SCIM provisioning, delegated administration.
       - Files: `apps/backend/src/lib/policy.ts`
       - Verify: unit tests cover every resolution path.
 
-- [ ] **M10-T05** — Replace every `assertOrg*` call site with a `can` check,
+- [x] **M10-T05** — Replace every `assertOrg*` call site with a `can` check,
       mapping each RPC to its required permission.
       - Files: all `modules/*/*.handler.ts`
       - Verify: no handler references a role name literal.

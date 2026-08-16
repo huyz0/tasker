@@ -5,10 +5,28 @@ import { setupIntegrationTest, seedUser, seedOrgWithAdmin, seedProject } from '.
 import * as schema from '../db/schema.sqlite';
 import { can, assertCan } from './policy';
 
-// T04's verify criterion: "unit tests cover every resolution path" -
-// ADR-0013 §3's three-step algorithm (direct, team-derived, project→org
-// ancestor), plus the boundaries the ADR is explicit about (no team→org
-// climbing, no cross-project/cross-org leakage, agents excluded entirely).
+// T04/T05's verify criterion: "unit tests cover every resolution path" -
+// ADR-0013 §3's algorithm (direct grant, team-derived grant, project→org
+// ancestor), plus the `organization_members` fallback `can()` gained during
+// T05 (see policy.ts's doc comment), plus the boundaries the ADR is explicit
+// about (no team→org climbing, no cross-project/cross-org leakage, agents
+// excluded entirely).
+//
+// `seedOrgWithAdmin` (the shared fixture almost every other handler test
+// uses) makes its user an `organization_members` **admin** - which, since
+// T05, `can()` honors on its own via the fallback. Using it for a test that
+// means to isolate a *specific* grant would let that implicit admin
+// membership satisfy the assertion instead of the thing under test.
+// `seedBareOrgAndUser` below seeds the org and user with no membership row
+// at all, for every test that needs true grants-only isolation;
+// `seedOrgWithAdmin` is reserved for the fallback's own tests, where that
+// membership row is exactly what's being exercised.
+
+async function seedBareOrgAndUser(db: any, { orgId, userId }: { orgId: string; userId: string }) {
+  await db.insert(schema.organizations).values({ id: orgId, name: orgId, slug: orgId, createdAt: new Date() });
+  await seedUser(db, userId);
+  return { orgId, userId };
+}
 
 async function seedGrant(db: any, over: Record<string, any> = {}) {
   const row = {
@@ -41,7 +59,7 @@ async function seedCustomRole(db: any, { roleId, orgId, permissions }: { roleId:
 describe('can() - direct grants', () => {
   it('grants permission when a direct grant at exactly this scope holds it', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-member' });
 
     // role-member holds task:write (M10-T03's seeding).
@@ -50,7 +68,7 @@ describe('can() - direct grants', () => {
 
   it('denies a permission the held role does not grant', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-viewer' });
 
     // role-viewer holds only *:read - org:owner is not among them.
@@ -65,7 +83,7 @@ describe('can() - direct grants', () => {
 
   it('resolves a custom, org-scoped role composed of an arbitrary permission set', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedCustomRole(db, { roleId: 'role-qa-lead', orgId, permissions: ['task:write', 'artifact:read'] });
     await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-qa-lead' });
 
@@ -76,17 +94,69 @@ describe('can() - direct grants', () => {
 
   it('does not leak a grant at one organization into a permission check for a different one', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-owner' });
 
     expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: 'org-2' }, 'task:read')).toBe(false);
   });
 });
 
+describe('can() - organization_members as a live grant source (T05)', () => {
+  it("grants an organization_members role's permissions with no grants row at all", async () => {
+    const { db } = await setupIntegrationTest();
+    // seedOrgWithAdmin's whole point here: an org_members "admin" row and
+    // nothing in `grants`.
+    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+
+    expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'org:admin')).toBe(true);
+    // admin does not hold org:owner - proves the fallback resolves the
+    // *specific* role's permissions, not membership-implies-everything.
+    expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'org:owner')).toBe(false);
+  });
+
+  it('removing the organization_members row removes the derived access, with no grants row to also clean up', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'org:admin')).toBe(true);
+
+    await db.delete(schema.organizationMembers).where(
+      and(eq(schema.organizationMembers.orgId, orgId), eq(schema.organizationMembers.userId, userId)),
+    );
+    expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'org:admin')).toBe(false);
+  });
+
+  it('an organization_members row and a real grants row both contribute - either alone is sufficient', async () => {
+    const { db } = await setupIntegrationTest();
+    // seedOrgWithAdmin's org_members role is "admin", which does not hold
+    // org:owner; a real grants row supplies the one permission it lacks.
+    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-owner' });
+
+    expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'org:admin')).toBe(true);
+    expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'org:owner')).toBe(true);
+  });
+
+  it("does not leak an organization_members role at one organization into a check for another", async () => {
+    const { db } = await setupIntegrationTest();
+    const { userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    await db.insert(schema.organizations).values({ id: 'org-2', name: 'org-2', slug: 'org-2', createdAt: new Date() });
+
+    expect(await can(db, { kind: 'user', userId }, { type: 'organization', id: 'org-2' }, 'org:read')).toBe(false);
+  });
+
+  it("reaches a project through its owning organization the same way a grants row does", async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { projectId } = await seedProject(db, { orgId, userId, templateId: 'tmpl-1', projectId: 'proj-1' });
+
+    expect(await can(db, { kind: 'user', userId }, { type: 'project', id: projectId }, 'task:write')).toBe(true);
+  });
+});
+
 describe('can() - team-derived grants', () => {
   it('grants permission via a role held by a team the principal belongs to', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedTeam(db, { teamId: 'team-1', orgId });
     await addTeamMember(db, { teamId: 'team-1', userId });
     await seedGrant(db, { subjectType: 'team', subjectId: 'team-1', scopeType: 'organization', scopeId: orgId, roleId: 'role-member' });
@@ -96,7 +166,7 @@ describe('can() - team-derived grants', () => {
 
   it('denies a team grant to someone who is not a member of that team', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedUser(db, 'user-2');
     await seedTeam(db, { teamId: 'team-1', orgId });
     await addTeamMember(db, { teamId: 'team-1', userId: 'user-1' });
@@ -108,7 +178,7 @@ describe('can() - team-derived grants', () => {
 
   it('removing someone from a team removes the derived access (no membership row, no grant)', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedTeam(db, { teamId: 'team-1', orgId });
     await addTeamMember(db, { teamId: 'team-1', userId });
     await seedGrant(db, { subjectType: 'team', subjectId: 'team-1', scopeType: 'organization', scopeId: orgId, roleId: 'role-member' });
@@ -122,7 +192,7 @@ describe('can() - team-derived grants', () => {
 
   it('combines a direct grant and a team-derived grant - either alone is sufficient', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedTeam(db, { teamId: 'team-1', orgId });
     await addTeamMember(db, { teamId: 'team-1', userId });
     // Direct grant only holds reads; the team grant is what supplies task:write.
@@ -137,7 +207,7 @@ describe('can() - team-derived grants', () => {
 describe('can() - project scope climbs to its owning organization', () => {
   it("an organization-scope grant reaches every project under it - today's preserved behavior", async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     const { projectId } = await seedProject(db, { orgId, userId, templateId: 'tmpl-1', projectId: 'proj-1' });
     await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-member' });
 
@@ -146,7 +216,7 @@ describe('can() - project scope climbs to its owning organization', () => {
 
   it('a project-scope grant works directly, with no organization-scope grant needed', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedUser(db, 'user-2');
     const { projectId } = await seedProject(db, { orgId, userId, templateId: 'tmpl-1', projectId: 'proj-1' });
     await seedGrant(db, { subjectId: 'user-2', scopeType: 'project', scopeId: projectId, roleId: 'role-member' });
@@ -156,7 +226,7 @@ describe('can() - project scope climbs to its owning organization', () => {
 
   it('a grant at one project does not leak to a sibling project under the same org (exit criterion 6)', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedUser(db, 'user-2');
     // seedProject leaves `key` at its schema default (""), and projects.key
     // is unique per org - inserted directly here, with distinct keys, rather
@@ -175,7 +245,7 @@ describe('can() - project scope climbs to its owning organization', () => {
 
   it('a project-scope grant does not, in reverse, satisfy an organization-scope check', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedUser(db, 'user-2');
     const { projectId } = await seedProject(db, { orgId, userId, templateId: 'tmpl-1', projectId: 'proj-1' });
     await seedGrant(db, { subjectId: 'user-2', scopeType: 'project', scopeId: projectId, roleId: 'role-owner' });
@@ -187,16 +257,24 @@ describe('can() - project scope climbs to its owning organization', () => {
 describe('can() - team scope does not climb to its owning organization (deliberate, see policy.ts)', () => {
   it('an organization-scope grant does not, by itself, satisfy a team-scope check', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedTeam(db, { teamId: 'team-1', orgId });
     await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-owner' });
 
     expect(await can(db, { kind: 'user', userId }, { type: 'team', id: 'team-1' }, 'team:admin')).toBe(false);
   });
 
-  it('a direct team-scope grant works on its own', async () => {
+  it('an organization_members role does not, by itself, satisfy a team-scope check either', async () => {
     const { db } = await setupIntegrationTest();
     const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    await seedTeam(db, { teamId: 'team-1', orgId });
+
+    expect(await can(db, { kind: 'user', userId }, { type: 'team', id: 'team-1' }, 'team:admin')).toBe(false);
+  });
+
+  it('a direct team-scope grant works on its own', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedTeam(db, { teamId: 'team-1', orgId });
     await seedGrant(db, { subjectId: userId, scopeType: 'team', scopeId: 'team-1', roleId: 'role-admin' });
 
@@ -207,7 +285,7 @@ describe('can() - team scope does not climb to its owning organization (delibera
 describe('can() - agent principals', () => {
   it('always resolves false - can() governs the human path only (ADR-0013 Option 4)', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     // Even with a grant that would satisfy a matching user principal.
     await seedGrant(db, { subjectId: 'agent-1', scopeType: 'organization', scopeId: orgId, roleId: 'role-owner' });
 
@@ -219,7 +297,7 @@ describe('can() - agent principals', () => {
 describe('assertCan()', () => {
   it('resolves without throwing when can() is true', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-owner' });
 
     await expect(assertCan(db, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'org:owner')).resolves.toBeUndefined();
@@ -227,7 +305,7 @@ describe('assertCan()', () => {
 
   it('throws PermissionDenied naming the missing permission when can() is false', async () => {
     const { db } = await setupIntegrationTest();
-    const { orgId, userId } = await seedOrgWithAdmin(db, { orgId: 'org-1', userId: 'user-1' });
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
     await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-viewer' });
 
     try {

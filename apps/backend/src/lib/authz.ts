@@ -3,6 +3,7 @@ import { eq, and, isNull, inArray } from 'drizzle-orm';
 import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
 import { currentUserIdKey, currentPrincipalKey, type Principal } from '../modules/auth/session';
+import { assertCan } from './policy';
 
 // Resolved lazily inside each function rather than once at module load, since
 // STANDALONE is set at test/runtime, not import time - freezing it here caused
@@ -52,20 +53,19 @@ export function requireUser(contextValues: any): string {
 /**
  * The single authorization call for an endpoint that agents may reach.
  *
- * A human is governed by their organization role, exactly as before. An agent
- * is governed by its token: the organization it was issued for, and the scopes
- * on it. Scopes do not apply to humans — a person's authority comes from their
- * role, and giving them a second, parallel permission system is M10's decision
- * to make, not a side effect of adding tokens.
- *
- * `write` picks assertOrgWriter over assertOrgMember for the human path, so a
- * viewer stays read-only here too (ADR-0006 still holds).
+ * An agent is governed by its token: the organization it was issued for, and
+ * ADR-0008's closed scope vocabulary (`opts.scope`) on it - unchanged by M10
+ * (ADR-0013 Option 4: agent tokens stay their own system, deliberately not
+ * folded into `grants`). A human is governed by `can()` against
+ * `opts.permission`, ADR-0013's real permission vocabulary - a materially
+ * different, larger vocabulary than `opts.scope`'s, which is why both fields
+ * exist side by side rather than one doing double duty.
  */
 export async function authorizePrincipal(
   db: any,
   principal: Principal,
   orgId: string,
-  opts: { scope: string; write?: boolean },
+  opts: { scope: string; write?: boolean; permission: string },
 ): Promise<void> {
   if (principal.kind === 'agent') {
     if (principal.orgId !== orgId) {
@@ -76,11 +76,7 @@ export async function authorizePrincipal(
     }
     return;
   }
-  if (opts.write) {
-    await assertOrgWriter(db, principal.userId, orgId);
-  } else {
-    await assertOrgMember(db, principal.userId, orgId);
-  }
+  await assertCan(db, principal, { type: 'organization', id: orgId }, opts.permission);
 }
 
 export async function assertOrgMember(db: any, userId: string, orgId: string): Promise<void> {
@@ -122,36 +118,15 @@ export async function countOrgOwners(db: any, orgId: string): Promise<number> {
 }
 
 /**
- * Roles permitted to change data inside an organization. `viewer` is the only
- * role deliberately absent: the Organizations UI has always described it as
- * read-only, while every mutating handler gated on `assertOrgMember` - which
- * admits any member regardless of role - so a viewer could write across the
- * whole product. See ADR-0006.
- *
- * Expressed as an allowlist rather than `role !== 'viewer'` so that a role
- * added later is denied writes until someone decides otherwise. A new role
- * that silently inherits write access is the failure mode worth designing out.
+ * M10-T05 removed `assertOrgWriter` (and the `WRITER_ROLES` allowlist it
+ * read) - `viewer-denial.test.ts`'s ADR-0006 guarantee it backed is now
+ * `can()`'s job, and every handler that called it was replaced with
+ * `assertCan(..., '<family>:write')`. It had no dedicated test of its own
+ * (unlike `assertOrgMember`/`assertOrgAdmin`/`assertOrgOwner` below, each
+ * still directly unit-tested in `authz.test.ts` even though no handler calls
+ * them either post-T05) and zero remaining callers, so this is dead-code
+ * removal, not just an unused-export fix for `tasker:knip`.
  */
-const WRITER_ROLES = ['owner', 'admin', 'member'];
-
-/**
- * Requires membership *and* a role that may write. Use this in place of
- * `assertOrgMember` in every handler that changes data; `assertOrgMember`
- * remains correct for reads.
- *
- * There is no interceptor enforcing this - the guarantee comes from
- * `viewer-denial.test.ts`, which enumerates every handler method and fails on
- * any that is neither on its read allowlist nor denies a viewer.
- */
-export async function assertOrgWriter(db: any, userId: string, orgId: string): Promise<void> {
-  const role = await getOrgMemberRole(db, userId, orgId);
-  if (!role) {
-    throw new ConnectError('Not a member of this organization', Code.PermissionDenied);
-  }
-  if (!WRITER_ROLES.includes(role)) {
-    throw new ConnectError('Your role in this organization is read-only', Code.PermissionDenied);
-  }
-}
 
 export async function assertOrgAdmin(db: any, userId: string, orgId: string): Promise<void> {
   const role = await getOrgMemberRole(db, userId, orgId);

@@ -4,7 +4,8 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not, inArray, sql } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
+import { requireUser, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
+import { assertCan } from "../../lib/policy";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -96,7 +97,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const principal = requirePrincipal(contextValues);
       const parsed = CreateFolderSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
-      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', write: true });
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', permission: 'artifact:write' });
 
       if (parsed.parentId) {
         const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
@@ -127,7 +128,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const principal = requirePrincipal(contextValues);
       const parsed = UpdateFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
-      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', write: true });
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', permission: 'artifact:write' });
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const existing = await db.select().from(folders).where(eq((folders as any).id, parsed.folderId)).limit(1);
@@ -144,7 +145,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const principal = requirePrincipal(contextValues);
       const parsed = CreateArtifactSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
-      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', write: true });
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', permission: 'artifact:write' });
 
       const artifacts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const newId = `art-${crypto.randomUUID()}`;
@@ -167,7 +168,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const principal = requirePrincipal(contextValues);
       const parsed = UpdateArtifactContentSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
-      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', write: true });
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', permission: 'artifact:write' });
 
       const artifacts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const existing = await db.select().from(artifacts).where(eq((artifacts as any).id, parsed.artifactId)).limit(1);
@@ -192,7 +193,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       if (taskOrgId !== artifactOrgId) {
         throw new ConnectError("task and artifact belong to different organizations", Code.InvalidArgument);
       }
-      await authorizePrincipal(db, principal, taskOrgId, { scope: 'artifacts:write', write: true });
+      await authorizePrincipal(db, principal, taskOrgId, { scope: 'artifacts:write', permission: 'artifact:write' });
 
       const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
       const newId = `tal-${crypto.randomUUID()}`;
@@ -222,7 +223,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = UnlinkTaskArtifactSchema.parse(req);
       const orgId = await getTaskOrgId(db, parsed.taskId);
-      await assertOrgWriter(db, userId, orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "artifact:write");
 
       const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
       // Matched on the exact pair. Matching on the task alone would unlink
@@ -238,7 +239,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const orgId = parsed.taskId
         ? await getTaskOrgId(db, parsed.taskId)
         : await getArtifactOrgId(db, parsed.artifactId!);
-      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
 
       const links = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
@@ -282,7 +283,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const principal = requirePrincipal(contextValues);
       if (!req.projectId) throw new ConnectError("projectId is required", Code.InvalidArgument);
       const orgId = await getProjectOrgId(db, req.projectId);
-      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
 
       const flds = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const deletedFolderFilter = req.onlyDeleted ? not(notDeleted(flds)) : notDeleted(flds);
@@ -323,7 +324,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const orgId = req.folderId
         ? await getFolderOrgId(db, req.folderId)
         : await getProjectOrgId(db, req.projectId);
-      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const flds2 = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
@@ -393,7 +394,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const principal = requirePrincipal(contextValues);
       const parsed = GetArtifactContentSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
-      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       // Names its columns for the same reason the list does: `content` can hold
@@ -420,7 +421,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       // Authorized against the artifact's own organization, exactly as the
       // list is - a narrower response is not a weaker check.
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
-      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read' });
+      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const rows = await db
@@ -444,7 +445,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = ArchiveArtifactSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId);
-      await assertOrgAdmin(db, userId, orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "artifact:admin");
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       await softDeleteById(db, arts, parsed.artifactId);
@@ -456,7 +457,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = RestoreArtifactSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId, true);
-      await assertOrgAdmin(db, userId, orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "artifact:admin");
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       await restoreById(db, arts, parsed.artifactId);
@@ -468,7 +469,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = ArchiveFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId);
-      await assertOrgAdmin(db, userId, orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "artifact:admin");
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       await softDeleteById(db, folders, parsed.folderId);
@@ -480,7 +481,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = RestoreFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId, true);
-      await assertOrgAdmin(db, userId, orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "artifact:admin");
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       await restoreById(db, folders, parsed.folderId);
@@ -492,7 +493,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = PurgeArtifactSchema.parse(req);
       const orgId = await getArtifactOrgId(db, parsed.artifactId, true);
-      await assertOrgAdmin(db, userId, orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "artifact:admin");
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const existing = await db.select().from(arts).where(eq((arts as any).id, parsed.artifactId)).limit(1);
@@ -519,7 +520,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = PurgeFolderSchema.parse(req);
       const orgId = await getFolderOrgId(db, parsed.folderId, true);
-      await assertOrgAdmin(db, userId, orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "artifact:admin");
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const existing = await db.select().from(folders).where(eq((folders as any).id, parsed.folderId)).limit(1);

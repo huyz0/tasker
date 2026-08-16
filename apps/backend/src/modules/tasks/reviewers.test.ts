@@ -84,7 +84,14 @@ describe("listTaskReviewers carries display names", () => {
 
     expect(res.reviewers).toHaveLength(2);
     // The reviewer rows, the org lookup and one name lookup - not one per name.
-    expect(queries).toBeLessThan(6);
+    // M10-T05: can()'s grant resolution (team memberships, candidate grants,
+    // the organization_members fallback, and - once any role resolves - the
+    // role_permissions lookup) adds a handful more selects than the old
+    // single-query assertOrgMember/assertOrgWriter check did. Still bounded
+    // and independent of reviewer count, which is this test's actual point;
+    // T06 ("cache policy resolution per request") is expected to bring this
+    // back down, not this test's job to anticipate.
+    expect(queries).toBeLessThan(10);
   });
 
   it("round-trips through add and remove", async () => {

@@ -2,7 +2,8 @@ import { eq, and } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUser, assertOrgAdmin, countActiveSignInMethods, assertNotLastSignInMethod } from "../../lib/authz";
+import { requireUser, countActiveSignInMethods, assertNotLastSignInMethod } from "../../lib/authz";
+import { assertCan } from "../../lib/policy";
 import { hashPassword, verifyPassword, generateTemporaryPassword, MIN_PASSWORD_LENGTH } from "../../lib/credentials";
 
 export const createAuthHandler = (db: any) => {
@@ -133,7 +134,7 @@ export const createAuthHandler = (db: any) => {
       if (!req.orgId || !req.userId) {
         throw new ConnectError("orgId and userId are required", Code.InvalidArgument);
       }
-      await assertOrgAdmin(db, currentUserId, req.orgId);
+      await assertCan(db, { kind: "user", userId: currentUserId }, { type: "organization", id: req.orgId }, "org:admin");
 
       const membership = await db.select().from(membersTable)
         .where(and(eq((membersTable as any).orgId, req.orgId), eq((membersTable as any).userId, req.userId)))

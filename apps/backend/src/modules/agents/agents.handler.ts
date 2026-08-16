@@ -4,7 +4,8 @@ import { eq, and, not } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, requirePrincipal, authorizePrincipal } from "../../lib/authz";
+import { requireUser, requirePrincipal, authorizePrincipal } from "../../lib/authz";
+import { assertCan } from "../../lib/policy";
 import { notDeleted, softDeleteById, restoreById, executePaginatedQuery, insertRecord } from "../../db/query-builder";
 import { mintToken, revokeToken, parseScopes } from "../../lib/agentToken";
 import { AGENT_SCOPES } from "../../lib/scopes";
@@ -132,7 +133,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       // org-scoped admin check. It used to be `assertOrgAdminOfAny` - admin of
       // any organization anywhere - because the catalogue was global and there
       // was no org to scope to.
-      await assertOrgAdmin(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "agent:admin");
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
       const newId = `ar-${crypto.randomUUID()}`;
       const payload = {
@@ -157,7 +158,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       // Scope to the role's own organization, resolved from the row - not from
       // anything the caller sent, which they could point at an org they do
       // administer to reach a role in one they do not.
-      await assertOrgAdmin(db, userId, existing[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: existing[0].orgId }, "agent:admin");
 
       const updates: Record<string, unknown> = {};
       if (parsed.name !== undefined) updates.name = parsed.name;
@@ -176,7 +177,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       // Reading is membership, not admin - a member picking a role for an agent
       // needs the list. Scoping it is what stops one tenant's catalogue leaking
       // into another's picker.
-      await authorizePrincipal(db, principal, parsed.orgId, { scope: 'agents:read' });
+      await authorizePrincipal(db, principal, parsed.orgId, { scope: 'agents:read', permission: 'agent:read' });
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
         db,
@@ -203,7 +204,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
     async createAgent(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = CreateAgentSchema.parse(req);
-      await assertOrgWriter(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "agent:write");
 
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
       const roleRows = await db.select().from(roles).where(eq((roles as any).id, parsed.agentRoleId)).limit(1);
@@ -238,7 +239,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const existing = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("agent not found", Code.NotFound);
-      await assertOrgAdmin(db, userId, existing[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: existing[0].orgId }, "agent:admin");
 
       if (parsed.agentRoleId) {
         const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
@@ -259,7 +260,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
     async listAgents(req: any, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await authorizePrincipal(db, principal, req.orgId, { scope: 'agents:read' });
+      await authorizePrincipal(db, principal, req.orgId, { scope: 'agents:read', permission: 'agent:read' });
 
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(agentsSchema)) : notDeleted(agentsSchema);
@@ -283,7 +284,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("agent not found", Code.NotFound);
-      await assertOrgAdmin(db, userId, result[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: result[0].orgId }, "agent:admin");
 
       await softDeleteById(db, agentsSchema, parsed.agentId);
 
@@ -296,7 +297,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("agent not found", Code.NotFound);
-      await assertOrgAdmin(db, userId, result[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: result[0].orgId }, "agent:admin");
 
       const orgsTable = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       const orgRows = await db.select().from(orgsTable).where(eq((orgsTable as any).id, result[0].orgId)).limit(1);
@@ -315,7 +316,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const result = await db.select().from(agentsSchema).where(eq((agentsSchema as any).id, parsed.agentId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("agent not found", Code.NotFound);
-      await assertOrgAdmin(db, userId, result[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: result[0].orgId }, "agent:admin");
       if (!result[0].deletedAt) {
         throw new ConnectError("agent must be archived before it can be purged", Code.FailedPrecondition);
       }
@@ -351,7 +352,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = CreateAgentTokenSchema.parse(req);
       const agent = await loadAgent(parsed.agentId);
-      await assertOrgAdmin(db, userId, agent.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: agent.orgId }, "agent:admin");
 
       const minted = mintToken();
       const now = new Date();
@@ -385,7 +386,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = ListAgentTokensSchema.parse(req);
       const agent = await loadAgent(parsed.agentId);
-      await assertOrgAdmin(db, userId, agent.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: agent.orgId }, "agent:admin");
 
       const tokens = apiTokensTable();
       const rows = await db.select().from(tokens).where(eq((tokens as any).agentId, agent.id));
@@ -407,7 +408,7 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       // Scoped from the token's own row, never from anything the caller sent.
       // Trusting a request-supplied org here would let an admin of any
       // organization revoke another's credential by naming its id.
-      await assertOrgAdmin(db, userId, rows[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: rows[0].orgId }, "agent:admin");
       await revokeToken(db, parsed.tokenId);
 
       publishDomainEvent(nc, "domain.agent.token_revoked", {

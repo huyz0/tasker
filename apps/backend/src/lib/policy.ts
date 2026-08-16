@@ -25,8 +25,8 @@ export interface Scope {
 
 /**
  * `can()` (ADR-0013, M10-T04) - the single human-path authorization entry
- * point every handler will call instead of naming a role (T05). Governs
- * humans only: an agent principal always resolves `false` here, since agent
+ * point every handler calls instead of naming a role (T05). Governs humans
+ * only: an agent principal always resolves `false` here, since agent
  * authorization stays on `authorizePrincipal`'s existing branch into
  * ADR-0008's closed scope vocabulary (ADR-0013 Option 4) - giving agents a
  * second, unrelated permission system to satisfy would be exactly the
@@ -40,9 +40,29 @@ export interface Scope {
  *    at exactly this `scope`.
  * 2. A team-derived grant: a team `principal.userId` belongs to
  *    (`team_members`) holds a role granting `permission` at this `scope`.
- * 3. An ancestor grant: a `project` scope also checks grants at the
- *    project's owning `organization` - today's "an org role reaches every
- *    project" behavior, preserved rather than narrowed by this migration.
+ * 3. An ancestor grant: a `project` scope also checks grants (1 and 2 both)
+ *    at the project's owning `organization` - today's "an org role reaches
+ *    every project" behavior, preserved rather than narrowed.
+ * 4. **`organization_members` as a live, ongoing second source of organization-
+ *    scope grants** - not just T03's one-time historical backfill. If the
+ *    resolved organization scope has an `organization_members` row for this
+ *    user, that row's `role` counts as if `grants` held a
+ *    `role-<role>` grant for it too. This is deliberate, not a leftover of
+ *    the migration: `organization_members.role` is a real MySQL `enum` of
+ *    exactly the four system-tier names, so this can never resolve anything
+ *    `grants` couldn't already express on its own - it is a second, always-
+ *    consistent-by-construction *reader* of the same fact, not a second
+ *    place that fact can drift. It is what lets T05 flip every handler's
+ *    *read* path onto `can()` without also rewriting the membership *write*
+ *    path (`seedOrg`/`updateOrgMemberRole`/`removeOrgMember`/
+ *    `consumePendingInvitations`) or the ~30 test files that seed
+ *    `organization_members` directly - exactly the milestone's own stated
+ *    risk mitigation ("land T04/T05 ... evaluating both the old and new
+ *    logic," §7) without needing a parallel dual-check code path to do it.
+ *    `scripts/migrate-roles.ts` (T03) remains worth running regardless: a
+ *    real `grants` row is still what a future "list every grant, uniformly,
+ *    across teams/projects/orgs" admin view would need, which this fallback
+ *    does not produce.
  *
  * Not yet implemented: an `organization` scope checking its ancestor
  * organizations' grants too (a parent-org grant reaching a descendant org).
@@ -59,9 +79,9 @@ export interface Scope {
 export async function can(db: any, principal: Principal, scope: Scope, permission: string): Promise<boolean> {
   if (principal.kind !== 'user') return false;
 
-  const { grants, rolePermissions, teamMembers } = isStandalone()
-    ? { grants: schemaSqlite.grants, rolePermissions: schemaSqlite.rolePermissions, teamMembers: schemaSqlite.teamMembers }
-    : { grants: schemaMysql.grants, rolePermissions: schemaMysql.rolePermissions, teamMembers: schemaMysql.teamMembers };
+  const { grants, rolePermissions, teamMembers, organizationMembers } = isStandalone()
+    ? { grants: schemaSqlite.grants, rolePermissions: schemaSqlite.rolePermissions, teamMembers: schemaSqlite.teamMembers, organizationMembers: schemaSqlite.organizationMembers }
+    : { grants: schemaMysql.grants, rolePermissions: schemaMysql.rolePermissions, teamMembers: schemaMysql.teamMembers, organizationMembers: schemaMysql.organizationMembers };
 
   const scopesToCheck: Scope[] = [scope];
   if (scope.type === 'project') {
@@ -82,8 +102,18 @@ export async function can(db: any, principal: Principal, scope: Scope, permissio
       )
     : and(eq(grants.subjectType, 'user'), eq(grants.subjectId, principal.userId));
 
-  const candidateGrants = await db.select().from(grants).where(subjectCondition);
-  if (candidateGrants.length === 0) return false;
+  // scopesToCheck has at most one 'organization' entry (the scope itself, or
+  // - for a project scope - its owning org), so this is at most one extra
+  // query, not one per candidate.
+  const orgScope = scopesToCheck.find((s) => s.type === 'organization');
+  const [candidateGrants, orgMemberRows] = await Promise.all([
+    db.select().from(grants).where(subjectCondition),
+    orgScope
+      ? db.select({ role: organizationMembers.role }).from(organizationMembers)
+          .where(and(eq(organizationMembers.orgId, orgScope.id), eq(organizationMembers.userId, principal.userId)))
+          .limit(1)
+      : Promise.resolve([]),
+  ]);
 
   // Scope matching happens in application code, not the query: the set of
   // scopes to check is at most two entries (this scope, plus its owning org
@@ -92,13 +122,15 @@ export async function can(db: any, principal: Principal, scope: Scope, permissio
   // caching; this is the correct-first version it optimizes.
   const matchingGrants = candidateGrants.filter((g: any) =>
     scopesToCheck.some((s) => s.type === g.scopeType && s.id === g.scopeId));
-  if (matchingGrants.length === 0) return false;
 
-  const roleIds = [...new Set(matchingGrants.map((g: any) => g.roleId))];
+  const roleIds = new Set(matchingGrants.map((g: any) => g.roleId));
+  if (orgMemberRows.length > 0) roleIds.add(`role-${orgMemberRows[0].role}`);
+  if (roleIds.size === 0) return false;
+
   const permissionRows = await db
     .select()
     .from(rolePermissions)
-    .where(and(inArray(rolePermissions.roleId, roleIds), eq(rolePermissions.permissionKey, permission)))
+    .where(and(inArray(rolePermissions.roleId, [...roleIds]), eq(rolePermissions.permissionKey, permission)))
     .limit(1);
   return permissionRows.length > 0;
 }
@@ -106,7 +138,7 @@ export async function can(db: any, principal: Principal, scope: Scope, permissio
 /**
  * Requires `can(principal, scope, permission)`, throwing `PermissionDenied`
  * otherwise. The convenience wrapper T05's call-site replacement reaches
- * for, mirroring `assertOrgAdmin`/`assertOrgWriter`'s shape in authz.ts.
+ * for, mirroring `assertOrgAdmin`'s shape in authz.ts.
  */
 export async function assertCan(db: any, principal: Principal, scope: Scope, permission: string): Promise<void> {
   if (!(await can(db, principal, scope, permission))) {

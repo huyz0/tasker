@@ -256,3 +256,106 @@
     is the version it optimizes, not a placeholder to redo from scratch.
 - **Next**: M10-T05 — replace every `assertOrg*` call site with a `can`
   check, mapping each RPC to its required permission.
+
+## M10-T05 — replace every assertOrg* call site with a can() check
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**: all 12 handler files that referenced a role name
+  (`agents.handler.ts`, `artifacts.handler.ts`, `auth.handler.ts`,
+  `comments.handler.ts`, `dashboard.handler.ts`, `labels.handler.ts`,
+  `orgs.handler.ts`, `projects.handler.ts`, `repositories.handler.ts`,
+  `search.handler.ts`, `task_notes.handler.ts`, `tasks.handler.ts`) — every
+  `assertOrgMember`/`assertOrgWriter`/`assertOrgAdmin` call replaced with
+  `assertCan(db, {kind:'user', userId}, {type:'organization', id: orgId},
+  '<family>:<verb>')`, mapped from ADR-0013 Option 2's table (e.g.
+  `createTaskType` → `tasktype:write`, `archiveAgent` → `agent:admin`,
+  `listRepositoryLinks` → `repository:read`). `lib/authz.ts`'s
+  `authorizePrincipal` (the agent-or-human entry point ~36 call sites use)
+  gained a required `permission` field alongside its existing `scope`
+  (ADR-0008's *agent* scope string, unchanged) - the human branch now calls
+  `assertCan` with it instead of `assertOrgWriter`/`assertOrgMember`.
+  `assertOrgWriter` and the `WRITER_ROLES` allowlist it read are deleted
+  outright (dead code with zero remaining callers and no dedicated test of
+  its own, caught by `tasker:knip`); `assertOrgMember`/`assertOrgAdmin`/
+  `assertOrgOwner` are kept, unused by any handler now but each still
+  directly unit-tested in `authz.test.ts`.
+  - `lib/policy.ts` — `can()` gained a fourth resolution path (see below),
+    and its doc comment's now-broken `assertOrgWriter` mention fixed.
+  - Three pre-existing tests updated for consequences the ADR names
+    explicitly: `scope-enforcement.test.ts`'s error-message assertion
+    (wording changed from `assertOrgWriter`'s "read-only" to `can()`'s
+    "missing required permission", same denial), and
+    `reviewers.test.ts`/`links.test.ts`'s fixed query-count budgets (`can()`
+    costs more selects per check than the old single-query role lookup did
+    - ADR-0013's own "Consequences" section names this and assigns fixing
+      it to T06; these tests' new ceilings say so explicitly rather than
+      silently loosening).
+- **Verified**:
+  - `STANDALONE=true bun test` (full backend suite) — 825 pass, 0 fail,
+    including `viewer-denial.test.ts` and `agent-scope-sweep.test.ts` (the
+    deny-by-default sweeps) unmodified and green - proof the migration
+    "behaves identically" (exit criterion 4) rather than merely compiling.
+  - `grep -rn "assertOrgMember\|assertOrgWriter\|assertOrgAdmin\b\|assertOrgOwner" src/modules/*/*.handler.ts`
+    — zero matches. This task's own verify line, checked directly rather
+    than inferred.
+  - `bunx knip` (repo root) — clean.
+  - `moon check --all` — 27/27 tasks green, `authz.ts`/`policy.ts` both at
+    100% line/function coverage.
+- **Notes**:
+  - **A real, load-bearing design decision surfaced mid-task, not a
+    pre-existing plan**: flipping every handler's read path onto `grants`
+    immediately broke ~94 existing tests, because `organization_members` is
+    still the *only* table `seedOrg`/`updateOrgMemberRole`/
+    `removeOrgMember`/`consumePendingInvitations` write, and ~26 test files
+    seed `organization_members` directly rather than through those RPCs.
+    Two ways to close that gap: dual-write `grants` from every membership
+    mutation site (production code) and from every one of those ~26 test
+    files' fixtures, or make `can()`'s organization-scope resolution also
+    recognize a live `organization_members` row as an implicit grant of the
+    matching system role. Chose the second, in `policy.ts` itself (§ "can()
+    - organization_members as a live grant source"): `organization_members
+    .role` is a real MySQL `enum` of exactly the four system-tier names, so
+    the fallback can never resolve anything `grants` couldn't already
+    express - it's a second, always-consistent-by-construction *reader* of
+    the same fact, not a second place that fact can drift. This is also
+    almost exactly the milestone's own stated risk mitigation (§7: "land
+    T04/T05 ... evaluating both the old and new logic") without a separate
+    dual-check code path to build and later remove. Consequence: the
+    membership-mutation write sites are **still** untouched, same as T03
+    left them - there was never a task boundary where they needed to move,
+    since grants and organization_members now coexist as two live, both-
+    read sources rather than one deprecating the other. `scripts/
+    migrate-roles.ts` (T03) remains worth running on its own schedule
+    regardless, for anything that genuinely needs a real `grants` row (team
+    grants, custom-role grants, a future uniform "list every grant" view).
+  - `policy.test.ts` needed its own fixture fixed for the same reason:
+    `seedOrgWithAdmin` (used by nearly every other handler test) makes its
+    user an `organization_members` **admin**, which the new fallback now
+    honors - several isolation tests that meant to exercise one specific
+    `grants` row were silently also satisfied by that implicit admin
+    membership. Added `seedBareOrgAndUser` (org + user, no membership row)
+    for every test that needs true grants-only isolation, and five new
+    tests exercising the fallback path itself directly (grant with no
+    `grants` row at all, removal, combination with a real grant, no
+    cross-org leak, reaches a project through its org same as a real
+    grant) - 24 tests total, up from 18, still 100% coverage on `policy.ts`.
+  - `updateOrgMemberRole`'s owner-tier business rules (only an owner may
+    grant ownership or touch another owner's role; the last owner cannot be
+    demoted) deliberately still call `getOrgMemberRole`/`countOrgOwners`
+    directly against `organization_members`, not `can()`. These aren't
+    permission checks - "does X hold permission Y" - they're a specific
+    cardinality invariant about the owner *tier* itself, which a custom
+    role holding `org:owner` (once T04+ allows granting it) wouldn't
+    satisfy the same way. Preserved exactly as ADR-0013's own findings
+    section preserved TaskNoteService's business-rule exceptions, not an
+    oversight.
+  - `seedOrg`'s top-level-org branch (no `parentOrgId`) still has no
+    permission check at all - any authenticated human may found an
+    organization - matching ADR-0013 §2's explicit note that this stays
+    outside the permission system entirely. Only the sub-org branch (which
+    already called `assertOrgAdmin(parentOrgId)`) now calls `assertCan(...,
+    'org:admin')` instead.
+- **Next**: M10-T06 — cache policy resolution per request so `can()`'s added
+  indirection does not multiply queries (the query-count budgets bumped
+  above are exactly what this brings back down).
