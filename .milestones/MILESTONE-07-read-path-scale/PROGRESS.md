@@ -411,6 +411,68 @@ it is a behaviour change and belongs in T06's journal entry, not silently.
   produce a plan nobody reads and a suite that passes vacuously.
 - **Next**: M07-T10
 
+## M07-T10 — Seeded to the scale target, and the measurement that found a 368-second search
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `scripts/seed.ts` (`--scale small|medium|large`, bulk project and
+  artifact seeding), new `scripts/measure-latency.ts`, `package.json`
+  (`measure:latency`), `modules/search/search.handler.ts` (`CROSS JOIN`)
+- **Verified**: the verify line — *measured p95 numbers are committed* — below.
+  Fixture: **50,004 tasks** in the measured project, **100,000 artifacts** in
+  the measured folder, **2,001 projects** and **100,002 members** in the
+  measured orgs. 50 samples per endpoint, 5 discarded as warmup, percentiles by
+  nearest rank. `moon check --all` — 26 pass.
+
+  | Endpoint | Budget | p50 | p95 | Within budget |
+  |---|---|---|---|---|
+  | `listTasks (project, first page)` | 150 ms | 11.1 ms | 16.4 ms | yes |
+  | `listTasks (one board column)` | 150 ms | 11.1 ms | 12.8 ms | yes |
+  | `listArtifacts (folder, first page)` | 150 ms | 18.8 ms | 23.4 ms | yes |
+  | `listProjects (org)` | 150 ms | 0.6 ms | 0.9 ms | yes |
+  | `listAgents (org)` | 150 ms | 0.4 ms | 0.7 ms | yes |
+  | `listOrgMembers (org)` | 150 ms | 105.1 ms | 115.9 ms | yes |
+  | `universalSearch` | 300 ms | 163.7 ms | 175.0 ms | yes |
+  | `getDashboard` | 300 ms | 39.3 ms | 43.1 ms | yes |
+
+- **Notes**: **the script found a defect on its first real run, and it was
+  enormous.** `universalSearch` took **368,877 ms** — six minutes — for a term
+  matching 50,000 rows. The plan said why:
+
+  ```
+  SEARCH p USING COVERING INDEX projects_org_created_idx (org_id=?)
+  | SEARCH t USING INDEX tasks_project_id_idx (project_id=?)
+  | SCAN tasks_fts VIRTUAL TABLE INDEX 0:=M2
+  ```
+
+  SQLite had inverted the join: it drove from **projects**, then **tasks**, and
+  probed the FTS table once per task row, instead of letting the match set
+  drive. Pinning the order with `CROSS JOIN` takes the same query to **58 ms** —
+  a **4,500x** difference, and the whole endpoint from 368 s to 175 ms p95.
+  **The index that caused it was one I added in T09.** `projects_org_created_idx`
+  exists to make an ordered project list seek instead of sort, and it did — and
+  it also made `projects` look like an attractive driving table for a query in a
+  different module. An index is a global change to every plan in the schema, not
+  a local improvement to one query. Nothing in T09 could have caught this,
+  because T09 measured the plans of the queries it was about.
+  `CROSS JOIN` is now load-bearing in every SQLite FTS query and says so in the
+  code. It is not a style choice; plain `JOIN` is a 4,500x regression waiting
+  for the next index anyone adds.
+  **My own script also lied once, and had to be fixed before its numbers were
+  worth committing.** The first version picked the org owning the biggest task
+  project and measured *every* endpoint there — so `listProjects` and
+  `listOrgMembers` were measured against an org with **1 project and 2
+  members**, and reported sub-millisecond figures. Real numbers, meaningless,
+  which is worse than none. Each endpoint now resolves its own largest fixture,
+  and the header prints the sizes so the reader can check.
+  It also printed nothing until the final table, which made the six-minute
+  search indistinguishable from a hang. Progress now goes to stderr as each
+  endpoint starts.
+  `listOrgMembers` at 100,002 members is **115.9 ms p95** against a 150 ms
+  budget — comfortably inside, but the closest of the eight, and the one to
+  watch if the budget tightens.
+- **Next**: M07-T11
+
 ---
 
 ## Out-of-band — dashboard rework (not an M07 task)

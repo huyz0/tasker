@@ -235,6 +235,14 @@ async function fullTextSearch(db: any, orgId: string, rawQuery: string, page: an
 
 // -------------------------------------------------------------------------
 // SQLite: contentless FTS5 tables joined back on `rowid`, ranked by `bm25()`.
+//
+// **`CROSS JOIN` is load-bearing.** It is SQLite's way of pinning the join
+// order, and without it the planner inverted these queries: it drove from
+// `projects` (via the org index M07-T09 added), then `tasks`, then probed the
+// FTS table once per task row. Measured at the scale target — 50,000 matching
+// tasks — that plan took **263 seconds**; forcing the match set to drive takes
+// **58 ms**. Plain `JOIN` here is not a style choice, it is a 4,500x regression
+// waiting for someone to add an index elsewhere.
 // -------------------------------------------------------------------------
 
 const sqliteDialect: SearchDialect = {
@@ -245,8 +253,8 @@ const sqliteDialect: SearchDialect = {
       rows: (db, match, orgId, limit, offset) => db.all(sql`
         SELECT t.id AS id, t.title AS title, t.description AS description
         FROM tasks_fts
-        JOIN tasks t ON t.rowid = tasks_fts.rowid
-        JOIN projects p ON p.id = t.project_id
+        CROSS JOIN tasks t ON t.rowid = tasks_fts.rowid
+        CROSS JOIN projects p ON p.id = t.project_id
         WHERE tasks_fts MATCH ${match} AND p.org_id = ${orgId} AND t.deleted_at IS NULL
         ORDER BY bm25(tasks_fts), t.id
         LIMIT ${limit} OFFSET ${offset}
@@ -254,8 +262,8 @@ const sqliteDialect: SearchDialect = {
       count: (db, match, orgId) => db.all(sql`
         SELECT count(*) AS count
         FROM tasks_fts
-        JOIN tasks t ON t.rowid = tasks_fts.rowid
-        JOIN projects p ON p.id = t.project_id
+        CROSS JOIN tasks t ON t.rowid = tasks_fts.rowid
+        CROSS JOIN projects p ON p.id = t.project_id
         WHERE tasks_fts MATCH ${match} AND p.org_id = ${orgId} AND t.deleted_at IS NULL
       `),
       toResult: (r, tokens) => ({ id: r.id, type: "task", title: r.title, snippet: buildSnippet(r.description, tokens) }),
@@ -265,9 +273,9 @@ const sqliteDialect: SearchDialect = {
       rows: (db, match, orgId, limit, offset) => db.all(sql`
         SELECT a.id AS id, a.name AS name, a.description AS description
         FROM artifacts_fts
-        JOIN artifacts a ON a.rowid = artifacts_fts.rowid
-        JOIN folders f ON f.id = a.folder_id
-        JOIN projects p ON p.id = f.project_id
+        CROSS JOIN artifacts a ON a.rowid = artifacts_fts.rowid
+        CROSS JOIN folders f ON f.id = a.folder_id
+        CROSS JOIN projects p ON p.id = f.project_id
         WHERE artifacts_fts MATCH ${match} AND p.org_id = ${orgId} AND a.deleted_at IS NULL
         ORDER BY bm25(artifacts_fts), a.id
         LIMIT ${limit} OFFSET ${offset}
@@ -275,9 +283,9 @@ const sqliteDialect: SearchDialect = {
       count: (db, match, orgId) => db.all(sql`
         SELECT count(*) AS count
         FROM artifacts_fts
-        JOIN artifacts a ON a.rowid = artifacts_fts.rowid
-        JOIN folders f ON f.id = a.folder_id
-        JOIN projects p ON p.id = f.project_id
+        CROSS JOIN artifacts a ON a.rowid = artifacts_fts.rowid
+        CROSS JOIN folders f ON f.id = a.folder_id
+        CROSS JOIN projects p ON p.id = f.project_id
         WHERE artifacts_fts MATCH ${match} AND p.org_id = ${orgId} AND a.deleted_at IS NULL
       `),
       toResult: (r, tokens) => ({ id: r.id, type: "artifact", title: r.name, snippet: buildSnippet(r.description, tokens) }),
@@ -287,7 +295,7 @@ const sqliteDialect: SearchDialect = {
       rows: (db, match, orgId, limit, offset) => db.all(sql`
         SELECT p.id AS id, p.name AS name
         FROM projects_fts
-        JOIN projects p ON p.rowid = projects_fts.rowid
+        CROSS JOIN projects p ON p.rowid = projects_fts.rowid
         WHERE projects_fts MATCH ${match} AND p.org_id = ${orgId} AND p.deleted_at IS NULL
         ORDER BY bm25(projects_fts), p.id
         LIMIT ${limit} OFFSET ${offset}
@@ -295,7 +303,7 @@ const sqliteDialect: SearchDialect = {
       count: (db, match, orgId) => db.all(sql`
         SELECT count(*) AS count
         FROM projects_fts
-        JOIN projects p ON p.rowid = projects_fts.rowid
+        CROSS JOIN projects p ON p.rowid = projects_fts.rowid
         WHERE projects_fts MATCH ${match} AND p.org_id = ${orgId} AND p.deleted_at IS NULL
       `),
       toResult: (r) => ({ id: r.id, type: "project", title: r.name, snippet: "" }),
@@ -305,7 +313,7 @@ const sqliteDialect: SearchDialect = {
       rows: (db, match, orgId, limit, offset) => db.all(sql`
         SELECT ag.id AS id, ag.name AS name
         FROM agents_fts
-        JOIN agents ag ON ag.rowid = agents_fts.rowid
+        CROSS JOIN agents ag ON ag.rowid = agents_fts.rowid
         WHERE agents_fts MATCH ${match} AND ag.org_id = ${orgId} AND ag.deleted_at IS NULL
         ORDER BY bm25(agents_fts), ag.id
         LIMIT ${limit} OFFSET ${offset}
@@ -313,7 +321,7 @@ const sqliteDialect: SearchDialect = {
       count: (db, match, orgId) => db.all(sql`
         SELECT count(*) AS count
         FROM agents_fts
-        JOIN agents ag ON ag.rowid = agents_fts.rowid
+        CROSS JOIN agents ag ON ag.rowid = agents_fts.rowid
         WHERE agents_fts MATCH ${match} AND ag.org_id = ${orgId} AND ag.deleted_at IS NULL
       `),
       toResult: (r) => ({ id: r.id, type: "agent", title: r.name, snippet: "" }),
@@ -329,7 +337,7 @@ const sqliteDialect: SearchDialect = {
         SELECT c.id AS id, c.content AS content, c.entity_type AS parent_type,
                c.entity_id AS parent_id, coalesce(t.title, a.name) AS parent_title
         FROM comments_fts
-        JOIN comments c ON c.rowid = comments_fts.rowid
+        CROSS JOIN comments c ON c.rowid = comments_fts.rowid
         LEFT JOIN tasks t ON c.entity_type = 'task' AND t.id = c.entity_id
         LEFT JOIN artifacts a ON c.entity_type = 'artifact' AND a.id = c.entity_id
         LEFT JOIN folders f ON f.id = a.folder_id
@@ -342,7 +350,7 @@ const sqliteDialect: SearchDialect = {
       count: (db, match, orgId) => db.all(sql`
         SELECT count(*) AS count
         FROM comments_fts
-        JOIN comments c ON c.rowid = comments_fts.rowid
+        CROSS JOIN comments c ON c.rowid = comments_fts.rowid
         LEFT JOIN tasks t ON c.entity_type = 'task' AND t.id = c.entity_id
         LEFT JOIN artifacts a ON c.entity_type = 'artifact' AND a.id = c.entity_id
         LEFT JOIN folders f ON f.id = a.folder_id

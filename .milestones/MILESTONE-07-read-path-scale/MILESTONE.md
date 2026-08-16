@@ -99,7 +99,7 @@ that it is not adopted before measured need), caching layers, read replicas.
       - Files: `db/schema.*.ts`, migrations, `PROGRESS.md`
       - Verify: no hot query performs a full table scan.
 
-- [ ] **M07-T10** — Extend the seed script to the product's scale targets and add
+- [x] **M07-T10** — Extend the seed script to the product's scale targets and add
       a repeatable latency measurement script.
       - Files: `apps/backend/scripts/seed.ts`, `scripts/measure-latency.ts`
       - Verify: measured p95 numbers are committed.
