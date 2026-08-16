@@ -83,7 +83,7 @@ SCIM provisioning, delegated administration.
       - Files: `db/schema.*.ts`, `drizzle-sqlite/`, `drizzle-mysql/`
       - Verify: migrations apply and roll forward on both dialects.
 
-- [ ] **M10-T03** — Seed owner, admin, member and viewer as immutable system roles
+- [x] **M10-T03** — Seed owner, admin, member and viewer as immutable system roles
       and migrate `organization_members.role` to a grant referencing them.
       - Files: migrations, `scripts/migrate-roles.ts`
       - Verify: post-migration, every existing authorization test still passes.

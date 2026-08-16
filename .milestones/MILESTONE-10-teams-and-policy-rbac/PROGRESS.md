@@ -98,3 +98,97 @@
 - **Next**: M10-T03 — seed owner/admin/member/viewer as immutable system
   roles, migrate `organization_members.role` to `grants` rows,
   `scripts/migrate-roles.ts`.
+
+## M10-T03 — seed system roles, migrate organization_members to grants
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**:
+  - `apps/backend/drizzle-sqlite/0034_seed_system_roles_and_migrate_grants.sql`,
+    `apps/backend/drizzle-mysql/0021_seed_system_roles_and_migrate_grants.sql`
+    — hand-written data migrations (both journals registered): insert all 32
+    permission keys from ADR-0013 Option 2's table; insert the four system
+    roles (`role-viewer`/`role-member`/`role-admin`/`role-owner`, `org_id`
+    NULL); wire `role_permissions` for each via `key LIKE '%:read'`/
+    `'%:write'`/`'%:admin'` matching instead of enumerating 99 rows by hand;
+    backfill every existing `organization_members` row into an equivalent
+    `grants` row at organization scope. `INSERT OR IGNORE`/`INSERT IGNORE`
+    on the singleton seed rows and a `WHERE NOT EXISTS` guard on the grants
+    backfill make re-applying a no-op, same pattern as
+    `0031_backfill_google_linked_identities.sql`.
+  - `apps/backend/src/db/migrate-seed-system-roles-and-grants.test.ts` —
+    new, 18 tests: exact permission count (32), the four system roles'
+    shape, each role's exact permission count (viewer 13, member 23, admin
+    31, owner 32) traced to `lib/authz.ts`'s current `WRITER_ROLES`/
+    `ADMIN_ROLES`, the grants backfill against synthetic
+    `organization_members` rows (including a viewer-tier row, not just
+    writer/admin), idempotency of both the seed and the backfill, plus
+    structural checks against the MySQL SQL text.
+  - `apps/backend/scripts/migrate-roles.ts` — new. Not a one-shot migration
+    runner (the SQL migration above already is one, and `setupDatabase`
+    applies it automatically like every other migration) but an ongoing
+    reconciliation tool: diffs `organization_members` against organization-
+    scope system-role `grants` and reports/applies the minimal insert
+    /update/delete to catch the latter back up. `--dry-run` prints the plan
+    without writing.
+  - `apps/backend/package.json` — added a `migrate:roles` script entry, both
+    to give the tool a normal `bun run` invocation and because knip's
+    `scripts/**/*.ts` project glob only treats a script as reachable when
+    something references it (matching `seed`/`measure:*`'s existing
+    pattern) — caught by `tasker:knip` flagging it as an unused file.
+- **Verified**:
+  - `STANDALONE=true bun test src/db/indexCoverage.test.ts` — SQLite to
+    0034 applies cleanly.
+  - `TASKER_MYSQL_INTEGRATION=1 bun test src/db/db.mysql.test.ts` against
+    the live `docker compose` MySQL container — 0021 applies cleanly;
+    `docker exec ... mysql` confirms live data: 32 permissions, 4 roles,
+    role_permissions counts (13/23/31/32) matching the SQLite test's
+    expectations exactly, and the container's pre-existing
+    `organization_members` rows all backfilled to `role-admin` grants (that
+    container's fixture data happens to hold only admins).
+  - `bun test src/db/migrate-seed-system-roles-and-grants.test.ts` —
+    18/18 pass.
+  - `scripts/migrate-roles.ts` smoke-tested by hand against a scratch
+    SQLite file through all three plan branches: insert (a membership with
+    no grant yet), delete (a grant with no matching membership), and update
+    (a membership whose role changed after its grant was created) — each
+    verified first via `--dry-run`'s printed plan, then applied for real
+    and re-verified via direct `bun:sqlite` queries; a second `--dry-run`
+    after each apply showed an empty plan, confirming idempotency. Also
+    confirmed the update path preserves the grant's original `created_at`
+    rather than resetting it.
+  - `STANDALONE=true bun test` (full backend suite) — 801 pass, 0 fail (up
+    from 783 - the 18 new tests).
+  - `bunx knip` (run from the repo root, matching the real `tasker:knip`
+    task in `moon.yml` — running it from `apps/backend` instead gives a
+    materially different, noisier report and is not what the gate actually
+    checks) — clean. Two false starts caught along the way: knip's tag
+    parser matches `@knipignore` as literal text anywhere in a docblock,
+    including inside backticks meant as prose (a comment on `grants`
+    explaining *why no tag was needed* was itself read as the tag) - fixed
+    by rewording rather than by silencing knip; and `migrate-roles.ts`
+    needed the `package.json` script entry above before knip would treat
+    it as reachable.
+  - `moon check --all` — 27/27 tasks green.
+- **Notes**:
+  - **Deliberately not dual-writing yet.** `organization_members` stays the
+    only write path through T04; `seedOrg`/`updateOrgMemberRole`/
+    `removeMember`/`consumePendingInvitations` are untouched. `grants` is
+    inert data until T05 replaces the `assertOrg*` call sites — that's the
+    one task where both the read path and these write sites move together,
+    rather than a window where they could quietly drift apart. The real
+    risk this creates — any org/membership change between T03 and T05
+    landing leaves `grants` stale — is exactly what `migrate-roles.ts`
+    exists to close on demand; it isn't a leftover from the plan's original
+    "migration script" framing, it's this milestone's answer to a gap its
+    own sequencing creates.
+  - The `key LIKE '%:read'`-style composition in the migration SQL is a
+    deliberate simplification over listing out 99 `(role_id,
+    permission_key)` literals by hand across four roles - it also means a
+    32nd/33rd permission added to the vocabulary later (by a fresh
+    migration inserting into `permissions`) would need each system role's
+    `role_permissions` explicitly re-derived rather than picked up
+    automatically, since this migration only runs once. Worth remembering
+    if T04+ ever add a permission key.
+- **Next**: M10-T04 — implement `can(principal, scope, permission)` in
+  `apps/backend/src/lib/policy.ts`.

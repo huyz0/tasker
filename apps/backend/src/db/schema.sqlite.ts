@@ -208,15 +208,18 @@ export const teamMembers = sqliteTable("team_members", {
 });
 
 /**
- * The one table can() actually reads. Binds a subject (a user or a team)
- * to a role at a scope (an organization, a team, or a project) - see
- * ADR-0013's resolution algorithm. `scopeId` is a plain text column rather
- * than three separate nullable FKs (orgId/teamId/projectId) because the
- * column it references depends on `scopeType`, which SQLite/MySQL can't
- * express as a single declarative foreign key; `can()` validates the
- * referenced row exists as part of resolution instead.
+ * The one table can() (T04) will actually read for authorization decisions.
+ * Binds a subject (a user or a team) to a role at a scope (an organization,
+ * a team, or a project) - see ADR-0013's resolution algorithm. `scopeId` is
+ * a plain text column rather than three separate nullable FKs (orgId/
+ * teamId/projectId) because the column it references depends on
+ * `scopeType`, which SQLite/MySQL can't express as a single declarative
+ * foreign key; `can()` validates the referenced row exists as part of
+ * resolution instead.
  *
- * @knipignore - consumed starting T04 (can()).
+ * Has a real TS-level consumer starting T03: `scripts/migrate-roles.ts`
+ * reads and writes it directly to reconcile against `organization_members`,
+ * so no knip exemption is needed here (unlike its five siblings above).
  */
 export const grants = sqliteTable("grants", {
   id: text("id").primaryKey(),

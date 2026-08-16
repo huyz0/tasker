@@ -239,6 +239,13 @@
       "when": 1787000000000,
       "tag": "0033_roles_teams_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1787100000000,
+      "tag": "0034_seed_system_roles_and_migrate_grants",
+      "breakpoints": true
     }
   ]
 }

@@ -11,7 +11,8 @@
     "build:standalone": "bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts",
     "seed": "STANDALONE=true bun run scripts/seed.ts",
     "measure:members": "STANDALONE=true bun run scripts/measure-members.ts",
-    "measure:latency": "STANDALONE=true bun run scripts/measure-latency.ts"
+    "measure:latency": "STANDALONE=true bun run scripts/measure-latency.ts",
+    "migrate:roles": "bun run scripts/migrate-roles.ts"
   },
   "dependencies": {
     "pino": "^10.3.1",
