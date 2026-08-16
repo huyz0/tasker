@@ -126,3 +126,29 @@
   Google path there is additive (a lookup-by-linked-identity that falls back
   to id-equality), not a replacement.
 - **Next**: M13-T05 — password hashing module (`Bun.password`, argon2id).
+
+## M13-T05 — Password hashing module
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `src/lib/credentials.ts`, `src/lib/credentials.test.ts`
+- **Verified**: `bun test src/lib/credentials.test.ts` — 8 pass, 100%
+  line/function coverage. Covers the round-trip, wrong-password rejection,
+  that the plaintext never appears in the stored hash, independent salting
+  (same password hashed twice never matches byte-for-byte but both verify),
+  cross-parameter verification (a hash minted at lower memory/time cost than
+  Bun's current default still verifies — the actual point of PHC-format
+  storage per ADR-0012 §4), and that a malformed or foreign-format
+  (bcrypt-shaped) hash string is rejected rather than throwing.
+- **Notes**: No "params" or "version" column and no wrapper type around the
+  hash — `Bun.password`'s PHC-format string already is the versioned record,
+  so adding one here would be a second, redundant source of truth. Confirmed
+  `Bun.password`'s own default (`m=65536,t=2,p=1`, i.e. 64 MiB) already
+  exceeds OWASP's argon2id minimum (19 MiB); the module names the algorithm
+  explicitly rather than relying on Bun's default staying `argon2id`
+  forever, but does not override the cost parameters. `MIN_PASSWORD_LENGTH`
+  (12) is exported now for T06 to enforce at the RPC boundary — length over
+  composition rules, since composition rules push predictable substitutions
+  without raising guess-resistance.
+- **Next**: M13-T06 — `loginWithPassword`/`registerLocalUser`/
+  `setPassword`/`changePassword` RPCs, converging with `completeLogin`.

@@ -113,7 +113,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
 
 ### Enforce / backend
 
-- [ ] **M13-T05** — Password hashing module: argon2id hash/verify, a versioned
+- [x] **M13-T05** — Password hashing module: argon2id hash/verify, a versioned
       parameter set so a future cost bump can still verify old hashes, and a
       timing-safe comparison path.
       - Files: `apps/backend/src/lib/credentials.ts`, `credentials.test.ts`

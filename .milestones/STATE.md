@@ -1,6 +1,6 @@
 ---
 active_milestone: M13
-active_task: M13-T05
+active_task: M13-T06
 last_updated: 2026-08-16
 last_commit: efb1718
 blocked: false
@@ -60,9 +60,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M10 | Teams & Policy-Based RBAC      | todo   | M03, M04   | 13    | 0    |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
-| M13 | Local Accounts & Linked Identity| in-progress | M01, M03 | 15 | 4 |
+| M13 | Local Accounts & Linked Identity| in-progress | M01, M03 | 15 | 5 |
 
-**Total: 160 tasks across 13 milestones — 93 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M13 4).**
+**Total: 160 tasks across 13 milestones — 94 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M13 5).**
 
 ## Dependency graph
 
