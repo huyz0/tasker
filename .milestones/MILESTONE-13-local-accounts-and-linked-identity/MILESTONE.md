@@ -92,7 +92,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: migrations apply and roll forward on both dialects; existing
         rows are backfilled with a derived, de-duplicated username.
 
-- [ ] **M13-T03** — Add `password_credentials` (`userId` PK/FK, `passwordHash`,
+- [x] **M13-T03** — Add `password_credentials` (`userId` PK/FK, `passwordHash`,
       algorithm/cost params, `updatedAt`, `failedAttempts`, `lockedUntil`,
       `mustChangePassword`) and `linked_identities` (`id`, `userId` FK,
       `provider`, `providerUserId`, `linkedAt`, unique on

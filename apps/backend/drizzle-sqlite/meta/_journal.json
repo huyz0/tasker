@@ -211,6 +211,20 @@
       "when": 1786900010000,
       "tag": "0029_backfill_usernames",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1786910000000,
+      "tag": "0030_password_credentials_linked_identities",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1786920000000,
+      "tag": "0031_backfill_google_linked_identities",
+      "breakpoints": true
     }
   ]
 }

@@ -38,6 +38,61 @@ export const users = sqliteTable("users", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
+/**
+ * M13-T03. One optional local password credential per user. `passwordHash` is
+ * the full PHC-format string `Bun.password.hash()` returns
+ * (`$argon2id$v=19$m=...,t=...,p=...$<salt>$<hash>`) - it already carries its
+ * algorithm and cost parameters, so there is no separate "params" or
+ * "version" column: `Bun.password.verify()` reads them out of the stored
+ * string itself, and raising the cost factor later needs no migration (see
+ * ADR-0012 §4). `userId` is the primary key rather than a surrogate `id`
+ * because the relationship is 1:1 by construction - a user has at most one
+ * local password.
+ *
+ * Not yet imported anywhere: the table lands in T03, its handler
+ * (`loginWithPassword`, `registerLocalUser`, `setPassword`) in T06. Remove
+ * this tag in that task's commit, when it stops being true.
+ *
+ * @knipignore
+ */
+export const passwordCredentials = sqliteTable("password_credentials", {
+  userId: text("user_id").primaryKey().references(() => users.id),
+  passwordHash: text("password_hash").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  failedAttempts: integer("failed_attempts").notNull().default(0),
+  lockedUntil: integer("locked_until", { mode: "timestamp" }),
+  mustChangePassword: integer("must_change_password", { mode: "boolean" }).notNull().default(false),
+});
+
+/**
+ * M13-T03/T04. Generalizes "how a user proves who they are via a third
+ * party" - Google is migrated onto this as the first `provider` row rather
+ * than being special-cased on `users` itself (ADR-0012 §2). `providerUserId`
+ * is that provider's own identifier for the person (for Google, its `sub`
+ * claim - the value `users.id` held directly before this milestone). T04's
+ * migration populates this table in raw SQL for every pre-existing user;
+ * nothing imports the table as a TS symbol until `completeLogin` and the new
+ * `linkIdentity`/`unlinkIdentity` RPCs land in T06/T08.
+ *
+ * @knipignore
+ */
+export const linkedIdentities = sqliteTable("linked_identities", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  // Only 'google' is issued today; text (not a fixed enum) because SQLite has
+  // no native enum type - same choice this file already makes for
+  // `organization_members.role` and `invitations.role`, validated at the app
+  // layer instead.
+  provider: text("provider").notNull(),
+  providerUserId: text("provider_user_id").notNull(),
+  linkedAt: integer("linked_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    providerIdentityIdx: uniqueIndex("linked_identities_provider_identity_idx").on(table.provider, table.providerUserId),
+    userIdIdx: index("linked_identities_user_id_idx").on(table.userId),
+  };
+});
+
 export const organizations = sqliteTable("organizations", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
