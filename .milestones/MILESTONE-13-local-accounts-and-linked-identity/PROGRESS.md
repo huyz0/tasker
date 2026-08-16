@@ -231,3 +231,53 @@
     explicitly, since a differentiated message is a username-enumeration
     oracle.
 - **Next**: M13-T07 — rate limit and lock out password login.
+
+## M13-T07 — Rate limit and lock out password login
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `src/config.ts`, `src/lib/loginRateLimiter.ts` (new),
+  `src/lib/loginRateLimiter.test.ts` (new), `src/lib/rateLimit.ts`
+  (`rateLimitProblem` gained an optional title/detail override),
+  `src/lib/rateLimit.test.ts`, `src/index.ts`, `src/modules/auth/auth.ts`,
+  `src/modules/auth/auth.test.ts`
+- **Verified**: `bun test src/modules/auth/ src/lib/loginRateLimiter.test.ts
+  src/lib/rateLimit.test.ts` — 82 pass, 100% coverage on `loginRateLimiter.ts`
+  and `auth.ts`. Full suite: 692 pass, 0 fail.
+- **Notes**: Two independent, complementary mechanisms, as the task named:
+  - **Per-source-IP throttle** (`lib/loginRateLimiter.ts`) reuses
+    `createRateLimiter` — the same bounded, correctly-evicting bucket store
+    ADR-0008 built for agent tokens — rather than a new implementation.
+    Keyed on `req.socket.remoteAddress` (the direct peer, not
+    `X-Forwarded-For`: nothing in this deployment trusts a specific reverse
+    proxy, and trusting a caller-supplied header would let one attacker
+    spread a flood across as many "sources" as requests). Wired into
+    `index.ts` ahead of `authRoutes.handle`, for `/api/auth/password/*`
+    only, mirroring exactly how `agentRateLimiter` already runs ahead of the
+    Connect adapter.
+  - **Per-account exponential lockout** lives in `password_credentials`
+    (columns already added in T03): 5 consecutive failures locks the
+    account, each subsequent lock roughly doubling (30s, 60s, 120s, ...) up
+    to a 1-hour cap. `attemptPasswordLogin` replaces T06's
+    `verifyPasswordLogin` — same signature intent, now returns a 3-way
+    `PasswordLoginResult` (`ok`/`invalid`/`locked`) instead of `string | null`.
+  - **Recorded decision, not an oversight**: a locked account gets a
+    distinct `429` (with `Retry-After` and a named "Account temporarily
+    locked" title) rather than being folded into the generic `401 Invalid
+    credentials`. The more paranoid option — hiding lockout state entirely
+    to deny an enumeration oracle — was rejected because T06's registration
+    endpoint already reveals "username is already taken" on a duplicate
+    username, so hiding it a second time on login buys little while
+    costing every genuinely-locked-out user any way to learn they should
+    wait rather than that they mistyped their password. Matches this
+    repo's one existing precedent for the tradeoff, ADR-0008 §5's
+    rate-limit response (also distinct, also carries Retry-After).
+  - A locked account's password is never even checked — cheaper, and it
+    means a lock cannot be probed into revealing whether a guess was close.
+  - `index.ts`'s wiring itself is not unit-tested, matching this file's
+    existing, accepted boundary (the same is true of `agentRateLimiter`'s
+    wiring, which has no test either) — `loginRateLimiter.test.ts` covers
+    the exported factory, `rateLimit.test.ts` already covers the bucket
+    mechanics it's built on.
+- **Next**: M13-T08 — `linkIdentity`/`unlinkIdentity` RPCs with the
+  last-sign-in-method guard.

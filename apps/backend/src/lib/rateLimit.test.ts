@@ -114,6 +114,15 @@ describe('the 429 body', () => {
   it('says "1 second", not "1 seconds"', () => {
     expect(JSON.parse(rateLimitProblem(1).body).detail).toContain('1 second.');
   });
+
+  it('accepts a title/detail override, for a caller with a more specific reason (M13-T07 lockout)', () => {
+    const problem = rateLimitProblem(30, { title: 'Account temporarily locked', detail: 'custom detail' });
+    expect(problem.headers['Retry-After']).toBe('30');
+    const body = JSON.parse(problem.body);
+    expect(body.title).toBe('Account temporarily locked');
+    expect(body.detail).toBe('custom detail');
+    expect(body.status).toBe(429); // status/type are not overridable
+  });
 });
 
 describe('bucket map is bounded', () => {

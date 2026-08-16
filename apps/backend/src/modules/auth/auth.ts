@@ -8,6 +8,7 @@ import { logger } from '../../lib/logger';
 import { problemDetails } from '../../lib/problemDetails';
 import { revokeSession, isSessionRevoked } from '../../lib/sessionRevocation';
 import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from '../../lib/credentials';
+import { rateLimitProblem } from '../../lib/rateLimit';
 
 function sessionCookie(userId: string): string {
   const secure = config.nodeEnv === 'production' ? '; Secure' : '';
@@ -172,29 +173,83 @@ async function registerLocalUser(db: any, input: { username: string; password: s
   return userId;
 }
 
+// M13-T07. Consecutive-failure threshold before the *account* locks, and the
+// exponential backoff schedule once it does: lockout_seconds = BASE * 2^(n -
+// THRESHOLD), capped at MAX. Five free failures covers an honest typo or two
+// without friction; each lock past that roughly doubles (30s, 60s, 120s,
+// ...) up to an hour, which is long enough to make online guessing
+// impractical without permanently exiling a user who forgot their password.
+const FAILED_ATTEMPTS_THRESHOLD = 5;
+const BASE_LOCKOUT_SECONDS = 30;
+const MAX_LOCKOUT_SECONDS = 60 * 60;
+
+function lockoutDurationSeconds(failedAttempts: number): number {
+  const exponent = Math.max(0, failedAttempts - FAILED_ATTEMPTS_THRESHOLD);
+  return Math.min(MAX_LOCKOUT_SECONDS, BASE_LOCKOUT_SECONDS * 2 ** exponent);
+}
+
+export type PasswordLoginResult =
+  | { outcome: 'ok'; userId: string }
+  | { outcome: 'invalid' }
+  | { outcome: 'locked'; retryAfterSeconds: number };
+
 /**
- * Verifies a username/password pair and returns the matching userId, or
- * `null` for any reason at all (unknown username, no password credential on
- * the account - e.g. a Google-only user, or a wrong password). One
- * undifferentiated failure mode on purpose: telling an attacker which part
- * was wrong turns a login form into a username-enumeration oracle.
+ * Verifies a username/password pair with per-account lockout (M13-T07).
  *
- * No lockout/rate-limiting here - M13-T07 owns that, layered on top of this
- * function rather than inside it, so this stays a pure "is this pair
- * correct" check the lockout logic can wrap.
+ * `invalid` covers every reason short of a correct, unlocked credential
+ * (unknown username, no password credential on the account - e.g. a
+ * Google-only user, or a wrong password): one undifferentiated failure mode
+ * on purpose, since telling an attacker which part was wrong turns a login
+ * form into a username-enumeration oracle.
+ *
+ * `locked` is reported distinctly, with a real `retryAfterSeconds` -
+ * recorded as a deliberate choice, not an oversight: hiding lockout state
+ * behind the generic `invalid` response is the more paranoid option, but
+ * `registerLocalUser`'s "username is already taken" response (T06) already
+ * makes username enumeration possible through the *registration* endpoint,
+ * so hiding it here again buys little while leaving a genuine user with no
+ * way to learn they are locked out rather than simply wrong. Matches this
+ * codebase's one existing precedent for the tradeoff (ADR-0008 §5's
+ * rate-limit response is distinct and carries Retry-After too).
+ *
+ * A locked account is refused *before* the password is even checked - a
+ * check that only costs time without changing the outcome - and does not
+ * consume another attempt.
  */
-async function verifyPasswordLogin(db: any, username: string, password: string): Promise<string | null> {
+async function attemptPasswordLogin(db: any, username: string, password: string, now: Date = new Date()): Promise<PasswordLoginResult> {
   const { users, passwordCredentials } = authTables();
   const userRows = await db.select().from(users).where(eq((users as any).username, username)).limit(1);
-  if (userRows.length === 0) return null;
+  if (userRows.length === 0) return { outcome: 'invalid' };
   const userId = userRows[0].id;
 
   const credRows = await db.select().from(passwordCredentials)
     .where(eq((passwordCredentials as any).userId, userId)).limit(1);
-  if (credRows.length === 0) return null;
+  if (credRows.length === 0) return { outcome: 'invalid' };
+  const cred = credRows[0];
 
-  const ok = await verifyPassword(password, credRows[0].passwordHash);
-  return ok ? userId : null;
+  if (cred.lockedUntil && new Date(cred.lockedUntil).getTime() > now.getTime()) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((new Date(cred.lockedUntil).getTime() - now.getTime()) / 1000));
+    return { outcome: 'locked', retryAfterSeconds };
+  }
+
+  const ok = await verifyPassword(password, cred.passwordHash);
+  if (!ok) {
+    const failedAttempts = cred.failedAttempts + 1;
+    const patch: Record<string, unknown> = { failedAttempts };
+    if (failedAttempts >= FAILED_ATTEMPTS_THRESHOLD) {
+      patch.lockedUntil = new Date(now.getTime() + lockoutDurationSeconds(failedAttempts) * 1000);
+    }
+    await db.update(passwordCredentials).set(patch).where(eq((passwordCredentials as any).userId, userId));
+    return { outcome: 'invalid' };
+  }
+
+  // A successful login clears the slate, including a lock that has already
+  // expired (an expired lockedUntil is inert but stale otherwise).
+  if (cred.failedAttempts > 0 || cred.lockedUntil) {
+    await db.update(passwordCredentials).set({ failedAttempts: 0, lockedUntil: null })
+      .where(eq((passwordCredentials as any).userId, userId));
+  }
+  return { outcome: 'ok', userId };
 }
 
 export function createAuthRoutes(db: any) {
@@ -336,16 +391,23 @@ export function createAuthRoutes(db: any) {
     if (typeof username !== 'string' || typeof password !== 'string') {
       return problemDetails(400, 'Invalid request', 'username and password are required');
     }
-    const userId = await verifyPasswordLogin(db, username, password);
-    if (!userId) {
+    const result = await attemptPasswordLogin(db, username, password);
+    if (result.outcome === 'locked') {
+      const problem = rateLimitProblem(result.retryAfterSeconds, {
+        title: 'Account temporarily locked',
+        detail: `Too many failed attempts. Try again in ${result.retryAfterSeconds} second${result.retryAfterSeconds === 1 ? '' : 's'}.`,
+      });
+      return new Response(problem.body, { status: problem.status, headers: problem.headers });
+    }
+    if (result.outcome === 'invalid') {
       // Same message whether the username doesn't exist, has no password
-      // credential, or the password is wrong - see verifyPasswordLogin's
+      // credential, or the password is wrong - see attemptPasswordLogin's
       // comment on why that's deliberate, not an omission.
       return problemDetails(401, 'Invalid credentials', 'The username or password is incorrect.');
     }
-    return new Response(JSON.stringify({ userId }), {
+    return new Response(JSON.stringify({ userId: result.userId }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json', 'set-cookie': sessionCookie(userId) },
+      headers: { 'Content-Type': 'application/json', 'set-cookie': sessionCookie(result.userId) },
     });
   })
   .get('/api/auth/session', async ({ request }) => {

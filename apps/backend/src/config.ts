@@ -30,6 +30,15 @@ const configSchema = z.object({
   // well inside them, and a runaway retry loop does not.
   agentRateLimitBurst: z.coerce.number().int().positive().default(120),
   agentRateLimitWindowMs: z.coerce.number().int().positive().default(60_000),
+  // M13-T07. Per-source-IP throttle on the password login/register routes -
+  // deliberately tighter than the agent limiter above, since this protects a
+  // credential-guessing surface rather than a legitimate polling worker.
+  // Complements, and is independent of, the per-account exponential lockout
+  // in password_credentials (lib/credentials.ts / modules/auth/auth.ts):
+  // this one bounds how fast *any* source can hammer the endpoint at all,
+  // including against usernames that do not exist.
+  passwordLoginRateLimitBurst: z.coerce.number().int().positive().default(20),
+  passwordLoginRateLimitWindowMs: z.coerce.number().int().positive().default(60_000),
 }).superRefine((cfg, ctx) => {
   if (cfg.nodeEnv !== 'production') return;
 
@@ -80,6 +89,8 @@ const loadConfig = () => {
       : undefined,
     agentRateLimitBurst: process.env.AGENT_RATE_LIMIT_BURST,
     agentRateLimitWindowMs: process.env.AGENT_RATE_LIMIT_WINDOW_MS,
+    passwordLoginRateLimitBurst: process.env.PASSWORD_LOGIN_RATE_LIMIT_BURST,
+    passwordLoginRateLimitWindowMs: process.env.PASSWORD_LOGIN_RATE_LIMIT_WINDOW_MS,
   };
 
   const parsed = configSchema.safeParse(envConfig);

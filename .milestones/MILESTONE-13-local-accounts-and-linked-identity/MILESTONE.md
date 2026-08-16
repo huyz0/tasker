@@ -128,7 +128,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: an integration test registers and logs in a user with no
         email and no linked identity at all.
 
-- [ ] **M13-T07** — Rate limit and lock out password login: bounded attempts
+- [x] **M13-T07** — Rate limit and lock out password login: bounded attempts
       per account and per source with exponential backoff, using a bounded,
       correctly-evicting bucket store (per the M04 lesson: LRU eviction under
       flood evicts the genuine credential, not the attacker's).

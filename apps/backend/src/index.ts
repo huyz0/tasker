@@ -8,6 +8,7 @@ import { createAuthRoutes } from "./modules/auth/auth";
 import { currentUserIdKey, currentPrincipalKey } from "./modules/auth/session";
 import { resolvePrincipal } from "./lib/authenticate";
 import { createRateLimiter, rateLimitProblem } from "./lib/rateLimit";
+import { createLoginRateLimiter } from "./lib/loginRateLimiter";
 import { parseBearerToken } from "./modules/auth/session";
 import { isAgentToken, hashToken } from "./lib/agentToken";
 import { createOrgsHandler } from "./modules/orgs/orgs.handler";
@@ -100,6 +101,16 @@ function rateLimitKey(authorization: string | null): string | null {
   return isAgentToken(bearer) ? hashToken(bearer!) : null;
 }
 
+// M13-T07. Per-source-IP throttle on the password login/register routes -
+// see lib/loginRateLimiter.ts for why this is a second, separately-keyed
+// limiter rather than reusing agentRateLimiter above (no credential exists
+// yet to key on) and how it complements the per-account lockout inside
+// auth.ts. Runs ahead of authRoutes for the same reason the agent limiter
+// runs ahead of the Connect adapter: a real 429 with Retry-After, which
+// problemDetails (used inside authRoutes) already produces the same shape
+// for, so this reuses rateLimitProblem rather than a bespoke response.
+const loginRateLimiter = createLoginRateLimiter();
+
 const authRoutes = createAuthRoutes(db);
 const telemetryRoutes = createTelemetryRoutes(db);
 
@@ -148,6 +159,22 @@ http.createServer(async (req, res) => {
   const limitKey = rateLimitKey(req.headers.authorization ?? null);
   if (limitKey) {
     const decision = agentRateLimiter.check(limitKey);
+    if (!decision.allowed) {
+      const problem = rateLimitProblem(decision.retryAfterSeconds);
+      res.writeHead(problem.status, problem.headers);
+      res.end(problem.body);
+      return;
+    }
+  }
+
+  // M13-T07. Keyed on the direct peer address (`req.socket.remoteAddress`),
+  // not an X-Forwarded-For header: nothing in this deployment's config names
+  // a trusted reverse proxy, and trusting a caller-supplied header for a
+  // rate-limit key would let a single attacker present a different value on
+  // every request and never share a bucket. Same per-instance caveat as
+  // agentRateLimiter above (M11 owns multi-instance deployment).
+  if (req.url?.startsWith("/api/auth/password/")) {
+    const decision = loginRateLimiter.check(req.socket.remoteAddress || "unknown");
     if (!decision.allowed) {
       const problem = rateLimitProblem(decision.retryAfterSeconds);
       res.writeHead(problem.status, problem.headers);

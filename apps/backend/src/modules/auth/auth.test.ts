@@ -660,4 +660,99 @@ describe('Auth Routes (local password)', () => {
     expect(membership[0].orgId).toBe('org-local-invite');
     expect(membership[0].role).toBe('admin');
   });
+
+  /**
+   * M13-T07. The threshold is 5 consecutive failures; these tests drive it
+   * directly rather than mocking time, so the lockout math is exercised for
+   * real, not asserted about.
+   */
+  describe('account lockout', () => {
+    it('does not lock before the threshold — 4 wrong passwords still just says invalid', async () => {
+      await register({ username: 'lockout-under-threshold', password: 'a-strong-password-123' });
+      for (let i = 0; i < 4; i++) {
+        const res = await login({ username: 'lockout-under-threshold', password: 'wrong' });
+        expect(res.status).toBe(401);
+      }
+      // The 5th attempt with the *correct* password still succeeds — not locked yet.
+      const res = await login({ username: 'lockout-under-threshold', password: 'a-strong-password-123' });
+      expect(res.status).toBe(200);
+    });
+
+    it('locks the account after 5 consecutive failures, returning 429 with Retry-After', async () => {
+      await register({ username: 'lockout-user', password: 'a-strong-password-123' });
+      for (let i = 0; i < 5; i++) {
+        await login({ username: 'lockout-user', password: 'wrong' });
+      }
+      const res = await login({ username: 'lockout-user', password: 'wrong' });
+      expect(res.status).toBe(429);
+      expect(res.headers.get('Retry-After')).toBeTruthy();
+      const body = await res.json();
+      expect(body.title).toBe('Account temporarily locked');
+    });
+
+    it('refuses the CORRECT password once locked — lockout is not just "still wrong"', async () => {
+      await register({ username: 'lockout-blocks-correct', password: 'a-strong-password-123' });
+      for (let i = 0; i < 5; i++) {
+        await login({ username: 'lockout-blocks-correct', password: 'wrong' });
+      }
+      const res = await login({ username: 'lockout-blocks-correct', password: 'a-strong-password-123' });
+      expect(res.status).toBe(429);
+      expect(res.headers.get('set-cookie')).toBeNull();
+    });
+
+    it('does not increment failedAttempts further while already locked', async () => {
+      await register({ username: 'lockout-no-double-count', password: 'a-strong-password-123' });
+      for (let i = 0; i < 5; i++) {
+        await login({ username: 'lockout-no-double-count', password: 'wrong' });
+      }
+      const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.username, 'lockout-no-double-count'));
+      const before = await db.select().from(schemaSqlite.passwordCredentials)
+        .where(eq(schemaSqlite.passwordCredentials.userId, rows[0].id));
+
+      await login({ username: 'lockout-no-double-count', password: 'wrong' });
+      await login({ username: 'lockout-no-double-count', password: 'wrong' });
+
+      const after = await db.select().from(schemaSqlite.passwordCredentials)
+        .where(eq(schemaSqlite.passwordCredentials.userId, rows[0].id));
+      expect(after[0].failedAttempts).toBe(before[0].failedAttempts);
+    });
+
+    it('resets failedAttempts to 0 on a successful login', async () => {
+      await register({ username: 'lockout-resets', password: 'a-strong-password-123' });
+      await login({ username: 'lockout-resets', password: 'wrong' });
+      await login({ username: 'lockout-resets', password: 'wrong' });
+      await login({ username: 'lockout-resets', password: 'a-strong-password-123' }); // succeeds, resets
+
+      const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.username, 'lockout-resets'));
+      const creds = await db.select().from(schemaSqlite.passwordCredentials)
+        .where(eq(schemaSqlite.passwordCredentials.userId, rows[0].id));
+      expect(creds[0].failedAttempts).toBe(0);
+      expect(creds[0].lockedUntil).toBeNull();
+
+      // And 4 more wrong passwords afterward still don't re-lock — proves the
+      // counter genuinely reset rather than merely not having grown past 5.
+      for (let i = 0; i < 4; i++) {
+        expect((await login({ username: 'lockout-resets', password: 'wrong' })).status).toBe(401);
+      }
+    });
+
+    it('unlocks automatically once retryAfterSeconds has actually elapsed', async () => {
+      await register({ username: 'lockout-expires', password: 'a-strong-password-123' });
+      for (let i = 0; i < 5; i++) {
+        await login({ username: 'lockout-expires', password: 'wrong' });
+      }
+      const locked = await login({ username: 'lockout-expires', password: 'a-strong-password-123' });
+      expect(locked.status).toBe(429);
+
+      // Fast-forward past the lockout by writing an already-past lockedUntil
+      // directly, rather than sleeping in a test for real wall-clock time.
+      const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.username, 'lockout-expires'));
+      await db.update(schemaSqlite.passwordCredentials)
+        .set({ lockedUntil: new Date(Date.now() - 1000) })
+        .where(eq(schemaSqlite.passwordCredentials.userId, rows[0].id));
+
+      const res = await login({ username: 'lockout-expires', password: 'a-strong-password-123' });
+      expect(res.status).toBe(200);
+    });
+  });
 });
