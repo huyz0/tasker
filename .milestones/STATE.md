@@ -1,8 +1,8 @@
 ---
-active_milestone: M13
-active_task: M13-T15
+active_milestone: M10
+active_task: null
 last_updated: 2026-08-16
-last_commit: efb1718
+last_commit: 18f966d
 blocked: false
 blocker: null
 ---
@@ -15,23 +15,22 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M13 — Local Accounts & Linked Identity
-- **Task**: none — M13's first task is next
-- **Branch**: `feature/m13-local-accounts-and-linked-identity`, per the
-  default in `git-workflow-standard.md` / `milestone-standard.md` §5. No
-  main-branch exception has been given for this milestone.
-- **Command to continue**: `/milestone-deliver M13` (or `/milestone-deliver-auto M13`)
+- **Milestone**: M10 — Teams & Policy-Based RBAC
+- **Task**: none — M10's first task is next
+- **Branch**: `feature/m10-teams-and-policy-rbac` (to be created from `main`),
+  per the default in `git-workflow-standard.md` / `milestone-standard.md`
+  §5. No main-branch exception has been given for this milestone.
+- **Command to continue**: `/milestone-deliver M10` (or `/milestone-deliver-auto M10`)
 
-**2026-08-16 — Re-prioritized by explicit product direction.** M08 had not
-started (`active_task: null`, no commits against it), so it was safe to
-re-sequence with no work abandoned. M13 is new (see Handoff notes below) and
-now leads; M10 (Teams & Policy-Based RBAC) follows it by the same instruction.
-M08, M09, M11, M12 are unchanged and resume in their prior order once M13 and
-M10 close — nothing in their `depends_on` required M08 to run before either.
+**2026-08-16 — M13 (Local Accounts & Linked Identity) closed: 15/15 tasks,
+7/7 exit criteria.** Developed on `feature/m13-local-accounts-and-linked-identity`,
+merged to `main` locally (not pushed to origin — left for explicit user
+action). Full handoff note below. M10 is next, exactly as planned when M13
+was added ahead of it.
 
-M07 (Read-Path Scale) closed 14/14 tasks and 7/7 exit criteria. M10 (Teams &
-RBAC) is unblocked and independent of M13 technically, but is sequenced after
-it by product priority — see M10's "Why Now".
+M08, M09, M11, M12 are unchanged and resume in their prior order once M10
+closes — nothing in their `depends_on` required M08 to run before either M13
+or M10.
 
 ## How to resume
 
@@ -60,9 +59,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M10 | Teams & Policy-Based RBAC      | todo   | M03, M04   | 13    | 0    |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
-| M13 | Local Accounts & Linked Identity| in-progress | M01, M03 | 15 | 14 |
+| M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
 
-**Total: 160 tasks across 13 milestones — 103 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M13 14).**
+**Total: 160 tasks across 13 milestones — 104 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M13 15).**
 
 ## Dependency graph
 
@@ -96,6 +95,118 @@ milestones' "Why Now" sections rather than as a `depends_on` entry, since
 neither actually blocks the other.
 
 ## Handoff notes
+
+**2026-08-16 — M13 (Local Accounts & Linked Identity) closed: 15/15 tasks,
+7/7 exit criteria, all verified against actual passing tests, not inferred
+from task completion.**
+
+A user can now exist, be invited, and log in entirely on a local username
+and password — no email, no Google account, matching the milestone's own
+exit criterion. Google is one optional linked identity per account rather
+than the account itself, mirroring a Windows local-account/Microsoft-account
+relationship; either credential can be added or removed independently, and
+the system refuses to remove the last one standing at every point that
+matters (`unlinkIdentity`, and by construction `setPassword` never removes
+the only method).
+
+Eleven things a next session would otherwise pay to rediscover:
+
+1. **`users.id` never changed.** ADR-0012's central bet: every pre-existing
+   Google user's id stays exactly what it was (their Google `sub`), and a
+   new `linked_identities` table generalizes "how you prove who you are" so
+   nothing else had to move. This is what kept the migration additive
+   instead of a second M10-sized rewrite. Backfilled by
+   `0031_backfill_google_linked_identities.sql` (SQLite) /
+   `0018_...` (MySQL), idempotent, verified against a hand-built pre-M13
+   fixture in `auth.test.ts`'s "a pre-migration user, backfilled, logs in
+   via Google afterward with the exact same id".
+2. **A defect was caught and fixed mid-milestone, not shipped**: before
+   T08's fix, linking Google to a local account and then signing in with
+   Google again would have silently created a *second*, duplicate account,
+   because `completeLogin` resolved purely by `users.id === profile.id`.
+   It now resolves through `linked_identities` first. If a future session
+   touches `completeLogin`, read T08's PROGRESS.md entry before changing
+   the resolution order.
+3. **A security review (T14) found and fixed two real issues before
+   close**, not just documented decisions: (a) `registerLocalUser` used to
+   let an unauthenticated caller claim someone else's pending
+   email-targeted invitation by typing their email with no proof of
+   ownership — fixed by making local registration consume only
+   username-targeted invitations, never email ones (email invitations
+   still redeem correctly through Google, where the email is
+   provider-verified). (b) The two password HTTP routes accepted any
+   content-type Elysia recognized, including form-urlencoded — a
+   CORS-preflight-free login CSRF vector — fixed by rejecting anything but
+   `application/json` with a 415. Full writeup:
+   `.milestones/MILESTONE-13-local-accounts-and-linked-identity/reviews/SECURITY-REVIEW-v1.md`.
+4. **Two independent, complementary rate-limiting mechanisms**, not one:
+   a per-source-IP bucket (`lib/loginRateLimiter.ts`, reusing ADR-0008's
+   bounded rate limiter) ahead of the Connect adapter, and a per-account
+   exponential lockout stored in `password_credentials` (5 failures locks,
+   doubling up to 1 hour). A locked account gets a distinct `429` rather
+   than folding into the generic `401` — a deliberate, recorded tradeoff
+   (registration already leaks username existence, so hiding lockout state
+   too would cost more in usability than it buys in secrecy).
+5. **`Bun.password` (argon2id) needed no new backend dependency** — it
+   ships with the Bun runtime already pinned in `.prototools`. The CLI
+   *did* add one: `golang.org/x/term`, for a masked password prompt,
+   recorded in `tech-stack.md` with a reason.
+6. **The drizzle-sqlite snapshot drift discovered in M13-T02 is still
+   unresolved** and will recur for any future schema change: migrations
+   0024-0027 were hand-written without updating
+   `drizzle-sqlite/meta/*_snapshot.json`, so `drizzle-kit generate` against
+   the current schema re-proposes already-applied changes. Every M13
+   schema migration (0028-0032) was hand-written to work around this
+   rather than trusting the tool. **Flagged for M12** (already noted
+   there); a next session touching sqlite schema should expect this.
+7. **`OrgMember` (the contract model `listOrgMembers` returns) still has
+   no `username` field** — only `User` and `Invitation` gained one. A
+   member with no email and no name renders however `member.name ||
+   member.email` happens to evaluate today (likely blank). Not fixed in
+   M13 because it needs `orgs.handler.ts`'s `listOrgMembers` query changed
+   too, and was judged GUI-screen territory for **T11/T12**'s successor
+   work rather than in-scope here — but it was never picked up, since
+   T11/T12 turned out to be about login/settings, not the member list.
+   Worth a fresh look before M10 builds a team member list on the same
+   pattern.
+8. **`AuthService.adminResetPassword` (T10) has no GUI or CLI caller
+   anywhere** — `gui:rpc-coverage`'s exception for it says so explicitly,
+   naming "the Organizations member list" as where it belongs. Nothing in
+   M13's 15 tasks scheduled that UI. A real, usable gap: an admin cannot
+   currently reset a locked-out member's password from either app surface,
+   only via a raw RPC call.
+9. **Self-service password reset over email does not exist** — deliberate,
+   per ADR-0012: this repo has no outbound email delivery yet. The only
+   recovery path for a password-only account with no admin around is
+   T10's `adminResetPassword`, which (per note 8) has no UI yet either.
+10. **`mustChangePassword` enforcement lives in `ProtectedRoute`**, reading
+    a field added to `GET /api/auth/session` (not `GetIdentityResponse` —
+    a deliberate choice, see T12's note) and redirecting to `/settings`
+    with a self-referential guard against a redirect loop. If a future
+    session adds another top-level route outside `AppShell`'s guard (like
+    `/login`/`/register`), it will not get this enforcement and does not
+    need it.
+11. **CLI gained `tasker auth set-password`**, beyond T13's literal scope
+    — without it a CLI-only user handed a temporary password by an admin,
+    or who registered locally with no GUI in reach, would have no way to
+    ever change it.
+
+**MySQL migrations for this milestone were verified against a live
+container** (`docker compose up -d mysql`, `TASKER_MYSQL_INTEGRATION=1`)
+at every schema-changing task, not just SQLite — a gap M04's handoff note
+flagged as historically untested. `moon check --all` — 27 tasks, clean, at
+close. `gui:e2e` (Playwright) was not run this session — it is `type: run`,
+excluded from `moon check` by design (needs a booted backend + seeded DB +
+browsers); its coverage of the new login/register/settings screens is
+configuration (the routes and components exist and are unit-tested), not
+an observed Playwright run, and that gap is named here rather than implied
+closed.
+
+**Deliberately deferred, with owners**: notes 7-9 above (member-list
+username fallback and admin-reset UI — no clear owning milestone yet;
+email-based self-service reset — needs an email-sending capability this
+repo has never had, no milestone owns it either). The drizzle-sqlite
+snapshot drift (note 6) is M12's.
 
 **2026-08-16 — M13 (Local Accounts & Linked Identity) added and prioritized
 ahead of M08, by explicit product direction.**

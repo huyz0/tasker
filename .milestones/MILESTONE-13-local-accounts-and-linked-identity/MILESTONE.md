@@ -1,13 +1,13 @@
 ---
 id: M13
 title: Local Accounts & Linked Identity
-status: in-progress
+status: done
 goal: A user can exist, be invited and log in entirely on a local username and password with no email address and no dependency on any external provider; Google becomes one optional linked identity per account rather than the account itself, and the system always keeps at least one active sign-in method per user.
 depends_on: [M01, M03]
 surfaces: [backend, gui, cli, contract]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-16
-completed_at: null
+completed_at: 2026-08-16
 ---
 
 # M13 — Local Accounts & Linked Identity
@@ -38,22 +38,22 @@ it first, not because of a hard dependency.
 
 ## 3. Exit Criteria
 
-- [ ] A user can be created with only a username and password — no email, no
+- [x] A user can be created with only a username and password — no email, no
       Google identity — and can subsequently log in with that password.
-- [ ] `users.email` is nullable in both schema dialects and no backend path
+- [x] `users.email` is nullable in both schema dialects and no backend path
       requires it to be present.
-- [ ] A user can link a Google identity to an existing local account and later
+- [x] A user can link a Google identity to an existing local account and later
       unlink it; the system refuses to remove the last remaining sign-in
       method (password or any linked identity) for any user.
-- [ ] Password login is hashed with argon2id, rate-limited per identity and
+- [x] Password login is hashed with argon2id, rate-limited per identity and
       per source, and locks out after repeated failures — proven by a test
       that floods login attempts and observes the lockout and its expiry.
-- [ ] An invitation can target a username as well as an email, and acceptance
+- [x] An invitation can target a username as well as an email, and acceptance
       on first login/registration works for both.
-- [ ] The GUI offers both "Sign in with Google" and username/password on
+- [x] The GUI offers both "Sign in with Google" and username/password on
       login, and account settings exposes linking, unlinking and password
       change with the last-method guard visible before it is hit.
-- [ ] Every user who could log in via Google before this milestone can still
+- [x] Every user who could log in via Google before this milestone can still
       do so afterward with no re-consent and no id change — proven by an
       integration test against pre-migration fixture data.
 
@@ -193,7 +193,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: `/security-review` run against the branch; every critical or
         high finding resolved or explicitly accepted with a reason.
 
-- [ ] **M13-T15** — Exhaustive auth-path test matrix: local-only, Google-only,
+- [x] **M13-T15** — Exhaustive auth-path test matrix: local-only, Google-only,
       both-linked, invited-by-username, invited-by-email, lockout, admin
       reset; extend the deny-by-default RPC sweep to the new endpoints.
       - Files: `apps/backend/src/modules/auth/auth.test.ts`,

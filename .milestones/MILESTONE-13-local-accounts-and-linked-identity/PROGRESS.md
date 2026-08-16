@@ -741,3 +741,47 @@
     rather than a broad rewrite, matching the review's own instruction to
     minimize false positives and act only on high-confidence findings.
 - **Next**: M13-T15 — exhaustive auth-path test matrix; then close M13.
+
+## M13-T15 — Exhaustive auth-path test matrix
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `apps/backend/src/modules/auth/auth.test.ts` (new
+  `describe('M13-T15: exhaustive auth-path matrix (generated)')` block)
+- **Verified**: `bun test src/modules/auth/auth.test.ts -t "M13-T15"` — 8
+  pass (the 7 named scenarios + the table-completeness check). Plus one
+  more test outside the `-t` filter for exit criterion 7 specifically (see
+  below). Full auth suite: 111 pass. Full backend suite: 760 pass, 0 fail.
+  Deny-by-default sweeps (`viewer-denial.test.ts`,
+  `agent-scope-sweep.test.ts`) — 79 pass, confirming every RPC this
+  milestone added (`setPassword`, `listLinkedIdentities`, `unlinkIdentity`,
+  `adminResetPassword`) is classified, not incidentally so. `moon check
+  --all` — 27 tasks, clean.
+- **Notes**:
+  - **Generated, not hand-written, per the task's own Verify line**: a
+    `SCENARIOS` data table (name + `run` function) with a single `for`
+    loop generating one `it` per row, plus a completeness test that fails
+    if a future edit drops one of the milestone's seven named tags from
+    the table. Deliberately overlaps with existing individual tests
+    scattered across this file — that redundancy is the point: this block
+    is the one place a reviewer can read the milestone's whole stated
+    coverage claim in one pass, rather than trusting it's implied by
+    everything else adding up.
+  - **Closed a real gap while verifying exit criterion 7** ("every user
+    who could log in via Google before this milestone can still do so
+    afterward... proven by an integration test against pre-migration
+    fixture data"): every *existing* Google-login test in this file
+    inserted its fixture user with no `linked_identities` row at all,
+    which exercises `completeLogin`'s fallback branch, not the state every
+    real pre-existing account is actually in after T04's backfill. Added
+    one more test that runs the **real backfill migration SQL**
+    (`0031_backfill_google_linked_identities.sql`) against a hand-built
+    pre-M13 fixture row, then drives the real HTTP callback - the
+    "linked identity found" branch, which is the one a production
+    migration actually exercises. This is what let exit criterion 7 be
+    checked honestly rather than inferred.
+  - All 7 exit criteria checked in `MILESTONE.md` §3 - each against
+    specific, named, already-passing tests (not inferred from "the tasks
+    are done"), per `close-milestone.md`'s instruction that a checkbox
+    means demonstrably met, not assumed.
+- **M13 complete: 15/15 tasks, 7/7 exit criteria verified.**

@@ -1149,3 +1149,244 @@ describe('Auth Routes (link/unlink Google)', () => {
     expect(allUsers).toHaveLength(0); // no duplicate account was created
   });
 });
+
+/**
+ * M13-T15. The scenarios below are the milestone's own stated coverage
+ * list ("local-only, Google-only, both-linked, invited-by-username,
+ * invited-by-email, lockout, admin reset") — most already have dedicated
+ * tests scattered across this file and auth.handler.test.ts, exercising
+ * one mechanism deeply each. This block is deliberately different: one
+ * data table, one runner, generating one `it` per row, so the *complete
+ * set* the milestone named is checked in a single place a reviewer can
+ * read top to bottom, rather than trusted to be implied by everything
+ * else adding up. "Generated, not hand-written" (the task's own Verify
+ * line) means this file defines the table and a loop reads it — a new
+ * account-configuration row is a data change, not a new `it` block.
+ */
+describe('M13-T15: exhaustive auth-path matrix (generated)', () => {
+  const registerJSON = (body: Record<string, unknown>) =>
+    authRoutes.handle(new Request('http://localhost/api/auth/password/register', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    }));
+  const loginJSON = (body: Record<string, unknown>) =>
+    authRoutes.handle(new Request('http://localhost/api/auth/password/login', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    }));
+  const extractFlow = (res: Response) => {
+    const location = res.headers.get('location')!;
+    return { state: new URL(location).searchParams.get('state')!, cookie: res.headers.get('set-cookie')! };
+  };
+  const withMockedGoogle = async (profile: { id: string; email: string }, fn: () => Promise<Response>) => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = mock(async (url: string | Request | URL) => {
+      const urlStr = url.toString();
+      if (urlStr === 'https://oauth2.googleapis.com/token') return new Response(JSON.stringify({ access_token: 'mock' }), { status: 200 });
+      if (urlStr === 'https://www.googleapis.com/oauth2/v2/userinfo') return new Response(JSON.stringify(profile), { status: 200 });
+      return originalFetch(url);
+    }) as unknown as typeof fetch;
+    try {
+      return await fn();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  };
+  const loginViaGoogle = (profile: { id: string; email: string }) =>
+    withMockedGoogle(profile, async () => {
+      const loginRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+      const { state, cookie } = extractFlow(loginRes);
+      return authRoutes.handle(new Request(
+        `http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`,
+        { headers: { cookie } },
+      ));
+    });
+  const linkGoogle = (sessionCookie: string, profile: { id: string; email: string }) =>
+    withMockedGoogle(profile, async () => {
+      const linkRes = await authRoutes.handle(new Request('http://localhost/api/auth/google/link', { headers: { cookie: sessionCookie } }));
+      const { state, cookie: stateCookie } = extractFlow(linkRes);
+      return authRoutes.handle(new Request(
+        `http://localhost/api/auth/google/callback?code=123&state=${encodeURIComponent(state)}`,
+        { headers: { cookie: `${sessionCookie}; ${stateCookie}` } },
+      ));
+    });
+
+  interface Scenario {
+    name: string;
+    run: () => Promise<void>;
+  }
+
+  const SCENARIOS: Scenario[] = [
+    {
+      name: 'local-only: registers with no email/Google at all, then logs in with the password',
+      run: async () => {
+        const reg = await registerJSON({ username: 'matrix-local-only', password: 'a-strong-password-123' });
+        expect(reg.status).toBe(201);
+        const res = await loginJSON({ username: 'matrix-local-only', password: 'a-strong-password-123' });
+        expect(res.status).toBe(200);
+        const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.username, 'matrix-local-only'));
+        expect(rows[0].email).toBeNull();
+      },
+    },
+    {
+      name: 'google-only: never sets a password; password login is refused, Google login succeeds',
+      run: async () => {
+        const googleRes = await loginViaGoogle({ id: 'matrix-google-only-id', email: 'matrix-google-only@example.com' });
+        expect(googleRes.status).toBe(302);
+
+        // No password credential exists for this account at all - the
+        // username it was never given can't even be looked up.
+        const passwordAttempt = await loginJSON({ username: 'matrix-google-only-id', password: 'anything-at-all-123' });
+        expect(passwordAttempt.status).toBe(401);
+      },
+    },
+    {
+      name: 'both-linked: registers locally, links Google, and either credential logs in afterward',
+      run: async () => {
+        const reg = await registerJSON({ username: 'matrix-both-linked', password: 'a-strong-password-123' });
+        const sessionCookie = reg.headers.get('set-cookie')!.split(';')[0];
+
+        const linkRes = await linkGoogle(sessionCookie, { id: 'matrix-both-linked-google-id', email: 'matrix-both-linked@example.com' });
+        expect(linkRes.status).toBe(302);
+
+        const passwordLogin = await loginJSON({ username: 'matrix-both-linked', password: 'a-strong-password-123' });
+        expect(passwordLogin.status).toBe(200);
+
+        const googleLogin = await loginViaGoogle({ id: 'matrix-both-linked-google-id', email: 'matrix-both-linked@example.com' });
+        expect(googleLogin.status).toBe(302);
+        const { userId: passwordUserId } = await (await loginJSON({ username: 'matrix-both-linked', password: 'a-strong-password-123' })).json();
+        const googleSession = verifySessionToken(parseSessionCookie(googleLogin.headers.get('set-cookie'))!);
+        expect(googleSession?.userId).toBe(passwordUserId); // same account either way, not two
+      },
+    },
+    {
+      name: 'invited-by-username: redeemed on local registration, joins the invited org at the invited role',
+      run: async () => {
+        await db.insert(schemaSqlite.organizations).values({ id: 'matrix-org-username', name: 'O', slug: 'matrix-org-username', createdAt: new Date() });
+        await db.insert(schemaSqlite.users).values({ id: 'matrix-inviter-u', email: 'inviter@example.com', createdAt: new Date() });
+        await db.insert(schemaSqlite.invitations).values({
+          id: 'matrix-inv-username', orgId: 'matrix-org-username', username: 'matrix-invited-user', invitedBy: 'matrix-inviter-u', role: 'member', createdAt: new Date(),
+        });
+
+        const reg = await registerJSON({ username: 'matrix-invited-user', password: 'a-strong-password-123' });
+        const { userId } = await reg.json();
+        const membership = await db.select().from(schemaSqlite.organizationMembers).where(eq(schemaSqlite.organizationMembers.userId, userId));
+        expect(membership).toEqual([expect.objectContaining({ orgId: 'matrix-org-username', role: 'member' })]);
+      },
+    },
+    {
+      name: 'invited-by-email: redeemed on Google login (provider-verified), joins the invited org at the invited role',
+      run: async () => {
+        await db.insert(schemaSqlite.organizations).values({ id: 'matrix-org-email', name: 'O', slug: 'matrix-org-email', createdAt: new Date() });
+        await db.insert(schemaSqlite.users).values({ id: 'matrix-inviter-e', email: 'inviter2@example.com', createdAt: new Date() });
+        await db.insert(schemaSqlite.invitations).values({
+          id: 'matrix-inv-email', orgId: 'matrix-org-email', email: 'matrix-invited-google@example.com', invitedBy: 'matrix-inviter-e', role: 'viewer', createdAt: new Date(),
+        });
+
+        await loginViaGoogle({ id: 'matrix-invited-google-id', email: 'matrix-invited-google@example.com' });
+        const membership = await db.select().from(schemaSqlite.organizationMembers).where(eq(schemaSqlite.organizationMembers.userId, 'matrix-invited-google-id'));
+        expect(membership).toEqual([expect.objectContaining({ orgId: 'matrix-org-email', role: 'viewer' })]);
+      },
+    },
+    {
+      name: 'lockout: 5 consecutive failures lock the account; the correct password is refused until it clears',
+      run: async () => {
+        await registerJSON({ username: 'matrix-lockout', password: 'a-strong-password-123' });
+        for (let i = 0; i < 5; i++) await loginJSON({ username: 'matrix-lockout', password: 'wrong' });
+
+        const lockedAttempt = await loginJSON({ username: 'matrix-lockout', password: 'a-strong-password-123' });
+        expect(lockedAttempt.status).toBe(429);
+
+        const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.username, 'matrix-lockout'));
+        await db.update(schemaSqlite.passwordCredentials).set({ lockedUntil: new Date(Date.now() - 1000) })
+          .where(eq(schemaSqlite.passwordCredentials.userId, rows[0].id));
+
+        const afterCooldown = await loginJSON({ username: 'matrix-lockout', password: 'a-strong-password-123' });
+        expect(afterCooldown.status).toBe(200);
+      },
+    },
+    {
+      name: 'admin reset: issues a temporary password that logs in with mustChangePassword: true, invalidating the old one',
+      run: async () => {
+        const reg = await registerJSON({ username: 'matrix-admin-reset', password: 'the-original-password-1' });
+        const { userId: memberId } = await reg.json();
+
+        const orgId = 'matrix-org-reset';
+        const adminId = 'matrix-reset-admin';
+        await db.insert(schemaSqlite.users).values({ id: adminId, email: 'reset-admin@example.com', createdAt: new Date() });
+        await db.insert(schemaSqlite.organizations).values({ id: orgId, name: 'O', slug: orgId, createdAt: new Date() });
+        await db.insert(schemaSqlite.organizationMembers).values([
+          { orgId, userId: adminId, role: 'admin', joinedAt: new Date() },
+          { orgId, userId: memberId, role: 'member', joinedAt: new Date() },
+        ]);
+
+        const { createAuthHandler } = await import('./auth.handler');
+        const { createContextValues } = await import('@connectrpc/connect');
+        const { currentUserIdKey } = await import('./session');
+        const handler = createAuthHandler(db);
+        const ctx = createContextValues();
+        ctx.set(currentUserIdKey, adminId);
+        const resetResult = await handler.adminResetPassword({ orgId, userId: memberId }, { values: ctx } as any);
+
+        const oldPasswordAttempt = await loginJSON({ username: 'matrix-admin-reset', password: 'the-original-password-1' });
+        expect(oldPasswordAttempt.status).toBe(401);
+
+        const tempPasswordAttempt = await loginJSON({ username: 'matrix-admin-reset', password: resetResult.temporaryPassword });
+        expect(tempPasswordAttempt.status).toBe(200);
+        expect((await tempPasswordAttempt.json()).mustChangePassword).toBe(true);
+      },
+    },
+  ];
+
+  for (const scenario of SCENARIOS) {
+    it(scenario.name, scenario.run);
+  }
+
+  it('the matrix covers every scenario the milestone names, by name — a regression in the table itself fails loudly', () => {
+    const REQUIRED_TAGS = ['local-only', 'google-only', 'both-linked', 'invited-by-username', 'invited-by-email', 'lockout', 'admin reset'];
+    for (const tag of REQUIRED_TAGS) {
+      expect(SCENARIOS.some((s) => s.name.toLowerCase().includes(tag))).toBe(true);
+    }
+  });
+
+  /**
+   * M13's exit criterion (MILESTONE.md §3): "Every user who could log in
+   * via Google before this milestone can still do so afterward with no
+   * re-consent and no id change — proven by an integration test against
+   * pre-migration fixture data." Every other Google-login test in this
+   * file inserts its fixture user with no linked_identities row at all -
+   * that exercises completeLogin's *fallback* branch (no link found), not
+   * the state every real pre-existing account is actually in after T04's
+   * backfill. This one runs the real backfill migration SQL against a
+   * hand-built pre-M13 fixture row, then drives the real HTTP callback -
+   * the "linked identity found" branch, and the one that matters for a
+   * production migration.
+   */
+  it('a pre-migration user, backfilled, logs in via Google afterward with the exact same id', async () => {
+    const readFileSync = (await import('node:fs')).readFileSync;
+    const { join } = await import('node:path');
+    const backfillSql = readFileSync(join(import.meta.dir, '../../../drizzle-sqlite/0031_backfill_google_linked_identities.sql'), 'utf8');
+
+    // A pre-M13 row: id IS the Google sub, no linked_identities row exists
+    // yet - exactly what every account looked like before this milestone.
+    const preMigrationGoogleId = '108234098234098234098';
+    await db.insert(schemaSqlite.users).values({
+      id: preMigrationGoogleId, email: 'pre-migration-user@example.com', name: 'Pre-Migration User', createdAt: new Date(1700000000000),
+    });
+
+    for (const statement of backfillSql.split('--> statement-breakpoint')) {
+      const trimmed = statement.trim();
+      if (trimmed) db.run(trimmed);
+    }
+
+    const linkRow = await db.select().from(schemaSqlite.linkedIdentities).where(eq(schemaSqlite.linkedIdentities.userId, preMigrationGoogleId));
+    expect(linkRow).toHaveLength(1); // the migration did its job before login is even attempted
+
+    const res = await loginViaGoogle({ id: preMigrationGoogleId, email: 'pre-migration-user@example.com' });
+    expect(res.status).toBe(302); // logs in successfully, no re-consent step exists to re-trigger
+
+    const session = verifySessionToken(parseSessionCookie(res.headers.get('set-cookie'))!);
+    expect(session?.userId).toBe(preMigrationGoogleId); // the exact same id, unchanged
+
+    const allUsers = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.id, preMigrationGoogleId));
+    expect(allUsers).toHaveLength(1); // no duplicate account was created either
+  });
+});
