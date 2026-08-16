@@ -147,7 +147,8 @@ export const permissions = sqliteTable("permissions", {
  * duplicated per-org is what lets `viewer-denial.test.ts`-style sweeps
  * reason about "the viewer role" as one thing.
  *
- * @knipignore - consumed starting T03 (seeding).
+ * Consumed starting T04: `policy.test.ts` seeds custom roles directly to
+ * exercise `can()` beyond the four system ones.
  */
 export const roles = sqliteTable("roles", {
   id: text("id").primaryKey(),
@@ -161,7 +162,7 @@ export const roles = sqliteTable("roles", {
   };
 });
 
-/** @knipignore - consumed starting T03 (seeding). */
+/** Consumed starting T04: `policy.ts` reads it to resolve a grant's permissions. */
 export const rolePermissions = sqliteTable("role_permissions", {
   roleId: text("role_id").notNull().references(() => roles.id),
   permissionKey: text("permission_key").notNull().references(() => permissions.key),
@@ -177,7 +178,8 @@ export const rolePermissions = sqliteTable("role_permissions", {
  * milestone's exit criteria actually ask for; nesting can be added later
  * without a breaking change if a real need shows up.
  *
- * @knipignore - consumed starting T07 (team CRUD).
+ * Consumed starting T04: `policy.test.ts` seeds teams directly to exercise
+ * `can()`'s team-derived-grant resolution. Real team CRUD is still T07.
  */
 export const teams = sqliteTable("teams", {
   id: text("id").primaryKey(),
@@ -191,7 +193,7 @@ export const teams = sqliteTable("teams", {
   };
 });
 
-/** @knipignore - consumed starting T07 (team CRUD). */
+/** Consumed starting T04: `policy.ts` reads it to resolve team-derived grants. */
 export const teamMembers = sqliteTable("team_members", {
   teamId: text("team_id").notNull().references(() => teams.id),
   userId: text("user_id").notNull().references(() => users.id),

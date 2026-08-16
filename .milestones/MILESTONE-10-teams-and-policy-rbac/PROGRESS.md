@@ -192,3 +192,67 @@
     if T04+ ever add a permission key.
 - **Next**: M10-T04 — implement `can(principal, scope, permission)` in
   `apps/backend/src/lib/policy.ts`.
+
+## M10-T04 — implement can(principal, scope, permission)
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**:
+  - `apps/backend/src/lib/policy.ts` — new. `can(db, principal, scope,
+    permission)` implements ADR-0013 §3's resolution algorithm: (1) a
+    direct grant at exactly this scope, (2) a team-derived grant via any
+    team `team_members` puts the principal in, (3) for `project` scope
+    only, the same two checks repeated at the project's owning
+    `organization` (`getProjectOrgId`, reused from `authz.ts`) - "an org
+    role reaches every project," preserved rather than narrowed. An agent
+    principal always resolves `false` - `can()` governs the human path
+    only (ADR-0013 Option 4); `authorizePrincipal` keeps branching to
+    ADR-0008's closed scope vocabulary for agents, unchanged.
+    `assertCan(db, principal, scope, permission)` is the `ConnectError`-
+    throwing wrapper T05 will call, mirroring `assertOrgAdmin`'s shape.
+  - `apps/backend/src/lib/policy.test.ts` — new, 18 tests covering every
+    resolution path named above plus the boundaries ADR-0013 is explicit
+    about: no cross-org leakage, no cross-project (sibling) leakage, a
+    project-scope grant does not reverse-satisfy an org-scope check,
+    removing a team membership removes the derived access, a custom
+    (non-system) role's exact permission composition, and `assertCan`'s
+    thrown-vs-resolved behavior.
+  - `apps/backend/src/db/schema.sqlite.ts` — removed the now-stale
+    `@knipignore` tags on `roles`/`role_permissions`/`teams`/
+    `team_members` (they gained real TS consumers: `policy.ts` itself for
+    `role_permissions`/`team_members`, `policy.test.ts`'s fixtures for
+    `roles`/`teams`). `permissions` keeps its tag - still consumed only by
+    the raw-SQL migration, no TS reader yet.
+- **Verified**:
+  - `bun test src/lib/policy.test.ts` — 18/18 pass, 100% function/line
+    coverage on `policy.ts`.
+  - `STANDALONE=true bun test` (full backend suite) — 819 pass, 0 fail (up
+    from 801 - the 18 new tests).
+  - `bunx knip` (from the repo root) — clean.
+  - `moon check --all` — 27/27 tasks green.
+- **Notes**:
+  - **A deliberate, ADR-literal scope-hierarchy decision, recorded in
+    `policy.ts`'s own doc comment**: `team` scope does **not** climb to its
+    owning `organization` the way `project` does. ADR-0013 §3 names only
+    project→org (and, later, org→parent-org) as ancestor edges; team is a
+    brand-new resource with no prior "org role reaches every team"
+    behavior to preserve, unlike project. Whether a given team RPC should
+    check `organization` scope, `team` scope, or both is therefore each
+    RPC's own mapping decision for T05/T07 to make, not something `can()`
+    decides for them by auto-climbing. `policy.test.ts` asserts this
+    boundary explicitly (an org-scope `role-owner` grant does not, by
+    itself, satisfy a `team`-scope check) so a future change here is a
+    visible, deliberate one.
+  - Organization→parent-organization ancestor climbing (a parent-org grant
+    reaching a descendant org) is explicitly **not** implemented - ADR-0013
+    §3 defers it to T09, which lifts the two-level nesting cap this schema
+    still has. There is no ancestor chain to climb yet; adding it before T09
+    would have nothing real to test against.
+  - Query shape is correctness-first, not yet optimized: one query for the
+    principal's team memberships, one for candidate grants (filtered to
+    matching scopes in application code, not SQL, since the scope set is
+    at most two entries), one for the permission lookup. T06 ("cache policy
+    resolution per request") is explicitly where this gets revisited: this
+    is the version it optimizes, not a placeholder to redo from scratch.
+- **Next**: M10-T05 — replace every `assertOrg*` call site with a `can`
+  check, mapping each RPC to its required permission.

@@ -90,7 +90,7 @@ SCIM provisioning, delegated administration.
 
 ### Enforce
 
-- [ ] **M10-T04** — Implement `can(principal, scope, permission)` with grant
+- [x] **M10-T04** — Implement `can(principal, scope, permission)` with grant
       resolution across organization hierarchy, team membership and direct grants.
       - Files: `apps/backend/src/lib/policy.ts`
       - Verify: unit tests cover every resolution path.
