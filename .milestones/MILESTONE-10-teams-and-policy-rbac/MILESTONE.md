@@ -1,13 +1,13 @@
 ---
 id: M10
 title: Teams & Policy-Based RBAC
-status: in-progress
+status: done
 goal: Roles and permissions are data rather than a hardcoded enum, teams group people below the organization, and access can be granted at project and team scope.
 depends_on: [M03, M04]
 surfaces: [backend, gui, cli, contract]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-16
-completed_at: null
+completed_at: 2026-08-17
 ---
 
 # M10 — Teams & Policy-Based RBAC
@@ -138,7 +138,7 @@ SCIM provisioning, delegated administration.
       - Files: `apps/gui/src/features/Teams/`
       - Verify: a team of 100 members is manageable.
 
-- [ ] **M10-T13** — Build the exhaustive authorization test matrix: every role ×
+- [x] **M10-T13** — Build the exhaustive authorization test matrix: every role ×
       every permission × every scope.
       - Files: `apps/backend/src/lib/policy.test.ts`
       - Verify: the matrix is generated, not hand-written, and fully passes.

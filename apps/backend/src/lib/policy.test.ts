@@ -1,9 +1,11 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { and, eq } from 'drizzle-orm';
 import { ConnectError, Code } from '@connectrpc/connect';
 import { setupIntegrationTest, seedUser, seedOrgWithAdmin, seedProject } from '../test/setup';
 import * as schema from '../db/schema.sqlite';
-import { can, assertCan } from './policy';
+import { can, assertCan, type Scope } from './policy';
 import { runWithRequestContext } from './requestContext';
 
 /** Counts every `db.select(...)` call made inside `fn`, without changing behavior. */
@@ -518,4 +520,105 @@ describe('can() - ancestor organization climbing (T09)', () => {
     // still applies to itself, still returns true for org-cycle-a.
     expect(await can(db, { kind: 'user', userId: 'user-1' }, { type: 'organization', id: 'org-cycle-a' }, 'org:read')).toBe(true);
   });
+});
+
+// ============================================================================
+// M10-T13: the exhaustive role x permission x scope matrix.
+// ============================================================================
+
+/**
+ * The 32-key permission vocabulary, read directly from the seed migration
+ * rather than retyped into a second list here. A key added, renamed, or
+ * removed in `0034_seed_system_roles_and_migrate_grants.sql` is picked up
+ * the next time this file runs - a hand-copied array would instead let the
+ * matrix quietly test a stale vocabulary the moment one side of a rename
+ * shipped without the other, the exact drift this task exists to close off.
+ */
+function parsePermissionKeys(sql: string): string[] {
+  const insertBlock = sql.match(/INSERT OR IGNORE INTO permissions \(key, description\) VALUES\s*([\s\S]*?);/);
+  if (!insertBlock) {
+    throw new Error('could not find the permissions INSERT block in 0034_seed_system_roles_and_migrate_grants.sql - the matrix has nothing to generate from');
+  }
+  const keys = [...insertBlock[1]!.matchAll(/\('([\w:]+)',/g)].map((m) => m[1]!);
+  if (keys.length === 0) {
+    throw new Error('parsed zero permission keys out of the seed migration - the regex above no longer matches its format');
+  }
+  return keys;
+}
+
+const SEED_MIGRATION_SQL = readFileSync(
+  join(import.meta.dir, '../../drizzle-sqlite/0034_seed_system_roles_and_migrate_grants.sql'),
+  'utf8',
+);
+const PERMISSION_KEYS = parsePermissionKeys(SEED_MIGRATION_SQL);
+
+/**
+ * Each system role's composition rule, restated from the same migration's
+ * own `SELECT ... FROM permissions WHERE ...` clauses that build
+ * `role_permissions` - viewer is every `*:read` key, member adds every
+ * `*:write` key, admin adds every `*:admin` key plus `role:manage`, and
+ * owner is every key that exists. `migrate-seed-system-roles-and-grants
+ * .test.ts` already proves the *seeded data* matches this composition
+ * (`role-viewer` holds exactly 13 rows, etc.) - what that file cannot
+ * prove is that `can()` itself, exercised through a real grant at every
+ * scope type, actually resolves each of those 128 (role, permission)
+ * pairs the way the data says it should. That gap is this matrix's job.
+ */
+const ROLE_HOLDS: Record<string, (key: string) => boolean> = {
+  'role-viewer': (key) => key.endsWith(':read'),
+  'role-member': (key) => key.endsWith(':read') || key.endsWith(':write'),
+  'role-admin': (key) => key.endsWith(':read') || key.endsWith(':write') || key.endsWith(':admin') || key === 'role:manage',
+  'role-owner': () => true,
+};
+
+const SCOPE_TYPES = ['organization', 'team', 'project'] as const;
+
+describe('can() - exhaustive role x permission x scope matrix (M10-T13)', () => {
+  // 4 roles x 3 scope types = 12 combinations, each seeded once in its own
+  // fresh database and checked against every one of the 32 permission keys -
+  // 384 generated assertions from 12 fixtures, not 384 hand-written ones.
+  // `it.each` builds one real, individually-reportable test case per
+  // permission key, so a single wrong resolution names exactly which role,
+  // scope, and permission disagreed with the seed data instead of failing
+  // one giant assertion that only says "the matrix is wrong somewhere."
+  for (const roleId of Object.keys(ROLE_HOLDS)) {
+    for (const scopeType of SCOPE_TYPES) {
+      describe(`${roleId} at ${scopeType} scope`, () => {
+        let db: any;
+        let userId: string;
+        let scope: Scope;
+
+        beforeAll(async () => {
+          ({ db } = await setupIntegrationTest());
+          const orgId = `org-${roleId}-${scopeType}`;
+          userId = `user-${roleId}-${scopeType}`;
+          // seedBareOrgAndUser, not seedOrgWithAdmin: an implicit admin
+          // organization_members row would satisfy every permission on its
+          // own regardless of which role this block is meant to isolate -
+          // the same reasoning this file's own top-of-file comment gives
+          // for using it everywhere except the fallback's dedicated tests.
+          await seedBareOrgAndUser(db, { orgId, userId });
+
+          if (scopeType === 'organization') {
+            scope = { type: 'organization', id: orgId };
+          } else if (scopeType === 'team') {
+            const teamId = `team-${roleId}-${scopeType}`;
+            await seedTeam(db, { teamId, orgId });
+            scope = { type: 'team', id: teamId };
+          } else {
+            const projectId = `project-${roleId}-${scopeType}`;
+            await seedProject(db, { orgId, userId, templateId: `${projectId}-tpl`, projectId });
+            scope = { type: 'project', id: projectId };
+          }
+
+          await seedGrant(db, { subjectId: userId, scopeType, scopeId: scope.id, roleId });
+        });
+
+        it.each(PERMISSION_KEYS)('resolves %s exactly as the seed migration composes it', async (permissionKey) => {
+          const expected = ROLE_HOLDS[roleId]!(permissionKey);
+          expect(await can(db, { kind: 'user', userId }, scope, permissionKey)).toBe(expected);
+        });
+      });
+    }
+  }
 });

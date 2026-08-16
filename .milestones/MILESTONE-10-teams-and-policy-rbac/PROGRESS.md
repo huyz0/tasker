@@ -950,3 +950,78 @@
     *creates* one from the GUI. Named rather than silently narrowed.
 - **Next**: M10-T13 — Build the exhaustive authorization test matrix:
   every role x permission x scope, generated rather than hand-enumerated.
+
+## M10-T13 — the exhaustive role x permission x scope matrix
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**:
+  - `apps/backend/src/lib/policy.test.ts` — new section, appended after
+    the file's existing resolution-path tests. `parsePermissionKeys()`
+    reads and regex-parses the 32-key vocabulary directly out of
+    `0034_seed_system_roles_and_migrate_grants.sql`'s own `INSERT INTO
+    permissions` statement, rather than a second hand-typed array that
+    could drift from the migration the moment one side of a rename
+    shipped without the other - "generated, not hand-written" applies to
+    the input vocabulary as much as to the test cases themselves.
+    `ROLE_HOLDS` restates each system role's composition as a predicate
+    over a permission key, mirroring the same migration's `role_permissions`
+    `SELECT ... WHERE` clauses verbatim (viewer = `*:read`; member adds
+    `*:write`; admin adds `*:admin` and `role:manage`; owner = everything).
+    A nested loop over the 4 system roles x 3 scope types (12
+    combinations) seeds one real grant per combination in `beforeAll`,
+    then `it.each(PERMISSION_KEYS)` inside each generates 32 individually-
+    reportable test cases checking `can()` against every permission key -
+    384 generated assertions from 12 fixtures, not 384 fixtures or 384
+    hand-written `it()` blocks. `seedBareOrgAndUser` (this file's own
+    grants-only fixture, not `seedOrgWithAdmin`) keeps each combination
+    isolated to exactly the one grant under test, same reasoning the
+    file's existing tests already established.
+- **Verified**:
+  - `STANDALONE=true bun test src/lib/policy.test.ts` — 420/420 pass (36
+    pre-existing + 384 generated), 100% coverage on `policy.ts`, 820ms.
+  - `STANDALONE=true bun test` (full backend suite) — 1270/1270 pass (up
+    from 886), 0 fail.
+  - `bun run scripts/migrate-roles.ts --dry-run` (M10's own verification
+    checklist) — 110,008 `organization_members` rows, 110,008 matching
+    grants already present, 0 planned inserts/updates/deletes: no drift
+    between the two representations `can()`'s fallback (T05) treats as
+    equivalent.
+  - `bunx knip` (repo root) — clean.
+  - `moon check --all` — 27/27 tasks green.
+- **Notes**:
+  - **What this proves that `migrate-seed-system-roles-and-grants.test.ts`
+    (T03) does not**: that file already asserts the *seeded data* has the
+    right shape (`role-viewer` holds exactly 13 `role_permissions` rows,
+    etc.) - a static-data check. This matrix exercises `can()` itself,
+    the runtime function every handler actually calls, through a real
+    grant at each of the three scope types it resolves against. A
+    regression in `can()`'s scope-matching logic that happened to leave
+    the seeded data untouched would pass T03's tests and fail this one -
+    they check different layers, and both are needed.
+  - Only the 4 system roles are covered, not custom roles - ADR-0013's
+    permission *vocabulary* and *composition rules* are what a role's
+    identity is checked against here, and a custom role is by definition
+    an arbitrary subset of that same vocabulary, already exercised by
+    `seedCustomRole`'s use elsewhere in this file. Generating 32 x (every
+    possible subset) would test the same `matchingGrants`/`heldPermissions`
+    code path the system-role matrix already exercises exhaustively, for
+    no additional coverage.
+  - Team-derived grants (a role held via team membership rather than a
+    direct grant) and the `organization_members` fallback path are each
+    already covered by this file's earlier, hand-written tests and were
+    deliberately not re-derived into the matrix - T13's own file scope
+    and verify line name the resolution *outcome* (role x permission x
+    scope), not a second copy of every resolution *path* T04/T05 already
+    built a dedicated test for.
+- **M10 CLOSED — 13/13 tasks, matching every exit criterion in this
+  milestone's own §6 verification checklist.** Together with M13
+  (closed 2026-08-16), this completes the three-part goal this delivery
+  effort was scoped against from the start: local username/password
+  accounts with external auth (Google) as an optional, disable-able
+  addition (M13); teams as a first-class grouping (M10-T07/T08/T12);
+  and a real, policy-based role and permission-management system
+  (ADR-0013, M10-T01 through T06 and T09-T11, T13). `STATE.md` records
+  the milestone-level closure; M08/M09/M11/M12 remain queued in their
+  prior order, unaffected by this closure and outside this delivery
+  effort's original scope.
