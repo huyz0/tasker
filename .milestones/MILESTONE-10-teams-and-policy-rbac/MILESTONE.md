@@ -77,7 +77,7 @@ SCIM provisioning, delegated administration.
         numbering is first-come, ids are never reused)
       - Verify: the ADR enumerates every permission key.
 
-- [ ] **M10-T02** — Add `roles`, `permissions`, `role_permissions`, `teams`,
+- [x] **M10-T02** — Add `roles`, `permissions`, `role_permissions`, `teams`,
       `team_members` and `grants(subject, subject_type, scope, scope_id, role_id)`
       to both dialects with migrations.
       - Files: `db/schema.*.ts`, `drizzle-sqlite/`, `drizzle-mysql/`

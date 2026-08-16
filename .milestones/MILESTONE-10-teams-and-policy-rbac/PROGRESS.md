@@ -42,3 +42,59 @@
     should inherit.
 - **Next**: M10-T02 — `roles`/`permissions`/`role_permissions`/`teams`/
   `team_members`/`grants` schema, both dialects.
+
+## M10-T02 — roles/permissions/teams/grants schema
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**:
+  - `apps/backend/src/db/schema.sqlite.ts`, `apps/backend/src/db/schema.mysql.ts`
+    — six new tables per ADR-0013: `permissions` (key/description),
+    `roles` (nullable `orgId` = system role), `role_permissions`
+    (composite PK join), `teams` (flat, org-scoped, soft-delete),
+    `team_members` (composite PK join, `userId` indexed), `grants`
+    (`subjectType`/`subjectId`, `scopeType`/`scopeId`, `roleId` — the one
+    table `can()` reads).
+  - `apps/backend/drizzle-sqlite/0033_roles_teams_grants.sql`,
+    `apps/backend/drizzle-mysql/0020_roles_teams_grants.sql` — hand-written
+    (not `drizzle-kit generate`, per every migration since 0028's header
+    comment — the tool would re-walk the stale 0023 snapshot and re-propose
+    0024-0032's already-applied changes alongside this one). Both journals
+    (`meta/_journal.json`) registered by hand to match.
+  - `apps/backend/src/db/migrate-roles-teams-grants.test.ts` — new,
+    23 tests: every table's PK/composite-PK/FK/NOT NULL/index asserted
+    against an in-memory SQLite DB migrated from the real 0033 SQL file
+    (same pattern as M13-T03's `migrate-password-credentials-linked-
+    identities.test.ts`), plus four structural assertions against the
+    MySQL SQL text (table presence, the real `enum(...)` columns MySQL
+    gets where SQLite deliberately stays plain text, composite-PK join
+    tables, no leaked catch-up statements).
+- **Verified**:
+  - `STANDALONE=true bun test src/db/indexCoverage.test.ts` — SQLite
+    migrations to 0033 apply cleanly.
+  - `TASKER_MYSQL_INTEGRATION=1 bun test src/db/db.mysql.test.ts` against
+    the live `docker compose` MySQL container — migrations to 0020 apply
+    cleanly; `DESCRIBE` on all six tables via `docker exec` confirms the
+    live shape matches the migration SQL, including the `enum('user',
+    'team')`/`enum('organization','team','project')` columns.
+  - `bun test src/db/migrate-roles-teams-grants.test.ts` — 23/23 pass.
+  - `STANDALONE=true bun test` (full backend suite) — 783 pass, 0 fail.
+  - `bunx knip` — clean; the six new exports carry `@knipignore` (JSDoc
+    block form — a `//` line comment does *not* register with knip, caught
+    by re-running after the first attempt used the wrong comment style),
+    each naming the task that removes the tag (T03 for permissions/roles/
+    role_permissions, T04 for grants, T07 for teams/team_members).
+  - `moon run tasker:spec-drift` — 0 drift (no new dependency, nothing to
+    declare).
+- **Notes**:
+  - `grants.subjectType`/`scopeType` are plain `text` in SQLite, not a
+    `CHECK`-constrained enum, deliberately matching this schema's existing
+    enum-as-text convention (`organization_members.role`,
+    `remote_pull_requests.status`) — validated at the app layer (`can()`),
+    not the DB. MySQL enforces both as a real `enum(...)` column, which is
+    the dialect's existing normal asymmetry, not new drift introduced here.
+  - `roles.orgId` has no `NOT NULL` — a NULL `orgId` *is* the system-role
+    marker (ADR-0013 Option 5), not an omission.
+- **Next**: M10-T03 — seed owner/admin/member/viewer as immutable system
+  roles, migrate `organization_members.role` to `grants` rows,
+  `scripts/migrate-roles.ts`.
