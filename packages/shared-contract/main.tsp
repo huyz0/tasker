@@ -1722,3 +1722,118 @@ interface TeamService {
   removeTeamMember(request: RemoveTeamMemberRequest): RemoveTeamMemberResponse;
   listTeamMembers(request: ListTeamMembersRequest): ListTeamMembersResponse;
 }
+
+// ==== Roles, permissions and grants (M10-T11, ADR-0013) ====
+
+model Permission {
+  @field(1) key: string;
+  @field(2) description: string;
+}
+
+model Role {
+  @field(1) id: string;
+
+  // Empty string for a system role (owner/admin/member/viewer) - it has no
+  // owning organization, the same convention `deletedAt`/`username` etc.
+  // already use for "this field does not apply here".
+  @field(2) orgId: string;
+
+  @field(3) name: string;
+  @field(4) isSystem: boolean;
+  @field(5) permissionKeys: string[];
+  @field(6) createdAt: string;
+}
+
+model Grant {
+  @field(1) id: string;
+  @field(2) subjectType: string; // 'user' | 'team'
+  @field(3) subjectId: string;
+  @field(4) scopeType: string; // 'organization' | 'team' | 'project'
+  @field(5) scopeId: string;
+  @field(6) roleId: string;
+  @field(7) roleName: string;
+  @field(8) createdAt: string;
+}
+
+model ListPermissionsRequest {
+  @field(1) orgId: string;
+}
+model ListPermissionsResponse {
+  @field(1) permissions: Permission[];
+}
+
+model ListRolesRequest {
+  @field(1) orgId: string;
+  @field(2) page?: PageRequest;
+}
+model ListRolesResponse {
+  @field(1) roles: Role[];
+  @field(2) page?: PageResponse;
+}
+
+model CreateRoleRequest {
+  @field(1) orgId: string;
+  @field(2) name: string;
+  @field(3) permissionKeys: string[];
+}
+model CreateRoleResponse {
+  @field(1) role: Role;
+}
+
+model UpdateRoleRequest {
+  @field(1) roleId: string;
+  @field(2) name?: string;
+
+  // Replaces the role's entire permission set when present - the GUI's
+  // matrix always sends the full set it renders, never a delta.
+  @field(3) permissionKeys?: string[];
+}
+model UpdateRoleResponse {
+  @field(1) role: Role;
+}
+
+model DeleteRoleRequest {
+  @field(1) roleId: string;
+}
+model DeleteRoleResponse {
+  @field(1) success: boolean;
+}
+
+model GrantRoleRequest {
+  @field(1) subjectType: string;
+  @field(2) subjectId: string;
+  @field(3) scopeType: string;
+  @field(4) scopeId: string;
+  @field(5) roleId: string;
+}
+model GrantRoleResponse {
+  @field(1) grant: Grant;
+}
+
+model RevokeGrantRequest {
+  @field(1) grantId: string;
+}
+model RevokeGrantResponse {
+  @field(1) success: boolean;
+}
+
+model ListGrantsRequest {
+  @field(1) scopeType: string;
+  @field(2) scopeId: string;
+  @field(3) page?: PageRequest;
+}
+model ListGrantsResponse {
+  @field(1) grants: Grant[];
+  @field(2) page?: PageResponse;
+}
+
+interface RoleService {
+  listPermissions(request: ListPermissionsRequest): ListPermissionsResponse;
+  listRoles(request: ListRolesRequest): ListRolesResponse;
+  createRole(request: CreateRoleRequest): CreateRoleResponse;
+  updateRole(request: UpdateRoleRequest): UpdateRoleResponse;
+  deleteRole(request: DeleteRoleRequest): DeleteRoleResponse;
+  grantRole(request: GrantRoleRequest): GrantRoleResponse;
+  revokeGrant(request: RevokeGrantRequest): RevokeGrantResponse;
+  listGrants(request: ListGrantsRequest): ListGrantsResponse;
+}

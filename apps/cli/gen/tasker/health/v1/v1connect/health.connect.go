@@ -53,6 +53,8 @@ const (
 	DashboardServiceName = "tasker.health.v1.DashboardService"
 	// TeamServiceName is the fully-qualified name of the TeamService service.
 	TeamServiceName = "tasker.health.v1.TeamService"
+	// RoleServiceName is the fully-qualified name of the RoleService service.
+	RoleServiceName = "tasker.health.v1.RoleService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -370,6 +372,23 @@ const (
 	// TeamServiceListTeamMembersProcedure is the fully-qualified name of the TeamService's
 	// ListTeamMembers RPC.
 	TeamServiceListTeamMembersProcedure = "/tasker.health.v1.TeamService/ListTeamMembers"
+	// RoleServiceListPermissionsProcedure is the fully-qualified name of the RoleService's
+	// ListPermissions RPC.
+	RoleServiceListPermissionsProcedure = "/tasker.health.v1.RoleService/ListPermissions"
+	// RoleServiceListRolesProcedure is the fully-qualified name of the RoleService's ListRoles RPC.
+	RoleServiceListRolesProcedure = "/tasker.health.v1.RoleService/ListRoles"
+	// RoleServiceCreateRoleProcedure is the fully-qualified name of the RoleService's CreateRole RPC.
+	RoleServiceCreateRoleProcedure = "/tasker.health.v1.RoleService/CreateRole"
+	// RoleServiceUpdateRoleProcedure is the fully-qualified name of the RoleService's UpdateRole RPC.
+	RoleServiceUpdateRoleProcedure = "/tasker.health.v1.RoleService/UpdateRole"
+	// RoleServiceDeleteRoleProcedure is the fully-qualified name of the RoleService's DeleteRole RPC.
+	RoleServiceDeleteRoleProcedure = "/tasker.health.v1.RoleService/DeleteRole"
+	// RoleServiceGrantRoleProcedure is the fully-qualified name of the RoleService's GrantRole RPC.
+	RoleServiceGrantRoleProcedure = "/tasker.health.v1.RoleService/GrantRole"
+	// RoleServiceRevokeGrantProcedure is the fully-qualified name of the RoleService's RevokeGrant RPC.
+	RoleServiceRevokeGrantProcedure = "/tasker.health.v1.RoleService/RevokeGrant"
+	// RoleServiceListGrantsProcedure is the fully-qualified name of the RoleService's ListGrants RPC.
+	RoleServiceListGrantsProcedure = "/tasker.health.v1.RoleService/ListGrants"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -501,6 +520,15 @@ var (
 	teamServiceAddTeamMemberMethodDescriptor                  = teamServiceServiceDescriptor.Methods().ByName("AddTeamMember")
 	teamServiceRemoveTeamMemberMethodDescriptor               = teamServiceServiceDescriptor.Methods().ByName("RemoveTeamMember")
 	teamServiceListTeamMembersMethodDescriptor                = teamServiceServiceDescriptor.Methods().ByName("ListTeamMembers")
+	roleServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("RoleService")
+	roleServiceListPermissionsMethodDescriptor                = roleServiceServiceDescriptor.Methods().ByName("ListPermissions")
+	roleServiceListRolesMethodDescriptor                      = roleServiceServiceDescriptor.Methods().ByName("ListRoles")
+	roleServiceCreateRoleMethodDescriptor                     = roleServiceServiceDescriptor.Methods().ByName("CreateRole")
+	roleServiceUpdateRoleMethodDescriptor                     = roleServiceServiceDescriptor.Methods().ByName("UpdateRole")
+	roleServiceDeleteRoleMethodDescriptor                     = roleServiceServiceDescriptor.Methods().ByName("DeleteRole")
+	roleServiceGrantRoleMethodDescriptor                      = roleServiceServiceDescriptor.Methods().ByName("GrantRole")
+	roleServiceRevokeGrantMethodDescriptor                    = roleServiceServiceDescriptor.Methods().ByName("RevokeGrant")
+	roleServiceListGrantsMethodDescriptor                     = roleServiceServiceDescriptor.Methods().ByName("ListGrants")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -4060,4 +4088,254 @@ func (UnimplementedTeamServiceHandler) RemoveTeamMember(context.Context, *connec
 
 func (UnimplementedTeamServiceHandler) ListTeamMembers(context.Context, *connect.Request[v1.ListTeamMembersRequest]) (*connect.Response[v1.ListTeamMembersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TeamService.ListTeamMembers is not implemented"))
+}
+
+// RoleServiceClient is a client for the tasker.health.v1.RoleService service.
+type RoleServiceClient interface {
+	ListPermissions(context.Context, *connect.Request[v1.ListPermissionsRequest]) (*connect.Response[v1.ListPermissionsResponse], error)
+	ListRoles(context.Context, *connect.Request[v1.ListRolesRequest]) (*connect.Response[v1.ListRolesResponse], error)
+	CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error)
+	UpdateRole(context.Context, *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error)
+	DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error)
+	GrantRole(context.Context, *connect.Request[v1.GrantRoleRequest]) (*connect.Response[v1.GrantRoleResponse], error)
+	RevokeGrant(context.Context, *connect.Request[v1.RevokeGrantRequest]) (*connect.Response[v1.RevokeGrantResponse], error)
+	ListGrants(context.Context, *connect.Request[v1.ListGrantsRequest]) (*connect.Response[v1.ListGrantsResponse], error)
+}
+
+// NewRoleServiceClient constructs a client for the tasker.health.v1.RoleService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewRoleServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RoleServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &roleServiceClient{
+		listPermissions: connect.NewClient[v1.ListPermissionsRequest, v1.ListPermissionsResponse](
+			httpClient,
+			baseURL+RoleServiceListPermissionsProcedure,
+			connect.WithSchema(roleServiceListPermissionsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listRoles: connect.NewClient[v1.ListRolesRequest, v1.ListRolesResponse](
+			httpClient,
+			baseURL+RoleServiceListRolesProcedure,
+			connect.WithSchema(roleServiceListRolesMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		createRole: connect.NewClient[v1.CreateRoleRequest, v1.CreateRoleResponse](
+			httpClient,
+			baseURL+RoleServiceCreateRoleProcedure,
+			connect.WithSchema(roleServiceCreateRoleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateRole: connect.NewClient[v1.UpdateRoleRequest, v1.UpdateRoleResponse](
+			httpClient,
+			baseURL+RoleServiceUpdateRoleProcedure,
+			connect.WithSchema(roleServiceUpdateRoleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deleteRole: connect.NewClient[v1.DeleteRoleRequest, v1.DeleteRoleResponse](
+			httpClient,
+			baseURL+RoleServiceDeleteRoleProcedure,
+			connect.WithSchema(roleServiceDeleteRoleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		grantRole: connect.NewClient[v1.GrantRoleRequest, v1.GrantRoleResponse](
+			httpClient,
+			baseURL+RoleServiceGrantRoleProcedure,
+			connect.WithSchema(roleServiceGrantRoleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		revokeGrant: connect.NewClient[v1.RevokeGrantRequest, v1.RevokeGrantResponse](
+			httpClient,
+			baseURL+RoleServiceRevokeGrantProcedure,
+			connect.WithSchema(roleServiceRevokeGrantMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listGrants: connect.NewClient[v1.ListGrantsRequest, v1.ListGrantsResponse](
+			httpClient,
+			baseURL+RoleServiceListGrantsProcedure,
+			connect.WithSchema(roleServiceListGrantsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// roleServiceClient implements RoleServiceClient.
+type roleServiceClient struct {
+	listPermissions *connect.Client[v1.ListPermissionsRequest, v1.ListPermissionsResponse]
+	listRoles       *connect.Client[v1.ListRolesRequest, v1.ListRolesResponse]
+	createRole      *connect.Client[v1.CreateRoleRequest, v1.CreateRoleResponse]
+	updateRole      *connect.Client[v1.UpdateRoleRequest, v1.UpdateRoleResponse]
+	deleteRole      *connect.Client[v1.DeleteRoleRequest, v1.DeleteRoleResponse]
+	grantRole       *connect.Client[v1.GrantRoleRequest, v1.GrantRoleResponse]
+	revokeGrant     *connect.Client[v1.RevokeGrantRequest, v1.RevokeGrantResponse]
+	listGrants      *connect.Client[v1.ListGrantsRequest, v1.ListGrantsResponse]
+}
+
+// ListPermissions calls tasker.health.v1.RoleService.ListPermissions.
+func (c *roleServiceClient) ListPermissions(ctx context.Context, req *connect.Request[v1.ListPermissionsRequest]) (*connect.Response[v1.ListPermissionsResponse], error) {
+	return c.listPermissions.CallUnary(ctx, req)
+}
+
+// ListRoles calls tasker.health.v1.RoleService.ListRoles.
+func (c *roleServiceClient) ListRoles(ctx context.Context, req *connect.Request[v1.ListRolesRequest]) (*connect.Response[v1.ListRolesResponse], error) {
+	return c.listRoles.CallUnary(ctx, req)
+}
+
+// CreateRole calls tasker.health.v1.RoleService.CreateRole.
+func (c *roleServiceClient) CreateRole(ctx context.Context, req *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error) {
+	return c.createRole.CallUnary(ctx, req)
+}
+
+// UpdateRole calls tasker.health.v1.RoleService.UpdateRole.
+func (c *roleServiceClient) UpdateRole(ctx context.Context, req *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error) {
+	return c.updateRole.CallUnary(ctx, req)
+}
+
+// DeleteRole calls tasker.health.v1.RoleService.DeleteRole.
+func (c *roleServiceClient) DeleteRole(ctx context.Context, req *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error) {
+	return c.deleteRole.CallUnary(ctx, req)
+}
+
+// GrantRole calls tasker.health.v1.RoleService.GrantRole.
+func (c *roleServiceClient) GrantRole(ctx context.Context, req *connect.Request[v1.GrantRoleRequest]) (*connect.Response[v1.GrantRoleResponse], error) {
+	return c.grantRole.CallUnary(ctx, req)
+}
+
+// RevokeGrant calls tasker.health.v1.RoleService.RevokeGrant.
+func (c *roleServiceClient) RevokeGrant(ctx context.Context, req *connect.Request[v1.RevokeGrantRequest]) (*connect.Response[v1.RevokeGrantResponse], error) {
+	return c.revokeGrant.CallUnary(ctx, req)
+}
+
+// ListGrants calls tasker.health.v1.RoleService.ListGrants.
+func (c *roleServiceClient) ListGrants(ctx context.Context, req *connect.Request[v1.ListGrantsRequest]) (*connect.Response[v1.ListGrantsResponse], error) {
+	return c.listGrants.CallUnary(ctx, req)
+}
+
+// RoleServiceHandler is an implementation of the tasker.health.v1.RoleService service.
+type RoleServiceHandler interface {
+	ListPermissions(context.Context, *connect.Request[v1.ListPermissionsRequest]) (*connect.Response[v1.ListPermissionsResponse], error)
+	ListRoles(context.Context, *connect.Request[v1.ListRolesRequest]) (*connect.Response[v1.ListRolesResponse], error)
+	CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error)
+	UpdateRole(context.Context, *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error)
+	DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error)
+	GrantRole(context.Context, *connect.Request[v1.GrantRoleRequest]) (*connect.Response[v1.GrantRoleResponse], error)
+	RevokeGrant(context.Context, *connect.Request[v1.RevokeGrantRequest]) (*connect.Response[v1.RevokeGrantResponse], error)
+	ListGrants(context.Context, *connect.Request[v1.ListGrantsRequest]) (*connect.Response[v1.ListGrantsResponse], error)
+}
+
+// NewRoleServiceHandler builds an HTTP handler from the service implementation. It returns the path
+// on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewRoleServiceHandler(svc RoleServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	roleServiceListPermissionsHandler := connect.NewUnaryHandler(
+		RoleServiceListPermissionsProcedure,
+		svc.ListPermissions,
+		connect.WithSchema(roleServiceListPermissionsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	roleServiceListRolesHandler := connect.NewUnaryHandler(
+		RoleServiceListRolesProcedure,
+		svc.ListRoles,
+		connect.WithSchema(roleServiceListRolesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	roleServiceCreateRoleHandler := connect.NewUnaryHandler(
+		RoleServiceCreateRoleProcedure,
+		svc.CreateRole,
+		connect.WithSchema(roleServiceCreateRoleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	roleServiceUpdateRoleHandler := connect.NewUnaryHandler(
+		RoleServiceUpdateRoleProcedure,
+		svc.UpdateRole,
+		connect.WithSchema(roleServiceUpdateRoleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	roleServiceDeleteRoleHandler := connect.NewUnaryHandler(
+		RoleServiceDeleteRoleProcedure,
+		svc.DeleteRole,
+		connect.WithSchema(roleServiceDeleteRoleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	roleServiceGrantRoleHandler := connect.NewUnaryHandler(
+		RoleServiceGrantRoleProcedure,
+		svc.GrantRole,
+		connect.WithSchema(roleServiceGrantRoleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	roleServiceRevokeGrantHandler := connect.NewUnaryHandler(
+		RoleServiceRevokeGrantProcedure,
+		svc.RevokeGrant,
+		connect.WithSchema(roleServiceRevokeGrantMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	roleServiceListGrantsHandler := connect.NewUnaryHandler(
+		RoleServiceListGrantsProcedure,
+		svc.ListGrants,
+		connect.WithSchema(roleServiceListGrantsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.RoleService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case RoleServiceListPermissionsProcedure:
+			roleServiceListPermissionsHandler.ServeHTTP(w, r)
+		case RoleServiceListRolesProcedure:
+			roleServiceListRolesHandler.ServeHTTP(w, r)
+		case RoleServiceCreateRoleProcedure:
+			roleServiceCreateRoleHandler.ServeHTTP(w, r)
+		case RoleServiceUpdateRoleProcedure:
+			roleServiceUpdateRoleHandler.ServeHTTP(w, r)
+		case RoleServiceDeleteRoleProcedure:
+			roleServiceDeleteRoleHandler.ServeHTTP(w, r)
+		case RoleServiceGrantRoleProcedure:
+			roleServiceGrantRoleHandler.ServeHTTP(w, r)
+		case RoleServiceRevokeGrantProcedure:
+			roleServiceRevokeGrantHandler.ServeHTTP(w, r)
+		case RoleServiceListGrantsProcedure:
+			roleServiceListGrantsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedRoleServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedRoleServiceHandler struct{}
+
+func (UnimplementedRoleServiceHandler) ListPermissions(context.Context, *connect.Request[v1.ListPermissionsRequest]) (*connect.Response[v1.ListPermissionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RoleService.ListPermissions is not implemented"))
+}
+
+func (UnimplementedRoleServiceHandler) ListRoles(context.Context, *connect.Request[v1.ListRolesRequest]) (*connect.Response[v1.ListRolesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RoleService.ListRoles is not implemented"))
+}
+
+func (UnimplementedRoleServiceHandler) CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RoleService.CreateRole is not implemented"))
+}
+
+func (UnimplementedRoleServiceHandler) UpdateRole(context.Context, *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RoleService.UpdateRole is not implemented"))
+}
+
+func (UnimplementedRoleServiceHandler) DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RoleService.DeleteRole is not implemented"))
+}
+
+func (UnimplementedRoleServiceHandler) GrantRole(context.Context, *connect.Request[v1.GrantRoleRequest]) (*connect.Response[v1.GrantRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RoleService.GrantRole is not implemented"))
+}
+
+func (UnimplementedRoleServiceHandler) RevokeGrant(context.Context, *connect.Request[v1.RevokeGrantRequest]) (*connect.Response[v1.RevokeGrantResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RoleService.RevokeGrant is not implemented"))
+}
+
+func (UnimplementedRoleServiceHandler) ListGrants(context.Context, *connect.Request[v1.ListGrantsRequest]) (*connect.Response[v1.ListGrantsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RoleService.ListGrants is not implemented"))
 }

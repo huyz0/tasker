@@ -1560,3 +1560,110 @@ service TeamService {
   rpc RemoveTeamMember(RemoveTeamMemberRequest) returns (RemoveTeamMemberResponse);
   rpc ListTeamMembers(ListTeamMembersRequest) returns (ListTeamMembersResponse);
 }
+
+// ==== Roles, permissions and grants (M10-T11, ADR-0013) ====
+
+message Permission {
+  string key = 1;
+  string description = 2;
+}
+
+message Role {
+  string id = 1;
+  string orgId = 2;
+  string name = 3;
+  bool isSystem = 4;
+  repeated string permissionKeys = 5;
+  string createdAt = 6;
+}
+
+message Grant {
+  string id = 1;
+  string subjectType = 2;
+  string subjectId = 3;
+  string scopeType = 4;
+  string scopeId = 5;
+  string roleId = 6;
+  string roleName = 7;
+  string createdAt = 8;
+}
+
+message ListPermissionsRequest {
+  string orgId = 1;
+}
+message ListPermissionsResponse {
+  repeated Permission permissions = 1;
+}
+
+message ListRolesRequest {
+  string orgId = 1;
+  PageRequest page = 2;
+}
+message ListRolesResponse {
+  repeated Role roles = 1;
+  PageResponse page = 2;
+}
+
+message CreateRoleRequest {
+  string orgId = 1;
+  string name = 2;
+  repeated string permissionKeys = 3;
+}
+message CreateRoleResponse {
+  Role role = 1;
+}
+
+message UpdateRoleRequest {
+  string roleId = 1;
+  string name = 2;
+  repeated string permissionKeys = 3;
+}
+message UpdateRoleResponse {
+  Role role = 1;
+}
+
+message DeleteRoleRequest {
+  string roleId = 1;
+}
+message DeleteRoleResponse {
+  bool success = 1;
+}
+
+message GrantRoleRequest {
+  string subjectType = 1;
+  string subjectId = 2;
+  string scopeType = 3;
+  string scopeId = 4;
+  string roleId = 5;
+}
+message GrantRoleResponse {
+  Grant grant = 1;
+}
+
+message RevokeGrantRequest {
+  string grantId = 1;
+}
+message RevokeGrantResponse {
+  bool success = 1;
+}
+
+message ListGrantsRequest {
+  string scopeType = 1;
+  string scopeId = 2;
+  PageRequest page = 3;
+}
+message ListGrantsResponse {
+  repeated Grant grants = 1;
+  PageResponse page = 2;
+}
+
+service RoleService {
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse);
+  rpc ListRoles(ListRolesRequest) returns (ListRolesResponse);
+  rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse);
+  rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse);
+  rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse);
+  rpc GrantRole(GrantRoleRequest) returns (GrantRoleResponse);
+  rpc RevokeGrant(RevokeGrantRequest) returns (RevokeGrantResponse);
+  rpc ListGrants(ListGrantsRequest) returns (ListGrantsResponse);
+}

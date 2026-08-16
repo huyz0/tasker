@@ -123,13 +123,8 @@ export const organizationMembers = sqliteTable("organization_members", {
  * and an admin-facing "list every permission" query needs no hardcoded
  * array kept in sync with the ADR by hand.
  *
- * `permissions`, `roles`, `rolePermissions`, `teams`, `teamMembers`, and
- * `grants` carry no TS-level consumer yet - T03 seeds the permission
- * vocabulary and system roles, T04 implements `can()` against `grants`, and
- * T07 wires up team CRUD. Each `@knipignore` below is removed by the task
- * that finally imports that symbol.
- *
- * @knipignore
+ * Consumed starting T11: `roles.handler.ts`'s `listPermissions`/
+ * `createRole`/`updateRole` all read it directly.
  */
 export const permissions = sqliteTable("permissions", {
   // The key itself is the id - `task:write`, not a surrogate. It's the

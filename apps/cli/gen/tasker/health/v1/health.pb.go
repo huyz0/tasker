@@ -14034,6 +14034,1050 @@ func (x *ListTeamMembersResponse) GetPage() *PageResponse {
 	return nil
 }
 
+type Permission struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Permission) Reset() {
+	*x = Permission{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[258]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Permission) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Permission) ProtoMessage() {}
+
+func (x *Permission) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[258]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Permission.ProtoReflect.Descriptor instead.
+func (*Permission) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{258}
+}
+
+func (x *Permission) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *Permission) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type Role struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	OrgId          string                 `protobuf:"bytes,2,opt,name=orgId,proto3" json:"orgId,omitempty"`
+	Name           string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	IsSystem       bool                   `protobuf:"varint,4,opt,name=isSystem,proto3" json:"isSystem,omitempty"`
+	PermissionKeys []string               `protobuf:"bytes,5,rep,name=permissionKeys,proto3" json:"permissionKeys,omitempty"`
+	CreatedAt      string                 `protobuf:"bytes,6,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *Role) Reset() {
+	*x = Role{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[259]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Role) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Role) ProtoMessage() {}
+
+func (x *Role) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[259]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Role.ProtoReflect.Descriptor instead.
+func (*Role) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{259}
+}
+
+func (x *Role) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Role) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *Role) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Role) GetIsSystem() bool {
+	if x != nil {
+		return x.IsSystem
+	}
+	return false
+}
+
+func (x *Role) GetPermissionKeys() []string {
+	if x != nil {
+		return x.PermissionKeys
+	}
+	return nil
+}
+
+func (x *Role) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type Grant struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	SubjectType   string                 `protobuf:"bytes,2,opt,name=subjectType,proto3" json:"subjectType,omitempty"`
+	SubjectId     string                 `protobuf:"bytes,3,opt,name=subjectId,proto3" json:"subjectId,omitempty"`
+	ScopeType     string                 `protobuf:"bytes,4,opt,name=scopeType,proto3" json:"scopeType,omitempty"`
+	ScopeId       string                 `protobuf:"bytes,5,opt,name=scopeId,proto3" json:"scopeId,omitempty"`
+	RoleId        string                 `protobuf:"bytes,6,opt,name=roleId,proto3" json:"roleId,omitempty"`
+	RoleName      string                 `protobuf:"bytes,7,opt,name=roleName,proto3" json:"roleName,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,8,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Grant) Reset() {
+	*x = Grant{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[260]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Grant) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Grant) ProtoMessage() {}
+
+func (x *Grant) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[260]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Grant.ProtoReflect.Descriptor instead.
+func (*Grant) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{260}
+}
+
+func (x *Grant) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Grant) GetSubjectType() string {
+	if x != nil {
+		return x.SubjectType
+	}
+	return ""
+}
+
+func (x *Grant) GetSubjectId() string {
+	if x != nil {
+		return x.SubjectId
+	}
+	return ""
+}
+
+func (x *Grant) GetScopeType() string {
+	if x != nil {
+		return x.ScopeType
+	}
+	return ""
+}
+
+func (x *Grant) GetScopeId() string {
+	if x != nil {
+		return x.ScopeId
+	}
+	return ""
+}
+
+func (x *Grant) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+func (x *Grant) GetRoleName() string {
+	if x != nil {
+		return x.RoleName
+	}
+	return ""
+}
+
+func (x *Grant) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type ListPermissionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrgId         string                 `protobuf:"bytes,1,opt,name=orgId,proto3" json:"orgId,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPermissionsRequest) Reset() {
+	*x = ListPermissionsRequest{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[261]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPermissionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPermissionsRequest) ProtoMessage() {}
+
+func (x *ListPermissionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[261]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPermissionsRequest.ProtoReflect.Descriptor instead.
+func (*ListPermissionsRequest) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{261}
+}
+
+func (x *ListPermissionsRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+type ListPermissionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Permissions   []*Permission          `protobuf:"bytes,1,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPermissionsResponse) Reset() {
+	*x = ListPermissionsResponse{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[262]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPermissionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPermissionsResponse) ProtoMessage() {}
+
+func (x *ListPermissionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[262]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPermissionsResponse.ProtoReflect.Descriptor instead.
+func (*ListPermissionsResponse) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{262}
+}
+
+func (x *ListPermissionsResponse) GetPermissions() []*Permission {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
+type ListRolesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrgId         string                 `protobuf:"bytes,1,opt,name=orgId,proto3" json:"orgId,omitempty"`
+	Page          *PageRequest           `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRolesRequest) Reset() {
+	*x = ListRolesRequest{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[263]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRolesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRolesRequest) ProtoMessage() {}
+
+func (x *ListRolesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[263]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRolesRequest.ProtoReflect.Descriptor instead.
+func (*ListRolesRequest) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{263}
+}
+
+func (x *ListRolesRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *ListRolesRequest) GetPage() *PageRequest {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
+type ListRolesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Roles         []*Role                `protobuf:"bytes,1,rep,name=roles,proto3" json:"roles,omitempty"`
+	Page          *PageResponse          `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRolesResponse) Reset() {
+	*x = ListRolesResponse{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[264]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRolesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRolesResponse) ProtoMessage() {}
+
+func (x *ListRolesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[264]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRolesResponse.ProtoReflect.Descriptor instead.
+func (*ListRolesResponse) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{264}
+}
+
+func (x *ListRolesResponse) GetRoles() []*Role {
+	if x != nil {
+		return x.Roles
+	}
+	return nil
+}
+
+func (x *ListRolesResponse) GetPage() *PageResponse {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
+type CreateRoleRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	OrgId          string                 `protobuf:"bytes,1,opt,name=orgId,proto3" json:"orgId,omitempty"`
+	Name           string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	PermissionKeys []string               `protobuf:"bytes,3,rep,name=permissionKeys,proto3" json:"permissionKeys,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CreateRoleRequest) Reset() {
+	*x = CreateRoleRequest{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[265]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateRoleRequest) ProtoMessage() {}
+
+func (x *CreateRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[265]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateRoleRequest.ProtoReflect.Descriptor instead.
+func (*CreateRoleRequest) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{265}
+}
+
+func (x *CreateRoleRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *CreateRoleRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateRoleRequest) GetPermissionKeys() []string {
+	if x != nil {
+		return x.PermissionKeys
+	}
+	return nil
+}
+
+type CreateRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          *Role                  `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateRoleResponse) Reset() {
+	*x = CreateRoleResponse{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[266]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateRoleResponse) ProtoMessage() {}
+
+func (x *CreateRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[266]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateRoleResponse.ProtoReflect.Descriptor instead.
+func (*CreateRoleResponse) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{266}
+}
+
+func (x *CreateRoleResponse) GetRole() *Role {
+	if x != nil {
+		return x.Role
+	}
+	return nil
+}
+
+type UpdateRoleRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	RoleId         string                 `protobuf:"bytes,1,opt,name=roleId,proto3" json:"roleId,omitempty"`
+	Name           string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	PermissionKeys []string               `protobuf:"bytes,3,rep,name=permissionKeys,proto3" json:"permissionKeys,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *UpdateRoleRequest) Reset() {
+	*x = UpdateRoleRequest{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[267]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRoleRequest) ProtoMessage() {}
+
+func (x *UpdateRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[267]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRoleRequest.ProtoReflect.Descriptor instead.
+func (*UpdateRoleRequest) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{267}
+}
+
+func (x *UpdateRoleRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+func (x *UpdateRoleRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateRoleRequest) GetPermissionKeys() []string {
+	if x != nil {
+		return x.PermissionKeys
+	}
+	return nil
+}
+
+type UpdateRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          *Role                  `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateRoleResponse) Reset() {
+	*x = UpdateRoleResponse{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[268]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRoleResponse) ProtoMessage() {}
+
+func (x *UpdateRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[268]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRoleResponse.ProtoReflect.Descriptor instead.
+func (*UpdateRoleResponse) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{268}
+}
+
+func (x *UpdateRoleResponse) GetRole() *Role {
+	if x != nil {
+		return x.Role
+	}
+	return nil
+}
+
+type DeleteRoleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoleId        string                 `protobuf:"bytes,1,opt,name=roleId,proto3" json:"roleId,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteRoleRequest) Reset() {
+	*x = DeleteRoleRequest{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[269]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteRoleRequest) ProtoMessage() {}
+
+func (x *DeleteRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[269]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteRoleRequest.ProtoReflect.Descriptor instead.
+func (*DeleteRoleRequest) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{269}
+}
+
+func (x *DeleteRoleRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+type DeleteRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteRoleResponse) Reset() {
+	*x = DeleteRoleResponse{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[270]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteRoleResponse) ProtoMessage() {}
+
+func (x *DeleteRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[270]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteRoleResponse.ProtoReflect.Descriptor instead.
+func (*DeleteRoleResponse) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{270}
+}
+
+func (x *DeleteRoleResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+type GrantRoleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SubjectType   string                 `protobuf:"bytes,1,opt,name=subjectType,proto3" json:"subjectType,omitempty"`
+	SubjectId     string                 `protobuf:"bytes,2,opt,name=subjectId,proto3" json:"subjectId,omitempty"`
+	ScopeType     string                 `protobuf:"bytes,3,opt,name=scopeType,proto3" json:"scopeType,omitempty"`
+	ScopeId       string                 `protobuf:"bytes,4,opt,name=scopeId,proto3" json:"scopeId,omitempty"`
+	RoleId        string                 `protobuf:"bytes,5,opt,name=roleId,proto3" json:"roleId,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GrantRoleRequest) Reset() {
+	*x = GrantRoleRequest{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[271]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GrantRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GrantRoleRequest) ProtoMessage() {}
+
+func (x *GrantRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[271]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GrantRoleRequest.ProtoReflect.Descriptor instead.
+func (*GrantRoleRequest) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{271}
+}
+
+func (x *GrantRoleRequest) GetSubjectType() string {
+	if x != nil {
+		return x.SubjectType
+	}
+	return ""
+}
+
+func (x *GrantRoleRequest) GetSubjectId() string {
+	if x != nil {
+		return x.SubjectId
+	}
+	return ""
+}
+
+func (x *GrantRoleRequest) GetScopeType() string {
+	if x != nil {
+		return x.ScopeType
+	}
+	return ""
+}
+
+func (x *GrantRoleRequest) GetScopeId() string {
+	if x != nil {
+		return x.ScopeId
+	}
+	return ""
+}
+
+func (x *GrantRoleRequest) GetRoleId() string {
+	if x != nil {
+		return x.RoleId
+	}
+	return ""
+}
+
+type GrantRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Grant         *Grant                 `protobuf:"bytes,1,opt,name=grant,proto3" json:"grant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GrantRoleResponse) Reset() {
+	*x = GrantRoleResponse{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[272]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GrantRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GrantRoleResponse) ProtoMessage() {}
+
+func (x *GrantRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[272]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GrantRoleResponse.ProtoReflect.Descriptor instead.
+func (*GrantRoleResponse) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{272}
+}
+
+func (x *GrantRoleResponse) GetGrant() *Grant {
+	if x != nil {
+		return x.Grant
+	}
+	return nil
+}
+
+type RevokeGrantRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GrantId       string                 `protobuf:"bytes,1,opt,name=grantId,proto3" json:"grantId,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeGrantRequest) Reset() {
+	*x = RevokeGrantRequest{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[273]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeGrantRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeGrantRequest) ProtoMessage() {}
+
+func (x *RevokeGrantRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[273]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeGrantRequest.ProtoReflect.Descriptor instead.
+func (*RevokeGrantRequest) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{273}
+}
+
+func (x *RevokeGrantRequest) GetGrantId() string {
+	if x != nil {
+		return x.GrantId
+	}
+	return ""
+}
+
+type RevokeGrantResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeGrantResponse) Reset() {
+	*x = RevokeGrantResponse{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[274]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeGrantResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeGrantResponse) ProtoMessage() {}
+
+func (x *RevokeGrantResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[274]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeGrantResponse.ProtoReflect.Descriptor instead.
+func (*RevokeGrantResponse) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{274}
+}
+
+func (x *RevokeGrantResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+type ListGrantsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ScopeType     string                 `protobuf:"bytes,1,opt,name=scopeType,proto3" json:"scopeType,omitempty"`
+	ScopeId       string                 `protobuf:"bytes,2,opt,name=scopeId,proto3" json:"scopeId,omitempty"`
+	Page          *PageRequest           `protobuf:"bytes,3,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGrantsRequest) Reset() {
+	*x = ListGrantsRequest{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[275]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGrantsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGrantsRequest) ProtoMessage() {}
+
+func (x *ListGrantsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[275]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGrantsRequest.ProtoReflect.Descriptor instead.
+func (*ListGrantsRequest) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{275}
+}
+
+func (x *ListGrantsRequest) GetScopeType() string {
+	if x != nil {
+		return x.ScopeType
+	}
+	return ""
+}
+
+func (x *ListGrantsRequest) GetScopeId() string {
+	if x != nil {
+		return x.ScopeId
+	}
+	return ""
+}
+
+func (x *ListGrantsRequest) GetPage() *PageRequest {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
+type ListGrantsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Grants        []*Grant               `protobuf:"bytes,1,rep,name=grants,proto3" json:"grants,omitempty"`
+	Page          *PageResponse          `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGrantsResponse) Reset() {
+	*x = ListGrantsResponse{}
+	mi := &file_tasker_health_v1_health_proto_msgTypes[276]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGrantsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGrantsResponse) ProtoMessage() {}
+
+func (x *ListGrantsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_tasker_health_v1_health_proto_msgTypes[276]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGrantsResponse.ProtoReflect.Descriptor instead.
+func (*ListGrantsResponse) Descriptor() ([]byte, []int) {
+	return file_tasker_health_v1_health_proto_rawDescGZIP(), []int{276}
+}
+
+func (x *ListGrantsResponse) GetGrants() []*Grant {
+	if x != nil {
+		return x.Grants
+	}
+	return nil
+}
+
+func (x *ListGrantsResponse) GetPage() *PageResponse {
+	if x != nil {
+		return x.Page
+	}
+	return nil
+}
+
 var File_tasker_health_v1_health_proto protoreflect.FileDescriptor
 
 var file_tasker_health_v1_health_proto_rawDesc = []byte{
@@ -15628,6 +16672,120 @@ var file_tasker_health_v1_health_proto_rawDesc = []byte{
 	0x62, 0x65, 0x72, 0x73, 0x12, 0x32, 0x0a, 0x04, 0x70, 0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x01,
 	0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c,
 	0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x50, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x52, 0x04, 0x70, 0x61, 0x67, 0x65, 0x22, 0x40, 0x0a, 0x0a, 0x50, 0x65, 0x72, 0x6d,
+	0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x20, 0x0a, 0x0b, 0x64, 0x65, 0x73, 0x63,
+	0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x64,
+	0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0xa2, 0x01, 0x0a, 0x04, 0x52,
+	0x6f, 0x6c, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x02, 0x69, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x6f, 0x72, 0x67, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x05, 0x6f, 0x72, 0x67, 0x49, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d,
+	0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x1a, 0x0a,
+	0x08, 0x69, 0x73, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52,
+	0x08, 0x69, 0x73, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x12, 0x26, 0x0a, 0x0e, 0x70, 0x65, 0x72,
+	0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x4b, 0x65, 0x79, 0x73, 0x18, 0x05, 0x20, 0x03, 0x28,
+	0x09, 0x52, 0x0e, 0x70, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x4b, 0x65, 0x79,
+	0x73, 0x12, 0x1c, 0x0a, 0x09, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x18, 0x06,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x22,
+	0xe1, 0x01, 0x0a, 0x05, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x20, 0x0a, 0x0b, 0x73, 0x75, 0x62,
+	0x6a, 0x65, 0x63, 0x74, 0x54, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b,
+	0x73, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x54, 0x79, 0x70, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x73,
+	0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x49, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09,
+	0x73, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x49, 0x64, 0x12, 0x1c, 0x0a, 0x09, 0x73, 0x63, 0x6f,
+	0x70, 0x65, 0x54, 0x79, 0x70, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x63,
+	0x6f, 0x70, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65,
+	0x49, 0x64, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49,
+	0x64, 0x12, 0x16, 0x0a, 0x06, 0x72, 0x6f, 0x6c, 0x65, 0x49, 0x64, 0x18, 0x06, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x06, 0x72, 0x6f, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x72, 0x6f, 0x6c,
+	0x65, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x72, 0x6f, 0x6c,
+	0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64,
+	0x41, 0x74, 0x18, 0x08, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65,
+	0x64, 0x41, 0x74, 0x22, 0x2e, 0x0a, 0x16, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x65, 0x72, 0x6d, 0x69,
+	0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x14, 0x0a,
+	0x05, 0x6f, 0x72, 0x67, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6f, 0x72,
+	0x67, 0x49, 0x64, 0x22, 0x59, 0x0a, 0x17, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x65, 0x72, 0x6d, 0x69,
+	0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3e,
+	0x0a, 0x0b, 0x70, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61,
+	0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x50, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f,
+	0x6e, 0x52, 0x0b, 0x70, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x5b,
+	0x0a, 0x10, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x6f, 0x6c, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x6f, 0x72, 0x67, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x05, 0x6f, 0x72, 0x67, 0x49, 0x64, 0x12, 0x31, 0x0a, 0x04, 0x70, 0x61, 0x67, 0x65,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e,
+	0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x50, 0x61, 0x67, 0x65, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x04, 0x70, 0x61, 0x67, 0x65, 0x22, 0x75, 0x0a, 0x11, 0x4c,
+	0x69, 0x73, 0x74, 0x52, 0x6f, 0x6c, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x12, 0x2c, 0x0a, 0x05, 0x72, 0x6f, 0x6c, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32,
+	0x16, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e,
+	0x76, 0x31, 0x2e, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x05, 0x72, 0x6f, 0x6c, 0x65, 0x73, 0x12, 0x32,
+	0x0a, 0x04, 0x70, 0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x74,
+	0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e,
+	0x50, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x04, 0x70, 0x61,
+	0x67, 0x65, 0x22, 0x65, 0x0a, 0x11, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x65,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x6f, 0x72, 0x67, 0x49, 0x64,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6f, 0x72, 0x67, 0x49, 0x64, 0x12, 0x12, 0x0a,
+	0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d,
+	0x65, 0x12, 0x26, 0x0a, 0x0e, 0x70, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x4b,
+	0x65, 0x79, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0e, 0x70, 0x65, 0x72, 0x6d, 0x69,
+	0x73, 0x73, 0x69, 0x6f, 0x6e, 0x4b, 0x65, 0x79, 0x73, 0x22, 0x40, 0x0a, 0x12, 0x43, 0x72, 0x65,
+	0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x2a, 0x0a, 0x04, 0x72, 0x6f, 0x6c, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e,
+	0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31,
+	0x2e, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x04, 0x72, 0x6f, 0x6c, 0x65, 0x22, 0x67, 0x0a, 0x11, 0x55,
+	0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x12, 0x16, 0x0a, 0x06, 0x72, 0x6f, 0x6c, 0x65, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x72, 0x6f, 0x6c, 0x65, 0x49, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x26, 0x0a, 0x0e,
+	0x70, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x4b, 0x65, 0x79, 0x73, 0x18, 0x03,
+	0x20, 0x03, 0x28, 0x09, 0x52, 0x0e, 0x70, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e,
+	0x4b, 0x65, 0x79, 0x73, 0x22, 0x40, 0x0a, 0x12, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x6f,
+	0x6c, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2a, 0x0a, 0x04, 0x72, 0x6f,
+	0x6c, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65,
+	0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x6f, 0x6c, 0x65,
+	0x52, 0x04, 0x72, 0x6f, 0x6c, 0x65, 0x22, 0x2b, 0x0a, 0x11, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65,
+	0x52, 0x6f, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x72,
+	0x6f, 0x6c, 0x65, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x6f, 0x6c,
+	0x65, 0x49, 0x64, 0x22, 0x2e, 0x0a, 0x12, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x52, 0x6f, 0x6c,
+	0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63,
+	0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63,
+	0x65, 0x73, 0x73, 0x22, 0xa2, 0x01, 0x0a, 0x10, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x52, 0x6f, 0x6c,
+	0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x20, 0x0a, 0x0b, 0x73, 0x75, 0x62, 0x6a,
+	0x65, 0x63, 0x74, 0x54, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x73,
+	0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x54, 0x79, 0x70, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x73, 0x75,
+	0x62, 0x6a, 0x65, 0x63, 0x74, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73,
+	0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x49, 0x64, 0x12, 0x1c, 0x0a, 0x09, 0x73, 0x63, 0x6f, 0x70,
+	0x65, 0x54, 0x79, 0x70, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x63, 0x6f,
+	0x70, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49,
+	0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49, 0x64,
+	0x12, 0x16, 0x0a, 0x06, 0x72, 0x6f, 0x6c, 0x65, 0x49, 0x64, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x72, 0x6f, 0x6c, 0x65, 0x49, 0x64, 0x22, 0x42, 0x0a, 0x11, 0x47, 0x72, 0x61, 0x6e,
+	0x74, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2d, 0x0a,
+	0x05, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x74,
+	0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e,
+	0x47, 0x72, 0x61, 0x6e, 0x74, 0x52, 0x05, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x22, 0x2e, 0x0a, 0x12,
+	0x52, 0x65, 0x76, 0x6f, 0x6b, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x49, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x07, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x49, 0x64, 0x22, 0x2f, 0x0a, 0x13,
+	0x52, 0x65, 0x76, 0x6f, 0x6b, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x22, 0x7e, 0x0a,
+	0x11, 0x4c, 0x69, 0x73, 0x74, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x1c, 0x0a, 0x09, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x54, 0x79, 0x70, 0x65, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x54, 0x79, 0x70, 0x65,
+	0x12, 0x18, 0x0a, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49, 0x64, 0x12, 0x31, 0x0a, 0x04, 0x70, 0x61,
+	0x67, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65,
+	0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x50, 0x61, 0x67, 0x65,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x04, 0x70, 0x61, 0x67, 0x65, 0x22, 0x79, 0x0a,
+	0x12, 0x4c, 0x69, 0x73, 0x74, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x2f, 0x0a, 0x06, 0x67, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x18, 0x01, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61,
+	0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x52, 0x06, 0x67, 0x72,
+	0x61, 0x6e, 0x74, 0x73, 0x12, 0x32, 0x0a, 0x04, 0x70, 0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c,
+	0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x50, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
 	0x73, 0x65, 0x52, 0x04, 0x70, 0x61, 0x67, 0x65, 0x32, 0x56, 0x0a, 0x0d, 0x48, 0x65, 0x61, 0x6c,
 	0x74, 0x68, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x45, 0x0a, 0x04, 0x50, 0x69, 0x6e,
 	0x67, 0x12, 0x1d, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74,
@@ -16338,11 +17496,57 @@ var file_tasker_health_v1_health_proto_rawDesc = []byte{
 	0x61, 0x6d, 0x4d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x29, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68,
 	0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x54, 0x65, 0x61, 0x6d, 0x4d, 0x65, 0x6d, 0x62,
-	0x65, 0x72, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x37, 0x5a, 0x35, 0x67,
-	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x75, 0x79, 0x7a, 0x30, 0x2f,
-	0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x70, 0x73, 0x2f, 0x63, 0x6c, 0x69, 0x2f,
-	0x67, 0x65, 0x6e, 0x2f, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2f, 0x68, 0x65, 0x61, 0x6c, 0x74,
-	0x68, 0x2f, 0x76, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x72, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x32, 0xe1, 0x05, 0x0a, 0x0b,
+	0x52, 0x6f, 0x6c, 0x65, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x66, 0x0a, 0x0f, 0x4c,
+	0x69, 0x73, 0x74, 0x50, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x28,
+	0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76,
+	0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e,
+	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65,
+	0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74,
+	0x50, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x54, 0x0a, 0x09, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x6f, 0x6c, 0x65, 0x73,
+	0x12, 0x22, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68,
+	0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x6f, 0x6c, 0x65, 0x73, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65,
+	0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x6f, 0x6c, 0x65,
+	0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x57, 0x0a, 0x0a, 0x43, 0x72, 0x65,
+	0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x65, 0x12, 0x23, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72,
+	0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x72, 0x65, 0x61, 0x74,
+	0x65, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x74,
+	0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e,
+	0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x57, 0x0a, 0x0a, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x65,
+	0x12, 0x23, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68,
+	0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68,
+	0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52,
+	0x6f, 0x6c, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x57, 0x0a, 0x0a, 0x44,
+	0x65, 0x6c, 0x65, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x65, 0x12, 0x23, 0x2e, 0x74, 0x61, 0x73, 0x6b,
+	0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x6c,
+	0x65, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24,
+	0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76,
+	0x31, 0x2e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x54, 0x0a, 0x09, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x52, 0x6f, 0x6c,
+	0x65, 0x12, 0x22, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74,
+	0x68, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68,
+	0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x52, 0x6f,
+	0x6c, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x5a, 0x0a, 0x0b, 0x52, 0x65,
+	0x76, 0x6f, 0x6b, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x12, 0x24, 0x2e, 0x74, 0x61, 0x73, 0x6b,
+	0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x76,
+	0x6f, 0x6b, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x25, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e,
+	0x76, 0x31, 0x2e, 0x52, 0x65, 0x76, 0x6f, 0x6b, 0x65, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x57, 0x0a, 0x0a, 0x4c, 0x69, 0x73, 0x74, 0x47, 0x72,
+	0x61, 0x6e, 0x74, 0x73, 0x12, 0x23, 0x2e, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2e, 0x68, 0x65,
+	0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x47, 0x72, 0x61, 0x6e,
+	0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x74, 0x61, 0x73, 0x6b,
+	0x65, 0x72, 0x2e, 0x68, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73,
+	0x74, 0x47, 0x72, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42,
+	0x37, 0x5a, 0x35, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x75,
+	0x79, 0x7a, 0x30, 0x2f, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x70, 0x73, 0x2f,
+	0x63, 0x6c, 0x69, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x74, 0x61, 0x73, 0x6b, 0x65, 0x72, 0x2f, 0x68,
+	0x65, 0x61, 0x6c, 0x74, 0x68, 0x2f, 0x76, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -16357,7 +17561,7 @@ func file_tasker_health_v1_health_proto_rawDescGZIP() []byte {
 	return file_tasker_health_v1_health_proto_rawDescData
 }
 
-var file_tasker_health_v1_health_proto_msgTypes = make([]protoimpl.MessageInfo, 258)
+var file_tasker_health_v1_health_proto_msgTypes = make([]protoimpl.MessageInfo, 277)
 var file_tasker_health_v1_health_proto_goTypes = []any{
 	(*PingRequest)(nil),                        // 0: tasker.health.v1.PingRequest
 	(*PingResponse)(nil),                       // 1: tasker.health.v1.PingResponse
@@ -16617,6 +17821,25 @@ var file_tasker_health_v1_health_proto_goTypes = []any{
 	(*RemoveTeamMemberResponse)(nil),           // 255: tasker.health.v1.RemoveTeamMemberResponse
 	(*ListTeamMembersRequest)(nil),             // 256: tasker.health.v1.ListTeamMembersRequest
 	(*ListTeamMembersResponse)(nil),            // 257: tasker.health.v1.ListTeamMembersResponse
+	(*Permission)(nil),                         // 258: tasker.health.v1.Permission
+	(*Role)(nil),                               // 259: tasker.health.v1.Role
+	(*Grant)(nil),                              // 260: tasker.health.v1.Grant
+	(*ListPermissionsRequest)(nil),             // 261: tasker.health.v1.ListPermissionsRequest
+	(*ListPermissionsResponse)(nil),            // 262: tasker.health.v1.ListPermissionsResponse
+	(*ListRolesRequest)(nil),                   // 263: tasker.health.v1.ListRolesRequest
+	(*ListRolesResponse)(nil),                  // 264: tasker.health.v1.ListRolesResponse
+	(*CreateRoleRequest)(nil),                  // 265: tasker.health.v1.CreateRoleRequest
+	(*CreateRoleResponse)(nil),                 // 266: tasker.health.v1.CreateRoleResponse
+	(*UpdateRoleRequest)(nil),                  // 267: tasker.health.v1.UpdateRoleRequest
+	(*UpdateRoleResponse)(nil),                 // 268: tasker.health.v1.UpdateRoleResponse
+	(*DeleteRoleRequest)(nil),                  // 269: tasker.health.v1.DeleteRoleRequest
+	(*DeleteRoleResponse)(nil),                 // 270: tasker.health.v1.DeleteRoleResponse
+	(*GrantRoleRequest)(nil),                   // 271: tasker.health.v1.GrantRoleRequest
+	(*GrantRoleResponse)(nil),                  // 272: tasker.health.v1.GrantRoleResponse
+	(*RevokeGrantRequest)(nil),                 // 273: tasker.health.v1.RevokeGrantRequest
+	(*RevokeGrantResponse)(nil),                // 274: tasker.health.v1.RevokeGrantResponse
+	(*ListGrantsRequest)(nil),                  // 275: tasker.health.v1.ListGrantsRequest
+	(*ListGrantsResponse)(nil),                 // 276: tasker.health.v1.ListGrantsResponse
 }
 var file_tasker_health_v1_health_proto_depIdxs = []int32{
 	2,   // 0: tasker.health.v1.GetIdentityResponse.user:type_name -> tasker.health.v1.User
@@ -16733,233 +17956,259 @@ var file_tasker_health_v1_health_proto_depIdxs = []int32{
 	128, // 111: tasker.health.v1.ListTeamMembersRequest.page:type_name -> tasker.health.v1.PageRequest
 	241, // 112: tasker.health.v1.ListTeamMembersResponse.members:type_name -> tasker.health.v1.TeamMember
 	129, // 113: tasker.health.v1.ListTeamMembersResponse.page:type_name -> tasker.health.v1.PageResponse
-	0,   // 114: tasker.health.v1.HealthService.Ping:input_type -> tasker.health.v1.PingRequest
-	4,   // 115: tasker.health.v1.AuthService.GetIdentity:input_type -> tasker.health.v1.GetIdentityRequest
-	6,   // 116: tasker.health.v1.AuthService.SetPassword:input_type -> tasker.health.v1.SetPasswordRequest
-	9,   // 117: tasker.health.v1.AuthService.ListLinkedIdentities:input_type -> tasker.health.v1.ListLinkedIdentitiesRequest
-	11,  // 118: tasker.health.v1.AuthService.UnlinkIdentity:input_type -> tasker.health.v1.UnlinkIdentityRequest
-	13,  // 119: tasker.health.v1.AuthService.AdminResetPassword:input_type -> tasker.health.v1.AdminResetPasswordRequest
-	15,  // 120: tasker.health.v1.OrgService.ListOrgs:input_type -> tasker.health.v1.ListOrgsRequest
-	25,  // 121: tasker.health.v1.OrgService.SeedOrg:input_type -> tasker.health.v1.SeedOrgRequest
-	29,  // 122: tasker.health.v1.OrgService.UpdateOrg:input_type -> tasker.health.v1.UpdateOrgRequest
-	17,  // 123: tasker.health.v1.OrgService.ArchiveOrg:input_type -> tasker.health.v1.ArchiveOrgRequest
-	19,  // 124: tasker.health.v1.OrgService.RestoreOrg:input_type -> tasker.health.v1.RestoreOrgRequest
-	21,  // 125: tasker.health.v1.OrgService.PurgeOrg:input_type -> tasker.health.v1.PurgeOrgRequest
-	23,  // 126: tasker.health.v1.OrgService.SetOrgRetentionDays:input_type -> tasker.health.v1.SetOrgRetentionDaysRequest
-	27,  // 127: tasker.health.v1.OrgService.InviteUser:input_type -> tasker.health.v1.InviteUserRequest
-	33,  // 128: tasker.health.v1.OrgService.ListInvitations:input_type -> tasker.health.v1.ListInvitationsRequest
-	35,  // 129: tasker.health.v1.OrgService.RevokeInvitation:input_type -> tasker.health.v1.RevokeInvitationRequest
-	37,  // 130: tasker.health.v1.OrgService.ListOrgMembers:input_type -> tasker.health.v1.ListOrgMembersRequest
-	39,  // 131: tasker.health.v1.OrgService.RemoveOrgMember:input_type -> tasker.health.v1.RemoveOrgMemberRequest
-	41,  // 132: tasker.health.v1.OrgService.UpdateOrgMemberRole:input_type -> tasker.health.v1.UpdateOrgMemberRoleRequest
-	46,  // 133: tasker.health.v1.TaskTypeService.GetTaskType:input_type -> tasker.health.v1.GetTaskTypeRequest
-	48,  // 134: tasker.health.v1.TaskTypeService.CreateTaskType:input_type -> tasker.health.v1.CreateTaskTypeRequest
-	60,  // 135: tasker.health.v1.TaskTypeService.UpdateTaskType:input_type -> tasker.health.v1.UpdateTaskTypeRequest
-	50,  // 136: tasker.health.v1.TaskTypeService.ListTaskTypes:input_type -> tasker.health.v1.ListTaskTypesRequest
-	52,  // 137: tasker.health.v1.TaskTypeService.CreateTaskStatus:input_type -> tasker.health.v1.CreateTaskStatusRequest
-	54,  // 138: tasker.health.v1.TaskTypeService.CreateTaskStatusTransition:input_type -> tasker.health.v1.CreateTaskStatusTransitionRequest
-	58,  // 139: tasker.health.v1.TaskTypeService.DeleteTaskStatusTransition:input_type -> tasker.health.v1.DeleteTaskStatusTransitionRequest
-	56,  // 140: tasker.health.v1.TaskTypeService.ReorderTaskStatuses:input_type -> tasker.health.v1.ReorderTaskStatusesRequest
-	64,  // 141: tasker.health.v1.ProjectTemplateService.GetTemplate:input_type -> tasker.health.v1.GetProjectTemplateRequest
-	66,  // 142: tasker.health.v1.ProjectTemplateService.CreateTemplate:input_type -> tasker.health.v1.CreateProjectTemplateRequest
-	70,  // 143: tasker.health.v1.ProjectTemplateService.UpdateTemplate:input_type -> tasker.health.v1.UpdateProjectTemplateRequest
-	68,  // 144: tasker.health.v1.ProjectTemplateService.ListTemplates:input_type -> tasker.health.v1.ListProjectTemplatesRequest
-	72,  // 145: tasker.health.v1.ProjectService.GetProject:input_type -> tasker.health.v1.GetProjectRequest
-	74,  // 146: tasker.health.v1.ProjectService.CreateProject:input_type -> tasker.health.v1.CreateProjectRequest
-	84,  // 147: tasker.health.v1.ProjectService.UpdateProject:input_type -> tasker.health.v1.UpdateProjectRequest
-	76,  // 148: tasker.health.v1.ProjectService.ListProjects:input_type -> tasker.health.v1.ListProjectsRequest
-	78,  // 149: tasker.health.v1.ProjectService.ArchiveProject:input_type -> tasker.health.v1.ArchiveProjectRequest
-	80,  // 150: tasker.health.v1.ProjectService.RestoreProject:input_type -> tasker.health.v1.RestoreProjectRequest
-	82,  // 151: tasker.health.v1.ProjectService.PurgeProject:input_type -> tasker.health.v1.PurgeProjectRequest
-	88,  // 152: tasker.health.v1.AgentService.CreateAgentRole:input_type -> tasker.health.v1.CreateAgentRoleRequest
-	92,  // 153: tasker.health.v1.AgentService.UpdateAgentRole:input_type -> tasker.health.v1.UpdateAgentRoleRequest
-	90,  // 154: tasker.health.v1.AgentService.ListAgentRoles:input_type -> tasker.health.v1.ListAgentRolesRequest
-	94,  // 155: tasker.health.v1.AgentService.CreateAgent:input_type -> tasker.health.v1.CreateAgentRequest
-	96,  // 156: tasker.health.v1.AgentService.UpdateAgent:input_type -> tasker.health.v1.UpdateAgentRequest
-	98,  // 157: tasker.health.v1.AgentService.ListAgents:input_type -> tasker.health.v1.ListAgentsRequest
-	100, // 158: tasker.health.v1.AgentService.ArchiveAgent:input_type -> tasker.health.v1.ArchiveAgentRequest
-	102, // 159: tasker.health.v1.AgentService.RestoreAgent:input_type -> tasker.health.v1.RestoreAgentRequest
-	104, // 160: tasker.health.v1.AgentService.PurgeAgent:input_type -> tasker.health.v1.PurgeAgentRequest
-	107, // 161: tasker.health.v1.AgentService.CreateAgentToken:input_type -> tasker.health.v1.CreateAgentTokenRequest
-	109, // 162: tasker.health.v1.AgentService.ListAgentTokens:input_type -> tasker.health.v1.ListAgentTokensRequest
-	111, // 163: tasker.health.v1.AgentService.RevokeAgentToken:input_type -> tasker.health.v1.RevokeAgentTokenRequest
-	117, // 164: tasker.health.v1.TaskService.CreateTask:input_type -> tasker.health.v1.CreateTaskRequest
-	119, // 165: tasker.health.v1.TaskService.AssignTask:input_type -> tasker.health.v1.AssignTaskRequest
-	115, // 166: tasker.health.v1.TaskService.UnassignTask:input_type -> tasker.health.v1.UnassignTaskRequest
-	130, // 167: tasker.health.v1.TaskService.GetTask:input_type -> tasker.health.v1.GetTaskRequest
-	132, // 168: tasker.health.v1.TaskService.ListTasks:input_type -> tasker.health.v1.ListTasksRequest
-	136, // 169: tasker.health.v1.TaskService.UpdateTask:input_type -> tasker.health.v1.UpdateTaskRequest
-	134, // 170: tasker.health.v1.TaskService.UpdateTaskStatus:input_type -> tasker.health.v1.UpdateTaskStatusRequest
-	138, // 171: tasker.health.v1.TaskService.DeleteTask:input_type -> tasker.health.v1.DeleteTaskRequest
-	140, // 172: tasker.health.v1.TaskService.RestoreTask:input_type -> tasker.health.v1.RestoreTaskRequest
-	142, // 173: tasker.health.v1.TaskService.PurgeTask:input_type -> tasker.health.v1.PurgeTaskRequest
-	122, // 174: tasker.health.v1.TaskService.AddTaskReviewer:input_type -> tasker.health.v1.AddTaskReviewerRequest
-	124, // 175: tasker.health.v1.TaskService.RemoveTaskReviewer:input_type -> tasker.health.v1.RemoveTaskReviewerRequest
-	126, // 176: tasker.health.v1.TaskService.ListTaskReviewers:input_type -> tasker.health.v1.ListTaskReviewersRequest
-	151, // 177: tasker.health.v1.ArtifactService.CreateFolder:input_type -> tasker.health.v1.CreateFolderRequest
-	153, // 178: tasker.health.v1.ArtifactService.UpdateFolder:input_type -> tasker.health.v1.UpdateFolderRequest
-	155, // 179: tasker.health.v1.ArtifactService.CreateArtifact:input_type -> tasker.health.v1.CreateArtifactRequest
-	157, // 180: tasker.health.v1.ArtifactService.UpdateArtifactContent:input_type -> tasker.health.v1.UpdateArtifactContentRequest
-	159, // 181: tasker.health.v1.ArtifactService.LinkTaskArtifact:input_type -> tasker.health.v1.LinkTaskArtifactRequest
-	161, // 182: tasker.health.v1.ArtifactService.UnlinkTaskArtifact:input_type -> tasker.health.v1.UnlinkTaskArtifactRequest
-	163, // 183: tasker.health.v1.ArtifactService.ListTaskArtifactLinks:input_type -> tasker.health.v1.ListTaskArtifactLinksRequest
-	165, // 184: tasker.health.v1.ArtifactService.ListArtifacts:input_type -> tasker.health.v1.ListArtifactsRequest
-	146, // 185: tasker.health.v1.ArtifactService.GetArtifact:input_type -> tasker.health.v1.GetArtifactRequest
-	148, // 186: tasker.health.v1.ArtifactService.GetArtifactContent:input_type -> tasker.health.v1.GetArtifactContentRequest
-	167, // 187: tasker.health.v1.ArtifactService.ListFolders:input_type -> tasker.health.v1.ListFoldersRequest
-	169, // 188: tasker.health.v1.ArtifactService.ArchiveArtifact:input_type -> tasker.health.v1.ArchiveArtifactRequest
-	171, // 189: tasker.health.v1.ArtifactService.RestoreArtifact:input_type -> tasker.health.v1.RestoreArtifactRequest
-	173, // 190: tasker.health.v1.ArtifactService.ArchiveFolder:input_type -> tasker.health.v1.ArchiveFolderRequest
-	175, // 191: tasker.health.v1.ArtifactService.RestoreFolder:input_type -> tasker.health.v1.RestoreFolderRequest
-	177, // 192: tasker.health.v1.ArtifactService.PurgeArtifact:input_type -> tasker.health.v1.PurgeArtifactRequest
-	179, // 193: tasker.health.v1.ArtifactService.PurgeFolder:input_type -> tasker.health.v1.PurgeFolderRequest
-	182, // 194: tasker.health.v1.CommentService.CreateComment:input_type -> tasker.health.v1.CreateCommentRequest
-	186, // 195: tasker.health.v1.CommentService.UpdateComment:input_type -> tasker.health.v1.UpdateCommentRequest
-	188, // 196: tasker.health.v1.CommentService.DeleteComment:input_type -> tasker.health.v1.DeleteCommentRequest
-	184, // 197: tasker.health.v1.CommentService.ListComments:input_type -> tasker.health.v1.ListCommentsRequest
-	191, // 198: tasker.health.v1.TaskNoteService.CreateTaskNote:input_type -> tasker.health.v1.CreateTaskNoteRequest
-	195, // 199: tasker.health.v1.TaskNoteService.UpdateTaskNote:input_type -> tasker.health.v1.UpdateTaskNoteRequest
-	197, // 200: tasker.health.v1.TaskNoteService.DeleteTaskNote:input_type -> tasker.health.v1.DeleteTaskNoteRequest
-	193, // 201: tasker.health.v1.TaskNoteService.ListTaskNotes:input_type -> tasker.health.v1.ListTaskNotesRequest
-	200, // 202: tasker.health.v1.LabelService.CreateLabel:input_type -> tasker.health.v1.CreateLabelRequest
-	210, // 203: tasker.health.v1.LabelService.UpdateLabel:input_type -> tasker.health.v1.UpdateLabelRequest
-	202, // 204: tasker.health.v1.LabelService.ListLabels:input_type -> tasker.health.v1.ListLabelsRequest
-	204, // 205: tasker.health.v1.LabelService.AttachLabel:input_type -> tasker.health.v1.AttachLabelRequest
-	206, // 206: tasker.health.v1.LabelService.DetachLabel:input_type -> tasker.health.v1.DetachLabelRequest
-	208, // 207: tasker.health.v1.LabelService.ListEntityLabels:input_type -> tasker.health.v1.ListEntityLabelsRequest
-	214, // 208: tasker.health.v1.RepositoryService.AddRepositoryLink:input_type -> tasker.health.v1.AddRepositoryLinkRequest
-	216, // 209: tasker.health.v1.RepositoryService.RemoveRepositoryLink:input_type -> tasker.health.v1.RemoveRepositoryLinkRequest
-	218, // 210: tasker.health.v1.RepositoryService.ListRepositoryLinks:input_type -> tasker.health.v1.ListRepositoryLinksRequest
-	220, // 211: tasker.health.v1.RepositoryService.SyncPullRequests:input_type -> tasker.health.v1.SyncPullRequestsRequest
-	222, // 212: tasker.health.v1.RepositoryService.ListPullRequests:input_type -> tasker.health.v1.ListPullRequestsRequest
-	226, // 213: tasker.health.v1.RepositoryService.ListBuilds:input_type -> tasker.health.v1.ListBuildsRequest
-	228, // 214: tasker.health.v1.RepositoryService.ListDeployments:input_type -> tasker.health.v1.ListDeploymentsRequest
-	232, // 215: tasker.health.v1.SearchService.UniversalSearch:input_type -> tasker.health.v1.UniversalSearchRequest
-	238, // 216: tasker.health.v1.DashboardService.GetDashboard:input_type -> tasker.health.v1.GetDashboardRequest
-	242, // 217: tasker.health.v1.TeamService.CreateTeam:input_type -> tasker.health.v1.CreateTeamRequest
-	244, // 218: tasker.health.v1.TeamService.UpdateTeam:input_type -> tasker.health.v1.UpdateTeamRequest
-	246, // 219: tasker.health.v1.TeamService.ArchiveTeam:input_type -> tasker.health.v1.ArchiveTeamRequest
-	248, // 220: tasker.health.v1.TeamService.RestoreTeam:input_type -> tasker.health.v1.RestoreTeamRequest
-	250, // 221: tasker.health.v1.TeamService.ListTeams:input_type -> tasker.health.v1.ListTeamsRequest
-	252, // 222: tasker.health.v1.TeamService.AddTeamMember:input_type -> tasker.health.v1.AddTeamMemberRequest
-	254, // 223: tasker.health.v1.TeamService.RemoveTeamMember:input_type -> tasker.health.v1.RemoveTeamMemberRequest
-	256, // 224: tasker.health.v1.TeamService.ListTeamMembers:input_type -> tasker.health.v1.ListTeamMembersRequest
-	1,   // 225: tasker.health.v1.HealthService.Ping:output_type -> tasker.health.v1.PingResponse
-	5,   // 226: tasker.health.v1.AuthService.GetIdentity:output_type -> tasker.health.v1.GetIdentityResponse
-	7,   // 227: tasker.health.v1.AuthService.SetPassword:output_type -> tasker.health.v1.SetPasswordResponse
-	10,  // 228: tasker.health.v1.AuthService.ListLinkedIdentities:output_type -> tasker.health.v1.ListLinkedIdentitiesResponse
-	12,  // 229: tasker.health.v1.AuthService.UnlinkIdentity:output_type -> tasker.health.v1.UnlinkIdentityResponse
-	14,  // 230: tasker.health.v1.AuthService.AdminResetPassword:output_type -> tasker.health.v1.AdminResetPasswordResponse
-	16,  // 231: tasker.health.v1.OrgService.ListOrgs:output_type -> tasker.health.v1.ListOrgsResponse
-	26,  // 232: tasker.health.v1.OrgService.SeedOrg:output_type -> tasker.health.v1.SeedOrgResponse
-	30,  // 233: tasker.health.v1.OrgService.UpdateOrg:output_type -> tasker.health.v1.UpdateOrgResponse
-	18,  // 234: tasker.health.v1.OrgService.ArchiveOrg:output_type -> tasker.health.v1.ArchiveOrgResponse
-	20,  // 235: tasker.health.v1.OrgService.RestoreOrg:output_type -> tasker.health.v1.RestoreOrgResponse
-	22,  // 236: tasker.health.v1.OrgService.PurgeOrg:output_type -> tasker.health.v1.PurgeOrgResponse
-	24,  // 237: tasker.health.v1.OrgService.SetOrgRetentionDays:output_type -> tasker.health.v1.SetOrgRetentionDaysResponse
-	28,  // 238: tasker.health.v1.OrgService.InviteUser:output_type -> tasker.health.v1.InviteUserResponse
-	34,  // 239: tasker.health.v1.OrgService.ListInvitations:output_type -> tasker.health.v1.ListInvitationsResponse
-	36,  // 240: tasker.health.v1.OrgService.RevokeInvitation:output_type -> tasker.health.v1.RevokeInvitationResponse
-	38,  // 241: tasker.health.v1.OrgService.ListOrgMembers:output_type -> tasker.health.v1.ListOrgMembersResponse
-	40,  // 242: tasker.health.v1.OrgService.RemoveOrgMember:output_type -> tasker.health.v1.RemoveOrgMemberResponse
-	42,  // 243: tasker.health.v1.OrgService.UpdateOrgMemberRole:output_type -> tasker.health.v1.UpdateOrgMemberRoleResponse
-	47,  // 244: tasker.health.v1.TaskTypeService.GetTaskType:output_type -> tasker.health.v1.GetTaskTypeResponse
-	49,  // 245: tasker.health.v1.TaskTypeService.CreateTaskType:output_type -> tasker.health.v1.CreateTaskTypeResponse
-	61,  // 246: tasker.health.v1.TaskTypeService.UpdateTaskType:output_type -> tasker.health.v1.UpdateTaskTypeResponse
-	51,  // 247: tasker.health.v1.TaskTypeService.ListTaskTypes:output_type -> tasker.health.v1.ListTaskTypesResponse
-	53,  // 248: tasker.health.v1.TaskTypeService.CreateTaskStatus:output_type -> tasker.health.v1.CreateTaskStatusResponse
-	55,  // 249: tasker.health.v1.TaskTypeService.CreateTaskStatusTransition:output_type -> tasker.health.v1.CreateTaskStatusTransitionResponse
-	59,  // 250: tasker.health.v1.TaskTypeService.DeleteTaskStatusTransition:output_type -> tasker.health.v1.DeleteTaskStatusTransitionResponse
-	57,  // 251: tasker.health.v1.TaskTypeService.ReorderTaskStatuses:output_type -> tasker.health.v1.ReorderTaskStatusesResponse
-	65,  // 252: tasker.health.v1.ProjectTemplateService.GetTemplate:output_type -> tasker.health.v1.GetProjectTemplateResponse
-	67,  // 253: tasker.health.v1.ProjectTemplateService.CreateTemplate:output_type -> tasker.health.v1.CreateProjectTemplateResponse
-	71,  // 254: tasker.health.v1.ProjectTemplateService.UpdateTemplate:output_type -> tasker.health.v1.UpdateProjectTemplateResponse
-	69,  // 255: tasker.health.v1.ProjectTemplateService.ListTemplates:output_type -> tasker.health.v1.ListProjectTemplatesResponse
-	73,  // 256: tasker.health.v1.ProjectService.GetProject:output_type -> tasker.health.v1.GetProjectResponse
-	75,  // 257: tasker.health.v1.ProjectService.CreateProject:output_type -> tasker.health.v1.CreateProjectResponse
-	85,  // 258: tasker.health.v1.ProjectService.UpdateProject:output_type -> tasker.health.v1.UpdateProjectResponse
-	77,  // 259: tasker.health.v1.ProjectService.ListProjects:output_type -> tasker.health.v1.ListProjectsResponse
-	79,  // 260: tasker.health.v1.ProjectService.ArchiveProject:output_type -> tasker.health.v1.ArchiveProjectResponse
-	81,  // 261: tasker.health.v1.ProjectService.RestoreProject:output_type -> tasker.health.v1.RestoreProjectResponse
-	83,  // 262: tasker.health.v1.ProjectService.PurgeProject:output_type -> tasker.health.v1.PurgeProjectResponse
-	89,  // 263: tasker.health.v1.AgentService.CreateAgentRole:output_type -> tasker.health.v1.CreateAgentRoleResponse
-	93,  // 264: tasker.health.v1.AgentService.UpdateAgentRole:output_type -> tasker.health.v1.UpdateAgentRoleResponse
-	91,  // 265: tasker.health.v1.AgentService.ListAgentRoles:output_type -> tasker.health.v1.ListAgentRolesResponse
-	95,  // 266: tasker.health.v1.AgentService.CreateAgent:output_type -> tasker.health.v1.CreateAgentResponse
-	97,  // 267: tasker.health.v1.AgentService.UpdateAgent:output_type -> tasker.health.v1.UpdateAgentResponse
-	99,  // 268: tasker.health.v1.AgentService.ListAgents:output_type -> tasker.health.v1.ListAgentsResponse
-	101, // 269: tasker.health.v1.AgentService.ArchiveAgent:output_type -> tasker.health.v1.ArchiveAgentResponse
-	103, // 270: tasker.health.v1.AgentService.RestoreAgent:output_type -> tasker.health.v1.RestoreAgentResponse
-	105, // 271: tasker.health.v1.AgentService.PurgeAgent:output_type -> tasker.health.v1.PurgeAgentResponse
-	108, // 272: tasker.health.v1.AgentService.CreateAgentToken:output_type -> tasker.health.v1.CreateAgentTokenResponse
-	110, // 273: tasker.health.v1.AgentService.ListAgentTokens:output_type -> tasker.health.v1.ListAgentTokensResponse
-	112, // 274: tasker.health.v1.AgentService.RevokeAgentToken:output_type -> tasker.health.v1.RevokeAgentTokenResponse
-	118, // 275: tasker.health.v1.TaskService.CreateTask:output_type -> tasker.health.v1.CreateTaskResponse
-	120, // 276: tasker.health.v1.TaskService.AssignTask:output_type -> tasker.health.v1.AssignTaskResponse
-	116, // 277: tasker.health.v1.TaskService.UnassignTask:output_type -> tasker.health.v1.UnassignTaskResponse
-	131, // 278: tasker.health.v1.TaskService.GetTask:output_type -> tasker.health.v1.GetTaskResponse
-	133, // 279: tasker.health.v1.TaskService.ListTasks:output_type -> tasker.health.v1.ListTasksResponse
-	137, // 280: tasker.health.v1.TaskService.UpdateTask:output_type -> tasker.health.v1.UpdateTaskResponse
-	135, // 281: tasker.health.v1.TaskService.UpdateTaskStatus:output_type -> tasker.health.v1.UpdateTaskStatusResponse
-	139, // 282: tasker.health.v1.TaskService.DeleteTask:output_type -> tasker.health.v1.DeleteTaskResponse
-	141, // 283: tasker.health.v1.TaskService.RestoreTask:output_type -> tasker.health.v1.RestoreTaskResponse
-	143, // 284: tasker.health.v1.TaskService.PurgeTask:output_type -> tasker.health.v1.PurgeTaskResponse
-	123, // 285: tasker.health.v1.TaskService.AddTaskReviewer:output_type -> tasker.health.v1.AddTaskReviewerResponse
-	125, // 286: tasker.health.v1.TaskService.RemoveTaskReviewer:output_type -> tasker.health.v1.RemoveTaskReviewerResponse
-	127, // 287: tasker.health.v1.TaskService.ListTaskReviewers:output_type -> tasker.health.v1.ListTaskReviewersResponse
-	152, // 288: tasker.health.v1.ArtifactService.CreateFolder:output_type -> tasker.health.v1.CreateFolderResponse
-	154, // 289: tasker.health.v1.ArtifactService.UpdateFolder:output_type -> tasker.health.v1.UpdateFolderResponse
-	156, // 290: tasker.health.v1.ArtifactService.CreateArtifact:output_type -> tasker.health.v1.CreateArtifactResponse
-	158, // 291: tasker.health.v1.ArtifactService.UpdateArtifactContent:output_type -> tasker.health.v1.UpdateArtifactContentResponse
-	160, // 292: tasker.health.v1.ArtifactService.LinkTaskArtifact:output_type -> tasker.health.v1.LinkTaskArtifactResponse
-	162, // 293: tasker.health.v1.ArtifactService.UnlinkTaskArtifact:output_type -> tasker.health.v1.UnlinkTaskArtifactResponse
-	164, // 294: tasker.health.v1.ArtifactService.ListTaskArtifactLinks:output_type -> tasker.health.v1.ListTaskArtifactLinksResponse
-	166, // 295: tasker.health.v1.ArtifactService.ListArtifacts:output_type -> tasker.health.v1.ListArtifactsResponse
-	147, // 296: tasker.health.v1.ArtifactService.GetArtifact:output_type -> tasker.health.v1.GetArtifactResponse
-	149, // 297: tasker.health.v1.ArtifactService.GetArtifactContent:output_type -> tasker.health.v1.GetArtifactContentResponse
-	168, // 298: tasker.health.v1.ArtifactService.ListFolders:output_type -> tasker.health.v1.ListFoldersResponse
-	170, // 299: tasker.health.v1.ArtifactService.ArchiveArtifact:output_type -> tasker.health.v1.ArchiveArtifactResponse
-	172, // 300: tasker.health.v1.ArtifactService.RestoreArtifact:output_type -> tasker.health.v1.RestoreArtifactResponse
-	174, // 301: tasker.health.v1.ArtifactService.ArchiveFolder:output_type -> tasker.health.v1.ArchiveFolderResponse
-	176, // 302: tasker.health.v1.ArtifactService.RestoreFolder:output_type -> tasker.health.v1.RestoreFolderResponse
-	178, // 303: tasker.health.v1.ArtifactService.PurgeArtifact:output_type -> tasker.health.v1.PurgeArtifactResponse
-	180, // 304: tasker.health.v1.ArtifactService.PurgeFolder:output_type -> tasker.health.v1.PurgeFolderResponse
-	183, // 305: tasker.health.v1.CommentService.CreateComment:output_type -> tasker.health.v1.CreateCommentResponse
-	187, // 306: tasker.health.v1.CommentService.UpdateComment:output_type -> tasker.health.v1.UpdateCommentResponse
-	189, // 307: tasker.health.v1.CommentService.DeleteComment:output_type -> tasker.health.v1.DeleteCommentResponse
-	185, // 308: tasker.health.v1.CommentService.ListComments:output_type -> tasker.health.v1.ListCommentsResponse
-	192, // 309: tasker.health.v1.TaskNoteService.CreateTaskNote:output_type -> tasker.health.v1.CreateTaskNoteResponse
-	196, // 310: tasker.health.v1.TaskNoteService.UpdateTaskNote:output_type -> tasker.health.v1.UpdateTaskNoteResponse
-	198, // 311: tasker.health.v1.TaskNoteService.DeleteTaskNote:output_type -> tasker.health.v1.DeleteTaskNoteResponse
-	194, // 312: tasker.health.v1.TaskNoteService.ListTaskNotes:output_type -> tasker.health.v1.ListTaskNotesResponse
-	201, // 313: tasker.health.v1.LabelService.CreateLabel:output_type -> tasker.health.v1.CreateLabelResponse
-	211, // 314: tasker.health.v1.LabelService.UpdateLabel:output_type -> tasker.health.v1.UpdateLabelResponse
-	203, // 315: tasker.health.v1.LabelService.ListLabels:output_type -> tasker.health.v1.ListLabelsResponse
-	205, // 316: tasker.health.v1.LabelService.AttachLabel:output_type -> tasker.health.v1.AttachLabelResponse
-	207, // 317: tasker.health.v1.LabelService.DetachLabel:output_type -> tasker.health.v1.DetachLabelResponse
-	209, // 318: tasker.health.v1.LabelService.ListEntityLabels:output_type -> tasker.health.v1.ListEntityLabelsResponse
-	215, // 319: tasker.health.v1.RepositoryService.AddRepositoryLink:output_type -> tasker.health.v1.AddRepositoryLinkResponse
-	217, // 320: tasker.health.v1.RepositoryService.RemoveRepositoryLink:output_type -> tasker.health.v1.RemoveRepositoryLinkResponse
-	219, // 321: tasker.health.v1.RepositoryService.ListRepositoryLinks:output_type -> tasker.health.v1.ListRepositoryLinksResponse
-	221, // 322: tasker.health.v1.RepositoryService.SyncPullRequests:output_type -> tasker.health.v1.SyncPullRequestsResponse
-	223, // 323: tasker.health.v1.RepositoryService.ListPullRequests:output_type -> tasker.health.v1.ListPullRequestsResponse
-	227, // 324: tasker.health.v1.RepositoryService.ListBuilds:output_type -> tasker.health.v1.ListBuildsResponse
-	229, // 325: tasker.health.v1.RepositoryService.ListDeployments:output_type -> tasker.health.v1.ListDeploymentsResponse
-	233, // 326: tasker.health.v1.SearchService.UniversalSearch:output_type -> tasker.health.v1.UniversalSearchResponse
-	239, // 327: tasker.health.v1.DashboardService.GetDashboard:output_type -> tasker.health.v1.GetDashboardResponse
-	243, // 328: tasker.health.v1.TeamService.CreateTeam:output_type -> tasker.health.v1.CreateTeamResponse
-	245, // 329: tasker.health.v1.TeamService.UpdateTeam:output_type -> tasker.health.v1.UpdateTeamResponse
-	247, // 330: tasker.health.v1.TeamService.ArchiveTeam:output_type -> tasker.health.v1.ArchiveTeamResponse
-	249, // 331: tasker.health.v1.TeamService.RestoreTeam:output_type -> tasker.health.v1.RestoreTeamResponse
-	251, // 332: tasker.health.v1.TeamService.ListTeams:output_type -> tasker.health.v1.ListTeamsResponse
-	253, // 333: tasker.health.v1.TeamService.AddTeamMember:output_type -> tasker.health.v1.AddTeamMemberResponse
-	255, // 334: tasker.health.v1.TeamService.RemoveTeamMember:output_type -> tasker.health.v1.RemoveTeamMemberResponse
-	257, // 335: tasker.health.v1.TeamService.ListTeamMembers:output_type -> tasker.health.v1.ListTeamMembersResponse
-	225, // [225:336] is the sub-list for method output_type
-	114, // [114:225] is the sub-list for method input_type
-	114, // [114:114] is the sub-list for extension type_name
-	114, // [114:114] is the sub-list for extension extendee
-	0,   // [0:114] is the sub-list for field type_name
+	258, // 114: tasker.health.v1.ListPermissionsResponse.permissions:type_name -> tasker.health.v1.Permission
+	128, // 115: tasker.health.v1.ListRolesRequest.page:type_name -> tasker.health.v1.PageRequest
+	259, // 116: tasker.health.v1.ListRolesResponse.roles:type_name -> tasker.health.v1.Role
+	129, // 117: tasker.health.v1.ListRolesResponse.page:type_name -> tasker.health.v1.PageResponse
+	259, // 118: tasker.health.v1.CreateRoleResponse.role:type_name -> tasker.health.v1.Role
+	259, // 119: tasker.health.v1.UpdateRoleResponse.role:type_name -> tasker.health.v1.Role
+	260, // 120: tasker.health.v1.GrantRoleResponse.grant:type_name -> tasker.health.v1.Grant
+	128, // 121: tasker.health.v1.ListGrantsRequest.page:type_name -> tasker.health.v1.PageRequest
+	260, // 122: tasker.health.v1.ListGrantsResponse.grants:type_name -> tasker.health.v1.Grant
+	129, // 123: tasker.health.v1.ListGrantsResponse.page:type_name -> tasker.health.v1.PageResponse
+	0,   // 124: tasker.health.v1.HealthService.Ping:input_type -> tasker.health.v1.PingRequest
+	4,   // 125: tasker.health.v1.AuthService.GetIdentity:input_type -> tasker.health.v1.GetIdentityRequest
+	6,   // 126: tasker.health.v1.AuthService.SetPassword:input_type -> tasker.health.v1.SetPasswordRequest
+	9,   // 127: tasker.health.v1.AuthService.ListLinkedIdentities:input_type -> tasker.health.v1.ListLinkedIdentitiesRequest
+	11,  // 128: tasker.health.v1.AuthService.UnlinkIdentity:input_type -> tasker.health.v1.UnlinkIdentityRequest
+	13,  // 129: tasker.health.v1.AuthService.AdminResetPassword:input_type -> tasker.health.v1.AdminResetPasswordRequest
+	15,  // 130: tasker.health.v1.OrgService.ListOrgs:input_type -> tasker.health.v1.ListOrgsRequest
+	25,  // 131: tasker.health.v1.OrgService.SeedOrg:input_type -> tasker.health.v1.SeedOrgRequest
+	29,  // 132: tasker.health.v1.OrgService.UpdateOrg:input_type -> tasker.health.v1.UpdateOrgRequest
+	17,  // 133: tasker.health.v1.OrgService.ArchiveOrg:input_type -> tasker.health.v1.ArchiveOrgRequest
+	19,  // 134: tasker.health.v1.OrgService.RestoreOrg:input_type -> tasker.health.v1.RestoreOrgRequest
+	21,  // 135: tasker.health.v1.OrgService.PurgeOrg:input_type -> tasker.health.v1.PurgeOrgRequest
+	23,  // 136: tasker.health.v1.OrgService.SetOrgRetentionDays:input_type -> tasker.health.v1.SetOrgRetentionDaysRequest
+	27,  // 137: tasker.health.v1.OrgService.InviteUser:input_type -> tasker.health.v1.InviteUserRequest
+	33,  // 138: tasker.health.v1.OrgService.ListInvitations:input_type -> tasker.health.v1.ListInvitationsRequest
+	35,  // 139: tasker.health.v1.OrgService.RevokeInvitation:input_type -> tasker.health.v1.RevokeInvitationRequest
+	37,  // 140: tasker.health.v1.OrgService.ListOrgMembers:input_type -> tasker.health.v1.ListOrgMembersRequest
+	39,  // 141: tasker.health.v1.OrgService.RemoveOrgMember:input_type -> tasker.health.v1.RemoveOrgMemberRequest
+	41,  // 142: tasker.health.v1.OrgService.UpdateOrgMemberRole:input_type -> tasker.health.v1.UpdateOrgMemberRoleRequest
+	46,  // 143: tasker.health.v1.TaskTypeService.GetTaskType:input_type -> tasker.health.v1.GetTaskTypeRequest
+	48,  // 144: tasker.health.v1.TaskTypeService.CreateTaskType:input_type -> tasker.health.v1.CreateTaskTypeRequest
+	60,  // 145: tasker.health.v1.TaskTypeService.UpdateTaskType:input_type -> tasker.health.v1.UpdateTaskTypeRequest
+	50,  // 146: tasker.health.v1.TaskTypeService.ListTaskTypes:input_type -> tasker.health.v1.ListTaskTypesRequest
+	52,  // 147: tasker.health.v1.TaskTypeService.CreateTaskStatus:input_type -> tasker.health.v1.CreateTaskStatusRequest
+	54,  // 148: tasker.health.v1.TaskTypeService.CreateTaskStatusTransition:input_type -> tasker.health.v1.CreateTaskStatusTransitionRequest
+	58,  // 149: tasker.health.v1.TaskTypeService.DeleteTaskStatusTransition:input_type -> tasker.health.v1.DeleteTaskStatusTransitionRequest
+	56,  // 150: tasker.health.v1.TaskTypeService.ReorderTaskStatuses:input_type -> tasker.health.v1.ReorderTaskStatusesRequest
+	64,  // 151: tasker.health.v1.ProjectTemplateService.GetTemplate:input_type -> tasker.health.v1.GetProjectTemplateRequest
+	66,  // 152: tasker.health.v1.ProjectTemplateService.CreateTemplate:input_type -> tasker.health.v1.CreateProjectTemplateRequest
+	70,  // 153: tasker.health.v1.ProjectTemplateService.UpdateTemplate:input_type -> tasker.health.v1.UpdateProjectTemplateRequest
+	68,  // 154: tasker.health.v1.ProjectTemplateService.ListTemplates:input_type -> tasker.health.v1.ListProjectTemplatesRequest
+	72,  // 155: tasker.health.v1.ProjectService.GetProject:input_type -> tasker.health.v1.GetProjectRequest
+	74,  // 156: tasker.health.v1.ProjectService.CreateProject:input_type -> tasker.health.v1.CreateProjectRequest
+	84,  // 157: tasker.health.v1.ProjectService.UpdateProject:input_type -> tasker.health.v1.UpdateProjectRequest
+	76,  // 158: tasker.health.v1.ProjectService.ListProjects:input_type -> tasker.health.v1.ListProjectsRequest
+	78,  // 159: tasker.health.v1.ProjectService.ArchiveProject:input_type -> tasker.health.v1.ArchiveProjectRequest
+	80,  // 160: tasker.health.v1.ProjectService.RestoreProject:input_type -> tasker.health.v1.RestoreProjectRequest
+	82,  // 161: tasker.health.v1.ProjectService.PurgeProject:input_type -> tasker.health.v1.PurgeProjectRequest
+	88,  // 162: tasker.health.v1.AgentService.CreateAgentRole:input_type -> tasker.health.v1.CreateAgentRoleRequest
+	92,  // 163: tasker.health.v1.AgentService.UpdateAgentRole:input_type -> tasker.health.v1.UpdateAgentRoleRequest
+	90,  // 164: tasker.health.v1.AgentService.ListAgentRoles:input_type -> tasker.health.v1.ListAgentRolesRequest
+	94,  // 165: tasker.health.v1.AgentService.CreateAgent:input_type -> tasker.health.v1.CreateAgentRequest
+	96,  // 166: tasker.health.v1.AgentService.UpdateAgent:input_type -> tasker.health.v1.UpdateAgentRequest
+	98,  // 167: tasker.health.v1.AgentService.ListAgents:input_type -> tasker.health.v1.ListAgentsRequest
+	100, // 168: tasker.health.v1.AgentService.ArchiveAgent:input_type -> tasker.health.v1.ArchiveAgentRequest
+	102, // 169: tasker.health.v1.AgentService.RestoreAgent:input_type -> tasker.health.v1.RestoreAgentRequest
+	104, // 170: tasker.health.v1.AgentService.PurgeAgent:input_type -> tasker.health.v1.PurgeAgentRequest
+	107, // 171: tasker.health.v1.AgentService.CreateAgentToken:input_type -> tasker.health.v1.CreateAgentTokenRequest
+	109, // 172: tasker.health.v1.AgentService.ListAgentTokens:input_type -> tasker.health.v1.ListAgentTokensRequest
+	111, // 173: tasker.health.v1.AgentService.RevokeAgentToken:input_type -> tasker.health.v1.RevokeAgentTokenRequest
+	117, // 174: tasker.health.v1.TaskService.CreateTask:input_type -> tasker.health.v1.CreateTaskRequest
+	119, // 175: tasker.health.v1.TaskService.AssignTask:input_type -> tasker.health.v1.AssignTaskRequest
+	115, // 176: tasker.health.v1.TaskService.UnassignTask:input_type -> tasker.health.v1.UnassignTaskRequest
+	130, // 177: tasker.health.v1.TaskService.GetTask:input_type -> tasker.health.v1.GetTaskRequest
+	132, // 178: tasker.health.v1.TaskService.ListTasks:input_type -> tasker.health.v1.ListTasksRequest
+	136, // 179: tasker.health.v1.TaskService.UpdateTask:input_type -> tasker.health.v1.UpdateTaskRequest
+	134, // 180: tasker.health.v1.TaskService.UpdateTaskStatus:input_type -> tasker.health.v1.UpdateTaskStatusRequest
+	138, // 181: tasker.health.v1.TaskService.DeleteTask:input_type -> tasker.health.v1.DeleteTaskRequest
+	140, // 182: tasker.health.v1.TaskService.RestoreTask:input_type -> tasker.health.v1.RestoreTaskRequest
+	142, // 183: tasker.health.v1.TaskService.PurgeTask:input_type -> tasker.health.v1.PurgeTaskRequest
+	122, // 184: tasker.health.v1.TaskService.AddTaskReviewer:input_type -> tasker.health.v1.AddTaskReviewerRequest
+	124, // 185: tasker.health.v1.TaskService.RemoveTaskReviewer:input_type -> tasker.health.v1.RemoveTaskReviewerRequest
+	126, // 186: tasker.health.v1.TaskService.ListTaskReviewers:input_type -> tasker.health.v1.ListTaskReviewersRequest
+	151, // 187: tasker.health.v1.ArtifactService.CreateFolder:input_type -> tasker.health.v1.CreateFolderRequest
+	153, // 188: tasker.health.v1.ArtifactService.UpdateFolder:input_type -> tasker.health.v1.UpdateFolderRequest
+	155, // 189: tasker.health.v1.ArtifactService.CreateArtifact:input_type -> tasker.health.v1.CreateArtifactRequest
+	157, // 190: tasker.health.v1.ArtifactService.UpdateArtifactContent:input_type -> tasker.health.v1.UpdateArtifactContentRequest
+	159, // 191: tasker.health.v1.ArtifactService.LinkTaskArtifact:input_type -> tasker.health.v1.LinkTaskArtifactRequest
+	161, // 192: tasker.health.v1.ArtifactService.UnlinkTaskArtifact:input_type -> tasker.health.v1.UnlinkTaskArtifactRequest
+	163, // 193: tasker.health.v1.ArtifactService.ListTaskArtifactLinks:input_type -> tasker.health.v1.ListTaskArtifactLinksRequest
+	165, // 194: tasker.health.v1.ArtifactService.ListArtifacts:input_type -> tasker.health.v1.ListArtifactsRequest
+	146, // 195: tasker.health.v1.ArtifactService.GetArtifact:input_type -> tasker.health.v1.GetArtifactRequest
+	148, // 196: tasker.health.v1.ArtifactService.GetArtifactContent:input_type -> tasker.health.v1.GetArtifactContentRequest
+	167, // 197: tasker.health.v1.ArtifactService.ListFolders:input_type -> tasker.health.v1.ListFoldersRequest
+	169, // 198: tasker.health.v1.ArtifactService.ArchiveArtifact:input_type -> tasker.health.v1.ArchiveArtifactRequest
+	171, // 199: tasker.health.v1.ArtifactService.RestoreArtifact:input_type -> tasker.health.v1.RestoreArtifactRequest
+	173, // 200: tasker.health.v1.ArtifactService.ArchiveFolder:input_type -> tasker.health.v1.ArchiveFolderRequest
+	175, // 201: tasker.health.v1.ArtifactService.RestoreFolder:input_type -> tasker.health.v1.RestoreFolderRequest
+	177, // 202: tasker.health.v1.ArtifactService.PurgeArtifact:input_type -> tasker.health.v1.PurgeArtifactRequest
+	179, // 203: tasker.health.v1.ArtifactService.PurgeFolder:input_type -> tasker.health.v1.PurgeFolderRequest
+	182, // 204: tasker.health.v1.CommentService.CreateComment:input_type -> tasker.health.v1.CreateCommentRequest
+	186, // 205: tasker.health.v1.CommentService.UpdateComment:input_type -> tasker.health.v1.UpdateCommentRequest
+	188, // 206: tasker.health.v1.CommentService.DeleteComment:input_type -> tasker.health.v1.DeleteCommentRequest
+	184, // 207: tasker.health.v1.CommentService.ListComments:input_type -> tasker.health.v1.ListCommentsRequest
+	191, // 208: tasker.health.v1.TaskNoteService.CreateTaskNote:input_type -> tasker.health.v1.CreateTaskNoteRequest
+	195, // 209: tasker.health.v1.TaskNoteService.UpdateTaskNote:input_type -> tasker.health.v1.UpdateTaskNoteRequest
+	197, // 210: tasker.health.v1.TaskNoteService.DeleteTaskNote:input_type -> tasker.health.v1.DeleteTaskNoteRequest
+	193, // 211: tasker.health.v1.TaskNoteService.ListTaskNotes:input_type -> tasker.health.v1.ListTaskNotesRequest
+	200, // 212: tasker.health.v1.LabelService.CreateLabel:input_type -> tasker.health.v1.CreateLabelRequest
+	210, // 213: tasker.health.v1.LabelService.UpdateLabel:input_type -> tasker.health.v1.UpdateLabelRequest
+	202, // 214: tasker.health.v1.LabelService.ListLabels:input_type -> tasker.health.v1.ListLabelsRequest
+	204, // 215: tasker.health.v1.LabelService.AttachLabel:input_type -> tasker.health.v1.AttachLabelRequest
+	206, // 216: tasker.health.v1.LabelService.DetachLabel:input_type -> tasker.health.v1.DetachLabelRequest
+	208, // 217: tasker.health.v1.LabelService.ListEntityLabels:input_type -> tasker.health.v1.ListEntityLabelsRequest
+	214, // 218: tasker.health.v1.RepositoryService.AddRepositoryLink:input_type -> tasker.health.v1.AddRepositoryLinkRequest
+	216, // 219: tasker.health.v1.RepositoryService.RemoveRepositoryLink:input_type -> tasker.health.v1.RemoveRepositoryLinkRequest
+	218, // 220: tasker.health.v1.RepositoryService.ListRepositoryLinks:input_type -> tasker.health.v1.ListRepositoryLinksRequest
+	220, // 221: tasker.health.v1.RepositoryService.SyncPullRequests:input_type -> tasker.health.v1.SyncPullRequestsRequest
+	222, // 222: tasker.health.v1.RepositoryService.ListPullRequests:input_type -> tasker.health.v1.ListPullRequestsRequest
+	226, // 223: tasker.health.v1.RepositoryService.ListBuilds:input_type -> tasker.health.v1.ListBuildsRequest
+	228, // 224: tasker.health.v1.RepositoryService.ListDeployments:input_type -> tasker.health.v1.ListDeploymentsRequest
+	232, // 225: tasker.health.v1.SearchService.UniversalSearch:input_type -> tasker.health.v1.UniversalSearchRequest
+	238, // 226: tasker.health.v1.DashboardService.GetDashboard:input_type -> tasker.health.v1.GetDashboardRequest
+	242, // 227: tasker.health.v1.TeamService.CreateTeam:input_type -> tasker.health.v1.CreateTeamRequest
+	244, // 228: tasker.health.v1.TeamService.UpdateTeam:input_type -> tasker.health.v1.UpdateTeamRequest
+	246, // 229: tasker.health.v1.TeamService.ArchiveTeam:input_type -> tasker.health.v1.ArchiveTeamRequest
+	248, // 230: tasker.health.v1.TeamService.RestoreTeam:input_type -> tasker.health.v1.RestoreTeamRequest
+	250, // 231: tasker.health.v1.TeamService.ListTeams:input_type -> tasker.health.v1.ListTeamsRequest
+	252, // 232: tasker.health.v1.TeamService.AddTeamMember:input_type -> tasker.health.v1.AddTeamMemberRequest
+	254, // 233: tasker.health.v1.TeamService.RemoveTeamMember:input_type -> tasker.health.v1.RemoveTeamMemberRequest
+	256, // 234: tasker.health.v1.TeamService.ListTeamMembers:input_type -> tasker.health.v1.ListTeamMembersRequest
+	261, // 235: tasker.health.v1.RoleService.ListPermissions:input_type -> tasker.health.v1.ListPermissionsRequest
+	263, // 236: tasker.health.v1.RoleService.ListRoles:input_type -> tasker.health.v1.ListRolesRequest
+	265, // 237: tasker.health.v1.RoleService.CreateRole:input_type -> tasker.health.v1.CreateRoleRequest
+	267, // 238: tasker.health.v1.RoleService.UpdateRole:input_type -> tasker.health.v1.UpdateRoleRequest
+	269, // 239: tasker.health.v1.RoleService.DeleteRole:input_type -> tasker.health.v1.DeleteRoleRequest
+	271, // 240: tasker.health.v1.RoleService.GrantRole:input_type -> tasker.health.v1.GrantRoleRequest
+	273, // 241: tasker.health.v1.RoleService.RevokeGrant:input_type -> tasker.health.v1.RevokeGrantRequest
+	275, // 242: tasker.health.v1.RoleService.ListGrants:input_type -> tasker.health.v1.ListGrantsRequest
+	1,   // 243: tasker.health.v1.HealthService.Ping:output_type -> tasker.health.v1.PingResponse
+	5,   // 244: tasker.health.v1.AuthService.GetIdentity:output_type -> tasker.health.v1.GetIdentityResponse
+	7,   // 245: tasker.health.v1.AuthService.SetPassword:output_type -> tasker.health.v1.SetPasswordResponse
+	10,  // 246: tasker.health.v1.AuthService.ListLinkedIdentities:output_type -> tasker.health.v1.ListLinkedIdentitiesResponse
+	12,  // 247: tasker.health.v1.AuthService.UnlinkIdentity:output_type -> tasker.health.v1.UnlinkIdentityResponse
+	14,  // 248: tasker.health.v1.AuthService.AdminResetPassword:output_type -> tasker.health.v1.AdminResetPasswordResponse
+	16,  // 249: tasker.health.v1.OrgService.ListOrgs:output_type -> tasker.health.v1.ListOrgsResponse
+	26,  // 250: tasker.health.v1.OrgService.SeedOrg:output_type -> tasker.health.v1.SeedOrgResponse
+	30,  // 251: tasker.health.v1.OrgService.UpdateOrg:output_type -> tasker.health.v1.UpdateOrgResponse
+	18,  // 252: tasker.health.v1.OrgService.ArchiveOrg:output_type -> tasker.health.v1.ArchiveOrgResponse
+	20,  // 253: tasker.health.v1.OrgService.RestoreOrg:output_type -> tasker.health.v1.RestoreOrgResponse
+	22,  // 254: tasker.health.v1.OrgService.PurgeOrg:output_type -> tasker.health.v1.PurgeOrgResponse
+	24,  // 255: tasker.health.v1.OrgService.SetOrgRetentionDays:output_type -> tasker.health.v1.SetOrgRetentionDaysResponse
+	28,  // 256: tasker.health.v1.OrgService.InviteUser:output_type -> tasker.health.v1.InviteUserResponse
+	34,  // 257: tasker.health.v1.OrgService.ListInvitations:output_type -> tasker.health.v1.ListInvitationsResponse
+	36,  // 258: tasker.health.v1.OrgService.RevokeInvitation:output_type -> tasker.health.v1.RevokeInvitationResponse
+	38,  // 259: tasker.health.v1.OrgService.ListOrgMembers:output_type -> tasker.health.v1.ListOrgMembersResponse
+	40,  // 260: tasker.health.v1.OrgService.RemoveOrgMember:output_type -> tasker.health.v1.RemoveOrgMemberResponse
+	42,  // 261: tasker.health.v1.OrgService.UpdateOrgMemberRole:output_type -> tasker.health.v1.UpdateOrgMemberRoleResponse
+	47,  // 262: tasker.health.v1.TaskTypeService.GetTaskType:output_type -> tasker.health.v1.GetTaskTypeResponse
+	49,  // 263: tasker.health.v1.TaskTypeService.CreateTaskType:output_type -> tasker.health.v1.CreateTaskTypeResponse
+	61,  // 264: tasker.health.v1.TaskTypeService.UpdateTaskType:output_type -> tasker.health.v1.UpdateTaskTypeResponse
+	51,  // 265: tasker.health.v1.TaskTypeService.ListTaskTypes:output_type -> tasker.health.v1.ListTaskTypesResponse
+	53,  // 266: tasker.health.v1.TaskTypeService.CreateTaskStatus:output_type -> tasker.health.v1.CreateTaskStatusResponse
+	55,  // 267: tasker.health.v1.TaskTypeService.CreateTaskStatusTransition:output_type -> tasker.health.v1.CreateTaskStatusTransitionResponse
+	59,  // 268: tasker.health.v1.TaskTypeService.DeleteTaskStatusTransition:output_type -> tasker.health.v1.DeleteTaskStatusTransitionResponse
+	57,  // 269: tasker.health.v1.TaskTypeService.ReorderTaskStatuses:output_type -> tasker.health.v1.ReorderTaskStatusesResponse
+	65,  // 270: tasker.health.v1.ProjectTemplateService.GetTemplate:output_type -> tasker.health.v1.GetProjectTemplateResponse
+	67,  // 271: tasker.health.v1.ProjectTemplateService.CreateTemplate:output_type -> tasker.health.v1.CreateProjectTemplateResponse
+	71,  // 272: tasker.health.v1.ProjectTemplateService.UpdateTemplate:output_type -> tasker.health.v1.UpdateProjectTemplateResponse
+	69,  // 273: tasker.health.v1.ProjectTemplateService.ListTemplates:output_type -> tasker.health.v1.ListProjectTemplatesResponse
+	73,  // 274: tasker.health.v1.ProjectService.GetProject:output_type -> tasker.health.v1.GetProjectResponse
+	75,  // 275: tasker.health.v1.ProjectService.CreateProject:output_type -> tasker.health.v1.CreateProjectResponse
+	85,  // 276: tasker.health.v1.ProjectService.UpdateProject:output_type -> tasker.health.v1.UpdateProjectResponse
+	77,  // 277: tasker.health.v1.ProjectService.ListProjects:output_type -> tasker.health.v1.ListProjectsResponse
+	79,  // 278: tasker.health.v1.ProjectService.ArchiveProject:output_type -> tasker.health.v1.ArchiveProjectResponse
+	81,  // 279: tasker.health.v1.ProjectService.RestoreProject:output_type -> tasker.health.v1.RestoreProjectResponse
+	83,  // 280: tasker.health.v1.ProjectService.PurgeProject:output_type -> tasker.health.v1.PurgeProjectResponse
+	89,  // 281: tasker.health.v1.AgentService.CreateAgentRole:output_type -> tasker.health.v1.CreateAgentRoleResponse
+	93,  // 282: tasker.health.v1.AgentService.UpdateAgentRole:output_type -> tasker.health.v1.UpdateAgentRoleResponse
+	91,  // 283: tasker.health.v1.AgentService.ListAgentRoles:output_type -> tasker.health.v1.ListAgentRolesResponse
+	95,  // 284: tasker.health.v1.AgentService.CreateAgent:output_type -> tasker.health.v1.CreateAgentResponse
+	97,  // 285: tasker.health.v1.AgentService.UpdateAgent:output_type -> tasker.health.v1.UpdateAgentResponse
+	99,  // 286: tasker.health.v1.AgentService.ListAgents:output_type -> tasker.health.v1.ListAgentsResponse
+	101, // 287: tasker.health.v1.AgentService.ArchiveAgent:output_type -> tasker.health.v1.ArchiveAgentResponse
+	103, // 288: tasker.health.v1.AgentService.RestoreAgent:output_type -> tasker.health.v1.RestoreAgentResponse
+	105, // 289: tasker.health.v1.AgentService.PurgeAgent:output_type -> tasker.health.v1.PurgeAgentResponse
+	108, // 290: tasker.health.v1.AgentService.CreateAgentToken:output_type -> tasker.health.v1.CreateAgentTokenResponse
+	110, // 291: tasker.health.v1.AgentService.ListAgentTokens:output_type -> tasker.health.v1.ListAgentTokensResponse
+	112, // 292: tasker.health.v1.AgentService.RevokeAgentToken:output_type -> tasker.health.v1.RevokeAgentTokenResponse
+	118, // 293: tasker.health.v1.TaskService.CreateTask:output_type -> tasker.health.v1.CreateTaskResponse
+	120, // 294: tasker.health.v1.TaskService.AssignTask:output_type -> tasker.health.v1.AssignTaskResponse
+	116, // 295: tasker.health.v1.TaskService.UnassignTask:output_type -> tasker.health.v1.UnassignTaskResponse
+	131, // 296: tasker.health.v1.TaskService.GetTask:output_type -> tasker.health.v1.GetTaskResponse
+	133, // 297: tasker.health.v1.TaskService.ListTasks:output_type -> tasker.health.v1.ListTasksResponse
+	137, // 298: tasker.health.v1.TaskService.UpdateTask:output_type -> tasker.health.v1.UpdateTaskResponse
+	135, // 299: tasker.health.v1.TaskService.UpdateTaskStatus:output_type -> tasker.health.v1.UpdateTaskStatusResponse
+	139, // 300: tasker.health.v1.TaskService.DeleteTask:output_type -> tasker.health.v1.DeleteTaskResponse
+	141, // 301: tasker.health.v1.TaskService.RestoreTask:output_type -> tasker.health.v1.RestoreTaskResponse
+	143, // 302: tasker.health.v1.TaskService.PurgeTask:output_type -> tasker.health.v1.PurgeTaskResponse
+	123, // 303: tasker.health.v1.TaskService.AddTaskReviewer:output_type -> tasker.health.v1.AddTaskReviewerResponse
+	125, // 304: tasker.health.v1.TaskService.RemoveTaskReviewer:output_type -> tasker.health.v1.RemoveTaskReviewerResponse
+	127, // 305: tasker.health.v1.TaskService.ListTaskReviewers:output_type -> tasker.health.v1.ListTaskReviewersResponse
+	152, // 306: tasker.health.v1.ArtifactService.CreateFolder:output_type -> tasker.health.v1.CreateFolderResponse
+	154, // 307: tasker.health.v1.ArtifactService.UpdateFolder:output_type -> tasker.health.v1.UpdateFolderResponse
+	156, // 308: tasker.health.v1.ArtifactService.CreateArtifact:output_type -> tasker.health.v1.CreateArtifactResponse
+	158, // 309: tasker.health.v1.ArtifactService.UpdateArtifactContent:output_type -> tasker.health.v1.UpdateArtifactContentResponse
+	160, // 310: tasker.health.v1.ArtifactService.LinkTaskArtifact:output_type -> tasker.health.v1.LinkTaskArtifactResponse
+	162, // 311: tasker.health.v1.ArtifactService.UnlinkTaskArtifact:output_type -> tasker.health.v1.UnlinkTaskArtifactResponse
+	164, // 312: tasker.health.v1.ArtifactService.ListTaskArtifactLinks:output_type -> tasker.health.v1.ListTaskArtifactLinksResponse
+	166, // 313: tasker.health.v1.ArtifactService.ListArtifacts:output_type -> tasker.health.v1.ListArtifactsResponse
+	147, // 314: tasker.health.v1.ArtifactService.GetArtifact:output_type -> tasker.health.v1.GetArtifactResponse
+	149, // 315: tasker.health.v1.ArtifactService.GetArtifactContent:output_type -> tasker.health.v1.GetArtifactContentResponse
+	168, // 316: tasker.health.v1.ArtifactService.ListFolders:output_type -> tasker.health.v1.ListFoldersResponse
+	170, // 317: tasker.health.v1.ArtifactService.ArchiveArtifact:output_type -> tasker.health.v1.ArchiveArtifactResponse
+	172, // 318: tasker.health.v1.ArtifactService.RestoreArtifact:output_type -> tasker.health.v1.RestoreArtifactResponse
+	174, // 319: tasker.health.v1.ArtifactService.ArchiveFolder:output_type -> tasker.health.v1.ArchiveFolderResponse
+	176, // 320: tasker.health.v1.ArtifactService.RestoreFolder:output_type -> tasker.health.v1.RestoreFolderResponse
+	178, // 321: tasker.health.v1.ArtifactService.PurgeArtifact:output_type -> tasker.health.v1.PurgeArtifactResponse
+	180, // 322: tasker.health.v1.ArtifactService.PurgeFolder:output_type -> tasker.health.v1.PurgeFolderResponse
+	183, // 323: tasker.health.v1.CommentService.CreateComment:output_type -> tasker.health.v1.CreateCommentResponse
+	187, // 324: tasker.health.v1.CommentService.UpdateComment:output_type -> tasker.health.v1.UpdateCommentResponse
+	189, // 325: tasker.health.v1.CommentService.DeleteComment:output_type -> tasker.health.v1.DeleteCommentResponse
+	185, // 326: tasker.health.v1.CommentService.ListComments:output_type -> tasker.health.v1.ListCommentsResponse
+	192, // 327: tasker.health.v1.TaskNoteService.CreateTaskNote:output_type -> tasker.health.v1.CreateTaskNoteResponse
+	196, // 328: tasker.health.v1.TaskNoteService.UpdateTaskNote:output_type -> tasker.health.v1.UpdateTaskNoteResponse
+	198, // 329: tasker.health.v1.TaskNoteService.DeleteTaskNote:output_type -> tasker.health.v1.DeleteTaskNoteResponse
+	194, // 330: tasker.health.v1.TaskNoteService.ListTaskNotes:output_type -> tasker.health.v1.ListTaskNotesResponse
+	201, // 331: tasker.health.v1.LabelService.CreateLabel:output_type -> tasker.health.v1.CreateLabelResponse
+	211, // 332: tasker.health.v1.LabelService.UpdateLabel:output_type -> tasker.health.v1.UpdateLabelResponse
+	203, // 333: tasker.health.v1.LabelService.ListLabels:output_type -> tasker.health.v1.ListLabelsResponse
+	205, // 334: tasker.health.v1.LabelService.AttachLabel:output_type -> tasker.health.v1.AttachLabelResponse
+	207, // 335: tasker.health.v1.LabelService.DetachLabel:output_type -> tasker.health.v1.DetachLabelResponse
+	209, // 336: tasker.health.v1.LabelService.ListEntityLabels:output_type -> tasker.health.v1.ListEntityLabelsResponse
+	215, // 337: tasker.health.v1.RepositoryService.AddRepositoryLink:output_type -> tasker.health.v1.AddRepositoryLinkResponse
+	217, // 338: tasker.health.v1.RepositoryService.RemoveRepositoryLink:output_type -> tasker.health.v1.RemoveRepositoryLinkResponse
+	219, // 339: tasker.health.v1.RepositoryService.ListRepositoryLinks:output_type -> tasker.health.v1.ListRepositoryLinksResponse
+	221, // 340: tasker.health.v1.RepositoryService.SyncPullRequests:output_type -> tasker.health.v1.SyncPullRequestsResponse
+	223, // 341: tasker.health.v1.RepositoryService.ListPullRequests:output_type -> tasker.health.v1.ListPullRequestsResponse
+	227, // 342: tasker.health.v1.RepositoryService.ListBuilds:output_type -> tasker.health.v1.ListBuildsResponse
+	229, // 343: tasker.health.v1.RepositoryService.ListDeployments:output_type -> tasker.health.v1.ListDeploymentsResponse
+	233, // 344: tasker.health.v1.SearchService.UniversalSearch:output_type -> tasker.health.v1.UniversalSearchResponse
+	239, // 345: tasker.health.v1.DashboardService.GetDashboard:output_type -> tasker.health.v1.GetDashboardResponse
+	243, // 346: tasker.health.v1.TeamService.CreateTeam:output_type -> tasker.health.v1.CreateTeamResponse
+	245, // 347: tasker.health.v1.TeamService.UpdateTeam:output_type -> tasker.health.v1.UpdateTeamResponse
+	247, // 348: tasker.health.v1.TeamService.ArchiveTeam:output_type -> tasker.health.v1.ArchiveTeamResponse
+	249, // 349: tasker.health.v1.TeamService.RestoreTeam:output_type -> tasker.health.v1.RestoreTeamResponse
+	251, // 350: tasker.health.v1.TeamService.ListTeams:output_type -> tasker.health.v1.ListTeamsResponse
+	253, // 351: tasker.health.v1.TeamService.AddTeamMember:output_type -> tasker.health.v1.AddTeamMemberResponse
+	255, // 352: tasker.health.v1.TeamService.RemoveTeamMember:output_type -> tasker.health.v1.RemoveTeamMemberResponse
+	257, // 353: tasker.health.v1.TeamService.ListTeamMembers:output_type -> tasker.health.v1.ListTeamMembersResponse
+	262, // 354: tasker.health.v1.RoleService.ListPermissions:output_type -> tasker.health.v1.ListPermissionsResponse
+	264, // 355: tasker.health.v1.RoleService.ListRoles:output_type -> tasker.health.v1.ListRolesResponse
+	266, // 356: tasker.health.v1.RoleService.CreateRole:output_type -> tasker.health.v1.CreateRoleResponse
+	268, // 357: tasker.health.v1.RoleService.UpdateRole:output_type -> tasker.health.v1.UpdateRoleResponse
+	270, // 358: tasker.health.v1.RoleService.DeleteRole:output_type -> tasker.health.v1.DeleteRoleResponse
+	272, // 359: tasker.health.v1.RoleService.GrantRole:output_type -> tasker.health.v1.GrantRoleResponse
+	274, // 360: tasker.health.v1.RoleService.RevokeGrant:output_type -> tasker.health.v1.RevokeGrantResponse
+	276, // 361: tasker.health.v1.RoleService.ListGrants:output_type -> tasker.health.v1.ListGrantsResponse
+	243, // [243:362] is the sub-list for method output_type
+	124, // [124:243] is the sub-list for method input_type
+	124, // [124:124] is the sub-list for extension type_name
+	124, // [124:124] is the sub-list for extension extendee
+	0,   // [0:124] is the sub-list for field type_name
 }
 
 func init() { file_tasker_health_v1_health_proto_init() }
@@ -16984,9 +18233,9 @@ func file_tasker_health_v1_health_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_tasker_health_v1_health_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   258,
+			NumMessages:   277,
 			NumExtensions: 0,
-			NumServices:   16,
+			NumServices:   17,
 		},
 		GoTypes:           file_tasker_health_v1_health_proto_goTypes,
 		DependencyIndexes: file_tasker_health_v1_health_proto_depIdxs,

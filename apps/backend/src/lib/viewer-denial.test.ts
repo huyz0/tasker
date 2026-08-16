@@ -12,6 +12,7 @@ import { createArtifactsHandler } from '../modules/artifacts/artifacts.handler';
 import { createCommentsHandler } from '../modules/comments/comments.handler';
 import { createLabelsHandler } from '../modules/labels/labels.handler';
 import { createTeamsHandler } from '../modules/teams/teams.handler';
+import { createRolesHandler } from '../modules/roles/roles.handler';
 import { createRepositoriesHandler } from '../modules/repositories/repositories.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
@@ -51,6 +52,11 @@ const READS: Record<string, string[]> = {
   comments: ['listComments'],
   labels: ['listLabels', 'listEntityLabels'],
   teams: ['listTeams', 'listTeamMembers'],
+  // listGrants is admin-gated, not member-gated - who holds elevated
+  // access is administrative information, same reasoning as
+  // listAgentTokens/listInvitations, so it belongs in REQUESTS below, not
+  // here.
+  roles: ['listPermissions', 'listRoles'],
   repositories: ['listRepositoryLinks', 'listPullRequests', 'listBuilds', 'listDeployments'],
   health: ['ping'],
   auth: ['getIdentity'],
@@ -91,6 +97,8 @@ const ids = {
   invitation: 'inv-viewer-sweep',
   apiToken: 'tok-viewer-sweep',
   team: 'team-viewer-sweep',
+  role: 'role-viewer-sweep-custom',
+  grant: 'grant-viewer-sweep',
 };
 
 /**
@@ -201,6 +209,14 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     addTeamMember: { teamId: ids.team, userId: 'someone-else' },
     removeTeamMember: { teamId: ids.team, userId: 'someone-else' },
   },
+  roles: {
+    createRole: { orgId: ids.org, name: 'R', permissionKeys: [] },
+    updateRole: { roleId: ids.role, name: 'R2' },
+    deleteRole: { roleId: ids.role },
+    grantRole: { subjectType: 'user', subjectId: 'someone-else', scopeType: 'organization', scopeId: ids.org, roleId: 'role-viewer' },
+    revokeGrant: { grantId: ids.grant },
+    listGrants: { scopeType: 'organization', scopeId: ids.org },
+  },
   repositories: {
     addRepositoryLink: { projectId: ids.project, provider: 'github', remoteName: 'o/r', apiToken: 't' },
     removeRepositoryLink: { repositoryLinkId: ids.repoLink },
@@ -279,6 +295,11 @@ beforeAll(async () => {
     invitedBy: 'someone-else', role: 'member', createdAt: now,
   });
   await db.insert(schema.teams).values({ id: ids.team, orgId: ids.org, name: 'Team', createdAt: now });
+  await db.insert(schema.roles).values({ id: ids.role, orgId: ids.org, name: 'Custom Sweep Role', isSystem: false, createdAt: now });
+  await db.insert(schema.grants).values({
+    id: ids.grant, subjectType: 'user', subjectId: 'someone-else',
+    scopeType: 'organization', scopeId: ids.org, roleId: 'role-viewer', createdAt: now,
+  });
 
   handlers = {
     orgs: createOrgsHandler(db, nc),
@@ -292,6 +313,7 @@ beforeAll(async () => {
     comments: createCommentsHandler(db, nc),
     labels: createLabelsHandler(db, nc),
     teams: createTeamsHandler(db, nc),
+    roles: createRolesHandler(db, nc),
     repositories: createRepositoriesHandler(db, nc),
     health: createHealthHandler(db, nc),
     auth: createAuthHandler(db, nc),

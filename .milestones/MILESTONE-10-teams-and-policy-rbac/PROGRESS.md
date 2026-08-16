@@ -714,3 +714,133 @@
     does not cover, and would be its own task if picked up later.
 - **Next**: M10-T11 — Role management UI: create, clone and edit roles,
   with a virtualized permission matrix.
+
+## M10-T11 — role management backend RPCs + GUI
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**:
+  - `packages/shared-contract/main.tsp`,
+    `packages/shared-contract/tasker/health/v1/health.proto` (both
+    editions) — `Permission`/`Role`/`Grant` models and `RoleService`
+    (listPermissions, listRoles, createRole, updateRole, deleteRole,
+    grantRole, revokeGrant, listGrants), regenerated into `gen/ts/...`
+    and `apps/cli/gen/...`. A real backend gap, not this task's literal
+    file list, but unavoidable: T07's own notes flagged that nothing
+    anywhere in the product could create a `grants` row through an RPC,
+    and a role-management UI cannot exist without one.
+  - `apps/backend/src/modules/roles/roles.handler.ts` — new. Two
+    distinct authorities, matched to what each RPC actually lets someone
+    do: `listPermissions`/`listRoles` need only `org:read`;
+    `createRole`/`updateRole`/`deleteRole` (defining what a role *means*)
+    need `role:manage`; `grantRole`/`revokeGrant`/`listGrants` (deciding
+    *who holds* a role) need `org:admin` - the same authority
+    `updateOrgMemberRole` already requires, since handing someone a
+    role's permissions is exactly as consequential as setting their
+    built-in one. `resolveScopeOrgId` resolves the administering org from
+    any grant's scope (organization directly, team via its org, project
+    via `getProjectOrgId`), so the last three RPCs work uniformly across
+    every scope type `can()` itself supports. `deleteRole` refuses a
+    system role outright and refuses a custom role still referenced by a
+    grant (`FailedPrecondition`, `purgeProject`'s "still has X" pattern).
+    `grantRole` is idempotent (a duplicate grant returns the existing
+    row, `attachLabel`'s convention) and validates both that a custom
+    role belongs to the resolving org and that the subject (user or team)
+    actually exists.
+  - `apps/backend/src/index.ts` — `RoleService` registered.
+  - `apps/backend/src/modules/roles/roles.test.ts` — new, 21 tests, 100%
+    coverage: every RPC's happy path, cross-org isolation on both
+    `listPermissions`/`listRoles` and custom-role resolution, the
+    system-role immutability and in-use-refusal guards on
+    `deleteRole`, `grantRole`'s idempotency and its three scope-resolution
+    paths (org/team/project), and nonexistent-subject rejection.
+  - `apps/backend/src/lib/viewer-denial.test.ts` — `roles` added to the
+    sweep: `listPermissions`/`listRoles` in READS, the other six in
+    REQUESTS, with a real custom role and grant seeded in `beforeAll` so
+    `deleteRole`/`revokeGrant` have something concrete to be denied
+    against. 84/84 pass (up from 78).
+  - `apps/backend/src/db/schema.sqlite.ts` — `permissions`' stale
+    `@knipignore` (T02's placeholder, since nothing consumed the table
+    until now) removed; it's read directly by
+    `listPermissions`/`createRole`/`updateRole`.
+  - `apps/gui/src/features/Roles/index.tsx` (+ `.stories.tsx`) — new.
+    `RolesManager`: a permission matrix (`VirtualList` of rows, one
+    checkbox per permission column) scoped to the active org
+    (`useLayoutStore`). A custom role's name is inline-editable (click,
+    or the row's `RowActionsMenu`, matching `Organizations`' pattern);
+    system roles show a badge, disabled checkboxes, and no actions menu.
+    `CreateRoleDialog` is a `Dialog`-wrapped form with a name field and a
+    permission checkbox grid.
+  - `apps/gui/src/components/ui/RowActionsMenu.tsx` — a real bug found
+    and fixed while wiring the Rename row action, not a Roles-specific
+    workaround: Radix's `DropdownMenu` keeps its `FocusScope` *trapped*
+    for one extra tick after a close starts (so an exit animation has
+    something to animate), and while trapped it forcibly refocuses
+    anything that tries to take focus from outside the closing menu -
+    including an `autoFocus` input mounted by the same click that
+    triggered the close, blurring it and reverting the edit before the
+    user ever saw it. Added `RowAction.managesFocusOnSelect`: an action
+    so flagged has its `onClick` deferred from `onSelect` to
+    `onCloseAutoFocus`, which only fires once the trap has genuinely
+    released - Radix's own documented pattern for handing focus to a
+    custom element after a menu closes, rather than racing it. `Delete`
+    (no flag) is unaffected: it opens a confirm dialog, which manages its
+    own focus regardless of timing, and every existing `RowActionsMenu`
+    consumer (`Organizations`) was re-run and passes unchanged.
+  - `apps/gui/src/App.tsx` — `/roles` route. `apps/gui/src/
+    components/layout/AppShell.tsx` — "Roles" nav entry (Configuration
+    group). `apps/gui/src/App.test.tsx` — `RoleService: {}` added to the
+    hardcoded contract mock (was missing entirely, failing the whole
+    58-file suite at import time the moment `Roles/index.tsx`'s
+    module-level `createClient(RoleService, ...)` needed it to exist).
+  - `apps/gui/src/features/Roles/index.test.tsx` — new, 18 tests,
+    100% statement / 94.91% branch coverage on `Roles/index.tsx` (global
+    branch coverage 95.05%, clears the 95% gate). Covers every mutation's
+    success and error path, both inline-rename entry points (direct
+    click and the row-actions menu - the test that caught the
+    `RowActionsMenu` bug above), Enter/Escape/no-op rename, direct
+    checkbox toggling, pagination, and the `ListState` retry path.
+  - `apps/gui/scripts/rpc-coverage.mjs` — three `EXCEPTIONS` entries:
+    `RoleService.{grantRole,revokeGrant,listGrants}`. Role
+    *definitions* are fully wired up in this task; assigning a role to a
+    user or team needs the same subject-search UI M10-T12 (Team
+    management) is already building for picking team members, so grant
+    assignment is deferred there rather than duplicating a second search
+    control. `moon run gui:rpc-coverage` — 105/119 reached, 14 excepted.
+  - No CLI counterpart, unlike T07's team commands - this task's own
+    file list named the GUI as `RoleService`'s caller, not the CLI, and
+    nothing downstream currently needs one.
+- **Verified**:
+  - `bun test src/modules/roles/roles.test.ts src/lib/viewer-denial.test.ts`
+    — 105/105 pass (21 + 84), 100% coverage on `roles.handler.ts`.
+  - `STANDALONE=true bun test` (full backend suite) — 886 pass, 0 fail.
+  - `moon run gui:test` — 709/709 pass; global branch coverage 95.05%.
+  - `bunx knip` (repo root) — clean.
+  - `moon check --all` — 27/27 tasks green.
+- **Notes**:
+  - **The `RowActionsMenu` fix is the task's real finding.** It surfaced
+    only because this task added the first `RowActionsMenu` action whose
+    effect mounts a focus-taking element (an inline edit input) rather
+    than a modal (`Organizations`' `Delete` action opens a `ConfirmDialog`,
+    which manages its own focus regardless of when Radix's trap
+    releases) - so the six-month-old component had a latent bug no
+    existing consumer could have tripped. Diagnosed by tracing actual
+    `blur` events (`relatedTarget` pointed at a bare, unlabeled `<div>`
+    with `tabIndex="-1"` - Radix's own `FocusScope` container, not the
+    trigger button `onCloseAutoFocus`'s documented default would have
+    focused), then reading `@radix-ui/react-focus-scope`'s source to
+    confirm the trapped-`FocusScope` mechanism directly, rather than
+    guessing at timing fixes (an initial attempt to win the race with a
+    plain `useEffect` instead of `autoFocus` failed for exactly this
+    reason: the trap doesn't care which React effect tier calls
+    `.focus()`, it un-focuses anything outside its container regardless).
+  - **`role:manage` vs `org:admin` is a deliberate split, not two names
+    for the same check**: an org admin can grant/revoke *existing* roles
+    to people without being able to redefine what those roles mean, and
+    conversely `role:manage` alone (a custom role, in principle) cannot
+    assign itself to anyone. ADR-0013 lists both permissions separately
+    for exactly this reason; this task is the first to actually gate
+    RPCs on `role:manage`.
+- **Next**: M10-T12 — Team management UI (member search/picker,
+  `TeamService`'s eight methods, and `RoleService.{grantRole,revokeGrant,
+  listGrants}` alongside it).

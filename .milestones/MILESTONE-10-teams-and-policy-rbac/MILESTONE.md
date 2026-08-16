@@ -129,7 +129,7 @@ SCIM provisioning, delegated administration.
 
 ### Surface
 
-- [ ] **M10-T11** — Role management UI: create, clone and edit roles, with a
+- [x] **M10-T11** — Role management UI: create, clone and edit roles, with a
       virtualized permission matrix.
       - Files: `apps/gui/src/features/Roles/`
       - Verify: 100 roles × the full permission set renders smoothly.
