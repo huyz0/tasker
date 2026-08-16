@@ -18,6 +18,8 @@
  * minimalism rule by not needing an argument for it.
  */
 
+import { randomBytes } from 'node:crypto';
+
 const ALGORITHM = 'argon2id';
 
 /**
@@ -57,3 +59,17 @@ export async function verifyPassword(plaintext: string, hash: string): Promise<b
  * substitutions without meaningfully raising guess-resistance.
  */
 export const MIN_PASSWORD_LENGTH = 12;
+
+/**
+ * A random temporary password for M13-T10's admin-driven reset — meant to
+ * be read aloud or copy-pasted once, by an admin to a member with no
+ * recovery email, so it favours being short enough to transcribe over
+ * being memorable. 18 base64url characters from 12 bytes of CSPRNG output
+ * comfortably clears `MIN_PASSWORD_LENGTH` with margin for the eventual
+ * mandatory change. Like every other password, it is hashed before storage
+ * and never logged; the RPC that mints it is the only place the plaintext
+ * exists, and only in its response.
+ */
+export function generateTemporaryPassword(): string {
+  return randomBytes(12).toString('base64url');
+}

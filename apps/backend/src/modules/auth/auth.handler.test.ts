@@ -242,3 +242,95 @@ describe('auth handler listLinkedIdentities / unlinkIdentity', () => {
     await expect(handler.unlinkIdentity({ provider: 'google' }, { values: contextValues } as any)).rejects.toThrow();
   });
 });
+
+describe('auth handler adminResetPassword', () => {
+  let db: any;
+  let handler: ReturnType<typeof createAuthHandler>;
+  let orgId: string;
+  let adminId: string;
+  let memberId: string;
+
+  beforeEach(async () => {
+    const setup = await setupIntegrationTest();
+    db = setup.db;
+    handler = createAuthHandler(db);
+    const stamp = Date.now() + '-' + Math.random().toString(36).slice(2);
+    orgId = 'org-reset-' + stamp;
+    adminId = 'user-reset-admin-' + stamp;
+    memberId = 'user-reset-member-' + stamp;
+
+    await db.insert(schemaSqlite.users).values([
+      { id: adminId, email: `${adminId}@x.test`, createdAt: new Date() },
+      { id: memberId, username: `member-${stamp}`, createdAt: new Date() },
+    ]);
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: 'Reset Org', slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values([
+      { orgId, userId: adminId, role: 'admin', joinedAt: new Date() },
+      { orgId, userId: memberId, role: 'member', joinedAt: new Date() },
+    ]);
+  });
+
+  const ctxFor = (userId: string) => {
+    const contextValues = createContextValues();
+    contextValues.set(currentUserIdKey, userId);
+    return { values: contextValues } as any;
+  };
+
+  it('issues a temporary password an admin can relay, and sets mustChangePassword', async () => {
+    const result = await handler.adminResetPassword({ orgId, userId: memberId }, ctxFor(adminId));
+    expect(result.success).toBe(true);
+    expect(result.temporaryPassword.length).toBeGreaterThanOrEqual(12);
+
+    const rows = await db.select().from(schemaSqlite.passwordCredentials).where(eq(schemaSqlite.passwordCredentials.userId, memberId));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].mustChangePassword).toBe(true);
+    expect(await verifyPassword(result.temporaryPassword, rows[0].passwordHash)).toBe(true);
+  });
+
+  it('replaces an existing password credential rather than erroring', async () => {
+    await handler.setPassword({ newPassword: 'the-old-password-123' }, ctxFor(memberId));
+    const result = await handler.adminResetPassword({ orgId, userId: memberId }, ctxFor(adminId));
+    const rows = await db.select().from(schemaSqlite.passwordCredentials).where(eq(schemaSqlite.passwordCredentials.userId, memberId));
+    expect(rows).toHaveLength(1); // replaced, not a second row
+    expect(await verifyPassword('the-old-password-123', rows[0].passwordHash)).toBe(false);
+    expect(await verifyPassword(result.temporaryPassword, rows[0].passwordHash)).toBe(true);
+  });
+
+  it('clears an existing lockout on reset', async () => {
+    await db.insert(schemaSqlite.passwordCredentials).values({
+      userId: memberId, passwordHash: 'irrelevant', updatedAt: new Date(),
+      failedAttempts: 7, lockedUntil: new Date(Date.now() + 60_000),
+    });
+    await handler.adminResetPassword({ orgId, userId: memberId }, ctxFor(adminId));
+    const rows = await db.select().from(schemaSqlite.passwordCredentials).where(eq(schemaSqlite.passwordCredentials.userId, memberId));
+    expect(rows[0].failedAttempts).toBe(0);
+    expect(rows[0].lockedUntil).toBeNull();
+  });
+
+  it('refuses a non-admin member of the org', async () => {
+    await expect(handler.adminResetPassword({ orgId, userId: memberId }, ctxFor(memberId))).rejects.toThrow();
+  });
+
+  it('refuses an admin of a DIFFERENT org naming this org\'s member', async () => {
+    const otherOrgId = 'org-reset-other-' + Date.now();
+    const otherAdminId = 'user-reset-other-admin-' + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: otherAdminId, email: `${otherAdminId}@x.test`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: 'Other Org', slug: otherOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherAdminId, role: 'admin', joinedAt: new Date() });
+
+    // Names the real target org and member, but the caller only administers
+    // a different org — assertOrgAdmin must still deny this.
+    await expect(handler.adminResetPassword({ orgId, userId: memberId }, ctxFor(otherAdminId))).rejects.toThrow();
+  });
+
+  it('refuses when the target user is not actually a member of the named org', async () => {
+    const strangerId = 'user-reset-stranger-' + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: strangerId, email: `${strangerId}@x.test`, createdAt: new Date() });
+    await expect(handler.adminResetPassword({ orgId, userId: strangerId }, ctxFor(adminId))).rejects.toThrow();
+  });
+
+  it('rejects with no session', async () => {
+    const contextValues = createContextValues();
+    await expect(handler.adminResetPassword({ orgId, userId: memberId }, { values: contextValues } as any)).rejects.toThrow();
+  });
+});

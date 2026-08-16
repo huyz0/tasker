@@ -273,7 +273,7 @@ function lockoutDurationSeconds(failedAttempts: number): number {
 }
 
 export type PasswordLoginResult =
-  | { outcome: 'ok'; userId: string }
+  | { outcome: 'ok'; userId: string; mustChangePassword: boolean }
   | { outcome: 'invalid' }
   | { outcome: 'locked'; retryAfterSeconds: number };
 
@@ -329,11 +329,14 @@ async function attemptPasswordLogin(db: any, username: string, password: string,
 
   // A successful login clears the slate, including a lock that has already
   // expired (an expired lockedUntil is inert but stale otherwise).
+  // mustChangePassword is deliberately left alone here - it is cleared only
+  // by an actual setPassword call (auth.handler.ts), not by merely logging
+  // in with the temporary one (M13-T10).
   if (cred.failedAttempts > 0 || cred.lockedUntil) {
     await db.update(passwordCredentials).set({ failedAttempts: 0, lockedUntil: null })
       .where(eq((passwordCredentials as any).userId, userId));
   }
-  return { outcome: 'ok', userId };
+  return { outcome: 'ok', userId, mustChangePassword: !!cred.mustChangePassword };
 }
 
 export function createAuthRoutes(db: any) {
@@ -581,7 +584,11 @@ export function createAuthRoutes(db: any) {
       // comment on why that's deliberate, not an omission.
       return problemDetails(401, 'Invalid credentials', 'The username or password is incorrect.');
     }
-    return new Response(JSON.stringify({ userId: result.userId }), {
+    // mustChangePassword (M13-T10) rides in the body rather than blocking
+    // the session: the user needs a valid session to call setPassword at
+    // all, so login still succeeds and the client is responsible for
+    // routing straight to a change-password screen when this is true.
+    return new Response(JSON.stringify({ userId: result.userId, mustChangePassword: result.mustChangePassword }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'set-cookie': sessionCookie(result.userId) },
     });

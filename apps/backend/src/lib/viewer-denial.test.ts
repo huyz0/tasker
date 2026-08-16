@@ -195,6 +195,13 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     removeRepositoryLink: { repositoryLinkId: ids.repoLink },
     syncPullRequests: { projectId: ids.project },
   },
+  // M13-T10: unlike setPassword/listLinkedIdentities/unlinkIdentity
+  // (NOT_ORG_SCOPED above - a viewer manages their own credentials), this
+  // acts on *another* member and is genuinely org-admin-gated, so a viewer
+  // must be denied the same as any other org write.
+  auth: {
+    adminResetPassword: { orgId: ids.org, userId: 'someone-else' },
+  },
 };
 
 let handlers: Record<string, any>;

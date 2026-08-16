@@ -154,7 +154,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: inviting a bare username with no email, then registering
         locally with that username, joins the org at the invited role.
 
-- [ ] **M13-T10** — Admin-driven password reset for members with no recovery
+- [x] **M13-T10** — Admin-driven password reset for members with no recovery
       email: an admin-gated RPC that issues a one-time temporary password and
       sets `mustChangePassword`.
       - Files: `apps/backend/src/modules/auth/auth.handler.ts`,

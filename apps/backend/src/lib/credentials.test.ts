@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from './credentials';
+import { hashPassword, verifyPassword, generateTemporaryPassword, MIN_PASSWORD_LENGTH } from './credentials';
 
 describe('hashPassword / verifyPassword', () => {
   it('round-trips: a hashed password verifies against its own plaintext', async () => {
@@ -56,5 +56,26 @@ describe('hashPassword / verifyPassword', () => {
 describe('MIN_PASSWORD_LENGTH', () => {
   it('is a real minimum, not zero or absurdly low', () => {
     expect(MIN_PASSWORD_LENGTH).toBeGreaterThanOrEqual(8);
+  });
+});
+
+describe('generateTemporaryPassword (M13-T10)', () => {
+  it('clears MIN_PASSWORD_LENGTH with margin', () => {
+    expect(generateTemporaryPassword().length).toBeGreaterThan(MIN_PASSWORD_LENGTH);
+  });
+
+  it('is a fresh random value every call, not a fixture string', () => {
+    const values = new Set(Array.from({ length: 20 }, () => generateTemporaryPassword()));
+    expect(values.size).toBe(20);
+  });
+
+  it('is verifiable through the same hashPassword/verifyPassword path as any other password', async () => {
+    const temp = generateTemporaryPassword();
+    const hash = await hashPassword(temp);
+    expect(await verifyPassword(temp, hash)).toBe(true);
+  });
+
+  it('is transcription-friendly base64url — no characters a URL or a typed copy-paste would mangle', () => {
+    expect(generateTemporaryPassword()).toMatch(/^[A-Za-z0-9_-]+$/);
   });
 });

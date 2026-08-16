@@ -49,6 +49,10 @@ export const EXCEPTIONS = {
     'M13-T08 added the RPC; its GUI caller (the same account settings ' +
     'screen as setPassword and listLinkedIdentities) is M13-T12. Remove ' +
     "this exception in that task's commit.",
+  'AuthService.adminResetPassword':
+    'M13-T10 added the RPC; its GUI caller is an admin action on the ' +
+    'Organizations member list (M13-T12, alongside the other new auth ' +
+    "surfaces). Remove this exception in that task's commit.",
 };
 
 /** RPC names per service, read from the TypeSpec interfaces. */

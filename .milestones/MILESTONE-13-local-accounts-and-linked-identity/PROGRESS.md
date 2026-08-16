@@ -416,3 +416,56 @@
     exactly-one check. Recorded because it is exactly the kind of thing a
     future CLI test in this file will rediscover the hard way otherwise.
 - **Next**: M13-T10 — admin-driven password reset.
+
+## M13-T10 — Admin-driven password reset
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `packages/shared-contract/main.tsp` + `.../health.proto` +
+  regenerated `gen/`, `src/lib/credentials.ts` (`generateTemporaryPassword`),
+  `src/lib/credentials.test.ts`, `src/modules/auth/auth.handler.ts`
+  (`adminResetPassword`), `src/modules/auth/auth.handler.test.ts`,
+  `src/modules/auth/auth.ts` (`PasswordLoginResult` gained
+  `mustChangePassword`, surfaced in the login route's JSON body),
+  `src/modules/auth/auth.test.ts`, `src/lib/viewer-denial.test.ts`,
+  `src/lib/agent-scope-sweep.test.ts`, `apps/gui/scripts/rpc-coverage.mjs`
+- **Verified**: `bun test src/modules/auth/` — 94 pass, ~100% coverage.
+  Full suite: 738 pass, 0 fail. `bunx knip`, `gui:typecheck`,
+  `gui:rpc-coverage` (1 new exception, reasoned), `go build`/`go test`,
+  `tsp format --check` all clean.
+- **Notes**:
+  - **Org-admin-gated, not account-owner-gated** — the one AuthService RPC
+    so far that isn't about the caller's own credentials. `orgId` in the
+    request makes it exactly the same shape as `updateOrgMemberRole`/
+    `removeOrgMember` on `OrgService`: `assertOrgAdmin(db, callerId, orgId)`,
+    then an explicit membership check that `userId` actually belongs to
+    that org — without the second check, an admin of org A could reset any
+    user's password by naming their id under an org they administer, the
+    same class of cross-org hole `revokeInvitation` (M03) was written to
+    close. Classified in `viewer-denial.test.ts`'s `REQUESTS` (a viewer
+    must be denied — unlike `setPassword`/`listLinkedIdentities`/
+    `unlinkIdentity`, which stay in `NOT_ORG_SCOPED` since those act on the
+    caller's own account regardless of org role).
+  - **Login surfaces `mustChangePassword` without blocking the session.**
+    A user resetting in with the temporary password still needs a valid
+    session to call `setPassword` at all, so `attemptPasswordLogin`'s `ok`
+    result now carries the flag (read from the credential row, `false` by
+    default) and the login route includes it in the JSON body. GUI routing
+    to a forced change-password screen on that flag is T12's job — the
+    signal exists now so that task doesn't also have to touch the login
+    contract.
+  - **`mustChangePassword` is deliberately left untouched by a successful
+    login** — only `setPassword` (T06) clears it. Logging in with the
+    temporary password is not the same as actually changing it; clearing
+    the flag on login would let a compromised temporary password go on
+    working indefinitely once used once.
+  - **Temporary password**: 12 bytes of CSPRNG output as base64url (16
+    chars) via a new `generateTemporaryPassword()` in `lib/credentials.ts` —
+    comfortably over `MIN_PASSWORD_LENGTH`, short enough for an admin to
+    read aloud or copy-paste once. Returned exactly once, in the RPC
+    response, never stored or logged in plaintext — same rule ADR-0008
+    applies to an agent token's plaintext, applied here for the same reason.
+  - Resetting also clears `failedAttempts`/`lockedUntil` (tested), so a
+    reset is a genuine fresh start for a member who was both locked out
+    *and* had lost their password, not just a new hash on top of a still-locked row.
+- **Next**: M13-T11 — GUI login screen.

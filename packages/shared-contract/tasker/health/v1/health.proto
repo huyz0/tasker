@@ -73,11 +73,22 @@ message UnlinkIdentityResponse {
   bool success = 1;
 }
 
+// M13-T10. See main.tsp for the assertOrgAdmin + membership-check reasoning.
+message AdminResetPasswordRequest {
+  string orgId = 1;
+  string userId = 2;
+}
+message AdminResetPasswordResponse {
+  bool success = 1;
+  string temporaryPassword = 2;
+}
+
 service AuthService {
   rpc GetIdentity(GetIdentityRequest) returns (GetIdentityResponse);
   rpc SetPassword(SetPasswordRequest) returns (SetPasswordResponse);
   rpc ListLinkedIdentities(ListLinkedIdentitiesRequest) returns (ListLinkedIdentitiesResponse);
   rpc UnlinkIdentity(UnlinkIdentityRequest) returns (UnlinkIdentityResponse);
+  rpc AdminResetPassword(AdminResetPasswordRequest) returns (AdminResetPasswordResponse);
 }
 
 message ListOrgsRequest {

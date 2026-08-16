@@ -81,6 +81,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     setPassword: { newPassword: 'a-new-password-12' },
     listLinkedIdentities: {},
     unlinkIdentity: { provider: 'google' },
+    adminResetPassword: { orgId: ids.org, userId: 'someone-else' },
   },
   // Registered through a router rather than as a handler factory, which is why
   // it was absent from this sweep and from viewer-denial's until M04-T12 went

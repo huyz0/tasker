@@ -2,14 +2,15 @@ import { eq, and } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUser, countActiveSignInMethods, assertNotLastSignInMethod } from "../../lib/authz";
-import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from "../../lib/credentials";
+import { requireUser, assertOrgAdmin, countActiveSignInMethods, assertNotLastSignInMethod } from "../../lib/authz";
+import { hashPassword, verifyPassword, generateTemporaryPassword, MIN_PASSWORD_LENGTH } from "../../lib/credentials";
 
 export const createAuthHandler = (db: any) => {
   const isStandalone = process.env.STANDALONE === "true";
   const usersTable = isStandalone ? schemaSqlite.users : schemaMysql.users;
   const passwordCredentialsTable = isStandalone ? schemaSqlite.passwordCredentials : schemaMysql.passwordCredentials;
   const linkedIdentitiesTable = isStandalone ? schemaSqlite.linkedIdentities : schemaMysql.linkedIdentities;
+  const membersTable = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
 
   return {
     async getIdentity(_req: unknown, { values: contextValues }: { values: any }) {
@@ -102,6 +103,53 @@ export const createAuthHandler = (db: any) => {
       await db.delete(linkedIdentitiesTable)
         .where(and(eq((linkedIdentitiesTable as any).userId, currentUserId), eq((linkedIdentitiesTable as any).provider, req.provider)));
       return { success: true };
+    },
+
+    /**
+     * Issues a fresh one-time password for a member with no working
+     * recovery path of their own (M13-T10) - locked out, or never had an
+     * email at all. Gated on the caller being an admin of `orgId`
+     * specifically, and the target `userId` being an actual member of that
+     * org: without the membership check, an admin of org A naming any user
+     * id at all could reset a stranger's password merely by knowing it,
+     * the same class of hole `revokeInvitation` was written to close (see
+     * orgs.handler.ts).
+     *
+     * The plaintext is returned exactly once, in this response, and never
+     * stored or logged (ADR-0008's rule for a token's plaintext, applied
+     * here too) - relaying it to the member is the calling admin's job.
+     */
+    async adminResetPassword(req: { orgId: string; userId: string }, { values: contextValues }: { values: any }) {
+      const currentUserId = requireUser(contextValues);
+      if (!req.orgId || !req.userId) {
+        throw new ConnectError("orgId and userId are required", Code.InvalidArgument);
+      }
+      await assertOrgAdmin(db, currentUserId, req.orgId);
+
+      const membership = await db.select().from(membersTable)
+        .where(and(eq((membersTable as any).orgId, req.orgId), eq((membersTable as any).userId, req.userId)))
+        .limit(1);
+      if (membership.length === 0) {
+        throw new ConnectError("user is not a member of this organization", Code.NotFound);
+      }
+
+      const temporaryPassword = generateTemporaryPassword();
+      const passwordHash = await hashPassword(temporaryPassword);
+      const now = new Date();
+
+      const existing = await db.select().from(passwordCredentialsTable)
+        .where(eq((passwordCredentialsTable as any).userId, req.userId)).limit(1);
+      if (existing.length > 0) {
+        await db.update(passwordCredentialsTable)
+          .set({ passwordHash, updatedAt: now, failedAttempts: 0, lockedUntil: null, mustChangePassword: true })
+          .where(eq((passwordCredentialsTable as any).userId, req.userId));
+      } else {
+        await db.insert(passwordCredentialsTable).values({
+          userId: req.userId, passwordHash, updatedAt: now, failedAttempts: 0, lockedUntil: null, mustChangePassword: true,
+        });
+      }
+
+      return { success: true, temporaryPassword };
     },
   };
 };

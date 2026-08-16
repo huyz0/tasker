@@ -592,6 +592,25 @@ describe('Auth Routes (local password)', () => {
     expect(session?.userId).toBe(rows[0].id);
   });
 
+  it('reports mustChangePassword: false on an ordinary login', async () => {
+    await register({ username: 'no-must-change-user', password: 'a-strong-password-123' });
+    const res = await login({ username: 'no-must-change-user', password: 'a-strong-password-123' });
+    expect((await res.json()).mustChangePassword).toBe(false);
+  });
+
+  /** M13-T10. */
+  it('reports mustChangePassword: true after an admin reset, still logging in successfully', async () => {
+    const { userId } = await (await register({ username: 'must-change-user', password: 'the-original-password-1' })).json();
+    await db.update(schemaSqlite.passwordCredentials)
+      .set({ mustChangePassword: true })
+      .where(eq(schemaSqlite.passwordCredentials.userId, userId));
+
+    const res = await login({ username: 'must-change-user', password: 'the-original-password-1' });
+    expect(res.status).toBe(200); // login itself still succeeds
+    expect(res.headers.get('set-cookie')).toContain('HttpOnly'); // and a session is still issued
+    expect((await res.json()).mustChangePassword).toBe(true);
+  });
+
   it('rejects the wrong password with a generic message, not "wrong password" specifically', async () => {
     await register({ username: 'wrong-pw-user', password: 'a-strong-password-123' });
     const res = await login({ username: 'wrong-pw-user', password: 'totally-different-password' });

@@ -73,6 +73,9 @@ const (
 	// AuthServiceUnlinkIdentityProcedure is the fully-qualified name of the AuthService's
 	// UnlinkIdentity RPC.
 	AuthServiceUnlinkIdentityProcedure = "/tasker.health.v1.AuthService/UnlinkIdentity"
+	// AuthServiceAdminResetPasswordProcedure is the fully-qualified name of the AuthService's
+	// AdminResetPassword RPC.
+	AuthServiceAdminResetPasswordProcedure = "/tasker.health.v1.AuthService/AdminResetPassword"
 	// OrgServiceListOrgsProcedure is the fully-qualified name of the OrgService's ListOrgs RPC.
 	OrgServiceListOrgsProcedure = "/tasker.health.v1.OrgService/ListOrgs"
 	// OrgServiceSeedOrgProcedure is the fully-qualified name of the OrgService's SeedOrg RPC.
@@ -357,6 +360,7 @@ var (
 	authServiceSetPasswordMethodDescriptor                    = authServiceServiceDescriptor.Methods().ByName("SetPassword")
 	authServiceListLinkedIdentitiesMethodDescriptor           = authServiceServiceDescriptor.Methods().ByName("ListLinkedIdentities")
 	authServiceUnlinkIdentityMethodDescriptor                 = authServiceServiceDescriptor.Methods().ByName("UnlinkIdentity")
+	authServiceAdminResetPasswordMethodDescriptor             = authServiceServiceDescriptor.Methods().ByName("AdminResetPassword")
 	orgServiceServiceDescriptor                               = v1.File_tasker_health_v1_health_proto.Services().ByName("OrgService")
 	orgServiceListOrgsMethodDescriptor                        = orgServiceServiceDescriptor.Methods().ByName("ListOrgs")
 	orgServiceSeedOrgMethodDescriptor                         = orgServiceServiceDescriptor.Methods().ByName("SeedOrg")
@@ -543,6 +547,7 @@ type AuthServiceClient interface {
 	SetPassword(context.Context, *connect.Request[v1.SetPasswordRequest]) (*connect.Response[v1.SetPasswordResponse], error)
 	ListLinkedIdentities(context.Context, *connect.Request[v1.ListLinkedIdentitiesRequest]) (*connect.Response[v1.ListLinkedIdentitiesResponse], error)
 	UnlinkIdentity(context.Context, *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error)
+	AdminResetPassword(context.Context, *connect.Request[v1.AdminResetPasswordRequest]) (*connect.Response[v1.AdminResetPasswordResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the tasker.health.v1.AuthService service. By
@@ -579,6 +584,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceUnlinkIdentityMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		adminResetPassword: connect.NewClient[v1.AdminResetPasswordRequest, v1.AdminResetPasswordResponse](
+			httpClient,
+			baseURL+AuthServiceAdminResetPasswordProcedure,
+			connect.WithSchema(authServiceAdminResetPasswordMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -588,6 +599,7 @@ type authServiceClient struct {
 	setPassword          *connect.Client[v1.SetPasswordRequest, v1.SetPasswordResponse]
 	listLinkedIdentities *connect.Client[v1.ListLinkedIdentitiesRequest, v1.ListLinkedIdentitiesResponse]
 	unlinkIdentity       *connect.Client[v1.UnlinkIdentityRequest, v1.UnlinkIdentityResponse]
+	adminResetPassword   *connect.Client[v1.AdminResetPasswordRequest, v1.AdminResetPasswordResponse]
 }
 
 // GetIdentity calls tasker.health.v1.AuthService.GetIdentity.
@@ -610,12 +622,18 @@ func (c *authServiceClient) UnlinkIdentity(ctx context.Context, req *connect.Req
 	return c.unlinkIdentity.CallUnary(ctx, req)
 }
 
+// AdminResetPassword calls tasker.health.v1.AuthService.AdminResetPassword.
+func (c *authServiceClient) AdminResetPassword(ctx context.Context, req *connect.Request[v1.AdminResetPasswordRequest]) (*connect.Response[v1.AdminResetPasswordResponse], error) {
+	return c.adminResetPassword.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the tasker.health.v1.AuthService service.
 type AuthServiceHandler interface {
 	GetIdentity(context.Context, *connect.Request[v1.GetIdentityRequest]) (*connect.Response[v1.GetIdentityResponse], error)
 	SetPassword(context.Context, *connect.Request[v1.SetPasswordRequest]) (*connect.Response[v1.SetPasswordResponse], error)
 	ListLinkedIdentities(context.Context, *connect.Request[v1.ListLinkedIdentitiesRequest]) (*connect.Response[v1.ListLinkedIdentitiesResponse], error)
 	UnlinkIdentity(context.Context, *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error)
+	AdminResetPassword(context.Context, *connect.Request[v1.AdminResetPasswordRequest]) (*connect.Response[v1.AdminResetPasswordResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -648,6 +666,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceUnlinkIdentityMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceAdminResetPasswordHandler := connect.NewUnaryHandler(
+		AuthServiceAdminResetPasswordProcedure,
+		svc.AdminResetPassword,
+		connect.WithSchema(authServiceAdminResetPasswordMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceGetIdentityProcedure:
@@ -658,6 +682,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceListLinkedIdentitiesHandler.ServeHTTP(w, r)
 		case AuthServiceUnlinkIdentityProcedure:
 			authServiceUnlinkIdentityHandler.ServeHTTP(w, r)
+		case AuthServiceAdminResetPasswordProcedure:
+			authServiceAdminResetPasswordHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -681,6 +707,10 @@ func (UnimplementedAuthServiceHandler) ListLinkedIdentities(context.Context, *co
 
 func (UnimplementedAuthServiceHandler) UnlinkIdentity(context.Context, *connect.Request[v1.UnlinkIdentityRequest]) (*connect.Response[v1.UnlinkIdentityResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AuthService.UnlinkIdentity is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) AdminResetPassword(context.Context, *connect.Request[v1.AdminResetPasswordRequest]) (*connect.Response[v1.AdminResetPasswordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AuthService.AdminResetPassword is not implemented"))
 }
 
 // OrgServiceClient is a client for the tasker.health.v1.OrgService service.

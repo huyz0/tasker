@@ -107,6 +107,24 @@ model UnlinkIdentityResponse {
   @field(1) success: boolean;
 }
 
+// M13-T10. For a member with no recovery email (or whose email is simply
+// unreachable), an org admin can force a fresh credential rather than the
+// member being permanently locked out. `orgId` makes this an org-admin
+// action, not an account-owner one - `assertOrgAdmin` gates it, and the
+// handler checks `userId` is actually a member of `orgId` so an admin of
+// org A cannot reset a stranger's password by naming any user id. The
+// temporary password is returned exactly once, here, never stored or
+// logged in plaintext (same rule as an agent token's plaintext, ADR-0008) -
+// the admin is responsible for relaying it out of band.
+model AdminResetPasswordRequest {
+  @field(1) orgId: string;
+  @field(2) userId: string;
+}
+model AdminResetPasswordResponse {
+  @field(1) success: boolean;
+  @field(2) temporaryPassword: string;
+}
+
 interface AuthService {
   getIdentity(request: GetIdentityRequest): GetIdentityResponse;
   setPassword(request: SetPasswordRequest): SetPasswordResponse;
@@ -114,6 +132,9 @@ interface AuthService {
     request: ListLinkedIdentitiesRequest,
   ): ListLinkedIdentitiesResponse;
   unlinkIdentity(request: UnlinkIdentityRequest): UnlinkIdentityResponse;
+  adminResetPassword(
+    request: AdminResetPasswordRequest,
+  ): AdminResetPasswordResponse;
 }
 
 model ListOrgsRequest {
