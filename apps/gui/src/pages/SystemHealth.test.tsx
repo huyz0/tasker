@@ -2,11 +2,23 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockPing } = vi.hoisted(() => ({ mockPing: vi.fn() }));
+const { mockPing, mockListLinkedIdentities } = vi.hoisted(() => ({
+  mockPing: vi.fn(),
+  // AccountSettings (rendered inside SystemHealthPage since M13-T12) reads
+  // this on mount; its own tests own the interesting behavior, this file
+  // just needs it to resolve so the page around it renders.
+  mockListLinkedIdentities: vi.fn().mockResolvedValue({ identities: [], hasPassword: false }),
+}));
 
 vi.mock('@connectrpc/connect-web', () => ({ createConnectTransport: vi.fn(() => ({})) }));
-vi.mock('@connectrpc/connect', () => ({ createClient: vi.fn(() => ({ ping: mockPing })) }));
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ HealthService: {} }));
+vi.mock('@connectrpc/connect', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@connectrpc/connect')>()),
+  createClient: (service: unknown) =>
+    service === 'AuthService'
+      ? { listLinkedIdentities: mockListLinkedIdentities }
+      : { ping: mockPing },
+}));
+vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ HealthService: 'HealthService', AuthService: 'AuthService' }));
 vi.mock('../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({ setActivePageTitle: vi.fn() })),
 }));

@@ -13,7 +13,7 @@ vi.mock('../../lib/devAuthBootstrap', () => ({
   ensureDevSession: () => mockEnsureDevSession(),
 }));
 
-async function renderWithFlags(flag: string | undefined, dev: boolean) {
+async function renderWithFlags(flag: string | undefined, dev: boolean, initialEntry = '/') {
   vi.stubEnv('VITE_REQUIRE_AUTH', flag);
   vi.stubEnv('DEV', dev);
   vi.resetModules();
@@ -21,9 +21,10 @@ async function renderWithFlags(flag: string | undefined, dev: boolean) {
   const queryClient = new QueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route path="/login" element={<div>Login Page</div>} />
+          <Route path="/settings" element={<ProtectedRoute><div>Settings Page</div></ProtectedRoute>} />
           <Route path="/" element={<ProtectedRoute><div>Protected Content</div></ProtectedRoute>} />
         </Routes>
       </MemoryRouter>
@@ -86,5 +87,30 @@ describe('ProtectedRoute', () => {
 
     expect(screen.getByText('Protected Content')).toBeDefined();
     expect(mockEnsureDevSession).not.toHaveBeenCalled();
+  });
+
+  /** M13-T12. */
+  describe('mustChangePassword redirect', () => {
+    it('redirects to /settings when authenticated but must change password', async () => {
+      mockUseAuthSession.mockReturnValue({ isLoading: false, authenticated: true, userId: 'user-1', mustChangePassword: true });
+      await renderWithFlags('true', false, '/');
+
+      expect(screen.getByText('Settings Page')).toBeDefined();
+      expect(screen.queryByText('Protected Content')).toBeNull();
+    });
+
+    it('does not redirect away from /settings itself — no redirect loop', async () => {
+      mockUseAuthSession.mockReturnValue({ isLoading: false, authenticated: true, userId: 'user-1', mustChangePassword: true });
+      await renderWithFlags('true', false, '/settings');
+
+      expect(screen.getByText('Settings Page')).toBeDefined();
+    });
+
+    it('renders normally once mustChangePassword is cleared', async () => {
+      mockUseAuthSession.mockReturnValue({ isLoading: false, authenticated: true, userId: 'user-1', mustChangePassword: false });
+      await renderWithFlags('true', false, '/');
+
+      expect(screen.getByText('Protected Content')).toBeDefined();
+    });
   });
 });

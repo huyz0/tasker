@@ -142,7 +142,10 @@ export function createRateLimiter(options: RateLimiterOptions = {}) {
  * transport-level failure rather than a typed error — the CLI recognises a bare
  * 429 for this reason.
  */
-export function rateLimitProblem(retryAfterSeconds: number): { status: number; headers: Record<string, string>; body: string } {
+export function rateLimitProblem(
+  retryAfterSeconds: number,
+  overrides: { title?: string; detail?: string } = {},
+): { status: number; headers: Record<string, string>; body: string } {
   return {
     status: 429,
     headers: {
@@ -151,9 +154,10 @@ export function rateLimitProblem(retryAfterSeconds: number): { status: number; h
     },
     body: JSON.stringify({
       type: 'about:blank',
-      title: 'Too Many Requests',
+      title: overrides.title ?? 'Too Many Requests',
       status: 429,
-      detail: `Rate limit exceeded. Retry after ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
+      detail: overrides.detail
+        ?? `Rate limit exceeded. Retry after ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
     }),
   };
 }

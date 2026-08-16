@@ -15,6 +15,8 @@ import {
   getFolderOrgId,
   getArtifactOrgId,
   getRepositoryLinkOrgId,
+  countActiveSignInMethods,
+  assertNotLastSignInMethod,
 } from "./authz";
 import { ConnectError, Code, createContextValues } from "@connectrpc/connect";
 import { currentUserIdKey } from "../modules/auth/session";
@@ -233,5 +235,53 @@ describe("getRepositoryLinkOrgId", () => {
   it("throws NotFound for a repository link id that doesn't exist", async () => {
     const { db } = await setupIntegrationTest();
     await expect(getRepositoryLinkOrgId(db, "no-such-link")).rejects.toThrow(ConnectError);
+  });
+});
+
+describe("countActiveSignInMethods (M13-T08 / ADR-0012 §5)", () => {
+  it("counts zero for a user with neither a password nor a linked identity", async () => {
+    const { db } = await setupIntegrationTest();
+    const userId = "user-signin-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@x.test`, createdAt: new Date() });
+    expect(await countActiveSignInMethods(db, userId)).toBe(0);
+  });
+
+  it("counts a password credential as one method", async () => {
+    const { db } = await setupIntegrationTest();
+    const userId = "user-signin-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@x.test`, createdAt: new Date() });
+    await db.insert(schemaSqlite.passwordCredentials).values({ userId, passwordHash: "h", updatedAt: new Date() });
+    expect(await countActiveSignInMethods(db, userId)).toBe(1);
+  });
+
+  it("counts each linked identity as its own method", async () => {
+    const { db } = await setupIntegrationTest();
+    const userId = "user-signin-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@x.test`, createdAt: new Date() });
+    await db.insert(schemaSqlite.linkedIdentities).values([
+      { id: `li-a-${userId}`, userId, provider: "google", providerUserId: `g-${userId}`, linkedAt: new Date() },
+      { id: `li-b-${userId}`, userId, provider: "github", providerUserId: `gh-${userId}`, linkedAt: new Date() },
+    ]);
+    expect(await countActiveSignInMethods(db, userId)).toBe(2);
+  });
+
+  it("sums a password and multiple linked identities together", async () => {
+    const { db } = await setupIntegrationTest();
+    const userId = "user-signin-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@x.test`, createdAt: new Date() });
+    await db.insert(schemaSqlite.passwordCredentials).values({ userId, passwordHash: "h", updatedAt: new Date() });
+    await db.insert(schemaSqlite.linkedIdentities).values({ id: `li-${userId}`, userId, provider: "google", providerUserId: `g-${userId}`, linkedAt: new Date() });
+    expect(await countActiveSignInMethods(db, userId)).toBe(2);
+  });
+});
+
+describe("assertNotLastSignInMethod", () => {
+  it("refuses when the count after removal would be zero", () => {
+    expect(() => assertNotLastSignInMethod(0)).toThrow(ConnectError);
+  });
+
+  it("allows when at least one method would remain", () => {
+    expect(() => assertNotLastSignInMethod(1)).not.toThrow();
+    expect(() => assertNotLastSignInMethod(2)).not.toThrow();
   });
 });

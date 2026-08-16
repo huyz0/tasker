@@ -62,6 +62,11 @@ const READS: Record<string, string[]> = {
  */
 const NOT_ORG_SCOPED: Record<string, string[]> = {
   orgs: ['seedOrg'],
+  // M13-T06/T08. Managing one's own login credentials has nothing to do
+  // with any org's role - a viewer of every org they belong to may still
+  // set their own password or list/unlink their own linked identities, the
+  // same way they may already call getIdentity.
+  auth: ['setPassword', 'listLinkedIdentities', 'unlinkIdentity'],
 };
 
 const ids = {
@@ -189,6 +194,13 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     addRepositoryLink: { projectId: ids.project, provider: 'github', remoteName: 'o/r', apiToken: 't' },
     removeRepositoryLink: { repositoryLinkId: ids.repoLink },
     syncPullRequests: { projectId: ids.project },
+  },
+  // M13-T10: unlike setPassword/listLinkedIdentities/unlinkIdentity
+  // (NOT_ORG_SCOPED above - a viewer manages their own credentials), this
+  // acts on *another* member and is genuinely org-admin-gated, so a viewer
+  // must be denied the same as any other org write.
+  auth: {
+    adminResetPassword: { orgId: ids.org, userId: 'someone-else' },
   },
 };
 

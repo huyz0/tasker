@@ -26,6 +26,9 @@ message User {
   string name = 3;
   string avatarUrl = 4;
   string createdAt = 5;
+  // M13: the stable local handle. See main.tsp's User model for the
+  // empty-string-means-absent convention this shares with email/name.
+  string username = 6;
 }
 
 message Organization {
@@ -43,8 +46,51 @@ message GetIdentityResponse {
   User user = 1;
 }
 
+// M13-T06. See main.tsp's SetPasswordRequest for the currentPassword /
+// last-sign-in-method reasoning.
+message SetPasswordRequest {
+  string currentPassword = 1;
+  string newPassword = 2;
+}
+message SetPasswordResponse {
+  bool success = 1;
+}
+
+// M13-T08. See main.tsp for why linking itself is an HTTP redirect flow, not
+// an RPC - these two cover list/remove only.
+message LinkedIdentity {
+  string provider = 1;
+  string linkedAt = 2;
+}
+message ListLinkedIdentitiesRequest {}
+message ListLinkedIdentitiesResponse {
+  repeated LinkedIdentity identities = 1;
+  // M13-T12. See main.tsp for why this is exposed here.
+  bool hasPassword = 2;
+}
+message UnlinkIdentityRequest {
+  string provider = 1;
+}
+message UnlinkIdentityResponse {
+  bool success = 1;
+}
+
+// M13-T10. See main.tsp for the assertOrgAdmin + membership-check reasoning.
+message AdminResetPasswordRequest {
+  string orgId = 1;
+  string userId = 2;
+}
+message AdminResetPasswordResponse {
+  bool success = 1;
+  string temporaryPassword = 2;
+}
+
 service AuthService {
   rpc GetIdentity(GetIdentityRequest) returns (GetIdentityResponse);
+  rpc SetPassword(SetPasswordRequest) returns (SetPasswordResponse);
+  rpc ListLinkedIdentities(ListLinkedIdentitiesRequest) returns (ListLinkedIdentitiesResponse);
+  rpc UnlinkIdentity(UnlinkIdentityRequest) returns (UnlinkIdentityResponse);
+  rpc AdminResetPassword(AdminResetPasswordRequest) returns (AdminResetPasswordResponse);
 }
 
 message ListOrgsRequest {
@@ -98,8 +144,10 @@ message SeedOrgResponse {
 
 message InviteUserRequest {
   string orgId = 1;
-  string email = 2;
+  optional string email = 2;
   optional string role = 3;
+  // M13-T09. Exactly one of email/username is required.
+  optional string username = 4;
 }
 message InviteUserResponse {
   bool success = 1;
@@ -131,6 +179,9 @@ message Invitation {
   string created_at = 6;
   string expires_at = 7;
   bool expired = 8;
+  // M13-T09. See main.tsp's Invitation model for the exactly-one-of-
+  // email/username reasoning.
+  string username = 9;
 }
 
 message ListInvitationsRequest {

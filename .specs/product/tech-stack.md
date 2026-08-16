@@ -109,6 +109,7 @@ trail and live GUI are M08.
 | `connectrpc.com/connect` | v1.19.1 | RPC client |
 | `github.com/spf13/cobra` | v1.10.2 | Command parsing |
 | `google.golang.org/protobuf` | v1.36.11 | Generated message runtime |
+| `golang.org/x/term` | v0.45.0 | Masked password prompt for `auth login --username` (M13-T13) — reading a raw terminal without echo cross-platform isn't a stdlib one-liner, so this is the one dependency-standard.md's minimalism rule doesn't reject. |
 
 Output is human-readable text or `--json`. **There is no TUI and no MCP server
 mode**; Viper, the Charmbracelet ecosystem and `mcp-go` are not dependencies.

@@ -1,13 +1,13 @@
 ---
 id: M13
 title: Local Accounts & Linked Identity
-status: todo
+status: done
 goal: A user can exist, be invited and log in entirely on a local username and password with no email address and no dependency on any external provider; Google becomes one optional linked identity per account rather than the account itself, and the system always keeps at least one active sign-in method per user.
 depends_on: [M01, M03]
 surfaces: [backend, gui, cli, contract]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+exit_criteria_met: true
+started_at: 2026-08-16
+completed_at: 2026-08-16
 ---
 
 # M13 — Local Accounts & Linked Identity
@@ -38,22 +38,22 @@ it first, not because of a hard dependency.
 
 ## 3. Exit Criteria
 
-- [ ] A user can be created with only a username and password — no email, no
+- [x] A user can be created with only a username and password — no email, no
       Google identity — and can subsequently log in with that password.
-- [ ] `users.email` is nullable in both schema dialects and no backend path
+- [x] `users.email` is nullable in both schema dialects and no backend path
       requires it to be present.
-- [ ] A user can link a Google identity to an existing local account and later
+- [x] A user can link a Google identity to an existing local account and later
       unlink it; the system refuses to remove the last remaining sign-in
       method (password or any linked identity) for any user.
-- [ ] Password login is hashed with argon2id, rate-limited per identity and
+- [x] Password login is hashed with argon2id, rate-limited per identity and
       per source, and locks out after repeated failures — proven by a test
       that floods login attempts and observes the lockout and its expiry.
-- [ ] An invitation can target a username as well as an email, and acceptance
+- [x] An invitation can target a username as well as an email, and acceptance
       on first login/registration works for both.
-- [ ] The GUI offers both "Sign in with Google" and username/password on
+- [x] The GUI offers both "Sign in with Google" and username/password on
       login, and account settings exposes linking, unlinking and password
       change with the last-method guard visible before it is hit.
-- [ ] Every user who could log in via Google before this milestone can still
+- [x] Every user who could log in via Google before this milestone can still
       do so afterward with no re-consent and no id change — proven by an
       integration test against pre-migration fixture data.
 
@@ -77,7 +77,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
 
 ### Decide and model
 
-- [ ] **M13-T01** — Write the ADR choosing local password credentials plus a
+- [x] **M13-T01** — Write the ADR choosing local password credentials plus a
       generalized linked-identity model over the current Google-only design;
       name the hashing algorithm and parameters, the migration path for
       existing users, and the "at least one active sign-in method" invariant.
@@ -85,14 +85,14 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: the ADR states the invariant, the hashing parameters, and a
         rollback position.
 
-- [ ] **M13-T02** — Make `users.email` nullable and add a required, unique
+- [x] **M13-T02** — Make `users.email` nullable and add a required, unique
       `users.username` as the stable local handle, in both dialects.
       - Files: `db/schema.sqlite.ts`, `db/schema.mysql.ts`, `drizzle-sqlite/`,
         `drizzle-mysql/`
       - Verify: migrations apply and roll forward on both dialects; existing
         rows are backfilled with a derived, de-duplicated username.
 
-- [ ] **M13-T03** — Add `password_credentials` (`userId` PK/FK, `passwordHash`,
+- [x] **M13-T03** — Add `password_credentials` (`userId` PK/FK, `passwordHash`,
       algorithm/cost params, `updatedAt`, `failedAttempts`, `lockedUntil`,
       `mustChangePassword`) and `linked_identities` (`id`, `userId` FK,
       `provider`, `providerUserId`, `linkedAt`, unique on
@@ -102,7 +102,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: migrations apply; the unique constraint is exercised by a test
         that tries to link the same Google id to two accounts.
 
-- [ ] **M13-T04** — Migrate existing users: for every current row (whose id is
+- [x] **M13-T04** — Migrate existing users: for every current row (whose id is
       today's Google profile id), insert a `linked_identities` row
       (`provider='google'`, `providerUserId=users.id`); `users.id` itself does
       not change, so no other foreign key in the schema needs touching.
@@ -113,14 +113,14 @@ M11**, since it needs outbound email delivery this repo does not yet have).
 
 ### Enforce / backend
 
-- [ ] **M13-T05** — Password hashing module: argon2id hash/verify, a versioned
+- [x] **M13-T05** — Password hashing module: argon2id hash/verify, a versioned
       parameter set so a future cost bump can still verify old hashes, and a
       timing-safe comparison path.
       - Files: `apps/backend/src/lib/credentials.ts`, `credentials.test.ts`
       - Verify: unit tests for hash/verify round-trip and for verifying a hash
         produced under an older parameter version.
 
-- [ ] **M13-T06** — Add `loginWithPassword`, `registerLocalUser`, and
+- [x] **M13-T06** — Add `loginWithPassword`, `registerLocalUser`, and
       `setPassword`/`changePassword` RPCs; extend `completeLogin` so Google
       OAuth and password login converge on the same session issuance path.
       - Files: `main.tsp`, `apps/backend/src/modules/auth/auth.handler.ts`,
@@ -128,7 +128,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: an integration test registers and logs in a user with no
         email and no linked identity at all.
 
-- [ ] **M13-T07** — Rate limit and lock out password login: bounded attempts
+- [x] **M13-T07** — Rate limit and lock out password login: bounded attempts
       per account and per source with exponential backoff, using a bounded,
       correctly-evicting bucket store (per the M04 lesson: LRU eviction under
       flood evicts the genuine credential, not the attacker's).
@@ -137,7 +137,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: a flood test trips the lockout and a correct login succeeds
         again only after the cooldown.
 
-- [ ] **M13-T08** — Add `linkIdentity` / `unlinkIdentity` RPCs generalizing
+- [x] **M13-T08** — Add `linkIdentity` / `unlinkIdentity` RPCs generalizing
       "Google login" into "a linked identity provider"; refuse unlinking the
       last remaining sign-in method or clearing the password when it is the
       only method left.
@@ -146,7 +146,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: unlinking the sole remaining method is rejected; the same call
         succeeds once a second method exists.
 
-- [ ] **M13-T09** — Rework invitation acceptance to key on username or email:
+- [x] **M13-T09** — Rework invitation acceptance to key on username or email:
       `invitations.username` as a nullable alternate key to `email`;
       registration and `completeLogin` both consume a matching pending invite.
       - Files: `apps/backend/src/modules/orgs/orgs.handler.ts`,
@@ -154,7 +154,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: inviting a bare username with no email, then registering
         locally with that username, joins the org at the invited role.
 
-- [ ] **M13-T10** — Admin-driven password reset for members with no recovery
+- [x] **M13-T10** — Admin-driven password reset for members with no recovery
       email: an admin-gated RPC that issues a one-time temporary password and
       sets `mustChangePassword`.
       - Files: `apps/backend/src/modules/auth/auth.handler.ts`,
@@ -164,20 +164,20 @@ M11**, since it needs outbound email delivery this repo does not yet have).
 
 ### Surface
 
-- [ ] **M13-T11** — GUI login screen: a username/password form alongside the
+- [x] **M13-T11** — GUI login screen: a username/password form alongside the
       existing "Sign in with Google" button, and a registration path for a
       local account.
       - Files: `apps/gui/src/features/Auth/`
       - Verify: e2e login as a local user with no Google identity at all.
 
-- [ ] **M13-T12** — GUI account settings: change password, link/unlink Google,
+- [x] **M13-T12** — GUI account settings: change password, link/unlink Google,
       with the last-method guard surfaced before the action is attempted, not
       only as a server error after.
       - Files: `apps/gui/src/features/Settings/`
       - Verify: e2e sets a password, unlinks Google, then confirms the unlink
         control is disabled (with a reason) once only one method remains.
 
-- [ ] **M13-T13** — CLI `login --username` path alongside the existing
+- [x] **M13-T13** — CLI `login --username` path alongside the existing
       token/Google flow.
       - Files: `apps/cli/cmd/auth.go`
       - Verify: CLI logs in with username/password against a backend started
@@ -186,14 +186,14 @@ M11**, since it needs outbound email delivery this repo does not yet have).
 
 ### Verify end-to-end
 
-- [ ] **M13-T14** — Security review of the full credential path — hashing,
+- [x] **M13-T14** — Security review of the full credential path — hashing,
       storage, rate limiting, lockout, session issuance, admin reset — before
       the milestone closes.
       - Files: `.milestones/MILESTONE-13-local-accounts-and-linked-identity/reviews/SECURITY-REVIEW-v1.md`
       - Verify: `/security-review` run against the branch; every critical or
         high finding resolved or explicitly accepted with a reason.
 
-- [ ] **M13-T15** — Exhaustive auth-path test matrix: local-only, Google-only,
+- [x] **M13-T15** — Exhaustive auth-path test matrix: local-only, Google-only,
       both-linked, invited-by-username, invited-by-email, lockout, admin
       reset; extend the deny-by-default RPC sweep to the new endpoints.
       - Files: `apps/backend/src/modules/auth/auth.test.ts`,

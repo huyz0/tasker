@@ -79,17 +79,28 @@ var orgsSeedCmd = &cobra.Command{
 
 var orgsInviteCmd = &cobra.Command{
 	Use:   "invite [org_id]",
-	Short: "Invite a user to an organization by email",
+	Short: "Invite a user to an organization by email or username",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		email, _ := cmd.Flags().GetString("email")
+		username, _ := cmd.Flags().GetString("username")
 		role, _ := cmd.Flags().GetString("role")
-		if email == "" {
-			cmd.Println("Error: --email is required.")
-			return errors.New("Error: --email is required.")
+		// M13-T09: exactly one of email/username, the same rule the server
+		// enforces - checked here too so a malformed invocation fails fast
+		// with a CLI-shaped message instead of a raw RPC validation error.
+		if (email == "") == (username == "") {
+			cmd.Println("Error: exactly one of --email or --username is required.")
+			return errors.New("exactly one of --email or --username is required")
 		}
 
-		req := &healthv1.InviteUserRequest{OrgId: args[0], Email: email}
+		req := &healthv1.InviteUserRequest{OrgId: args[0]}
+		target := email
+		if email != "" {
+			req.Email = &email
+		} else {
+			req.Username = &username
+			target = username
+		}
 		if role != "" {
 			req.Role = &role
 		}
@@ -99,7 +110,7 @@ var orgsInviteCmd = &cobra.Command{
 			cmd.PrintErrf("Failed to invite user: %v\n", err)
 			return err
 		}
-		cmd.Printf("Invited %s to organization %s\n", email, args[0])
+		cmd.Printf("Invited %s to organization %s\n", target, args[0])
 		return nil
 	},
 }
@@ -316,7 +327,8 @@ func init() {
 	orgsSeedCmd.Flags().String("name", "", "Organization name")
 	orgsSeedCmd.Flags().String("slug", "", "Organization slug (unique, URL-safe)")
 	orgsSeedCmd.Flags().String("parent", "", "Optional parent organization ID, to create a sub-organization")
-	orgsInviteCmd.Flags().String("email", "", "Email address to invite")
+	orgsInviteCmd.Flags().String("email", "", "Email address to invite (exactly one of --email/--username)")
+	orgsInviteCmd.Flags().String("username", "", "Local username to invite (exactly one of --email/--username)")
 	orgsInviteCmd.Flags().String("role", "", "Role the invitee gets on accept: admin, member, or viewer (defaults to member)")
 	orgsSetMemberRoleCmd.Flags().String("role", "", "New role: owner, admin, member, or viewer")
 }

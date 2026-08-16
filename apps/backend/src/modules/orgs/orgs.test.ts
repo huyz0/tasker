@@ -318,6 +318,91 @@ describe("Organizations Handler Integration Logic", () => {
     await expect(handler.inviteUser({ orgId: org.organization.id, email: "x@foo.com", role: "owner" }, makeAuthContext(ownerId))).rejects.toThrow();
   });
 
+  /** M13-T09. */
+  describe("inviteUser by username", () => {
+    test("invites by username with no email at all", async () => {
+      const { db, nc } = await setupIntegrationTest();
+      const handler = createOrgsHandler(db, nc);
+      const ownerId = "user-invite-username-owner-" + Date.now();
+      await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@foo.com`, createdAt: new Date() });
+      const org = await handler.seedOrg({ name: "Invite Username Org", slug: "invite-username-org-" + Date.now() }, makeAuthContext(ownerId));
+
+      const res = await handler.inviteUser({ orgId: org.organization.id, username: "invited-handle", role: "admin" }, makeAuthContext(ownerId));
+      expect(res.success).toBe(true);
+
+      const rows = await db.select().from(schemaSqlite.invitations)
+        .where(and(eq(schemaSqlite.invitations.orgId, org.organization.id), eq(schemaSqlite.invitations.username, "invited-handle")));
+      expect(rows).toHaveLength(1);
+      expect(rows[0].email).toBeNull();
+      expect(rows[0].role).toBe("admin");
+    });
+
+    test("rejects a request with neither email nor username", async () => {
+      const { db, nc } = await setupIntegrationTest();
+      const handler = createOrgsHandler(db, nc);
+      const ownerId = "user-invite-neither-" + Date.now();
+      await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@foo.com`, createdAt: new Date() });
+      const org = await handler.seedOrg({ name: "Neither Org", slug: "invite-neither-org-" + Date.now() }, makeAuthContext(ownerId));
+
+      await expect(handler.inviteUser({ orgId: org.organization.id }, makeAuthContext(ownerId))).rejects.toThrow();
+    });
+
+    test("rejects a request with both email and username — exactly one is required", async () => {
+      const { db, nc } = await setupIntegrationTest();
+      const handler = createOrgsHandler(db, nc);
+      const ownerId = "user-invite-both-" + Date.now();
+      await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@foo.com`, createdAt: new Date() });
+      const org = await handler.seedOrg({ name: "Both Org", slug: "invite-both-org-" + Date.now() }, makeAuthContext(ownerId));
+
+      await expect(handler.inviteUser(
+        { orgId: org.organization.id, email: "x@foo.com", username: "x-handle" },
+        makeAuthContext(ownerId),
+      )).rejects.toThrow();
+    });
+
+    test("stays idempotent for a live username invitation, the same as an email one", async () => {
+      const { db, nc } = await setupIntegrationTest();
+      const handler = createOrgsHandler(db, nc);
+      const ownerId = "user-invite-username-dup-" + Date.now();
+      await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@foo.com`, createdAt: new Date() });
+      const org = await handler.seedOrg({ name: "Username Dup Org", slug: "invite-username-dup-org-" + Date.now() }, makeAuthContext(ownerId));
+
+      await handler.inviteUser({ orgId: org.organization.id, username: "dup-handle" }, makeAuthContext(ownerId));
+      await handler.inviteUser({ orgId: org.organization.id, username: "dup-handle" }, makeAuthContext(ownerId));
+
+      const rows = await db.select().from(schemaSqlite.invitations)
+        .where(and(eq(schemaSqlite.invitations.orgId, org.organization.id), eq(schemaSqlite.invitations.username, "dup-handle")));
+      expect(rows).toHaveLength(1);
+    });
+
+    test("listInvitations reports the username on a username-only invitation, empty email", async () => {
+      const { db, nc } = await setupIntegrationTest();
+      const handler = createOrgsHandler(db, nc);
+      const ownerId = "user-invite-username-list-" + Date.now();
+      await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@foo.com`, createdAt: new Date() });
+      const org = await handler.seedOrg({ name: "Username List Org", slug: "invite-username-list-org-" + Date.now() }, makeAuthContext(ownerId));
+      await handler.inviteUser({ orgId: org.organization.id, username: "listed-handle" }, makeAuthContext(ownerId));
+
+      const list = await handler.listInvitations({ orgId: org.organization.id }, makeAuthContext(ownerId));
+      const invite = list.invitations.find((i: any) => i.username === "listed-handle");
+      expect(invite).toBeTruthy();
+      expect(invite.email).toBe("");
+    });
+
+    test("listInvitations' filter finds a username-only invitation by its username", async () => {
+      const { db, nc } = await setupIntegrationTest();
+      const handler = createOrgsHandler(db, nc);
+      const ownerId = "user-invite-username-filter-" + Date.now();
+      await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@foo.com`, createdAt: new Date() });
+      const org = await handler.seedOrg({ name: "Username Filter Org", slug: "invite-username-filter-org-" + Date.now() }, makeAuthContext(ownerId));
+      await handler.inviteUser({ orgId: org.organization.id, username: "findme-handle" }, makeAuthContext(ownerId));
+      await handler.inviteUser({ orgId: org.organization.id, email: "someone-else@foo.com" }, makeAuthContext(ownerId));
+
+      const filtered = await handler.listInvitations({ orgId: org.organization.id, page: { filter: "findme" } }, makeAuthContext(ownerId));
+      expect(filtered.invitations.map((i: any) => i.username)).toEqual(["findme-handle"]);
+    });
+  });
+
   test("removeOrgMember rejects removing the organization's last owner", async () => {
     const { db, nc } = await setupIntegrationTest();
     const handler = createOrgsHandler(db, nc);

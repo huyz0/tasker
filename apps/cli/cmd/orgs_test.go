@@ -18,6 +18,7 @@ import (
 type fakeOrgHandler struct {
 	v1connect.UnimplementedOrgServiceHandler
 	invitedEmail      string
+	invitedUsername   string
 	invitedRole       string
 	updatedRoleArgs   *healthv1.UpdateOrgMemberRoleRequest
 	removedArgs       *healthv1.RemoveOrgMemberRequest
@@ -72,7 +73,12 @@ func (f *fakeOrgHandler) InviteUser(
 	_ context.Context,
 	req *connect.Request[healthv1.InviteUserRequest],
 ) (*connect.Response[healthv1.InviteUserResponse], error) {
-	f.invitedEmail = req.Msg.Email
+	if req.Msg.Email != nil {
+		f.invitedEmail = *req.Msg.Email
+	}
+	if req.Msg.Username != nil {
+		f.invitedUsername = *req.Msg.Username
+	}
 	if req.Msg.Role != nil {
 		f.invitedRole = *req.Msg.Role
 	}
@@ -142,9 +148,62 @@ func TestOrgsInviteCmd(t *testing.T) {
 	}
 }
 
+// M13-T09. orgsInviteCmd's flags are a package-level singleton that Cobra
+// does not reset between Execute() calls in the same test binary, so a
+// value another test set (e.g. --email) would otherwise leak in here and
+// trip the exactly-one-of validation. Explicit resets, not a fresh command.
+func TestOrgsInviteCmdByUsername(t *testing.T) {
+	fake := &fakeOrgHandler{}
+	withOrgServer(t, fake)
+	orgsInviteCmd.Flags().Set("email", "")
+	orgsInviteCmd.Flags().Set("role", "")
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"orgs", "invite", "org_1", "--username", "invited-handle"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.invitedUsername != "invited-handle" {
+		t.Fatalf("expected invite to be sent to username invited-handle, got %q", fake.invitedUsername)
+	}
+	if fake.invitedEmail != "" {
+		t.Fatalf("expected no email on a username invite, got %q", fake.invitedEmail)
+	}
+	if !strings.Contains(b.String(), "invited-handle") {
+		t.Fatalf("expected output to mention the invited username, got %s", b.String())
+	}
+}
+
+func TestOrgsInviteCmdRejectsNeitherEmailNorUsername(t *testing.T) {
+	fake := &fakeOrgHandler{}
+	withOrgServer(t, fake)
+	orgsInviteCmd.Flags().Set("email", "")
+	orgsInviteCmd.Flags().Set("username", "")
+
+	rootCmd.SetOut(bytes.NewBufferString(""))
+	rootCmd.SetArgs([]string{"orgs", "invite", "org_1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error when neither --email nor --username is given")
+	}
+}
+
+func TestOrgsInviteCmdRejectsBothEmailAndUsername(t *testing.T) {
+	fake := &fakeOrgHandler{}
+	withOrgServer(t, fake)
+
+	rootCmd.SetOut(bytes.NewBufferString(""))
+	rootCmd.SetArgs([]string{"orgs", "invite", "org_1", "--email", "a@b.com", "--username", "a-handle"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error when both --email and --username are given")
+	}
+}
+
 func TestOrgsInviteCmdWithRole(t *testing.T) {
 	fake := &fakeOrgHandler{}
 	withOrgServer(t, fake)
+	orgsInviteCmd.Flags().Set("username", "")
 
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)

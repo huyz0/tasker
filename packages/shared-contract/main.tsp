@@ -45,6 +45,12 @@ model User {
   @field(3) name: string;
   @field(4) avatarUrl: string;
   @field(5) createdAt: string;
+
+  // M13: the stable local handle. Always present for a user created after
+  // M13 (registerLocalUser or a Google login both set one); a proto3 empty
+  // string reads the same as an absent value, the same convention already
+  // used for `email`/`name` on this message.
+  @field(6) username: string;
 }
 
 model Organization {
@@ -64,8 +70,78 @@ model GetIdentityResponse {
   @field(1) user: User;
 }
 
+// M13-T06. `currentPassword` is required when the caller already has a
+// password credential (verified before it is replaced) and ignored when
+// they don't (a Google-only account setting a password for the first time
+// has nothing to prove yet). ADR-0012 §5's last-sign-in-method invariant
+// does not apply here - setPassword only ever adds or replaces a credential,
+// never removes the only one.
+model SetPasswordRequest {
+  @field(1) currentPassword?: string;
+  @field(2) newPassword: string;
+}
+model SetPasswordResponse {
+  @field(1) success: boolean;
+}
+
+// M13-T08. Linking itself isn't an RPC: proving ownership of a Google
+// account needs the OAuth redirect dance, so `GET /api/auth/google/link`
+// and its callback (plain HTTP routes, like the login flow) do the actual
+// linking. These two RPCs are the read/remove half - listing what's linked
+// and removing one - which don't need a redirect.
+model LinkedIdentity {
+  @field(1) provider: string;
+  @field(2) linkedAt: string;
+}
+model ListLinkedIdentitiesRequest {}
+model ListLinkedIdentitiesResponse {
+  @field(1) identities: LinkedIdentity[];
+
+  // M13-T12. The GUI's last-sign-in-method guard (ADR-0012 §5) needs to
+  // disable an "unlink" control *before* it's clicked, not only catch the
+  // server's refusal after - which needs knowing whether a password
+  // exists, not just how many identities are linked. Exposed here rather
+  // than on `User` since it's specifically this screen's concern.
+  @field(2) hasPassword: boolean;
+}
+
+// ADR-0012 §5: refused if this would leave the caller with no working
+// sign-in method at all.
+model UnlinkIdentityRequest {
+  @field(1) provider: string;
+}
+model UnlinkIdentityResponse {
+  @field(1) success: boolean;
+}
+
+// M13-T10. For a member with no recovery email (or whose email is simply
+// unreachable), an org admin can force a fresh credential rather than the
+// member being permanently locked out. `orgId` makes this an org-admin
+// action, not an account-owner one - `assertOrgAdmin` gates it, and the
+// handler checks `userId` is actually a member of `orgId` so an admin of
+// org A cannot reset a stranger's password by naming any user id. The
+// temporary password is returned exactly once, here, never stored or
+// logged in plaintext (same rule as an agent token's plaintext, ADR-0008) -
+// the admin is responsible for relaying it out of band.
+model AdminResetPasswordRequest {
+  @field(1) orgId: string;
+  @field(2) userId: string;
+}
+model AdminResetPasswordResponse {
+  @field(1) success: boolean;
+  @field(2) temporaryPassword: string;
+}
+
 interface AuthService {
   getIdentity(request: GetIdentityRequest): GetIdentityResponse;
+  setPassword(request: SetPasswordRequest): SetPasswordResponse;
+  listLinkedIdentities(
+    request: ListLinkedIdentitiesRequest,
+  ): ListLinkedIdentitiesResponse;
+  unlinkIdentity(request: UnlinkIdentityRequest): UnlinkIdentityResponse;
+  adminResetPassword(
+    request: AdminResetPasswordRequest,
+  ): AdminResetPasswordResponse;
 }
 
 model ListOrgsRequest {
@@ -150,6 +226,13 @@ model Invitation {
   @field(6) createdAt: string;
   @field(7) expiresAt?: string;
   @field(8) expired: boolean;
+
+  // M13-T09. Exactly one of email/username is ever set - an invitation
+  // targets an address (accepted on Google login or local registration with
+  // a matching email) or a bare local handle (accepted on local
+  // registration with a matching username), never both. Plain string, same
+  // convention as User.username: empty means absent.
+  @field(9) username: string;
 }
 
 model ListInvitationsRequest {
@@ -223,7 +306,12 @@ interface OrgService {
 
 model InviteUserRequest {
   @field(1) orgId: string;
-  @field(2) email: string;
+
+  // Exactly one of email/username is required (M13-T09) - an admin invites
+  // either an address or a bare local handle, never both at once.
+  @field(2) email?: string;
+
+  @field(4) username?: string;
 
   // Role the invitee gets on accept - "admin" | "member" | "viewer"
   // (never "owner"). Defaults to "member" server-side if omitted.

@@ -20,10 +20,18 @@ const SeedOrgSchema = z.object({
   parentOrgId: z.string().nullable().optional(),
 });
 
+// M13-T09. Exactly one of email/username: an invitation targets an address
+// (accepted on Google login or local registration with a matching email) or
+// a bare local handle (accepted on local registration with a matching
+// username) - never both, so there is exactly one thing for
+// consumePendingInvitations to match on.
 const InviteUserSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
-  email: z.string().email("valid email is required"),
+  email: z.string().email("valid email is required").optional(),
+  username: z.string().min(3, "username must be at least 3 characters").optional(),
   role: InvitableRole.default('member'),
+}).refine((data) => Boolean(data.email) !== Boolean(data.username), {
+  message: "exactly one of email or username is required",
 });
 
 const ArchiveOrgSchema = z.object({
@@ -228,12 +236,15 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         eq((invs as any).orgId, parsed.orgId),
         parsed.page,
         {
-          filterColumn: (invs as any).email,
+          // M13-T09: an admin searching this list should find a
+          // username-only invitation too, not just email-addressed ones.
+          filterColumn: [(invs as any).email, (invs as any).username],
           sortableColumns: { email: (invs as any).email, role: (invs as any).role, createdAt: (invs as any).createdAt },
           select: {
             id: (invs as any).id,
             orgId: (invs as any).orgId,
             email: (invs as any).email,
+            username: (invs as any).username,
             invitedBy: (invs as any).invitedBy,
             role: (invs as any).role,
             createdAt: (invs as any).createdAt,
@@ -247,7 +258,8 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         invitations: items.map((i: any) => ({
           id: i.id,
           orgId: i.orgId,
-          email: i.email,
+          email: i.email ?? "",
+          username: i.username ?? "",
           role: i.role,
           invitedBy: i.invitedBy,
           createdAt: i.createdAt instanceof Date ? i.createdAt.toISOString() : i.createdAt,
@@ -439,8 +451,14 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       await assertOrgAdmin(db, userId, parsed.orgId);
 
       const invs = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
+      // M13-T09. Matches on whichever of email/username this invite targets
+      // - the Zod refine above guarantees exactly one is set, so exactly one
+      // of these two conditions is ever the real filter.
+      const matchCondition = parsed.email
+        ? eq((invs as any).email, parsed.email)
+        : eq((invs as any).username, parsed.username);
       const existing = await db.select().from(invs)
-        .where(and(eq((invs as any).orgId, parsed.orgId), eq((invs as any).email, parsed.email)))
+        .where(and(eq((invs as any).orgId, parsed.orgId), matchCondition))
         .limit(1);
       if (existing.length > 0) {
         // Re-inviting stays idempotent for a live invitation, but must renew an
@@ -461,7 +479,8 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       const payload = {
         id: `i-${crypto.randomUUID()}`,
         orgId: parsed.orgId,
-        email: parsed.email,
+        email: parsed.email || null,
+        username: parsed.username || null,
         invitedBy: userId,
         role: parsed.role,
         expiresAt: invitationExpiry(),

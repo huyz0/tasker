@@ -16,12 +16,73 @@ export const testSchema = sqliteTable("schema_migrations_test", {
   id: text("id").primaryKey(),
 });
 
+// M13: email stopped being how a user is identified. It is optional (a user
+// can exist with no external contact address at all) and, when present,
+// still unique — SQLite treats multiple NULLs in a UNIQUE column as distinct,
+// so any number of email-less accounts coexist. `username` is the new stable
+// local handle. It is nullable at the database level on purpose, following
+// this file's existing convention for "logically required, enforced at the
+// app layer rather than the schema" columns (see `invitations.role`'s
+// comment below) — every write path that creates a user (registerLocalUser,
+// completeLogin) requires one via Zod; the nullable column only exists so a
+// pre-M13 SQLite `users` table doesn't need the full 12-step ALTER TABLE
+// rebuild twice (once to add the column, once to backfill it) — see
+// `0028_users_email_optional_username.sql` and
+// `0029_backfill_usernames.sql`.
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
-  email: text("email").notNull().unique(),
+  email: text("email").unique(),
+  username: text("username").unique(),
   name: text("name"),
   avatarUrl: text("avatar_url"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * M13-T03. One optional local password credential per user. `passwordHash` is
+ * the full PHC-format string `Bun.password.hash()` returns
+ * (`$argon2id$v=19$m=...,t=...,p=...$<salt>$<hash>`) - it already carries its
+ * algorithm and cost parameters, so there is no separate "params" or
+ * "version" column: `Bun.password.verify()` reads them out of the stored
+ * string itself, and raising the cost factor later needs no migration (see
+ * ADR-0012 §4). `userId` is the primary key rather than a surrogate `id`
+ * because the relationship is 1:1 by construction - a user has at most one
+ * local password.
+ */
+export const passwordCredentials = sqliteTable("password_credentials", {
+  userId: text("user_id").primaryKey().references(() => users.id),
+  passwordHash: text("password_hash").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  failedAttempts: integer("failed_attempts").notNull().default(0),
+  lockedUntil: integer("locked_until", { mode: "timestamp" }),
+  mustChangePassword: integer("must_change_password", { mode: "boolean" }).notNull().default(false),
+});
+
+/**
+ * M13-T03/T04. Generalizes "how a user proves who they are via a third
+ * party" - Google is migrated onto this as the first `provider` row rather
+ * than being special-cased on `users` itself (ADR-0012 §2). `providerUserId`
+ * is that provider's own identifier for the person (for Google, its `sub`
+ * claim - the value `users.id` held directly before this milestone). T04's
+ * migration populates this table in raw SQL for every pre-existing user;
+ * the `linkIdentity`/`unlinkIdentity` RPCs that read/write it as a TS symbol
+ * land in T08.
+ */
+export const linkedIdentities = sqliteTable("linked_identities", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  // Only 'google' is issued today; text (not a fixed enum) because SQLite has
+  // no native enum type - same choice this file already makes for
+  // `organization_members.role` and `invitations.role`, validated at the app
+  // layer instead.
+  provider: text("provider").notNull(),
+  providerUserId: text("provider_user_id").notNull(),
+  linkedAt: integer("linked_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    providerIdentityIdx: uniqueIndex("linked_identities_provider_identity_idx").on(table.provider, table.providerUserId),
+    userIdIdx: index("linked_identities_user_id_idx").on(table.userId),
+  };
 });
 
 export const organizations = sqliteTable("organizations", {
@@ -97,7 +158,13 @@ export const taskStatusTransitions = sqliteTable("task_status_transitions", {
 export const invitations = sqliteTable("invitations", {
   id: text("id").primaryKey(),
   orgId: text("org_id").notNull().references(() => organizations.id),
-  email: text("email").notNull(),
+  // M13-T09: exactly one of email/username is set at the app layer - an
+  // invitation targets an address or a bare local handle, never both.
+  // `email` therefore drops NOT NULL here; the app-level XOR is what keeps
+  // a row from having neither, the same "logically required, DB-nullable"
+  // convention `users.username` already uses.
+  email: text("email"),
+  username: text("username"),
   invitedBy: text("invited_by").notNull().references(() => users.id),
   // The role the invitee gets on accept - 'admin' | 'member' | 'viewer'
   // (never 'owner': ownership isn't handed out through an email invite).

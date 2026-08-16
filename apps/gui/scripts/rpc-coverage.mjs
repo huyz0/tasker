@@ -36,6 +36,14 @@ export const EXCEPTIONS = {
     'the client already holds. Agents and the CLI, which hold no list, use it. ' +
     '(getProject was excepted for this reason too until M06-T08 gave the task ' +
     'breadcrumb a project name to resolve from an id alone.)',
+  'AuthService.adminResetPassword':
+    'M13-T10 added the RPC for an admin to reset a member with no working ' +
+    'credential; M13-T12 (features/Settings/AccountSettings.tsx) only ' +
+    'covers a user managing their own password/linked identities, and no ' +
+    "other M13 task names an admin-facing caller for this one - it's a " +
+    'real gap, not yet scheduled. Wire it into the Organizations member ' +
+    'list (an admin action per row, alongside role/remove) and remove this ' +
+    'exception when that lands.',
 };
 
 /** RPC names per service, read from the TypeSpec interfaces. */

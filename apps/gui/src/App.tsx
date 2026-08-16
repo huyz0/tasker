@@ -13,12 +13,14 @@ import { SystemHealthPage } from './pages/SystemHealth';
 import { OAuthCallback } from './pages/OAuthCallback';
 import { NotFound } from './pages/NotFound';
 import LoginPage from './pages/Login';
+import RegisterPage from './pages/Register';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route
         path="*"
         element={

@@ -1,15 +1,47 @@
-import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, mediumtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
+import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, boolean, mediumtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const testSchema = mysqlTable("schema_migrations_test", {
   id: varchar("id", { length: 256 }).primaryKey(),
 });
 
+// M13: see the matching comment in schema.sqlite.ts — email is now optional
+// (unique when present; MySQL also treats multiple NULLs in a UNIQUE index as
+// distinct) and `username` is the new stable local handle, nullable at the
+// database level and required at the app layer for every user-creating path.
 export const users = mysqlTable("users", {
   id: varchar("id", { length: 256 }).primaryKey(),
-  email: varchar("email", { length: 256 }).notNull().unique(),
+  email: varchar("email", { length: 256 }).unique(),
+  username: varchar("username", { length: 256 }).unique(),
   name: varchar("name", { length: 256 }),
   avatarUrl: varchar("avatar_url", { length: 512 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// M13-T03. See the SQLite counterpart for the full reasoning: passwordHash
+// is the whole PHC-format `Bun.password.hash()` string, so no separate
+// params/version column exists, and userId is the primary key because the
+// relationship is 1:1.
+export const passwordCredentials = mysqlTable("password_credentials", {
+  userId: varchar("user_id", { length: 256 }).primaryKey().references(() => users.id),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  failedAttempts: int("failed_attempts").notNull().default(0),
+  lockedUntil: timestamp("locked_until"),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
+});
+
+// M13-T03/T04. See the SQLite counterpart for the full reasoning.
+export const linkedIdentities = mysqlTable("linked_identities", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  userId: varchar("user_id", { length: 256 }).notNull().references(() => users.id),
+  provider: mysqlEnum("provider", ['google']).notNull(),
+  providerUserId: varchar("provider_user_id", { length: 256 }).notNull(),
+  linkedAt: timestamp("linked_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    providerIdentityIdx: uniqueIndex("linked_identities_provider_identity_idx").on(table.provider, table.providerUserId),
+    userIdIdx: index("linked_identities_user_id_idx").on(table.userId),
+  };
 });
 
 export const organizations = mysqlTable("organizations", {
@@ -80,7 +112,10 @@ export const taskStatusTransitions = mysqlTable("task_status_transitions", {
 export const invitations = mysqlTable("invitations", {
   id: varchar("id", { length: 256 }).primaryKey(),
   orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
-  email: varchar("email", { length: 256 }).notNull(),
+  // M13-T09: see the SQLite counterpart - exactly one of email/username is
+  // set at the app layer, so email drops NOT NULL here.
+  email: varchar("email", { length: 256 }),
+  username: varchar("username", { length: 256 }),
   invitedBy: varchar("invited_by", { length: 256 }).notNull().references(() => users.id),
   // The role the invitee gets on accept - never 'owner': ownership isn't
   // handed out through an email invite.
