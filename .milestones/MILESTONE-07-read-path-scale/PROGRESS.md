@@ -540,6 +540,49 @@ it is a behaviour change and belongs in T06's journal entry, not silently.
   deny-by-default sweeps needed it classified before they would pass.
 - **Next**: M07-T13
 
+## M07-T13 — Highlighted snippets, as offsets rather than markup
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `main.tsp` **and** `health.proto` (new `SnippetMatch`,
+  `SearchResult.snippetMatches`), `modules/search/search.handler.ts`
+  (`buildSnippet` returns ranges, new `findMatches`), `search.test.ts` (+3),
+  `components/layout/GlobalSearch.tsx` (new `HighlightedSnippet`) and its test
+  (+4)
+- **Verified**: in a real browser — searching a word that appears inside a
+  snippet renders real `<mark>` elements around it
+  (`<mark class="bg-warning-subtle …">scale</mark>`), and a word that matches
+  only the *name* correctly produces no marks, because the snippet is drawn
+  from the description. `gui:test` 624 pass, branches 95.10%.
+  `moon check --all` — 26 pass.
+- **Notes**: **the server sends offsets, not markup.** Wrapping the matches in
+  tags server-side would have been less code in two places and would have made
+  the snippet HTML the client must trust and render — an injection hole opened
+  for a visual nicety. Ranges keep the snippet plain text, and `<mark>` is the
+  element that already means "relevant to what the user is doing", so the
+  emphasis reaches a screen reader rather than being a styled `span`.
+  Offsets are computed against **the finished snippet**, not the source text.
+  The snippet is trimmed and carries a leading ellipsis, so a range measured
+  against the original lands on the wrong characters — and by a different
+  amount for every result, which presents as a font or encoding problem rather
+  than an off-by-N. There is a test that slices the snippet by the returned
+  range and asserts it equals the search term.
+  Overlapping ranges are merged, because "migration migrations" tokenises to
+  two words that match the same text and the client would otherwise be asked to
+  nest one `<mark>` inside another.
+  **The contract edit landed in the wrong message and the type checker caught
+  it.** `SearchResult` and `TaskType` both end `parentId = 6`, so a
+  first-match replace put `snippetMatches` on `TaskType`. The TypeSpec was
+  right and the proto was wrong — the two hand-maintained files disagreeing is
+  exactly the failure mode this repo keeps hitting, and only `gui:build`
+  noticed.
+  One `?? []` was removed as dead and then **restored**: proto3 always
+  materialises a repeated field, so it is unreachable from the server — but two
+  existing tests construct results without it, and a component that renders
+  whatever it is handed should not depend on that. Its restoration is what
+  those tests now cover.
+- **Next**: M07-T14
+
 ---
 
 ## Out-of-band — dashboard rework (not an M07 task)

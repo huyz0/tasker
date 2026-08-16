@@ -280,6 +280,53 @@ describe("Search Handler", () => {
     expect(hit.snippet.startsWith("…")).toBe(true);
   });
 
+  it("marks where the query words fall inside the snippet", async () => {
+    const filler = "Preamble that is not what anyone searched for. ".repeat(6);
+    await db.insert(schemaSqlite.tasks).values({
+      id: "tsk-mark-" + crypto.randomUUID(), projectId, title: "Markable", status: "todo",
+      description: filler + "the quarantine threshold is configurable",
+      createdAt: new Date(),
+    });
+
+    const res = await impl.universalSearch({ query: "quarantine", orgId }, ctx);
+    const hit = res.results.find((r: any) => r.title === "Markable");
+
+    expect(hit.snippetMatches.length).toBeGreaterThan(0);
+    // Offsets must address the *snippet*, not the source text. The snippet is
+    // trimmed and carries a leading ellipsis, so a range measured against the
+    // original would land on the wrong characters — and by a different amount
+    // for every result, which is the kind of bug that looks like a font issue.
+    const { start, length } = hit.snippetMatches[0];
+    expect(hit.snippet.slice(start, start + length).toLowerCase()).toBe("quarantine");
+  });
+
+  it("merges overlapping marks so a repeated word is not marked twice", async () => {
+    await db.insert(schemaSqlite.tasks).values({
+      id: "tsk-overlap-" + crypto.randomUUID(), projectId, title: "Overlappable", status: "todo",
+      description: "the migration migration ran twice", createdAt: new Date(),
+    });
+
+    // "migration migrations" tokenises to two words that both match the same
+    // text; without merging, the client gets nested ranges to render.
+    const res = await impl.universalSearch({ query: "migration migrations", orgId }, ctx);
+    const hit = res.results.find((r: any) => r.title === "Overlappable");
+    if (hit) {
+      const ranges = hit.snippetMatches;
+      for (let i = 1; i < ranges.length; i++) {
+        expect(ranges[i].start).toBeGreaterThanOrEqual(ranges[i - 1].start + ranges[i - 1].length);
+      }
+    }
+  });
+
+  it("returns no marks for a result whose snippet is empty", async () => {
+    // A project has no body to snippet, so there is nothing to mark — and an
+    // offset into an empty string would be a range the client cannot render.
+    const res = await impl.universalSearch({ query: "Proj", orgId }, ctx);
+    const hit = res.results.find((r: any) => r.type === "project");
+    expect(hit.snippet).toBe("");
+    expect(hit.snippetMatches).toEqual([]);
+  });
+
   it("still finds a task by a word that appears only in its description", async () => {
     await db.insert(schemaSqlite.tasks).values({
       id: "tsk-desc-" + crypto.randomUUID(), projectId, title: "Opaque heading", status: "todo",

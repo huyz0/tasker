@@ -99,21 +99,62 @@ function toBooleanModeExpression(tokens: string[]): string {
  * a handler built on it would have shipped silently empty snippets. The index
  * stores no text to snippet from, so the text comes from the base row instead.
  */
-function buildSnippet(text: string | null | undefined, tokens: string[]): string {
-  if (!text) return "";
+function buildSnippet(text: string | null | undefined, tokens: string[]): { snippet: string; snippetMatches: { start: number; length: number }[] } {
+  if (!text) return { snippet: "", snippetMatches: [] };
   const haystack = text.toLowerCase();
   let at = -1;
   for (const token of tokens) {
     const found = haystack.indexOf(token.toLowerCase());
     if (found !== -1 && (at === -1 || found < at)) at = found;
   }
+
   // The match may be in the title rather than the body, in which case the
   // opening of the body is still the most useful thing to show.
-  if (at === -1) return text.slice(0, SNIPPET_RADIUS * 2);
+  const snippet = at === -1
+    ? text.slice(0, SNIPPET_RADIUS * 2)
+    : (at - SNIPPET_RADIUS > 0 ? "…" : "")
+      + text.slice(Math.max(0, at - SNIPPET_RADIUS), Math.min(text.length, at + SNIPPET_RADIUS)).trim()
+      + (at + SNIPPET_RADIUS < text.length ? "…" : "");
 
-  const start = Math.max(0, at - SNIPPET_RADIUS);
-  const end = Math.min(text.length, at + SNIPPET_RADIUS);
-  return (start > 0 ? "…" : "") + text.slice(start, end).trim() + (end < text.length ? "…" : "");
+  return { snippet, snippetMatches: findMatches(snippet, tokens) };
+}
+
+/**
+ * Every occurrence of any query word inside the finished snippet.
+ *
+ * Computed against the snippet rather than the source text, because trimming
+ * and the leading ellipsis shift every offset — a range measured against the
+ * original would highlight the wrong characters, and be off by a different
+ * amount for each result.
+ *
+ * Ranges are merged when they overlap, so a query of "task tasks" marks the
+ * word once rather than emitting two ranges the client would nest.
+ */
+function findMatches(snippet: string, tokens: string[]): { start: number; length: number }[] {
+  const haystack = snippet.toLowerCase();
+  const found: { start: number; length: number }[] = [];
+
+  for (const token of tokens) {
+    const needle = token.toLowerCase();
+    for (let from = 0; ; ) {
+      const at = haystack.indexOf(needle, from);
+      if (at === -1) break;
+      found.push({ start: at, length: needle.length });
+      from = at + needle.length;
+    }
+  }
+
+  found.sort((a, b) => a.start - b.start || b.length - a.length);
+  const merged: { start: number; length: number }[] = [];
+  for (const range of found) {
+    const last = merged[merged.length - 1];
+    if (last && range.start <= last.start + last.length) {
+      last.length = Math.max(last.length, range.start + range.length - last.start);
+    } else {
+      merged.push({ ...range });
+    }
+  }
+  return merged;
 }
 
 /**
@@ -266,7 +307,7 @@ const sqliteDialect: SearchDialect = {
         CROSS JOIN projects p ON p.id = t.project_id
         WHERE tasks_fts MATCH ${match} AND p.org_id = ${orgId} AND t.deleted_at IS NULL
       `),
-      toResult: (r, tokens) => ({ id: r.id, type: "task", title: r.title, snippet: buildSnippet(r.description, tokens) }),
+      toResult: (r, tokens) => ({ id: r.id, type: "task", title: r.title, ...buildSnippet(r.description, tokens) }),
     },
     {
       type: "artifact",
@@ -288,7 +329,7 @@ const sqliteDialect: SearchDialect = {
         CROSS JOIN projects p ON p.id = f.project_id
         WHERE artifacts_fts MATCH ${match} AND p.org_id = ${orgId} AND a.deleted_at IS NULL
       `),
-      toResult: (r, tokens) => ({ id: r.id, type: "artifact", title: r.name, snippet: buildSnippet(r.description, tokens) }),
+      toResult: (r, tokens) => ({ id: r.id, type: "artifact", title: r.name, ...buildSnippet(r.description, tokens) }),
     },
     {
       type: "project",
@@ -306,7 +347,7 @@ const sqliteDialect: SearchDialect = {
         CROSS JOIN projects p ON p.rowid = projects_fts.rowid
         WHERE projects_fts MATCH ${match} AND p.org_id = ${orgId} AND p.deleted_at IS NULL
       `),
-      toResult: (r) => ({ id: r.id, type: "project", title: r.name, snippet: "" }),
+      toResult: (r) => ({ id: r.id, type: "project", title: r.name, snippet: "", snippetMatches: [] }),
     },
     {
       type: "agent",
@@ -324,7 +365,7 @@ const sqliteDialect: SearchDialect = {
         CROSS JOIN agents ag ON ag.rowid = agents_fts.rowid
         WHERE agents_fts MATCH ${match} AND ag.org_id = ${orgId} AND ag.deleted_at IS NULL
       `),
-      toResult: (r) => ({ id: r.id, type: "agent", title: r.name, snippet: "" }),
+      toResult: (r) => ({ id: r.id, type: "agent", title: r.name, snippet: "", snippetMatches: [] }),
     },
     {
       // Comments hang off a task or an artifact, so the org comes from the
@@ -362,7 +403,7 @@ const sqliteDialect: SearchDialect = {
         id: r.id,
         type: "comment",
         title: r.parent_title ?? "Comment",
-        snippet: buildSnippet(r.content, tokens),
+        ...buildSnippet(r.content, tokens),
         parentType: r.parent_type,
         parentId: r.parent_id,
       }),
@@ -403,7 +444,7 @@ const mysqlDialect: SearchDialect = {
         WHERE ${against(sql`t.title, t.description`, match)}
           AND p.org_id = ${orgId} AND t.deleted_at IS NULL
       `),
-      toResult: (r, tokens) => ({ id: r.id, type: "task", title: r.title, snippet: buildSnippet(r.description, tokens) }),
+      toResult: (r, tokens) => ({ id: r.id, type: "task", title: r.title, ...buildSnippet(r.description, tokens) }),
     },
     {
       type: "artifact",
@@ -425,7 +466,7 @@ const mysqlDialect: SearchDialect = {
         WHERE ${against(sql`a.name, a.description`, match)}
           AND p.org_id = ${orgId} AND a.deleted_at IS NULL
       `),
-      toResult: (r, tokens) => ({ id: r.id, type: "artifact", title: r.name, snippet: buildSnippet(r.description, tokens) }),
+      toResult: (r, tokens) => ({ id: r.id, type: "artifact", title: r.name, ...buildSnippet(r.description, tokens) }),
     },
     {
       type: "project",
@@ -441,7 +482,7 @@ const mysqlDialect: SearchDialect = {
         FROM projects p
         WHERE ${against(sql`p.name`, match)} AND p.org_id = ${orgId} AND p.deleted_at IS NULL
       `),
-      toResult: (r) => ({ id: r.id, type: "project", title: r.name, snippet: "" }),
+      toResult: (r) => ({ id: r.id, type: "project", title: r.name, snippet: "", snippetMatches: [] }),
     },
     {
       type: "agent",
@@ -457,7 +498,7 @@ const mysqlDialect: SearchDialect = {
         FROM agents ag
         WHERE ${against(sql`ag.name`, match)} AND ag.org_id = ${orgId} AND ag.deleted_at IS NULL
       `),
-      toResult: (r) => ({ id: r.id, type: "agent", title: r.name, snippet: "" }),
+      toResult: (r) => ({ id: r.id, type: "agent", title: r.name, snippet: "", snippetMatches: [] }),
     },
     {
       type: "comment",
@@ -488,7 +529,7 @@ const mysqlDialect: SearchDialect = {
         id: r.id,
         type: "comment",
         title: r.parent_title ?? "Comment",
-        snippet: buildSnippet(r.content, tokens),
+        ...buildSnippet(r.content, tokens),
         parentType: r.parent_type,
         parentId: r.parent_id,
       }),

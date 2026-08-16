@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
@@ -36,6 +36,36 @@ export function resultRoute(result: { type: string; id: string; parentType?: str
     return ROUTE_BY_RESULT_TYPE[result.parentType]?.(result.parentId) ?? null;
   }
   return ROUTE_BY_RESULT_TYPE[result.type]?.(result.id) ?? null;
+}
+
+/**
+ * Renders a snippet with the query's words marked.
+ *
+ * Takes offsets rather than markup on purpose: the server sends plain text and
+ * ranges, so nothing here has to trust server-supplied HTML. `<mark>` is the
+ * element that already means "relevant to the user's current activity", so
+ * screen readers get the emphasis too rather than a styled span.
+ */
+export function HighlightedSnippet({ text, matches }: {
+  text: string;
+  matches: readonly { start: number; length: number }[];
+}) {
+  if (matches.length === 0) return <>{text}</>;
+
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  matches.forEach((m, i) => {
+    // Ignore a range that does not address this string. The server computes
+    // these against the snippet it sends, but a client that renders whatever
+    // it is handed will happily slice past the end and drop the rest.
+    if (m.start < cursor || m.start + m.length > text.length) return;
+    if (m.start > cursor) parts.push(text.slice(cursor, m.start));
+    parts.push(<mark key={i} className="bg-warning-subtle text-warning-subtle-foreground rounded-sm">{text.slice(m.start, m.start + m.length)}</mark>);
+    cursor = m.start + m.length;
+  });
+  if (cursor < text.length) parts.push(text.slice(cursor));
+
+  return <>{parts}</>;
 }
 
 const ICON_BY_RESULT_TYPE: Record<string, typeof CheckSquare> = {
@@ -168,7 +198,9 @@ export function GlobalSearch() {
                   <div className="flex flex-col overflow-hidden">
                     <span className="font-medium text-sm truncate">{result.title}</span>
                     {result.snippet && (
-                      <span className="text-xs text-muted-foreground truncate">{result.snippet}</span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        <HighlightedSnippet text={result.snippet} matches={result.snippetMatches ?? []} />
+                      </span>
                     )}
                   </div>
                 </button>

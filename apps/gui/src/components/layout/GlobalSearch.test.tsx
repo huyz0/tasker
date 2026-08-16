@@ -26,7 +26,7 @@ vi.mock('use-debounce', () => ({
   useDebounce: (value: string) => [value, { flush: vi.fn(), cancel: vi.fn() }],
 }));
 
-import { GlobalSearch, GlobalSearchTrigger, resultRoute } from './GlobalSearch';
+import { GlobalSearch, GlobalSearchTrigger, resultRoute, HighlightedSnippet } from './GlobalSearch';
 import { useLayoutStore } from '../../store/layout';
 
 /**
@@ -184,6 +184,45 @@ describe('GlobalSearch', () => {
     expect(resultRoute({ type: 'project', id: 'prj-1' })).toBe('/projects');
     expect(resultRoute({ type: 'agent', id: 'agt-1' })).toBe('/agents');
     expect(resultRoute({ type: 'workflow', id: 'xyz-1' })).toBeNull();
+  });
+
+  describe('HighlightedSnippet', () => {
+    it('marks the ranges the server points at, and leaves the rest as text', () => {
+      render(<HighlightedSnippet text="the quarantine threshold" matches={[{ start: 4, length: 10 }]} />);
+      const mark = screen.getByText('quarantine');
+      expect(mark.tagName).toBe('MARK');
+      // The surrounding text must survive intact — a highlighter that drops
+      // the unmatched half is worse than no highlighting.
+      expect(document.body).toHaveTextContent('the quarantine threshold');
+    });
+
+    it('renders plain text when there is nothing to mark', () => {
+      render(<HighlightedSnippet text="nothing matched here" matches={[]} />);
+      expect(document.body).toHaveTextContent('nothing matched here');
+      expect(document.querySelector('mark')).toBeNull();
+    });
+
+    it('marks a term at the very start, and ignores a range that overlaps one already drawn', () => {
+      render(
+        <HighlightedSnippet
+          text="quarantine threshold quarantine"
+          matches={[{ start: 0, length: 10 }, { start: 5, length: 4 }, { start: 21, length: 10 }]}
+        />,
+      );
+      // Three ranges in, two marks out: the middle one starts inside the first
+      // and would nest, which is not something a browser renders sensibly.
+      expect(document.querySelectorAll('mark')).toHaveLength(2);
+      expect(document.body).toHaveTextContent('quarantine threshold quarantine');
+    });
+
+    it('ignores a range that does not address the string it was given', () => {
+      // The server computes offsets against the snippet it sends, but a client
+      // that renders whatever it is handed slices past the end and silently
+      // drops the remainder.
+      render(<HighlightedSnippet text="short" matches={[{ start: 2, length: 99 }]} />);
+      expect(document.body).toHaveTextContent('short');
+      expect(document.querySelector('mark')).toBeNull();
+    });
   });
 
   it('routes a comment to the entity it hangs off, not to its own id', () => {

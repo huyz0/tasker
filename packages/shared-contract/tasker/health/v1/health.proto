@@ -1322,6 +1322,15 @@ service RepositoryService {
   rpc ListDeployments(ListDeploymentsRequest) returns (ListDeploymentsResponse);
 }
 
+// Where the query's words fall inside `snippet`, as offsets rather than markup.
+// The server could have wrapped matches in tags, but then the snippet is markup
+// the client must trust and render as HTML — an injection hole opened for a
+// visual nicety. Offsets keep the snippet plain text.
+message SnippetMatch {
+  int32 start = 1;
+  int32 length = 2;
+}
+
 message SearchResult {
   string id = 1;
   string type = 2; // "task" | "artifact" | "project" | "agent" | "comment"
@@ -1332,6 +1341,7 @@ message SearchResult {
   // other type leaves these empty and routes by its own id.
   string parentType = 5;
   string parentId = 6;
+  repeated SnippetMatch snippetMatches = 7;
 }
 
 message UniversalSearchRequest {

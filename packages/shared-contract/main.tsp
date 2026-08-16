@@ -1407,6 +1407,17 @@ interface RepositoryService {
 
 // ==== Search ====
 
+// Where the query's words fall inside `snippet`, as offsets rather than markup.
+//
+// The server could have wrapped the matches in tags and saved the client the
+// work, but then the snippet is markup the client must trust and render as
+// HTML — an injection hole opened for a visual nicety. Offsets keep the
+// snippet plain text.
+model SnippetMatch {
+  @field(1) start: int32;
+  @field(2) length: int32;
+}
+
 model SearchResult {
   @field(1) id: string;
   @field(2) type: string; // "task" | "artifact" | "project" | "agent" | "comment"
@@ -1419,6 +1430,7 @@ model SearchResult {
   @field(5) parentType: string;
 
   @field(6) parentId: string;
+  @field(7) snippetMatches: SnippetMatch[];
 }
 
 model UniversalSearchRequest {

@@ -1,8 +1,8 @@
 ---
 active_milestone: M07
-active_task: M07-T13
+active_task: M07-T14
 last_updated: 2026-08-16
-last_commit: c43aa43
+last_commit: d70f5dd
 blocked: false
 blocker: null
 ---
@@ -16,7 +16,7 @@ blocker: null
 ## Now
 
 - **Milestone**: M07 — Read-Path Scale
-- **Task**: M07-T13 — highlight the matched term in search snippets
+- **Task**: M07-T14 — virtualize the remaining list views
 - **Branch**: `main`, at the user's explicit instruction for this milestone
   ("just do it on main and push there") — the same instruction was given
   separately for M06. This overrides `git-workflow-standard.md` and
@@ -52,14 +52,14 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M04 | Agent Identity & M2M Tokens    | done   | M03        | 12    | 12   |
 | M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
 | M06 | UX, Design System & A11y       | done   | M05        | 14    | 14   |
-| M07 | Read-Path Scale                | in-progress | M05   | 14    | 12   |
+| M07 | Read-Path Scale                | in-progress | M05   | 14    | 13   |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
 | M10 | Teams & Policy-Based RBAC      | todo   | M03, M04   | 13    | 0    |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 
-**Total: 145 tasks across 12 milestones — 87 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 12).**
+**Total: 145 tasks across 12 milestones — 88 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 13).**
 
 ## Dependency graph
 
