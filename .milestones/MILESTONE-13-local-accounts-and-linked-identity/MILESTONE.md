@@ -164,7 +164,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
 
 ### Surface
 
-- [ ] **M13-T11** — GUI login screen: a username/password form alongside the
+- [x] **M13-T11** — GUI login screen: a username/password form alongside the
       existing "Sign in with Google" button, and a registration path for a
       local account.
       - Files: `apps/gui/src/features/Auth/`

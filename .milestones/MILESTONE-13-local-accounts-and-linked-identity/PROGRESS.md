@@ -469,3 +469,74 @@
     reset is a genuine fresh start for a member who was both locked out
     *and* had lost their password, not just a new hash on top of a still-locked row.
 - **Next**: M13-T11 — GUI login screen.
+
+## M13-T11 — GUI login screen
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: `apps/gui/src/lib/passwordAuth.ts` (new),
+  `apps/gui/src/lib/passwordAuth.test.ts` (new),
+  `apps/gui/src/features/Auth/{LoginForm,RegisterForm}.tsx` (new),
+  `apps/gui/src/features/Auth/{LoginForm,RegisterForm}.test.tsx` (new),
+  `apps/gui/src/features/Auth/{LoginForm,RegisterForm}.stories.tsx` (new),
+  `apps/gui/src/pages/Login.tsx` (rewritten), `apps/gui/src/pages/Login.test.tsx`
+  (rewritten), `apps/gui/src/pages/Register.tsx` (new),
+  `apps/gui/src/pages/Register.test.tsx` (new), `apps/gui/src/App.tsx`
+  (`/register` route)
+- **Verified**: `bunx vitest run src/features/Auth/ src/pages/Login.test.tsx
+  src/pages/Register.test.tsx src/lib/passwordAuth.test.ts` — 32 pass. Full
+  GUI suite: 673 pass, 97.95%/95.25%/95.93%/98.12% stmt/branch/func/line
+  coverage (above the 95% gate on every dimension — two rounds of gap-filling
+  tests were needed, see Notes). `gui:typecheck`, `oxlint` (no new
+  warnings), `gui:design-lint` (0 findings, 142 files), `gui:rpc-coverage`
+  (unaffected — these are HTTP routes, not RPCs), `gui:query-error-coverage`
+  (unaffected — these are mutations, not queries) all clean.
+- **Notes**:
+  - **HTTP helper, not a ConnectRPC client** — `passwordAuth.ts` mirrors
+    `authSession.ts`'s shape (`fetch` with `credentials: 'include'` against
+    `BACKEND_URL`) rather than `connectTransport`, since `/api/auth/password/
+    {login,register}` are plain Elysia routes (T06's own divergence note).
+    Non-2xx bodies are parsed as RFC 7807 problem details into a
+    `PasswordAuthError` carrying `status` and, for a 429, `retryAfterSeconds`
+    from the `Retry-After` header — the form reads both to show a countdown
+    on lockout (T07) without re-deriving it.
+  - **`features/Auth/` holds the real components; `pages/Login.tsx` and the
+    new `pages/Register.tsx` stay thin** — matching this codebase's existing
+    split (features hold logic, pages compose and route). `Login.tsx` also
+    had `window.location.href` switched from a hardcoded
+    `'http://localhost:8080/...'` to the shared `BACKEND_URL` constant while
+    touching this file anyway — a real, if small, existing inconsistency
+    fixed in passing, tested by name (`Login.test.tsx`'s redirect assertion
+    now asserts against `BACKEND_URL`, not a duplicated literal).
+  - **`mustChangePassword` is received but not enforced with a redirect
+    yet** — `LoginForm` calls `loginWithPassword`, gets a valid session
+    either way, and always navigates to `/`. The screen that would act on
+    the flag lives in account settings, which is T12. Said plainly in the
+    component's own comment so this isn't mistaken for an oversight later.
+  - **No shared `Input`/`Label` primitive exists in this design system**
+    (ADR-0009/ADR-0011 keep only overlay/nav primitives on Radix; inputs
+    stay hand-rolled) — every field uses a real `<label htmlFor>` associated
+    input rather than the placeholder-only pattern some older inline-edit
+    forms in `Organizations/index.tsx` use, since axe (`expectNoA11yViolations`,
+    now run against both new pages and both new forms) requires it and a
+    first-class auth surface is exactly the wrong place to inherit a lesser
+    pattern.
+  - **Coverage gap-filling, not padding**: the first full-suite run landed
+    at 94.94% branch coverage against a 95% gate — three real gaps, not
+    contrived ones: the guard that ignores a submit event bypassing the
+    disabled button (Enter-key submission doesn't respect `disabled`), the
+    `mustChangePassword`-only vs `mustChangePassword`-omitted lockout message
+    shape, and the pending-state label (`"Signing in…"` /
+    `"Creating account…"`) — none of which the initial happy/error-path
+    tests exercised. Second pass reached 95.25%/95.93%/98.12%.
+  - **Storybook a11y gate (`moon run gui:storybook-test`) run manually,
+    observed pre-existing and unrelated to this task**: it timed out
+    navigating to `ui-repositories-repositoryintegrationconfig--default`
+    (a story this task never touched) with no violation or mention of
+    either new `Features/Auth/*` story in the log before the crash. This
+    gate is `type: run` (excluded from `moon check --all` and pre-commit
+    per M06's note — it needs a real, booted browser), so it did not block
+    this commit; flagging the observation rather than silently ignoring it,
+    per the same convention M03/M04 handoff notes used for out-of-scope
+    findings.
+- **Next**: M13-T12 — GUI account settings.
