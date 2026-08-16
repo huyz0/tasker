@@ -340,6 +340,77 @@ it is a behaviour change and belongs in T06's journal entry, not silently.
   inside a `queryFn` that `enabled` already gates.
 - **Next**: M07-T09
 
+## M07-T09 — Indexes reviewed against the hot query set
+
+- **Status**: done
+- **Date**: 2026-08-16
+- **Changed**: new `drizzle-sqlite/0027_hot_query_indexes.sql` and
+  `drizzle-mysql/0014_hot_query_indexes.sql` (+ journal entries),
+  `db/schema.sqlite.ts` and `db/schema.mysql.ts` (index definitions), new
+  `db/indexCoverage.test.ts` (3 tests)
+- **Verified**: the verify line — *no hot query performs a full table scan* —
+  as an executable gate over 14 hot queries, not a one-time reading.
+  `backend:test` 634 pass with MySQL enabled; `moon check --all` 26 pass.
+
+  Plans after the change (`EXPLAIN QUERY PLAN`, SQLite):
+
+  | Hot query | Plan |
+  |---|---|
+  | task list for a project | `SEARCH tasks USING INDEX tasks_project_created_idx (project_id=?)` |
+  | one Kanban column | `SEARCH tasks USING INDEX tasks_project_status_created_idx (project_id=? AND status=?)` |
+  | artifacts in a folder | `SEARCH artifacts USING INDEX artifacts_folder_created_idx (folder_id=?)` |
+  | projects in an org | `SEARCH projects USING INDEX projects_org_created_idx (org_id=?)` |
+  | agents in an org | `SEARCH agents USING INDEX agents_org_created_idx (org_id=?)` |
+  | comments on a task | `SEARCH comments USING COVERING INDEX comments_entity_created_idx (entity_id=? AND entity_type=?)` |
+  | pull requests for a task | `SEARCH remote_pull_requests USING INDEX remote_pull_requests_task_id_idx (task_id=?)` |
+  | entities carrying a label | `SEARCH entity_labels USING INDEX entity_labels_label_id_idx (label_id=?)` |
+  | members of an org | `SEARCH organization_members USING COVERING INDEX sqlite_autoindex_… (org_id=?)` |
+  | notes on a task | `SEARCH task_notes USING INDEX task_notes_task_id_idx (task_id=?) \| USE TEMP B-TREE FOR ORDER BY` |
+  | folders in a project | `SEARCH folders USING INDEX folders_project_id_idx (project_id=?)` |
+  | labels in an org | `SEARCH labels USING INDEX labels_org_id_name_idx (org_id=?)` |
+  | tasks awaiting my review | `SEARCH task_reviewers USING INDEX task_reviewers_user_id_idx (user_id=?)` |
+  | when an agent last called | `SEARCH api_tokens USING INDEX api_tokens_agent_id_idx (agent_id=?)` |
+
+- **Notes**: **two genuine full scans**, both on paths that look indexed until
+  you read the plan.
+  `remote_pull_requests` had **no index on `task_id`** — `SCAN
+  remote_pull_requests` — and that is how both the task detail view and the
+  dashboard's "done, but the PR is open" panel find a task's pull requests.
+  `entity_labels` reported `SCAN … USING COVERING INDEX`, which reads as
+  indexed and is not: the unique index is (entity_id, entity_type, label_id),
+  so a lookup by **label alone** cannot seek into it and walks every entry.
+  A composite index does not help a query that does not start at its first
+  column.
+  **The larger finding was the sort, not the scan.** Every ordered list read
+  `SEARCH … USING INDEX (fk=?) | USE TEMP B-TREE FOR ORDER BY`: the *filter*
+  used an index and the *sort* did not, so a project with 50,000 tasks sorted
+  50,000 rows to return 50. That is not a full table scan, so the verify line
+  as written would have passed over it. Adding the cursor's sort columns to
+  each index removes the temp b-tree outright, measured one index at a time.
+  It is asserted by its own test, separately from the scan gate, so the
+  distinction stays visible.
+  `tasks` needs **two** composites, not one: `status` sits between the filter
+  and the sort columns, so `(project_id, status, created_at, id)` cannot serve
+  the unfaceted list and `(project_id, created_at, id)` cannot serve a board
+  column. The board is the hot path since T03 gave each column its own paging.
+  **The composites are SQLite-only, on evidence.** MySQL rejected the
+  four-column form outright — `error 1071: max key length is 3072 bytes`, since
+  these are `varchar(256)` columns at 1,024 bytes each. Dropped to three columns
+  it is legal, but measured on MySQL 8.0.46 with **20,000 tasks in one project**
+  the optimiser kept `Using filesort` with `(project_id, status, created_at)`,
+  with `(project_id, status, deleted_at, created_at)`, and **even under
+  `FORCE INDEX`**. An index that does not change the plan is write amplification
+  with no read benefit, so it is not added there; MySQL evaluates
+  `ORDER BY … LIMIT 50` with a bounded priority queue rather than a full sort.
+  The two scan fixes *are* mirrored, because those change the plan in both.
+  `notes on a task` keeps its temp b-tree deliberately: it sorts one task's
+  notes, a small bounded set, and an index to avoid that would cost more on
+  write than it saves on read.
+  The gate includes a test that the gate can fail — an unindexed probe table
+  whose plan must contain `SCAN`. Without it, a typo in a query string would
+  produce a plan nobody reads and a suite that passes vacuously.
+- **Next**: M07-T10
+
 ---
 
 ## Out-of-band — dashboard rework (not an M07 task)

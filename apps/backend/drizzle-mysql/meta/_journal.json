@@ -99,6 +99,13 @@
       "when": 1786800010000,
       "tag": "0013_fulltext_projects_agents_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1786800020000,
+      "tag": "0014_hot_query_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -354,6 +354,10 @@ export const remotePullRequests = sqliteTable("remote_pull_requests", {
     // Prevents a concurrent syncPullRequests race from creating duplicate
     // rows for the same remote PR on the same repository link.
     repoRemotePrIdx: uniqueIndex("remote_pull_requests_repo_remote_pr_idx").on(table.repositoryLinkId, table.remotePrId),
+    // How the task detail view and the dashboard's "done, but the PR is
+    // open" panel find a task's pull requests. Without it that was a full
+    // table scan (M07-T09).
+    taskIdIdx: index("remote_pull_requests_task_id_idx").on(table.taskId),
   };
 });
 

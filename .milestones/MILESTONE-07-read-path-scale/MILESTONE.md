@@ -94,7 +94,7 @@ that it is not adopted before measured need), caching layers, read replicas.
       - Files: `modules/search/search.handler.ts`, `main.tsp`, `GlobalSearch.tsx`
       - Verify: searching an agent name finds the agent.
 
-- [ ] **M07-T09** — Review indexes against the hot query set; add what is missing
+- [x] **M07-T09** — Review indexes against the hot query set; add what is missing
       and record `EXPLAIN` output.
       - Files: `db/schema.*.ts`, migrations, `PROGRESS.md`
       - Verify: no hot query performs a full table scan.

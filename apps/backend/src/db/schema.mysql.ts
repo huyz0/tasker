@@ -276,6 +276,7 @@ export const entityLabels = mysqlTable("entity_labels", {
     // Prevents a concurrent attachLabel race from creating duplicate
     // (entity, label) links.
     entityLabelIdx: uniqueIndex("entity_labels_entity_label_idx").on(table.entityId, table.entityType, table.labelId),
+    labelIdIdx: index("entity_labels_label_id_idx").on(table.labelId),
   };
 });
 
@@ -319,6 +320,7 @@ export const remotePullRequests = mysqlTable("remote_pull_requests", {
     // Prevents a concurrent syncPullRequests race from creating duplicate
     // rows for the same remote PR on the same repository link.
     repoRemotePrIdx: uniqueIndex("remote_pull_requests_repo_remote_pr_idx").on(table.repositoryLinkId, table.remotePrId),
+    taskIdIdx: index("remote_pull_requests_task_id_idx").on(table.taskId),
   };
 });
 
