@@ -116,6 +116,127 @@ export const organizationMembers = sqliteTable("organization_members", {
   }
 });
 
+/**
+ * M10-T02 (ADR-0013). The fixed, code-defined permission vocabulary
+ * (`<family>:<verb>`, e.g. `task:write`) as a real lookup table rather than
+ * a bare validated string, so `role_permissions` gets a real foreign key
+ * and an admin-facing "list every permission" query needs no hardcoded
+ * array kept in sync with the ADR by hand.
+ *
+ * Consumed starting T11: `roles.handler.ts`'s `listPermissions`/
+ * `createRole`/`updateRole` all read it directly.
+ */
+export const permissions = sqliteTable("permissions", {
+  // The key itself is the id - `task:write`, not a surrogate. It's the
+  // value every handler checks against, so making it opaque would just
+  // add an indirection every caller has to resolve first.
+  key: text("key").primaryKey(),
+  description: text("description").notNull(),
+});
+
+/**
+ * A role is a named set of permissions. `orgId` NULL means a system role
+ * (owner/admin/member/viewer, seeded once, shared by every organization,
+ * immutable - see ADR-0013 Option 5); non-NULL scopes a custom role to the
+ * organization that created it. System roles being global rows rather than
+ * duplicated per-org is what lets `viewer-denial.test.ts`-style sweeps
+ * reason about "the viewer role" as one thing.
+ *
+ * Consumed starting T04: `policy.test.ts` seeds custom roles directly to
+ * exercise `can()` beyond the four system ones.
+ */
+export const roles = sqliteTable("roles", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").references(() => organizations.id),
+  name: text("name").notNull(),
+  isSystem: integer("is_system", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    orgIdIdx: index("roles_org_id_idx").on(table.orgId),
+  };
+});
+
+/** Consumed starting T04: `policy.ts` reads it to resolve a grant's permissions. */
+export const rolePermissions = sqliteTable("role_permissions", {
+  roleId: text("role_id").notNull().references(() => roles.id),
+  permissionKey: text("permission_key").notNull().references(() => permissions.key),
+}, (table) => {
+  return {
+    pk: primaryKey({ columns: [table.roleId, table.permissionKey] }),
+  };
+});
+
+/**
+ * Teams group people below the organization (M10's own stated goal).
+ * Deliberately flat - no team-of-teams - matching what ADR-0013 and the
+ * milestone's exit criteria actually ask for; nesting can be added later
+ * without a breaking change if a real need shows up.
+ *
+ * Consumed starting T04: `policy.test.ts` seeds teams directly to exercise
+ * `can()`'s team-derived-grant resolution. Real team CRUD is still T07.
+ */
+export const teams = sqliteTable("teams", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  name: text("name").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+}, (table) => {
+  return {
+    orgIdIdx: index("teams_org_id_idx").on(table.orgId),
+  };
+});
+
+/** Consumed starting T04: `policy.ts` reads it to resolve team-derived grants. */
+export const teamMembers = sqliteTable("team_members", {
+  teamId: text("team_id").notNull().references(() => teams.id),
+  userId: text("user_id").notNull().references(() => users.id),
+  joinedAt: integer("joined_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    pk: primaryKey({ columns: [table.teamId, table.userId] }),
+    // Mirrors organization_members' userIdIdx: "which teams is this user
+    // in" is the query a team-derived grant resolution runs on every
+    // permission check (ADR-0013's step 2), and the composite PK leading
+    // with teamId can't serve a lookup keyed on userId alone.
+    userIdIdx: index("team_members_user_id_idx").on(table.userId),
+  };
+});
+
+/**
+ * The one table can() (T04) will actually read for authorization decisions.
+ * Binds a subject (a user or a team) to a role at a scope (an organization,
+ * a team, or a project) - see ADR-0013's resolution algorithm. `scopeId` is
+ * a plain text column rather than three separate nullable FKs (orgId/
+ * teamId/projectId) because the column it references depends on
+ * `scopeType`, which SQLite/MySQL can't express as a single declarative
+ * foreign key; `can()` validates the referenced row exists as part of
+ * resolution instead.
+ *
+ * Has a real TS-level consumer starting T03: `scripts/migrate-roles.ts`
+ * reads and writes it directly to reconcile against `organization_members`,
+ * so no knip exemption is needed here (unlike its five siblings above).
+ */
+export const grants = sqliteTable("grants", {
+  id: text("id").primaryKey(),
+  subjectType: text("subject_type").notNull(), // 'user' | 'team'
+  subjectId: text("subject_id").notNull(),
+  scopeType: text("scope_type").notNull(), // 'organization' | 'team' | 'project'
+  scopeId: text("scope_id").notNull(),
+  roleId: text("role_id").notNull().references(() => roles.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    // can()'s hot path: "every grant for this subject" (step 1/2 of
+    // resolution), then narrowed by scope in the query itself.
+    subjectIdx: index("grants_subject_idx").on(table.subjectType, table.subjectId),
+    // The permission-matrix UI's hot path: "every grant at this scope",
+    // e.g. listing who has access to one project.
+    scopeIdx: index("grants_scope_idx").on(table.scopeType, table.scopeId),
+  };
+});
+
 export const taskTypes = sqliteTable("task_types", {
   id: text("id").primaryKey(),
   orgId: text("org_id").notNull().references(() => organizations.id),

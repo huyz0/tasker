@@ -3,7 +3,8 @@ import { ConnectError, Code } from "@connectrpc/connect";
 import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { DashboardService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import * as schema from "../../db/schema.sqlite";
-import { requireUser, assertOrgMember } from "../../lib/authz";
+import { requireUser } from "../../lib/authz";
+import { assertCan } from "../../lib/policy";
 import { notDeleted } from "../../db/query-builder";
 
 /**
@@ -34,7 +35,7 @@ export default (router: ConnectRouter, db: any) => {
     async getDashboard(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       if (!req?.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await assertOrgMember(db, userId, req.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: req.orgId }, "dashboard:read");
 
       const { tasks, projects, taskReviewers, taskAssignments, remotePullRequests, agents, taskNotes, comments, apiTokens } = schema;
 

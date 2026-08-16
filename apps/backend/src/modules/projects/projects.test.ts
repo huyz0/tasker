@@ -294,3 +294,79 @@ describe("Projects Handler Integration Logic", () => {
     expect((await db.select().from(schemaSqlite.taskStatusTransitions).where(eq(schemaSqlite.taskStatusTransitions.taskTypeId, typeResp.taskType.id))).length).toBe(0);
   });
 });
+
+// M10-T10. getProject/updateProject/archiveProject/restoreProject/
+// purgeProject check {type: 'project', id} rather than {type:
+// 'organization', id: orgId} - can()'s own project→org ancestor climbing
+// (M10-T04) already made an org-level grant keep working (proven above,
+// every existing test in this file uses only organization_members-based
+// org membership and none of it broke), so this group proves the new,
+// narrower half: a project-scoped grant works *without* any org-level
+// access at all, and stays isolated to that one project.
+describe("Project-scope grants (M10-T10)", () => {
+  test("a project-scoped grant reaches the project, with no organization membership at all", async () => {
+    const { db } = await setupIntegrationTest();
+    const handler = createProjectsHandler(db, null);
+    const ptHandler2 = createProjectTemplatesHandler(db, null);
+
+    const orgId = "org-t10-scope";
+    const ownerId = "user-t10-owner";
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "T10 Org", slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: ownerId, role: "admin", joinedAt: new Date() });
+    const tResp = await ptHandler2.createTemplate({ orgId, name: "Scope Template" }, makeAuthContext(ownerId));
+    const pResp = await handler.createProject({ orgId, templateId: tResp.template.id, name: "Scoped Project", ownerId }, makeAuthContext(ownerId));
+
+    // A user with a grant at this project's scope specifically - and no
+    // organization_members row for `orgId` at all.
+    const scopedUserId = "user-t10-scoped";
+    await db.insert(schemaSqlite.users).values({ id: scopedUserId, email: `${scopedUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.grants).values({
+      id: "grant-t10-1", subjectType: "user", subjectId: scopedUserId,
+      scopeType: "project", scopeId: pResp.project.id, roleId: "role-admin", createdAt: new Date(),
+    });
+    const scopedCtx = makeAuthContext(scopedUserId);
+
+    const fetched = await handler.getProject({ id: pResp.project.id }, scopedCtx);
+    expect(fetched.project.id).toBe(pResp.project.id);
+
+    const updated = await handler.updateProject({ projectId: pResp.project.id, name: "Renamed by scoped grant" }, scopedCtx);
+    expect(updated.project.name).toBe("Renamed by scoped grant");
+
+    await handler.archiveProject({ projectId: pResp.project.id }, scopedCtx);
+    await handler.restoreProject({ projectId: pResp.project.id }, scopedCtx);
+    await handler.archiveProject({ projectId: pResp.project.id }, scopedCtx);
+    await handler.purgeProject({ projectId: pResp.project.id }, scopedCtx);
+
+    const afterPurge = await db.select().from(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, pResp.project.id));
+    expect(afterPurge.length).toBe(0);
+  });
+
+  test("a project-scoped grant does not reach a sibling project under the same org (exit criterion 6)", async () => {
+    const { db } = await setupIntegrationTest();
+    const handler = createProjectsHandler(db, null);
+    const ptHandler2 = createProjectTemplatesHandler(db, null);
+
+    const orgId = "org-t10-sibling";
+    const ownerId = "user-t10-sibling-owner";
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "T10 Sibling Org", slug: orgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: ownerId, email: `${ownerId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: ownerId, role: "admin", joinedAt: new Date() });
+    const tResp = await ptHandler2.createTemplate({ orgId, name: "Sibling Template" }, makeAuthContext(ownerId));
+    const projectA = await handler.createProject({ orgId, templateId: tResp.template.id, name: "Project A", ownerId }, makeAuthContext(ownerId));
+    const projectB = await handler.createProject({ orgId, templateId: tResp.template.id, name: "Project B", ownerId }, makeAuthContext(ownerId));
+
+    const scopedUserId = "user-t10-sibling-scoped";
+    await db.insert(schemaSqlite.users).values({ id: scopedUserId, email: `${scopedUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.grants).values({
+      id: "grant-t10-2", subjectType: "user", subjectId: scopedUserId,
+      scopeType: "project", scopeId: projectA.project.id, roleId: "role-admin", createdAt: new Date(),
+    });
+    const scopedCtx = makeAuthContext(scopedUserId);
+
+    await expect(handler.getProject({ id: projectA.project.id }, scopedCtx)).resolves.toBeDefined();
+    await expect(handler.getProject({ id: projectB.project.id }, scopedCtx)).rejects.toMatchObject({ code: Code.PermissionDenied });
+    await expect(handler.updateProject({ projectId: projectB.project.id, name: "Should not work" }, scopedCtx))
+      .rejects.toMatchObject({ code: Code.PermissionDenied });
+  });
+});

@@ -1,13 +1,13 @@
 ---
 id: M10
 title: Teams & Policy-Based RBAC
-status: todo
+status: done
 goal: Roles and permissions are data rather than a hardcoded enum, teams group people below the organization, and access can be granted at project and team scope.
 depends_on: [M03, M04]
 surfaces: [backend, gui, cli, contract]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+exit_criteria_met: true
+started_at: 2026-08-16
+completed_at: 2026-08-17
 ---
 
 # M10 — Teams & Policy-Based RBAC
@@ -69,73 +69,76 @@ SCIM provisioning, delegated administration.
 
 ### Decide and model
 
-- [ ] **M10-T01** — Write the ADR choosing policy-based RBAC over fixed tiers,
+- [x] **M10-T01** — Write the ADR choosing policy-based RBAC over fixed tiers,
       naming the permission vocabulary and the scope hierarchy.
-      - Files: `.specs/adr/ADR-0011-rbac-model.md`
+      - Files: `.specs/adr/ADR-0013-rbac-model.md` (renumbered from the
+        plan's `ADR-0011` — that id was taken by the Radix-adoption ADR,
+        landed after this milestone was planned; `.specs/adr/README.md`'s
+        numbering is first-come, ids are never reused)
       - Verify: the ADR enumerates every permission key.
 
-- [ ] **M10-T02** — Add `roles`, `permissions`, `role_permissions`, `teams`,
+- [x] **M10-T02** — Add `roles`, `permissions`, `role_permissions`, `teams`,
       `team_members` and `grants(subject, subject_type, scope, scope_id, role_id)`
       to both dialects with migrations.
       - Files: `db/schema.*.ts`, `drizzle-sqlite/`, `drizzle-mysql/`
       - Verify: migrations apply and roll forward on both dialects.
 
-- [ ] **M10-T03** — Seed owner, admin, member and viewer as immutable system roles
+- [x] **M10-T03** — Seed owner, admin, member and viewer as immutable system roles
       and migrate `organization_members.role` to a grant referencing them.
       - Files: migrations, `scripts/migrate-roles.ts`
       - Verify: post-migration, every existing authorization test still passes.
 
 ### Enforce
 
-- [ ] **M10-T04** — Implement `can(principal, scope, permission)` with grant
+- [x] **M10-T04** — Implement `can(principal, scope, permission)` with grant
       resolution across organization hierarchy, team membership and direct grants.
       - Files: `apps/backend/src/lib/policy.ts`
       - Verify: unit tests cover every resolution path.
 
-- [ ] **M10-T05** — Replace every `assertOrg*` call site with a `can` check,
+- [x] **M10-T05** — Replace every `assertOrg*` call site with a `can` check,
       mapping each RPC to its required permission.
       - Files: all `modules/*/*.handler.ts`
       - Verify: no handler references a role name literal.
 
-- [ ] **M10-T06** — Cache policy resolution per request so the added indirection
+- [x] **M10-T06** — Cache policy resolution per request so the added indirection
       does not multiply queries.
       - Files: `apps/backend/src/lib/policy.ts`, `lib/requestContext.ts`
       - Verify: an authorization-heavy RPC issues no more queries than before.
 
 ### Teams and hierarchy
 
-- [ ] **M10-T07** — Add team CRUD and membership RPCs with pagination, plus
+- [x] **M10-T07** — Add team CRUD and membership RPCs with pagination, plus
       CLI commands.
       - Files: `main.tsp`, `modules/teams/teams.handler.ts`, `apps/cli/cmd/teams.go`
       - Verify: a team of 100 members pages correctly.
 
-- [ ] **M10-T08** — Allow grants to a team as subject, so adding a person to a
+- [x] **M10-T08** — Allow grants to a team as subject, so adding a person to a
       team confers the team's access.
       - Files: `apps/backend/src/lib/policy.ts`, `modules/teams/`
       - Verify: removing someone from a team removes the derived access.
 
-- [ ] **M10-T09** — Lift the two-level organization nesting cap and implement
+- [x] **M10-T09** — Lift the two-level organization nesting cap and implement
       inheritance: a grant on a parent organization applies to its descendants.
       - Files: `modules/orgs/orgs.handler.ts`, `lib/policy.ts`
       - Verify: a parent-org admin can administer a grandchild org.
 
-- [ ] **M10-T10** — Enforce project-scope grants so a member can be given access
+- [x] **M10-T10** — Enforce project-scope grants so a member can be given access
       to one project without the whole organization.
       - Files: `lib/policy.ts`, `modules/projects/projects.handler.ts`
       - Verify: a project-scoped grant does not reach a sibling project.
 
 ### Surface
 
-- [ ] **M10-T11** — Role management UI: create, clone and edit roles, with a
+- [x] **M10-T11** — Role management UI: create, clone and edit roles, with a
       virtualized permission matrix.
       - Files: `apps/gui/src/features/Roles/`
       - Verify: 100 roles × the full permission set renders smoothly.
 
-- [ ] **M10-T12** — Team management UI with member search reusing the M03 member picker.
+- [x] **M10-T12** — Team management UI with member search reusing the M03 member picker.
       - Files: `apps/gui/src/features/Teams/`
       - Verify: a team of 100 members is manageable.
 
-- [ ] **M10-T13** — Build the exhaustive authorization test matrix: every role ×
+- [x] **M10-T13** — Build the exhaustive authorization test matrix: every role ×
       every permission × every scope.
       - Files: `apps/backend/src/lib/policy.test.ts`
       - Verify: the matrix is generated, not hand-written, and fully passes.

@@ -4,7 +4,8 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
-import { requireUser, assertOrgMember, assertOrgWriter, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
+import { requireUser, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
+import { assertCan } from "../../lib/policy";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -53,7 +54,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
     async createLabel(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = CreateLabelSchema.parse(req);
-      await assertOrgWriter(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "label:write");
 
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
       const existing = await db
@@ -96,7 +97,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
       const existing = await db.select().from(labels).where(eq((labels as any).id, parsed.labelId)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("label not found", Code.NotFound);
-      await assertOrgWriter(db, userId, existing[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: existing[0].orgId }, "label:write");
 
       const updates: Record<string, unknown> = {};
       if (parsed.name !== undefined) updates.name = parsed.name;
@@ -117,7 +118,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
     async listLabels(req: any, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read' });
+      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read', permission: 'label:read' });
 
       const labels = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, labels, eq((labels as any).orgId, req.orgId), req.page, {
@@ -139,7 +140,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = AttachLabelSchema.parse(req);
       const orgId = await getEntityOrgId(db, parsed.entityId, parsed.entityType);
-      await assertOrgWriter(db, userId, orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "label:write");
 
       const labelsTable = isStandalone ? schemaSqlite.labels : schemaMysql.labels;
       const labelRows = await db.select().from(labelsTable).where(eq((labelsTable as any).id, parsed.labelId)).limit(1);
@@ -188,7 +189,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       const userId = requireUser(contextValues);
       const parsed = AttachLabelSchema.parse(req);
       const orgId = await getEntityOrgId(db, parsed.entityId, parsed.entityType);
-      await assertOrgWriter(db, userId, orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "label:write");
 
       const entityLabels = isStandalone ? schemaSqlite.entityLabels : schemaMysql.entityLabels;
       await db
@@ -209,7 +210,7 @@ export const createLabelsHandler = (db: any, nc: any = null) => {
       const principal = requirePrincipal(contextValues);
       const parsed = EntityRefSchema.parse(req);
       const orgId = await getEntityOrgId(db, parsed.entityId, parsed.entityType);
-      await authorizePrincipal(db, principal, orgId, { scope: 'projects:read' });
+      await authorizePrincipal(db, principal, orgId, { scope: 'projects:read', permission: 'label:read' });
 
       const entityLabels = isStandalone ? schemaSqlite.entityLabels : schemaMysql.entityLabels;
       const labelsTable = isStandalone ? schemaSqlite.labels : schemaMysql.labels;

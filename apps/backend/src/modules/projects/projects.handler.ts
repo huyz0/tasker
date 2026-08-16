@@ -4,7 +4,8 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUser, assertOrgMember, assertOrgWriter, assertOrgAdmin, requirePrincipal, authorizePrincipal } from "../../lib/authz";
+import { requireUser, requirePrincipal, authorizePrincipal } from "../../lib/authz";
+import { assertCan } from "../../lib/policy";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 /** Derives a short, human-typeable project key from its name, e.g. "Engineering Docs" -> "ED", "Backend" -> "BACKEN". */
@@ -102,15 +103,19 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.id)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await authorizePrincipal(db, principal, result[0].orgId, { scope: 'projects:read' });
+      // Project scope, not organization scope: a project-scoped grant (M10-T10)
+      // must reach this on its own, without also holding org-wide access.
+      // can()'s project->org ancestor climbing means an org-level grant still
+      // works too - this only widens what's accepted, never narrows it.
+      await authorizePrincipal(db, principal, result[0].orgId, { scope: 'projects:read', permission: 'project:read' }, { type: 'project', id: parsed.id });
       return { project: result[0] };
     },
     async createProject(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = CreateProjectSchema.parse(req);
-      await assertOrgWriter(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "project:write");
       try {
-        await assertOrgWriter(db, parsed.ownerId, parsed.orgId);
+        await assertCan(db, { kind: "user", userId: parsed.ownerId }, { type: "organization", id: parsed.orgId }, "project:write");
       } catch (e) {
         if (e instanceof ConnectError && e.code === Code.PermissionDenied) {
           throw new ConnectError("ownerId is not a member of this organization", Code.InvalidArgument);
@@ -159,7 +164,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
     async listProjects(req: any, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read' });
+      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read', permission: 'project:read' });
 
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const deletedFilter = req.onlyDeleted ? not(notDeleted(ps)) : notDeleted(ps);
@@ -191,8 +196,11 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const parsed = UpdateProjectSchema.parse(req);
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
+      // Project scope, not organization scope: a project-scoped grant
+      // (M10-T10) must reach this on its own. can()'s project->org ancestor
+      // climbing means an org-level grant still works too.
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertOrgWriter(db, userId, result[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:write");
 
       await db.update(ps).set({ name: parsed.name }).where(eq((ps as any).id, parsed.projectId));
 
@@ -206,7 +214,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertOrgAdmin(db, userId, result[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:admin");
 
       await softDeleteById(db, ps, parsed.projectId);
 
@@ -219,7 +227,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertOrgAdmin(db, userId, result[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:admin");
 
       const orgsTable = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       const orgRows = await db.select().from(orgsTable).where(eq((orgsTable as any).id, result[0].orgId)).limit(1);
@@ -238,7 +246,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
       const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertOrgAdmin(db, userId, result[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:admin");
       if (!result[0].deletedAt) {
         throw new ConnectError("project must be archived before it can be purged", Code.FailedPrecondition);
       }
@@ -288,13 +296,13 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const result = await db.select().from(pts).where(eq((pts as any).id, parsed.id)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("template not found", Code.NotFound);
-      await authorizePrincipal(db, principal, result[0].orgId, { scope: 'projects:read' });
+      await authorizePrincipal(db, principal, result[0].orgId, { scope: 'projects:read', permission: 'project:read' });
       return { template: result[0] };
     },
     async createTemplate(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = CreateTemplateSchema.parse(req);
-      await assertOrgWriter(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "project:write");
 
       if (parsed.rootTaskTypeId) {
         const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
@@ -326,7 +334,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const result = await db.select().from(pts).where(eq((pts as any).id, parsed.id)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("template not found", Code.NotFound);
-      await assertOrgWriter(db, userId, result[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: result[0].orgId }, "project:write");
 
       if (parsed.rootTaskTypeId) {
         const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
@@ -351,7 +359,7 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
     async listTemplates(req: any, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read' });
+      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read', permission: 'project:read' });
 
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, req.orgId), req.page, {

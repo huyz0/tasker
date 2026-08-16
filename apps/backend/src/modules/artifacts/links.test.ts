@@ -149,7 +149,17 @@ describe("task ↔ artifact links", () => {
     // The link rows, the authorization lookups, and one lookup per side — not
     // one per link. The per-link version returns identical data, so only a
     // count can tell them apart.
-    expect(queries).toBeLessThan(8);
+    // M10-T05: can()'s grant resolution (team memberships, candidate grants,
+    // the organization_members fallback, and - once any role resolves - the
+    // role_permissions lookup) adds a handful more selects than the old
+    // single-query assertOrgMember/assertOrgWriter check did. Still bounded
+    // and independent of link count, which is this test's actual point.
+    // M10-T06's per-request cache does NOT bring this back down: this
+    // handler calls authorizePrincipal exactly once, so there is no second
+    // can() call in the same request for it to reuse anything against - the
+    // cache pays off for a request that checks the same principal many
+    // times (see policy.test.ts's dedicated T06 tests), not a single check.
+    expect(queries).toBeLessThan(11);
   });
 
   it("refuses to link a task and an artifact from different organizations", async () => {

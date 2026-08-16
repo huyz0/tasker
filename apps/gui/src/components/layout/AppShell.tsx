@@ -11,6 +11,8 @@ import {
   Tag,
   Workflow,
   Settings,
+  ShieldCheck,
+  Users,
   LogOut
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
@@ -45,6 +47,8 @@ const NAV_GROUPS = [
       { name: 'Task Types', path: '/task-types', icon: Workflow },
       { name: 'Labels', path: '/labels', icon: Tag },
       { name: 'Organizations', path: '/organizations', icon: Building2 },
+      { name: 'Teams', path: '/teams', icon: Users },
+      { name: 'Roles', path: '/roles', icon: ShieldCheck },
       { name: 'Bin', path: '/bin', icon: Trash2 },
       // System Health lives here now. `/settings` was routable but unlinked,
       // so moving backend telemetry off the dashboard would otherwise have

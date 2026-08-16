@@ -1,7 +1,8 @@
 import { type ConnectRouter, ConnectError, Code } from "@connectrpc/connect";
 import { SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { sql } from "drizzle-orm";
-import { requireUser, assertOrgMember } from "../../lib/authz";
+import { requireUser } from "../../lib/authz";
+import { assertCan } from "../../lib/policy";
 
 // -------------------------------------------------------------------------
 // Full-text search. SQLite reads the FTS5 tables M07-T05/T08 maintain with
@@ -546,7 +547,7 @@ export default (router: ConnectRouter, db: any) => {
       const { query, orgId, page } = request;
       if (!orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
       if (!query || !query.trim()) throw new ConnectError("query is required", Code.InvalidArgument);
-      await assertOrgMember(db, userId, orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "search:read");
 
       // The `LIKE '%term%'` scan both dialects used is gone: it could not use
       // an index, and it ordered by creation date rather than relevance.

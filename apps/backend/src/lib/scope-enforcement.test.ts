@@ -107,8 +107,12 @@ describe('scopes are enforced per RPC', () => {
     const viewer = `v-${Math.random()}`;
     await db.insert(schema.users).values({ id: viewer, email: `${viewer}@t.test`, createdAt: new Date() });
     await db.insert(schema.organizationMembers).values({ orgId, userId: viewer, role: 'viewer', joinedAt: new Date() });
+    // M10-T05: the message changed from assertOrgWriter's "read-only" wording
+    // to can()'s "missing required permission" - the guarantee this test
+    // exists for (a viewer cannot write) is unchanged, so only the pattern
+    // moved, not the test's intent.
     await expect(handlerFor(db).createTask({ projectId, title: 'x' }, makeAuthContext(viewer)))
-      .rejects.toThrow(/read-only/);
+      .rejects.toThrow(/missing required permission: task:write/);
   });
 });
 

@@ -1,8 +1,8 @@
 ---
-active_milestone: M10
+active_milestone: M08
 active_task: null
-last_updated: 2026-08-16
-last_commit: 18f966d
+last_updated: 2026-08-17
+last_commit: b4be47a
 blocked: false
 blocker: null
 ---
@@ -15,22 +15,35 @@ blocker: null
 
 ## Now
 
-- **Milestone**: M10 — Teams & Policy-Based RBAC
-- **Task**: none — M10's first task is next
-- **Branch**: `feature/m10-teams-and-policy-rbac` (to be created from `main`),
-  per the default in `git-workflow-standard.md` / `milestone-standard.md`
-  §5. No main-branch exception has been given for this milestone.
-- **Command to continue**: `/milestone-deliver M10` (or `/milestone-deliver-auto M10`)
+**2026-08-17 — M10 (Teams & Policy-Based RBAC) closed: 13/13 tasks, every
+exit criterion in the milestone's own §6 verification checklist met.**
+Developed on `feature/m10-teams-and-policy-rbac`, not yet merged to `main`
+or pushed to origin — left for explicit user action, same convention M13
+used. T13's own PROGRESS entry has the full closing note.
 
-**2026-08-16 — M13 (Local Accounts & Linked Identity) closed: 15/15 tasks,
-7/7 exit criteria.** Developed on `feature/m13-local-accounts-and-linked-identity`,
-merged to `main` locally (not pushed to origin — left for explicit user
-action). Full handoff note below. M10 is next, exactly as planned when M13
-was added ahead of it.
+**This closes out the three-part goal this delivery effort was scoped
+against from the start**: local username/password accounts with Google as
+an optional, disable-able linked identity rather than the account itself
+(M13, closed 2026-08-16); teams as a first-class grouping below the
+organization (M10-T07/T08/T12); and a real, policy-based role and
+permission-management system replacing the old hardcoded four-tier enum
+(ADR-0013, M10). Both milestones are done; nothing further was asked of
+this effort by name.
 
-M08, M09, M11, M12 are unchanged and resume in their prior order once M10
-closes — nothing in their `depends_on` required M08 to run before either M13
-or M10.
+- **Milestone**: M08 — Events, Audit & Real-Time is next in the ledger's
+  numeric order (unblocked - both `depends_on` entries, M04 and M07, are
+  done) if delivery continues into the pre-existing backlog. Not started;
+  this was not part of the three-part goal above, so it was left queued
+  rather than picked up automatically.
+- **Command to continue**: `/milestone-deliver M08` (or
+  `/milestone-deliver-auto M08`) to start the next queued milestone: `git
+  checkout main && git merge feature/m10-teams-and-policy-rbac` first (and
+  `feature/m13-...` if not already merged) per `git-workflow-standard.md`'s
+  branch-per-milestone convention.
+
+M09, M11, M12 remain queued behind M08 in their prior order, unaffected by
+M10's closure — nothing in their `depends_on` required M08 to run before
+either M13 or M10.
 
 ## How to resume
 
@@ -56,12 +69,12 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M07 | Read-Path Scale                | done   | M05        | 14    | 14   |
 | M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
-| M10 | Teams & Policy-Based RBAC      | todo   | M03, M04   | 13    | 0    |
+| M10 | Teams & Policy-Based RBAC      | done   | M03, M04   | 13    | 13   |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 | M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
 
-**Total: 160 tasks across 13 milestones — 104 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M13 15).**
+**Total: 160 tasks across 13 milestones — 117 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15).**
 
 ## Dependency graph
 

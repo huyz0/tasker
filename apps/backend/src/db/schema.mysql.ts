@@ -70,6 +70,72 @@ export const organizationMembers = mysqlTable("organization_members", {
   }
 });
 
+// M10-T02 (ADR-0013). See the SQLite counterpart for the full reasoning on
+// every table below.
+export const permissions = mysqlTable("permissions", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  description: varchar("description", { length: 512 }).notNull(),
+});
+
+export const roles = mysqlTable("roles", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).references(() => organizations.id),
+  name: varchar("name", { length: 256 }).notNull(),
+  isSystem: boolean("is_system").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    orgIdIdx: index("roles_org_id_idx").on(table.orgId),
+  };
+});
+
+export const rolePermissions = mysqlTable("role_permissions", {
+  roleId: varchar("role_id", { length: 256 }).notNull().references(() => roles.id),
+  permissionKey: varchar("permission_key", { length: 64 }).notNull().references(() => permissions.key),
+}, (table) => {
+  return {
+    pk: primaryKey({ columns: [table.roleId, table.permissionKey] }),
+  };
+});
+
+export const teams = mysqlTable("teams", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  name: varchar("name", { length: 256 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+}, (table) => {
+  return {
+    orgIdIdx: index("teams_org_id_idx").on(table.orgId),
+  };
+});
+
+export const teamMembers = mysqlTable("team_members", {
+  teamId: varchar("team_id", { length: 256 }).notNull().references(() => teams.id),
+  userId: varchar("user_id", { length: 256 }).notNull().references(() => users.id),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    pk: primaryKey({ columns: [table.teamId, table.userId] }),
+    userIdIdx: index("team_members_user_id_idx").on(table.userId),
+  };
+});
+
+export const grants = mysqlTable("grants", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  subjectType: mysqlEnum("subject_type", ['user', 'team']).notNull(),
+  subjectId: varchar("subject_id", { length: 256 }).notNull(),
+  scopeType: mysqlEnum("scope_type", ['organization', 'team', 'project']).notNull(),
+  scopeId: varchar("scope_id", { length: 256 }).notNull(),
+  roleId: varchar("role_id", { length: 256 }).notNull().references(() => roles.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    subjectIdx: index("grants_subject_idx").on(table.subjectType, table.subjectId),
+    scopeIdx: index("grants_scope_idx").on(table.scopeType, table.scopeId),
+  };
+});
+
 export const taskTypes = mysqlTable("task_types", {
   id: varchar("id", { length: 256 }).primaryKey(),
   orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),

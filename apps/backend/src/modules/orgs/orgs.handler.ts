@@ -4,7 +4,8 @@ import { inArray, eq, and, not } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
-import { requireUser, assertOrgAdmin, assertOrgMember, getOrgMemberRole, countOrgOwners } from "../../lib/authz";
+import { requireUser, getOrgMemberRole, countOrgOwners } from "../../lib/authz";
+import { assertCan } from "../../lib/policy";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -173,10 +174,15 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         if (!parentRows || parentRows.length === 0) {
           throw new ConnectError("parent organization not found", Code.NotFound);
         }
-        if (parentRows[0].parentOrgId) {
-          throw new ConnectError("nested sub-organizations are not supported yet", Code.InvalidArgument);
-        }
-        await assertOrgAdmin(db, userId, parsed.parentOrgId);
+        // M10-T09: the two-level nesting cap this used to enforce here
+        // ("parentRows[0].parentOrgId must be null") is gone - organizations
+        // can nest to any depth now. The permission check below is the only
+        // gate left, and it already reaches further than "admin of the
+        // immediate parent": can()'s ancestor-organization climbing means an
+        // admin of *any* ancestor of parsed.parentOrgId (its parent, its
+        // parent's parent, ...) passes too, the same as any other org:admin
+        // check against that org.
+        await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.parentOrgId }, "org:admin");
       }
 
       const newOrgId = `o-${crypto.randomUUID()}`;
@@ -195,7 +201,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
     async updateOrg(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = UpdateOrgSchema.parse(req);
-      await assertOrgAdmin(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:admin");
 
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       const existing = await db.select().from(orgs).where(eq((orgs as any).id, parsed.orgId)).limit(1);
@@ -227,7 +233,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
     async listInvitations(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = ListInvitationsSchema.parse(req);
-      await assertOrgAdmin(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:admin");
 
       const invs = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
@@ -285,7 +291,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       // Scope from the row, not the request. A caller who sent their own orgId
       // could otherwise name an organization they administer while pointing the
       // id at an invitation in one they do not.
-      await assertOrgAdmin(db, userId, existing[0].orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: existing[0].orgId }, "org:admin");
 
       await db.delete(invs).where(eq((invs as any).id, parsed.invitationId));
 
@@ -299,7 +305,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
     async listOrgMembers(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = ListOrgMembersSchema.parse(req);
-      await assertOrgMember(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:read");
 
       const members = isStandalone ? schemaSqlite.organizationMembers : schemaMysql.organizationMembers;
       const users = isStandalone ? schemaSqlite.users : schemaMysql.users;
@@ -367,9 +373,9 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
       // This previously rejected self-removal outright, so the only way out of
       // an organization was to ask an admin to do it for you.
       if (parsed.userId === userId) {
-        await assertOrgMember(db, userId, parsed.orgId);
+        await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:read");
       } else {
-        await assertOrgAdmin(db, userId, parsed.orgId);
+        await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:admin");
       }
 
       const targetRole = await getOrgMemberRole(db, parsed.userId, parsed.orgId);
@@ -412,7 +418,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
     async updateOrgMemberRole(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = UpdateOrgMemberRoleSchema.parse(req);
-      await assertOrgAdmin(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:admin");
 
       const actorRole = await getOrgMemberRole(db, userId, parsed.orgId);
       const targetRole = await getOrgMemberRole(db, parsed.userId, parsed.orgId);
@@ -448,7 +454,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
     async inviteUser(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = InviteUserSchema.parse(req);
-      await assertOrgAdmin(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:admin");
 
       const invs = isStandalone ? schemaSqlite.invitations : schemaMysql.invitations;
       // M13-T09. Matches on whichever of email/username this invite targets
@@ -491,7 +497,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
     async archiveOrg(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = ArchiveOrgSchema.parse(req);
-      await assertOrgAdmin(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:admin");
 
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       await softDeleteById(db, orgs, parsed.orgId);
@@ -502,7 +508,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
     async restoreOrg(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = RestoreOrgSchema.parse(req);
-      await assertOrgAdmin(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:admin");
 
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       const orgRows = await db.select().from(orgs).where(eq((orgs as any).id, parsed.orgId)).limit(1);
@@ -522,7 +528,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
     async purgeOrg(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = PurgeOrgSchema.parse(req);
-      await assertOrgAdmin(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:admin");
 
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       const existing = await db.select().from(orgs).where(eq((orgs as any).id, parsed.orgId)).limit(1);
@@ -614,7 +620,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
     async setOrgRetentionDays(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = SetOrgRetentionDaysSchema.parse(req);
-      await assertOrgAdmin(db, userId, parsed.orgId);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:admin");
 
       const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
       await db.update(orgs).set({ binRetentionDays: parsed.binRetentionDays }).where(eq((orgs as any).id, parsed.orgId));

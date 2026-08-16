@@ -84,7 +84,17 @@ describe("listTaskReviewers carries display names", () => {
 
     expect(res.reviewers).toHaveLength(2);
     // The reviewer rows, the org lookup and one name lookup - not one per name.
-    expect(queries).toBeLessThan(6);
+    // M10-T05: can()'s grant resolution (team memberships, candidate grants,
+    // the organization_members fallback, and - once any role resolves - the
+    // role_permissions lookup) adds a handful more selects than the old
+    // single-query assertOrgMember/assertOrgWriter check did. Still bounded
+    // and independent of reviewer count, which is this test's actual point.
+    // M10-T06's per-request cache does NOT bring this back down: this
+    // handler calls authorizePrincipal exactly once, so there is no second
+    // can() call in the same request for it to reuse anything against - the
+    // cache pays off for a request that checks the same principal many
+    // times (see policy.test.ts's dedicated T06 tests), not a single check.
+    expect(queries).toBeLessThan(10);
   });
 
   it("round-trips through add and remove", async () => {
