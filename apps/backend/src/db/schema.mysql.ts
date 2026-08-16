@@ -4,9 +4,14 @@ export const testSchema = mysqlTable("schema_migrations_test", {
   id: varchar("id", { length: 256 }).primaryKey(),
 });
 
+// M13: see the matching comment in schema.sqlite.ts — email is now optional
+// (unique when present; MySQL also treats multiple NULLs in a UNIQUE index as
+// distinct) and `username` is the new stable local handle, nullable at the
+// database level and required at the app layer for every user-creating path.
 export const users = mysqlTable("users", {
   id: varchar("id", { length: 256 }).primaryKey(),
-  email: varchar("email", { length: 256 }).notNull().unique(),
+  email: varchar("email", { length: 256 }).unique(),
+  username: varchar("username", { length: 256 }).unique(),
   name: varchar("name", { length: 256 }),
   avatarUrl: varchar("avatar_url", { length: 512 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),

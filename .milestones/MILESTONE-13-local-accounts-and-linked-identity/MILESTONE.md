@@ -85,7 +85,7 @@ M11**, since it needs outbound email delivery this repo does not yet have).
       - Verify: the ADR states the invariant, the hashing parameters, and a
         rollback position.
 
-- [ ] **M13-T02** — Make `users.email` nullable and add a required, unique
+- [x] **M13-T02** — Make `users.email` nullable and add a required, unique
       `users.username` as the stable local handle, in both dialects.
       - Files: `db/schema.sqlite.ts`, `db/schema.mysql.ts`, `drizzle-sqlite/`,
         `drizzle-mysql/`

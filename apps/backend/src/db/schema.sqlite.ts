@@ -16,9 +16,23 @@ export const testSchema = sqliteTable("schema_migrations_test", {
   id: text("id").primaryKey(),
 });
 
+// M13: email stopped being how a user is identified. It is optional (a user
+// can exist with no external contact address at all) and, when present,
+// still unique — SQLite treats multiple NULLs in a UNIQUE column as distinct,
+// so any number of email-less accounts coexist. `username` is the new stable
+// local handle. It is nullable at the database level on purpose, following
+// this file's existing convention for "logically required, enforced at the
+// app layer rather than the schema" columns (see `invitations.role`'s
+// comment below) — every write path that creates a user (registerLocalUser,
+// completeLogin) requires one via Zod; the nullable column only exists so a
+// pre-M13 SQLite `users` table doesn't need the full 12-step ALTER TABLE
+// rebuild twice (once to add the column, once to backfill it) — see
+// `0028_users_email_optional_username.sql` and
+// `0029_backfill_usernames.sql`.
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
-  email: text("email").notNull().unique(),
+  email: text("email").unique(),
+  username: text("username").unique(),
   name: text("name"),
   avatarUrl: text("avatar_url"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
