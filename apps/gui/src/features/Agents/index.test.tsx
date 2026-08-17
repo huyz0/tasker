@@ -1,8 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 
-const { mockListAgents, mockListAgentRoles, mockCreateAgent, mockArchiveAgent, mockUpdateAgent, mockUpdateAgentRole, mockCreateAgentRole } = vi.hoisted(() => ({
+const { mockListAgents, mockListAgentRoles, mockCreateAgent, mockArchiveAgent, mockUpdateAgent, mockUpdateAgentRole, mockCreateAgentRole, mockGetDashboard } = vi.hoisted(() => ({
   mockListAgents: vi.fn(),
   mockListAgentRoles: vi.fn(),
   mockCreateAgent: vi.fn(),
@@ -10,6 +11,7 @@ const { mockListAgents, mockListAgentRoles, mockCreateAgent, mockArchiveAgent, m
   mockArchiveAgent: vi.fn(),
   mockUpdateAgent: vi.fn(),
   mockUpdateAgentRole: vi.fn(),
+  mockGetDashboard: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -29,10 +31,13 @@ vi.mock('@connectrpc/connect', () => ({
     listAgentTokens: vi.fn(async () => ({ tokens: [] })),
     createAgentToken: vi.fn(),
     revokeAgentToken: vi.fn(),
+    // M17-T05: the Agent Activity panel reuses the Dashboard's RPC.
+    getDashboard: mockGetDashboard,
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   AgentService: {},
+  DashboardService: {},
 }));
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
@@ -48,7 +53,7 @@ function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utils = render(
     <QueryClientProvider client={queryClient}>
-      <AgentsDashboard />
+      <MemoryRouter><AgentsDashboard /></MemoryRouter>
     </QueryClientProvider>
   );
   return { ...utils, queryClient };
@@ -64,6 +69,8 @@ describe('AgentsDashboard', () => {
     mockArchiveAgent.mockReset();
     mockUpdateAgent.mockReset();
     mockUpdateAgentRole.mockReset();
+    mockGetDashboard.mockReset();
+    mockGetDashboard.mockResolvedValue({ agents: [] });
     mockListAgentRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'Researcher', systemPrompt: '', capabilities: '' }] });
   });
 
@@ -455,6 +462,76 @@ describe('AgentsDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
 
     expect(await screen.findByText(/Failed to create role: permission denied/)).toBeInTheDocument();
+  });
+
+  // M17-T05: the Agent Activity panel reuses the Dashboard's getDashboard RPC
+  // (per-agent lastUsedAt/openTaskCount) rather than a new endpoint.
+  it('shows agent activity from the dashboard RPC, quietest first', async () => {
+    const hoursAgo = (n: number) => new Date(Date.now() - n * 3_600_000).toISOString();
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockGetDashboard.mockResolvedValue({
+      agents: [
+        { id: 'agent-1', name: 'Silent Bot', lastUsedAt: undefined, openTaskCount: 3n },
+        { id: 'agent-2', name: 'Fresh Bot', lastUsedAt: hoursAgo(0), openTaskCount: 0n },
+        { id: 'agent-3', name: 'Idle Bot', lastUsedAt: hoursAgo(5), openTaskCount: 0n },
+        { id: 'agent-4', name: 'Stale Bot', lastUsedAt: hoursAgo(72), openTaskCount: 0n },
+      ],
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('Silent Bot')).toBeInTheDocument();
+    expect(screen.getByText('never called')).toBeInTheDocument();
+    expect(screen.getByText('3 open')).toBeInTheDocument();
+    expect(screen.getByText('Fresh Bot')).toBeInTheDocument();
+    expect(screen.getByText('active in the last hour')).toBeInTheDocument();
+    expect(screen.getByText('5h ago')).toBeInTheDocument();
+    expect(screen.getByText('3d ago')).toBeInTheDocument();
+    expect(mockGetDashboard).toHaveBeenCalledWith({ orgId: 'org-1' });
+  });
+
+  it('shows an empty state for agent activity when the org has no agents', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockGetDashboard.mockResolvedValue({ agents: [] });
+
+    renderPage();
+
+    expect(await screen.findAllByText('No agents in this organization.')).not.toHaveLength(0);
+  });
+
+  it('points to the Dashboard when the activity panel is showing fewer agents than exist', async () => {
+    mockListAgents.mockResolvedValue({ agents: [], page: { totalCount: 20 } });
+    mockGetDashboard.mockResolvedValue({
+      agents: Array.from({ length: 8 }, (_, i) => ({ id: `agent-${i}`, name: `Agent ${i}`, openTaskCount: 0n })),
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Agent 0')).toBeInTheDocument());
+    expect(screen.getByText(/Showing the 8 quietest of 20/)).toBeInTheDocument();
+  });
+
+  it('reports an error loading agent activity without breaking the rest of the page', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockGetDashboard.mockRejectedValue(new Error('unavailable'));
+
+    renderPage();
+
+    expect(await screen.findByText(/unavailable/)).toBeInTheDocument();
+    expect(screen.getByText('No agent instances deployed yet.')).toBeInTheDocument();
+  });
+
+  it('retries loading agent activity', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockGetDashboard.mockRejectedValueOnce(new Error('unavailable'));
+    mockGetDashboard.mockResolvedValueOnce({ agents: [{ id: 'agent-1', name: 'Recovered Bot', openTaskCount: 0n }] });
+
+    renderPage();
+
+    await screen.findByText(/unavailable/);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.getByText('Recovered Bot')).toBeInTheDocument());
   });
 
   it('closes the token panel when the same agent is clicked again', async () => {
