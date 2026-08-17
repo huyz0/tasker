@@ -2,7 +2,7 @@
 active_milestone: M08
 active_task: null
 last_updated: 2026-08-17
-last_commit: 8f0bfa9
+last_commit: c6bd1aa
 blocked: false
 blocker: null
 ---
@@ -38,9 +38,10 @@ deliberately deferred gap). The CLI can link/unlink artifacts to tasks. Task
 type CRUD lives in one GUI surface instead of two disagreeing ones. Full
 closing note: `.milestones/MILESTONE-14-task-reliability-and-agent-self-service/PROGRESS.md`.
 
-Developed on `feature/m14-task-reliability-and-agent-self-service`, not yet
-merged to `main` or pushed to origin — left for explicit user action, same
-convention M10 and M13 used.
+Developed on `feature/m14-task-reliability-and-agent-self-service`, merged to
+`main` 2026-08-17 by explicit user request (`git merge --no-ff`, no
+conflicts; `moon check --all` re-verified clean on `main` post-merge before
+pushing).
 
 **Deliberately deferred, with owners**: a task dependency/subtask model and
 bulk task creation (**M15**, not yet planned); a push/webhook/SSE surface
@@ -53,11 +54,29 @@ regex-inferred (no owning milestone yet); a TTL/cleanup sweep for the new
 idempotency-retry case, which needs a reservation-before-mutation redesign
 (no owning milestone yet — flagged in `lib/idempotency.ts`'s own docstring).
 
+**2026-08-17 — Out-of-band GUI follow-up merged alongside M14**: a
+screen-estate/navigation review (Task Types, Projects, Tasks board and
+table, against Linear/Jira/Monday) found four concrete fixes, delivered on
+`feature/task-screen-ux-improvements` (stacked on the M14 branch) and
+merged to `main` in the same push. Not run through the formal milestone
+process (no `MILESTONE.md`, non-`mNN` branch name) — a deliberate,
+lighter-weight treatment for a conversational "suggest and fix" request
+rather than a planned milestone. What shipped: Task Types is a two-pane
+list-rail + detail layout instead of one stacked column; Projects no
+longer carries a redundant read-only Task Types section; the Tasks board
+supports drag-and-drop status changes (native HTML5 DnD, no new
+dependency — ADR-0009); the Tasks table supports bulk status change via
+row checkboxes. **Not done**: bulk *assignee* change (needs the
+`AssigneePicker`'s search flow, scoped out and named rather than silently
+dropped) and a `gui:e2e` run against these changes (needs a booted
+backend; verified at the component-test level only, including simulated
+drag events, not through a real browser).
+
 **2026-08-17 — M10 (Teams & Policy-Based RBAC) closed: 13/13 tasks, every
 exit criterion in the milestone's own §6 verification checklist met.**
-Developed on `feature/m10-teams-and-policy-rbac`, not yet merged to `main`
-or pushed to origin — left for explicit user action, same convention M13
-used. T13's own PROGRESS entry has the full closing note.
+Already merged to `main` (`fa4c13b`) before this session's work began —
+correcting a stale note this file previously carried claiming it was
+still unmerged. T13's own PROGRESS entry has the full closing note.
 
 **This closes out the three-part goal this delivery effort was scoped
 against from the start**: local username/password accounts with Google as
@@ -71,10 +90,8 @@ permission-management system replacing the old hardcoded four-tier enum
   numeric order (unblocked — both `depends_on` entries, M04 and M07, are
   done).
 - **Command to continue**: `/milestone-deliver M08` (or
-  `/milestone-deliver-auto M08`) — `git checkout main && git merge
-  feature/m14-task-reliability-and-agent-self-service` first (and
-  `feature/m10-...`/`feature/m13-...` if not already merged) per
-  `git-workflow-standard.md`'s branch-per-milestone convention.
+  `/milestone-deliver-auto M08`) — `main` already has M10, M13 and M14, so
+  branch straight off it: `git checkout -b feature/m08-events-audit-realtime main`.
 
 M09, M11, M12 remain queued behind M08 in their prior order, unaffected by
 M10's or M14's closure — nothing in their `depends_on` required either to
