@@ -134,6 +134,8 @@ var projectTemplatesListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		orgID, _ := cmd.Flags().GetString("org")
 		isJson, _ := cmd.Flags().GetBool("json")
+		filter, _ := cmd.Flags().GetString("filter")
+		sort, _ := cmd.Flags().GetString("sort")
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
 		if orgID == "" {
@@ -147,7 +149,7 @@ var projectTemplatesListCmd = &cobra.Command{
 		client := backend.NewProjectTemplateServiceClient()
 		res, err := client.ListTemplates(context.Background(), connect.NewRequest(&healthv1.ListProjectTemplatesRequest{
 			OrgId: orgID,
-			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list project templates: %v\n", err)
@@ -183,6 +185,8 @@ func init() {
 	projectTemplatesUpdateCmd.Flags().String("root-task-type", "", "New root task type ID (pass an empty string to clear it)")
 
 	projectTemplatesListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	projectTemplatesListCmd.Flags().StringP("filter", "f", "", "Substring match against template name")
+	projectTemplatesListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 	projectTemplatesListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	projectTemplatesListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 }

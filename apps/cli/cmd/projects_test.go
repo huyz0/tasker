@@ -37,7 +37,8 @@ func TestProjectsCreateRejectsUnknownFlags(t *testing.T) {
 
 type fakeProjectListHandler struct {
 	v1connect.UnimplementedProjectServiceHandler
-	gotPage *healthv1.PageRequest
+	gotPage        *healthv1.PageRequest
+	gotOnlyDeleted bool
 }
 
 func (f *fakeProjectListHandler) ListProjects(
@@ -45,6 +46,7 @@ func (f *fakeProjectListHandler) ListProjects(
 	req *connect.Request[healthv1.ListProjectsRequest],
 ) (*connect.Response[healthv1.ListProjectsResponse], error) {
 	f.gotPage = req.Msg.Page
+	f.gotOnlyDeleted = req.Msg.OnlyDeleted
 	return connect.NewResponse(&healthv1.ListProjectsResponse{}), nil
 }
 
@@ -72,6 +74,30 @@ func TestProjectsListCmdForwardsCursorAndLimit(t *testing.T) {
 	}
 	if fake.gotPage.Limit != 10 {
 		t.Errorf("expected limit to be forwarded, got %d", fake.gotPage.Limit)
+	}
+}
+
+// M20-T09: Projects has a full delete/restore/purge bin lifecycle, same as
+// Tasks and Artifacts, but --only-deleted was never wired up here despite
+// existing on both the wire and the backend since M20-T01.
+func TestProjectsListCmdForwardsOnlyDeleted(t *testing.T) {
+	fake := &fakeProjectListHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"projects", "list", "--org", "org-1", "--only-deleted", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("projects list failed: %v", err)
+	}
+
+	if !fake.gotOnlyDeleted {
+		t.Error("expected onlyDeleted to be forwarded as true")
 	}
 }
 
@@ -172,5 +198,138 @@ func TestProjectsUpdateCommandRequiresTitle(t *testing.T) {
 	}
 	if !strings.Contains(b.String(), "--title is required") {
 		t.Errorf("expected a --title-is-required message, got: %s", b.String())
+	}
+}
+
+type fakeProjectCreateHandler struct {
+	v1connect.UnimplementedProjectServiceHandler
+	gotReq *healthv1.CreateProjectRequest
+}
+
+func (f *fakeProjectCreateHandler) CreateProject(
+	_ context.Context,
+	req *connect.Request[healthv1.CreateProjectRequest],
+) (*connect.Response[healthv1.CreateProjectResponse], error) {
+	f.gotReq = req.Msg
+	return connect.NewResponse(&healthv1.CreateProjectResponse{
+		Project: &healthv1.Project{Id: "proj-new", Key: "PRJ", Name: req.Msg.Name},
+	}), nil
+}
+
+// M20-T09: ownerId is a required field at the backend (CreateProjectSchema,
+// min 1) - an omitted --owner used to reach the server anyway and come back
+// as an opaque remote validation error instead of a clear local one.
+func TestProjectsCreateCommandRequiresOwner(t *testing.T) {
+	// projectsCreateCmd is a package-level singleton shared across every test
+	// in this file - reset every flag this test cares about so an earlier
+	// test's value can't mask the validation path under test.
+	_ = projectsCreateCmd.Flags().Set("owner", "")
+	t.Cleanup(func() { _ = projectsCreateCmd.Flags().Set("owner", "") })
+
+	rootCmd.AddCommand(projectsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"projects", "create", "--org", "org-1", "--template", "tpl-1", "--title", "New Project"})
+	err := rootCmd.Execute()
+
+	if err == nil {
+		t.Error("expected an error when --owner is omitted")
+	}
+	if !strings.Contains(b.String(), "--owner") {
+		t.Errorf("expected an --owner-is-required message, got: %s", b.String())
+	}
+}
+
+func TestProjectsCreateCommandForwardsDescription(t *testing.T) {
+	fake := &fakeProjectCreateHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{
+		"projects", "create", "--org", "org-1", "--template", "tpl-1",
+		"--title", "New Project", "--owner", "user-1", "--description", "what this is for", "--json",
+	})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("projects create failed: %v", err)
+	}
+
+	if fake.gotReq == nil || fake.gotReq.Description == nil || *fake.gotReq.Description != "what this is for" {
+		t.Fatalf("expected the description to be forwarded, got %v", fake.gotReq)
+	}
+}
+
+type fakeProjectBinLifecycleHandler struct {
+	v1connect.UnimplementedProjectServiceHandler
+	gotArchiveID string
+	gotRestoreID string
+	gotPurgeID   string
+}
+
+func (f *fakeProjectBinLifecycleHandler) ArchiveProject(
+	_ context.Context,
+	req *connect.Request[healthv1.ArchiveProjectRequest],
+) (*connect.Response[healthv1.ArchiveProjectResponse], error) {
+	f.gotArchiveID = req.Msg.ProjectId
+	return connect.NewResponse(&healthv1.ArchiveProjectResponse{Success: true}), nil
+}
+
+func (f *fakeProjectBinLifecycleHandler) RestoreProject(
+	_ context.Context,
+	req *connect.Request[healthv1.RestoreProjectRequest],
+) (*connect.Response[healthv1.RestoreProjectResponse], error) {
+	f.gotRestoreID = req.Msg.ProjectId
+	return connect.NewResponse(&healthv1.RestoreProjectResponse{Success: true}), nil
+}
+
+func (f *fakeProjectBinLifecycleHandler) PurgeProject(
+	_ context.Context,
+	req *connect.Request[healthv1.PurgeProjectRequest],
+) (*connect.Response[healthv1.PurgeProjectResponse], error) {
+	f.gotPurgeID = req.Msg.ProjectId
+	return connect.NewResponse(&healthv1.PurgeProjectResponse{Success: true}), nil
+}
+
+// M20-T09: delete/restore/purge each carry a Success bool on the wire but
+// ignored --json entirely, unlike every other mutating project command -
+// an agent scripting against --json got human-readable text back instead.
+func TestProjectsDeleteRestorePurgeJSONParity(t *testing.T) {
+	fake := &fakeProjectBinLifecycleHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+
+	cases := []struct {
+		args   []string
+		wantID *string
+	}{
+		{[]string{"projects", "delete", "proj-1", "--json"}, &fake.gotArchiveID},
+		{[]string{"projects", "restore", "proj-1", "--json"}, &fake.gotRestoreID},
+		{[]string{"projects", "purge", "proj-1", "--json"}, &fake.gotPurgeID},
+	}
+	for _, tc := range cases {
+		b := bytes.NewBufferString("")
+		rootCmd.SetOut(b)
+		rootCmd.SetArgs(tc.args)
+		if err := rootCmd.Execute(); err != nil {
+			t.Fatalf("%v failed: %v", tc.args, err)
+		}
+		out := b.String()
+		if !strings.Contains(out, `"success":true`) || !strings.Contains(out, `"projectId":"proj-1"`) {
+			t.Errorf("%v: expected JSON success/projectId output, got %s", tc.args, out)
+		}
+		if *tc.wantID != "proj-1" {
+			t.Errorf("%v: expected proj-1 to reach the backend, got %q", tc.args, *tc.wantID)
+		}
 	}
 }

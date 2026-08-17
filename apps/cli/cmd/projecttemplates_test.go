@@ -188,3 +188,22 @@ func TestProjectTemplatesListCmd(t *testing.T) {
 		t.Fatalf("expected cursor/limit to be forwarded, got %+v", fake.gotListPage)
 	}
 }
+
+// M20-T09: `projects list` already forwards --filter/--sort to the backend
+// (which supports both on templates too, via the same executePaginatedQuery
+// helper) - `project-templates list` never did.
+func TestProjectTemplatesListCmdForwardsFilterAndSort(t *testing.T) {
+	fake := withProjectTemplateServer(t)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"project-templates", "list", "--org", "org-1", "--filter", "Soft", "--sort", "name:desc"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.gotListPage == nil || fake.gotListPage.Filter != "Soft" || fake.gotListPage.Sort != "name:desc" {
+		t.Fatalf("expected filter/sort to be forwarded, got %+v", fake.gotListPage)
+	}
+}
