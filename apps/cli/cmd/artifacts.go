@@ -41,6 +41,7 @@ var artifactsListCmd = &cobra.Command{
 		isJson, _ := cmd.Flags().GetBool("json")
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
+		onlyDeleted, _ := cmd.Flags().GetBool("only-deleted")
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
 		}
@@ -49,8 +50,9 @@ var artifactsListCmd = &cobra.Command{
 
 		if folderID != "" {
 			res, err := client.ListArtifacts(context.Background(), connect.NewRequest(&healthv1.ListArtifactsRequest{
-				FolderId: folderID,
-				Page:     &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+				FolderId:    folderID,
+				Page:        &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+				OnlyDeleted: onlyDeleted,
 			}))
 			if err != nil {
 				cmd.PrintErrf("Failed to list artifacts: %v\n", err)
@@ -73,8 +75,9 @@ var artifactsListCmd = &cobra.Command{
 			return errors.New("Error: --project or --folder is required (or set TASKER_PROJECT_ID).")
 		}
 		res, err := client.ListFolders(context.Background(), connect.NewRequest(&healthv1.ListFoldersRequest{
-			ProjectId: projectID,
-			Page:      &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+			ProjectId:   projectID,
+			Page:        &healthv1.PageRequest{Limit: limit, Cursor: cursor},
+			OnlyDeleted: onlyDeleted,
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list folders: %v\n", err)
@@ -248,6 +251,141 @@ var foldersCreateCmd = &cobra.Command{
 	},
 }
 
+// M18-T08: updateArtifactContent has existed as an RPC since M05 (the GUI's
+// artifact editor calls it) but had no CLI command - the only way to change
+// an artifact's content from the CLI was delete-and-recreate, which loses
+// the artifact id and any task links already made against it.
+var artifactsUpdateContentCmd = &cobra.Command{
+	Use:   "update-content [artifact_id]",
+	Short: "Replace an artifact's content (and optionally its content type)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		content, _ := cmd.Flags().GetString("content")
+		contentType, _ := cmd.Flags().GetString("content-type")
+		filePath, _ := cmd.Flags().GetString("file")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if content == "" && filePath == "" {
+			cmd.Println("Error: --content or --file is required.")
+			return errors.New("Error: --content or --file is required.")
+		}
+
+		if filePath != "" {
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				cmd.PrintErrf("Failed to read %s: %v\n", filePath, err)
+				return err
+			}
+			if contentType == "" {
+				contentType = http.DetectContentType(data)
+			}
+			if isBinaryContentType(contentType) {
+				content = base64.StdEncoding.EncodeToString(data)
+			} else {
+				content = string(data)
+			}
+		}
+
+		req := &healthv1.UpdateArtifactContentRequest{ArtifactId: args[0], Content: content}
+		if contentType != "" {
+			req.ContentType = &contentType
+		}
+
+		client := backend.NewArtifactServiceClient()
+		res, err := client.UpdateArtifactContent(context.Background(), connect.NewRequest(req))
+		if err != nil {
+			cmd.PrintErrf("Failed to update artifact content: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Artifact)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Artifact %s content updated\n", res.Msg.Artifact.Id)
+		}
+		return nil
+	},
+}
+
+// M18-T08: updateFolder has existed as an RPC since M05 (the GUI's rename
+// control calls it) but had no CLI command - a folder created with a typo
+// had no way to be fixed short of deleting and recreating it, which orphans
+// anything already filed under the old id.
+var artifactsUpdateFolderCmd = &cobra.Command{
+	Use:   "update-folder [folder_id]",
+	Short: "Rename a folder",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name, _ := cmd.Flags().GetString("name")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if name == "" {
+			cmd.Println("Error: --name is required.")
+			return errors.New("Error: --name is required.")
+		}
+
+		client := backend.NewArtifactServiceClient()
+		res, err := client.UpdateFolder(context.Background(), connect.NewRequest(&healthv1.UpdateFolderRequest{
+			FolderId: args[0],
+			Name:     name,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to update folder: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Folder)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Folder %s renamed to '%s'\n", res.Msg.Folder.Id, res.Msg.Folder.Name)
+		}
+		return nil
+	},
+}
+
+// M18-T08: link-task/unlink-task (M14-T08) let an agent attach or detach its
+// own output blind - there was no way to see what was currently linked to a
+// task or artifact without going to the GUI.
+var artifactsListTaskLinksCmd = &cobra.Command{
+	Use:   "list-task-links",
+	Short: "List task-artifact links for a task (--task) or an artifact (--artifact)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		taskID, _ := cmd.Flags().GetString("task")
+		artifactID, _ := cmd.Flags().GetString("artifact")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if (taskID == "") == (artifactID == "") {
+			cmd.Println("Error: exactly one of --task or --artifact is required.")
+			return errors.New("Error: exactly one of --task or --artifact is required.")
+		}
+
+		req := &healthv1.ListTaskArtifactLinksRequest{}
+		if taskID != "" {
+			req.TaskId = &taskID
+		} else {
+			req.ArtifactId = &artifactID
+		}
+
+		client := backend.NewArtifactServiceClient()
+		res, err := client.ListTaskArtifactLinks(context.Background(), connect.NewRequest(req))
+		if err != nil {
+			cmd.PrintErrf("Failed to list task-artifact links: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Links)
+			cmd.Println(string(jsonString))
+		} else if len(res.Msg.Links) == 0 {
+			cmd.Println("No links found.")
+		} else {
+			for _, l := range res.Msg.Links {
+				cmd.Printf(" - %s <-> %s (link id: %s)\n", l.TaskTitle, l.ArtifactName, l.Id)
+			}
+		}
+		return nil
+	},
+}
+
 var artifactsDeleteCmd = &cobra.Command{
 	Use:   "delete [artifact_id]",
 	Short: "Move an artifact to the bin",
@@ -414,6 +552,9 @@ func init() {
 	artifactsCmd.AddCommand(artifactsPurgeCmd)
 	artifactsCmd.AddCommand(artifactsLinkTaskCmd)
 	artifactsCmd.AddCommand(artifactsUnlinkTaskCmd)
+	artifactsCmd.AddCommand(artifactsListTaskLinksCmd)
+	artifactsCmd.AddCommand(artifactsUpdateContentCmd)
+	artifactsCmd.AddCommand(artifactsUpdateFolderCmd)
 	artifactsCmd.AddCommand(foldersCreateCmd)
 	artifactsCmd.AddCommand(foldersDeleteCmd)
 	artifactsCmd.AddCommand(foldersRestoreCmd)
@@ -423,12 +564,17 @@ func init() {
 	artifactsListCmd.Flags().String("folder", "", "Folder ID to list artifacts within")
 	artifactsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	artifactsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	artifactsListCmd.Flags().Bool("only-deleted", false, "List only archived (binned) folders/artifacts, instead of active ones")
 	artifactsCreateCmd.Flags().String("folder", "", "Folder ID to create the artifact in")
 	artifactsCreateCmd.Flags().String("name", "", "Artifact name")
 	artifactsCreateCmd.Flags().String("description", "", "Artifact description")
 	artifactsCreateCmd.Flags().String("content", "", "Artifact text content")
 	artifactsCreateCmd.Flags().String("content-type", "", "MIME type of the content (default text/markdown, or auto-detected with --file)")
 	artifactsCreateCmd.Flags().String("file", "", "Path to a local file to upload as the artifact's content (e.g. an image); base64-encoded automatically")
+	artifactsUpdateContentCmd.Flags().String("content", "", "New artifact text content")
+	artifactsUpdateContentCmd.Flags().String("content-type", "", "New MIME type of the content (auto-detected with --file, unchanged otherwise)")
+	artifactsUpdateContentCmd.Flags().String("file", "", "Path to a local file whose contents replace the artifact's; base64-encoded automatically for binary types")
+	artifactsUpdateFolderCmd.Flags().String("name", "", "New folder name")
 	foldersCreateCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	foldersCreateCmd.Flags().String("parent", "", "Parent folder ID (optional, for nesting)")
 	foldersCreateCmd.Flags().String("name", "", "Folder name")
@@ -436,4 +582,6 @@ func init() {
 	artifactsLinkTaskCmd.Flags().String("artifact", "", "Artifact ID to link")
 	artifactsUnlinkTaskCmd.Flags().String("task", "", "Task ID to unlink the artifact from")
 	artifactsUnlinkTaskCmd.Flags().String("artifact", "", "Artifact ID to unlink")
+	artifactsListTaskLinksCmd.Flags().String("task", "", "List links for this task")
+	artifactsListTaskLinksCmd.Flags().String("artifact", "", "List links for this artifact")
 }

@@ -20,14 +20,19 @@ type fakeArtifactHandler struct {
 	v1connect.UnimplementedArtifactServiceHandler
 	gotListFoldersPage   *healthv1.PageRequest
 	gotListArtifactsPage *healthv1.PageRequest
+	gotListFoldersReq    *healthv1.ListFoldersRequest
+	gotListArtifactsReq  *healthv1.ListArtifactsRequest
 	// artifactPages simulates a folder whose artifacts span multiple pages,
 	// keyed by the cursor that requests that page ("" for the first page).
 	artifactPages map[string]*healthv1.ListArtifactsResponse
 	// artifactsByID backs GetArtifact/GetArtifactContent - the real backend's
 	// pair for a deep link, and what `artifacts read` calls now (M18-T07).
-	artifactsByID    map[string]*healthv1.Artifact
-	gotLinkRequest   *healthv1.LinkTaskArtifactRequest
-	gotUnlinkRequest *healthv1.UnlinkTaskArtifactRequest
+	artifactsByID       map[string]*healthv1.Artifact
+	gotLinkRequest      *healthv1.LinkTaskArtifactRequest
+	gotUnlinkRequest    *healthv1.UnlinkTaskArtifactRequest
+	gotUpdateContentReq *healthv1.UpdateArtifactContentRequest
+	gotUpdateFolderReq  *healthv1.UpdateFolderRequest
+	links               []*healthv1.TaskArtifactLink
 }
 
 func (f *fakeArtifactHandler) ListFolders(
@@ -35,6 +40,7 @@ func (f *fakeArtifactHandler) ListFolders(
 	req *connect.Request[healthv1.ListFoldersRequest],
 ) (*connect.Response[healthv1.ListFoldersResponse], error) {
 	f.gotListFoldersPage = req.Msg.Page
+	f.gotListFoldersReq = req.Msg
 	return connect.NewResponse(&healthv1.ListFoldersResponse{
 		Folders: []*healthv1.Folder{
 			{Id: "fld_1", ProjectId: req.Msg.ProjectId, Name: "deployments"},
@@ -47,6 +53,7 @@ func (f *fakeArtifactHandler) ListArtifacts(
 	req *connect.Request[healthv1.ListArtifactsRequest],
 ) (*connect.Response[healthv1.ListArtifactsResponse], error) {
 	f.gotListArtifactsPage = req.Msg.Page
+	f.gotListArtifactsReq = req.Msg
 	if f.artifactPages != nil {
 		cursor := ""
 		if req.Msg.Page != nil {
@@ -57,6 +64,37 @@ func (f *fakeArtifactHandler) ListArtifacts(
 		}
 	}
 	return connect.NewResponse(&healthv1.ListArtifactsResponse{}), nil
+}
+
+func (f *fakeArtifactHandler) UpdateArtifactContent(
+	_ context.Context,
+	req *connect.Request[healthv1.UpdateArtifactContentRequest],
+) (*connect.Response[healthv1.UpdateArtifactContentResponse], error) {
+	f.gotUpdateContentReq = req.Msg
+	contentType := ""
+	if req.Msg.ContentType != nil {
+		contentType = *req.Msg.ContentType
+	}
+	return connect.NewResponse(&healthv1.UpdateArtifactContentResponse{
+		Artifact: &healthv1.Artifact{Id: req.Msg.ArtifactId, Content: req.Msg.Content, ContentType: contentType},
+	}), nil
+}
+
+func (f *fakeArtifactHandler) UpdateFolder(
+	_ context.Context,
+	req *connect.Request[healthv1.UpdateFolderRequest],
+) (*connect.Response[healthv1.UpdateFolderResponse], error) {
+	f.gotUpdateFolderReq = req.Msg
+	return connect.NewResponse(&healthv1.UpdateFolderResponse{
+		Folder: &healthv1.Folder{Id: req.Msg.FolderId, Name: req.Msg.Name},
+	}), nil
+}
+
+func (f *fakeArtifactHandler) ListTaskArtifactLinks(
+	_ context.Context,
+	_ *connect.Request[healthv1.ListTaskArtifactLinksRequest],
+) (*connect.Response[healthv1.ListTaskArtifactLinksResponse], error) {
+	return connect.NewResponse(&healthv1.ListTaskArtifactLinksResponse{Links: f.links}), nil
 }
 
 func (f *fakeArtifactHandler) GetArtifact(
@@ -440,5 +478,247 @@ func TestArtifactsUnlinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
 	}
 	if !strings.Contains(b.String(), "Unlinked artifact art_1 from task tsk_1") {
 		t.Errorf("expected a confirmation message, got %s", b.String())
+	}
+}
+
+// M18-T08: updateArtifactContent has existed as an RPC since M05 but had no
+// CLI command - the only way to change an artifact's content was
+// delete-and-recreate, which loses the artifact id and any task links.
+func TestArtifactsUpdateContentCommand(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"artifacts", "update-content", "art_1", "--content", "new body", "--content-type", "text/plain"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.gotUpdateContentReq == nil || fake.gotUpdateContentReq.ArtifactId != "art_1" || fake.gotUpdateContentReq.Content != "new body" {
+		t.Fatalf("expected UpdateArtifactContent to be called with art_1/new body, got %+v", fake.gotUpdateContentReq)
+	}
+	if fake.gotUpdateContentReq.ContentType == nil || *fake.gotUpdateContentReq.ContentType != "text/plain" {
+		t.Errorf("expected contentType text/plain to be forwarded, got %+v", fake.gotUpdateContentReq.ContentType)
+	}
+}
+
+func TestArtifactsUpdateContentCommandUploadsATextFileAsPlainText(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	tmpFile := t.TempDir() + "/notes.md"
+	if err := os.WriteFile(tmpFile, []byte("# updated"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"artifacts", "update-content", "art_1", "--file", tmpFile, "--content-type", "text/markdown"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.gotUpdateContentReq == nil || fake.gotUpdateContentReq.Content != "# updated" {
+		t.Fatalf("expected the file's plain text content, not base64, got %+v", fake.gotUpdateContentReq)
+	}
+}
+
+func TestArtifactsUpdateContentCommandRequiresContentOrFile(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	artifactsUpdateContentCmd.Flags().Set("content", "")
+	artifactsUpdateContentCmd.Flags().Set("file", "")
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"artifacts", "update-content", "art_1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error when neither --content nor --file is given")
+	}
+	if fake.gotUpdateContentReq != nil {
+		t.Error("expected UpdateArtifactContent not to be called")
+	}
+}
+
+// M18-T08: updateFolder has existed as an RPC since M05 but had no CLI
+// command - a typo'd folder name had no way to be fixed short of deleting
+// and recreating it, orphaning anything already filed under the old id.
+func TestArtifactsUpdateFolderCommand(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"artifacts", "update-folder", "fld_1", "--name", "renamed"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.gotUpdateFolderReq == nil || fake.gotUpdateFolderReq.FolderId != "fld_1" || fake.gotUpdateFolderReq.Name != "renamed" {
+		t.Fatalf("expected UpdateFolder to be called with fld_1/renamed, got %+v", fake.gotUpdateFolderReq)
+	}
+	if !strings.Contains(b.String(), "renamed") {
+		t.Errorf("expected confirmation with the new name, got %s", b.String())
+	}
+}
+
+func TestArtifactsUpdateFolderCommandRequiresName(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	artifactsUpdateFolderCmd.Flags().Set("name", "")
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"artifacts", "update-folder", "fld_1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error when --name is omitted")
+	}
+	if fake.gotUpdateFolderReq != nil {
+		t.Error("expected UpdateFolder not to be called")
+	}
+}
+
+// M18-T08: link-task/unlink-task let an agent attach or detach its own
+// output blind - there was no way to see what was currently linked to a
+// task or artifact without going to the GUI.
+func TestArtifactsListTaskLinksCommand(t *testing.T) {
+	fake := &fakeArtifactHandler{
+		links: []*healthv1.TaskArtifactLink{
+			{Id: "link_1", TaskId: "tsk_1", ArtifactId: "art_1", TaskTitle: "Ship the release", ArtifactName: "logo.png"},
+		},
+	}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"artifacts", "list-task-links", "--task", "tsk_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "Ship the release") || !strings.Contains(b.String(), "logo.png") {
+		t.Errorf("expected the link's task and artifact names, got %s", b.String())
+	}
+}
+
+func TestArtifactsListTaskLinksCommandSaysSoWhenEmpty(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	// --task persists on this command across Execute() calls in this test
+	// binary; an earlier test's --task would otherwise leak in alongside
+	// this test's --artifact and trip the "exactly one" check.
+	artifactsListTaskLinksCmd.Flags().Set("task", "")
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"artifacts", "list-task-links", "--artifact", "art_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "No links found") {
+		t.Errorf("expected an empty-state message, got %s", b.String())
+	}
+}
+
+func TestArtifactsListTaskLinksCommandRequiresExactlyOneOfTaskOrArtifact(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	artifactsListTaskLinksCmd.Flags().Set("task", "")
+	artifactsListTaskLinksCmd.Flags().Set("artifact", "")
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"artifacts", "list-task-links"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error when neither --task nor --artifact is given")
+	}
+
+	rootCmd.SetArgs([]string{"artifacts", "list-task-links", "--task", "tsk_1", "--artifact", "art_1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error when both --task and --artifact are given")
+	}
+}
+
+// M18-T08: `list` had no way to browse the Bin - restore/purge could only be
+// used if the id was already known from elsewhere.
+func TestArtifactsListCommandForwardsOnlyDeleted(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	// --folder persists on this command across Execute() calls in this test
+	// binary; an earlier test's --folder would otherwise leak in and take
+	// the ListArtifacts branch instead of ListFolders for the first case.
+	artifactsListCmd.Flags().Set("folder", "")
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"artifacts", "list", "--project", "test-123", "--only-deleted", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.gotListFoldersReq == nil || !fake.gotListFoldersReq.OnlyDeleted {
+		t.Fatalf("expected OnlyDeleted to be forwarded to ListFolders, got %+v", fake.gotListFoldersReq)
+	}
+
+	b.Reset()
+	rootCmd.SetArgs([]string{"artifacts", "list", "--folder", "fld_1", "--only-deleted", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.gotListArtifactsReq == nil || !fake.gotListArtifactsReq.OnlyDeleted {
+		t.Fatalf("expected OnlyDeleted to be forwarded to ListArtifacts, got %+v", fake.gotListArtifactsReq)
 	}
 }
