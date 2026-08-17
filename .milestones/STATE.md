@@ -2,7 +2,7 @@
 active_milestone: M08
 active_task: null
 last_updated: 2026-08-17
-last_commit: 50eb179
+last_commit: f569b55
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,86 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-17 — Fourth out-of-band review/fix round merged: Artifacts feature
+deep review.** Same structure as the Agents round just before it: three
+parallel reviews (backend, GUI, CLI) of the Artifacts feature - `Folder`/
+`Artifact` entities and their content storage, the GUI browser/upload/
+editor, the CLI commands - followed by fixing everything found. Developed
+on `feature/artifacts-feature-review-and-fixes` (branched from `main` post
+the Agents round) as nine commits.
+
+Two genuinely severe bugs surfaced, found independently by the GUI and CLI
+reviews and fixed together since they share the same content/encoding
+contract:
+
+- **GUI (M18-T04)**: every upload was base64-encoded regardless of content
+  type, but the viewer only ever decoded `image/*` to a data URI - opening
+  a `.md`/`.txt`/`.json`/`.csv` artifact showed raw base64 text, and saving
+  an edit from that state permanently overwrote the artifact with the
+  undecoded base64, destroying the original content. `content`'s own
+  docstring in the contract named the exact hazard ("the content type does
+  not reliably say which" encoding a given artifact uses) without a fix
+  ever landing for it. Fixed at the source: only content that cannot
+  survive being read as text (`image/*`, `application/pdf`,
+  `application/octet-stream`) is ever base64-encoded now: everything else
+  is read and sent as plain text, matching what the viewer and editor
+  already assumed. Artifacts already corrupted by the old bug before this
+  fix are not repaired - there is no reliable way to tell a still-encoded
+  body from an artifact that genuinely contains base64-looking text.
+- **CLI (M18-T07)**: `artifacts read` printed `Artifact.content` from
+  `ListArtifacts`, which the backend deliberately leaves empty on a listing
+  (the body can reach ~15MB of base64; a listing needs the name, not the
+  bytes) - always an empty body, for every artifact, against the real
+  server. The bug was fully masked by the command's own test: the fake
+  handler backing it populated `Content` on `ListArtifacts` directly, a
+  divergence from the real contract that nothing caught. Rewritten to call
+  `GetArtifact` + `GetArtifactContent`, the pair the backend built for
+  exactly this case (a deep link with an artifact id and nothing else) -
+  `--folder` and the O(folders × pages) pagination walk it existed to avoid
+  are both gone. `create --file`/the new `update-content --file` had the
+  mirror-image bug (base64-encoding every upload regardless of type) and
+  got the same fix, so the CLI and GUI clients agree on the same encoding
+  contract.
+
+Backend (M18-T01–T03): `getArtifact` 404'd an archived artifact while
+`getArtifactContent` did not, even though both exist to serve the same
+deep-linked viewer - made consistent (dropped the filter, matching
+`getTask`/`getProject`'s convention of not gating a "get one" RPC on
+`deletedAt`). `listFolders`/`listArtifacts` validated by hand instead of
+Zod (same class as M17-T02's Agents fix); `Folder`/`Artifact` never exposed
+`createdAt` on the wire despite the handler already computing it (same
+"computed, then silently dropped" bug M17-T02 fixed for `AgentRole`/
+`Agent`). No unique constraint existed on folder name (per project+parent)
+or artifact name (per folder) - added, both dialects, verified against live
+MySQL, with the same pre-check/DB-conflict-fallback pattern used since
+`labels.handler.ts`. MySQL's `content` column was widened from `mediumtext`
+to `longtext`: the Zod char cap (15,000,000) is safe for base64 (ASCII,
+1 byte/char) but could exceed `mediumtext`'s 16,777,215-*byte* cap for
+large multi-byte UTF-8 text.
+
+CLI (M18-T08–T09) also gained three previously-RPC-only-reachable commands
+(`update-content`, `update-folder`, `list-task-links`) and `--only-deleted`
+on `list`; `delete`/`restore`/`purge` for both artifacts and folders (plus
+`unlink-task`) now honor `--json`, the same gap just closed for Agents'
+equivalent commands in M17-T03.
+
+GUI (M18-T05–T06) also fixed: six of the view's seven mutations never
+rendered their error (only `updateContentMutation` did); the subfolder
+create form read the wrong mutation's pending state, allowing a
+double-submit; nothing reset the folder/artifact selection on an active
+project/org switch, leaving the main pane showing stale cross-scope data;
+`description` (a real `Artifact` field) had no GUI control to set it on
+either creation path and was never displayed; the folder-rename input and
+content-edit textarea had no accessible name; the upload preview's object
+URL was never revoked.
+
+Like the three rounds before it, not run through the formal milestone
+process (no `MILESTONE.md`, non-`mNN` branch) - the same deliberate
+lighter-weight treatment for a conversational "review and fix" request.
+`moon check --all` (27/27) clean at every commit; backend and GUI coverage
+held at their established near-100%/95%+ gates throughout, including on
+every newly-added code path specifically, not just the aggregate.
 
 **2026-08-17 — Third out-of-band review/fix round merged: Agents feature deep
 review.** A deep review of the Agents feature — `Agent`/`AgentRole` entities,
