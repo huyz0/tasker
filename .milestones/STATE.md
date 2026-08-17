@@ -2,7 +2,7 @@
 active_milestone: M08
 active_task: null
 last_updated: 2026-08-17
-last_commit: db5f9e2
+last_commit: 50eb179
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,81 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-17 — Third out-of-band review/fix round merged: Agents feature deep
+review.** A deep review of the Agents feature — `Agent`/`AgentRole` entities,
+agent tokens' surrounding CRUD (not the token auth/authz system itself,
+already covered by M14), the Agents GUI screen and `AgentTokens` panel, and
+the CLI's `agents`/`auth token` commands — via three parallel read-only
+reviews (backend, GUI, CLI), followed by fixing everything scoped in.
+Developed on `feature/agents-feature-review-and-fixes` (branched from `main`
+post the Project-model round) as five commits:
+
+- **Security**: `updateAgent` never checked that a new `agentRoleId` belonged
+  to the same org as the agent being updated — `createAgent` already made
+  this check (ADR-0007), `updateAgent` was a second, unguarded path to the
+  same cross-tenant scenario. Fixed with the same NotFound-not-
+  PermissionDenied reasoning as `createAgent`; regression test reverted and
+  confirmed-failing before the fix, confirmed-passing after.
+- **Backend consistency**: `listAgents` validated its request by hand instead
+  of a Zod schema (now `ListAgentsSchema`, matching every other RPC in the
+  file); `agent_roles` had no unique constraint on `(orgId, name)` (added,
+  both dialects, verified against live MySQL — no pre-existing duplicates to
+  break the migration); `AgentRole`/`Agent` never exposed `createdAt` on the
+  wire despite the handler already computing it and then silently dropping it
+  before the response left the function (added `createdAt` field 6 to both
+  models in `main.tsp` and its hand-maintained proto twin, regenerated via
+  `moon run shared-contract:compile`, fixed the handler to compute the
+  timestamp once and use it for both the DB write and the response).
+- **CLI**: added `agents update` / `agents update-role` (the RPCs existed,
+  no command did); `agents delete/restore/purge` now honor `--json` (the
+  same gap exists in `projects.go`/`teams.go`'s archive/restore/purge — a
+  repo-wide pattern, left as-is, out of scope for an agents-only review);
+  `auth token revoke` gained `--json` (had none); removed a redundant local
+  `--json` flag on two token commands that shadowed the persistent one for no
+  reason; `agents list` gained `--only-deleted`, matching `teams list`'s
+  existing flag of the same name and purpose.
+- **GUI**: "Total Agents" now reads the server-computed total instead of the
+  loaded-page count; removed the "Agent State Machine / Visualizer" panel — a
+  permanently-static `h-[400px]` stub reading "React Flow Component ...(To be
+  implemented fully with reactflow)", never gated behind `ListState`, never
+  true — this session's established pattern of removing a fake placeholder
+  rather than dressing it up further; added client-side JSON validation to
+  the capabilities field on both the create-role and edit-role forms (an
+  unenforced opaque JSON string on the wire, previously validated nowhere);
+  `AgentTokens` now shows each token's `lastUsedAt` (on the contract since
+  ADR-0008, never rendered) and enforces the 365-day expiry maximum
+  client-side (was stated in helper text, only enforced server-side).
+- **New surface, not a new endpoint**: added an "Agent Activity" panel to the
+  Agents screen (filling the layout slot the removed visualizer used to
+  occupy) that reuses the Dashboard's `getDashboard` RPC and its
+  already-computed per-agent `lastUsedAt`/`openTaskCount` rather than adding
+  a second endpoint duplicating the same `api_tokens`/`task_assignments`
+  join — same 8-quietest-first cap as the Dashboard's own fleet panel, with a
+  note pointing at the Dashboard when an org has more agents than the panel
+  shows.
+
+**Deliberately deferred, not silently dropped** (found during the review,
+scoped out of this round as lower-value or larger than an in-place fix):
+`agentRole` soft-delete/lifecycle (roles can be edited and used but never
+archived); `updatedAt` tracking on either table; optimistic concurrency on
+`updateAgentRole` (last-write-wins, same as most of the product pre-M14);
+the `agent:write` vs `agent:admin` permission-tier split (create needs
+`write`, update needs `admin` — asymmetric, possibly intentional, not
+verified either way); an org-active check on `createAgent`/`createAgentRole`
+(an archived org can apparently still gain new agents/roles); agent
+kind/provider/model structured metadata; `getAgent`/`getAgentRole`
+single-fetch RPCs (list-only today); a pause/deactivate lifecycle state
+between active and archived; avatar/icon fields; and restructuring CLI token
+command discoverability (e.g. aliasing `agents token` to `auth token`).
+
+Like the prior two out-of-band rounds, not run through the formal milestone
+process (no `MILESTONE.md`, non-`mNN` branch) — a deliberate lighter-weight
+treatment for a conversational "review and fix" request. `moon check --all`
+(27/27) clean at every commit; backend and GUI coverage held at their
+established near-100%/95%+ gates throughout, including on the newly-added
+code paths specifically (not just the aggregate). Merged to `main`
+(`git merge --no-ff`) and pushed.
 
 **2026-08-17 — Second out-of-band GUI/backend follow-up merged: Project
 model usability.** A review of the `Project` entity itself (not just its
