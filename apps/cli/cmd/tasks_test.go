@@ -315,6 +315,7 @@ func TestTasksReviewerCommands(t *testing.T) {
 type fakeTaskListHandler struct {
 	v1connect.UnimplementedTaskServiceHandler
 	gotPage *healthv1.PageRequest
+	gotReq  *healthv1.ListTasksRequest
 }
 
 func (f *fakeTaskListHandler) ListTasks(
@@ -322,6 +323,7 @@ func (f *fakeTaskListHandler) ListTasks(
 	req *connect.Request[healthv1.ListTasksRequest],
 ) (*connect.Response[healthv1.ListTasksResponse], error) {
 	f.gotPage = req.Msg.Page
+	f.gotReq = req.Msg
 	return connect.NewResponse(&healthv1.ListTasksResponse{}), nil
 }
 
@@ -352,5 +354,244 @@ func TestTasksListCmdForwardsCursorAndLimit(t *testing.T) {
 	}
 	if fake.gotPage.Limit != 10 {
 		t.Errorf("expected limit to be forwarded, got %d", fake.gotPage.Limit)
+	}
+}
+
+// M19-T07: --only-deleted, --status, and --assignee-filter were never wired
+// through to ListTasksRequest, despite the backend supporting all three
+// (M14-T05, and the bin's own onlyDeleted) - there was no way from the CLI
+// to page the bin, filter to one board column, or find claimable/own work.
+func TestTasksListCmdForwardsFacetFlags(t *testing.T) {
+	fake := &fakeTaskListHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{
+		"tasks", "list", "--project", "proj-1",
+		"--only-deleted",
+		"--status", "in-progress",
+		"--assignee-filter", "unassigned",
+		"--json",
+	})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks list failed: %v", err)
+	}
+
+	if fake.gotReq == nil {
+		t.Fatal("expected the backend to receive a ListTasks request")
+	}
+	if !fake.gotReq.OnlyDeleted {
+		t.Error("expected --only-deleted to be forwarded as true")
+	}
+	if fake.gotReq.Status != "in-progress" {
+		t.Errorf("expected status in-progress to be forwarded, got %q", fake.gotReq.Status)
+	}
+	if fake.gotReq.AssigneeFilter != "unassigned" {
+		t.Errorf("expected assigneeFilter unassigned to be forwarded, got %q", fake.gotReq.AssigneeFilter)
+	}
+}
+
+type fakeTaskGetHandler struct {
+	v1connect.UnimplementedTaskServiceHandler
+	gotReq *healthv1.GetTaskRequest
+}
+
+func (f *fakeTaskGetHandler) GetTask(
+	_ context.Context,
+	req *connect.Request[healthv1.GetTaskRequest],
+) (*connect.Response[healthv1.GetTaskResponse], error) {
+	f.gotReq = req.Msg
+	return connect.NewResponse(&healthv1.GetTaskResponse{
+		Task: &healthv1.Task{
+			Id:          req.Msg.TaskId,
+			DisplayId:   "T-1",
+			Title:       "Fix the bug",
+			Status:      "todo",
+			Description: "A longer body only get returns",
+		},
+	}), nil
+}
+
+// M19-T07: `tasks get` - reading a single task with its full description
+// (listTasks deliberately projects description away) - had no CLI command
+// at all.
+func TestTasksGetCommand(t *testing.T) {
+	handler := &fakeTaskGetHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(handler))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "get", "task-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks get failed: %v", err)
+	}
+
+	if handler.gotReq == nil || handler.gotReq.TaskId != "task-1" {
+		t.Fatal("expected the backend to receive a GetTask request for task-1")
+	}
+
+	output := b.String()
+	if !strings.Contains(output, "Fix the bug") {
+		t.Errorf("expected output to contain the task's title, got %s", output)
+	}
+	if !strings.Contains(output, "A longer body only get returns") {
+		t.Errorf("expected output to contain the task's description, got %s", output)
+	}
+}
+
+type fakeTaskUpdateHandler struct {
+	v1connect.UnimplementedTaskServiceHandler
+	gotReq *healthv1.UpdateTaskRequest
+}
+
+func (f *fakeTaskUpdateHandler) UpdateTask(
+	_ context.Context,
+	req *connect.Request[healthv1.UpdateTaskRequest],
+) (*connect.Response[healthv1.UpdateTaskResponse], error) {
+	f.gotReq = req.Msg
+	task := &healthv1.Task{Id: req.Msg.TaskId, DisplayId: "T-1", Title: "Original", Status: "todo"}
+	if req.Msg.Title != nil {
+		task.Title = *req.Msg.Title
+	}
+	if req.Msg.Description != nil {
+		task.Description = *req.Msg.Description
+	}
+	if req.Msg.TaskTypeId != nil {
+		task.TaskTypeId = *req.Msg.TaskTypeId
+	}
+	return connect.NewResponse(&healthv1.UpdateTaskResponse{Task: task}), nil
+}
+
+// M19-T07: `tasks update` had no CLI command at all. Only flags the caller
+// actually passes are set on the wire - proto3 optional (M14-T01's lesson):
+// an omitted --description must stay distinct from an explicitly cleared
+// one, so a caller who only wants to rename a task doesn't blank its
+// description as a side effect.
+func TestTasksUpdateCommand(t *testing.T) {
+	handler := &fakeTaskUpdateHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(handler))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "update", "task-1", "--title", "Renamed", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks update failed: %v", err)
+	}
+
+	if handler.gotReq == nil {
+		t.Fatal("expected the backend to receive an UpdateTask request")
+	}
+	if handler.gotReq.Title == nil || *handler.gotReq.Title != "Renamed" {
+		t.Fatalf("expected title Renamed to be sent, got %v", handler.gotReq.Title)
+	}
+	if handler.gotReq.Description != nil {
+		t.Errorf("expected description to be left unset when --description was not passed, got %v", handler.gotReq.Description)
+	}
+	if handler.gotReq.TaskTypeId != nil {
+		t.Errorf("expected taskTypeId to be left unset when --task-type was not passed, got %v", handler.gotReq.TaskTypeId)
+	}
+	if !strings.Contains(b.String(), "task-1") {
+		t.Errorf("expected output to contain the updated task's id, got %s", b.String())
+	}
+}
+
+func TestTasksUpdateCommandCanClearDescription(t *testing.T) {
+	handler := &fakeTaskUpdateHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(handler))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "update", "task-1", "--description", "", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks update failed: %v", err)
+	}
+
+	if handler.gotReq == nil || handler.gotReq.Description == nil || *handler.gotReq.Description != "" {
+		t.Fatalf("expected an explicit empty description to be sent, got %v", handler.gotReq.Description)
+	}
+}
+
+type fakeTaskUnassignHandler struct {
+	v1connect.UnimplementedTaskServiceHandler
+	gotReq *healthv1.UnassignTaskRequest
+}
+
+func (f *fakeTaskUnassignHandler) UnassignTask(
+	_ context.Context,
+	req *connect.Request[healthv1.UnassignTaskRequest],
+) (*connect.Response[healthv1.UnassignTaskResponse], error) {
+	f.gotReq = req.Msg
+	return connect.NewResponse(&healthv1.UnassignTaskResponse{Success: true}), nil
+}
+
+// M19-T07: `tasks unassign` had no CLI command at all, though `tasks assign`
+// did - a task assigned from the CLI could only be unassigned by hand-rolling
+// a raw ConnectRPC call, or from the GUI.
+func TestTasksUnassignCommand(t *testing.T) {
+	handler := &fakeTaskUnassignHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(handler))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "unassign", "task-1", "--agent", "agent-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks unassign failed: %v", err)
+	}
+
+	if handler.gotReq == nil || handler.gotReq.AgentId != "agent-1" {
+		t.Fatal("expected the backend to receive an UnassignTask request naming agent-1")
+	}
+	if !strings.Contains(b.String(), "\"success\":true") {
+		t.Errorf("expected output to report success, got %s", b.String())
+	}
+}
+
+func TestTasksUnassignCommandRequiresAgentOrUser(t *testing.T) {
+	// tasksUnassignCmd is a package-level singleton, so a flag value set by
+	// an earlier test (TestTasksUnassignCommand's --agent agent-1) survives
+	// into this one unless cleared explicitly.
+	t.Cleanup(func() {
+		_ = tasksUnassignCmd.Flags().Set("agent", "")
+		_ = tasksUnassignCmd.Flags().Set("user", "")
+	})
+	_ = tasksUnassignCmd.Flags().Set("agent", "")
+	_ = tasksUnassignCmd.Flags().Set("user", "")
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"tasks", "unassign", "task-1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected tasks unassign to fail without --agent or --user")
+	}
+	if !strings.Contains(b.String(), "one of --agent or --user is required") {
+		t.Errorf("expected the required-flag error to be reported, got %s", b.String())
 	}
 }

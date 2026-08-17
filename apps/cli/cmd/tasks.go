@@ -26,6 +26,9 @@ var tasksListCmd = &cobra.Command{
 		sort, _ := cmd.Flags().GetString("sort")
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
+		onlyDeleted, _ := cmd.Flags().GetBool("only-deleted")
+		status, _ := cmd.Flags().GetString("status")
+		assigneeFilter, _ := cmd.Flags().GetString("assignee-filter")
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
 		}
@@ -37,8 +40,11 @@ var tasksListCmd = &cobra.Command{
 		client := backend.NewTaskServiceClient()
 
 		req := connect.NewRequest(&healthv1.ListTasksRequest{
-			ProjectId: projectID,
-			Page:      &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
+			ProjectId:      projectID,
+			Page:           &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
+			OnlyDeleted:    onlyDeleted,
+			Status:         status,
+			AssigneeFilter: assigneeFilter,
 		})
 
 		res, err := client.ListTasks(context.Background(), req)
@@ -55,6 +61,77 @@ var tasksListCmd = &cobra.Command{
 			for _, task := range res.Msg.Tasks {
 				cmd.Printf("- %s [%s]: %s (id: %s)\n", task.DisplayId, task.Status, task.Title, task.Id)
 			}
+		}
+		return nil
+	},
+}
+
+var tasksGetCmd = &cobra.Command{
+	Use:   "get [task_id]",
+	Short: "Get a single task, including its description",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
+
+		client := backend.NewTaskServiceClient()
+		res, err := client.GetTask(context.Background(), connect.NewRequest(&healthv1.GetTaskRequest{
+			TaskId: args[0],
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to get task: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Task)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("%s [%s]: %s (id: %s)\n", res.Msg.Task.DisplayId, res.Msg.Task.Status, res.Msg.Task.Title, res.Msg.Task.Id)
+			if res.Msg.Task.Description != "" {
+				cmd.Printf("\n%s\n", res.Msg.Task.Description)
+			}
+		}
+		return nil
+	},
+}
+
+var tasksUpdateCmd = &cobra.Command{
+	Use:   "update [task_id]",
+	Short: "Update a task's title, description, or task type",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
+
+		req := &healthv1.UpdateTaskRequest{TaskId: args[0]}
+		// Fields are real proto3 `optional` (M14-T01's lesson: omitted must stay
+		// distinct from explicitly cleared to "") - only set the pointer for a
+		// flag the caller actually passed, so an unset --description leaves the
+		// task's existing description untouched instead of blanking it.
+		if cmd.Flags().Changed("title") {
+			title, _ := cmd.Flags().GetString("title")
+			req.Title = &title
+		}
+		if cmd.Flags().Changed("description") {
+			description, _ := cmd.Flags().GetString("description")
+			req.Description = &description
+		}
+		if cmd.Flags().Changed("task-type") {
+			taskType, _ := cmd.Flags().GetString("task-type")
+			req.TaskTypeId = &taskType
+		}
+
+		client := backend.NewTaskServiceClient()
+		res, err := client.UpdateTask(context.Background(), connect.NewRequest(req))
+		if err != nil {
+			cmd.PrintErrf("Failed to update task: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Task)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Task %s updated\n", res.Msg.Task.Id)
 		}
 		return nil
 	},
@@ -170,6 +247,40 @@ var tasksAssignCmd = &cobra.Command{
 			cmd.Println(string(jsonString))
 		} else {
 			cmd.Printf("Task %s assigned\n", args[0])
+		}
+		return nil
+	},
+}
+
+var tasksUnassignCmd = &cobra.Command{
+	Use:   "unassign [task_id]",
+	Short: "Remove an agent or user's assignment from a task",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		agentID, _ := cmd.Flags().GetString("agent")
+		userID, _ := cmd.Flags().GetString("user")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if agentID == "" && userID == "" {
+			cmd.Println("Error: one of --agent or --user is required.")
+			return fmt.Errorf("one of --agent or --user is required")
+		}
+
+		client := backend.NewTaskServiceClient()
+		res, err := client.UnassignTask(context.Background(), connect.NewRequest(&healthv1.UnassignTaskRequest{
+			TaskId:  args[0],
+			AgentId: agentID,
+			UserId:  userID,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to unassign task: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "task_id": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Task %s unassigned\n", args[0])
 		}
 		return nil
 	},
@@ -388,9 +499,12 @@ var tasksPurgeCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(tasksCmd)
 	tasksCmd.AddCommand(tasksListCmd)
+	tasksCmd.AddCommand(tasksGetCmd)
 	tasksCmd.AddCommand(tasksCreateCmd)
+	tasksCmd.AddCommand(tasksUpdateCmd)
 	tasksCmd.AddCommand(tasksClaimCmd)
 	tasksCmd.AddCommand(tasksAssignCmd)
+	tasksCmd.AddCommand(tasksUnassignCmd)
 	tasksCmd.AddCommand(tasksReviewerAddCmd)
 	tasksCmd.AddCommand(tasksReviewerRemoveCmd)
 	tasksCmd.AddCommand(tasksReviewersCmd)
@@ -408,6 +522,11 @@ func init() {
 	tasksClaimCmd.Flags().String("idempotency-key", "", "Optional key: replaying the same key from the same principal returns the original claim instead of erroring on an already-claimed task")
 	tasksAssignCmd.Flags().String("agent", "", "Agent ID to assign")
 	tasksAssignCmd.Flags().String("user", "", "User ID to assign")
+	tasksUnassignCmd.Flags().String("agent", "", "Agent ID to unassign")
+	tasksUnassignCmd.Flags().String("user", "", "User ID to unassign")
+	tasksUpdateCmd.Flags().String("title", "", "New title")
+	tasksUpdateCmd.Flags().String("description", "", "New description (pass an empty string to clear it)")
+	tasksUpdateCmd.Flags().String("task-type", "", "New task type ID")
 	tasksReviewerAddCmd.Flags().String("user", "", "User ID to add as reviewer")
 	tasksReviewerRemoveCmd.Flags().String("user", "", "User ID to remove as reviewer")
 	tasksUpdateStatusCmd.Flags().String("status", "", "The new status (todo, in-progress, done)")
@@ -416,4 +535,7 @@ func init() {
 	tasksListCmd.Flags().StringP("sort", "s", "", "Sort as \"title\"/\"status\" or \"title:desc\" (works with --cursor for paging)")
 	tasksListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	tasksListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	tasksListCmd.Flags().Bool("only-deleted", false, "List only binned (soft-deleted) tasks, instead of active ones")
+	tasksListCmd.Flags().String("status", "", "Filter to one status column (e.g. todo, in-progress, done, or a custom task-type status)")
+	tasksListCmd.Flags().String("assignee-filter", "", "\"unassigned\" for claimable work, or \"me\" to resolve to the calling principal")
 }
