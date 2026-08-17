@@ -69,6 +69,7 @@ var tasksCreateCmd = &cobra.Command{
 		description, _ := cmd.Flags().GetString("description")
 		projectID, _ := cmd.Flags().GetString("project")
 		taskTypeID, _ := cmd.Flags().GetString("task-type")
+		idempotencyKey, _ := cmd.Flags().GetString("idempotency-key")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
@@ -80,11 +81,12 @@ var tasksCreateCmd = &cobra.Command{
 
 		client := backend.NewTaskServiceClient()
 		res, err := client.CreateTask(context.Background(), connect.NewRequest(&healthv1.CreateTaskRequest{
-			ProjectId:   projectID,
-			Title:       title,
-			Status:      status,
-			Description: description,
-			TaskTypeId:  taskTypeID,
+			ProjectId:      projectID,
+			Title:          title,
+			Status:         status,
+			Description:    description,
+			TaskTypeId:     taskTypeID,
+			IdempotencyKey: idempotencyKey,
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to create task: %v\n", err)
@@ -96,6 +98,38 @@ var tasksCreateCmd = &cobra.Command{
 			cmd.Println(string(jsonString))
 		} else {
 			cmd.Printf("Task created: %s [%s] (id: %s)\n", res.Msg.Task.Title, res.Msg.Task.DisplayId, res.Msg.Task.Id)
+		}
+		return nil
+	},
+}
+
+// M19-T06: the M14-T06 headline agent-self-service feature - atomically
+// claim an unassigned task for the calling principal - had no CLI surface
+// at all despite the RPC existing since M14. An agent could only reach it
+// by hand-rolling a raw ConnectRPC call.
+var tasksClaimCmd = &cobra.Command{
+	Use:   "claim [task_id]",
+	Short: "Atomically claim an unassigned task for the calling principal (agent self-service)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		idempotencyKey, _ := cmd.Flags().GetString("idempotency-key")
+		isJson, _ := cmd.Flags().GetBool("json")
+
+		client := backend.NewTaskServiceClient()
+		res, err := client.ClaimTask(context.Background(), connect.NewRequest(&healthv1.ClaimTaskRequest{
+			TaskId:         args[0],
+			IdempotencyKey: idempotencyKey,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to claim task: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Task)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Task %s claimed\n", res.Msg.Task.Id)
 		}
 		return nil
 	},
@@ -355,6 +389,7 @@ func init() {
 	rootCmd.AddCommand(tasksCmd)
 	tasksCmd.AddCommand(tasksListCmd)
 	tasksCmd.AddCommand(tasksCreateCmd)
+	tasksCmd.AddCommand(tasksClaimCmd)
 	tasksCmd.AddCommand(tasksAssignCmd)
 	tasksCmd.AddCommand(tasksReviewerAddCmd)
 	tasksCmd.AddCommand(tasksReviewerRemoveCmd)
@@ -369,6 +404,8 @@ func init() {
 	tasksCreateCmd.Flags().String("description", "", "Task description")
 	tasksCreateCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	tasksCreateCmd.Flags().String("task-type", "", "Optional task type ID; enforces that type's status enum/transitions if configured")
+	tasksCreateCmd.Flags().String("idempotency-key", "", "Optional key: replaying the same key from the same principal returns the original task instead of creating a second one")
+	tasksClaimCmd.Flags().String("idempotency-key", "", "Optional key: replaying the same key from the same principal returns the original claim instead of erroring on an already-claimed task")
 	tasksAssignCmd.Flags().String("agent", "", "Agent ID to assign")
 	tasksAssignCmd.Flags().String("user", "", "User ID to assign")
 	tasksReviewerAddCmd.Flags().String("user", "", "User ID to add as reviewer")

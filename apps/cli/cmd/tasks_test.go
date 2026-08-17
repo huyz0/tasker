@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -55,6 +56,7 @@ func TestTasksCreateCommand(t *testing.T) {
 		"--status", "todo",
 		"--description", "a task created by a unit test",
 		"--task-type", "tt-1",
+		"--idempotency-key", "idem-1",
 		"--json",
 	})
 	if err := rootCmd.Execute(); err != nil {
@@ -76,6 +78,12 @@ func TestTasksCreateCommand(t *testing.T) {
 	if handler.gotReq.TaskTypeId != "tt-1" {
 		t.Errorf("expected task type tt-1 to be sent, got %q", handler.gotReq.TaskTypeId)
 	}
+	// M19-T06: --idempotency-key had no CLI flag at all, despite the field
+	// existing on the wire since M14-T07 - a retried `tasks create` from a
+	// script or an agent could only double the project's task counter.
+	if handler.gotReq.IdempotencyKey != "idem-1" {
+		t.Errorf("expected idempotency key idem-1 to be sent, got %q", handler.gotReq.IdempotencyKey)
+	}
 
 	output := b.String()
 	if !strings.Contains(output, "task_1") {
@@ -83,6 +91,101 @@ func TestTasksCreateCommand(t *testing.T) {
 	}
 	if !strings.Contains(output, "T-1") {
 		t.Errorf("expected output to contain the created task's display id, got %s", output)
+	}
+}
+
+type fakeTaskClaimHandler struct {
+	v1connect.UnimplementedTaskServiceHandler
+	gotReq *healthv1.ClaimTaskRequest
+}
+
+func (f *fakeTaskClaimHandler) ClaimTask(
+	_ context.Context,
+	req *connect.Request[healthv1.ClaimTaskRequest],
+) (*connect.Response[healthv1.ClaimTaskResponse], error) {
+	f.gotReq = req.Msg
+	return connect.NewResponse(&healthv1.ClaimTaskResponse{
+		Task: &healthv1.Task{
+			Id:        req.Msg.TaskId,
+			DisplayId: "T-9",
+			Status:    "in-progress",
+		},
+	}), nil
+}
+
+// M19-T06: `tasks claim` - the M14-T06 headline agent-self-service feature
+// (atomically claim an unassigned task) - had no CLI surface at all despite
+// the RPC existing since M14. An agent could only reach it with a
+// hand-rolled ConnectRPC call.
+func TestTasksClaimCommand(t *testing.T) {
+	handler := &fakeTaskClaimHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(handler))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{
+		"tasks", "claim", "task-1",
+		"--idempotency-key", "idem-claim-1",
+		"--json",
+	})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("expected task claim to succeed, got error: %v", err)
+	}
+
+	if handler.gotReq == nil {
+		t.Fatal("expected the backend to receive a ClaimTask request")
+	}
+	if handler.gotReq.TaskId != "task-1" {
+		t.Errorf("expected task id task-1 to be sent, got %q", handler.gotReq.TaskId)
+	}
+	if handler.gotReq.IdempotencyKey != "idem-claim-1" {
+		t.Errorf("expected idempotency key idem-claim-1 to be sent, got %q", handler.gotReq.IdempotencyKey)
+	}
+
+	output := b.String()
+	if !strings.Contains(output, "task-1") {
+		t.Errorf("expected output to contain the claimed task's id, got %s", output)
+	}
+}
+
+// The failed-claim path (task already assigned, or a caller who has never
+// claimed anything) is a plain RPC error - no fake handler override needed,
+// the base fake just needs to actually return one instead of the zero value.
+type fakeTaskClaimFailureHandler struct {
+	v1connect.UnimplementedTaskServiceHandler
+}
+
+func (f *fakeTaskClaimFailureHandler) ClaimTask(
+	_ context.Context,
+	_ *connect.Request[healthv1.ClaimTaskRequest],
+) (*connect.Response[healthv1.ClaimTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("task already claimed"))
+}
+
+func TestTasksClaimCommandReportsFailure(t *testing.T) {
+	handler := &fakeTaskClaimFailureHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(handler))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"tasks", "claim", "task-1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected task claim to fail when the task is already assigned")
+	}
+
+	if !strings.Contains(b.String(), "Failed to claim task") {
+		t.Errorf("expected the failure to be reported, got %s", b.String())
 	}
 }
 
