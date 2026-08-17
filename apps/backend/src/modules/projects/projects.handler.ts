@@ -80,9 +80,17 @@ const UpdateProjectSchema = z.object({
 
 const UpdateTemplateSchema = z.object({
   id: z.string().min(1, "id is required"),
-  name: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(256).optional()),
-  description: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(1024).optional()),
-  rootTaskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().nullable().optional()),
+  // M20-T03: real proto3 presence (UpdateProjectTemplateRequest already
+  // declares all three fields `optional`), not the "" -> unset squash that
+  // used to sit here - unset meant "don't touch", but so did an *explicit*
+  // empty description or root task type, which made both permanently
+  // unclearable: the handler echoed back the stale value as if the save
+  // had worked. `name` keeps a floor of 1: unlike description/
+  // rootTaskTypeId, an empty name isn't a meaningful "clear", it's just
+  // invalid input, same as CreateTemplateSchema already requires on create.
+  name: z.string().min(1, "name cannot be empty").max(256).optional(),
+  description: z.string().max(1024).optional(),
+  rootTaskTypeId: z.string().nullable().optional(),
 });
 
 const ArchiveProjectSchema = z.object({
@@ -339,6 +347,16 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
         await db.delete(taskTypes).where(eq((taskTypes as any).id, taskType.id));
       }
 
+      // M20-T03: a project-scoped grant (M10-T10) has no delete/archive
+      // endpoint of its own either - revokeGrant/listGrants both resolve
+      // their scope's org via getProjectOrgId, which 404s once the project
+      // is gone. Left behind, the row becomes permanently unrevokable and
+      // unlistable through any RPC: a stale authorization entry nothing can
+      // ever reach again. Cleared here the same way project-scoped task
+      // types are, just above.
+      const grants = isStandalone ? schemaSqlite.grants : schemaMysql.grants;
+      await db.delete(grants).where(and(eq((grants as any).scopeType, "project"), eq((grants as any).scopeId, parsed.projectId)));
+
       await db.delete(ps).where(eq((ps as any).id, parsed.projectId));
 
       publishDomainEvent(nc, "domain.project.purged", { projectId: parsed.projectId });
@@ -376,6 +394,13 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
         if (typeRows[0].orgId !== parsed.orgId) {
           throw new ConnectError("root task type belongs to a different organization", Code.InvalidArgument);
         }
+        // M20-T03: a template is org-wide, so a project-scoped task type
+        // accepted as its root leaves purgeProject nowhere safe to purge
+        // that one project without deleting the type out from under every
+        // template pointing at it - see updateTemplate's identical check.
+        if (typeRows[0].projectId) {
+          throw new ConnectError("root task type must be org-wide, not scoped to a project", Code.InvalidArgument);
+        }
       }
 
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
@@ -411,12 +436,23 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
         if (typeRows[0].orgId !== result[0].orgId) {
           throw new ConnectError("root task type belongs to a different organization", Code.InvalidArgument);
         }
+        // M20-T03: a template is org-wide by definition (it has no
+        // projectId of its own), so a project-scoped task type accepted as
+        // its root is a reference purgeProject cannot ever safely clear -
+        // purging that one project deletes the task type out from under
+        // every template pointing at it, dangling on SQLite and an FK
+        // failure on MySQL. Mirrors createTemplate's identical check below.
+        if (typeRows[0].projectId) {
+          throw new ConnectError("root task type must be org-wide, not scoped to a project", Code.InvalidArgument);
+        }
       }
 
       const updates: Record<string, unknown> = {};
       if (parsed.name !== undefined) updates.name = parsed.name;
       if (parsed.description !== undefined) updates.description = parsed.description;
-      if (parsed.rootTaskTypeId !== undefined) updates.rootTaskTypeId = parsed.rootTaskTypeId;
+      // "" and null both mean "clear it" - store null either way, matching
+      // createTemplate's own `parsed.rootTaskTypeId || null` normalization.
+      if (parsed.rootTaskTypeId !== undefined) updates.rootTaskTypeId = parsed.rootTaskTypeId || null;
 
       await db.update(pts).set(updates).where(eq((pts as any).id, parsed.id));
 

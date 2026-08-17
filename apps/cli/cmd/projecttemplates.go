@@ -34,12 +34,15 @@ var projectTemplatesCreateCmd = &cobra.Command{
 		}
 
 		client := backend.NewProjectTemplateServiceClient()
-		res, err := client.CreateTemplate(context.Background(), connect.NewRequest(&healthv1.CreateProjectTemplateRequest{
-			OrgId:          orgID,
-			Name:           name,
-			Description:    description,
-			RootTaskTypeId: rootTaskTypeID,
-		}))
+		req := &healthv1.CreateProjectTemplateRequest{
+			OrgId:       orgID,
+			Name:        name,
+			Description: description,
+		}
+		if rootTaskTypeID != "" {
+			req.RootTaskTypeId = &rootTaskTypeID
+		}
+		res, err := client.CreateTemplate(context.Background(), connect.NewRequest(req))
 		if err != nil {
 			cmd.PrintErrf("Failed to create project template: %v\n", err)
 			return err
@@ -74,8 +77,8 @@ var projectTemplatesGetCmd = &cobra.Command{
 			cmd.Println(string(jsonString))
 		} else {
 			cmd.Printf("Template: %s (id: %s)\n", res.Msg.Template.Name, res.Msg.Template.Id)
-			if res.Msg.Template.RootTaskTypeId != "" {
-				cmd.Printf("Root task type: %s\n", res.Msg.Template.RootTaskTypeId)
+			if res.Msg.Template.RootTaskTypeId != nil && *res.Msg.Template.RootTaskTypeId != "" {
+				cmd.Printf("Root task type: %s\n", *res.Msg.Template.RootTaskTypeId)
 			}
 		}
 		return nil

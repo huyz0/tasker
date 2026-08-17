@@ -153,6 +153,81 @@ describe("Projects Handler Integration Logic", () => {
     const otherTypeResp = await ttHandler.createTaskType({ orgId: otherOrgId, name: "Other Root Type" }, makeAuthContext(otherUserId));
 
     await expect(ptHandler.createTemplate({ orgId: "org-test", name: "Cross-org Root", rootTaskTypeId: otherTypeResp.taskType.id }, ctx)).rejects.toThrow();
+
+    // M20-T03: a template is org-wide by definition - a project-scoped task
+    // type has no project of its own to survive purgeProject with, so it
+    // must be rejected as a root, not silently accepted and left dangling
+    // the first time that project is purged.
+    const tResp2 = await ptHandler.createTemplate({ orgId: "org-test", name: "For Scoped Root Test" }, ctx);
+    const pResp2 = await pHandler.createProject({ orgId: "org-test", templateId: tResp2.template.id, name: "Scoped Root Project", ownerId: "user-test" }, ctx);
+    const scopedTypeResp = await ttHandler.createTaskType({ orgId: "org-test", projectId: pResp2.project.id, name: "Scoped Type" }, ctx);
+    await expect(
+      ptHandler.createTemplate({ orgId: "org-test", name: "Bad Scoped Root", rootTaskTypeId: scopedTypeResp.taskType.id }, ctx)
+    ).rejects.toThrow();
+  });
+
+  // M20-T03: updateTemplate had zero test coverage before this - the only
+  // references anywhere in the backend were denial tests that never reached
+  // the function body. This also covers the fix itself: description/
+  // rootTaskTypeId used to squash "" to "leave untouched", making both
+  // permanently unclearable.
+  test("updateTemplate sets, clears, and leaves fields untouched, and validates rootTaskTypeId", async () => {
+    const ttHandler = createTasksHandler(db, mockNc);
+    const typeResp = await ttHandler.createTaskType({ orgId: "org-test", name: "Update Root Type" }, ctx);
+
+    const created = await ptHandler.createTemplate({
+      orgId: "org-test", name: "Update Me", description: "Original description", rootTaskTypeId: typeResp.taskType.id,
+    }, ctx);
+
+    // Renaming alone must not touch description or rootTaskTypeId - unset
+    // means "don't touch", the same distinction UpdateProjectSchema already
+    // enforces for projects.
+    const renamedOnly = await ptHandler.updateTemplate({ id: created.template.id, name: "Renamed" }, ctx);
+    expect(renamedOnly.template.name).toBe("Renamed");
+    expect(renamedOnly.template.description).toBe("Original description");
+    expect(renamedOnly.template.rootTaskTypeId).toBe(typeResp.taskType.id);
+    expect(typeof renamedOnly.template.createdAt).toBe("string");
+
+    // An explicit empty description clears it - it used to silently no-op.
+    const clearedDesc = await ptHandler.updateTemplate({ id: created.template.id, description: "" }, ctx);
+    expect(clearedDesc.template.description).toBe("");
+    expect((await ptHandler.getTemplate({ id: created.template.id }, ctx)).template.description).toBe("");
+
+    // An explicit empty rootTaskTypeId clears it too - same fix, same bug.
+    const clearedRoot = await ptHandler.updateTemplate({ id: created.template.id, rootTaskTypeId: "" }, ctx);
+    expect(clearedRoot.template.rootTaskTypeId).toBeFalsy();
+    expect((await ptHandler.getTemplate({ id: created.template.id }, ctx)).template.rootTaskTypeId).toBeFalsy();
+
+    // A non-empty value updates it normally.
+    const updatedDesc = await ptHandler.updateTemplate({ id: created.template.id, description: "New description" }, ctx);
+    expect(updatedDesc.template.description).toBe("New description");
+
+    // An empty name is invalid input, not a meaningful "clear" - rejected
+    // outright rather than silently ignored.
+    await expect(ptHandler.updateTemplate({ id: created.template.id, name: "" }, ctx)).rejects.toThrow();
+
+    // A nonexistent template id is NotFound.
+    await expect(ptHandler.updateTemplate({ id: "pt-does-not-exist", name: "X" }, ctx)).rejects.toThrow();
+
+    // A nonexistent root task type is rejected.
+    await expect(ptHandler.updateTemplate({ id: created.template.id, rootTaskTypeId: "tt-does-not-exist" }, ctx)).rejects.toThrow();
+
+    // A root task type from a different org is rejected.
+    const otherOrgId = "org-updatetpl-other-" + Date.now();
+    const otherUserId = "user-updatetpl-other-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: otherOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    const otherTypeResp = await ttHandler.createTaskType({ orgId: otherOrgId, name: "Other Org Type" }, makeAuthContext(otherUserId));
+    await expect(ptHandler.updateTemplate({ id: created.template.id, rootTaskTypeId: otherTypeResp.taskType.id }, ctx)).rejects.toThrow();
+
+    // A project-scoped root task type is rejected, same as on create.
+    const pResp = await pHandler.createProject({ orgId: "org-test", templateId: created.template.id, name: "Update Root Project", ownerId: "user-test" }, ctx);
+    const scopedTypeResp = await ttHandler.createTaskType({ orgId: "org-test", projectId: pResp.project.id, name: "Scoped Update Type" }, ctx);
+    await expect(ptHandler.updateTemplate({ id: created.template.id, rootTaskTypeId: scopedTypeResp.taskType.id }, ctx)).rejects.toThrow();
+
+    // An outsider cannot update another org's template.
+    await expect(ptHandler.updateTemplate({ id: created.template.id, name: "Hijacked" }, makeAuthContext(otherUserId))).rejects.toThrow();
   });
 
   test("derives a short project key from the name and de-duplicates on collision", async () => {
@@ -431,6 +506,14 @@ describe("Project-scope grants (M10-T10)", () => {
 
     const afterPurge = await db.select().from(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, pResp.project.id));
     expect(afterPurge.length).toBe(0);
+
+    // M20-T03: the grant that just purged this project must not survive it -
+    // left behind, it becomes a stale scopeId no RPC can ever resolve again
+    // (revokeGrant/listGrants both 404 via getProjectOrgId once the project
+    // is gone, since resolving a project-scoped grant's org requires the
+    // project to still exist), permanently stuck and unrevokable.
+    const remainingGrants = await db.select().from(schemaSqlite.grants).where(eq(schemaSqlite.grants.scopeId, pResp.project.id));
+    expect(remainingGrants.length).toBe(0);
   });
 
   test("a project-scoped grant does not reach a sibling project under the same org (exit criterion 6)", async () => {

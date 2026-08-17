@@ -38,8 +38,9 @@ func (f *fakeProjectTemplateHandler) GetTemplate(
 	_ context.Context,
 	req *connect.Request[healthv1.GetProjectTemplateRequest],
 ) (*connect.Response[healthv1.GetProjectTemplateResponse], error) {
+	rootTaskTypeID := "tt_root"
 	return connect.NewResponse(&healthv1.GetProjectTemplateResponse{
-		Template: &healthv1.ProjectTemplate{Id: req.Msg.Id, Name: "Template A", RootTaskTypeId: "tt_root"},
+		Template: &healthv1.ProjectTemplate{Id: req.Msg.Id, Name: "Template A", RootTaskTypeId: &rootTaskTypeID},
 	}), nil
 }
 
