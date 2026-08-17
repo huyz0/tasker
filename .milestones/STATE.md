@@ -2,7 +2,7 @@
 active_milestone: M08
 active_task: null
 last_updated: 2026-08-18
-last_commit: 3652f9e
+last_commit: 73eb704
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,132 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-18 — Sixth out-of-band review/fix round merged: Projects feature
+deep review.** Same structure as the Agents (M17)/Artifacts (M18)/Tasks
+(M19) rounds before it: three parallel reviews (backend, GUI, CLI) of the
+Projects feature - `Project`/`ProjectTemplate` entities, the Projects GUI
+screens (including the org/project switcher and the Bin's project tab),
+and the CLI `projects`/`project-templates` commands - followed by fixing
+everything found. Developed on `feature/projects-feature-review-and-fixes`
+(branched from `main` post the Tasks round) as ten commits.
+
+One critical production-breaking bug (M20-T01): a JS `Date` object (not
+converted to an ISO string) reaching a wire field declared `string` crashes
+connect's protobuf JSON encoder ("expected string, got object") rather than
+silently coercing - `Project.deletedAt` hit this unconditionally, so
+`listProjects({onlyDeleted:true})` and `getProject` on any archived project
+500'd, breaking the Bin's Projects section entirely. Verified with an
+actual protobuf `create`/`toJson` round-trip test, not just a
+return-value-shape check, since a handler-level unit test alone can't catch
+this class of bug.
+
+Backend (M20-T02–T04): `listProjects`/`listTemplates` validated by hand
+instead of Zod (same class as M17-T02/M18-T02/M19-T02's fixes elsewhere);
+`Project`/`ProjectTemplate` never exposed `createdAt` on the wire despite
+the handler computing it. `listProjects`'s `onlyDeleted` facet could leak a
+stale cached `totalCount` across a differently-scoped request - closed via
+the same `extraCacheKey` opt-in M19-T03 added generically to
+`executePaginatedQuery`. `updateTemplate` silently no-op'd an explicit
+clear of `description`/`rootTaskTypeId` (the "" -> unset squash M14-T01
+already fixed once for tasks); `main.tsp`/`health.proto` had drifted out of
+sync on `optional` for four fields, only `health.proto` needed catching up.
+A template's `rootTaskTypeId` accepted a project-scoped task type despite a
+template being org-wide by definition, leaving `purgeProject` no safe way
+to purge that project without dangling the reference - closed at the
+source by rejecting a project-scoped `rootTaskTypeId` in both
+`createTemplate`/`updateTemplate`, rather than defensively nulling it out
+after the fact. `purgeProject` also failed to clean up project-scoped
+`grants` rows (M10-T10's authorization primitive), leaving them permanently
+unrevokable/unlistable once their project was gone. `project_templates`
+gained a real `(orgId, name)` unique index (app pre-check + DB-error
+fallback, verified against live MySQL) closing a check-then-insert race;
+`purgeProject`'s N+1 per-task-type delete loop was deduped onto the shared
+`bulkPurgeTaskTypes` helper (exported from `cascadePurge.ts` for the
+purpose, previously module-private).
+
+GUI (M20-T05–T07): five stale-state bugs across two root causes. Wrong/dead
+invalidation keys - `['projects', activeOrgId]` matched no query in the
+whole app, and neither it nor `['projects', activeOrgId]`-style keys ever
+matched the switcher's own `['projects', 'switcher', ...]` key; fixed by
+invalidating the bare `['projects']` prefix everywhere, the same pattern
+the Organizations screen already used correctly for `['orgs']`. Latched
+local state - `activeProjectId` wasn't cleared when the active project was
+archived (leaving Tasks/Artifacts/Bin/Dashboard querying a gone project
+indefinitely), and the switcher's own label was set once via `useState`
+and gated on `!label`, so a rename never re-synced to the sidebar even
+after the underlying query refreshed. A newly-identified bug class this
+round - "shared mutation object across a list of rows": a single
+`useMutation()` shared by every row in a `.map()` meant `.isPending`/
+`.isError`/`.variables` reflected whichever row's mutation most recently
+ran, not the row a given button belonged to - wrong-row pending/disabled
+state, wrong-row error banners, and stale errors resurfacing on reopen
+after a *different* row's earlier failure, fixed by comparing
+`mutation.variables` against the specific row's own id and calling
+`.reset()` at every open/close entry point. Accessibility: unlabeled
+project/template name/description inputs and repository remote/email/token
+inputs; a build-row disclosure that was a bare `<div onClick>` (converted
+to a real `<button>` with `aria-expanded`, matching the Members/Show-Builds
+toggles which gained the same attribute); project members shown by raw
+`subjectId` instead of a resolved name (best-effort lookup reusing the
+access picker's own org-member query); revoking access was the one
+destructive action on the page with no confirmation dialog, unlike
+archiving a project or unlinking a repository right next to it.
+
+CLI (M20-T08–T10): `projects update`/`project-templates update` - both
+RPCs existed fully on the wire and at the backend with zero CLI commands
+reaching them - added with proto3-optional-aware flag handling via
+`cmd.Flags().Changed(...)`, matching the M19-T07 `tasks update` pattern, to
+preserve the unset-vs-explicitly-cleared distinction M20-T03 just fixed on
+the backend for templates. `projects list` gained `--only-deleted` (Projects
+has a full delete/restore/purge bin lifecycle, same as Tasks/Artifacts, but
+this was never wired up); `projects create` gained `--description` and now
+requires `--owner` locally (previously a guaranteed-fail path with an
+opaque remote validation error); `projects delete/restore/purge` gained
+`--json` parity; `project-templates list` gained `--filter`/`--sort`
+(`projects list` already forwarded both). Test coverage backfilled across
+both files to 100% statement coverage (get/create-against-a-server/delete/
+restore/purge were entirely untested, along with every required-flag and
+`--json`-branch path) - along the way, `go test -shuffle=on` surfaced a
+real, order-dependent flag-leak bug in two of this round's own new tests
+(`cmd.Flags().Changed(name)` never resets itself once a flag has been set,
+for the lifetime of the package-level command singleton; fixed by resetting
+the underlying `pflag.Flag.Changed` field directly, the one thing
+`Flags().Set()` can't touch).
+
+Deferred, explicitly out of scope for this round:
+
+- The doubled `"Error: Error:"` CLI prefix (missing `SilenceErrors` in
+  `root.go`) - pre-existing and repo-wide, unchanged since first noted in
+  M19's STATE.md entry; confirmed still present, still out of scope for a
+  single-feature round.
+- The "No projects yet." empty-state message shown identically whether no
+  org is selected or the selected org genuinely has no projects - the same
+  ambiguity already noted (and deferred) for Tasks/Artifacts in the M18/M19
+  rounds; a shared `ListState` component behavior, not Projects-specific.
+- `softDeleteById` (the shared soft-delete helper `archiveProject` and five
+  other handlers all call) unconditionally stamps `deletedAt: new Date()`
+  with no guard against an already-archived row - calling archive twice
+  just moves the timestamp forward silently. A repo-wide convention gap in
+  a shared helper, noticed only because Projects is where it was checked
+  this round; fixing it belongs to whichever round owns `query-builder.ts`
+  itself, not a single feature.
+- `go test -shuffle=on` also surfaces the same class of flag-leak failure
+  (pre-existing, not introduced this round) in `auth_token_test.go`/
+  `artifacts_test.go`/`orgs_test.go`/`auth_test.go` - all outside
+  `projects.go`/`projecttemplates.go` and out of scope for a
+  Projects-focused round.
+
+`moon check --all` (27/27) clean at every commit. Backend: 1331 pass, 0
+fail (13 skip - MySQL-only integration tests, expected without
+`TASKER_MYSQL_INTEGRATION=1`), coverage held at its established near-100%
+gate on every touched file; the new unique-index migration verified against
+a live MySQL instance via `docker compose`. GUI: `tsc -b && vite build`
+clean, 834 vitest tests pass, coverage held at 98%+ statements. CLI:
+`go build`/`vet`/`test` clean, 100% statement coverage on both
+`projects.go` and `projecttemplates.go`, full suite re-run five times with
+`-shuffle=on -count=1` to confirm zero Projects-related order-dependent
+flakiness.
 
 **2026-08-18 — Fifth out-of-band review/fix round merged: Tasks feature deep
 review.** Same structure as the Agents (M17) and Artifacts (M18) rounds
