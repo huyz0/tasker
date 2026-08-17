@@ -210,6 +210,8 @@ const (
 	// TaskServiceUnassignTaskProcedure is the fully-qualified name of the TaskService's UnassignTask
 	// RPC.
 	TaskServiceUnassignTaskProcedure = "/tasker.health.v1.TaskService/UnassignTask"
+	// TaskServiceClaimTaskProcedure is the fully-qualified name of the TaskService's ClaimTask RPC.
+	TaskServiceClaimTaskProcedure = "/tasker.health.v1.TaskService/ClaimTask"
 	// TaskServiceGetTaskProcedure is the fully-qualified name of the TaskService's GetTask RPC.
 	TaskServiceGetTaskProcedure = "/tasker.health.v1.TaskService/GetTask"
 	// TaskServiceListTasksProcedure is the fully-qualified name of the TaskService's ListTasks RPC.
@@ -454,6 +456,7 @@ var (
 	taskServiceCreateTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("CreateTask")
 	taskServiceAssignTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
 	taskServiceUnassignTaskMethodDescriptor                   = taskServiceServiceDescriptor.Methods().ByName("UnassignTask")
+	taskServiceClaimTaskMethodDescriptor                      = taskServiceServiceDescriptor.Methods().ByName("ClaimTask")
 	taskServiceGetTaskMethodDescriptor                        = taskServiceServiceDescriptor.Methods().ByName("GetTask")
 	taskServiceListTasksMethodDescriptor                      = taskServiceServiceDescriptor.Methods().ByName("ListTasks")
 	taskServiceUpdateTaskMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("UpdateTask")
@@ -2131,6 +2134,7 @@ type TaskServiceClient interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
 	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
 	UnassignTask(context.Context, *connect.Request[v1.UnassignTaskRequest]) (*connect.Response[v1.UnassignTaskResponse], error)
+	ClaimTask(context.Context, *connect.Request[v1.ClaimTaskRequest]) (*connect.Response[v1.ClaimTaskResponse], error)
 	GetTask(context.Context, *connect.Request[v1.GetTaskRequest]) (*connect.Response[v1.GetTaskResponse], error)
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
 	UpdateTask(context.Context, *connect.Request[v1.UpdateTaskRequest]) (*connect.Response[v1.UpdateTaskResponse], error)
@@ -2169,6 +2173,12 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+TaskServiceUnassignTaskProcedure,
 			connect.WithSchema(taskServiceUnassignTaskMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		claimTask: connect.NewClient[v1.ClaimTaskRequest, v1.ClaimTaskResponse](
+			httpClient,
+			baseURL+TaskServiceClaimTaskProcedure,
+			connect.WithSchema(taskServiceClaimTaskMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getTask: connect.NewClient[v1.GetTaskRequest, v1.GetTaskResponse](
@@ -2239,6 +2249,7 @@ type taskServiceClient struct {
 	createTask         *connect.Client[v1.CreateTaskRequest, v1.CreateTaskResponse]
 	assignTask         *connect.Client[v1.AssignTaskRequest, v1.AssignTaskResponse]
 	unassignTask       *connect.Client[v1.UnassignTaskRequest, v1.UnassignTaskResponse]
+	claimTask          *connect.Client[v1.ClaimTaskRequest, v1.ClaimTaskResponse]
 	getTask            *connect.Client[v1.GetTaskRequest, v1.GetTaskResponse]
 	listTasks          *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
 	updateTask         *connect.Client[v1.UpdateTaskRequest, v1.UpdateTaskResponse]
@@ -2264,6 +2275,11 @@ func (c *taskServiceClient) AssignTask(ctx context.Context, req *connect.Request
 // UnassignTask calls tasker.health.v1.TaskService.UnassignTask.
 func (c *taskServiceClient) UnassignTask(ctx context.Context, req *connect.Request[v1.UnassignTaskRequest]) (*connect.Response[v1.UnassignTaskResponse], error) {
 	return c.unassignTask.CallUnary(ctx, req)
+}
+
+// ClaimTask calls tasker.health.v1.TaskService.ClaimTask.
+func (c *taskServiceClient) ClaimTask(ctx context.Context, req *connect.Request[v1.ClaimTaskRequest]) (*connect.Response[v1.ClaimTaskResponse], error) {
+	return c.claimTask.CallUnary(ctx, req)
 }
 
 // GetTask calls tasker.health.v1.TaskService.GetTask.
@@ -2321,6 +2337,7 @@ type TaskServiceHandler interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
 	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
 	UnassignTask(context.Context, *connect.Request[v1.UnassignTaskRequest]) (*connect.Response[v1.UnassignTaskResponse], error)
+	ClaimTask(context.Context, *connect.Request[v1.ClaimTaskRequest]) (*connect.Response[v1.ClaimTaskResponse], error)
 	GetTask(context.Context, *connect.Request[v1.GetTaskRequest]) (*connect.Response[v1.GetTaskResponse], error)
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
 	UpdateTask(context.Context, *connect.Request[v1.UpdateTaskRequest]) (*connect.Response[v1.UpdateTaskResponse], error)
@@ -2355,6 +2372,12 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		TaskServiceUnassignTaskProcedure,
 		svc.UnassignTask,
 		connect.WithSchema(taskServiceUnassignTaskMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceClaimTaskHandler := connect.NewUnaryHandler(
+		TaskServiceClaimTaskProcedure,
+		svc.ClaimTask,
+		connect.WithSchema(taskServiceClaimTaskMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	taskServiceGetTaskHandler := connect.NewUnaryHandler(
@@ -2425,6 +2448,8 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceAssignTaskHandler.ServeHTTP(w, r)
 		case TaskServiceUnassignTaskProcedure:
 			taskServiceUnassignTaskHandler.ServeHTTP(w, r)
+		case TaskServiceClaimTaskProcedure:
+			taskServiceClaimTaskHandler.ServeHTTP(w, r)
 		case TaskServiceGetTaskProcedure:
 			taskServiceGetTaskHandler.ServeHTTP(w, r)
 		case TaskServiceListTasksProcedure:
@@ -2464,6 +2489,10 @@ func (UnimplementedTaskServiceHandler) AssignTask(context.Context, *connect.Requ
 
 func (UnimplementedTaskServiceHandler) UnassignTask(context.Context, *connect.Request[v1.UnassignTaskRequest]) (*connect.Response[v1.UnassignTaskResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.UnassignTask is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ClaimTask(context.Context, *connect.Request[v1.ClaimTaskRequest]) (*connect.Response[v1.ClaimTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ClaimTask is not implemented"))
 }
 
 func (UnimplementedTaskServiceHandler) GetTask(context.Context, *connect.Request[v1.GetTaskRequest]) (*connect.Response[v1.GetTaskResponse], error) {

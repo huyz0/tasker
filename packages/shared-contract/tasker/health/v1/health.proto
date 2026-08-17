@@ -718,6 +718,17 @@ message AssignTaskResponse {
   bool success = 1;
 }
 
+// Agent self-service (M14-T06): claims the task for the calling principal
+// only - no field names a different assignee. Succeeds only if the task
+// currently has no assignee at all.
+message ClaimTaskRequest {
+  string task_id = 1;
+}
+
+message ClaimTaskResponse {
+  Task task = 1;
+}
+
 message TaskReviewer {
   string id = 1;
   string task_id = 2;
@@ -842,6 +853,7 @@ service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
   rpc UnassignTask(UnassignTaskRequest) returns (UnassignTaskResponse);
+  rpc ClaimTask(ClaimTaskRequest) returns (ClaimTaskResponse);
   rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);

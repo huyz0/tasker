@@ -191,3 +191,71 @@
   another principal's queue by naming it, unlike a hypothetical
   `assigneeId` field would have allowed.
 - **Next**: M14-T06
+
+## M14-T06 — Add claimTask, the atomic agent self-claim primitive
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**: `packages/shared-contract/main.tsp`,
+  `packages/shared-contract/tasker/health/v1/health.proto`,
+  `packages/shared-contract/gen/ts/**` and `apps/cli/gen/**` (regenerated),
+  `apps/backend/src/modules/tasks/tasks.handler.ts`,
+  `apps/backend/src/lib/scopes.ts`,
+  `apps/backend/src/lib/agent-scope-sweep.test.ts`,
+  `apps/backend/src/lib/viewer-denial.test.ts`,
+  `apps/backend/src/modules/tasks/tasks.test.ts`,
+  `apps/gui/scripts/rpc-coverage.mjs`
+- **Verified**: `bun test src/modules/tasks/tasks.test.ts` — 27 pass, 0
+  fail, including a 5-way concurrent claim race (`Promise.allSettled`,
+  exactly 1 fulfilled / 4 `FailedPrecondition`), re-run 5 times with no
+  flake (unlike M14-T02's race test, this one doesn't depend on JS-level
+  interleaving at all - the guarantee is the single SQL statement, so it
+  cannot flake by construction). Full `bun test` in `apps/backend` — 1281
+  pass / 12 skip / 0 fail, including both deny-by-default sweeps
+  (`agent-scope-sweep.test.ts`, `viewer-denial.test.ts`), which failed
+  immediately on the new unclassified RPC exactly as designed - see notes.
+  `moon run gui:rpc-coverage` and `moon check --all` (27 tasks) both clean.
+- **Notes**: The atomic primitive is one statement, not a transaction:
+  `INSERT INTO task_assignments (...) SELECT ... WHERE NOT EXISTS (SELECT 1
+  FROM task_assignments WHERE task_id = ?)` (MySQL needs `FROM DUAL` for
+  the literal-only `SELECT`; SQLite must not have it). Confirmed the
+  `NOT EXISTS` pattern renders correctly-quoted identifiers with a
+  throwaway script before trusting it, same discipline as M14-T05. Chose
+  this over reusing `updateTaskStatus`'s CAS-on-a-column shape because
+  assignment is a separate table with a legitimately multi-row model (an
+  agent plus a human reviewer can both be "assigned"), so the invariant
+  being protected is "zero existing rows for this task", not "one column
+  still equals what I read" - a job-queue claim, not an optimistic-lock
+  update.
+
+  Reused the existing `tasks:write` scope rather than adding a ninth to
+  ADR-0008's closed eight-scope vocabulary — recorded in `lib/scopes.ts`'s
+  own comment: `claimTask` can only ever assign the *caller*, and only onto
+  an unassigned task, which is a strictly smaller grant than `assignTask`'s
+  "name any assignee" (still deliberately closed to agents, per that same
+  file's existing note - an agent that could reassign work to itself could
+  also take itself off work it doesn't want, or hand a task to a different
+  agent, neither of which `claimTask` permits). This is the one live
+  question worth flagging for a future session: `AGENT_SCOPES` is described
+  as closed in ADR-0008's own text, and this reuses an existing scope
+  rather than opening that question, but if a later milestone finds itself
+  reusing `tasks:write` for something *not* self-limited the way `claimTask`
+  is, that is the moment to revisit the eighth-vs-ninth-scope decision for
+  real rather than by precedent.
+
+  Both deny-by-default sweeps (`agent-scope-sweep.test.ts`,
+  `viewer-denial.test.ts`) failed the moment `claimTask` existed, unprompted
+  - exactly the mechanism M03/M04 built them for. Fixed by: adding
+  `claimTask: 'tasks:write'` to `AGENT_RPC_SCOPES` (with a comment
+  explaining why this grant is safe where assignTask's is not), a sample
+  request in each sweep's fixture map, and confirmed the "checks the
+  specific scope it names" test still passes claimTask a principal missing
+  `tasks:write` - which hits the scope check before ever reaching the SQL
+  claim, so it can't be affected by the shared fixture task's assignment
+  state regardless of test order. `gui:rpc-coverage` failed too;
+  `claimTask` is excepted with a reason (agent-only primitive, distinct
+  from the human assignee picker's `assignTask`) rather than wired into the
+  GUI, since no task in this milestone scopes a GUI self-assign button -
+  the exception says explicitly to wire it there and remove the exception
+  if one is added later.
+- **Next**: M14-T07

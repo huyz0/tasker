@@ -819,6 +819,19 @@ model AssignTaskResponse {
   @field(1) success: boolean;
 }
 
+// Agent self-service (M14-T06): claims the task for the *calling* principal
+// only, atomically - there is no field to name a different assignee, unlike
+// AssignTaskRequest. Succeeds only if the task currently has no assignee at
+// all; a second caller racing the same task gets FailedPrecondition rather
+// than a second, silent assignment.
+model ClaimTaskRequest {
+  @field(1) taskId: string;
+}
+
+model ClaimTaskResponse {
+  @field(1) task: Task;
+}
+
 model TaskReviewer {
   @field(1) id: string;
   @field(2) taskId: string;
@@ -944,6 +957,7 @@ interface TaskService {
   createTask(request: CreateTaskRequest): CreateTaskResponse;
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
   unassignTask(request: UnassignTaskRequest): UnassignTaskResponse;
+  claimTask(request: ClaimTaskRequest): ClaimTaskResponse;
   getTask(request: GetTaskRequest): GetTaskResponse;
   listTasks(request: ListTasksRequest): ListTasksResponse;
   updateTask(request: UpdateTaskRequest): UpdateTaskResponse;

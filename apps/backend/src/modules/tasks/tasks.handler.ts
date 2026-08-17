@@ -72,6 +72,10 @@ const AssignTaskSchema = z.object({
   message: "either agentId or userId is required",
 });
 
+const ClaimTaskSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+});
+
 const AddTaskReviewerSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   userId: z.string().min(1, "userId is required"),
@@ -763,6 +767,56 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // Idempotent: removing an assignment that is not there is the state the
       // caller asked for, not an error.
       return { success: true };
+    },
+    /**
+     * Agent self-service (M14-T06). Unlike `assignTask` - human-only, and
+     * able to name any assignee - this claims the task for the *calling*
+     * principal, and only if the task currently has no assignee at all.
+     *
+     * The read-then-write shape `assignTask`/`updateTaskStatus` used to have
+     * is exactly the bug this milestone opened with: two callers reading
+     * "unassigned" at the same moment and both writing would both "win". A
+     * single `INSERT ... SELECT ... WHERE NOT EXISTS` is one statement, not
+     * two - there is no gap between the check and the write for a second
+     * claim to land in, on either dialect, with no transaction or lock
+     * needed for that guarantee. `reuses tasks:write` (`assertCan`'s task
+     * update is exactly what a claim is - it is not worth a ninth scope in
+     * ADR-0008's closed vocabulary of eight for what "update tasks" already
+     * covers).
+     */
+    async claimTask(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = ClaimTaskSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
+
+      const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+      const newId = `ta-${crypto.randomUUID()}`;
+      const selfAgentId = principal.kind === "agent" ? principal.agentId : null;
+      const selfUserId = principal.kind === "user" ? principal.userId : null;
+
+      const insertResult = isStandalone
+        ? await db.run(sql`
+            INSERT INTO ${assignments} (id, task_id, agent_id, user_id)
+            SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}
+            WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${parsed.taskId})
+          `)
+        : await db.execute(sql`
+            INSERT INTO ${assignments} (id, task_id, agent_id, user_id)
+            SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}
+            FROM DUAL
+            WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${parsed.taskId})
+          `);
+      const claimed = isStandalone ? (insertResult as any).changes : (insertResult as any)[0]?.affectedRows;
+      if (!claimed) {
+        throw new ConnectError("task is already assigned - claim only succeeds on an unassigned task", Code.FailedPrecondition);
+      }
+
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
+      const task = result[0];
+      publishDomainEvent(nc, "domain.task.claimed", { taskId: parsed.taskId, agentId: selfAgentId, userId: selfUserId });
+      return { task };
     },
     async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);

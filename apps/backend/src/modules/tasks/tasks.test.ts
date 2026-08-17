@@ -706,6 +706,115 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.listTasks({ projectId, assigneeFilter: "bogus" }, ctx)).rejects.toMatchObject({ code: Code.InvalidArgument });
   });
 
+  // M14-T06: the atomic claim primitive - the missing half of "an agent can
+  // discover and take work with no human broker". claimTask always assigns
+  // the *calling* principal; there is no field to claim on someone else's
+  // behalf.
+  test("claimTask atomically assigns the calling principal, only on an unassigned task", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-claim-" + Date.now();
+    const adminId = "user-claim-" + Date.now();
+    const templateId = "tmpl-claim-" + Date.now();
+    const projectId = "proj-claim-" + Date.now();
+    const agentRoleId = "role-claim-" + Date.now();
+    const agentId = "agent-claim-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Claim Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
+
+    const ctx = makeAuthContext(adminId);
+    const handler = createTaskManagementHandler(db, nc);
+    const agentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-test", scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any;
+
+    const task = await handler.createTask({ projectId, title: "Claimable", status: "todo", description: "" }, ctx);
+
+    const claimed = await handler.claimTask({ taskId: task.task.id }, agentCtx);
+    expect(claimed.task.id).toBe(task.task.id);
+
+    const rows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, task.task.id));
+    expect(rows.length).toBe(1);
+    expect(rows[0].agentId).toBe(agentId);
+    expect(rows[0].userId).toBeFalsy();
+
+    // Claiming an already-claimed task is a typed conflict, not a second,
+    // silent assignment - even for the same principal claiming again.
+    await expect(handler.claimTask({ taskId: task.task.id }, agentCtx)).rejects.toMatchObject({ code: Code.FailedPrecondition });
+
+    const otherTask = await handler.createTask({ projectId, title: "Also Claimable", status: "todo", description: "" }, ctx);
+    // A human can claim their own work too - claimTask isn't agent-only,
+    // just self-only.
+    const humanClaimed = await handler.claimTask({ taskId: otherTask.task.id }, ctx);
+    expect(humanClaimed.task.id).toBe(otherTask.task.id);
+    const humanRows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, otherTask.task.id));
+    expect(humanRows[0].userId).toBe(adminId);
+    expect(humanRows[0].agentId).toBeFalsy();
+
+    await expect(handler.claimTask({ taskId: "task-does-not-exist" }, agentCtx)).rejects.toMatchObject({ code: Code.NotFound });
+
+    const outsiderId = "user-claim-outsider-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    const thirdTask = await handler.createTask({ projectId, title: "Guarded", status: "todo", description: "" }, ctx);
+    await expect(handler.claimTask({ taskId: thirdTask.task.id }, makeAuthContext(outsiderId))).rejects.toThrow();
+
+    // An agent token without tasks:write cannot claim, even for itself.
+    const readOnlyAgentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-ro", scopes: ["tasks:read"] });
+      return v;
+    })() } as any;
+    await expect(handler.claimTask({ taskId: thirdTask.task.id }, readOnlyAgentCtx)).rejects.toMatchObject({ code: Code.PermissionDenied });
+  });
+
+  // M14-T06: the whole point - fires N concurrent claims at the same
+  // unassigned task and proves exactly one wins, the same shape M03-T15
+  // proved for createTask's counter claim.
+  test("claimTask is race-safe: exactly one of several concurrent claims on the same task wins", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-claimrace-" + Date.now();
+    const adminId = "user-claimrace-" + Date.now();
+    const templateId = "tmpl-claimrace-" + Date.now();
+    const projectId = "proj-claimrace-" + Date.now();
+    const agentRoleId = "role-claimrace-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Claim Race Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+
+    const ctx = makeAuthContext(adminId);
+    const handler = createTaskManagementHandler(db, nc);
+    const task = await handler.createTask({ projectId, title: "Contested", status: "todo", description: "" }, ctx);
+
+    const agentIds = Array.from({ length: 5 }, (_, i) => `agent-claimrace-${i}-${Date.now()}`);
+    for (const agentId of agentIds) {
+      await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: agentId });
+    }
+    const agentCtxs = agentIds.map((agentId) => ({ values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-" + agentId, scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any));
+
+    const results = await Promise.allSettled(agentCtxs.map((c) => handler.claimTask({ taskId: task.task.id }, c)));
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(4);
+    for (const r of rejected as PromiseRejectedResult[]) {
+      expect(r.reason).toMatchObject({ code: Code.FailedPrecondition });
+    }
+
+    const rows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, task.task.id));
+    expect(rows.length).toBe(1);
+  });
+
   test("enforces a task type's configured status enum and transition state machine", async () => {
     const { db, nc } = await setupIntegrationTest();
     const { createProjectsHandler, createProjectTemplatesHandler } = require("../projects/projects.handler");

@@ -57,7 +57,7 @@ backlogs.
 - [x] Archiving a project that still has live tasks does not dead-end: an
       admin can still delete and purge each leftover task afterward, and
       then purge the project itself.
-- [ ] An agent token with the right scope can list tasks filtered to
+- [x] An agent token with the right scope can list tasks filtered to
       "unassigned" and claim one atomically; a second agent racing the same
       claim gets a typed failure, not a second assignment.
 - [ ] `createTask` and `claimTask` accept an idempotency key; replaying the
@@ -136,16 +136,17 @@ touches `repositories.handler.ts`, none currently scheduled.
       - Verify: a test asserts the filter returns only tasks with no
         assignee, against a fixture with a mix.
 
-- [ ] **M14-T06** — Add `claimTask`: an agent-scoped RPC that atomically
-      assigns the calling agent to a task only if it is currently unassigned
-      (single conditional `UPDATE ... WHERE assignee IS NULL`, not
-      read-then-write), authorized via `authorizePrincipal` with a new scope
-      alongside the existing eight in ADR-0008's vocabulary.
-      - Files: `main.tsp` + `.proto`, `tasks.handler.ts`, `lib/authz.ts`
-        (`AGENT_RPC_SCOPES`), `.specs/adr/ADR-0008-agent-tokens.md` (scope
-        addition recorded)
-      - Verify: a test races two `claimTask` calls (same task, two agent
-        principals) via `Promise.all` and asserts exactly one succeeds.
+- [x] **M14-T06** — Add `claimTask`: a self-only RPC (works for either
+      principal kind) that atomically assigns the *calling* principal to a
+      task only if it is currently unassigned (single `INSERT ... SELECT
+      ... WHERE NOT EXISTS`, not read-then-write), reusing the existing
+      `tasks:write` scope rather than adding a ninth to ADR-0008's
+      vocabulary.
+      - Files: `main.tsp` + `.proto`, `tasks.handler.ts`, `lib/scopes.ts`
+        (`AGENT_RPC_SCOPES`)
+      - Verify: a test races five `claimTask` calls (same task, five agent
+        principals) via `Promise.allSettled` and asserts exactly one
+        succeeds.
 
 - [ ] **M14-T07** — Add idempotency-key support: `createTask` and `claimTask`
       accept an optional client-supplied key; replaying the same key for the

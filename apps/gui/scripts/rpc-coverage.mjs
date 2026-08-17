@@ -30,6 +30,14 @@ export const EXCEPTIONS = {
     'human author; M04 made the handler refuse a user principal outright, ' +
     'rather than let a human file a note under a worker that never wrote it. ' +
     'The GUI reads, edits and deletes notes.',
+  'TaskService.claimTask':
+    'Agent self-service (M14-T06). A human already has assignTask through ' +
+    'the assignee picker, which can name anyone; claimTask is the narrower ' +
+    "atomic \"assign me, only if unassigned\" primitive an autonomous agent " +
+    'needs and a person driving the GUI does not - a human choosing to take ' +
+    'a task themselves already has a picker for that. If a self-assign ' +
+    'button is ever added to the task detail view, wire it to this RPC ' +
+    'rather than assignTask(self) and remove this exception.',
   'ProjectTemplateService.getTemplate':
     'Redundant here: the templates list is already loaded wherever a template ' +
     'is shown, so a single-template read would be a second request for data ' +

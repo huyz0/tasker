@@ -1,8 +1,8 @@
 ---
 active_milestone: M14
-active_task: M14-T06
+active_task: M14-T07
 last_updated: 2026-08-17
-last_commit: 4bd0360
+last_commit: 4eec950
 blocked: false
 blocker: null
 ---
