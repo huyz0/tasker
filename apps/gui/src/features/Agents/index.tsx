@@ -15,6 +15,22 @@ import { ListState } from '../../components/ui/ListState';
 // because a row grows when its edit form opens.
 const AGENT_ROW_HEIGHT = 76;
 
+// The backend stores capabilities as an opaque JSON string (main.tsp:
+// `capabilities: string // JSON string`) and never validates it - a typo here
+// used to reach the database and only surface later, wherever something
+// finally tried to JSON.parse it. Empty is left valid: the field is required
+// separately (`required`/non-empty checks on each submit button), so this
+// only judges shape once there is something to judge.
+function isValidCapabilitiesJson(value: string): boolean {
+  if (value.trim() === '') return true;
+  try {
+    JSON.parse(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const agentClient = createClient(AgentService, transport);
 
 export function AgentsDashboard() {
@@ -166,13 +182,13 @@ export function AgentsDashboard() {
          <div className="p-4 border rounded-lg bg-card shadow-sm flex items-center justify-between">
            <div>
              <div className="text-muted-foreground text-sm font-medium mb-1">Total Agents</div>
-             <div className="text-3xl font-bold">{agentsData?.length || 0}</div>
+             <div className="text-3xl font-bold">{agentTotal}</div>
            </div>
            <div className="w-10 h-10 rounded-full bg-primary-subtle text-primary-subtle-foreground flex items-center justify-center"><Bot className="w-5 h-5" /></div>
          </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <div className="border rounded-lg bg-card p-6 shadow-sm">
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-xl font-medium">AI Agent Instances</h2>
@@ -334,17 +350,6 @@ export function AgentsDashboard() {
             </ListState>
           </div>
         </div>
-
-        <div className="border rounded-lg bg-card p-6 shadow-sm flex flex-col h-[400px]">
-          <h2 className="text-xl font-medium mb-4">Agent State Machine / Visualizer</h2>
-          <div className="flex-1 border rounded bg-muted/20 flex items-center justify-center flex-col text-muted-foreground text-sm border-dashed">
-             <div className="mb-2 text-xl">React Flow Component</div>
-             <p>Visual workflow rendering goes here.</p>
-             {/* `opacity-50` halved the contrast of already-muted text to 2:1.
-                 Muting is a colour decision, and there is a token for it. */}
-             <p className="text-xs pt-4 text-muted-foreground">(To be implemented fully with reactflow)</p>
-          </div>
-        </div>
       </div>
 
       <div className="border rounded-lg bg-card p-6 shadow-sm">
@@ -388,14 +393,24 @@ export function AgentsDashboard() {
               onChange={(e) => setNewRoleCapabilities(e.target.value)}
               placeholder='Capabilities, e.g. ["code","review"]'
               required
+              aria-invalid={!isValidCapabilitiesJson(newRoleCapabilities)}
               className="text-sm bg-transparent border rounded-md px-2 py-1"
             />
+            {!isValidCapabilitiesJson(newRoleCapabilities) && (
+              <p className="text-xs text-destructive">Capabilities must be valid JSON.</p>
+            )}
             {createAgentRoleMutation.isError && (
               <p className="text-xs text-destructive">Failed to create role: {(createAgentRoleMutation.error as Error).message}</p>
             )}
             <button
               type="submit"
-              disabled={createAgentRoleMutation.isPending || !newRoleName.trim() || !newRoleSystemPrompt.trim() || !newRoleCapabilities.trim()}
+              disabled={
+                createAgentRoleMutation.isPending ||
+                !newRoleName.trim() ||
+                !newRoleSystemPrompt.trim() ||
+                !newRoleCapabilities.trim() ||
+                !isValidCapabilitiesJson(newRoleCapabilities)
+              }
               className="self-end px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium disabled:bg-muted disabled:text-muted-foreground"
             >
               {createAgentRoleMutation.isPending ? 'Creating...' : 'Create role'}
@@ -447,15 +462,25 @@ export function AgentsDashboard() {
                     value={editRoleCapabilities}
                     onChange={(e) => setEditRoleCapabilities(e.target.value)}
                     placeholder="Capabilities (JSON)"
+                    aria-invalid={!isValidCapabilitiesJson(editRoleCapabilities)}
                     className="text-sm bg-transparent border rounded-md px-2 py-1"
                   />
+                  {!isValidCapabilitiesJson(editRoleCapabilities) && (
+                    <p className="text-xs text-destructive">Capabilities must be valid JSON.</p>
+                  )}
                   {updateAgentRoleMutation.isError && (
                     <p className="text-xs text-destructive">Failed to update role: {(updateAgentRoleMutation.error as Error).message}</p>
                   )}
                   <div className="flex gap-2 self-end">
                     <button
                       type="submit"
-                      disabled={!editRoleName.trim() || !editRoleSystemPrompt.trim() || !editRoleCapabilities.trim() || updateAgentRoleMutation.isPending}
+                      disabled={
+                        !editRoleName.trim() ||
+                        !editRoleSystemPrompt.trim() ||
+                        !editRoleCapabilities.trim() ||
+                        !isValidCapabilitiesJson(editRoleCapabilities) ||
+                        updateAgentRoleMutation.isPending
+                      }
                       className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
                     >
                       {updateAgentRoleMutation.isPending ? 'Saving...' : 'Save'}

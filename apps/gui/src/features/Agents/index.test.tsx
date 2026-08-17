@@ -411,6 +411,37 @@ describe('AgentsDashboard', () => {
     }));
   });
 
+  // M17-T04: capabilities is stored as an opaque JSON string with no
+  // server-side shape check - a typo here used to reach the database
+  // silently and surface only wherever something later tried to parse it.
+  it('rejects invalid JSON in the new-role capabilities field', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    mockListAgentRoles.mockResolvedValue({ roles: [] });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New Role' }));
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Reviewer' } });
+    fireEvent.change(screen.getByLabelText('System prompt'), { target: { value: 'p' } });
+    fireEvent.change(screen.getByLabelText('Capabilities'), { target: { value: '{not json' } });
+
+    expect(screen.getByText('Capabilities must be valid JSON.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create role' })).toBeDisabled();
+    expect(mockCreateAgentRole).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid JSON when editing a role\'s capabilities', async () => {
+    mockListAgents.mockResolvedValue({ agents: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Researcher')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.change(screen.getByPlaceholderText('Capabilities (JSON)'), { target: { value: '{not json' } });
+
+    expect(screen.getByText('Capabilities must be valid JSON.')).toBeInTheDocument();
+    expect(screen.getByText('Save')).toBeDisabled();
+    expect(mockUpdateAgentRole).not.toHaveBeenCalled();
+  });
+
   it('reports a failed role creation', async () => {
     mockListAgents.mockResolvedValue({ agents: [] });
     mockListAgentRoles.mockResolvedValue({ roles: [] });
