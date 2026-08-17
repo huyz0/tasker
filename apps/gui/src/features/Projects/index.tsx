@@ -5,7 +5,7 @@ import { useAuthSession } from '../../hooks/useAuthSession';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { ProjectService, ProjectTemplateService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { ProjectService, ProjectTemplateService, TaskService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { PaginationControls } from '../../components/PaginationControls';
 import { Package } from 'lucide-react';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -18,6 +18,32 @@ const PROJECT_ROW_HEIGHT = 220;
 
 const projectClient = createClient(ProjectService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
+const taskClient = createClient(TaskService, transport);
+
+/**
+ * A project's live task count, read the same way a board column reads its
+ * own count (M07-T03): `page.totalCount` from a `limit: 1` request, not a
+ * client-side count of a fetched list. Deliberately *not* "N of M done" -
+ * a task type's statuses are configurable per type (M14/M15), so there is
+ * no single, universal "done" status this could total against across every
+ * task type a project might use. A plain count is the honest thing to show.
+ */
+function ProjectTaskCount({ projectId }: { projectId: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['tasks', 'count', projectId],
+    queryFn: async () => taskClient.listTasks({ projectId, page: { limit: 1 } }),
+  });
+
+  if (isLoading) return <span className="text-xs text-muted-foreground">Loading tasks…</span>;
+  if (error) return <span className="text-xs text-muted-foreground">Task count unavailable</span>;
+
+  const count = Number(data?.page?.totalCount ?? 0);
+  return (
+    <span className="text-xs text-muted-foreground">
+      {count === 0 ? 'No tasks yet' : count === 1 ? '1 task' : `${count} tasks`}
+    </span>
+  );
+}
 
 export function ProjectsWizard() {
   const { confirm, confirmDialog } = useConfirm();
@@ -371,7 +397,11 @@ export function ProjectsWizard() {
                       ) : (
                         <p className="text-sm text-muted-foreground italic mt-1">No description.</p>
                       )}
-                      <p className="text-xs text-muted-foreground mt-1">ID: {p.id}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-muted-foreground">ID: {p.id}</p>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <ProjectTaskCount projectId={p.id} />
+                      </div>
                     </div>
                   )}
                   {editingProjectId !== p.id && (

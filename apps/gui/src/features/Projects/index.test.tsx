@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockArchiveProject, mockUpdateProject, mockUpdateTemplate } = vi.hoisted(() => ({
+const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockArchiveProject, mockUpdateProject, mockUpdateTemplate, mockListTasks } = vi.hoisted(() => ({
   mockListTemplates: vi.fn(),
   mockListProjects: vi.fn(),
   mockCreateProject: vi.fn(),
@@ -10,6 +10,7 @@ const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTempla
   mockArchiveProject: vi.fn(),
   mockUpdateProject: vi.fn(),
   mockUpdateTemplate: vi.fn(),
+  mockListTasks: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -24,11 +25,13 @@ vi.mock('@connectrpc/connect', () => ({
     archiveProject: mockArchiveProject,
     updateProject: mockUpdateProject,
     updateTemplate: mockUpdateTemplate,
+    listTasks: mockListTasks,
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   ProjectService: {},
   ProjectTemplateService: {},
+  TaskService: {},
 }));
 vi.mock('../../components/ui/repositories/RepositoryIntegrationConfig', () => ({
   RepositoryIntegrationConfig: () => null,
@@ -68,6 +71,8 @@ describe('ProjectsWizard', () => {
     mockArchiveProject.mockReset();
     mockUpdateProject.mockReset();
     mockUpdateTemplate.mockReset();
+    mockListTasks.mockReset();
+    mockListTasks.mockResolvedValue({ tasks: [], page: { totalCount: 0 } });
     mockAuthUserId = mockUserId;
   });
 
@@ -344,6 +349,59 @@ describe('ProjectsWizard', () => {
     renderPage();
 
     expect(await screen.findByText('No description.')).toBeInTheDocument();
+  });
+
+  // M16-T03: no task count, or any project-level signal at all, existed on
+  // this list before this - "% done" isn't attempted (no universal
+  // terminal status across custom task types), just a plain count.
+  it("shows each project's task count, read the same way a board column reads its own", async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    mockListTasks.mockResolvedValue({ tasks: [], page: { totalCount: 47 } });
+    renderPage();
+
+    expect(await screen.findByText('47 tasks')).toBeInTheDocument();
+    expect(mockListTasks).toHaveBeenCalledWith({ projectId: 'proj-1', page: { limit: 1 } });
+  });
+
+  it('says so when a project has no tasks yet, and singularizes exactly one', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [
+      { id: 'proj-1', name: 'Empty Project' },
+      { id: 'proj-2', name: 'One Task Project' },
+    ] });
+    mockListTasks.mockImplementation(async ({ projectId }: any) => ({
+      tasks: [], page: { totalCount: projectId === 'proj-1' ? 0 : 1 },
+    }));
+    renderPage();
+
+    expect(await screen.findByText('No tasks yet')).toBeInTheDocument();
+    expect(await screen.findByText('1 task')).toBeInTheDocument();
+  });
+
+  it('shows a loading state, then reports when the task count fails to load', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    let rejectCount: (e: Error) => void = () => {};
+    mockListTasks.mockReturnValue(new Promise((_resolve, reject) => { rejectCount = reject; }));
+    renderPage();
+
+    expect(await screen.findByText('Loading tasks…')).toBeInTheDocument();
+    rejectCount(new Error('boom'));
+    expect(await screen.findByText('Task count unavailable')).toBeInTheDocument();
+  });
+
+  it('sends a description typed into the new-project field', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
+    fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
+    fireEvent.change(screen.getByPlaceholderText('What is this project for? (optional)'), { target: { value: 'A real description' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Use Template' }));
+
+    await waitFor(() => expect(mockCreateProject).toHaveBeenCalledWith(expect.objectContaining({ description: 'A real description' })));
   });
 
   it('cancels editing a project without saving', async () => {
