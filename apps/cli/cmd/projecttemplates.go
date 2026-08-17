@@ -85,6 +85,49 @@ var projectTemplatesGetCmd = &cobra.Command{
 	},
 }
 
+var projectTemplatesUpdateCmd = &cobra.Command{
+	Use:   "update [template_id]",
+	Short: "Update a project template's name, description, or root task type",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
+
+		req := &healthv1.UpdateProjectTemplateRequest{Id: args[0]}
+		// All three fields are real proto3 `optional` (M20-T03's lesson: unset
+		// must stay distinct from explicitly cleared) - only set the pointer
+		// for a flag the caller actually passed, matching `tasks update`'s
+		// pattern (M19-T07). An explicit empty --root-task-type clears it,
+		// the same "" -> null normalization the backend already applies.
+		if cmd.Flags().Changed("name") {
+			name, _ := cmd.Flags().GetString("name")
+			req.Name = &name
+		}
+		if cmd.Flags().Changed("description") {
+			description, _ := cmd.Flags().GetString("description")
+			req.Description = &description
+		}
+		if cmd.Flags().Changed("root-task-type") {
+			rootTaskType, _ := cmd.Flags().GetString("root-task-type")
+			req.RootTaskTypeId = &rootTaskType
+		}
+
+		client := backend.NewProjectTemplateServiceClient()
+		res, err := client.UpdateTemplate(context.Background(), connect.NewRequest(req))
+		if err != nil {
+			cmd.PrintErrf("Failed to update project template: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Template)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Project template %s updated\n", res.Msg.Template.Id)
+		}
+		return nil
+	},
+}
+
 var projectTemplatesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List project templates for an organization",
@@ -126,6 +169,7 @@ var projectTemplatesListCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(projectTemplatesCmd)
 	projectTemplatesCmd.AddCommand(projectTemplatesCreateCmd)
+	projectTemplatesCmd.AddCommand(projectTemplatesUpdateCmd)
 	projectTemplatesCmd.AddCommand(projectTemplatesGetCmd)
 	projectTemplatesCmd.AddCommand(projectTemplatesListCmd)
 
@@ -133,6 +177,10 @@ func init() {
 	projectTemplatesCreateCmd.Flags().String("description", "", "Project template description")
 	projectTemplatesCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	projectTemplatesCreateCmd.Flags().String("root-task-type", "", "Optional root task type ID for this template")
+
+	projectTemplatesUpdateCmd.Flags().String("name", "", "New template name")
+	projectTemplatesUpdateCmd.Flags().String("description", "", "New description (pass an empty string to clear it)")
+	projectTemplatesUpdateCmd.Flags().String("root-task-type", "", "New root task type ID (pass an empty string to clear it)")
 
 	projectTemplatesListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	projectTemplatesListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")

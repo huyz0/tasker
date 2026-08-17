@@ -120,6 +120,51 @@ var projectsCreateCmd = &cobra.Command{
 	},
 }
 
+var projectsUpdateCmd = &cobra.Command{
+	Use:   "update [project_id]",
+	Short: "Update a project's title or description",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
+		title, _ := cmd.Flags().GetString("title")
+		// UpdateProjectRequest.Name is a required field on the wire, not
+		// proto3 `optional` like Description below - there is no "leave the
+		// title untouched" request shape, so the CLI has to fail the same way
+		// --title/--template/--org do on create rather than silently sending
+		// an empty title through.
+		if title == "" {
+			cmd.Println("Error: --title is required.")
+			return fmt.Errorf("--title is required")
+		}
+
+		req := &healthv1.UpdateProjectRequest{ProjectId: args[0], Name: title}
+		// Description is real proto3 `optional` (M20-T03's lesson: unset must
+		// stay distinct from explicitly cleared to "") - only set the pointer
+		// for a flag the caller actually passed, matching `tasks update`'s
+		// pattern (M19-T07), so an unset --description leaves the project's
+		// existing description untouched instead of blanking it.
+		if cmd.Flags().Changed("description") {
+			description, _ := cmd.Flags().GetString("description")
+			req.Description = &description
+		}
+
+		client := backend.NewProjectServiceClient()
+		res, err := client.UpdateProject(context.Background(), connect.NewRequest(req))
+		if err != nil {
+			cmd.PrintErrf("Failed to update project: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Project)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Project %s updated\n", res.Msg.Project.Id)
+		}
+		return nil
+	},
+}
+
 var projectsDeleteCmd = &cobra.Command{
 	Use:   "delete [project_id]",
 	Short: "Move a project to the bin (requires org admin)",
@@ -173,6 +218,7 @@ func init() {
 	projectsCmd.AddCommand(projectsListCmd)
 	projectsCmd.AddCommand(projectsGetCmd)
 	projectsCmd.AddCommand(projectsCreateCmd)
+	projectsCmd.AddCommand(projectsUpdateCmd)
 	projectsCmd.AddCommand(projectsDeleteCmd)
 	projectsCmd.AddCommand(projectsRestoreCmd)
 	projectsCmd.AddCommand(projectsPurgeCmd)
@@ -181,6 +227,8 @@ func init() {
 	projectsCreateCmd.Flags().String("title", "", "Descriptive title for the new project")
 	projectsCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	projectsCreateCmd.Flags().String("owner", "", "User ID of the project owner")
+	projectsUpdateCmd.Flags().String("title", "", "New project title (required)")
+	projectsUpdateCmd.Flags().String("description", "", "New description (pass an empty string to clear it)")
 	projectsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	projectsListCmd.Flags().StringP("filter", "f", "", "Substring match against project name")
 	projectsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")

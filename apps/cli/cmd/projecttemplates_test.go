@@ -16,7 +16,8 @@ import (
 
 type fakeProjectTemplateHandler struct {
 	v1connect.UnimplementedProjectTemplateServiceHandler
-	gotListPage *healthv1.PageRequest
+	gotListPage  *healthv1.PageRequest
+	gotUpdateReq *healthv1.UpdateProjectTemplateRequest
 }
 
 func (f *fakeProjectTemplateHandler) CreateTemplate(
@@ -42,6 +43,24 @@ func (f *fakeProjectTemplateHandler) GetTemplate(
 	return connect.NewResponse(&healthv1.GetProjectTemplateResponse{
 		Template: &healthv1.ProjectTemplate{Id: req.Msg.Id, Name: "Template A", RootTaskTypeId: &rootTaskTypeID},
 	}), nil
+}
+
+func (f *fakeProjectTemplateHandler) UpdateTemplate(
+	_ context.Context,
+	req *connect.Request[healthv1.UpdateProjectTemplateRequest],
+) (*connect.Response[healthv1.UpdateProjectTemplateResponse], error) {
+	f.gotUpdateReq = req.Msg
+	template := &healthv1.ProjectTemplate{Id: req.Msg.Id, Name: "Original", Description: "orig desc"}
+	if req.Msg.Name != nil {
+		template.Name = *req.Msg.Name
+	}
+	if req.Msg.Description != nil {
+		template.Description = *req.Msg.Description
+	}
+	if req.Msg.RootTaskTypeId != nil {
+		template.RootTaskTypeId = req.Msg.RootTaskTypeId
+	}
+	return connect.NewResponse(&healthv1.UpdateProjectTemplateResponse{Template: template}), nil
 }
 
 func (f *fakeProjectTemplateHandler) ListTemplates(
@@ -94,6 +113,60 @@ func TestProjectTemplatesGetCmd(t *testing.T) {
 	out := b.String()
 	if !strings.Contains(out, "Template A") || !strings.Contains(out, "tt_root") {
 		t.Fatalf("expected output to contain the template and its root task type, got %s", out)
+	}
+}
+
+// M20-T08: UpdateTemplate existed fully on the wire and at the backend since
+// before this milestone with no CLI command reaching it - this is that
+// command.
+func TestProjectTemplatesUpdateCmd(t *testing.T) {
+	fake := withProjectTemplateServer(t)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"project-templates", "update", "pt_1", "--name", "Renamed"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.gotUpdateReq == nil {
+		t.Fatal("expected the backend to receive an UpdateTemplate request")
+	}
+	if fake.gotUpdateReq.Name == nil || *fake.gotUpdateReq.Name != "Renamed" {
+		t.Errorf("expected name Renamed to be sent, got %v", fake.gotUpdateReq.Name)
+	}
+	// All three fields are real proto3 `optional` (M20-T03) - a flag that
+	// wasn't passed must leave its pointer nil, not send a value that would
+	// blank out the existing description/root task type.
+	if fake.gotUpdateReq.Description != nil {
+		t.Errorf("expected description to be left unset when --description was not passed, got %v", fake.gotUpdateReq.Description)
+	}
+	if fake.gotUpdateReq.RootTaskTypeId != nil {
+		t.Errorf("expected rootTaskTypeId to be left unset when --root-task-type was not passed, got %v", fake.gotUpdateReq.RootTaskTypeId)
+	}
+	out := b.String()
+	if !strings.Contains(out, "pt_1") {
+		t.Fatalf("expected output to contain the updated template's id, got %s", out)
+	}
+}
+
+func TestProjectTemplatesUpdateCmdCanClearDescriptionAndRootTaskType(t *testing.T) {
+	fake := withProjectTemplateServer(t)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"project-templates", "update", "pt_1", "--description", "", "--root-task-type", ""})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.gotUpdateReq == nil || fake.gotUpdateReq.Description == nil || *fake.gotUpdateReq.Description != "" {
+		t.Fatalf("expected an explicit empty description to be sent, got %v", fake.gotUpdateReq.Description)
+	}
+	if fake.gotUpdateReq.RootTaskTypeId == nil || *fake.gotUpdateReq.RootTaskTypeId != "" {
+		t.Fatalf("expected an explicit empty rootTaskTypeId to be sent, got %v", fake.gotUpdateReq.RootTaskTypeId)
 	}
 }
 
