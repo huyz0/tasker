@@ -117,7 +117,10 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
   // click exists to avoid.
   if (!isOpen) {
     return (
-      <button onClick={() => setIsOpen(true)} className="text-xs text-muted-foreground hover:text-foreground">
+      <button
+        onClick={() => { setIsOpen(true); revokeMutation.reset(); }}
+        className="text-xs text-muted-foreground hover:text-foreground"
+      >
         Members
       </button>
     );
@@ -127,7 +130,14 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
     <div className="mt-3 border-t pt-3 flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-medium">Project members</h4>
-        <button onClick={() => setIsOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">
+        <button
+          // M20-T06: collapsing this panel doesn't unmount it (isOpen===false
+          // is an early return above, not an unmount), so a failed revoke's
+          // error used to survive being hidden and reappear on the next
+          // expand with no action having been taken yet.
+          onClick={() => { setIsOpen(false); revokeMutation.reset(); }}
+          className="text-xs text-muted-foreground hover:text-foreground"
+        >
           Hide
         </button>
       </div>
@@ -151,7 +161,11 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
               <button
                 aria-label={`Revoke ${g.roleName} from this project`}
                 onClick={() => revokeMutation.mutate(g.id)}
-                disabled={revokeMutation.isPending}
+                // M20-T06: one shared mutation object across every grant row
+                // meant revoking one disabled the ✕ on every other row too -
+                // compare against the specific grant id this mutation was
+                // called with.
+                disabled={revokeMutation.isPending && revokeMutation.variables === g.id}
                 className="text-muted-foreground hover:text-destructive disabled:opacity-50"
               >
                 ✕
@@ -165,7 +179,10 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
       )}
 
       {!isPicking ? (
-        <button onClick={() => setIsPicking(true)} className="self-start text-xs text-primary hover:underline">
+        <button
+          onClick={() => { setIsPicking(true); grantMutation.reset(); }}
+          className="self-start text-xs text-primary hover:underline"
+        >
           + Grant access
         </button>
       ) : (
@@ -195,7 +212,10 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
               {candidatesQuery.isSuccess && candidates.length === 0 && (
                 <span className="text-xs text-muted-foreground">No matches.</span>
               )}
-              <button onClick={() => { setIsPicking(false); setSearch(''); }} className="self-start text-xs text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => { setIsPicking(false); setSearch(''); grantMutation.reset(); }}
+                className="self-start text-xs text-muted-foreground hover:text-foreground"
+              >
                 Cancel
               </button>
             </>
@@ -229,7 +249,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
               </button>
               <button
                 type="button"
-                onClick={() => { setPendingSubjectId(''); setIsPicking(false); }}
+                onClick={() => { setPendingSubjectId(''); setIsPicking(false); grantMutation.reset(); }}
                 className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
               >
                 Cancel
@@ -525,7 +545,7 @@ export function ProjectsWizard() {
                        </button>
                        <button
                          type="button"
-                         onClick={() => setEditingTemplateId(null)}
+                         onClick={() => { setEditingTemplateId(null); updateTemplateMutation.reset(); }}
                          className="flex-1 px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
                        >
                          Cancel
@@ -541,6 +561,12 @@ export function ProjectsWizard() {
                            setEditingTemplateId(t.id);
                            setEditTemplateName(t.name);
                            setEditTemplateDescription(t.description);
+                           // M20-T06: this mutation object is shared across
+                           // every template card - without resetting here,
+                           // opening Edit on template B after template A's
+                           // edit failed showed A's stale error as if B's
+                           // edit had just failed too.
+                           updateTemplateMutation.reset();
                          }}
                          className="text-xs text-muted-foreground hover:text-foreground shrink-0"
                        >
@@ -550,10 +576,15 @@ export function ProjectsWizard() {
                      <p className="text-sm text-muted-foreground mt-1 mb-6 flex-grow">{t.description}</p>
                      <button
                        onClick={() => createProjectMutation.mutate(t.id)}
-                       disabled={createProjectMutation.isPending || !projectName.trim()}
+                       // M20-T06: one shared mutation object across every
+                       // template card meant using one showed "Creating..."
+                       // and disabled every other card's button too -
+                       // compare against the specific template id this
+                       // mutation was called with.
+                       disabled={(createProjectMutation.isPending && createProjectMutation.variables === t.id) || !projectName.trim()}
                        className="w-full px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
                      >
-                       {createProjectMutation.isPending ? 'Creating...' : 'Use Template'}
+                       {createProjectMutation.isPending && createProjectMutation.variables === t.id ? 'Creating...' : 'Use Template'}
                      </button>
                    </>
                  )}
@@ -621,7 +652,7 @@ export function ProjectsWizard() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setEditingProjectId(null)}
+                          onClick={() => { setEditingProjectId(null); updateProjectMutation.reset(); }}
                           className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
                         >
                           Cancel
@@ -646,7 +677,17 @@ export function ProjectsWizard() {
                   {editingProjectId !== p.id && (
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => { setEditingProjectId(p.id); setEditProjectName(p.name); setEditProjectDescription(p.description || ''); }}
+                        onClick={() => {
+                          setEditingProjectId(p.id);
+                          setEditProjectName(p.name);
+                          setEditProjectDescription(p.description || '');
+                          // M20-T06: this mutation object is shared across
+                          // every project card - without resetting here,
+                          // opening Edit on project B after project A's edit
+                          // failed showed A's stale error as if B's edit had
+                          // just failed too.
+                          updateProjectMutation.reset();
+                        }}
                         className="text-muted-foreground hover:text-foreground text-sm"
                       >
                         Edit
@@ -662,7 +703,12 @@ export function ProjectsWizard() {
                             archiveProjectMutation.mutate(p.id);
                           }
                         }}
-                        disabled={archiveProjectMutation.isPending}
+                        // M20-T06: one shared mutation object across every
+                        // project row meant archiving one disabled the
+                        // Delete button on every other row too - compare
+                        // against the specific project id this mutation was
+                        // called with.
+                        disabled={archiveProjectMutation.isPending && archiveProjectMutation.variables === p.id}
                         className="text-muted-foreground hover:text-destructive text-sm disabled:opacity-50"
                       >
                         Delete
@@ -670,7 +716,13 @@ export function ProjectsWizard() {
                     </div>
                   )}
                 </div>
-                {updateProjectMutation.isError && (
+                {/* M20-T06: this used to render unconditionally - one shared
+                    mutation object for the whole page meant a single failed
+                    rename painted this banner on every visible project card,
+                    not just the one being edited. Gated on editingProjectId
+                    now that Cancel/Edit both reset the mutation, so a stale
+                    error can't resurface on an unrelated row either. */}
+                {editingProjectId === p.id && updateProjectMutation.isError && (
                   <p className="text-sm text-destructive mb-4">Failed to update project: {(updateProjectMutation.error as Error).message}</p>
                 )}
                 <RepositoryIntegrationConfig projectId={p.id} />

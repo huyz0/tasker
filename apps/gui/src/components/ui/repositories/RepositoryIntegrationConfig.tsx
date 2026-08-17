@@ -189,7 +189,14 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                         removeLinkMutation.mutate(link.id);
                       }
                     }}
-                    disabled={removeLinkMutation.isPending}
+                    // M20-T06: one shared mutation object across every link's
+                    // row meant unlinking link A disabled the Unlink button
+                    // on every other link too, not just A's - comparing
+                    // against the specific link id this mutation was called
+                    // with (unlike syncMutation just above, which really is
+                    // one project-wide action shared across every row, so
+                    // its blanket isPending is correct as-is).
+                    disabled={removeLinkMutation.isPending && removeLinkMutation.variables === link.id}
                     className="text-xs text-muted-foreground hover:text-destructive px-2 py-1 disabled:opacity-50"
                   >
                     Unlink

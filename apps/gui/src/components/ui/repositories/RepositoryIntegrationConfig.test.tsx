@@ -375,4 +375,32 @@ describe('RepositoryIntegrationConfig', () => {
 
     await waitFor(() => expect(screen.getByText(/Failed to unlink repository/)).toBeInTheDocument());
   });
+
+  // M20-T06: one shared mutation object across every link's row meant
+  // unlinking one disabled the Unlink button on every other link too, not
+  // just the one actually in flight.
+  test('does not disable a different link\'s Unlink button while one link is being unlinked', async () => {
+    mockListRepositoryLinks.mockResolvedValue({
+      links: [
+        { id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' },
+        { id: 'link-2', provider: 'github', remoteName: 'huyz0/other-repo' },
+      ],
+    });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    let resolveRemove: (v: unknown) => void;
+    mockRemoveRepositoryLink.mockReturnValue(new Promise((resolve) => { resolveRemove = resolve; }));
+
+    renderComponent();
+    await waitFor(() => expect(screen.getByText(/huyz0\/tasker/)).toBeDefined());
+
+    const unlinkButtons = screen.getAllByText('Unlink');
+    fireEvent.click(unlinkButtons[0]);
+    await confirmAction();
+
+    await waitFor(() => expect(mockRemoveRepositoryLink).toHaveBeenCalledWith({ repositoryLinkId: 'link-1' }));
+    expect(screen.getAllByText('Unlink')[0]).toBeDisabled();
+    expect(screen.getAllByText('Unlink')[1]).not.toBeDisabled();
+
+    resolveRemove!({ success: true });
+  });
 });

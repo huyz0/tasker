@@ -338,6 +338,51 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText(/Failed to delete project/)).toBeDefined());
   });
 
+  // M20-T06: archiveProjectMutation used to be one shared object read by
+  // every project row's Delete button - archiving one project disabled every
+  // other row's Delete button too, compared here against .variables (the
+  // project id the in-flight mutate() call actually carries).
+  it('isolates the pending Delete state to the project that was clicked', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [
+      { id: 'proj-1', name: 'Project One' },
+      { id: 'proj-2', name: 'Project Two' },
+    ] });
+    let resolveArchive: (v: any) => void = () => {};
+    mockArchiveProject.mockReturnValue(new Promise((resolve) => { resolveArchive = resolve; }));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Project One')).toBeDefined());
+    fireEvent.click(screen.getAllByText('Delete')[0]);
+    await confirmAction();
+
+    await waitFor(() => expect(mockArchiveProject).toHaveBeenCalledWith({ projectId: 'proj-1' }));
+    expect(screen.getAllByText('Delete')[0]).toBeDisabled();
+    expect(screen.getAllByText('Delete')[1]).not.toBeDisabled();
+
+    resolveArchive({});
+  });
+
+  // M20-T06: updateProjectMutation.isError used to be rendered unconditionally
+  // for every project card - one failed rename painted the error banner on
+  // every visible card, not just the one being edited.
+  it('shows the rename-failure banner only on the project card that is being edited', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [
+      { id: 'proj-1', name: 'Project One' },
+      { id: 'proj-2', name: 'Project Two' },
+    ] });
+    mockUpdateProject.mockRejectedValue(new Error('not a member'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Project One')).toBeDefined());
+    fireEvent.click(screen.getAllByText('Edit')[0]);
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(screen.getByText(/Failed to update project/)).toBeInTheDocument());
+    expect(screen.getAllByText(/Failed to update project/)).toHaveLength(1);
+  });
+
   it('shows an error when creating a project with no authenticated user', async () => {
     mockAuthUserId = null;
     mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
@@ -384,6 +429,31 @@ describe('ProjectsWizard', () => {
     fireEvent.click(screen.getByText('Create Template'));
     await waitFor(() => expect(screen.getByText('Creating...')).toBeInTheDocument());
     resolveTemplate({ template: { id: 'tpl-new', name: 'Tmpl' } });
+  });
+
+  // M20-T06: createProjectMutation used to be one shared object read by every
+  // template card's "Use Template" button - creating from template A left
+  // template B's button disabled and relabeled "Creating..." too, even though
+  // no request had been made for it.
+  it('isolates the pending "Use Template" state to the template that was clicked', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [
+      { id: 'tpl-1', name: 'Software', description: 'desc' },
+      { id: 'tpl-2', name: 'Marketing', description: 'desc2' },
+    ] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    let resolveProject: (v: any) => void = () => {};
+    mockCreateProject.mockReturnValue(new Promise((resolve) => { resolveProject = resolve; }));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
+    fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Use Template' })[0]);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Creating...' })).toBeInTheDocument());
+    const untouchedButton = screen.getByRole('button', { name: 'Use Template' });
+    expect(untouchedButton).not.toBeDisabled();
+
+    resolveProject({ project: { id: 'proj-new', name: 'X' } });
   });
 
   it('toggles the new-template form closed via Cancel', async () => {
@@ -552,6 +622,26 @@ describe('ProjectsWizard', () => {
     resolveUpdate({ project: { id: 'proj-1', name: 'Existing Project' } });
   });
 
+  // M20-T06: updateProjectMutation.reset() is now called from both the Edit
+  // open handler and the Cancel handler - without it, a stale error from a
+  // previous failed save reappeared the moment the form was reopened, before
+  // any new save had even been attempted.
+  it('clears a stale rename error when Edit is reopened on a project', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    mockUpdateProject.mockRejectedValue(new Error('not a member'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(screen.getByText(/Failed to update project/)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByText('Edit'));
+    expect(screen.queryByText(/Failed to update project/)).not.toBeInTheDocument();
+  });
+
   it('edits a template through the GUI', async () => {
     mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
     mockListProjects.mockResolvedValue({ projects: [] });
@@ -624,6 +714,24 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText(/Failed to update template/)).toBeInTheDocument());
   });
 
+  // M20-T06: same reset-on-reopen fix as projects above, applied to
+  // updateTemplateMutation.
+  it('clears a stale rename error when Edit is reopened on a template', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    mockUpdateTemplate.mockRejectedValue(new Error('name already exists'));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(screen.getByText(/Failed to update template/)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByText('Edit'));
+    expect(screen.queryByText(/Failed to update template/)).not.toBeInTheDocument();
+  });
+
   // M16-T04: grantRole/listGrants/revokeGrant(scopeType: 'project') have
   // existed and been tested at the API layer since M10 - no GUI screen ever
   // called them with that scope. These tests are that screen.
@@ -665,6 +773,32 @@ describe('ProjectsWizard', () => {
       fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
 
       await waitFor(() => expect(mockRevokeGrant).toHaveBeenCalledWith({ grantId: 'grant-1' }));
+    });
+
+    // M20-T06: revokeMutation used to be one shared object read by every
+    // grant row's ✕ button - revoking one grant disabled the ✕ on every
+    // other grant in the same project too, compared here against .variables
+    // (the grant id the in-flight mutate() call actually carries).
+    it('isolates the pending revoke state to the grant that was clicked', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListGrants.mockResolvedValue({ grants: [
+        { id: 'grant-1', subjectType: 'user', subjectId: 'user-2', roleId: 'role-1', roleName: 'QA Lead' },
+        { id: 'grant-2', subjectType: 'user', subjectId: 'user-3', roleId: 'role-2', roleName: 'Dev' },
+      ] });
+      let resolveRevoke: (v: any) => void = () => {};
+      mockRevokeGrant.mockReturnValue(new Promise((resolve) => { resolveRevoke = resolve; }));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      await screen.findByText('QA Lead');
+      fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
+
+      await waitFor(() => expect(mockRevokeGrant).toHaveBeenCalledWith({ grantId: 'grant-1' }));
+      expect(screen.getByLabelText('Revoke QA Lead from this project')).toBeDisabled();
+      expect(screen.getByLabelText('Revoke Dev from this project')).not.toBeDisabled();
+
+      resolveRevoke({});
     });
 
     it('searches org members and grants a role at this project scope', async () => {
@@ -710,6 +844,54 @@ describe('ProjectsWizard', () => {
       fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'role-1' } });
       fireEvent.click(screen.getByText('Grant role'));
       await waitFor(() => expect(screen.getByText(/Failed to grant: not an org admin/)).toBeInTheDocument());
+    });
+
+    // M20-T06: revokeMutation.reset() is now called from both the Members
+    // open handler and the Hide handler - without it, collapsing the panel
+    // after a failed revoke and reopening it showed the stale error again
+    // even though nothing had been retried yet.
+    it('clears a stale revoke error when Members is collapsed and reopened', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListGrants.mockResolvedValue({ grants: [
+        { id: 'grant-1', subjectType: 'user', subjectId: 'user-2', roleId: 'role-1', roleName: 'QA Lead' },
+      ] });
+      mockRevokeGrant.mockRejectedValue(new Error('grant not found'));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      await screen.findByText('QA Lead');
+      fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
+      await waitFor(() => expect(screen.getByText(/Failed to revoke: grant not found/)).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText('Hide'));
+      fireEvent.click(screen.getByText('Members'));
+      await screen.findByText('QA Lead');
+      expect(screen.queryByText(/Failed to revoke/)).not.toBeInTheDocument();
+    });
+
+    // M20-T06: grantMutation.reset() is now called from the "+ Grant access"
+    // open handler and both Cancel buttons - without it, reopening the
+    // picker after a failed grant showed the stale error again with no new
+    // attempt made.
+    it('clears a stale grant error when "+ Grant access" is reopened', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'QA Lead' }] });
+      mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-2', name: 'Jamie Reviewer', email: 'jamie@test.com' }] });
+      mockGrantRole.mockRejectedValue(new Error('not an org admin'));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      fireEvent.click(await screen.findByText('+ Grant access'));
+      fireEvent.click(await screen.findByText('Jamie Reviewer'));
+      fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'role-1' } });
+      fireEvent.click(screen.getByText('Grant role'));
+      await waitFor(() => expect(screen.getByText(/Failed to grant: not an org admin/)).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText('Cancel'));
+      fireEvent.click(screen.getByText('+ Grant access'));
+      expect(screen.queryByText(/Failed to grant/)).not.toBeInTheDocument();
     });
 
     it('falls back to email for a candidate with no name, and shows "no matches"/"no roles" empty states', async () => {
