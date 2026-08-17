@@ -34,8 +34,12 @@ vi.mock('@connectrpc/connect', async (importOriginal) => ({
           deleteTaskStatusTransition: (...a: unknown[]) => mockDeleteTransition(...a),
         },
 }));
+let mockActiveOrgId = 'org-1';
 vi.mock('../../store/layout', () => ({
-  useLayoutStore: vi.fn((selector) => selector({ activeOrgId: 'org-1', setActivePageTitle: vi.fn() })),
+  useLayoutStore: vi.fn((selector) => selector({
+    get activeOrgId() { return mockActiveOrgId; },
+    setActivePageTitle: vi.fn(),
+  })),
 }));
 
 const renderEditor = () => {
@@ -60,6 +64,7 @@ const openBug = async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockActiveOrgId = 'org-1';
   mockListTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Bug' }] });
   mockGetType.mockResolvedValue({ taskType: { id: 'tt-1', name: 'Bug' }, statuses, transitions: [] });
   mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Default Template', rootTaskTypeId: '' }] });
@@ -368,5 +373,25 @@ describe('TaskTypesEditor', () => {
     fireEvent.click(tryAgain);
 
     await waitFor(() => expect(mockGetType).toHaveBeenCalled());
+  });
+
+  // M19-T05: switching the active org left `selectedId` pointing at the
+  // previous org's task type - `detail` (keyed only on selectedId) kept
+  // querying it under the new org's identity even after the type *list*
+  // itself had already repainted for the switch.
+  it('deselects the open task type when the active org changes', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { rerender } = render(
+      <QueryClientProvider client={client}><TaskTypesEditor /></QueryClientProvider>,
+    );
+    await openBug();
+
+    mockActiveOrgId = 'org-2';
+    mockListTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-9', name: 'Feature' }] });
+    rerender(<QueryClientProvider client={client}><TaskTypesEditor /></QueryClientProvider>);
+
+    await screen.findByRole('button', { name: 'Feature' });
+    expect(screen.queryByText('Statuses')).toBeNull();
+    expect(screen.getByText('Choose a task type on the left to configure its statuses and transitions.')).toBeInTheDocument();
   });
 });

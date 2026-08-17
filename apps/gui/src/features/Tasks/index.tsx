@@ -443,6 +443,29 @@ export function TasksWorkbench() {
 
   useEffect(() => setIsEditingTask(false), [expandedTaskId]);
 
+  // M19-T05: the open task lives in the URL, so switching the active
+  // project/org left it open across the switch - `getTask` kept resolving
+  // (or failing) against a task that belongs to whatever project/org was
+  // active when the link was followed, not the one now showing in the
+  // sidebar. Closes the panel so a stale task can't be edited under the
+  // wrong project's identity.
+  //
+  // Skipped on the very first run: a deep link (`/tasks/:taskId`) has to
+  // survive mounting into whatever the active project/org happens to
+  // already be, not get redirected away from before it has ever rendered.
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (expandedTaskId) navigate('/tasks');
+    // Deliberately only activeProjectId/activeOrgId: this resets the panel
+    // when the *scope* changes, not on every ordinary navigation within it
+    // (which would fight the very task the user just opened).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProjectId, activeOrgId]);
+
   // Focused-overlay UX (matches Jira/Linear's task-detail pattern): Escape
   // closes it from anywhere, not just via the visible close button.
   useEffect(() => {

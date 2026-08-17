@@ -44,7 +44,16 @@ export function AssigneePicker({ taskId, orgId, assignees }: { taskId: string; o
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebounce(search, 250);
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['tasks'] });
+  // M19-T05: invalidating only ['tasks'] refreshed the board/table's own
+  // list queries but left the task-detail panel's `['task', id]` query (a
+  // different key, fetched by getTask rather than listTasks) holding its
+  // stale assignee list - this picker renders inside that panel too
+  // (assigning/unassigning from the detail view left the list it was drawn
+  // from unchanged until something else happened to refetch it).
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+  };
 
   const candidates = useQuery({
     queryKey: ['assignableCandidates', orgId, debouncedSearch],
