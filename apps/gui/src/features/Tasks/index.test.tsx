@@ -936,6 +936,39 @@ describe('TasksWorkbench', () => {
     expect(screen.getByText('Todo')).toBeInTheDocument();
   });
 
+  // M19-T04: columnDefs only ever covers the default statuses plus whatever
+  // custom task-type statuses have resolved by this render - a status this
+  // page has never seen (a race with the task-type query, or a status
+  // deleted/renamed after the task was set to it) used to end in a
+  // `.find(...)!` that threw straight through the whole table's render,
+  // instead of just that one row falling back to showing the raw status.
+  it('shows a task row instead of crashing the whole table when its status matches no resolved column', async () => {
+    // The board fetches one status column at a time (M07-T03), so a task
+    // whose status matches none of them (todo/in-progress/done, and no
+    // custom task type is registered here to add another) never appears
+    // there - table view has no such facet, so it is the only place this
+    // status is ever reachable to render.
+    mockListTasks.mockResolvedValue({
+      tasks: [
+        { id: 'task-1', title: 'Orphaned status task', status: 'archived-elsewhere', description: '', displayId: 'ENG-1' },
+        { id: 'task-2', title: 'Normal task', status: 'todo', description: '', displayId: 'ENG-2' },
+      ],
+    });
+    renderPage();
+
+    // Wait for the board to finish its initial render (a column heading
+    // that exists regardless of which tasks loaded) before switching, so
+    // the switch isn't racing the board's own fetch.
+    await waitFor(() => expect(screen.getAllByLabelText('Add task to Todo')[0]).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    // Both rows render - the unresolved status falls back to its own raw
+    // string rather than taking the rest of the table down with it.
+    await waitFor(() => expect(screen.getByText('Orphaned status task')).toBeInTheDocument());
+    expect(screen.getByText('Normal task')).toBeInTheDocument();
+    expect(screen.getByText('archived-elsewhere')).toBeInTheDocument();
+  });
+
   it('asks the server to sort, and cycles asc/desc/off', async () => {
     mockListTasks.mockResolvedValue({ tasks: [
       { id: 'task-1', title: 'Zebra task', status: 'todo', description: '', displayId: 'ENG-1' },

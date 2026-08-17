@@ -570,7 +570,14 @@ export function TasksWorkbench() {
     ? statusesByTaskType.get(expandedTask.taskTypeId)!.map(name => ({ id: name, display: name }))
     : DEFAULT_STATUS_OPTIONS;
 
-  const statusDisplay = (statusId: string) => columnDefs.find(c => c.id === statusId)!.display;
+  // M19-T04: columnDefs only ever covers statuses this render has resolved
+  // (DEFAULT_STATUS_OPTIONS plus whatever statusesByTaskType has loaded so
+  // far) - a task rendered before its type's statuses finish loading, or one
+  // whose status was since deleted/renamed on its type, has a status string
+  // with no matching entry. The non-null assertion this used to end in threw
+  // straight through the table's render, taking the whole view down for
+  // every row instead of just the one with the stale/unresolved status.
+  const statusDisplay = (statusId: string) => columnDefs.find(c => c.id === statusId)?.display ?? statusId;
 
   // The server orders the rows. Sorting them again here would reorder one
   // page's worth of a paginated set and call the result sorted.
