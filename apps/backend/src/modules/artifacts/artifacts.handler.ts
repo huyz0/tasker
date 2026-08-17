@@ -87,6 +87,26 @@ const PurgeFolderSchema = z.object({
   folderId: z.string().min(1, "folderId is required"),
 });
 
+const ListFoldersSchema = z.object({
+  projectId: z.string().min(1, "projectId is required"),
+  page: z.any().optional(),
+  onlyDeleted: z.boolean().optional(),
+});
+
+const ListArtifactsSchema = z
+  .object({
+    folderId: z.string().optional(),
+    projectId: z.string().optional(),
+    page: z.any().optional(),
+    onlyDeleted: z.boolean().optional(),
+  })
+  // Proto3 sends "" for an omitted string, same reasoning as
+  // ListTaskArtifactLinksSchema above.
+  .transform((v) => ({ ...v, folderId: v.folderId || undefined, projectId: v.projectId || undefined }))
+  .refine((v) => Boolean(v.folderId) || Boolean(v.projectId), {
+    message: "folderId or projectId is required",
+  });
+
 // --- Handler Factory ---
 
 export const createArtifactsHandler = (db: any, nc: any = null) => {
@@ -110,16 +130,21 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
       const newId = `fld-${crypto.randomUUID()}`;
+      // M18-T02: set explicitly rather than left to insertRecord's default -
+      // that default only fires in standalone/sqlite mode, and either way it
+      // was never added to the object returned below, only to the copy
+      // insertRecord wrote to the DB.
       const payload = {
         id: newId,
         projectId: parsed.projectId,
         parentId: parsed.parentId || null,
         name: parsed.name,
+        createdAt: new Date(),
       };
 
-      await insertRecord(db, folders, payload, isStandalone);
+      await insertRecord(db, folders, payload, isStandalone, false);
 
-      const folderResp = { ...payload };
+      const folderResp = { ...payload, createdAt: payload.createdAt.toISOString() };
       publishDomainEvent(nc, "domain.folder.created", folderResp);
       return { folder: folderResp };
     },
@@ -136,7 +161,11 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       await db.update(folders).set({ name: parsed.name }).where(eq((folders as any).id, parsed.folderId));
 
-      const updated = { ...existing[0], name: parsed.name };
+      const updated = {
+        ...existing[0],
+        name: parsed.name,
+        createdAt: existing[0].createdAt instanceof Date ? existing[0].createdAt.toISOString() : existing[0].createdAt,
+      };
       publishDomainEvent(nc, "domain.folder.updated", updated);
       return { folder: updated };
     },
@@ -149,6 +178,8 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
 
       const artifacts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const newId = `art-${crypto.randomUUID()}`;
+      // M18-T02: see createFolder's comment above on why createdAt is set
+      // explicitly here.
       const payload = {
         id: newId,
         folderId: parsed.folderId,
@@ -156,12 +187,13 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         description: parsed.description,
         content: parsed.content,
         contentType: parsed.contentType,
+        createdAt: new Date(),
       };
 
-      await insertRecord(db, artifacts, payload, isStandalone);
+      await insertRecord(db, artifacts, payload, isStandalone, false);
 
       publishDomainEvent(nc, "domain.artifact.created", payload);
-      return { artifact: payload };
+      return { artifact: { ...payload, createdAt: payload.createdAt.toISOString() } };
     },
 
     async updateArtifactContent(req: unknown, { values: contextValues }: { values: any }) {
@@ -180,7 +212,11 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       };
       await db.update(artifacts).set(updates).where(eq((artifacts as any).id, parsed.artifactId));
 
-      const artifactResp = { ...existing[0], ...updates };
+      const artifactResp = {
+        ...existing[0],
+        ...updates,
+        createdAt: existing[0].createdAt instanceof Date ? existing[0].createdAt.toISOString() : existing[0].createdAt,
+      };
       publishDomainEvent(nc, "domain.artifact.content_updated", artifactResp);
       return { artifact: artifactResp };
     },
@@ -279,19 +315,19 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         })),
       };
     },
-    async listFolders(req: any, { values: contextValues }: { values: any }) {
+    async listFolders(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.projectId) throw new ConnectError("projectId is required", Code.InvalidArgument);
-      const orgId = await getProjectOrgId(db, req.projectId);
+      const parsed = ListFoldersSchema.parse(req);
+      const orgId = await getProjectOrgId(db, parsed.projectId);
       await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
 
       const flds = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
-      const deletedFolderFilter = req.onlyDeleted ? not(notDeleted(flds)) : notDeleted(flds);
+      const deletedFolderFilter = parsed.onlyDeleted ? not(notDeleted(flds)) : notDeleted(flds);
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
         db,
         flds,
-        and(eq((flds as any).projectId, req.projectId), deletedFolderFilter),
-        req.page,
+        and(eq((flds as any).projectId, parsed.projectId), deletedFolderFilter),
+        parsed.page,
         {
           filterColumn: (flds as any).name,
           sortableColumns: { name: (flds as any).name, createdAt: (flds as any).createdAt },
@@ -314,34 +350,32 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         page: { nextCursor, totalCount },
       };
     },
-    async listArtifacts(req: any, { values: contextValues }: { values: any }) {
+    async listArtifacts(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.folderId && !req.projectId) {
-        throw new ConnectError("folderId or projectId is required", Code.InvalidArgument);
-      }
+      const parsed = ListArtifactsSchema.parse(req);
       // Authorized against whichever scope the caller named — a project-wide
       // list is not a weaker check, it is the same check one level up.
-      const orgId = req.folderId
-        ? await getFolderOrgId(db, req.folderId)
-        : await getProjectOrgId(db, req.projectId);
+      const orgId = parsed.folderId
+        ? await getFolderOrgId(db, parsed.folderId)
+        : await getProjectOrgId(db, parsed.projectId!);
       await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const flds2 = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
-      const deletedArtifactFilter = req.onlyDeleted ? not(notDeleted(arts)) : notDeleted(arts);
+      const deletedArtifactFilter = parsed.onlyDeleted ? not(notDeleted(arts)) : notDeleted(arts);
       // Project scope resolves through the folder table rather than fanning out
       // one request per folder, which is what the Bin used to do.
-      const scopeCondition = req.folderId
-        ? eq((arts as any).folderId, req.folderId)
+      const scopeCondition = parsed.folderId
+        ? eq((arts as any).folderId, parsed.folderId)
         : inArray(
             (arts as any).folderId,
-            db.select({ id: (flds2 as any).id }).from(flds2).where(eq((flds2 as any).projectId, req.projectId)),
+            db.select({ id: (flds2 as any).id }).from(flds2).where(eq((flds2 as any).projectId, parsed.projectId!)),
           );
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
         db,
         arts,
         and(scopeCondition, deletedArtifactFilter),
-        req.page,
+        parsed.page,
         {
           filterColumn: (arts as any).name,
           sortableColumns: { name: (arts as any).name, createdAt: (arts as any).createdAt },
@@ -413,13 +447,20 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
           name: (arts as any).name,
           description: (arts as any).description,
           contentType: (arts as any).contentType,
+          createdAt: (arts as any).createdAt,
         })
         .from(arts)
         .where(eq((arts as any).id, parsed.artifactId))
         .limit(1);
       if (rows.length === 0) throw new ConnectError("Artifact not found", Code.NotFound);
 
-      return { artifact: rows[0] };
+      const artifact = rows[0];
+      return {
+        artifact: {
+          ...artifact,
+          createdAt: artifact.createdAt instanceof Date ? artifact.createdAt.toISOString() : artifact.createdAt,
+        },
+      };
     },
 
     async getArtifactContent(req: unknown, { values: contextValues }: { values: any }) {

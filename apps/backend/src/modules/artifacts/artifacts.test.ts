@@ -45,6 +45,10 @@ describe("Artifacts Handler", () => {
     expect(res.folder.name).toBe("Documents");
     expect(res.folder.id).toStartWith("fld-");
     expect(res.folder.projectId).toBe(projectId);
+    // M18-T02: createdAt used to be computed and then silently dropped
+    // before the response left the handler.
+    expect(typeof res.folder.createdAt).toBe("string");
+    expect(res.folder.createdAt.length).toBeGreaterThan(0);
   });
 
   it("should create nested folder with parentId", async () => {
@@ -100,6 +104,31 @@ describe("Artifacts Handler", () => {
     ).rejects.toThrow();
   });
 
+  // --- updateFolder ---
+
+  it("should rename a folder and return the updated folder", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Original" }, ctx);
+    const res = await handler.updateFolder({ folderId: folder.folder.id, name: "Renamed" }, ctx);
+    expect(res.folder.name).toBe("Renamed");
+    expect(res.folder.id).toBe(folder.folder.id);
+    expect(typeof res.folder.createdAt).toBe("string");
+    expect(res.folder.createdAt.length).toBeGreaterThan(0);
+
+    const [row] = await db.select().from(schemaSqlite.folders).where(eq(schemaSqlite.folders.id, folder.folder.id));
+    expect(row.name).toBe("Renamed");
+  });
+
+  it("should reject updateFolder for a nonexistent folder", async () => {
+    await expect(handler.updateFolder({ folderId: "fld-does-not-exist", name: "X" }, ctx)).rejects.toThrow();
+  });
+
+  it("should reject updateFolder from a user outside the folder's org", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    await expect(
+      handler.updateFolder({ folderId: folder.folder.id, name: "X" }, makeAuthContext("user-outsider"))
+    ).rejects.toThrow();
+  });
+
   // --- createArtifact ---
 
   it("should create artifact with valid input", async () => {
@@ -118,6 +147,8 @@ describe("Artifacts Handler", () => {
     expect(res.artifact.name).toBe("Design Doc");
     expect(res.artifact.id).toStartWith("art-");
     expect(res.artifact.contentType).toBe("text/markdown");
+    expect(typeof res.artifact.createdAt).toBe("string");
+    expect(res.artifact.createdAt.length).toBeGreaterThan(0);
   });
 
   it("should create an image artifact with base64 content and an explicit contentType", async () => {
@@ -164,6 +195,8 @@ describe("Artifacts Handler", () => {
     const res = await handler.updateArtifactContent({ artifactId: created.artifact.id, content: "new content" }, ctx);
     expect(res.artifact.content).toBe("new content");
     expect(res.artifact.contentType).toBe("text/markdown");
+    expect(typeof res.artifact.createdAt).toBe("string");
+    expect(res.artifact.createdAt.length).toBeGreaterThan(0);
   });
 
   it("should update an artifact's contentType alongside its content", async () => {
@@ -200,6 +233,8 @@ describe("Artifacts Handler", () => {
     expect(res.artifact.name).toBe("Doc");
     expect(res.artifact.description).toBe("d");
     expect((res.artifact as any).content).toBeUndefined();
+    expect(typeof res.artifact.createdAt).toBe("string");
+    expect(res.artifact.createdAt.length).toBeGreaterThan(0);
   });
 
   it("should reject getArtifact for a nonexistent artifact", async () => {
@@ -396,6 +431,26 @@ describe("Artifacts Handler", () => {
 
   it("should reject listArtifacts with missing folderId", async () => {
     expect(handler.listArtifacts({}, ctx)).rejects.toThrow();
+  });
+
+  // M18-T02/T03: the project-wide scope (used by the Bin, which wants every
+  // deleted artifact regardless of which folder it lived in) resolves
+  // through a folder-id subquery rather than a plain equality check, and had
+  // no test exercising it at all.
+  it("should list every artifact under a project across multiple folders when scoped by projectId", async () => {
+    const fldA = await handler.createFolder({ projectId, name: "Fld A" }, ctx);
+    const fldB = await handler.createFolder({ projectId, name: "Fld B" }, ctx);
+    await handler.createArtifact({ folderId: fldA.folder.id, name: "In A" }, ctx);
+    await handler.createArtifact({ folderId: fldB.folder.id, name: "In B" }, ctx);
+
+    const otherFld = await handler.createFolder({ projectId: otherProjectId, name: "Other Fld" }, ctx);
+    await handler.createArtifact({ folderId: otherFld.folder.id, name: "In Other Project" }, ctx);
+
+    const res = await handler.listArtifacts({ projectId }, ctx);
+    const names = res.artifacts.map((a: any) => a.name);
+    expect(names).toContain("In A");
+    expect(names).toContain("In B");
+    expect(names).not.toContain("In Other Project");
   });
 
   // --- archive/restore ---

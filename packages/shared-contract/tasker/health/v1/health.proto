@@ -891,6 +891,8 @@ message Folder {
   string parentId = 3;
   string name = 4;
   string deletedAt = 5;
+  // M18-T02.
+  string created_at = 6;
 }
 
 message Artifact {
@@ -913,6 +915,9 @@ message Artifact {
   // base64 and editor text is not, and the content type does not reliably say
   // which.
   int64 sizeBytes = 8;
+
+  // M18-T02.
+  string created_at = 9;
 }
 
 // A deep link carries an artifact id and nothing else. Without this, the GUI
