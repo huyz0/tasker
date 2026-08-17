@@ -151,7 +151,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
 // Fixed-width ID/Status columns keep those cells snug around their content;
 // Title takes the remaining space and Pull Requests gets enough room for a
 // couple of badges before wrapping.
-const TABLE_COLUMN_WIDTHS = '110px minmax(200px, 1fr) 140px minmax(180px, 260px)';
+const TABLE_COLUMN_WIDTHS = '32px 110px minmax(200px, 1fr) 140px minmax(180px, 260px)';
 
 /** One screenful of cards. A column is a queue to work, not a catalogue. */
 const COLUMN_PAGE = 20;
@@ -358,6 +358,11 @@ export function TasksWorkbench() {
   const [sort, setSort] = useState<{ key: 'displayId' | 'title' | 'status'; dir: 'asc' | 'desc' } | null>(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebounce(search, 250);
+  // Table-view bulk selection. Applies only to loaded rows - the table
+  // virtualizes, so "select all" means all rows fetched so far, not every
+  // task in the project; the count in the toolbar makes that explicit.
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  useEffect(() => { setSelectedTaskIds(new Set()); }, [activeProjectId, debouncedSearch]);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -517,6 +522,24 @@ export function TasksWorkbench() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] }),
   });
 
+  // Table-view bulk status change: N individual updateTaskStatus calls, not
+  // a server-side batch endpoint - there isn't one, and fanning out from the
+  // client is enough to make "change 20 tasks at once" possible instead of
+  // one at a time. A partial failure still invalidates (rows that succeeded
+  // show their new status) but leaves the selection in place and reports how
+  // many failed, rather than silently discarding which ones or claiming full
+  // success.
+  const bulkStatusMutation = useMutation({
+    mutationFn: async (status: string) => {
+      const ids = [...selectedTaskIds];
+      const results = await Promise.allSettled(ids.map((taskId) => taskClient.updateTaskStatus({ taskId, status })));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) throw new Error(`${failed} of ${ids.length} task${ids.length === 1 ? '' : 's'} failed to update`);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] }),
+    onSuccess: () => setSelectedTaskIds(new Set()),
+  });
+
   const updateTaskMutation = useMutation({
     mutationFn: async (variables: { taskId: string; title: string; description: string }) => {
       const resp = await taskClient.updateTask(variables);
@@ -626,12 +649,49 @@ export function TasksWorkbench() {
       </div>
 
       {viewMode === 'table' ? (
-        <div className="h-[calc(100vh-260px)] overflow-hidden border rounded-lg flex flex-col" role="table" aria-label="Tasks">
+        <div className="flex flex-col gap-3">
+          {selectedTaskIds.size > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2 border rounded-lg bg-muted/30 text-sm">
+              <span>{selectedTaskIds.size} selected</span>
+              <label className="sr-only" htmlFor="bulk-status">Change status of selected tasks</label>
+              <select
+                id="bulk-status"
+                value=""
+                disabled={bulkStatusMutation.isPending}
+                onChange={(e) => { if (e.target.value) bulkStatusMutation.mutate(e.target.value); }}
+                className="text-sm rounded-md border bg-background px-2 py-1"
+              >
+                <option value="">{bulkStatusMutation.isPending ? 'Updating…' : 'Change status to…'}</option>
+                {columns.map(c => <option key={c.id} value={c.id}>{c.display}</option>)}
+              </select>
+              <button
+                onClick={() => setSelectedTaskIds(new Set())}
+                className="text-muted-foreground hover:text-foreground ml-auto"
+              >
+                Clear selection
+              </button>
+            </div>
+          )}
+          {bulkStatusMutation.isError && (
+            <p className="text-sm text-destructive">{(bulkStatusMutation.error as Error).message}</p>
+          )}
+          <div className="h-[calc(100vh-260px)] overflow-hidden border rounded-lg flex flex-col" role="table" aria-label="Tasks">
           <div
             role="row"
             className="grid bg-muted/30 text-left text-xs text-muted-foreground uppercase tracking-wide shrink-0"
             style={{ gridTemplateColumns: TABLE_COLUMN_WIDTHS }}
           >
+            <div role="columnheader" className="px-2 py-2 flex items-center">
+              <label className="sr-only" htmlFor="select-all-tasks">Select all loaded tasks</label>
+              <input
+                id="select-all-tasks"
+                type="checkbox"
+                checked={sortedTasks.length > 0 && sortedTasks.every(t => selectedTaskIds.has(t.id))}
+                onChange={(e) => {
+                  setSelectedTaskIds(e.target.checked ? new Set(sortedTasks.map(t => t.id)) : new Set());
+                }}
+              />
+            </div>
             {(['displayId', 'title', 'status'] as const).map(key => (
               <button
                 key={key}
@@ -682,6 +742,22 @@ export function TasksWorkbench() {
                       className="grid items-center border-t hover:bg-muted/20 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 absolute top-0 left-0 w-full"
                       style={{ gridTemplateColumns: TABLE_COLUMN_WIDTHS, height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
                     >
+                      <div role="cell" className="px-2 py-2 flex items-center">
+                        <label className="sr-only" htmlFor={`select-task-${task.id}`}>Select {task.title}</label>
+                        <input
+                          id={`select-task-${task.id}`}
+                          type="checkbox"
+                          checked={selectedTaskIds.has(task.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            setSelectedTaskIds(prev => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(task.id); else next.delete(task.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
                       <div role="cell" className="px-4 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">{task.displayId}</div>
                       <div role="cell" className="px-4 py-2 truncate">{task.title}</div>
                       <div role="cell" className="px-4 py-2">
@@ -706,6 +782,7 @@ export function TasksWorkbench() {
               </div>
             </div>
           </ListState>
+          </div>
         </div>
       ) : (
       <>
