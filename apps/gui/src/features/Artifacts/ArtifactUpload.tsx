@@ -8,11 +8,20 @@ const artifactClient = createClient(ArtifactService, transport);
 
 /**
  * The backend accepts 15,000,000 characters of `content`. Base64 inflates by
- * 4/3, so that is the real ceiling on raw bytes — a file just under it would be
- * rejected server-side after the whole upload, which is a slow way to learn.
- * The limit is checked here so the answer is immediate.
+ * 4/3, so that is the real ceiling on raw bytes for a binary upload — a file
+ * just under it would be rejected server-side after the whole upload, which
+ * is a slow way to learn. The limit is checked here so the answer is
+ * immediate.
  */
 export const MAX_UPLOAD_BYTES = Math.floor(15_000_000 * 0.75);
+
+/**
+ * A text upload isn't base64-inflated (see isBinaryContentType), so its real
+ * ceiling is the char cap directly - decoded UTF-8 text never has more
+ * UTF-16 code units than it has bytes on disk, so bounding by file.size here
+ * is always at least as strict as the backend's actual check.
+ */
+export const MAX_TEXT_UPLOAD_BYTES = 15_000_000;
 
 /** Browsers leave `file.type` empty for plenty of ordinary files. */
 const BY_EXTENSION: Record<string, string> = {
@@ -44,6 +53,22 @@ export function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * Whether a content type can only be represented as bytes, not as text.
+ *
+ * Every upload used to go through base64 regardless of type, but the viewer
+ * only ever decoded `image/*` — every other upload (`.md`, `.txt`, `.json`,
+ * `.csv`) rendered and edited as a wall of base64, and saving an edit wrote
+ * that same undecoded text back as the artifact's new, permanent content.
+ * `content`'s own docstring in the contract names this exact hazard: "the
+ * content type does not reliably say which" encoding a given artifact uses.
+ * Rather than guess at read time, this stops the ambiguity at the source -
+ * only content that cannot survive being read as text is ever base64-encoded.
+ */
+function isBinaryContentType(contentType: string): boolean {
+  return contentType.startsWith('image/') || contentType === 'application/pdf' || contentType === 'application/octet-stream';
+}
+
 /** The base64 body of a data: URL, without the `data:...;base64,` prefix. */
 function readAsBase64(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -51,6 +76,15 @@ function readAsBase64(file: Blob): Promise<string> {
     reader.onerror = () => reject(new Error('could not read that file'));
     reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
     reader.readAsDataURL(file);
+  });
+}
+
+function readAsText(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('could not read that file'));
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.readAsText(file);
   });
 }
 
@@ -70,13 +104,14 @@ export function ArtifactUpload({ folderId }: { folderId: string }) {
 
   const upload = useMutation({
     mutationFn: async (file: File) => {
-      const content = await readAsBase64(file);
+      const contentType = contentTypeOf(file);
+      const content = isBinaryContentType(contentType) ? await readAsBase64(file) : await readAsText(file);
       await artifactClient.createArtifact({
         folderId,
         name: file.name,
         description: '',
         content,
-        contentType: contentTypeOf(file),
+        contentType,
       });
     },
     onSuccess: () => {
@@ -89,8 +124,9 @@ export function ArtifactUpload({ folderId }: { folderId: string }) {
   const onPick = (file: File | undefined) => {
     if (!file) return;
     setTooLarge(null);
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setTooLarge(`${file.name} is ${formatBytes(file.size)}; the limit is ${formatBytes(MAX_UPLOAD_BYTES)}.`);
+    const limit = isBinaryContentType(contentTypeOf(file)) ? MAX_UPLOAD_BYTES : MAX_TEXT_UPLOAD_BYTES;
+    if (file.size > limit) {
+      setTooLarge(`${file.name} is ${formatBytes(file.size)}; the limit is ${formatBytes(limit)}.`);
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
