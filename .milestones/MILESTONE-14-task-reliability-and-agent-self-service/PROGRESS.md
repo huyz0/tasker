@@ -151,3 +151,43 @@
   sending a dummy non-empty array) - recorded because both are the kind of
   mistake that would have silently proven nothing if left unnoticed.
 - **Next**: M14-T05
+
+## M14-T05 — Add unassigned/me filters to listTasks
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**: `packages/shared-contract/main.tsp`,
+  `packages/shared-contract/tasker/health/v1/health.proto`,
+  `packages/shared-contract/gen/ts/**` (regenerated, not hand-edited),
+  `apps/backend/src/modules/tasks/tasks.handler.ts`,
+  `apps/backend/src/modules/tasks/tasks.test.ts`
+- **Verified**: `bun test src/modules/tasks/tasks.test.ts` — 21 pass, 0 fail.
+  Full `bun test` in `apps/backend` — 1278 pass / 12 skip / 0 fail. `moon
+  run gui:build` (tsc -b && vite build) still succeeds against the
+  regenerated contract with no type errors. New test covers: `unassigned`
+  returns exactly the task with no assignee; `me` on an agent context
+  resolves via the agent's own token (there is nowhere in the request to
+  even name a different agent) and returns only that agent's task, not one
+  assigned to a different agent; `me` on a human context resolves against
+  `userId`, correctly returning nothing when that human has no
+  assignments; no filter returns all three tasks, unchanged from before
+  this field existed; an unrecognized value is `InvalidArgument`.
+- **Notes**: Added `assigneeFilter` (field 5) to `ListTasksRequest` in both
+  the TypeSpec source and the hand-maintained `.proto` buf actually
+  generates from (still two files kept in sync by hand - a standing gap
+  named since M02/M04, not this task's to close), then ran `moon run
+  shared-contract:compile` to regenerate the TS bindings rather than
+  hand-editing generated code. Implemented as correlated `EXISTS`/`NOT
+  EXISTS` subqueries against `taskAssignments` (`sql` template
+  interpolating drizzle table/column objects for correct per-dialect
+  quoting - confirmed the interpolation renders properly-quoted
+  identifiers with a throwaway script before trusting it in the handler),
+  not a `LEFT JOIN ... IS NULL`, specifically so a task with two assignees
+  is never returned twice by the `unassigned`-is-false case and so
+  `page.totalCount` (computed by `executePaginatedQuery` from the same
+  `scope` condition) stays correct without a `DISTINCT`. `me` resolves the
+  principal's own id server-side from `requirePrincipal` - the request has
+  no field for a caller-supplied id at all, so there is no way to ask for
+  another principal's queue by naming it, unlike a hypothetical
+  `assigneeId` field would have allowed.
+- **Next**: M14-T06

@@ -1,9 +1,10 @@
 import { expect, test, describe } from "bun:test";
-import { Code } from "@connectrpc/connect";
+import { Code, createContextValues } from "@connectrpc/connect";
 import { eq, and, isNull } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin, seedProject } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createTasksHandler, createTaskManagementHandler } from "./tasks.handler";
+import { currentPrincipalKey } from "../auth/session";
 
 describe("Tasks Handler Integration Tests", () => {
   test("createTaskType can create, publish, and retrieve task types", async () => {
@@ -647,6 +648,62 @@ describe("Tasks Handler Integration Tests", () => {
 
     expect(task1.task.displayId).toBe("BS-1");
     expect(task2.task.displayId).toBe("BS-2");
+  });
+
+  // M14-T05: agent self-service - an agent needs to find claimable work
+  // without paging every task and filtering client-side, and needs to be
+  // able to ask "what's assigned to me" without being trusted to supply its
+  // own id (which would let one principal read another's queue).
+  test("listTasks filters by assigneeFilter: unassigned finds claimable work, me resolves the calling principal", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-assigneefilter-" + Date.now();
+    const adminId = "user-assigneefilter-" + Date.now();
+    const templateId = "tmpl-assigneefilter-" + Date.now();
+    const projectId = "proj-assigneefilter-" + Date.now();
+    const agentRoleId = "role-assigneefilter-" + Date.now();
+    const agentId = "agent-assigneefilter-" + Date.now();
+    const otherAgentId = "agent-assigneefilter-other-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Assignee Filter Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
+    await db.insert(schemaSqlite.agents).values({ id: otherAgentId, orgId, agentRoleId, name: "Other Agent" });
+
+    const ctx = makeAuthContext(adminId);
+    const handler = createTaskManagementHandler(db, nc);
+    const agentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-test", scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any;
+
+    const unclaimed = await handler.createTask({ projectId, title: "Unclaimed", status: "todo", description: "" }, ctx);
+    const mine = await handler.createTask({ projectId, title: "Mine", status: "todo", description: "" }, ctx);
+    const someoneElses = await handler.createTask({ projectId, title: "Someone Else's", status: "todo", description: "" }, ctx);
+
+    await handler.assignTask({ taskId: mine.task.id, agentId }, ctx);
+    await handler.assignTask({ taskId: someoneElses.task.id, agentId: otherAgentId }, ctx);
+
+    const unassignedResp = await handler.listTasks({ projectId, assigneeFilter: "unassigned" }, ctx);
+    expect(unassignedResp.tasks.map((t: any) => t.id)).toEqual([unclaimed.task.id]);
+
+    // "me" resolved from the agent's own token, not a field in the request -
+    // there is nowhere in ListTasksRequest to even name a different agent.
+    const mineResp = await handler.listTasks({ projectId, assigneeFilter: "me" }, agentCtx);
+    expect(mineResp.tasks.map((t: any) => t.id)).toEqual([mine.task.id]);
+
+    // A human's "me" resolves against userId, not agentId - the admin has no
+    // assignments here at all.
+    const humanMineResp = await handler.listTasks({ projectId, assigneeFilter: "me" }, ctx);
+    expect(humanMineResp.tasks.length).toBe(0);
+
+    // No filter returns everything, same as before this field existed.
+    const allResp = await handler.listTasks({ projectId }, ctx);
+    expect(allResp.tasks.length).toBe(3);
+
+    await expect(handler.listTasks({ projectId, assigneeFilter: "bogus" }, ctx)).rejects.toMatchObject({ code: Code.InvalidArgument });
   });
 
   test("enforces a task type's configured status enum and transition state machine", async () => {

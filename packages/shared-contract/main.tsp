@@ -881,6 +881,14 @@ model ListTasksRequest {
   // paginated list and `page.totalCount` is that column's real count, computed
   // by the database (M07-T03).
   @field(4) status?: string;
+
+  // Agent self-service (M14-T05): "unassigned" returns tasks with no
+  // assignee at all - the query an agent runs to find claimable work.
+  // "me" returns tasks assigned to the calling principal (human or agent),
+  // resolved server-side from the credential rather than trusting a passed
+  // id. Unset returns every task regardless of assignment, same as before
+  // this field existed.
+  @field(5) assigneeFilter?: string;
 }
 
 model ListTasksResponse {

@@ -127,7 +127,7 @@ touches `repositories.handler.ts`, none currently scheduled.
         rises above its prior 87.84% funcs / 85.61% lines, with the specific
         previously-uncovered ranges now exercised.
 
-- [ ] **M14-T05** — Add an agent-claimable work query: an `unassigned` filter
+- [x] **M14-T05** — Add an agent-claimable work query: an `unassigned` filter
       on `listTasks` (and, if useful, an `assignedToMe` filter resolved from
       the calling principal) so an agent can find work without paging
       everything and filtering client-side.

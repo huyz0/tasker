@@ -2,7 +2,7 @@ import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and, not, isNull, inArray } from "drizzle-orm";
+import { eq, and, not, isNull, inArray, sql } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, getProjectOrgId, getTaskOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
@@ -628,9 +628,30 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // project rather than by counting one page's worth in the browser
       // (M07-T03).
       const statusFacet = req.status ? eq((tasks as any).status, req.status) : undefined;
-      const scope = statusFacet
-        ? and(eq((tasks as any).projectId, req.projectId), deletedFilter, statusFacet)
-        : and(eq((tasks as any).projectId, req.projectId), deletedFilter);
+
+      // Agent self-service (M14-T05): "unassigned" is the query an agent
+      // runs to find claimable work; "me" resolves to the *calling*
+      // principal server-side (never a caller-supplied id), so nothing lets
+      // one principal page through another's queue by naming their id. Both
+      // are correlated subqueries against taskAssignments rather than a
+      // join, so a task with two assignees isn't returned twice.
+      let assigneeFacet: any = undefined;
+      if (req.assigneeFilter === "unassigned") {
+        const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+        assigneeFacet = sql`NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id})`;
+      } else if (req.assigneeFilter === "me") {
+        const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+        const selfColumn = principal.kind === "user" ? (assignments as any).userId : (assignments as any).agentId;
+        const selfId = principal.kind === "user" ? principal.userId : principal.agentId;
+        assigneeFacet = sql`EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id} AND ${selfColumn} = ${selfId})`;
+      } else if (req.assigneeFilter) {
+        throw new ConnectError(`invalid assigneeFilter "${req.assigneeFilter}" - expected "unassigned" or "me"`, Code.InvalidArgument);
+      }
+
+      const conditions = [eq((tasks as any).projectId, req.projectId), deletedFilter];
+      if (statusFacet) conditions.push(statusFacet);
+      if (assigneeFacet) conditions.push(assigneeFacet);
+      const scope = and(...conditions);
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, scope, req.page, {
         filterColumn: (tasks as any).title,
         sortableColumns: { title: (tasks as any).title, status: (tasks as any).status, createdAt: (tasks as any).createdAt },
