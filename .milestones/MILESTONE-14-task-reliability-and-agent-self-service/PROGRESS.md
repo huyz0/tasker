@@ -409,3 +409,60 @@
   root-type change). None of this was in T09's original scope - it
   surfaced only because the gate is real and ran.
 - **Next**: M14 review pass
+
+## Review pass — M14 closed, 9/9 tasks, 8/8 exit criteria met
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Verified**: Added one thing the task-level checks didn't cover: a real
+  MySQL integration test for `claimTask`'s dialect-specific `FROM DUAL`
+  branch (`tasks.mysql.test.ts`, gated behind `TASKER_MYSQL_INTEGRATION=1`,
+  run against a live `docker compose` MySQL container this session, not
+  skipped) — 8 concurrent agent claimants on one task, exactly 1 wins. Also
+  confirmed the hand-written `idempotency_keys` MySQL migration
+  (`0022_idempotency_keys.sql`) applies cleanly against that same live
+  container and produces the expected schema and unique index
+  (`DESCRIBE`/`SHOW INDEX`, not just eyeballed SQL) — the sqlite-only
+  default suite would never have caught a MySQL-specific syntax error in
+  either the migration or `claimTask`'s `FROM DUAL` variant. Final `moon
+  check --all` — 27 tasks, clean. Backend: 1283 pass / 13 skip / 0 fail.
+  GUI: 59 files / 758 tests, 95.31% branch coverage. CLI: all pass, 97.9%
+  statement coverage.
+- **What's true now that wasn't at the start**: clearing a task's
+  description persists; two concurrent status changes never both "win";
+  archiving a project with live tasks no longer stalls the admin cleanup
+  workflow; `updateTask`, `getTask`, `updateTaskType`,
+  `deleteTaskStatusTransition`, `reorderTaskStatuses`, `unassignTask`, and
+  `assignTask`'s cross-org-agent branch all have real test coverage where
+  before none did; an agent with a `tasks:write`-scoped token can list
+  unassigned work and atomically claim exactly one task, racing agents
+  included; `createTask`/`claimTask` are retry-safe against the realistic
+  timeout-then-retry case; the CLI can link/unlink artifacts to tasks; and
+  task-type CRUD lives in one GUI surface instead of two disagreeing ones.
+- **What's still open, named rather than implied closed**: two genuinely
+  concurrent calls carrying the same idempotency key are not fully
+  deduplicated (M14-T07's documented scope limit — the realistic
+  sequential-retry case is closed, the race-condition case needs a
+  reservation-before-mutation redesign); a task dependency/subtask model
+  and bulk task creation were scoped out to **M15** from the start (see
+  MILESTONE.md §4 Out of Scope); a push/webhook/SSE surface for agents
+  beyond polling remains M08's business, now with an explicit note that
+  M08 should consider agent-token access to that connection, not just
+  browser sessions; explicit task→repository/branch assignment stays
+  regex-inferred, unowned by any scheduled milestone; and the
+  `idempotency_keys` table has no TTL/cleanup sweep yet, flagged twice
+  (schema comment and T07's own entry) for whoever next touches
+  `retentionSweep.ts`.
+- **One process note for a future session**: this milestone's plan
+  (M14-T03's exit criterion, specifically) was rewritten mid-delivery
+  after the actual root cause turned out to differ from the original
+  one-line guess ("archiving with soft-deleted tasks" vs. the real bug,
+  "archiving blocks cleanup of tasks that are still live") — confirmed by
+  reproducing the failure by hand before writing the fix, not by trusting
+  the milestone doc's own wording. Worth remembering next time a
+  milestone is planned from a prior review's summary rather than from
+  fresh code-reading: verify the mechanism before fixing it.
+- **Not done this session, on record for whoever merges**: this branch
+  (`feature/m14-task-reliability-and-agent-self-service`) is not merged to
+  `main` or pushed to origin — left for explicit user action, the same
+  convention M10 and M13 used.

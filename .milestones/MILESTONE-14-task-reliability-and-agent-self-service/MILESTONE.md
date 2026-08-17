@@ -1,13 +1,13 @@
 ---
 id: M14
 title: Task Reliability & Agent Self-Service
-status: todo
+status: done
 goal: Task mutations are correct under concurrent and retried writes, and an agent can discover, claim and complete work through the API/CLI with no human broker in the loop.
 depends_on: [M04, M05]
 surfaces: [backend, gui, cli, contract]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+exit_criteria_met: true
+started_at: 2026-08-17
+completed_at: 2026-08-17
 ---
 
 # M14 — Task Reliability & Agent Self-Service
@@ -69,7 +69,7 @@ backlogs.
       running backend.
 - [x] Task type status/transition editing lives in exactly one GUI surface;
       the other no longer offers a second, incomplete copy of the same CRUD.
-- [ ] `moon check --all` is clean and every new/changed behaviour above is
+- [x] `moon check --all` is clean and every new/changed behaviour above is
       covered by a test that fails without the fix (verified by reverting the
       fix locally and observing the test fail, per each task's own note).
 
