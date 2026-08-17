@@ -245,6 +245,15 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
         const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
         const roleRows = await db.select().from(roles).where(eq((roles as any).id, parsed.agentRoleId)).limit(1);
         if (!roleRows || roleRows.length === 0) throw new ConnectError("agent role not found", Code.NotFound);
+        // M17-T01: createAgent already made this check; updateAgent never did,
+        // which let an agent be re-pointed at a role belonging to a different
+        // organization - the exact cross-tenant scenario ADR-0007 exists to
+        // close, just reachable from the update path instead of create.
+        // NotFound rather than PermissionDenied, same reasoning as createAgent:
+        // whether a role id exists in another organization is that
+        // organization's business, and a distinct error here would turn this
+        // into a probe for foreign role ids.
+        if (roleRows[0].orgId !== existing[0].orgId) throw new ConnectError("agent role not found", Code.NotFound);
       }
 
       const updates: Record<string, unknown> = {};

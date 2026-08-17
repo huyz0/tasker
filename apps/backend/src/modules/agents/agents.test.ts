@@ -278,4 +278,38 @@ describe("Agent role tenancy (M03-T05)", () => {
     // ...but they can read the catalogue, which is what an agent picker needs.
     await expect(handler.listAgentRoles({ orgId: orgA }, makeAuthContext(memberId))).resolves.toBeDefined();
   });
+
+  // M17-T01: updateAgent had the same hole createAgent was already patched
+  // for - a caller could re-point an *existing* agent at another
+  // organization's role instead of borrowing it at creation time.
+  test("an admin of org A cannot re-point an org A agent at org B's role (M17-T01)", async () => {
+    const { db, handler, orgA, adminA, roleB } = await seedTwoOrgs();
+    const roleA = await handler.createAgentRole({ orgId: orgA, name: "A's Reviewer", systemPrompt: "p", capabilities: "[]" }, makeAuthContext(adminA));
+    const agentA = await handler.createAgent({ orgId: orgA, agentRoleId: roleA.role.id, name: "A's Agent" }, makeAuthContext(adminA));
+
+    await expect(
+      handler.updateAgent({ agentId: agentA.agent.id, agentRoleId: roleB.id }, makeAuthContext(adminA)),
+    ).rejects.toThrow(/not found/i);
+
+    const [row] = await db.select().from(schemaSqlite.agents).where(eq(schemaSqlite.agents.id, agentA.agent.id));
+    expect(row.agentRoleId).toBe(roleA.role.id);
+  });
+
+  test("an admin can rename an agent and reassign it to another role within their own org", async () => {
+    const { db, handler, orgA, adminA } = await seedTwoOrgs();
+    const roleA1 = await handler.createAgentRole({ orgId: orgA, name: "A's First Role", systemPrompt: "p", capabilities: "[]" }, makeAuthContext(adminA));
+    const roleA2 = await handler.createAgentRole({ orgId: orgA, name: "A's Second Role", systemPrompt: "p", capabilities: "[]" }, makeAuthContext(adminA));
+    const agentA = await handler.createAgent({ orgId: orgA, agentRoleId: roleA1.role.id, name: "Original Name" }, makeAuthContext(adminA));
+
+    const updateResp = await handler.updateAgent(
+      { agentId: agentA.agent.id, name: "Renamed Agent", agentRoleId: roleA2.role.id },
+      makeAuthContext(adminA),
+    );
+    expect(updateResp.agent.name).toBe("Renamed Agent");
+    expect(updateResp.agent.agentRoleId).toBe(roleA2.role.id);
+
+    const [row] = await db.select().from(schemaSqlite.agents).where(eq(schemaSqlite.agents.id, agentA.agent.id));
+    expect(row.name).toBe("Renamed Agent");
+    expect(row.agentRoleId).toBe(roleA2.role.id);
+  });
 });
