@@ -464,6 +464,12 @@ model Project {
   @field(5) ownerId: string;
   @field(6) deletedAt?: string;
   @field(7) key: string;
+
+  // M16-T01: no description field existed anywhere on a project - unlike
+  // its template, which always had one. Nullable at the wire level so
+  // "never set" and "explicitly cleared" both read back as absent/empty
+  // the same way `updateProject` treats them (see UpdateProjectRequest).
+  @field(8) description?: string;
 }
 
 // ==== Project Services ====
@@ -528,6 +534,7 @@ model CreateProjectRequest {
   @field(2) templateId: string;
   @field(3) name: string;
   @field(4) ownerId: string;
+  @field(5) description?: string;
 }
 model CreateProjectResponse {
   @field(1) project: Project;
@@ -568,6 +575,12 @@ model PurgeProjectResponse {
 model UpdateProjectRequest {
   @field(1) projectId: string;
   @field(2) name: string;
+
+  // Real proto3 presence, not the "" -> unset squash UpdateTaskRequest used
+  // to do (M14-T01) - unset means "don't touch the description", and an
+  // explicit empty string means "clear it", and the two must stay
+  // distinguishable end to end.
+  @field(3) description?: string;
 }
 model UpdateProjectResponse {
   @field(1) project: Project;

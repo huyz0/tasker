@@ -381,6 +381,9 @@ message Project {
   string ownerId = 5;
   string deletedAt = 6;
   string key = 7;
+
+  // M16-T01: no description field existed anywhere on a project.
+  string description = 8;
 }
 
 message GetProjectTemplateRequest {
@@ -442,6 +445,7 @@ message CreateProjectRequest {
   string templateId = 2;
   string name = 3;
   string ownerId = 4;
+  string description = 5;
 }
 
 message CreateProjectResponse {
@@ -483,6 +487,10 @@ message PurgeProjectResponse {
 message UpdateProjectRequest {
   string projectId = 1;
   string name = 2;
+
+  // Real presence, not the "" -> unset squash UpdateTaskRequest used to do
+  // (M14-T01) - unset means "don't touch", explicit empty means "clear it".
+  optional string description = 3;
 }
 message UpdateProjectResponse {
   Project project = 1;

@@ -218,6 +218,9 @@ export const projects = mysqlTable("projects", {
   key: varchar("key_code", { length: 32 }).notNull().default(""),
   nextTaskNumber: int("next_task_number").notNull().default(1),
   ownerId: varchar("owner_id", { length: 256 }).notNull().references(() => users.id),
+  // M16-T01. Nullable, matching project_templates.description's own
+  // varchar(1024) - no description existed on a project at all before this.
+  description: varchar("description", { length: 1024 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 }, (table) => {

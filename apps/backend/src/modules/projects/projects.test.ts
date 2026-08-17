@@ -86,6 +86,43 @@ describe("Projects Handler Integration Logic", () => {
      expect(pHandler.listProjects({}, ctx)).rejects.toThrow();
   });
 
+  // M16-T01: no description field existed on a project at all before this.
+  test("createProject stores a description, and updateProject can set, clear, or leave it untouched", async () => {
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Desc Template" }, ctx);
+
+    const created = await pHandler.createProject({
+      orgId: "org-test", templateId: tResp.template.id, name: "Desc Project", ownerId: "user-test",
+      description: "Ships the thing",
+    }, ctx);
+    expect(created.project.description).toBe("Ships the thing");
+
+    // Read it back through a second call, not the mutation's own echo.
+    const fetched = await pHandler.getProject({ id: created.project.id }, ctx);
+    expect(fetched.project.description).toBe("Ships the thing");
+
+    // Omitting description on create defaults to "", not undefined/null -
+    // the same default createTask uses.
+    const createdNoDesc = await pHandler.createProject({
+      orgId: "org-test", templateId: tResp.template.id, name: "No Desc Project", ownerId: "user-test",
+    }, ctx);
+    expect(createdNoDesc.project.description).toBe("");
+
+    // Updating name alone must not touch description - unset means "don't
+    // touch it", the same distinction M14-T01 fixed for tasks.
+    const renamedOnly = await pHandler.updateProject({ projectId: created.project.id, name: "Renamed Desc Project" }, ctx);
+    expect(renamedOnly.project.description).toBe("Ships the thing");
+    expect((await pHandler.getProject({ id: created.project.id }, ctx)).project.description).toBe("Ships the thing");
+
+    // An explicit empty string clears it.
+    const cleared = await pHandler.updateProject({ projectId: created.project.id, name: "Renamed Desc Project", description: "" }, ctx);
+    expect(cleared.project.description).toBe("");
+    expect((await pHandler.getProject({ id: created.project.id }, ctx)).project.description).toBe("");
+
+    // And a non-empty value updates it normally.
+    const updated = await pHandler.updateProject({ projectId: created.project.id, name: "Renamed Desc Project", description: "New description" }, ctx);
+    expect(updated.project.description).toBe("New description");
+  });
+
   test("createTemplate can set and validate a rootTaskTypeId", async () => {
     const ttHandler = createTasksHandler(db, mockNc);
     const typeResp = await ttHandler.createTaskType({ orgId: "org-test", name: "Root Type" }, ctx);

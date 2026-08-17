@@ -327,6 +327,9 @@ export const projects = sqliteTable("projects", {
   // project; incremented atomically on each task creation.
   nextTaskNumber: integer("next_task_number").notNull().default(1),
   ownerId: text("owner_id").notNull().references(() => users.id),
+  // M16-T01. Nullable: no description existed on a project at all before
+  // this, unlike its template, which always had one.
+  description: text("description"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
 }, (table) => {
