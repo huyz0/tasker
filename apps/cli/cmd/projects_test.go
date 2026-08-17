@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -121,7 +122,21 @@ func (f *fakeProjectUpdateHandler) UpdateProject(
 // M20-T08: UpdateProject/UpdateTemplate existed fully on the wire and at the
 // backend since before this milestone with no CLI command reaching either -
 // these are that command.
+// M20-T10: cmd.Flags().Changed(name) never resets itself once a flag has
+// been set - Set()/Cleanup() can put the *value* back to "", but Changed
+// stays true forever after, for the lifetime of this package-level command
+// singleton. Every other test in this file that sets --description on this
+// same projectsUpdateCmd (e.g. TestProjectsUpdateCommandCanClearDescription)
+// leaves Changed("description") permanently true, which made this test's
+// "still unset" assertion below pass only by accident of declaration order -
+// go test -shuffle=on reorders tests and reliably breaks it. Resetting the
+// underlying pflag.Flag.Changed field directly (the one thing Set() can't
+// touch) is what actually makes this order-independent.
 func TestProjectsUpdateCommand(t *testing.T) {
+	if f := projectsUpdateCmd.Flags().Lookup("description"); f != nil {
+		f.Changed = false
+	}
+
 	fake := &fakeProjectUpdateHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -332,4 +347,404 @@ func TestProjectsDeleteRestorePurgeJSONParity(t *testing.T) {
 			t.Errorf("%v: expected proj-1 to reach the backend, got %q", tc.args, *tc.wantID)
 		}
 	}
+}
+
+// M20-T10: coverage backfill. `--json` is a rootCmd persistent flag, so
+// whichever test in this file runs last leaves its value sitting there for
+// every test that runs after it in the whole `cmd` package binary - the
+// human-readable-output assertions below explicitly reset it to false first
+// rather than relying on file/test execution order to have left it that way
+// (the documented flag-leak gotcha this milestone is closing here).
+
+type fakeProjectGetHandler struct {
+	v1connect.UnimplementedProjectServiceHandler
+	project *healthv1.Project
+	err     error
+}
+
+func (f *fakeProjectGetHandler) GetProject(
+	_ context.Context,
+	_ *connect.Request[healthv1.GetProjectRequest],
+) (*connect.Response[healthv1.GetProjectResponse], error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return connect.NewResponse(&healthv1.GetProjectResponse{Project: f.project}), nil
+}
+
+func TestProjectsGetCmd(t *testing.T) {
+	fake := &fakeProjectGetHandler{project: &healthv1.Project{Id: "proj-1", Name: "Widget Factory", OrgId: "org-1", OwnerId: "user-1"}}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	_ = rootCmd.PersistentFlags().Set("json", "false")
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"projects", "get", "proj-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("projects get failed: %v", err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "Widget Factory") || !strings.Contains(out, "org-1") || !strings.Contains(out, "user-1") {
+		t.Fatalf("expected human-readable project details, got %s", out)
+	}
+}
+
+func TestProjectsGetCmdJSON(t *testing.T) {
+	fake := &fakeProjectGetHandler{project: &healthv1.Project{Id: "proj-1", Name: "Widget Factory"}}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"projects", "get", "proj-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("projects get failed: %v", err)
+	}
+	if !strings.Contains(b.String(), `"id":"proj-1"`) {
+		t.Fatalf("expected JSON project output, got %s", b.String())
+	}
+}
+
+func TestProjectsGetCmdReportsBackendError(t *testing.T) {
+	fake := &fakeProjectGetHandler{err: connect.NewError(connect.CodeNotFound, errors.New("project not found"))}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"projects", "get", "proj-missing"})
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected the backend error to propagate")
+	}
+	if !strings.Contains(b.String(), "Failed to get project") {
+		t.Errorf("expected a failure message, got %s", b.String())
+	}
+}
+
+// projects list has never required --org locally; it falls back to
+// TASKER_ORG_ID (default.go's DefaultOrgID()) and only then errors.
+func TestProjectsListCmdRequiresOrg(t *testing.T) {
+	_ = projectsListCmd.Flags().Set("org", "")
+	t.Cleanup(func() { _ = projectsListCmd.Flags().Set("org", "") })
+	t.Setenv("TASKER_ORG_ID", "")
+
+	rootCmd.AddCommand(projectsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"projects", "list"})
+	err := rootCmd.Execute()
+
+	if err == nil {
+		t.Error("expected an error when --org is omitted and TASKER_ORG_ID is unset")
+	}
+	if !strings.Contains(b.String(), "--org is required") {
+		t.Errorf("expected an --org-is-required message, got: %s", b.String())
+	}
+}
+
+func TestProjectsListCmdHumanReadableOutput(t *testing.T) {
+	fake := &fakeProjectListHandlerWithData{projects: []*healthv1.Project{
+		{Id: "proj-1", Key: "WID", Name: "Widget Factory"},
+	}}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	_ = rootCmd.PersistentFlags().Set("json", "false")
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"projects", "list", "--org", "org-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("projects list failed: %v", err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "Projects:") || !strings.Contains(out, "Widget Factory") || !strings.Contains(out, "WID") {
+		t.Fatalf("expected a human-readable project listing, got %s", out)
+	}
+}
+
+type fakeProjectListHandlerWithData struct {
+	v1connect.UnimplementedProjectServiceHandler
+	projects []*healthv1.Project
+	err      error
+}
+
+func (f *fakeProjectListHandlerWithData) ListProjects(
+	_ context.Context,
+	_ *connect.Request[healthv1.ListProjectsRequest],
+) (*connect.Response[healthv1.ListProjectsResponse], error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return connect.NewResponse(&healthv1.ListProjectsResponse{Projects: f.projects}), nil
+}
+
+func TestProjectsListCmdReportsBackendError(t *testing.T) {
+	fake := &fakeProjectListHandlerWithData{err: connect.NewError(connect.CodeInternal, errors.New("boom"))}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"projects", "list", "--org", "org-1"})
+	err := rootCmd.Execute()
+
+	if err == nil {
+		t.Fatal("expected the backend error to propagate")
+	}
+	if !strings.Contains(b.String(), "Failed to list projects") {
+		t.Errorf("expected a failure message, got %s", b.String())
+	}
+}
+
+func TestProjectsCreateCmdHumanReadableOutput(t *testing.T) {
+	fake := &fakeProjectCreateHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	_ = rootCmd.PersistentFlags().Set("json", "false")
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"projects", "create", "--org", "org-1", "--template", "tpl-1", "--title", "New Project", "--owner", "user-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("projects create failed: %v", err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "New Project") || !strings.Contains(out, "proj-new") || !strings.Contains(out, "tpl-1") {
+		t.Fatalf("expected a human-readable creation summary, got %s", out)
+	}
+}
+
+func TestProjectsCreateCmdFallsBackToDefaultOrgID(t *testing.T) {
+	fake := &fakeProjectCreateHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	t.Setenv("TASKER_ORG_ID", "org-from-env")
+
+	_ = projectsCreateCmd.Flags().Set("org", "")
+	t.Cleanup(func() { _ = projectsCreateCmd.Flags().Set("org", "") })
+
+	rootCmd.AddCommand(projectsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"projects", "create", "--template", "tpl-1", "--title", "New Project", "--owner", "user-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("projects create failed: %v", err)
+	}
+
+	if fake.gotReq == nil || fake.gotReq.OrgId != "org-from-env" {
+		t.Fatalf("expected TASKER_ORG_ID to fill in the omitted --org, got %+v", fake.gotReq)
+	}
+}
+
+func TestProjectsCreateCmdReportsBackendError(t *testing.T) {
+	fake := &fakeProjectCreateErrorHandler{err: connect.NewError(connect.CodePermissionDenied, errors.New("not a member"))}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"projects", "create", "--org", "org-1", "--template", "tpl-1", "--title", "New Project", "--owner", "user-1"})
+	err := rootCmd.Execute()
+
+	if err == nil {
+		t.Fatal("expected the backend error to propagate")
+	}
+	if !strings.Contains(b.String(), "Failed to create project") {
+		t.Errorf("expected a failure message, got %s", b.String())
+	}
+}
+
+type fakeProjectCreateErrorHandler struct {
+	v1connect.UnimplementedProjectServiceHandler
+	err error
+}
+
+func (f *fakeProjectCreateErrorHandler) CreateProject(
+	_ context.Context,
+	_ *connect.Request[healthv1.CreateProjectRequest],
+) (*connect.Response[healthv1.CreateProjectResponse], error) {
+	return nil, f.err
+}
+
+func TestProjectsUpdateCmdHumanReadableOutput(t *testing.T) {
+	fake := &fakeProjectUpdateHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	_ = rootCmd.PersistentFlags().Set("json", "false")
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"projects", "update", "proj-1", "--title", "Renamed"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("projects update failed: %v", err)
+	}
+	if !strings.Contains(b.String(), "Project proj-1 updated") {
+		t.Fatalf("expected a human-readable update confirmation, got %s", b.String())
+	}
+}
+
+func TestProjectsUpdateCmdReportsBackendError(t *testing.T) {
+	fake := &fakeProjectUpdateErrorHandler{err: connect.NewError(connect.CodeNotFound, errors.New("project not found"))}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"projects", "update", "proj-missing", "--title", "Renamed"})
+	err := rootCmd.Execute()
+
+	if err == nil {
+		t.Fatal("expected the backend error to propagate")
+	}
+	if !strings.Contains(b.String(), "Failed to update project") {
+		t.Errorf("expected a failure message, got %s", b.String())
+	}
+}
+
+type fakeProjectUpdateErrorHandler struct {
+	v1connect.UnimplementedProjectServiceHandler
+	err error
+}
+
+func (f *fakeProjectUpdateErrorHandler) UpdateProject(
+	_ context.Context,
+	_ *connect.Request[healthv1.UpdateProjectRequest],
+) (*connect.Response[healthv1.UpdateProjectResponse], error) {
+	return nil, f.err
+}
+
+func TestProjectsDeleteRestorePurgeHumanReadableOutput(t *testing.T) {
+	fake := &fakeProjectBinLifecycleHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+	_ = rootCmd.PersistentFlags().Set("json", "false")
+
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{[]string{"projects", "delete", "proj-1"}, "moved to bin"},
+		{[]string{"projects", "restore", "proj-1"}, "restored"},
+		{[]string{"projects", "purge", "proj-1"}, "permanently deleted"},
+	}
+	for _, tc := range cases {
+		b := bytes.NewBufferString("")
+		rootCmd.SetOut(b)
+		rootCmd.SetArgs(tc.args)
+		if err := rootCmd.Execute(); err != nil {
+			t.Fatalf("%v failed: %v", tc.args, err)
+		}
+		if !strings.Contains(b.String(), "proj-1") || !strings.Contains(b.String(), tc.want) {
+			t.Errorf("%v: expected a human-readable message containing %q, got %s", tc.args, tc.want, b.String())
+		}
+	}
+}
+
+func TestProjectsDeleteRestorePurgeReportBackendErrors(t *testing.T) {
+	fake := &fakeProjectBinLifecycleErrorHandler{err: connect.NewError(connect.CodeFailedPrecondition, errors.New("project still has tasks"))}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewProjectServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(projectsCmd)
+
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{[]string{"projects", "delete", "proj-1"}, "Failed to delete project"},
+		{[]string{"projects", "restore", "proj-1"}, "Failed to restore project"},
+		{[]string{"projects", "purge", "proj-1"}, "Failed to purge project"},
+	}
+	for _, tc := range cases {
+		b := bytes.NewBufferString("")
+		rootCmd.SetOut(b)
+		rootCmd.SetErr(b)
+		rootCmd.SetArgs(tc.args)
+		if err := rootCmd.Execute(); err == nil {
+			t.Errorf("%v: expected the backend error to propagate", tc.args)
+		}
+		if !strings.Contains(b.String(), tc.want) {
+			t.Errorf("%v: expected a failure message containing %q, got %s", tc.args, tc.want, b.String())
+		}
+	}
+}
+
+type fakeProjectBinLifecycleErrorHandler struct {
+	v1connect.UnimplementedProjectServiceHandler
+	err error
+}
+
+func (f *fakeProjectBinLifecycleErrorHandler) ArchiveProject(
+	_ context.Context,
+	_ *connect.Request[healthv1.ArchiveProjectRequest],
+) (*connect.Response[healthv1.ArchiveProjectResponse], error) {
+	return nil, f.err
+}
+
+func (f *fakeProjectBinLifecycleErrorHandler) RestoreProject(
+	_ context.Context,
+	_ *connect.Request[healthv1.RestoreProjectRequest],
+) (*connect.Response[healthv1.RestoreProjectResponse], error) {
+	return nil, f.err
+}
+
+func (f *fakeProjectBinLifecycleErrorHandler) PurgeProject(
+	_ context.Context,
+	_ *connect.Request[healthv1.PurgeProjectRequest],
+) (*connect.Response[healthv1.PurgeProjectResponse], error) {
+	return nil, f.err
 }
