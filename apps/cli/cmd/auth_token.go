@@ -112,6 +112,7 @@ var authTokenRevokeCmd = &cobra.Command{
 	Short: "Revoke a token, effective on its next request",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJSON, _ := cmd.Flags().GetBool("json")
 		client := backend.NewAgentServiceClient()
 		_, err := client.RevokeAgentToken(context.Background(), connect.NewRequest(&healthv1.RevokeAgentTokenRequest{
 			TokenId: args[0],
@@ -119,6 +120,11 @@ var authTokenRevokeCmd = &cobra.Command{
 		if err != nil {
 			cmd.PrintErrf("Failed to revoke token: %v\n", backend.DescribeRPCError(err))
 			return err
+		}
+		if isJSON {
+			out, _ := json.Marshal(map[string]any{"success": true, "tokenId": args[0]})
+			cmd.Println(string(out))
+			return nil
 		}
 		cmd.Printf("Token %s revoked.\n", args[0])
 		return nil
@@ -134,6 +140,7 @@ func init() {
 	authTokenCreateCmd.Flags().String("name", "", "What this token is for (e.g. \"CI worker\")")
 	authTokenCreateCmd.Flags().StringSlice("scope", nil, "Scope to grant; repeatable (e.g. --scope tasks:read --scope tasks:write)")
 	authTokenCreateCmd.Flags().Int32("expires-in-days", 0, "Days until expiry (default 90, maximum 365)")
-	authTokenCreateCmd.Flags().Bool("json", false, "Output as JSON")
-	authTokenListCmd.Flags().Bool("json", false, "Output as JSON")
+	// --json is already registered as a persistent flag on rootCmd (root.go);
+	// these commands used to redeclare a local one of the same name, which
+	// shadowed the persistent flag for no benefit.
 }

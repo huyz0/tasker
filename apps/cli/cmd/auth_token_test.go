@@ -184,3 +184,25 @@ func TestAuthTokenRevoke(t *testing.T) {
 		t.Errorf("expected confirmation, got %s", b.String())
 	}
 }
+
+// M17-T03: revoke had no --json support at all.
+func TestAuthTokenRevokeJSON(t *testing.T) {
+	fake := &fakeTokenHandler{}
+	withTokenServer(t, fake)
+	resetTokenFlags(t)
+	t.Cleanup(func() { rootCmd.Flags().Set("json", "false") })
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"auth", "token", "revoke", "tok_9", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.gotRevoked != "tok_9" {
+		t.Errorf("expected tok_9 to be revoked, got %q", fake.gotRevoked)
+	}
+	out := b.String()
+	if !strings.Contains(out, `"success":true`) || !strings.Contains(out, `"tok_9"`) {
+		t.Fatalf("expected JSON output, got %s", out)
+	}
+}

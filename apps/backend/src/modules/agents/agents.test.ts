@@ -1,5 +1,6 @@
 import { expect, test, describe } from "bun:test";
 import { eq } from "drizzle-orm";
+import { Code } from "@connectrpc/connect";
 import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createAgentsHandler } from "./agents.handler";
@@ -25,6 +26,10 @@ describe("Agents Handler Integration Tests", () => {
     const roleResp = await handler.createAgentRole(createRoleReq, ctx);
     expect(roleResp.role).toBeDefined();
     expect(roleResp.role.name).toBe("Integration Test Role");
+    // M17-T02: createdAt used to be computed and then silently dropped
+    // before the response left the handler.
+    expect(typeof roleResp.role.createdAt).toBe("string");
+    expect(roleResp.role.createdAt.length).toBeGreaterThan(0);
 
     const rolesListResp = await handler.listAgentRoles({ orgId }, ctx);
     expect(rolesListResp.roles.some((r: any) => r.id === roleResp.role.id)).toBe(true);
@@ -39,6 +44,8 @@ describe("Agents Handler Integration Tests", () => {
     const agentResp = await handler.createAgent(createAgentReq, ctx);
     expect(agentResp.agent).toBeDefined();
     expect(agentResp.agent.name).toBe("Test Agent Instance");
+    expect(typeof agentResp.agent.createdAt).toBe("string");
+    expect(agentResp.agent.createdAt.length).toBeGreaterThan(0);
 
     const subjects = nc.publishedMessages.map((m: any) => m.subject);
     expect(subjects).toContain("domain.agent.created");
@@ -54,6 +61,97 @@ describe("Agents Handler Integration Tests", () => {
     await expect(handler.createAgentRole(createRoleReq, outsiderCtx)).rejects.toThrow();
 
     await expect(handler.createAgent({ orgId, agentRoleId: "role-does-not-exist", name: "X" }, ctx)).rejects.toThrow();
+
+    await expect(handler.listAgents({}, ctx)).rejects.toThrow();
+  });
+
+  // M17-T02: agent_roles had no unique constraint on (orgId, name) - two
+  // roles named "Reviewer" in the same org sat side by side in the picker an
+  // agent gets created against, indistinguishable until opened.
+  test("createAgentRole rejects a duplicate name within the same org", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const orgId = "org-agents-dup-" + Date.now().toString();
+    const userId = "user-agents-dup-" + Date.now().toString();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Dup Org" });
+    const ctx = makeAuthContext(userId);
+    const handler = createAgentsHandler(db, nc);
+
+    await handler.createAgentRole({ orgId, name: "Reviewer", systemPrompt: "p", capabilities: "{}" }, ctx);
+
+    await expect(
+      handler.createAgentRole({ orgId, name: "Reviewer", systemPrompt: "different prompt", capabilities: "{}" }, ctx),
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+
+    // ...but the same name is fine in a different org.
+    const otherOrgId = "org-agents-dup-other-" + Date.now().toString();
+    const otherUserId = "user-agents-dup-other-" + Date.now().toString();
+    await seedOrgWithAdmin(db, { orgId: otherOrgId, userId: otherUserId, name: "Other Org" });
+    const otherResp = await handler.createAgentRole(
+      { orgId: otherOrgId, name: "Reviewer", systemPrompt: "p", capabilities: "{}" },
+      makeAuthContext(otherUserId),
+    );
+    expect(otherResp.role.name).toBe("Reviewer");
+  });
+
+  test("rejects one of two concurrent createAgentRole calls racing for the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const orgId = "org-agents-race-" + Date.now().toString();
+    const userId = "user-agents-race-" + Date.now().toString();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Race Org" });
+    const ctx = makeAuthContext(userId);
+    const handler = createAgentsHandler(db, nc);
+
+    const results = await Promise.allSettled([
+      handler.createAgentRole({ orgId, name: "Racer", systemPrompt: "p", capabilities: "{}" }, ctx),
+      handler.createAgentRole({ orgId, name: "Racer", systemPrompt: "p", capabilities: "{}" }, ctx),
+    ]);
+
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
+  });
+
+  test("updateAgentRole applies a successful rename and returns the updated role", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const orgId = "org-agents-update-" + Date.now().toString();
+    const userId = "user-agents-update-" + Date.now().toString();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Update Org" });
+    const ctx = makeAuthContext(userId);
+    const handler = createAgentsHandler(db, nc);
+
+    const created = await handler.createAgentRole({ orgId, name: "Original", systemPrompt: "old prompt", capabilities: "{}" }, ctx);
+
+    const updateResp = await handler.updateAgentRole({ id: created.role.id, name: "Renamed", systemPrompt: "new prompt" }, ctx);
+    expect(updateResp.role.name).toBe("Renamed");
+    expect(updateResp.role.systemPrompt).toBe("new prompt");
+    expect(updateResp.role.capabilities).toBe("{}");
+    expect(typeof updateResp.role.createdAt).toBe("string");
+    expect(updateResp.role.createdAt.length).toBeGreaterThan(0);
+
+    const [row] = await db.select().from(schemaSqlite.agentRoles).where(eq(schemaSqlite.agentRoles.id, created.role.id));
+    expect(row.name).toBe("Renamed");
+    expect(row.systemPrompt).toBe("new prompt");
+  });
+
+  test("updateAgentRole rejects renaming a role to a name already used by another role in the same org", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const orgId = "org-agents-rename-" + Date.now().toString();
+    const userId = "user-agents-rename-" + Date.now().toString();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Rename Org" });
+    const ctx = makeAuthContext(userId);
+    const handler = createAgentsHandler(db, nc);
+
+    await handler.createAgentRole({ orgId, name: "Taken", systemPrompt: "p", capabilities: "{}" }, ctx);
+    const other = await handler.createAgentRole({ orgId, name: "Available", systemPrompt: "p", capabilities: "{}" }, ctx);
+
+    await expect(
+      handler.updateAgentRole({ id: other.role.id, name: "Taken" }, ctx),
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+
+    const [row] = await db.select().from(schemaSqlite.agentRoles).where(eq(schemaSqlite.agentRoles.id, other.role.id));
+    expect(row.name).toBe("Available");
   });
 
   test("listAgentRoles and listAgents support filter and sort by name", async () => {
@@ -277,5 +375,39 @@ describe("Agent role tenancy (M03-T05)", () => {
     ).rejects.toThrow();
     // ...but they can read the catalogue, which is what an agent picker needs.
     await expect(handler.listAgentRoles({ orgId: orgA }, makeAuthContext(memberId))).resolves.toBeDefined();
+  });
+
+  // M17-T01: updateAgent had the same hole createAgent was already patched
+  // for - a caller could re-point an *existing* agent at another
+  // organization's role instead of borrowing it at creation time.
+  test("an admin of org A cannot re-point an org A agent at org B's role (M17-T01)", async () => {
+    const { db, handler, orgA, adminA, roleB } = await seedTwoOrgs();
+    const roleA = await handler.createAgentRole({ orgId: orgA, name: "A's Reviewer", systemPrompt: "p", capabilities: "[]" }, makeAuthContext(adminA));
+    const agentA = await handler.createAgent({ orgId: orgA, agentRoleId: roleA.role.id, name: "A's Agent" }, makeAuthContext(adminA));
+
+    await expect(
+      handler.updateAgent({ agentId: agentA.agent.id, agentRoleId: roleB.id }, makeAuthContext(adminA)),
+    ).rejects.toThrow(/not found/i);
+
+    const [row] = await db.select().from(schemaSqlite.agents).where(eq(schemaSqlite.agents.id, agentA.agent.id));
+    expect(row.agentRoleId).toBe(roleA.role.id);
+  });
+
+  test("an admin can rename an agent and reassign it to another role within their own org", async () => {
+    const { db, handler, orgA, adminA } = await seedTwoOrgs();
+    const roleA1 = await handler.createAgentRole({ orgId: orgA, name: "A's First Role", systemPrompt: "p", capabilities: "[]" }, makeAuthContext(adminA));
+    const roleA2 = await handler.createAgentRole({ orgId: orgA, name: "A's Second Role", systemPrompt: "p", capabilities: "[]" }, makeAuthContext(adminA));
+    const agentA = await handler.createAgent({ orgId: orgA, agentRoleId: roleA1.role.id, name: "Original Name" }, makeAuthContext(adminA));
+
+    const updateResp = await handler.updateAgent(
+      { agentId: agentA.agent.id, name: "Renamed Agent", agentRoleId: roleA2.role.id },
+      makeAuthContext(adminA),
+    );
+    expect(updateResp.agent.name).toBe("Renamed Agent");
+    expect(updateResp.agent.agentRoleId).toBe(roleA2.role.id);
+
+    const [row] = await db.select().from(schemaSqlite.agents).where(eq(schemaSqlite.agents.id, agentA.agent.id));
+    expect(row.name).toBe("Renamed Agent");
+    expect(row.agentRoleId).toBe(roleA2.role.id);
   });
 });

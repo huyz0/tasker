@@ -63,6 +63,12 @@ const ListAgentRolesSchema = z.object({
   page: z.any().optional(),
 });
 
+const ListAgentsSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+  onlyDeleted: z.boolean().optional(),
+  page: z.any().optional(),
+});
+
 const CreateAgentSchema = z.object({
   orgId: z.string().min(1, "orgId is required"),
   agentRoleId: z.string().min(1, "agentRoleId is required"),
@@ -88,6 +94,15 @@ const RestoreAgentSchema = z.object({
 const PurgeAgentSchema = z.object({
   agentId: z.string().min(1, "agentId is required"),
 });
+
+// Distinguishes a real DB-level unique-constraint violation (a concurrent
+// createAgentRole/updateAgentRole call won the race for the same org+name)
+// from any other insert/update failure. Same pattern as labels.handler.ts's
+// isUniqueConstraintConflict.
+function isUniqueConstraintConflict(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e);
+  return msg.includes("agent_roles_org_id_name_idx") || msg.includes("UNIQUE constraint failed") || msg.includes("Duplicate entry");
+}
 
 // --- Handler Factory ---
 
@@ -135,18 +150,44 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       // was no org to scope to.
       await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "agent:admin");
       const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
+
+      const existingByName = await db
+        .select()
+        .from(roles)
+        .where(and(eq((roles as any).orgId, parsed.orgId), eq((roles as any).name, parsed.name)))
+        .limit(1);
+      if (existingByName.length > 0) {
+        throw new ConnectError("a role with this name already exists in this organization", Code.AlreadyExists);
+      }
+
       const newId = `ar-${crypto.randomUUID()}`;
+      // Set createdAt explicitly here rather than leaving it to insertRecord's
+      // withTimestamp default: that default only fires in standalone/sqlite
+      // mode, so the value returned to the caller below would otherwise be
+      // correct on sqlite and missing on MySQL, and either way it was never
+      // added to the object being returned - only to the copy insertRecord
+      // wrote to the DB. M17-T02.
       const payload = {
         id: newId,
         orgId: parsed.orgId,
         name: parsed.name,
         systemPrompt: parsed.systemPrompt,
         capabilities: parsed.capabilities,
+        createdAt: new Date(),
       };
 
-      await insertRecord(db, roles, payload, isStandalone);
+      // The select-then-insert check above has a race window - fall back to
+      // catching the DB's own unique-constraint violation for a concurrent
+      // duplicate insert, so it surfaces as AlreadyExists instead of a raw
+      // DB error.
+      try {
+        await insertRecord(db, roles, payload, isStandalone, false);
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("a role with this name already exists in this organization", Code.AlreadyExists);
+      }
 
-      return { role: payload };
+      return { role: { ...payload, createdAt: payload.createdAt.toISOString() } };
     },
     async updateAgentRole(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
@@ -165,11 +206,21 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
       if (parsed.systemPrompt !== undefined) updates.systemPrompt = parsed.systemPrompt;
       if (parsed.capabilities !== undefined) updates.capabilities = parsed.capabilities;
 
-      await db.update(roles).set(updates).where(eq((roles as any).id, parsed.id));
+      try {
+        await db.update(roles).set(updates).where(eq((roles as any).id, parsed.id));
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("a role with this name already exists in this organization", Code.AlreadyExists);
+      }
 
       const updated = { ...existing[0], ...updates };
       publishDomainEvent(nc, "domain.agent_role.updated", updated);
-      return { role: updated };
+      return {
+        role: {
+          ...updated,
+          createdAt: updated.createdAt instanceof Date ? updated.createdAt.toISOString() : updated.createdAt,
+        },
+      };
     },
     async listAgentRoles(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
@@ -199,7 +250,13 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
           },
         },
       );
-      return { roles: items, page: { nextCursor, totalCount } };
+      return {
+        roles: items.map((r: any) => ({
+          ...r,
+          createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+        })),
+        page: { nextCursor, totalCount },
+      };
     },
     async createAgent(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
@@ -220,17 +277,20 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
       const newId = `ag-${crypto.randomUUID()}`;
+      // See createAgentRole's comment above on why createdAt is set explicitly
+      // here instead of relying on insertRecord's default. M17-T02.
       const payload = {
         id: newId,
         orgId: parsed.orgId,
         agentRoleId: parsed.agentRoleId,
         name: parsed.name,
+        createdAt: new Date(),
       };
 
-      await insertRecord(db, agents, payload, isStandalone);
+      await insertRecord(db, agents, payload, isStandalone, false);
 
       publishDomainEvent(nc, "domain.agent.created", payload);
-      return { agent: payload };
+      return { agent: { ...payload, createdAt: payload.createdAt.toISOString() } };
     },
     async updateAgent(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
@@ -245,6 +305,15 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
         const roles = isStandalone ? schemaSqlite.agentRoles : schemaMysql.agentRoles;
         const roleRows = await db.select().from(roles).where(eq((roles as any).id, parsed.agentRoleId)).limit(1);
         if (!roleRows || roleRows.length === 0) throw new ConnectError("agent role not found", Code.NotFound);
+        // M17-T01: createAgent already made this check; updateAgent never did,
+        // which let an agent be re-pointed at a role belonging to a different
+        // organization - the exact cross-tenant scenario ADR-0007 exists to
+        // close, just reachable from the update path instead of create.
+        // NotFound rather than PermissionDenied, same reasoning as createAgent:
+        // whether a role id exists in another organization is that
+        // organization's business, and a distinct error here would turn this
+        // into a probe for foreign role ids.
+        if (roleRows[0].orgId !== existing[0].orgId) throw new ConnectError("agent role not found", Code.NotFound);
       }
 
       const updates: Record<string, unknown> = {};
@@ -255,16 +324,21 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
 
       const updated = { ...existing[0], ...updates };
       publishDomainEvent(nc, "domain.agent.updated", updated);
-      return { agent: updated };
+      return {
+        agent: {
+          ...updated,
+          createdAt: updated.createdAt instanceof Date ? updated.createdAt.toISOString() : updated.createdAt,
+        },
+      };
     },
-    async listAgents(req: any, { values: contextValues }: { values: any }) {
+    async listAgents(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await authorizePrincipal(db, principal, req.orgId, { scope: 'agents:read', permission: 'agent:read' });
+      const parsed = ListAgentsSchema.parse(req);
+      await authorizePrincipal(db, principal, parsed.orgId, { scope: 'agents:read', permission: 'agent:read' });
 
       const agentsSchema = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
-      const deletedFilter = req.onlyDeleted ? not(notDeleted(agentsSchema)) : notDeleted(agentsSchema);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, agentsSchema, and(eq((agentsSchema as any).orgId, req.orgId), deletedFilter), req.page, {
+      const deletedFilter = parsed.onlyDeleted ? not(notDeleted(agentsSchema)) : notDeleted(agentsSchema);
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, agentsSchema, and(eq((agentsSchema as any).orgId, parsed.orgId), deletedFilter), parsed.page, {
         filterColumn: (agentsSchema as any).name,
         sortableColumns: { name: (agentsSchema as any).name, createdAt: (agentsSchema as any).createdAt },
         select: {
@@ -276,7 +350,13 @@ export const createAgentsHandler = (db: any, nc: any = null) => {
           deletedAt: (agentsSchema as any).deletedAt,
         },
       });
-      return { agents: items, page: { nextCursor, totalCount } };
+      return {
+        agents: items.map((a: any) => ({
+          ...a,
+          createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : a.createdAt,
+        })),
+        page: { nextCursor, totalCount },
+      };
     },
     async archiveAgent(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);

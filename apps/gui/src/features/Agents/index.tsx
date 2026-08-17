@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { AgentService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { AgentService, DashboardService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Bot } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { AgentTokens } from './AgentTokens';
@@ -15,7 +16,38 @@ import { ListState } from '../../components/ui/ListState';
 // because a row grows when its edit form opens.
 const AGENT_ROW_HEIGHT = 76;
 
+/** Beyond this an agent has stopped rather than paused. Matches Dashboard.tsx. */
+const SILENT_AFTER_HOURS = 24;
+
+/** "9 days ago", or "never" — same distinction Dashboard.tsx's fleet panel draws. */
+function sinceLabel(iso?: string): { text: string; silent: boolean } {
+  if (!iso) return { text: 'never called', silent: true };
+  const ms = Date.now() - new Date(iso).getTime();
+  const hours = ms / 3_600_000;
+  const silent = hours > SILENT_AFTER_HOURS;
+  if (hours < 1) return { text: 'active in the last hour', silent };
+  if (hours < 24) return { text: `${Math.floor(hours)}h ago`, silent };
+  return { text: `${Math.floor(hours / 24)}d ago`, silent };
+}
+
+// The backend stores capabilities as an opaque JSON string (main.tsp:
+// `capabilities: string // JSON string`) and never validates it - a typo here
+// used to reach the database and only surface later, wherever something
+// finally tried to JSON.parse it. Empty is left valid: the field is required
+// separately (`required`/non-empty checks on each submit button), so this
+// only judges shape once there is something to judge.
+function isValidCapabilitiesJson(value: string): boolean {
+  if (value.trim() === '') return true;
+  try {
+    JSON.parse(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const agentClient = createClient(AgentService, transport);
+const dashboardClient = createClient(DashboardService, transport);
 
 export function AgentsDashboard() {
   const { confirm, confirmDialog } = useConfirm();
@@ -63,6 +95,23 @@ export function AgentsDashboard() {
   const agentsData = agentPages?.pages.flatMap((p) => p.agents);
   const loadedAgents = agentsData?.length ?? 0;
   const agentTotal = Number(agentPages?.pages[0]?.page?.totalCount ?? 0);
+
+  // M17-T05: reuses the Dashboard's already-computed per-agent activity
+  // (last token use, open task count) rather than adding a second endpoint
+  // that joins the same tables. Same cap and "quietest first" ordering as
+  // the Dashboard's fleet panel (PANEL_LIMIT=8, dashboard.handler.ts) - this
+  // is an at-a-glance panel, not the place to page through every agent.
+  const {
+    data: dashboardData,
+    isLoading: isLoadingActivity,
+    error: activityError,
+    refetch: refetchActivity,
+  } = useQuery({
+    queryKey: ['dashboard', activeOrgId, undefined],
+    queryFn: async () => dashboardClient.getDashboard({ orgId: activeOrgId }),
+    enabled: !!activeOrgId,
+  });
+  const agentActivity = dashboardData?.agents ?? [];
 
   // Roles are scoped to an organization (ADR-0007), so the active org is part
   // of the key as well as the request - without it, switching orgs would serve
@@ -166,13 +215,13 @@ export function AgentsDashboard() {
          <div className="p-4 border rounded-lg bg-card shadow-sm flex items-center justify-between">
            <div>
              <div className="text-muted-foreground text-sm font-medium mb-1">Total Agents</div>
-             <div className="text-3xl font-bold">{agentsData?.length || 0}</div>
+             <div className="text-3xl font-bold">{agentTotal}</div>
            </div>
            <div className="w-10 h-10 rounded-full bg-primary-subtle text-primary-subtle-foreground flex items-center justify-center"><Bot className="w-5 h-5" /></div>
          </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="border rounded-lg bg-card p-6 shadow-sm">
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-xl font-medium">AI Agent Instances</h2>
@@ -335,15 +384,51 @@ export function AgentsDashboard() {
           </div>
         </div>
 
-        <div className="border rounded-lg bg-card p-6 shadow-sm flex flex-col h-[400px]">
-          <h2 className="text-xl font-medium mb-4">Agent State Machine / Visualizer</h2>
-          <div className="flex-1 border rounded bg-muted/20 flex items-center justify-center flex-col text-muted-foreground text-sm border-dashed">
-             <div className="mb-2 text-xl">React Flow Component</div>
-             <p>Visual workflow rendering goes here.</p>
-             {/* `opacity-50` halved the contrast of already-muted text to 2:1.
-                 Muting is a colour decision, and there is a token for it. */}
-             <p className="text-xs pt-4 text-muted-foreground">(To be implemented fully with reactflow)</p>
+        <div className="border rounded-lg bg-card p-6 shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-medium">Agent Activity</h2>
+            <span className="text-xs text-muted-foreground">Quietest first</span>
           </div>
+          <ListState
+            isLoading={isLoadingActivity}
+            error={activityError}
+            isEmpty={agentActivity.length === 0}
+            loadingMessage="Loading agent activity…"
+            emptyMessage="No agents in this organization."
+            emptyAction={<p className="text-xs">Deploy one with the form on the left.</p>}
+            onRetry={() => refetchActivity()}
+          >
+            <div className="flex flex-col gap-1">
+              {agentActivity.map((a) => {
+                const since = sinceLabel(a.lastUsedAt);
+                return (
+                  <div key={a.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50">
+                    <span className="flex-1 min-w-0 truncate text-sm">{a.name}</span>
+                    {Number(a.openTaskCount) > 0 && (
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {Number(a.openTaskCount)} open
+                      </span>
+                    )}
+                    <span
+                      className={`text-xs shrink-0 rounded px-1.5 py-0.5 ${
+                        since.silent
+                          ? 'bg-warning-subtle text-warning-subtle-foreground'
+                          : 'bg-success-subtle text-success-subtle-foreground'
+                      }`}
+                    >
+                      {since.text}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </ListState>
+          {agentTotal > agentActivity.length && (
+            <p className="text-xs text-muted-foreground mt-3">
+              Showing the {agentActivity.length} quietest of {agentTotal}. See the{' '}
+              <Link to="/" className="text-primary hover:underline">Dashboard</Link> for the full picture alongside review and PR status.
+            </p>
+          )}
         </div>
       </div>
 
@@ -388,14 +473,24 @@ export function AgentsDashboard() {
               onChange={(e) => setNewRoleCapabilities(e.target.value)}
               placeholder='Capabilities, e.g. ["code","review"]'
               required
+              aria-invalid={!isValidCapabilitiesJson(newRoleCapabilities)}
               className="text-sm bg-transparent border rounded-md px-2 py-1"
             />
+            {!isValidCapabilitiesJson(newRoleCapabilities) && (
+              <p className="text-xs text-destructive">Capabilities must be valid JSON.</p>
+            )}
             {createAgentRoleMutation.isError && (
               <p className="text-xs text-destructive">Failed to create role: {(createAgentRoleMutation.error as Error).message}</p>
             )}
             <button
               type="submit"
-              disabled={createAgentRoleMutation.isPending || !newRoleName.trim() || !newRoleSystemPrompt.trim() || !newRoleCapabilities.trim()}
+              disabled={
+                createAgentRoleMutation.isPending ||
+                !newRoleName.trim() ||
+                !newRoleSystemPrompt.trim() ||
+                !newRoleCapabilities.trim() ||
+                !isValidCapabilitiesJson(newRoleCapabilities)
+              }
               className="self-end px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium disabled:bg-muted disabled:text-muted-foreground"
             >
               {createAgentRoleMutation.isPending ? 'Creating...' : 'Create role'}
@@ -447,15 +542,25 @@ export function AgentsDashboard() {
                     value={editRoleCapabilities}
                     onChange={(e) => setEditRoleCapabilities(e.target.value)}
                     placeholder="Capabilities (JSON)"
+                    aria-invalid={!isValidCapabilitiesJson(editRoleCapabilities)}
                     className="text-sm bg-transparent border rounded-md px-2 py-1"
                   />
+                  {!isValidCapabilitiesJson(editRoleCapabilities) && (
+                    <p className="text-xs text-destructive">Capabilities must be valid JSON.</p>
+                  )}
                   {updateAgentRoleMutation.isError && (
                     <p className="text-xs text-destructive">Failed to update role: {(updateAgentRoleMutation.error as Error).message}</p>
                   )}
                   <div className="flex gap-2 self-end">
                     <button
                       type="submit"
-                      disabled={!editRoleName.trim() || !editRoleSystemPrompt.trim() || !editRoleCapabilities.trim() || updateAgentRoleMutation.isPending}
+                      disabled={
+                        !editRoleName.trim() ||
+                        !editRoleSystemPrompt.trim() ||
+                        !editRoleCapabilities.trim() ||
+                        !isValidCapabilitiesJson(editRoleCapabilities) ||
+                        updateAgentRoleMutation.isPending
+                      }
                       className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
                     >
                       {updateAgentRoleMutation.isPending ? 'Saving...' : 'Save'}

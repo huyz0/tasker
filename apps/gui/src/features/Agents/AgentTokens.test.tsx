@@ -257,6 +257,57 @@ describe('AgentTokens', () => {
     expect(screen.getByText('expires in 30 days')).toBeInTheDocument();
   });
 
+  it('shows "never used" for a token with no lastUsedAt, and the date once it has one', async () => {
+    mockList.mockResolvedValue({ tokens: [
+      aToken({ id: 'a', name: 'Fresh', lastUsedAt: '' }),
+      aToken({ id: 'b', name: 'Seasoned', lastUsedAt: '2026-08-01T00:00:00Z' }),
+    ] });
+    renderPanel();
+    expect(await screen.findByText('never used')).toBeInTheDocument();
+    expect(screen.getByText(/^used /)).toBeInTheDocument();
+  });
+
+  // M17-T04: ADR-0008's 365-day maximum was stated in the helper text but not
+  // enforced client-side - only the server rejected an out-of-range value.
+  it('rejects an expiry over the 365-day maximum before submitting', async () => {
+    renderPanel();
+    await screen.findByText('No tokens for this agent.');
+    fireEvent.click(screen.getByRole('button', { name: 'New token' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'tasks:read' }));
+    fireEvent.change(screen.getByLabelText('Expires in (days)'), { target: { value: '400' } });
+
+    expect(screen.getByText('Cannot exceed 365 days.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-whole-number expiry', async () => {
+    renderPanel();
+    await screen.findByText('No tokens for this agent.');
+    fireEvent.click(screen.getByRole('button', { name: 'New token' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'tasks:read' }));
+    fireEvent.change(screen.getByLabelText('Expires in (days)'), { target: { value: '0' } });
+
+    expect(screen.getByText('Must be a whole number of days.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled();
+  });
+
+  it('allows exactly the 365-day maximum', async () => {
+    mockCreate.mockResolvedValue({ token: aToken(), plaintext: 'x' });
+    renderPanel();
+    await screen.findByText('No tokens for this agent.');
+    fireEvent.click(screen.getByRole('button', { name: 'New token' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'tasks:read' }));
+    fireEvent.change(screen.getByLabelText('Expires in (days)'), { target: { value: '365' } });
+
+    expect(screen.queryByText('Cannot exceed 365 days.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ expiresInDays: 365 })));
+  });
+
   it('keeps the row and explains when revocation fails', async () => {
     mockList.mockResolvedValue({ tokens: [aToken()] });
     mockRevoke.mockRejectedValue(new Error('nope'));

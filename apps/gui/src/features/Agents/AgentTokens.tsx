@@ -31,6 +31,19 @@ const relativeDays = (iso: string): string => {
   return `expires in ${days} day${days === 1 ? '' : 's'}`;
 };
 
+// ADR-0008: 365 days is a hard maximum, not a suggestion - "no expiry" is the
+// option the decision deliberately removed. The backend already rejects
+// anything past it; this just says so before the round trip instead of after.
+const MAX_EXPIRY_DAYS = 365;
+
+function expiryError(raw: string): string | null {
+  if (raw.trim() === '') return null;
+  const days = Number(raw);
+  if (!Number.isInteger(days) || days < 1) return 'Must be a whole number of days.';
+  if (days > MAX_EXPIRY_DAYS) return `Cannot exceed ${MAX_EXPIRY_DAYS} days.`;
+  return null;
+}
+
 export function AgentTokens({ agentId, agentName }: { agentId: string; agentName: string }) {
   const { confirm, confirmDialog } = useConfirm();
   const queryClient = useQueryClient();
@@ -166,14 +179,20 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
           <input
             id={`token-expiry-${agentId}`}
             type="number"
+            min={1}
+            max={MAX_EXPIRY_DAYS}
             value={expiresInDays}
             onChange={(e) => setExpiresInDays(e.target.value)}
             placeholder="90"
+            aria-invalid={expiryError(expiresInDays) !== null}
             className="bg-transparent border rounded-md px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
           />
           {/* Says the default rather than pre-filling it, so the form does not
               imply the user chose 90 when they did not. */}
-          <p className="text-xs text-muted-foreground">Leave blank for 90 days. Maximum 365.</p>
+          <p className="text-xs text-muted-foreground">Leave blank for 90 days. Maximum {MAX_EXPIRY_DAYS}.</p>
+          {expiryError(expiresInDays) && (
+            <p className="text-xs text-destructive">{expiryError(expiresInDays)}</p>
+          )}
 
           {createMutation.isError && (
             <p className="text-xs text-destructive">
@@ -182,7 +201,7 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
           )}
           <button
             type="submit"
-            disabled={createMutation.isPending || !name.trim() || scopes.length === 0}
+            disabled={createMutation.isPending || !name.trim() || scopes.length === 0 || expiryError(expiresInDays) !== null}
             className="self-end px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-xs font-medium disabled:bg-muted disabled:text-muted-foreground"
           >
             {createMutation.isPending ? 'Creating...' : 'Create'}
@@ -207,6 +226,9 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
                 <code className="text-muted-foreground">{t.tokenPrefix}…</code>
                 <span className="flex-1 truncate">{t.name}</span>
                 <span className={state === 'active' ? 'text-success' : 'text-muted-foreground'}>{state}</span>
+                <span className="text-muted-foreground w-24 text-right">
+                  {t.lastUsedAt ? `used ${new Date(t.lastUsedAt).toLocaleDateString()}` : 'never used'}
+                </span>
                 <span className="text-muted-foreground w-32 text-right">
                   {state === 'active' ? relativeDays(t.expiresAt) : '—'}
                 </span>

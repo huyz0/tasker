@@ -26,6 +26,7 @@ var agentsListCmd = &cobra.Command{
 		sort, _ := cmd.Flags().GetString("sort")
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
+		onlyDeleted, _ := cmd.Flags().GetBool("only-deleted")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
 		}
@@ -36,8 +37,9 @@ var agentsListCmd = &cobra.Command{
 
 		client := backend.NewAgentServiceClient()
 		res, err := client.ListAgents(context.Background(), connect.NewRequest(&healthv1.ListAgentsRequest{
-			OrgId: orgID,
-			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
+			OrgId:       orgID,
+			OnlyDeleted: onlyDeleted,
+			Page:        &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list agents: %v\n", err)
@@ -89,6 +91,86 @@ var agentsCreateCmd = &cobra.Command{
 			cmd.Println(string(jsonString))
 		} else {
 			cmd.Printf("Spawned new agent '%s' (id: %s) with role %s\n", res.Msg.Agent.Name, res.Msg.Agent.Id, res.Msg.Agent.AgentRoleId)
+		}
+		return nil
+	},
+}
+
+var agentsUpdateCmd = &cobra.Command{
+	Use:   "update [agent_id]",
+	Short: "Rename an agent or reassign it to a different role",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name, _ := cmd.Flags().GetString("name")
+		role, _ := cmd.Flags().GetString("role")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if name == "" && role == "" {
+			cmd.Println("Error: at least one of --name or --role is required.")
+			return errors.New("Error: at least one of --name or --role is required.")
+		}
+
+		req := &healthv1.UpdateAgentRequest{AgentId: args[0]}
+		if name != "" {
+			req.Name = &name
+		}
+		if role != "" {
+			req.AgentRoleId = &role
+		}
+
+		client := backend.NewAgentServiceClient()
+		res, err := client.UpdateAgent(context.Background(), connect.NewRequest(req))
+		if err != nil {
+			cmd.PrintErrf("Failed to update agent: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Agent)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Agent %s updated: '%s' [Role: %s]\n", res.Msg.Agent.Id, res.Msg.Agent.Name, res.Msg.Agent.AgentRoleId)
+		}
+		return nil
+	},
+}
+
+var agentsUpdateRoleCmd = &cobra.Command{
+	Use:   "update-role [role_id]",
+	Short: "Edit an agent role persona's name, system prompt, or capabilities",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name, _ := cmd.Flags().GetString("name")
+		systemPrompt, _ := cmd.Flags().GetString("system-prompt")
+		capabilities, _ := cmd.Flags().GetString("capabilities")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if name == "" && systemPrompt == "" && capabilities == "" {
+			cmd.Println("Error: at least one of --name, --system-prompt, or --capabilities is required.")
+			return errors.New("Error: at least one of --name, --system-prompt, or --capabilities is required.")
+		}
+
+		req := &healthv1.UpdateAgentRoleRequest{Id: args[0]}
+		if name != "" {
+			req.Name = &name
+		}
+		if systemPrompt != "" {
+			req.SystemPrompt = &systemPrompt
+		}
+		if capabilities != "" {
+			req.Capabilities = &capabilities
+		}
+
+		client := backend.NewAgentServiceClient()
+		res, err := client.UpdateAgentRole(context.Background(), connect.NewRequest(req))
+		if err != nil {
+			cmd.PrintErrf("Failed to update agent role: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Role)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Agent role %s updated: %s\n", res.Msg.Role.Id, res.Msg.Role.Name)
 		}
 		return nil
 	},
@@ -177,13 +259,19 @@ var agentsDeleteCmd = &cobra.Command{
 	Short: "Move an agent to the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewAgentServiceClient()
 		_, err := client.ArchiveAgent(context.Background(), connect.NewRequest(&healthv1.ArchiveAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete agent: %v\n", err)
 			return err
 		}
-		cmd.Printf("Agent %s moved to bin\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "agentId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Agent %s moved to bin\n", args[0])
+		}
 		return nil
 	},
 }
@@ -193,13 +281,19 @@ var agentsRestoreCmd = &cobra.Command{
 	Short: "Restore an agent from the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewAgentServiceClient()
 		_, err := client.RestoreAgent(context.Background(), connect.NewRequest(&healthv1.RestoreAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore agent: %v\n", err)
 			return err
 		}
-		cmd.Printf("Agent %s restored\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "agentId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Agent %s restored\n", args[0])
+		}
 		return nil
 	},
 }
@@ -209,13 +303,19 @@ var agentsPurgeCmd = &cobra.Command{
 	Short: "Permanently delete an already-binned, unassigned agent",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewAgentServiceClient()
 		_, err := client.PurgeAgent(context.Background(), connect.NewRequest(&healthv1.PurgeAgentRequest{AgentId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge agent: %v\n", err)
 			return err
 		}
-		cmd.Printf("Agent %s permanently deleted\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "agentId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Agent %s permanently deleted\n", args[0])
+		}
 		return nil
 	},
 }
@@ -224,7 +324,9 @@ func init() {
 	rootCmd.AddCommand(agentsCmd)
 	agentsCmd.AddCommand(agentsListCmd)
 	agentsCmd.AddCommand(agentsCreateCmd)
+	agentsCmd.AddCommand(agentsUpdateCmd)
 	agentsCmd.AddCommand(agentsCreateRoleCmd)
+	agentsCmd.AddCommand(agentsUpdateRoleCmd)
 	agentsCmd.AddCommand(agentsListRolesCmd)
 	agentsCmd.AddCommand(agentsDeleteCmd)
 	agentsCmd.AddCommand(agentsRestoreCmd)
@@ -233,11 +335,14 @@ func init() {
 	agentsCreateCmd.Flags().String("role", "", "The agent role ID persona")
 	agentsCreateCmd.Flags().String("name", "", "Display name for the agent instance")
 	agentsCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
+	agentsUpdateCmd.Flags().String("name", "", "New display name for the agent")
+	agentsUpdateCmd.Flags().String("role", "", "Reassign the agent to this role ID")
 	agentsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	agentsListCmd.Flags().StringP("filter", "f", "", "Substring match against agent name")
 	agentsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 	agentsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	agentsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	agentsListCmd.Flags().Bool("only-deleted", false, "List only agents in the bin, instead of active ones")
 	agentsListRolesCmd.Flags().String("org", "", "Organization ID whose roles to list (required)")
 	agentsListRolesCmd.Flags().StringP("filter", "f", "", "Substring match against role name")
 	agentsListRolesCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
@@ -247,4 +352,7 @@ func init() {
 	agentsCreateRoleCmd.Flags().String("name", "", "Role name")
 	agentsCreateRoleCmd.Flags().String("system-prompt", "", "System prompt for the role")
 	agentsCreateRoleCmd.Flags().String("capabilities", "", "Capabilities/skills description for the role")
+	agentsUpdateRoleCmd.Flags().String("name", "", "New role name")
+	agentsUpdateRoleCmd.Flags().String("system-prompt", "", "New system prompt for the role")
+	agentsUpdateRoleCmd.Flags().String("capabilities", "", "New capabilities/skills description for the role")
 }
