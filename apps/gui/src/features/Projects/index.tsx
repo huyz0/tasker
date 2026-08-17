@@ -66,6 +66,7 @@ type Grant = { id: string; subjectType: string; subjectId: string; roleId: strin
  */
 function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string }) {
   const queryClient = useQueryClient();
+  const { confirm, confirmDialog } = useConfirm();
   const [isOpen, setIsOpen] = useState(false);
   const [isPicking, setIsPicking] = useState(false);
   const [search, setSearch] = useState('');
@@ -90,6 +91,22 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
     enabled: isPicking && !!orgId,
     queryFn: () => orgClient.listOrgMembers({ orgId, page: { limit: SEARCH_PAGE, filter: debouncedSearch || undefined } }),
   });
+
+  // M20-T07: a grant only carries subjectId - the raw user id was rendered
+  // directly, both as the visible row text and the revoke button's
+  // aria-label, naming nobody a screen reader user (or anyone else) could
+  // recognize. Shares the exact query key the picker above uses for its own
+  // unfiltered page (`debouncedSearch === ''`), so opening this panel and
+  // opening "+ Grant access" don't each fetch their own copy of the same
+  // page - one request serves both. Best-effort: a subject outside this
+  // page's org-member listing still falls back to its raw id.
+  const directoryQuery = useQuery({
+    queryKey: ['projectMemberCandidates', orgId, ''],
+    queryFn: () => orgClient.listOrgMembers({ orgId, page: { limit: SEARCH_PAGE } }),
+    enabled: isOpen && !!orgId,
+  });
+  const directoryById = new Map((directoryQuery.data?.members ?? []).map((m: any) => [m.userId, m]));
+  const displayNameFor = (subjectId: string) => directoryById.get(subjectId)?.name || directoryById.get(subjectId)?.email || subjectId;
 
   const grantMutation = useMutation({
     mutationFn: () => roleClient.grantRole({
@@ -119,6 +136,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
     return (
       <button
         onClick={() => { setIsOpen(true); revokeMutation.reset(); }}
+        aria-expanded={false}
         className="text-xs text-muted-foreground hover:text-foreground"
       >
         Members
@@ -136,6 +154,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
           // error used to survive being hidden and reappear on the next
           // expand with no action having been taken yet.
           onClick={() => { setIsOpen(false); revokeMutation.reset(); }}
+          aria-expanded={true}
           className="text-xs text-muted-foreground hover:text-foreground"
         >
           Hide
@@ -156,11 +175,25 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
         <ul className="flex flex-col gap-1">
           {grants.map((g) => (
             <li key={g.id} className="flex items-center gap-2 text-xs bg-muted px-2 py-1 rounded-md">
-              <span className="flex-1 truncate">{g.subjectId}</span>
+              <span className="flex-1 truncate">{displayNameFor(g.subjectId)}</span>
               <span className="text-muted-foreground">{g.roleName}</span>
               <button
-                aria-label={`Revoke ${g.roleName} from this project`}
-                onClick={() => revokeMutation.mutate(g.id)}
+                aria-label={`Revoke ${displayNameFor(g.subjectId)}'s ${g.roleName} access`}
+                onClick={async () => {
+                  // M20-T07: every other destructive action on this page
+                  // (archiving a project, unlinking a repository) confirms
+                  // first - revoking someone's access was the one silent
+                  // exception, one misclick away from an unannounced,
+                  // unconfirmed permission change.
+                  if (await confirm({
+                    title: `Revoke ${displayNameFor(g.subjectId)}'s ${g.roleName} access to this project?`,
+                    consequence: 'They keep whatever an org-wide role already gives them, but lose this project-specific grant.',
+                    undo: 'You can grant it again from this same panel.',
+                    confirmLabel: 'Revoke access',
+                  })) {
+                    revokeMutation.mutate(g.id);
+                  }
+                }}
                 // M20-T06: one shared mutation object across every grant row
                 // meant revoking one disabled the ✕ on every other row too -
                 // compare against the specific grant id this mutation was
@@ -261,6 +294,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
           )}
         </div>
       )}
+      {confirmDialog}
     </div>
   );
 }
@@ -447,14 +481,18 @@ export function ProjectsWizard() {
               if (newTemplateName.trim()) createTemplateMutation.mutate();
             }}
           >
+            <label className="sr-only" htmlFor="new-template-name">Template name</label>
             <input
+              id="new-template-name"
               autoFocus
               value={newTemplateName}
               onChange={(e) => setNewTemplateName(e.target.value)}
               placeholder="Template name"
               className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
             />
+            <label className="sr-only" htmlFor="new-template-description">Template description</label>
             <textarea
+              id="new-template-description"
               value={newTemplateDescription}
               onChange={(e) => setNewTemplateDescription(e.target.value)}
               placeholder="Description (optional)"
@@ -475,7 +513,9 @@ export function ProjectsWizard() {
         )}
 
         <div className="mb-4 flex flex-col gap-2 max-w-sm">
+          <label className="sr-only" htmlFor="new-project-name">New project name</label>
           <input
+            id="new-project-name"
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
             placeholder="New project name"
@@ -520,13 +560,17 @@ export function ProjectsWizard() {
                      }}
                      className="flex flex-col gap-2 mb-4"
                    >
+                     <label className="sr-only" htmlFor={`edit-template-name-${t.id}`}>Template name</label>
                      <input
+                       id={`edit-template-name-${t.id}`}
                        autoFocus
                        value={editTemplateName}
                        onChange={(e) => setEditTemplateName(e.target.value)}
                        className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
                      />
+                     <label className="sr-only" htmlFor={`edit-template-description-${t.id}`}>Template description</label>
                      <textarea
+                       id={`edit-template-description-${t.id}`}
                        value={editTemplateDescription}
                        onChange={(e) => setEditTemplateDescription(e.target.value)}
                        rows={2}
@@ -627,7 +671,9 @@ export function ProjectsWizard() {
                       }}
                       className="flex flex-col gap-2 flex-1"
                     >
+                      <label className="sr-only" htmlFor={`edit-project-name-${p.id}`}>Project name</label>
                       <input
+                        id={`edit-project-name-${p.id}`}
                         autoFocus
                         value={editProjectName}
                         onChange={(e) => setEditProjectName(e.target.value)}

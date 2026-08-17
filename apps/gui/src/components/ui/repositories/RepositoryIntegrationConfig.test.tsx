@@ -92,6 +92,53 @@ describe('RepositoryIntegrationConfig', () => {
     }));
   });
 
+  // M20-T07: these three inputs only had a placeholder, which is not an
+  // accessible name - a screen reader announced them as unlabeled text
+  // fields once the placeholder itself scrolled out of view or was typed
+  // over.
+  test('the remote, email and API token inputs are reachable by their accessible label', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [] });
+    mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-2', provider: 'bitbucket', remoteName: 'huyz0/bb-repo' } });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    fireEvent.change(screen.getByLabelText('Repository remote'), { target: { value: 'huyz0/bb-repo' } });
+
+    fireEvent.change(screen.getByDisplayValue('GitHub'), { target: { value: 'bitbucket' } });
+    fireEvent.change(screen.getByLabelText('Atlassian account email'), { target: { value: 'user@example.com' } });
+    fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'ATATT-fake-token' } });
+    fireEvent.click(screen.getByText('Link with API token'));
+
+    await waitFor(() => expect(mockAddRepositoryLink).toHaveBeenCalledWith({
+      projectId: 'proj-123',
+      provider: 'bitbucket',
+      remoteName: 'huyz0/bb-repo',
+      email: 'user@example.com',
+      apiToken: 'ATATT-fake-token',
+    }));
+  });
+
+  test('the GitHub personal access token input is reachable by its accessible label', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [] });
+    mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-3', provider: 'github', remoteName: 'huyz0/gh-repo' } });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    fireEvent.change(screen.getByLabelText('Repository remote'), { target: { value: 'huyz0/gh-repo' } });
+    fireEvent.change(screen.getByLabelText('Personal access token'), { target: { value: 'ghp_fake-pat' } });
+    fireEvent.click(screen.getByText('Link with API token'));
+
+    await waitFor(() => expect(mockAddRepositoryLink).toHaveBeenCalledWith({
+      projectId: 'proj-123',
+      provider: 'github',
+      remoteName: 'huyz0/gh-repo',
+      email: '',
+      apiToken: 'ghp_fake-pat',
+    }));
+  });
+
   test('stores a per-flow nonce in sessionStorage before starting the OAuth redirect, binding the callback to this tab (login CSRF protection)', async () => {
     mockListRepositoryLinks.mockResolvedValue({ links: [] });
     sessionStorage.removeItem('repoLinkOauthNonce');
@@ -208,6 +255,30 @@ describe('RepositoryIntegrationConfig', () => {
 
     await waitFor(() => expect(mockListDeployments).toHaveBeenCalledWith({ buildId: 'build-1', repositoryLinkId: 'link-1', commitSha: 'abc1234def' }));
     await waitFor(() => expect(screen.getByText('STAGING')).toBeDefined());
+  });
+
+  // M20-T07: this row toggle used to be a bare <div onClick> - invisible to
+  // a screen reader and unreachable from the keyboard. It's a real button
+  // now, with an aria-expanded state like every other disclosure toggle on
+  // this page.
+  test('the build row disclosure is a real button with an aria-expanded state', async () => {
+    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    mockListBuilds.mockResolvedValue({
+      builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'abc1234def' }],
+    });
+    mockListDeployments.mockResolvedValue({ deployments: [] });
+
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Show Builds' }));
+
+    const buildRow = await screen.findByRole('button', { name: /abc1234/ });
+    expect(buildRow).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(buildRow);
+    await waitFor(() => expect(screen.getByRole('button', { name: /abc1234/ })).toHaveAttribute('aria-expanded', 'true'));
   });
 
   test('auto-loads later pages so repository links and builds past the first page are shown', async () => {

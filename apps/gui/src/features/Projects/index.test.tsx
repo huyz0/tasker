@@ -748,7 +748,38 @@ describe('ProjectsWizard', () => {
       await waitFor(() => expect(mockListGrants).toHaveBeenCalledWith({ scopeType: 'project', scopeId: 'proj-1' }));
     });
 
-    it('lists existing project grants once expanded', async () => {
+    // M20-T07: the Members toggle is a disclosure like the Show/Hide Builds
+    // one on the repository panel - it needs the same aria-expanded state to
+    // announce, not just show, whether the panel it controls is open.
+    it('reflects its open/closed state via aria-expanded', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      renderPage();
+
+      const toggle = await screen.findByText('Members');
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+      fireEvent.click(toggle);
+      await waitFor(() => expect(screen.getByText('Hide')).toHaveAttribute('aria-expanded', 'true'));
+    });
+
+    it('lists existing project grants once expanded, resolving the subject id to a name', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListGrants.mockResolvedValue({ grants: [
+        { id: 'grant-1', subjectType: 'user', subjectId: 'user-2', roleId: 'role-1', roleName: 'QA Lead' },
+      ] });
+      // M20-T07: the row used to show g.subjectId verbatim - a raw user id,
+      // meaningless to whoever is reading the member list.
+      mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-2', name: 'Jamie Reviewer', email: 'jamie@test.com' }] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      expect(await screen.findByText('Jamie Reviewer')).toBeInTheDocument();
+      expect(screen.getByText('QA Lead')).toBeInTheDocument();
+    });
+
+    it('falls back to the raw subject id when the org member directory has no match for it', async () => {
       mockListTemplates.mockResolvedValue({ templates: [] });
       mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
       mockListGrants.mockResolvedValue({ grants: [
@@ -757,10 +788,29 @@ describe('ProjectsWizard', () => {
       renderPage();
 
       fireEvent.click(await screen.findByText('Members'));
-      expect(await screen.findByText('QA Lead')).toBeInTheDocument();
+      expect(await screen.findByText('user-2')).toBeInTheDocument();
     });
 
-    it('revokes a project grant', async () => {
+    it('revokes a project grant after confirming', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListGrants.mockResolvedValue({ grants: [
+        { id: 'grant-1', subjectType: 'user', subjectId: 'user-2', roleId: 'role-1', roleName: 'QA Lead' },
+      ] });
+      mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-2', name: 'Jamie Reviewer', email: 'jamie@test.com' }] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      await screen.findByText('QA Lead');
+      fireEvent.click(screen.getByLabelText("Revoke Jamie Reviewer's QA Lead access"));
+      await confirmAction();
+
+      await waitFor(() => expect(mockRevokeGrant).toHaveBeenCalledWith({ grantId: 'grant-1' }));
+    });
+
+    // M20-T07: revoking access used to be the one destructive action on this
+    // page with no confirmation - a single misclick silently took it away.
+    it('does not revoke a grant when confirmation is cancelled', async () => {
       mockListTemplates.mockResolvedValue({ templates: [] });
       mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
       mockListGrants.mockResolvedValue({ grants: [
@@ -770,9 +820,10 @@ describe('ProjectsWizard', () => {
 
       fireEvent.click(await screen.findByText('Members'));
       await screen.findByText('QA Lead');
-      fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
+      fireEvent.click(screen.getByLabelText("Revoke user-2's QA Lead access"));
+      await cancelAction();
 
-      await waitFor(() => expect(mockRevokeGrant).toHaveBeenCalledWith({ grantId: 'grant-1' }));
+      expect(mockRevokeGrant).not.toHaveBeenCalled();
     });
 
     // M20-T06: revokeMutation used to be one shared object read by every
@@ -792,11 +843,12 @@ describe('ProjectsWizard', () => {
 
       fireEvent.click(await screen.findByText('Members'));
       await screen.findByText('QA Lead');
-      fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
+      fireEvent.click(screen.getByLabelText("Revoke user-2's QA Lead access"));
+      await confirmAction();
 
       await waitFor(() => expect(mockRevokeGrant).toHaveBeenCalledWith({ grantId: 'grant-1' }));
-      expect(screen.getByLabelText('Revoke QA Lead from this project')).toBeDisabled();
-      expect(screen.getByLabelText('Revoke Dev from this project')).not.toBeDisabled();
+      expect(screen.getByLabelText("Revoke user-2's QA Lead access")).toBeDisabled();
+      expect(screen.getByLabelText("Revoke user-3's Dev access")).not.toBeDisabled();
 
       resolveRevoke({});
     });
@@ -836,7 +888,8 @@ describe('ProjectsWizard', () => {
 
       fireEvent.click(await screen.findByText('Members'));
       await screen.findByText('QA Lead');
-      fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
+      fireEvent.click(screen.getByLabelText("Revoke user-2's QA Lead access"));
+      await confirmAction();
       await waitFor(() => expect(screen.getByText(/Failed to revoke: grant not found/)).toBeInTheDocument());
 
       fireEvent.click(screen.getByText('+ Grant access'));
@@ -861,7 +914,8 @@ describe('ProjectsWizard', () => {
 
       fireEvent.click(await screen.findByText('Members'));
       await screen.findByText('QA Lead');
-      fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
+      fireEvent.click(screen.getByLabelText("Revoke user-2's QA Lead access"));
+      await confirmAction();
       await waitFor(() => expect(screen.getByText(/Failed to revoke: grant not found/)).toBeInTheDocument());
 
       fireEvent.click(screen.getByText('Hide'));
