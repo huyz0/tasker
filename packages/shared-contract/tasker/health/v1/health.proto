@@ -513,6 +513,8 @@ message AgentRole {
   string capabilities = 4;
   // A role belongs to exactly one organization (ADR-0007).
   string org_id = 5;
+  // M17-T02.
+  string created_at = 6;
 }
 
 message Agent {
@@ -521,6 +523,8 @@ message Agent {
   string agent_role_id = 3;
   string name = 4;
   string deletedAt = 5;
+  // M17-T02.
+  string created_at = 6;
 }
 
 message CreateAgentRoleRequest {

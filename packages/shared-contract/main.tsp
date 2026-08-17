@@ -607,6 +607,13 @@ model AgentRole {
   // A role belongs to exactly one organization (ADR-0007). New field number,
   // so existing clients are unaffected.
   @field(5) orgId: string;
+
+  // M17-T02: added after the fact, same as orgId above - new field number so
+  // existing clients are unaffected. The handler used to compute this and
+  // then silently drop it before returning, because it built the DB payload
+  // and the response from the same object reference without the field ever
+  // being added to it.
+  @field(6) createdAt: string;
 }
 
 model Agent {
@@ -615,6 +622,9 @@ model Agent {
   @field(3) agentRoleId: string;
   @field(4) name: string;
   @field(5) deletedAt?: string;
+
+  // M17-T02: see AgentRole.createdAt above - same field, same bug, same fix.
+  @field(6) createdAt: string;
 }
 
 // ==== Agent Services ====

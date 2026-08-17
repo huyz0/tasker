@@ -353,6 +353,13 @@ export const agentRoles = sqliteTable("agent_roles", {
   systemPrompt: text("system_prompt").notNull(),
   capabilities: text("capabilities").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }),
+}, (table) => {
+  return {
+    // M17-T02: two roles with the same name in the same org is never
+    // intentional - it is a picker where "Reviewer" and "Reviewer" are
+    // indistinguishable to whoever is choosing one for an agent.
+    orgNameIdx: uniqueIndex("agent_roles_org_id_name_idx").on(table.orgId, table.name),
+  };
 });
 
 export const agents = sqliteTable("agents", {

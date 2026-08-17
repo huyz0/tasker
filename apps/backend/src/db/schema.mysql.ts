@@ -244,6 +244,11 @@ export const agentRoles = mysqlTable("agent_roles", {
   systemPrompt: varchar("system_prompt", { length: 4096 }).notNull(),
   capabilities: varchar("capabilities", { length: 2048 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    // M17-T02: see the SQLite counterpart for why.
+    orgNameIdx: uniqueIndex("agent_roles_org_id_name_idx").on(table.orgId, table.name),
+  };
 });
 
 export const agents = mysqlTable("agents", {
