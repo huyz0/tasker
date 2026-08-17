@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { RepositoryIntegrationConfig } from '../../components/ui/repositories/RepositoryIntegrationConfig';
 import { useAuthSession } from '../../hooks/useAuthSession';
@@ -249,6 +249,8 @@ export function ProjectsWizard() {
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
+  const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const setActiveProjectId = useLayoutStore((s) => s.setActiveProjectId);
   const { userId: activeOwnerId } = useAuthSession();
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
@@ -264,6 +266,29 @@ export function ProjectsWizard() {
 
   const queryClient = useQueryClient();
   useEffect(() => setActivePageTitle('Projects'), [setActivePageTitle]);
+
+  // M20-T05: none of the page-level drafts (new project name/description,
+  // the new-template form, the two inline edit forms) ever reset on an org
+  // switch - typing a project name intended for org A, switching to org B,
+  // then clicking "Use Template" created the project in org B carrying org
+  // A's draft name, with no visible reset having happened. Skipped on the
+  // very first render so mounting doesn't clear a draft nobody has typed
+  // yet.
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setProjectName('');
+    setProjectDescription('');
+    setIsAddingTemplate(false);
+    setNewTemplateName('');
+    setNewTemplateDescription('');
+    setEditingTemplateId(null);
+    setEditingProjectId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOrgId]);
 
   const { data: templatesData, isLoading: isLoadingTemplates, error: templatesError, refetch: refetchTemplates } = useQuery({
     queryKey: ['templates', activeOrgId],
@@ -307,8 +332,13 @@ export function ProjectsWizard() {
       return resp.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+      // M20-T05: `['projects', activeOrgId]` matches no query in the app at
+      // all - the sidebar switcher is keyed `['projects', 'switcher', orgId,
+      // search]`, so a new project never appeared there. Invalidating the
+      // bare `['projects']` prefix (matching every project-list key,
+      // including the switcher's and the bin's) is the same pattern the
+      // Organizations screen already uses correctly for `['orgs']`.
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       setProjectName('');
       setProjectDescription('');
     }
@@ -345,8 +375,11 @@ export function ProjectsWizard() {
       await projectClient.updateProject(variables);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+      // M20-T05: same dead/wrong-key fix as createProjectMutation above -
+      // this is also what left a renamed project's stale old name in the
+      // sidebar switcher even after the query itself refreshed (see
+      // OrgProjectSwitcher's own fix for the other half of that bug).
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       setEditingProjectId(null);
     },
   });
@@ -355,10 +388,16 @@ export function ProjectsWizard() {
     mutationFn: async (projectId: string) => {
       await projectClient.archiveProject({ projectId });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', 'bin', activeOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+    onSuccess: (_data, projectId) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      // M20-T05: archiving the currently-active project left activeProjectId
+      // pointing at a project that no longer appears in any list - Tasks,
+      // Artifacts, the Bin's own task/folder/artifact tabs, and the
+      // Dashboard all kept querying it indefinitely, and the switcher's
+      // auto-select-fallback never fires on its own since the id is still
+      // non-empty. Clearing it here lets that same fallback pick a
+      // survivor once the switcher's project list refetches.
+      if (projectId === activeProjectId) setActiveProjectId('');
     },
   });
 

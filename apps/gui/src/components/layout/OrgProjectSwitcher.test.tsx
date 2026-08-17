@@ -38,11 +38,12 @@ import { OrgProjectSwitcher } from './OrgProjectSwitcher';
 
 function renderSwitcher() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const utils = render(
     <QueryClientProvider client={queryClient}>
       <OrgProjectSwitcher />
     </QueryClientProvider>
   );
+  return { ...utils, queryClient };
 }
 
 describe('OrgProjectSwitcher', () => {
@@ -129,6 +130,42 @@ describe('OrgProjectSwitcher', () => {
     await waitFor(() => expect(mockSetActiveProjectId).toHaveBeenCalledWith('proj-1234'));
     expect(mockSetActiveProjectId).not.toHaveBeenCalledWith('proj-1');
     expect(await screen.findByLabelText('Active project')).toHaveTextContent('Bulk Project 1234');
+  });
+
+  // M20-T05: the displayed label used to be set once (gated on `!label`)
+  // and never updated again - renaming the active project (or org) from
+  // elsewhere in the app left the sidebar showing the old name for the
+  // rest of the session, since nothing here ever re-synced from fresh
+  // query data once a label was set.
+  it('picks up a renamed project once its list query refetches', async () => {
+    mockActiveOrgId = 'org-1';
+    mockActiveProjectId = 'proj-1';
+    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }] });
+    mockListProjects
+      .mockResolvedValueOnce({ projects: [{ id: 'proj-1', name: 'Old Project Name' }] })
+      .mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Renamed Project' }] });
+
+    const { queryClient } = renderSwitcher();
+    await waitFor(() => expect(screen.getByLabelText('Active project')).toHaveTextContent('Old Project Name'));
+
+    await queryClient.invalidateQueries({ queryKey: ['projects'] });
+
+    await waitFor(() => expect(screen.getByLabelText('Active project')).toHaveTextContent('Renamed Project'));
+  });
+
+  it('picks up a renamed organization once its list query refetches', async () => {
+    mockActiveOrgId = 'org-1';
+    mockListOrgs
+      .mockResolvedValueOnce({ organizations: [{ id: 'org-1', name: 'Old Org Name', slug: 'org-one' }] })
+      .mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Renamed Org', slug: 'org-one' }] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+
+    const { queryClient } = renderSwitcher();
+    await waitFor(() => expect(screen.getByLabelText('Active organization')).toHaveTextContent('Old Org Name'));
+
+    await queryClient.invalidateQueries({ queryKey: ['orgs'] });
+
+    await waitFor(() => expect(screen.getByLabelText('Active organization')).toHaveTextContent('Renamed Org'));
   });
 
   it('says how many it is not showing', async () => {

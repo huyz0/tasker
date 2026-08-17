@@ -57,22 +57,29 @@ let mockAuthUserId: string | null = mockUserId;
 vi.mock('../../hooks/useAuthSession', () => ({
   useAuthSession: () => ({ isLoading: false, authenticated: !!mockAuthUserId, get userId() { return mockAuthUserId; } }),
 }));
+let mockActiveOrgId = 'org-1';
+let mockActiveProjectId = '';
+const mockSetActiveProjectId = vi.fn((id: string) => { mockActiveProjectId = id; });
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
     setActivePageTitle: vi.fn(),
-    activeOrgId: 'org-1',
+    get activeOrgId() { return mockActiveOrgId; },
+    get activeProjectId() { return mockActiveProjectId; },
+    setActiveProjectId: mockSetActiveProjectId,
   })),
 }));
 
 import { ProjectsWizard } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
 
+function page() {
+  return <ProjectsWizard />;
+}
+
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utils = render(
-    <QueryClientProvider client={queryClient}>
-      <ProjectsWizard />
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{page()}</QueryClientProvider>
   );
   return { ...utils, queryClient };
 }
@@ -97,6 +104,9 @@ describe('ProjectsWizard', () => {
     mockListOrgMembers.mockReset();
     mockListOrgMembers.mockResolvedValue({ members: [] });
     mockAuthUserId = mockUserId;
+    mockActiveOrgId = 'org-1';
+    mockActiveProjectId = '';
+    mockSetActiveProjectId.mockClear();
   });
 
   it('disables project creation until a name is entered', async () => {
@@ -149,7 +159,13 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
   });
 
-  it('invalidates the Bin page query key after archiving a project, so the Bin view refreshes', async () => {
+  // M20-T05: this used to invalidate three separate keys, one of them
+  // (`['projects', 'org-1']`) matching no query in the app at all, and none
+  // of them the sidebar switcher's own `['projects', 'switcher', ...]` key -
+  // a newly-archived project stayed listed and pickable there. The bare
+  // `['projects']` prefix covers every project-list key at once, the same
+  // pattern the Organizations screen already uses for `['orgs']`.
+  it('invalidates every projects query key after archiving a project, so the Bin and switcher both refresh', async () => {
     mockListTemplates.mockResolvedValue({ templates: [] });
     mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
     mockArchiveProject.mockResolvedValue({});
@@ -162,7 +178,60 @@ describe('ProjectsWizard', () => {
     await confirmAction();
 
     await waitFor(() => expect(mockArchiveProject).toHaveBeenCalledWith({ projectId: 'proj-1' }));
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['projects', 'bin', 'org-1'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['projects'] });
+  });
+
+  // M20-T05: archiving the currently-active project used to leave
+  // activeProjectId pointing at it forever - Tasks/Artifacts/Dashboard all
+  // kept querying an archived project, and the switcher's own auto-select
+  // fallback never fires while the id is still non-empty.
+  it('clears activeProjectId when the archived project is the active one', async () => {
+    mockActiveProjectId = 'proj-1';
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Active Project' }] });
+    mockArchiveProject.mockResolvedValue({});
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Active Project')).toBeDefined());
+    fireEvent.click(screen.getByText('Delete'));
+    await confirmAction();
+
+    await waitFor(() => expect(mockArchiveProject).toHaveBeenCalledWith({ projectId: 'proj-1' }));
+    expect(mockSetActiveProjectId).toHaveBeenCalledWith('');
+  });
+
+  it('leaves activeProjectId untouched when archiving a different project', async () => {
+    mockActiveProjectId = 'proj-active';
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-other', name: 'Other Project' }] });
+    mockArchiveProject.mockResolvedValue({});
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Other Project')).toBeDefined());
+    fireEvent.click(screen.getByText('Delete'));
+    await confirmAction();
+
+    await waitFor(() => expect(mockArchiveProject).toHaveBeenCalledWith({ projectId: 'proj-other' }));
+    expect(mockSetActiveProjectId).not.toHaveBeenCalled();
+  });
+
+  // M20-T05: none of the page-level drafts reset on an org switch before
+  // this - a project name typed for org A survived into org B.
+  it('resets the new-project draft and open edit/create forms when the active org changes', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    const { rerender } = renderPage();
+
+    await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
+    fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'Org A Draft Name' } });
+    fireEvent.click(screen.getByRole('button', { name: '+ New Template' }));
+    expect(screen.getByPlaceholderText('Template name')).toBeInTheDocument();
+
+    mockActiveOrgId = 'org-2';
+    rerender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{page()}</QueryClientProvider>);
+
+    await waitFor(() => expect(screen.getByPlaceholderText('New project name')).toHaveValue(''));
+    expect(screen.queryByPlaceholderText('Template name')).toBeNull();
   });
 
   it('creates a project template via a real API call, using real data instead of requiring the backend/CLI', async () => {
