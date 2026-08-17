@@ -119,7 +119,7 @@ touches `repositories.handler.ts`, none currently scheduled.
         test archives a project with a live task and asserts the task can
         still be deleted, purged, and the project purged afterward.
 
-- [ ] **M14-T04** — Add the missing functional test coverage the original
+- [x] **M14-T04** — Add the missing functional test coverage the original
       review found absent: `updateTask` (full field matrix, not just status),
       `getTask`, `updateTaskType`, and `assignTask`'s cross-org-agent branch.
       - Files: `apps/backend/src/modules/tasks/tasks.test.ts`

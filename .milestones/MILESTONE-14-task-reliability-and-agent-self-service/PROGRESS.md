@@ -109,3 +109,45 @@
   `includeDeleted: true`, covered by an existing test) — it was solely
   `deleteTask` blocking the workflow.
 - **Next**: M14-T04
+
+## M14-T04 — Add missing test coverage (updateTaskType, transitions, reorder, assign/unassign)
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**: `apps/backend/src/modules/tasks/tasks.test.ts`
+- **Verified**: `bun test src/modules/tasks/tasks.test.ts --coverage` —
+  `tasks.handler.ts` rises from 87.84% funcs / 85.61% lines to **98.68%
+  funcs / 98.64% lines**. 20 tests, all pass. Full `bun test` at the repo
+  root — 1277 pass / 12 skip / 0 fail. Remaining uncovered lines are the
+  mysql2-only branch of `createTask`'s counter claim (559, 563-569 -
+  exercised only by the dialect-gated `tasks.mysql.test.ts`, correctly out
+  of scope for the default sqlite suite) and one hard-to-trigger catch
+  branch in `assignTask` (694, `assertCan` throwing something other than
+  `PermissionDenied` for the assignee) - left uncovered and named here
+  rather than contrived.
+- **Notes**: `updateTask` and `getTask` were already covered by M14-T01;
+  this task closed the rest of the review's list plus two more the
+  coverage numbers surfaced once T01-T03 were in: `deleteTaskStatusTransition`
+  and `reorderTaskStatuses` had *zero* coverage each, not just thin
+  coverage - full handler bodies never once exercised. Added:
+  `updateTaskType` (rename, reparent, self-parent rejection, cross-org
+  parent rejection, not-found, outsider denial - field-level update
+  confirmed by asserting a parentId-only update doesn't clobber a prior
+  rename), `assignTask`'s cross-org-agent branch (an agent that exists but
+  belongs to a different org, distinct from "agent not found"),
+  `unassignTask` (idempotent removal, matched on the exact (agentId,
+  userId) pair so it doesn't touch a different assignment sharing the same
+  userId - caught my own test bug here first, see below),
+  `deleteTaskStatusTransition` (idempotent delete, authorized against the
+  type not the edge, not-found, outsider denial), and
+  `reorderTaskStatuses` (full reorder, partial-list rejection, duplicate-id
+  rejection, foreign-id rejection, not-found, outsider denial). Two of my
+  own first-draft tests were themselves wrong and caught by running them:
+  the unassign assertion counted a *different* assignment row that
+  happened to share the same `userId` value (fixed by also filtering
+  `isNull(agentId)`, matching the handler's own match condition), and the
+  reorder not-found test sent `statusIds: []`, which trips the schema's
+  own `min(1)` before the handler's NotFound check ever runs (fixed by
+  sending a dummy non-empty array) - recorded because both are the kind of
+  mistake that would have silently proven nothing if left unnoticed.
+- **Next**: M14-T05

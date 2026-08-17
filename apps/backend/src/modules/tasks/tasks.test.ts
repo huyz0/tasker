@@ -1,6 +1,6 @@
 import { expect, test, describe } from "bun:test";
 import { Code } from "@connectrpc/connect";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin, seedProject } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createTasksHandler, createTaskManagementHandler } from "./tasks.handler";
@@ -131,6 +131,62 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.listTaskTypes({}, ctx)).rejects.toThrow();
   });
 
+  // M14-T04: updateTaskType had zero test coverage before this - the
+  // original deep review flagged it as an untested handler path.
+  test("updateTaskType renames, reparents, and rejects a self-parent or a cross-org parent", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-updatett-" + Date.now().toString();
+    const userId = "user-updatett-" + Date.now().toString();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org UpdateTT" });
+    const ctx = makeAuthContext(userId);
+    const handler = createTasksHandler(db, nc);
+
+    const typeA = await handler.createTaskType({ orgId, name: "Original Name" }, ctx);
+    const typeB = await handler.createTaskType({ orgId, name: "Would-be Parent" }, ctx);
+
+    const renamed = await handler.updateTaskType({ id: typeA.taskType.id, name: "New Name" }, ctx);
+    expect(renamed.taskType.name).toBe("New Name");
+    expect(renamed.taskType.parentId).toBeFalsy();
+
+    const reparented = await handler.updateTaskType({ id: typeA.taskType.id, parentId: typeB.taskType.id }, ctx);
+    expect(reparented.taskType.parentId).toBe(typeB.taskType.id);
+    // The name from the previous update must survive an update that only
+    // touches parentId - updates are field-level, not a full overwrite.
+    expect(reparented.taskType.name).toBe("New Name");
+
+    // A type cannot become its own parent.
+    await expect(
+      handler.updateTaskType({ id: typeA.taskType.id, parentId: typeA.taskType.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A nonexistent parent is rejected.
+    await expect(
+      handler.updateTaskType({ id: typeA.taskType.id, parentId: "tt-does-not-exist" }, ctx)
+    ).rejects.toThrow();
+
+    // A parent belonging to a different org is rejected.
+    const otherOrgId = "org-updatett-other-" + Date.now();
+    const otherUserId = "user-updatett-other-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: otherOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    const otherOrgType = await handler.createTaskType({ orgId: otherOrgId, name: "Foreign" }, makeAuthContext(otherUserId));
+    await expect(
+      handler.updateTaskType({ id: typeA.taskType.id, parentId: otherOrgType.taskType.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A nonexistent type id is NotFound.
+    await expect(
+      handler.updateTaskType({ id: "tt-does-not-exist", name: "X" }, ctx)
+    ).rejects.toMatchObject({ code: Code.NotFound });
+
+    // An outsider cannot rename another org's task type.
+    await expect(
+      handler.updateTaskType({ id: typeA.taskType.id, name: "Hijacked" }, makeAuthContext(otherUserId))
+    ).rejects.toThrow();
+  });
+
   test("createTaskManagementHandler can create/assign tasks", async () => {
     const { db, nc } = await setupIntegrationTest();
 
@@ -236,6 +292,42 @@ describe("Tasks Handler Integration Tests", () => {
     // Omitting both agentId and userId would otherwise create an orphaned
     // assignment row tied to nobody.
     await expect(handler.assignTask({ taskId: taskResp.task.id }, ctx)).rejects.toThrow();
+
+    // M14-T04: an agent that exists but belongs to a *different* org is a
+    // distinct rejection reason from "agent not found" - this branch had no
+    // test coverage before.
+    const crossOrgId = "org-assign-cross-" + Date.now();
+    const crossOrgAgentRoleId = "role-assign-cross-" + Date.now();
+    const crossOrgAgentId = "agent-assign-cross-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: crossOrgId, name: "Cross", slug: crossOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.agentRoles).values({ id: crossOrgAgentRoleId, orgId: crossOrgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: crossOrgAgentId, orgId: crossOrgId, agentRoleId: crossOrgAgentRoleId, name: "Cross-org Agent" });
+    await expect(
+      handler.assignTask({ taskId: taskResp.task.id, agentId: crossOrgAgentId }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // M14-T04: unassignTask had zero test coverage before this. Matched on
+    // the exact (agentId: null, userId) pair - the plain userId assignment
+    // made earlier, not the agentId+userId row that shares the same userId.
+    await expect(handler.unassignTask({ taskId: taskResp.task.id, userId }, ctx)).resolves.toEqual({ success: true });
+    const remaining = await db.select().from(schemaSqlite.taskAssignments).where(and(
+      eq(schemaSqlite.taskAssignments.taskId, taskResp.task.id),
+      eq(schemaSqlite.taskAssignments.userId, userId),
+      isNull(schemaSqlite.taskAssignments.agentId),
+    ));
+    expect(remaining.length).toBe(0);
+    // Removing an assignment that is no longer there is a no-op success,
+    // not an error - and only touches the exact (agentId, userId) pair, not
+    // the agent+otherUserId assignment made earlier in this same test.
+    await expect(handler.unassignTask({ taskId: taskResp.task.id, userId }, ctx)).resolves.toEqual({ success: true });
+    const untouched = await db.select().from(schemaSqlite.taskAssignments)
+      .where(and(eq(schemaSqlite.taskAssignments.taskId, taskResp.task.id), eq(schemaSqlite.taskAssignments.agentId, agentId)));
+    expect(untouched.length).toBe(2);
+
+    await expect(handler.unassignTask({ taskId: taskResp.task.id }, ctx)).rejects.toThrow();
+    await expect(
+      handler.unassignTask({ taskId: taskResp.task.id, userId }, outsiderCtx)
+    ).rejects.toThrow();
   });
 
   test("createTask records createdBy, and task reviewers can be added/listed/removed", async () => {
@@ -661,6 +753,110 @@ describe("Tasks Handler Integration Tests", () => {
     // A status name that isn't one of this type's configured statuses is still rejected outright.
     await expect(
       taskHandler.updateTaskStatus({ taskId: created.task.id, status: "todo" }, ctx)
+    ).rejects.toThrow();
+  });
+
+  // M14-T04: deleteTaskStatusTransition had zero test coverage before this.
+  test("deleteTaskStatusTransition removes an edge, is idempotent, and is authorized against the type", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-deltrans-" + Date.now();
+    const userId = "user-deltrans-" + Date.now();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Del Trans Org" });
+    const ctx = makeAuthContext(userId);
+    const typesHandler = createTasksHandler(db, nc);
+
+    const taskType = await typesHandler.createTaskType({ orgId, name: "Workflow" }, ctx);
+    const open = await typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "open" }, ctx);
+    const closed = await typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "closed" }, ctx);
+    const transition = await typesHandler.createTaskStatusTransition({
+      taskTypeId: taskType.taskType.id, fromStatusId: open.status.id, toStatusId: closed.status.id,
+    }, ctx);
+
+    await expect(
+      typesHandler.deleteTaskStatusTransition({ taskTypeId: taskType.taskType.id, transitionId: transition.transition.id }, ctx)
+    ).resolves.toEqual({ success: true });
+
+    const rows = await db.select().from(schemaSqlite.taskStatusTransitions)
+      .where(eq(schemaSqlite.taskStatusTransitions.id, transition.transition.id));
+    expect(rows.length).toBe(0);
+
+    // Deleting an edge that is already gone is a no-op success, not an error.
+    await expect(
+      typesHandler.deleteTaskStatusTransition({ taskTypeId: taskType.taskType.id, transitionId: transition.transition.id }, ctx)
+    ).resolves.toEqual({ success: true });
+
+    // A nonexistent task type is rejected before any authorization check runs.
+    await expect(
+      typesHandler.deleteTaskStatusTransition({ taskTypeId: "tt-does-not-exist", transitionId: transition.transition.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.NotFound });
+
+    // An outsider cannot delete a transition on another org's task type,
+    // even naming a transitionId that no longer exists.
+    const outsiderId = "user-deltrans-outsider-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    await expect(
+      typesHandler.deleteTaskStatusTransition(
+        { taskTypeId: taskType.taskType.id, transitionId: transition.transition.id },
+        makeAuthContext(outsiderId),
+      )
+    ).rejects.toThrow();
+  });
+
+  // M14-T04: reorderTaskStatuses had zero test coverage before this.
+  test("reorderTaskStatuses demands the complete list and rejects a partial or foreign one", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-reorder-" + Date.now();
+    const userId = "user-reorder-" + Date.now();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Reorder Org" });
+    const ctx = makeAuthContext(userId);
+    const typesHandler = createTasksHandler(db, nc);
+
+    const taskType = await typesHandler.createTaskType({ orgId, name: "Pipeline" }, ctx);
+    const s1 = await typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "todo" }, ctx);
+    const s2 = await typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "doing" }, ctx);
+    const s3 = await typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "done" }, ctx);
+
+    const reordered = await typesHandler.reorderTaskStatuses({
+      taskTypeId: taskType.taskType.id,
+      statusIds: [s3.status.id, s1.status.id, s2.status.id],
+    }, ctx);
+    expect(reordered.statuses.map((s: any) => s.id)).toEqual([s3.status.id, s1.status.id, s2.status.id]);
+
+    // A partial list (missing one of this type's statuses) is rejected -
+    // silently accepting it would leave the omitted status at a stale
+    // position, which is how two statuses end up sharing one.
+    await expect(
+      typesHandler.reorderTaskStatuses({ taskTypeId: taskType.taskType.id, statusIds: [s1.status.id, s2.status.id] }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A duplicate id in the list is rejected.
+    await expect(
+      typesHandler.reorderTaskStatuses(
+        { taskTypeId: taskType.taskType.id, statusIds: [s1.status.id, s1.status.id, s2.status.id] }, ctx
+      )
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A foreign id (not one of this type's statuses) is rejected.
+    await expect(
+      typesHandler.reorderTaskStatuses(
+        { taskTypeId: taskType.taskType.id, statusIds: [s1.status.id, s2.status.id, "tst-does-not-exist"] }, ctx
+      )
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A nonexistent task type is NotFound.
+    await expect(
+      typesHandler.reorderTaskStatuses({ taskTypeId: "tt-does-not-exist", statusIds: ["tst-does-not-exist"] }, ctx)
+    ).rejects.toMatchObject({ code: Code.NotFound });
+
+    const outsiderId = "user-reorder-outsider-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    await expect(
+      typesHandler.reorderTaskStatuses(
+        { taskTypeId: taskType.taskType.id, statusIds: [s3.status.id, s1.status.id, s2.status.id] },
+        makeAuthContext(outsiderId),
+      )
     ).rejects.toThrow();
   });
 
