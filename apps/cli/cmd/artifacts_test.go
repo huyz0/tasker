@@ -22,7 +22,10 @@ type fakeArtifactHandler struct {
 	gotListArtifactsPage *healthv1.PageRequest
 	// artifactPages simulates a folder whose artifacts span multiple pages,
 	// keyed by the cursor that requests that page ("" for the first page).
-	artifactPages    map[string]*healthv1.ListArtifactsResponse
+	artifactPages map[string]*healthv1.ListArtifactsResponse
+	// artifactsByID backs GetArtifact/GetArtifactContent - the real backend's
+	// pair for a deep link, and what `artifacts read` calls now (M18-T07).
+	artifactsByID    map[string]*healthv1.Artifact
 	gotLinkRequest   *healthv1.LinkTaskArtifactRequest
 	gotUnlinkRequest *healthv1.UnlinkTaskArtifactRequest
 }
@@ -54,6 +57,32 @@ func (f *fakeArtifactHandler) ListArtifacts(
 		}
 	}
 	return connect.NewResponse(&healthv1.ListArtifactsResponse{}), nil
+}
+
+func (f *fakeArtifactHandler) GetArtifact(
+	_ context.Context,
+	req *connect.Request[healthv1.GetArtifactRequest],
+) (*connect.Response[healthv1.GetArtifactResponse], error) {
+	a, ok := f.artifactsByID[req.Msg.ArtifactId]
+	if !ok {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	return connect.NewResponse(&healthv1.GetArtifactResponse{Artifact: &healthv1.Artifact{
+		Id: a.Id, FolderId: a.FolderId, Name: a.Name, Description: a.Description, ContentType: a.ContentType,
+	}}), nil
+}
+
+func (f *fakeArtifactHandler) GetArtifactContent(
+	_ context.Context,
+	req *connect.Request[healthv1.GetArtifactContentRequest],
+) (*connect.Response[healthv1.GetArtifactContentResponse], error) {
+	a, ok := f.artifactsByID[req.Msg.ArtifactId]
+	if !ok {
+		return nil, connect.NewError(connect.CodeNotFound, nil)
+	}
+	return connect.NewResponse(&healthv1.GetArtifactContentResponse{
+		Content: a.Content, ContentType: a.ContentType, SizeBytes: int64(len(a.Content)),
+	}), nil
 }
 
 func (f *fakeArtifactHandler) CreateArtifact(
@@ -143,6 +172,36 @@ func TestArtifactsCreateCommandUploadsFileAsBase64Image(t *testing.T) {
 	}
 }
 
+// M18-T07: --file used to base64-encode every upload regardless of type,
+// the same bug the GUI's upload path had before M18-T04 fixed it there - a
+// text file uploaded via the CLI and then opened in the GUI would have shown
+// as a wall of base64. Now only content that cannot survive being read as
+// text is ever base64-encoded (see isBinaryContentType).
+func TestArtifactsCreateCommandUploadsATextFileAsPlainText(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(&fakeArtifactHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	tmpFile := t.TempDir() + "/notes.md"
+	if err := os.WriteFile(tmpFile, []byte("# hello"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"artifacts", "create", "--folder", "fld_1", "--name", "notes.md", "--file", tmpFile, "--content-type", "text/markdown", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, `"content":"# hello"`) {
+		t.Errorf("expected the file's plain text content, not base64, got %s", out)
+	}
+}
+
 // Maps to TC-006 from TEST-PLAN.md: CLI - Artifacts command
 func TestArtifactsListCommandIntegration(t *testing.T) {
 	mux := http.NewServeMux()
@@ -192,19 +251,17 @@ func TestArtifactsListCommandForwardsCursorAndLimit(t *testing.T) {
 	}
 }
 
-// Without paging through every page, an artifact past the folder's first
-// page of results would falsely report as "not found" even though it exists.
-func TestArtifactsReadCommandFindsArtifactPastFirstPage(t *testing.T) {
+// M18-T07: `read` used to print Artifact.Content from ListArtifacts, which
+// the real backend deliberately leaves empty on a listing (content is
+// populated only by GetArtifactContent) - always an empty body, for every
+// artifact, against the real server. It now calls GetArtifact (metadata) +
+// GetArtifactContent (body), the pair the backend built for exactly this - a
+// deep link with an artifact id and nothing else - so no --folder is needed
+// and there is no folder to page through.
+func TestArtifactsReadCommandPrintsContentFromGetArtifactContent(t *testing.T) {
 	fake := &fakeArtifactHandler{
-		artifactPages: map[string]*healthv1.ListArtifactsResponse{
-			"": {
-				Artifacts: []*healthv1.Artifact{{Id: "art_1", Name: "page-one.md", Content: "first page"}},
-				Page:      &healthv1.PageResponse{NextCursor: "cursor-2"},
-			},
-			"cursor-2": {
-				Artifacts: []*healthv1.Artifact{{Id: "art_2", Name: "page-two.md", Content: "second page content"}},
-				Page:      &healthv1.PageResponse{},
-			},
+		artifactsByID: map[string]*healthv1.Artifact{
+			"art_1": {Id: "art_1", FolderId: "fld_1", Name: "readme.md", ContentType: "text/markdown", Content: "hello world"},
 		},
 	}
 	mux := http.NewServeMux()
@@ -217,17 +274,90 @@ func TestArtifactsReadCommandFindsArtifactPastFirstPage(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
-	rootCmd.SetArgs([]string{"artifacts", "read", "art_2", "--folder", "fld_1"})
+	rootCmd.SetArgs([]string{"artifacts", "read", "art_1"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 
 	output := b.String()
-	if strings.Contains(output, "not found") {
-		t.Fatalf("expected artifact on the second page to be found, got %s", output)
+	if !strings.Contains(output, "readme.md") || !strings.Contains(output, "hello world") {
+		t.Fatalf("expected the artifact's name and content, got %s", output)
 	}
-	if !strings.Contains(output, "second page content") {
-		t.Fatalf("expected output to contain the artifact's content, got %s", output)
+}
+
+func TestArtifactsReadCommandReportsANonexistentArtifact(t *testing.T) {
+	fake := &fakeArtifactHandler{artifactsByID: map[string]*healthv1.Artifact{}}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"artifacts", "read", "art-does-not-exist"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error for a nonexistent artifact")
+	}
+}
+
+func TestArtifactsReadCommandOutputsJSON(t *testing.T) {
+	fake := &fakeArtifactHandler{
+		artifactsByID: map[string]*healthv1.Artifact{
+			"art_1": {Id: "art_1", FolderId: "fld_1", Name: "readme.md", Description: "d", ContentType: "text/markdown", Content: "hello"},
+		},
+	}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"artifacts", "read", "art_1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), `"content":"hello"`) {
+		t.Errorf("expected the content field in JSON output, got %s", b.String())
+	}
+}
+
+// Base64 dumped to a terminal is unreadable, and for an actual image is not
+// text at all - printed as a note instead, pointing at --json for the bytes.
+func TestArtifactsReadCommandDescribesBinaryContentInsteadOfDumpingBase64(t *testing.T) {
+	fake := &fakeArtifactHandler{
+		artifactsByID: map[string]*healthv1.Artifact{
+			"art_1": {Id: "art_1", FolderId: "fld_1", Name: "logo.png", ContentType: "image/png", Content: "iVBORw0KGgo="},
+		},
+	}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	// --json persists on rootCmd across Execute() calls in this test binary;
+	// an earlier test's --json would otherwise leak into this one.
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"artifacts", "read", "art_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	output := b.String()
+	if strings.Contains(output, "iVBORw0KGgo=") {
+		t.Fatalf("expected the raw base64 body not to be dumped to the terminal, got %s", output)
+	}
+	if !strings.Contains(output, "binary content") || !strings.Contains(output, "--json") {
+		t.Fatalf("expected a note pointing at --json for the bytes, got %s", output)
 	}
 }
 

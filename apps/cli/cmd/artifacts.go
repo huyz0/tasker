@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
@@ -18,6 +18,18 @@ import (
 var artifactsCmd = &cobra.Command{
 	Use:   "artifacts",
 	Short: "Manage project evidence, text files, and generated assets",
+}
+
+// isBinaryContentType mirrors the GUI's identically-named function
+// (ArtifactUpload.tsx, M18-T04): whether a content type can only be
+// represented as bytes, not as text. `create --file` used to base64-encode
+// every upload regardless of type, and content's own docstring in the
+// contract names the resulting hazard directly - "the content type does not
+// reliably say which" encoding a given artifact uses. Kept in sync with the
+// GUI's list rather than guessing independently, since a CLI upload and a
+// browser upload have to agree on what "binary" means for the same field.
+func isBinaryContentType(contentType string) bool {
+	return strings.HasPrefix(contentType, "image/") || contentType == "application/pdf" || contentType == "application/octet-stream"
 }
 
 var artifactsListCmd = &cobra.Command{
@@ -81,53 +93,58 @@ var artifactsListCmd = &cobra.Command{
 	},
 }
 
+// M18-T07: content is empty on ListArtifacts by design (artifacts.handler.ts:
+// the body can hold ~15MB of base64, and a listing needs the name, not the
+// bytes). This command printed exactly that empty field for every artifact,
+// always - the fake handler backing its test populated Content on
+// ListArtifacts itself, a divergence from the real backend's contract that
+// fully hid the bug. GetArtifact (metadata) + GetArtifactContent (body) is
+// the pair the backend actually built for this - a deep link carries an
+// artifact id and nothing else - so --folder and the folder-pagination walk
+// it existed to avoid are both gone too.
 var artifactsReadCmd = &cobra.Command{
 	Use:   "read [artifact_id]",
 	Short: "Read artifact content",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		folderID, _ := cmd.Flags().GetString("folder")
 		isJson, _ := cmd.Flags().GetBool("json")
-		if folderID == "" {
-			cmd.Println("Error: --folder is required (the folder containing the artifact).")
-			return errors.New("Error: --folder is required (the folder containing the artifact).")
-		}
-
 		client := backend.NewArtifactServiceClient()
 
-		// Must page through every artifact in the folder, not just the first
-		// page, or an artifact past the default page size falsely reports as
-		// not found even though it exists.
-		var cursor string
-		for {
-			res, err := client.ListArtifacts(context.Background(), connect.NewRequest(&healthv1.ListArtifactsRequest{
-				FolderId: folderID,
-				Page:     &healthv1.PageRequest{Cursor: cursor},
-			}))
-			if err != nil {
-				cmd.PrintErrf("Failed to read artifact: %v\n", err)
-				return err
-			}
-
-			for _, a := range res.Msg.Artifacts {
-				if a.Id == args[0] {
-					if isJson {
-						jsonString, _ := json.Marshal(a)
-						cmd.Println(string(jsonString))
-					} else {
-						cmd.Printf("# %s\n%s\n", a.Name, a.Content)
-					}
-					return nil
-				}
-			}
-
-			if res.Msg.Page == nil || res.Msg.Page.NextCursor == "" {
-				break
-			}
-			cursor = res.Msg.Page.NextCursor
+		meta, err := client.GetArtifact(context.Background(), connect.NewRequest(&healthv1.GetArtifactRequest{ArtifactId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to read artifact: %v\n", err)
+			return err
 		}
-		cmd.PrintErrf("Artifact %s not found in folder %s\n", args[0], folderID)
-		return fmt.Errorf("artifact %s not found in folder %s", args[0], folderID)
+		body, err := client.GetArtifactContent(context.Background(), connect.NewRequest(&healthv1.GetArtifactContentRequest{ArtifactId: args[0]}))
+		if err != nil {
+			cmd.PrintErrf("Failed to read artifact: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{
+				"id":          meta.Msg.Artifact.Id,
+				"folderId":    meta.Msg.Artifact.FolderId,
+				"name":        meta.Msg.Artifact.Name,
+				"description": meta.Msg.Artifact.Description,
+				"contentType": body.Msg.ContentType,
+				"content":     body.Msg.Content,
+				"sizeBytes":   body.Msg.SizeBytes,
+			})
+			cmd.Println(string(jsonString))
+			return nil
+		}
+
+		if isBinaryContentType(body.Msg.ContentType) {
+			// Base64 dumped to a terminal is unreadable and, for an actual
+			// image or PDF, is not text at all - --json is where the bytes
+			// belong until this command grows a --output flag to decode
+			// them to a local file.
+			cmd.Printf("# %s\n(binary content, %s, %d bytes - use --json to get the base64 body)\n", meta.Msg.Artifact.Name, body.Msg.ContentType, body.Msg.SizeBytes)
+			return nil
+		}
+		cmd.Printf("# %s\n%s\n", meta.Msg.Artifact.Name, body.Msg.Content)
+		return nil
 	},
 }
 
@@ -153,9 +170,18 @@ var artifactsCreateCmd = &cobra.Command{
 				cmd.PrintErrf("Failed to read %s: %v\n", filePath, err)
 				return err
 			}
-			content = base64.StdEncoding.EncodeToString(data)
 			if contentType == "" {
 				contentType = http.DetectContentType(data)
+			}
+			// M18-T07: this used to base64-encode every --file upload
+			// regardless of type, same bug as the GUI's upload path before
+			// M18-T04 fixed it there - a decoded body of the source's actual
+			// bytes was required to keep faith with what the GUI (and this
+			// same content type) now promises. See isBinaryContentType.
+			if isBinaryContentType(contentType) {
+				content = base64.StdEncoding.EncodeToString(data)
+			} else {
+				content = string(data)
 			}
 		}
 		if contentType == "" {
@@ -397,7 +423,6 @@ func init() {
 	artifactsListCmd.Flags().String("folder", "", "Folder ID to list artifacts within")
 	artifactsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	artifactsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
-	artifactsReadCmd.Flags().String("folder", "", "Folder ID containing the artifact")
 	artifactsCreateCmd.Flags().String("folder", "", "Folder ID to create the artifact in")
 	artifactsCreateCmd.Flags().String("name", "", "Artifact name")
 	artifactsCreateCmd.Flags().String("description", "", "Artifact description")
