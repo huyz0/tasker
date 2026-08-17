@@ -702,6 +702,10 @@ message CreateTaskRequest {
   string status = 3;
   string description = 4;
   string task_type_id = 5;
+
+  // Retry-safety (M14-T07): replaying the same key from the same principal
+  // returns the original response instead of creating a second task.
+  string idempotencyKey = 6;
 }
 
 message CreateTaskResponse {
@@ -723,6 +727,9 @@ message AssignTaskResponse {
 // currently has no assignee at all.
 message ClaimTaskRequest {
   string task_id = 1;
+
+  // Retry-safety (M14-T07), same contract as CreateTaskRequest.idempotencyKey.
+  string idempotencyKey = 2;
 }
 
 message ClaimTaskResponse {

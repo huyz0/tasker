@@ -593,3 +593,28 @@ export const apiTokens = sqliteTable("api_tokens", {
     orgIdIdx: index("api_tokens_org_id_idx").on(table.orgId),
   };
 });
+
+// Retry-safety for mutating RPCs (M14-T07). Scoped to (principal, method,
+// key): the same key string from two different callers, or reused across
+// two different RPCs, must not collide. No TTL/cleanup sweep exists yet -
+// this table grows unbounded until one is added; flagged for whichever
+// milestone next touches scheduled maintenance (retentionSweep.ts already
+// owns bin-retention cleanup and is the natural place for it).
+export const idempotencyKeys = sqliteTable("idempotency_keys", {
+  id: text("id").primaryKey(),
+  // "user:<id>" or "agent:<id>" - a plain foreign key can't express either,
+  // so this is intentionally not a references().
+  principalKey: text("principal_key").notNull(),
+  method: text("method").notNull(),
+  idempotencyKey: text("idempotency_key").notNull(),
+  responseJson: text("response_json").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    // Looked up by this exact triple on every request carrying a key, and
+    // enforces the invariant directly: a caller can never end up with two
+    // stored responses for what it considers the same request.
+    principalMethodKeyIdx: uniqueIndex("idempotency_keys_principal_method_key_idx")
+      .on(table.principalKey, table.method, table.idempotencyKey),
+  };
+});

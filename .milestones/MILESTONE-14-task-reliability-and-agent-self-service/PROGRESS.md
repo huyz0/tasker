@@ -259,3 +259,70 @@
   the exception says explicitly to wire it there and remove the exception
   if one is added later.
 - **Next**: M14-T07
+
+## M14-T07 — Add idempotency-key support to createTask/claimTask
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**: `packages/shared-contract/main.tsp`,
+  `packages/shared-contract/tasker/health/v1/health.proto`,
+  `packages/shared-contract/gen/ts/**` and `apps/cli/gen/**` (regenerated),
+  `apps/backend/src/db/schema.sqlite.ts`, `apps/backend/src/db/schema.mysql.ts`,
+  `apps/backend/drizzle-sqlite/0035_idempotency_keys.sql` +
+  `apps/backend/drizzle-mysql/0022_idempotency_keys.sql` (hand-written, both
+  registered in their `meta/_journal.json`), `apps/backend/src/lib/idempotency.ts`
+  (new), `apps/backend/src/modules/tasks/tasks.handler.ts`,
+  `apps/backend/src/modules/tasks/tasks.test.ts`
+- **Verified**: `bun test src/modules/tasks/tasks.test.ts` — 25 pass, 0 fail;
+  `lib/idempotency.ts` at 100% funcs/lines. Full `bun test` in
+  `apps/backend` — 1283 pass / 12 skip / 0 fail. `moon check --all` (27
+  tasks) clean, confirming the hand-written migration applies against a
+  fresh SQLite DB through the normal migrator path (not just eyeballed
+  SQL). New tests: `createTask` called twice with the same key creates
+  exactly one row and both calls return the same id/displayId; a different
+  key creates a genuinely new task; the *same* key string from a
+  *different* principal does not collide (each caller has its own
+  namespace); no key at all behaves exactly as before this field existed.
+  `claimTask` called twice with the same key returns success both times
+  with exactly one assignment row (without idempotency the second call
+  would be `FailedPrecondition`, which is the actual bug being closed); a
+  genuinely new claim attempt on an already-claimed task - no key, or a
+  *different* key - still fails normally, proving idempotency replays one
+  specific prior call rather than making claiming reentrant.
+- **Notes**: **What this closes**: the realistic failure mode named in the
+  original review - "no idempotency keys anywhere... a retried createTask
+  call silently duplicates" - for a client that times out, gets control
+  back, and retries sequentially with the same key. That case is fully
+  closed for both `createTask` and `claimTask`. **What this deliberately
+  does not close**, recorded in `lib/idempotency.ts`'s own docstring: two
+  calls carrying the same key that are genuinely in flight at the same
+  instant can both read "no stored response yet" before either writes one,
+  both run the mutation, and only one wins the final cache insert - the
+  loser still returns its own freshly computed result (never an error or a
+  hang) but a second row really was created for `createTask`. Closing that
+  fully needs a reservation row written *before* the mutation runs, with a
+  caller-visible "still processing" state for whoever loses the
+  reservation race - a materially bigger feature than "add a key column",
+  and left for a future session per the milestone's own Risks section
+  ("smallest correct primitive, not a new... subsystem"). Sequencing
+  matters for correctness: `withIdempotency` wraps `createTask`'s entire
+  body *including* the task-number claim, so a replay never touches the
+  project's counter a second time either - wrapping only the final insert
+  would have left the counter-increment unprotected.
+
+  Schema: `idempotency_keys` keyed on `(principal_key, method,
+  idempotency_key)` via a unique index, not a plain composite primary key,
+  matching this codebase's existing convention (e.g. `api_tokens.token_hash`).
+  `principal_key` is `"user:<id>"` / `"agent:<id>"` rather than two nullable
+  FK columns, since a single row must reference either kind and a `references()`
+  can only ever point at one table. No TTL/cleanup sweep exists yet - flagged
+  in both the schema comment and here, since `retentionSweep.ts` already
+  owns scheduled cleanup and is the natural place for it once one is
+  needed. The hand-written migrations follow the exact `CREATE TABLE` +
+  `CREATE UNIQUE INDEX` shape `0023_api_tokens.sql`/`0010_api_tokens.sql`
+  already established for each dialect, including manually appending both
+  `meta/_journal.json` files - required for the migrator to pick the file
+  up at all, not optional bookkeeping, and easy to miss (the M13 handoff
+  note about drizzle-sqlite snapshot drift is why these were hand-written
+  rather than generated).
+- **Next**: M14-T08

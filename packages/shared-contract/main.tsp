@@ -803,6 +803,13 @@ model CreateTaskRequest {
   @field(3) status: string;
   @field(4) description: string;
   @field(5) taskTypeId?: string;
+
+  // Retry-safety (M14-T07): replaying the same key from the same principal
+  // returns the original response instead of creating a second task. Scoped
+  // per-caller, so two different principals may reuse the same key string
+  // with no collision. Unset behaves exactly as before this field existed -
+  // every call creates a new task.
+  @field(6) idempotencyKey?: string;
 }
 
 model CreateTaskResponse {
@@ -826,6 +833,9 @@ model AssignTaskResponse {
 // than a second, silent assignment.
 model ClaimTaskRequest {
   @field(1) taskId: string;
+
+  // Retry-safety (M14-T07), same contract as CreateTaskRequest.idempotencyKey.
+  @field(2) idempotencyKey?: string;
 }
 
 model ClaimTaskResponse {

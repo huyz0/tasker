@@ -815,6 +815,100 @@ describe("Tasks Handler Integration Tests", () => {
     expect(rows.length).toBe(1);
   });
 
+  // M14-T07: retry-safety. The realistic failure mode is a client timing
+  // out, the mutation having already succeeded, and retrying sequentially
+  // once it regains control - not two truly simultaneous calls (that
+  // narrower case is documented as open in lib/idempotency.ts and in this
+  // milestone's PROGRESS.md).
+  test("createTask with an idempotencyKey replays the original task instead of creating a duplicate", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-idem-create-" + Date.now();
+    const userId = "user-idem-create-" + Date.now();
+    const templateId = "tmpl-idem-create-" + Date.now();
+    const projectId = "proj-idem-create-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Idem Create Org" });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "P" });
+    const ctx = makeAuthContext(userId);
+    const handler = createTaskManagementHandler(db, nc);
+
+    const first = await handler.createTask({ projectId, title: "Once Only", status: "todo", description: "", idempotencyKey: "retry-key-1" }, ctx);
+    const replay = await handler.createTask({ projectId, title: "Once Only", status: "todo", description: "", idempotencyKey: "retry-key-1" }, ctx);
+    expect(replay.task.id).toBe(first.task.id);
+    expect(replay.task.displayId).toBe(first.task.displayId);
+
+    const rows = await db.select().from(schemaSqlite.tasks).where(eq(schemaSqlite.tasks.projectId, projectId));
+    expect(rows.length).toBe(1);
+
+    // A *different* key from the same principal creates a genuinely new task.
+    const second = await handler.createTask({ projectId, title: "A Different Task", status: "todo", description: "", idempotencyKey: "retry-key-2" }, ctx);
+    expect(second.task.id).not.toBe(first.task.id);
+
+    // The same key string from a *different* principal is not a collision -
+    // each caller's idempotency keys live in their own namespace.
+    const otherUserId = "user-idem-create-other-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    const third = await handler.createTask(
+      { projectId, title: "Same Key Different Caller", status: "todo", description: "", idempotencyKey: "retry-key-1" },
+      makeAuthContext(otherUserId),
+    );
+    expect(third.task.id).not.toBe(first.task.id);
+
+    const allRows = await db.select().from(schemaSqlite.tasks).where(eq(schemaSqlite.tasks.projectId, projectId));
+    expect(allRows.length).toBe(3);
+
+    // No key at all behaves exactly as before this field existed - every
+    // call creates a new task.
+    const fourth = await handler.createTask({ projectId, title: "Once Only", status: "todo", description: "" }, ctx);
+    const fifth = await handler.createTask({ projectId, title: "Once Only", status: "todo", description: "" }, ctx);
+    expect(fourth.task.id).not.toBe(fifth.task.id);
+  });
+
+  test("claimTask with an idempotencyKey replays success instead of FailedPrecondition on a retried claim", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-idem-claim-" + Date.now();
+    const adminId = "user-idem-claim-" + Date.now();
+    const templateId = "tmpl-idem-claim-" + Date.now();
+    const projectId = "proj-idem-claim-" + Date.now();
+    const agentRoleId = "role-idem-claim-" + Date.now();
+    const agentId = "agent-idem-claim-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Idem Claim Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
+
+    const handler = createTaskManagementHandler(db, nc);
+    const agentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-test", scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any;
+
+    const task = await handler.createTask({ projectId, title: "Claim Me", status: "todo", description: "" }, makeAuthContext(adminId));
+
+    const first = await handler.claimTask({ taskId: task.task.id, idempotencyKey: "claim-retry-1" }, agentCtx);
+    expect(first.task.id).toBe(task.task.id);
+
+    // Without idempotency this would be FailedPrecondition (already
+    // claimed) - the whole point is that a client that timed out on the
+    // first response and retried does not see that.
+    const replay = await handler.claimTask({ taskId: task.task.id, idempotencyKey: "claim-retry-1" }, agentCtx);
+    expect(replay.task.id).toBe(task.task.id);
+
+    const rows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, task.task.id));
+    expect(rows.length).toBe(1);
+
+    // A genuinely new claim attempt (no key, or a different key) on an
+    // already-claimed task still fails normally - idempotency replays a
+    // specific prior call, it does not make claiming reentrant.
+    await expect(handler.claimTask({ taskId: task.task.id }, agentCtx)).rejects.toMatchObject({ code: Code.FailedPrecondition });
+    await expect(handler.claimTask({ taskId: task.task.id, idempotencyKey: "a-different-key" }, agentCtx)).rejects.toMatchObject({ code: Code.FailedPrecondition });
+  });
+
   test("enforces a task type's configured status enum and transition state machine", async () => {
     const { db, nc } = await setupIntegrationTest();
     const { createProjectsHandler, createProjectTemplatesHandler } = require("../projects/projects.handler");

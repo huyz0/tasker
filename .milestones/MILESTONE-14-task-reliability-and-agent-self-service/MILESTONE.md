@@ -60,8 +60,11 @@ backlogs.
 - [x] An agent token with the right scope can list tasks filtered to
       "unassigned" and claim one atomically; a second agent racing the same
       claim gets a typed failure, not a second assignment.
-- [ ] `createTask` and `claimTask` accept an idempotency key; replaying the
-      same key returns the original result rather than creating a duplicate.
+- [x] `createTask` and `claimTask` accept an idempotency key; replaying the
+      same key returns the original result rather than creating a duplicate
+      (sequential retries fully covered; two genuinely concurrent calls
+      carrying the same key are a documented, deliberately deferred gap -
+      see PROGRESS.md M14-T07).
 - [ ] `tasker task link-artifact` exists in the CLI and round-trips against a
       running backend.
 - [ ] Task type status/transition editing lives in exactly one GUI surface;
@@ -148,12 +151,12 @@ touches `repositories.handler.ts`, none currently scheduled.
         principals) via `Promise.allSettled` and asserts exactly one
         succeeds.
 
-- [ ] **M14-T07** — Add idempotency-key support: `createTask` and `claimTask`
+- [x] **M14-T07** — Add idempotency-key support: `createTask` and `claimTask`
       accept an optional client-supplied key; replaying the same key for the
       same principal returns the original result instead of a second write.
-      - Files: `main.tsp` + `.proto`, `tasks.handler.ts`, a small
-        `idempotency_keys` table + migration (both dialects) keyed on
-        `(principal, key)` with the stored response and a TTL
+      - Files: `main.tsp` + `.proto`, `tasks.handler.ts`, `lib/idempotency.ts`
+        (new), `idempotency_keys` table + migration (both dialects) keyed on
+        `(principal, method, key)`
       - Verify: a test calls `createTask` twice with the same key and asserts
         one task exists and both calls return the same id.
 

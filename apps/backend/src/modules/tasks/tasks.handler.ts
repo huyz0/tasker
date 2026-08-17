@@ -6,6 +6,7 @@ import { eq, and, not, isNull, inArray, sql } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, getProjectOrgId, getTaskOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
+import { withIdempotency } from "../../lib/idempotency";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -41,6 +42,11 @@ const CreateTaskSchema = z.object({
   status: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional().default("todo")),
   description: z.string().max(4096).optional().default(""),
   taskTypeId: z.string().nullable().optional(),
+  // M14-T07. Same "" -> unset treatment as status above: a caller that
+  // doesn't set a key sends "" over the wire, and that must mean "no
+  // idempotency requested", not "replay whatever the empty string mapped to
+  // last time".
+  idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
 });
 
 const CreateTaskStatusSchema = z.object({
@@ -74,6 +80,7 @@ const AssignTaskSchema = z.object({
 
 const ClaimTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
+  idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
 });
 
 const AddTaskReviewerSchema = z.object({
@@ -513,85 +520,91 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     async createTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = CreateTaskSchema.parse(req);
-      const orgId = await getProjectOrgId(db, parsed.projectId);
-      await authorizePrincipal(db, principal, orgId, { scope: 'tasks:write', permission: 'task:write' });
+      // M14-T07: everything past this point - including the display-id
+      // claim below - only runs once per (principal, key). A replay skips
+      // straight to the stored response, so a retried create cannot double
+      // the project's task counter either.
+      return withIdempotency(db, isStandalone, principal, "createTask", parsed.idempotencyKey, async () => {
+        const orgId = await getProjectOrgId(db, parsed.projectId);
+        await authorizePrincipal(db, principal, orgId, { scope: 'tasks:write', permission: 'task:write' });
 
-      if (parsed.taskTypeId) {
-        const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
-        const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
-        if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
-        if (typeRows[0].orgId !== orgId) throw new ConnectError("task type belongs to a different organization", Code.InvalidArgument);
-      }
-      await validateStatusForTaskType(db, isStandalone, parsed.taskTypeId || null, null, parsed.status);
+        if (parsed.taskTypeId) {
+          const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+          const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
+          if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
+          if (typeRows[0].orgId !== orgId) throw new ConnectError("task type belongs to a different organization", Code.InvalidArgument);
+        }
+        await validateStatusForTaskType(db, isStandalone, parsed.taskTypeId || null, null, parsed.status);
 
-      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-      const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
+        const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+        const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
 
-      // Claim this project's next task number, then build a stable,
-      // human-readable display ID from the project's key + that number (e.g.
-      // "ENG-42") - assigned once here, never recomputed, so it survives a
-      // later project rename.
-      //
-      // The claim must be a single indivisible read-modify-write. It was not:
-      // this ran `await db.transaction(async tx => …)` for both dialects, and
-      // on bun:sqlite that transaction did nothing at all. Drizzle hands the
-      // callback to `client.transaction(fn)`, which commits as soon as `fn`
-      // returns; an `async` callback returns a promise immediately, so COMMIT
-      // landed before the read had happened. Eight concurrent creates against
-      // one project all returned `ENG-1`.
-      //
-      // The two dialects need different code, and the comment that used to sit
-      // here - "SQLite's single-writer model makes this atomic without
-      // locking" - was the mistake. Single-writer protects one *statement*.
-      // Between an awaited SELECT and an awaited UPDATE the event loop is free
-      // to run another request's SELECT, and that is exactly what happened.
-      let projectRow: any;
-      let taskNumber: number;
+        // Claim this project's next task number, then build a stable,
+        // human-readable display ID from the project's key + that number (e.g.
+        // "ENG-42") - assigned once here, never recomputed, so it survives a
+        // later project rename.
+        //
+        // The claim must be a single indivisible read-modify-write. It was not:
+        // this ran `await db.transaction(async tx => …)` for both dialects, and
+        // on bun:sqlite that transaction did nothing at all. Drizzle hands the
+        // callback to `client.transaction(fn)`, which commits as soon as `fn`
+        // returns; an `async` callback returns a promise immediately, so COMMIT
+        // landed before the read had happened. Eight concurrent creates against
+        // one project all returned `ENG-1`.
+        //
+        // The two dialects need different code, and the comment that used to sit
+        // here - "SQLite's single-writer model makes this atomic without
+        // locking" - was the mistake. Single-writer protects one *statement*.
+        // Between an awaited SELECT and an awaited UPDATE the event loop is free
+        // to run another request's SELECT, and that is exactly what happened.
+        let projectRow: any;
+        let taskNumber: number;
 
-      if (isStandalone) {
-        // Synchronous throughout: no `await` anywhere inside, so nothing can
-        // interleave between the read and the write, and drizzle's sync
-        // transaction commits only after both have run.
-        const claim = db.transaction((tx: any) => {
-          const [row] = tx.select().from(ps).where(eq((ps as any).id, parsed.projectId)).all();
-          const claimedNumber = row.nextTaskNumber;
-          tx.update(ps).set({ nextTaskNumber: claimedNumber + 1 }).where(eq((ps as any).id, parsed.projectId)).run();
-          return { projectRow: row, taskNumber: claimedNumber };
-        });
-        projectRow = claim.projectRow;
-        taskNumber = claim.taskNumber;
-      } else {
-        // mysql2's transaction is genuinely async and holds one pooled
-        // connection, so `SELECT ... FOR UPDATE` locks the project row for the
-        // duration and two concurrent creates serialise on it.
-        const claim = await db.transaction(async (tx: any) => {
-          const [row] = await tx.select().from(ps).where(eq((ps as any).id, parsed.projectId)).for("update").limit(1);
-          const claimedNumber = row.nextTaskNumber;
-          await tx.update(ps).set({ nextTaskNumber: claimedNumber + 1 }).where(eq((ps as any).id, parsed.projectId));
-          return { projectRow: row, taskNumber: claimedNumber };
-        });
-        projectRow = claim.projectRow;
-        taskNumber = claim.taskNumber;
-      }
+        if (isStandalone) {
+          // Synchronous throughout: no `await` anywhere inside, so nothing can
+          // interleave between the read and the write, and drizzle's sync
+          // transaction commits only after both have run.
+          const claim = db.transaction((tx: any) => {
+            const [row] = tx.select().from(ps).where(eq((ps as any).id, parsed.projectId)).all();
+            const claimedNumber = row.nextTaskNumber;
+            tx.update(ps).set({ nextTaskNumber: claimedNumber + 1 }).where(eq((ps as any).id, parsed.projectId)).run();
+            return { projectRow: row, taskNumber: claimedNumber };
+          });
+          projectRow = claim.projectRow;
+          taskNumber = claim.taskNumber;
+        } else {
+          // mysql2's transaction is genuinely async and holds one pooled
+          // connection, so `SELECT ... FOR UPDATE` locks the project row for the
+          // duration and two concurrent creates serialise on it.
+          const claim = await db.transaction(async (tx: any) => {
+            const [row] = await tx.select().from(ps).where(eq((ps as any).id, parsed.projectId)).for("update").limit(1);
+            const claimedNumber = row.nextTaskNumber;
+            await tx.update(ps).set({ nextTaskNumber: claimedNumber + 1 }).where(eq((ps as any).id, parsed.projectId));
+            return { projectRow: row, taskNumber: claimedNumber };
+          });
+          projectRow = claim.projectRow;
+          taskNumber = claim.taskNumber;
+        }
 
-      const displayId = `${projectRow.key}-${taskNumber}`;
+        const displayId = `${projectRow.key}-${taskNumber}`;
 
-      const newId = `tsk-${crypto.randomUUID()}`;
-      const payload = {
-        id: newId,
-        projectId: parsed.projectId,
-        displayId,
-        taskTypeId: parsed.taskTypeId || null,
-        createdBy: principal.kind === 'user' ? principal.userId : null,
-        title: parsed.title,
-        status: parsed.status,
-        description: parsed.description,
-      };
+        const newId = `tsk-${crypto.randomUUID()}`;
+        const payload = {
+          id: newId,
+          projectId: parsed.projectId,
+          displayId,
+          taskTypeId: parsed.taskTypeId || null,
+          createdBy: principal.kind === 'user' ? principal.userId : null,
+          title: parsed.title,
+          status: parsed.status,
+          description: parsed.description,
+        };
 
-      await insertRecord(db, tasks, payload, isStandalone, true);
+        await insertRecord(db, tasks, payload, isStandalone, true);
 
-      publishDomainEvent(nc, "domain.task.created", payload);
-      return { task: payload };
+        publishDomainEvent(nc, "domain.task.created", payload);
+        return { task: payload };
+      });
     },
     /**
      * One task, including the fields `listTasks` projects away.
@@ -787,36 +800,44 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     async claimTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = ClaimTaskSchema.parse(req);
-      const orgId = await getTaskOrgId(db, parsed.taskId);
-      await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
+      // M14-T07: a retried claim with the same key replays the original
+      // success rather than re-running the atomic insert. Not that it would
+      // be unsafe to re-run - the INSERT is self-protecting - but a losing
+      // retry would otherwise get FailedPrecondition for a claim it already
+      // won on the first attempt, which is exactly the "did my own retry
+      // just fail?" confusion idempotency exists to remove.
+      return withIdempotency(db, isStandalone, principal, "claimTask", parsed.idempotencyKey, async () => {
+        const orgId = await getTaskOrgId(db, parsed.taskId);
+        await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
 
-      const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
-      const newId = `ta-${crypto.randomUUID()}`;
-      const selfAgentId = principal.kind === "agent" ? principal.agentId : null;
-      const selfUserId = principal.kind === "user" ? principal.userId : null;
+        const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+        const newId = `ta-${crypto.randomUUID()}`;
+        const selfAgentId = principal.kind === "agent" ? principal.agentId : null;
+        const selfUserId = principal.kind === "user" ? principal.userId : null;
 
-      const insertResult = isStandalone
-        ? await db.run(sql`
-            INSERT INTO ${assignments} (id, task_id, agent_id, user_id)
-            SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}
-            WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${parsed.taskId})
-          `)
-        : await db.execute(sql`
-            INSERT INTO ${assignments} (id, task_id, agent_id, user_id)
-            SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}
-            FROM DUAL
-            WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${parsed.taskId})
-          `);
-      const claimed = isStandalone ? (insertResult as any).changes : (insertResult as any)[0]?.affectedRows;
-      if (!claimed) {
-        throw new ConnectError("task is already assigned - claim only succeeds on an unassigned task", Code.FailedPrecondition);
-      }
+        const insertResult = isStandalone
+          ? await db.run(sql`
+              INSERT INTO ${assignments} (id, task_id, agent_id, user_id)
+              SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}
+              WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${parsed.taskId})
+            `)
+          : await db.execute(sql`
+              INSERT INTO ${assignments} (id, task_id, agent_id, user_id)
+              SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}
+              FROM DUAL
+              WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${parsed.taskId})
+            `);
+        const claimed = isStandalone ? (insertResult as any).changes : (insertResult as any)[0]?.affectedRows;
+        if (!claimed) {
+          throw new ConnectError("task is already assigned - claim only succeeds on an unassigned task", Code.FailedPrecondition);
+        }
 
-      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-      const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
-      const task = result[0];
-      publishDomainEvent(nc, "domain.task.claimed", { taskId: parsed.taskId, agentId: selfAgentId, userId: selfUserId });
-      return { task };
+        const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+        const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
+        const task = result[0];
+        publishDomainEvent(nc, "domain.task.claimed", { taskId: parsed.taskId, agentId: selfAgentId, userId: selfUserId });
+        return { task };
+      });
     },
     async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
