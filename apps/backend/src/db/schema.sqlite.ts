@@ -318,6 +318,10 @@ export const projectTemplates = sqliteTable("project_templates", {
 }, (table) => {
   return {
     orgIdIdx: index("project_templates_org_id_idx").on(table.orgId),
+    // M20-T04: two identically-named templates in one org were silently
+    // allowed - same class as M17's agent_roles, M18's folders/artifacts,
+    // and M19's task_statuses/task_reviewers unique constraints.
+    orgIdNameIdx: uniqueIndex("project_templates_org_id_name_idx").on(table.orgId, table.name),
   };
 });
 

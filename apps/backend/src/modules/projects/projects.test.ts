@@ -2,7 +2,7 @@ import { expect, test, describe, beforeAll } from "bun:test";
 import { Code } from "@connectrpc/connect";
 import { eq } from "drizzle-orm";
 import { create, toJson } from "@bufbuild/protobuf";
-import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
+import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createProjectsHandler, createProjectTemplatesHandler } from "./projects.handler";
 import { createTasksHandler, createTaskManagementHandler } from "../tasks/tasks.handler";
@@ -166,6 +166,69 @@ describe("Projects Handler Integration Logic", () => {
     ).rejects.toThrow();
   });
 
+  // M20-T04: two identically-named templates in one org were silently
+  // allowed - no pre-check and no DB constraint behind it.
+  test("createTemplate rejects a duplicate name within the same org, but allows it in a different org", async () => {
+    await ptHandler.createTemplate({ orgId: "org-test", name: "Duplicate Name Template" }, ctx);
+
+    await expect(
+      ptHandler.createTemplate({ orgId: "org-test", name: "Duplicate Name Template" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+
+    const otherOrgId = "org-dup-template-other-" + Date.now();
+    const otherUserId = "user-dup-template-other-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: otherOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    await expect(
+      ptHandler.createTemplate({ orgId: otherOrgId, name: "Duplicate Name Template" }, makeAuthContext(otherUserId))
+    ).resolves.toBeDefined();
+  });
+
+  // Forces the race by firing two identical calls concurrently, rather than
+  // relying on the pre-check alone - mirrors M18-T03/M19-T03's race tests.
+  test("rejects one of two concurrent createTemplate calls racing for the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const results = await Promise.allSettled([
+      ptHandler.createTemplate({ orgId: "org-test", name: "Concurrent Name Race Template" }, ctx),
+      ptHandler.createTemplate({ orgId: "org-test", name: "Concurrent Name Race Template" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
+  });
+
+  test("updateTemplate rejects renaming to a name already used by another template in the same org", async () => {
+    await ptHandler.createTemplate({ orgId: "org-test", name: "Existing Rename Target" }, ctx);
+    const toRename = await ptHandler.createTemplate({ orgId: "org-test", name: "Rename Me" }, ctx);
+
+    await expect(
+      ptHandler.updateTemplate({ id: toRename.template.id, name: "Existing Rename Target" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+
+    // Renaming to its own current name is a no-op, not a self-collision.
+    const noOp = await ptHandler.updateTemplate({ id: toRename.template.id, name: "Rename Me" }, ctx);
+    expect(noOp.template.name).toBe("Rename Me");
+  });
+
+  // Forces the race the pre-check alone can't catch: two different
+  // templates renamed to the same target concurrently.
+  test("rejects one of two concurrent updateTemplate renames racing for the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const first = await ptHandler.createTemplate({ orgId: "org-test", name: "Update Race Source A" }, ctx);
+    const second = await ptHandler.createTemplate({ orgId: "org-test", name: "Update Race Source B" }, ctx);
+
+    const results = await Promise.allSettled([
+      ptHandler.updateTemplate({ id: first.template.id, name: "Update Race Target" }, ctx),
+      ptHandler.updateTemplate({ id: second.template.id, name: "Update Race Target" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
+  });
+
   // M20-T03: updateTemplate had zero test coverage before this - the only
   // references anywhere in the backend were denial tests that never reached
   // the function body. This also covers the fix itself: description/
@@ -276,6 +339,32 @@ describe("Projects Handler Integration Logic", () => {
     expect(listed.projects.filter((p: any) => p.id === resp.project.id)).toHaveLength(1);
   });
 
+  // M20-T04: the retry loop's own exhaustion path (MAX_ATTEMPTS conflicts in
+  // a row) had no test - only the single-retry-then-success case did.
+  test("createProject surfaces the raw conflict once every retry attempt is exhausted", async () => {
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Exhaustion Template" }, ctx);
+
+    const realInsert = db.insert.bind(db);
+    const alwaysRacyDb = Object.assign(Object.create(Object.getPrototypeOf(db)), db, {
+      insert: (table: any) => {
+        const original = realInsert(table);
+        return Object.assign(Object.create(Object.getPrototypeOf(original)), original, {
+          values: async () => {
+            if (table === schemaSqlite.projects) {
+              throw new Error("UNIQUE constraint failed: projects_org_id_key_idx");
+            }
+            return original.values;
+          },
+        });
+      },
+    });
+
+    const alwaysRacyHandler = createProjectsHandler(alwaysRacyDb, mockNc);
+    await expect(
+      alwaysRacyHandler.createProject({ orgId: "org-test", templateId: tResp.template.id, name: "Always Conflicts", ownerId: "user-test" }, ctx)
+    ).rejects.toThrow(/UNIQUE constraint failed/);
+  });
+
   test("rejects access from a user who isn't a member of the org", async () => {
      const outsiderCtx = makeAuthContext("user-outsider");
      await db.insert(schemaSqlite.users).values({ id: "user-outsider", email: "outsider@example.com", createdAt: new Date() });
@@ -283,6 +372,47 @@ describe("Projects Handler Integration Logic", () => {
      await expect(pHandler.listProjects({ orgId: "org-test" }, outsiderCtx)).rejects.toThrow();
      await expect(pHandler.createProject({ orgId: "org-test", templateId: "t-1", name: "X", ownerId: "user-outsider" }, outsiderCtx)).rejects.toThrow();
      await expect(pHandler.listProjects({}, makeAuthContext(null))).rejects.toThrow();
+  });
+
+  // M20-T04: getTemplate had no cross-org denial test - only listTemplates did.
+  test("getTemplate denies a user outside the template's org", async () => {
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "GetTemplate Denial Tpl" }, ctx);
+    await expect(ptHandler.getTemplate({ id: tResp.template.id }, makeAuthContext("user-outsider-gettpl"))).rejects.toThrow();
+    await expect(ptHandler.getTemplate({ id: "pt-does-not-exist" }, ctx)).rejects.toThrow();
+  });
+
+  // M20-T04: updateProject against a nonexistent id had no test.
+  test("updateProject rejects a nonexistent project id", async () => {
+    await expect(pHandler.updateProject({ projectId: "project-does-not-exist", name: "X" }, ctx)).rejects.toMatchObject({ code: Code.NotFound });
+  });
+
+  // M20-T04: listProjects had no pagination test at all - listTemplates
+  // already has an equivalent (filter/sort) but projects never did.
+  test("listProjects supports cursor/limit paging and filter/sort by name", async () => {
+    const orgId = "org-listproj-page-" + Date.now();
+    const userId = "user-listproj-page-" + Date.now();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "List Projects Paging Org" });
+    const pageCtx = makeAuthContext(userId);
+    const tResp = await ptHandler.createTemplate({ orgId, name: "Paging Template" }, pageCtx);
+
+    await pHandler.createProject({ orgId, templateId: tResp.template.id, name: "Zebra Project", ownerId: userId }, pageCtx);
+    await pHandler.createProject({ orgId, templateId: tResp.template.id, name: "Aardvark Project", ownerId: userId }, pageCtx);
+    await pHandler.createProject({ orgId, templateId: tResp.template.id, name: "Middle Project", ownerId: userId }, pageCtx);
+
+    const page1 = await pHandler.listProjects({ orgId, page: { limit: 2 } }, pageCtx);
+    expect(page1.projects).toHaveLength(2);
+    expect(page1.page.totalCount).toBe(3);
+    expect(page1.page.nextCursor).toBeTruthy();
+
+    const page2 = await pHandler.listProjects({ orgId, page: { limit: 2, cursor: page1.page.nextCursor } }, pageCtx);
+    expect(page2.projects).toHaveLength(1);
+
+    const filtered = await pHandler.listProjects({ orgId, page: { filter: "Zebra" } }, pageCtx);
+    expect(filtered.projects.every((p: any) => p.name.includes("Zebra"))).toBe(true);
+
+    const sorted = await pHandler.listProjects({ orgId, page: { sort: "name:asc" } }, pageCtx);
+    const names = sorted.projects.map((p: any) => p.name);
+    expect(names.indexOf("Aardvark Project")).toBeLessThan(names.indexOf("Zebra Project"));
   });
 
   test("rejects createProject when ownerId isn't a member of the org", async () => {
@@ -393,6 +523,20 @@ describe("Projects Handler Integration Logic", () => {
     await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId: pResp.project.id, title: "T", status: "todo", createdAt: new Date() });
     await expect(pHandler.purgeProject({ projectId: pResp.project.id }, ctx)).rejects.toThrow();
     await db.delete(schemaSqlite.tasks).where(eq(schemaSqlite.tasks.id, taskId));
+
+    // A remaining folder blocks purge too, not just tasks.
+    const folderId = "fld-purge-proj-" + Date.now();
+    await db.insert(schemaSqlite.folders).values({ id: folderId, projectId: pResp.project.id, name: "F", createdAt: new Date() });
+    await expect(pHandler.purgeProject({ projectId: pResp.project.id }, ctx)).rejects.toThrow();
+    await db.delete(schemaSqlite.folders).where(eq(schemaSqlite.folders.id, folderId));
+
+    // As does a remaining repository link.
+    const repoLinkId = "rl-purge-proj-" + Date.now();
+    await db.insert(schemaSqlite.repositoryLinks).values({
+      id: repoLinkId, projectId: pResp.project.id, provider: "github", remoteName: "org/repo", accessTokenEncrypted: "enc", createdAt: new Date(),
+    });
+    await expect(pHandler.purgeProject({ projectId: pResp.project.id }, ctx)).rejects.toThrow();
+    await db.delete(schemaSqlite.repositoryLinks).where(eq(schemaSqlite.repositoryLinks.id, repoLinkId));
 
     await pHandler.purgeProject({ projectId: pResp.project.id }, ctx);
 
