@@ -70,16 +70,21 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
 
       const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
       const newId = `tnt-${crypto.randomUUID()}`;
+      // M19-T02: set explicitly rather than left to insertRecord's default -
+      // that default only fires in standalone/sqlite mode, and either way it
+      // was never added to the object returned below, only to the copy
+      // insertRecord wrote to the DB.
       const payload = {
         id: newId,
         taskId: parsed.taskId,
         agentId: principal.agentId,
         content: parsed.content,
+        createdAt: new Date(),
       };
 
-      await insertRecord(db, notes, payload, isStandalone);
+      await insertRecord(db, notes, payload, isStandalone, false);
 
-      const noteResp = { ...payload };
+      const noteResp = { ...payload, createdAt: payload.createdAt.toISOString() };
       publishDomainEvent(nc, "domain.tasknote.created", noteResp);
       return { taskNote: noteResp };
     },
@@ -96,7 +101,11 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
 
       await db.update(notes).set({ content: parsed.content }).where(eq((notes as any).id, parsed.taskNoteId));
 
-      const updated = { ...existing[0], content: parsed.content };
+      const updated = {
+        ...existing[0],
+        content: parsed.content,
+        createdAt: existing[0].createdAt instanceof Date ? existing[0].createdAt.toISOString() : existing[0].createdAt,
+      };
       publishDomainEvent(nc, "domain.tasknote.updated", updated);
       return { taskNote: updated };
     },

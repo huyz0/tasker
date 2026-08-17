@@ -60,6 +60,10 @@ describe("Task Notes Handler", () => {
     expect(res.taskNote.taskId).toBe(taskId);
     expect(res.taskNote.agentId).toBe(agentId);
     expect(res.taskNote.id).toStartWith("tnt-");
+    // M19-T02: createdAt used to be computed and then silently dropped
+    // before the response left the handler.
+    expect(typeof res.taskNote.createdAt).toBe("string");
+    expect(res.taskNote.createdAt.length).toBeGreaterThan(0);
   });
 
   // --- Zod validation rejection ---
@@ -154,6 +158,7 @@ describe("Task Notes Handler", () => {
     const res = await handler.listTaskNotes({ taskId }, ctx);
     expect(res.taskNotes).toHaveLength(2);
     expect(res.taskNotes.map((n: any) => n.content)).toContain("N1");
+    expect(res.taskNotes.every((n: any) => typeof n.createdAt === "string" && n.createdAt.length > 0)).toBe(true);
   });
 
   it("should reject listTaskNotes with missing taskId", async () => {
@@ -176,6 +181,8 @@ describe("Task Notes Handler", () => {
       const created = await handler.createTaskNote({ taskId, content: "original" }, agentCtx);
       const res = await handler.updateTaskNote({ taskNoteId: created.taskNote.id, content: "revised" }, agentCtx);
       expect(res.taskNote.content).toBe("revised");
+      expect(typeof res.taskNote.createdAt).toBe("string");
+      expect(res.taskNote.createdAt.length).toBeGreaterThan(0);
 
       const [row] = await db.select().from(schemaSqlite.taskNotes).where(eq(schemaSqlite.taskNotes.id, created.taskNote.id));
       expect(row.content).toBe("revised");

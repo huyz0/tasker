@@ -140,6 +140,18 @@ const PurgeTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
 });
 
+const GetTaskSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+});
+
+const ListTasksSchema = z.object({
+  projectId: z.string().min(1, "projectId is required"),
+  page: z.any().optional(),
+  onlyDeleted: z.boolean().optional(),
+  status: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
+  assigneeFilter: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+});
+
 // --- Handler Factories ---
 
 export const createTasksHandler = (db: any, nc: any = null) => {
@@ -589,6 +601,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         const displayId = `${projectRow.key}-${taskNumber}`;
 
         const newId = `tsk-${crypto.randomUUID()}`;
+        // M19-T02: set explicitly rather than left to insertRecord's default -
+        // that default only fires in standalone/sqlite mode, and either way it
+        // was never added to the object returned below, only to the copy
+        // insertRecord wrote to the DB.
         const payload = {
           id: newId,
           projectId: parsed.projectId,
@@ -598,12 +614,13 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           title: parsed.title,
           status: parsed.status,
           description: parsed.description,
+          createdAt: new Date(),
         };
 
-        await insertRecord(db, tasks, payload, isStandalone, true);
+        await insertRecord(db, tasks, payload, isStandalone, false);
 
         publishDomainEvent(nc, "domain.task.created", payload);
-        return { task: payload };
+        return { task: { ...payload, createdAt: payload.createdAt.toISOString(), assignees: [] } };
       });
     },
     /**
@@ -612,14 +629,14 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
      * `description` is unbounded free text that no list renders, so it is not
      * selected there (M07-T01). This is where the detail view reads it back.
      */
-    async getTask(req: any, { values: contextValues }: { values: any }) {
+    async getTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req?.taskId) throw new ConnectError("taskId is required", Code.InvalidArgument);
-      const orgId = await getTaskOrgId(db, req.taskId);
+      const parsed = GetTaskSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
       await authorizePrincipal(db, principal, orgId, { scope: 'tasks:read', permission: 'task:read' });
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-      const rows = await db.select().from(tasks).where(eq((tasks as any).id, req.taskId)).limit(1);
+      const rows = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
       if (!rows || rows.length === 0) throw new ConnectError("task not found", Code.NotFound);
 
       const t = rows[0];
@@ -632,19 +649,19 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         },
       };
     },
-    async listTasks(req: any, { values: contextValues }: { values: any }) {
+    async listTasks(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.projectId) throw new ConnectError("projectId is required", Code.InvalidArgument);
-      const orgId = await getProjectOrgId(db, req.projectId);
+      const parsed = ListTasksSchema.parse(req);
+      const orgId = await getProjectOrgId(db, parsed.projectId);
       await authorizePrincipal(db, principal, orgId, { scope: 'tasks:read', permission: 'task:read' });
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-      const deletedFilter = req.onlyDeleted ? not(notDeleted(tasks)) : notDeleted(tasks);
+      const deletedFilter = parsed.onlyDeleted ? not(notDeleted(tasks)) : notDeleted(tasks);
       // One board column, when asked for. The count that comes back is then
       // that column's real count, computed by the database over the whole
       // project rather than by counting one page's worth in the browser
       // (M07-T03).
-      const statusFacet = req.status ? eq((tasks as any).status, req.status) : undefined;
+      const statusFacet = parsed.status ? eq((tasks as any).status, parsed.status) : undefined;
 
       // Agent self-service (M14-T05): "unassigned" is the query an agent
       // runs to find claimable work; "me" resolves to the *calling*
@@ -653,23 +670,23 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // are correlated subqueries against taskAssignments rather than a
       // join, so a task with two assignees isn't returned twice.
       let assigneeFacet: any = undefined;
-      if (req.assigneeFilter === "unassigned") {
+      if (parsed.assigneeFilter === "unassigned") {
         const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
         assigneeFacet = sql`NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id})`;
-      } else if (req.assigneeFilter === "me") {
+      } else if (parsed.assigneeFilter === "me") {
         const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
         const selfColumn = principal.kind === "user" ? (assignments as any).userId : (assignments as any).agentId;
         const selfId = principal.kind === "user" ? principal.userId : principal.agentId;
         assigneeFacet = sql`EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id} AND ${selfColumn} = ${selfId})`;
-      } else if (req.assigneeFilter) {
-        throw new ConnectError(`invalid assigneeFilter "${req.assigneeFilter}" - expected "unassigned" or "me"`, Code.InvalidArgument);
+      } else if (parsed.assigneeFilter) {
+        throw new ConnectError(`invalid assigneeFilter "${parsed.assigneeFilter}" - expected "unassigned" or "me"`, Code.InvalidArgument);
       }
 
-      const conditions = [eq((tasks as any).projectId, req.projectId), deletedFilter];
+      const conditions = [eq((tasks as any).projectId, parsed.projectId), deletedFilter];
       if (statusFacet) conditions.push(statusFacet);
       if (assigneeFacet) conditions.push(assigneeFacet);
       const scope = and(...conditions);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, scope, req.page, {
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, scope, parsed.page, {
         filterColumn: (tasks as any).title,
         sortableColumns: { title: (tasks as any).title, status: (tasks as any).status, createdAt: (tasks as any).createdAt },
         // `description` is free text with no length bound and the list renders
@@ -836,7 +853,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
         const task = result[0];
         publishDomainEvent(nc, "domain.task.claimed", { taskId: parsed.taskId, agentId: selfAgentId, userId: selfUserId });
-        return { task };
+        return { task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt } };
       });
     },
     async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
@@ -929,7 +946,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const task = result[0];
 
       publishDomainEvent(nc, "domain.task.updated", task);
-      return { task };
+      return { task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt } };
     },
     async updateTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
@@ -967,7 +984,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const task = result[0];
 
       publishDomainEvent(nc, "domain.task.status_updated", task);
-      return { task };
+      return { task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt } };
     },
     async deleteTask(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);

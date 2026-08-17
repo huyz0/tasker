@@ -356,6 +356,10 @@ describe("Tasks Handler Integration Tests", () => {
 
     const taskResp = await handler.createTask({ projectId, title: "Reviewed Task", status: "todo", description: "" }, ctx);
     expect(taskResp.task.createdBy).toBe(userId);
+    // M19-T02: createdAt used to be computed and then silently dropped
+    // before the response left the handler.
+    expect(typeof taskResp.task.createdAt).toBe("string");
+    expect(taskResp.task.createdAt.length).toBeGreaterThan(0);
 
     const addResp = await handler.addTaskReviewer({ taskId: taskResp.task.id, userId: reviewerId }, ctx);
     expect(addResp.success).toBe(true);
@@ -408,9 +412,18 @@ describe("Tasks Handler Integration Tests", () => {
 
     const updateResp = await handler.updateTaskStatus({ taskId: taskResp.task.id, status: "in-progress" }, ctx);
     expect(updateResp.task.status).toBe("in-progress");
+    expect(typeof updateResp.task.createdAt).toBe("string");
+    expect(updateResp.task.createdAt.length).toBeGreaterThan(0);
 
     const listResp = await handler.listTasks({ projectId }, ctx);
-    expect(listResp.tasks.find((t: any) => t.id === taskResp.task.id)?.status).toBe("in-progress");
+    const listedTask = listResp.tasks.find((t: any) => t.id === taskResp.task.id);
+    expect(listedTask?.status).toBe("in-progress");
+    expect(typeof listedTask?.createdAt).toBe("string");
+    expect(listedTask?.createdAt.length).toBeGreaterThan(0);
+
+    // M19-T02: listTasks used to validate its request by hand instead of
+    // through a Zod schema, like every other RPC in this file.
+    await expect(handler.listTasks({}, ctx)).rejects.toThrow();
 
     await expect(handler.updateTaskStatus({ taskId: taskResp.task.id, status: "not-a-real-status" }, ctx)).rejects.toThrow();
     await expect(handler.updateTaskStatus({ taskId: "task-does-not-exist", status: "done" }, ctx)).rejects.toThrow();
@@ -737,6 +750,8 @@ describe("Tasks Handler Integration Tests", () => {
 
     const claimed = await handler.claimTask({ taskId: task.task.id }, agentCtx);
     expect(claimed.task.id).toBe(task.task.id);
+    expect(typeof claimed.task.createdAt).toBe("string");
+    expect(claimed.task.createdAt.length).toBeGreaterThan(0);
 
     const rows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, task.task.id));
     expect(rows.length).toBe(1);
@@ -1149,6 +1164,8 @@ describe("Tasks Handler Integration Tests", () => {
     }, ctx);
     expect(updated.task.title).toBe("New Title");
     expect(updated.task.description).toBe("New description");
+    expect(typeof updated.task.createdAt).toBe("string");
+    expect(updated.task.createdAt.length).toBeGreaterThan(0);
 
     // Clearing the description to "" must actually persist as "", not be
     // silently dropped because it looks like an unset field.
@@ -1217,6 +1234,8 @@ describe("Tasks Handler Integration Tests", () => {
     expect(fetched.task.title).toBe("Gettable");
     expect(fetched.task.description).toBe("Has a body");
     expect(Array.isArray(fetched.task.assignees)).toBe(true);
+    expect(typeof fetched.task.createdAt).toBe("string");
+    expect(fetched.task.createdAt.length).toBeGreaterThan(0);
 
     await expect(handler.getTask({ taskId: "task-does-not-exist" }, ctx)).rejects.toMatchObject({ code: Code.NotFound });
     await expect(handler.getTask({}, ctx)).rejects.toThrow();
