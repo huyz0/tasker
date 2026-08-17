@@ -327,6 +327,49 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.updateTaskStatus({ taskId: taskResp.task.id, status: "done" }, outsiderCtx)).rejects.toThrow();
   });
 
+  // M14-T02: two callers racing a status change used to both read the same
+  // stale status, both pass validation against it, and both write - the
+  // loser silently clobbered with no error to either side, and its own
+  // response lied about the status it had "successfully" set. This is the
+  // same interleaving the M03-T15 tests below prove is real on bun:sqlite
+  // for plain awaited select-then-write calls with no transaction wrapping
+  // them - exactly this code path.
+  test("updateTaskStatus is safe under concurrent writers: exactly one racing change wins", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-status-race-" + Date.now().toString();
+    const userId = "user-status-race-" + Date.now().toString();
+    const templateId = "tmpl-status-race-" + Date.now().toString();
+    const projectId = "proj-status-race-" + Date.now().toString();
+
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Status Race Org" });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "P" });
+    const ctx = makeAuthContext(userId);
+    const handler = createTaskManagementHandler(db, nc);
+
+    const taskResp = await handler.createTask({ projectId, title: "Race Task", status: "todo", description: "" }, ctx);
+
+    // No task-type state machine is configured, so both targets are
+    // independently valid transitions from "todo" - exactly the shape where
+    // two agents racing to claim the same task by moving it out of "todo"
+    // must not both be told they won.
+    const results = await Promise.allSettled([
+      handler.updateTaskStatus({ taskId: taskResp.task.id, status: "in-progress" }, ctx),
+      handler.updateTaskStatus({ taskId: taskResp.task.id, status: "done" }, ctx),
+    ]);
+
+    const fulfilled = results.filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled");
+    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
+    expect(rejected[0].reason).toMatchObject({ code: Code.Aborted });
+
+    // The persisted status matches the winner's own response, not "whoever
+    // committed last, regardless of what either caller was told".
+    const finalTask = await handler.getTask({ taskId: taskResp.task.id }, ctx);
+    expect(finalTask.task.status).toBe(fulfilled[0].value.task.status);
+  });
+
   test("deleteTask soft-deletes, hides from listTasks, and can be restored; requires org admin", async () => {
     const { db, nc } = await setupIntegrationTest();
 

@@ -848,7 +848,24 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       await validateStatusForTaskType(db, isStandalone, currentTask.taskTypeId || null, currentTask.status, parsed.status);
 
-      await db.update(tasks).set({ status: parsed.status }).where(eq((tasks as any).id, parsed.taskId));
+      // Compare-and-swap on the status just read, not an unconditional
+      // write: two callers can both read the same stale status, both pass
+      // validation against it, and without this WHERE clause both writes
+      // would "succeed" - whichever commits last wins with no error to
+      // either caller, and the loser's own response (the re-select below)
+      // would silently report the *winner's* status as if it were its own
+      // (M14-T02). If the status has genuinely not moved since the read
+      // above, this matches exactly one row, same as before.
+      const updateResult = await db.update(tasks)
+        .set({ status: parsed.status })
+        .where(and(eq((tasks as any).id, parsed.taskId), eq((tasks as any).status, currentTask.status)));
+      const affected = isStandalone ? (updateResult as any).changes : (updateResult as any)[0]?.affectedRows;
+      if (!affected) {
+        throw new ConnectError(
+          "task status changed concurrently - refetch and retry",
+          Code.Aborted,
+        );
+      }
 
       const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
       const task = result[0];
