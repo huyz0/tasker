@@ -267,6 +267,13 @@
       "when": 1787400000000,
       "tag": "0037_agent_roles_unique_name",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1787500000000,
+      "tag": "0038_artifacts_unique_names",
+      "breakpoints": true
     }
   ]
 }

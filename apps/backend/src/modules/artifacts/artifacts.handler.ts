@@ -2,7 +2,7 @@ import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and, not, inArray, sql } from "drizzle-orm";
+import { eq, and, not, inArray, sql, isNull } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
@@ -87,6 +87,41 @@ const PurgeFolderSchema = z.object({
   folderId: z.string().min(1, "folderId is required"),
 });
 
+const ListFoldersSchema = z.object({
+  projectId: z.string().min(1, "projectId is required"),
+  page: z.any().optional(),
+  onlyDeleted: z.boolean().optional(),
+});
+
+const ListArtifactsSchema = z
+  .object({
+    folderId: z.string().optional(),
+    projectId: z.string().optional(),
+    page: z.any().optional(),
+    onlyDeleted: z.boolean().optional(),
+  })
+  // Proto3 sends "" for an omitted string, same reasoning as
+  // ListTaskArtifactLinksSchema above.
+  .transform((v) => ({ ...v, folderId: v.folderId || undefined, projectId: v.projectId || undefined }))
+  .refine((v) => Boolean(v.folderId) || Boolean(v.projectId), {
+    message: "folderId or projectId is required",
+  });
+
+// Distinguishes a real DB-level unique-constraint violation (a concurrent
+// createFolder/createArtifact/updateFolder call won the race for the same
+// name) from any other insert/update failure. Same pattern as
+// labels.handler.ts's isUniqueConstraintConflict and, as of M17-T02,
+// agents.handler.ts's.
+function isUniqueConstraintConflict(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e);
+  return (
+    msg.includes("folders_project_id_parent_id_name_idx") ||
+    msg.includes("artifacts_folder_id_name_idx") ||
+    msg.includes("UNIQUE constraint failed") ||
+    msg.includes("Duplicate entry")
+  );
+}
+
 // --- Handler Factory ---
 
 export const createArtifactsHandler = (db: any, nc: any = null) => {
@@ -109,17 +144,45 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       }
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
+
+      // M18-T03: a unique index backs this for the has-a-real-parent case,
+      // but NULL parentId (root-level folders) is not distinguishable from
+      // any other NULL to that index, so root folders need this check to
+      // actually catch a same-name collision.
+      const parentIdValue = parsed.parentId || null;
+      const nameConflictCondition = parentIdValue
+        ? and(eq((folders as any).projectId, parsed.projectId), eq((folders as any).parentId, parentIdValue), eq((folders as any).name, parsed.name))
+        : and(eq((folders as any).projectId, parsed.projectId), isNull((folders as any).parentId), eq((folders as any).name, parsed.name));
+      const existingByName = await db.select().from(folders).where(nameConflictCondition).limit(1);
+      if (existingByName.length > 0) {
+        throw new ConnectError("a folder with this name already exists here", Code.AlreadyExists);
+      }
+
       const newId = `fld-${crypto.randomUUID()}`;
+      // M18-T02: set explicitly rather than left to insertRecord's default -
+      // that default only fires in standalone/sqlite mode, and either way it
+      // was never added to the object returned below, only to the copy
+      // insertRecord wrote to the DB.
       const payload = {
         id: newId,
         projectId: parsed.projectId,
-        parentId: parsed.parentId || null,
+        parentId: parentIdValue,
         name: parsed.name,
+        createdAt: new Date(),
       };
 
-      await insertRecord(db, folders, payload, isStandalone);
+      // The select-then-insert check above has a race window for the
+      // has-a-real-parent case - fall back to catching the DB's own
+      // unique-constraint violation for a concurrent duplicate insert, so it
+      // surfaces as AlreadyExists instead of a raw DB error.
+      try {
+        await insertRecord(db, folders, payload, isStandalone, false);
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("a folder with this name already exists here", Code.AlreadyExists);
+      }
 
-      const folderResp = { ...payload };
+      const folderResp = { ...payload, createdAt: payload.createdAt.toISOString() };
       publishDomainEvent(nc, "domain.folder.created", folderResp);
       return { folder: folderResp };
     },
@@ -134,9 +197,30 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const existing = await db.select().from(folders).where(eq((folders as any).id, parsed.folderId)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("folder not found", Code.NotFound);
 
-      await db.update(folders).set({ name: parsed.name }).where(eq((folders as any).id, parsed.folderId));
+      // M18-T03: same NULL-parentId caveat as createFolder's pre-check - the
+      // unique index doesn't see two NULL parents as equal, so a rename among
+      // root folders needs this to catch a collision.
+      const parentIdValue = existing[0].parentId ?? null;
+      const nameConflictCondition = parentIdValue
+        ? and(eq((folders as any).projectId, existing[0].projectId), eq((folders as any).parentId, parentIdValue), eq((folders as any).name, parsed.name))
+        : and(eq((folders as any).projectId, existing[0].projectId), isNull((folders as any).parentId), eq((folders as any).name, parsed.name));
+      const nameConflict = await db.select().from(folders).where(nameConflictCondition).limit(1);
+      if (nameConflict.length > 0 && nameConflict[0].id !== parsed.folderId) {
+        throw new ConnectError("a folder with this name already exists here", Code.AlreadyExists);
+      }
 
-      const updated = { ...existing[0], name: parsed.name };
+      try {
+        await db.update(folders).set({ name: parsed.name }).where(eq((folders as any).id, parsed.folderId));
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("a folder with this name already exists here", Code.AlreadyExists);
+      }
+
+      const updated = {
+        ...existing[0],
+        name: parsed.name,
+        createdAt: existing[0].createdAt instanceof Date ? existing[0].createdAt.toISOString() : existing[0].createdAt,
+      };
       publishDomainEvent(nc, "domain.folder.updated", updated);
       return { folder: updated };
     },
@@ -148,7 +232,19 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', permission: 'artifact:write' });
 
       const artifacts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+
+      const existingByName = await db
+        .select()
+        .from(artifacts)
+        .where(and(eq((artifacts as any).folderId, parsed.folderId), eq((artifacts as any).name, parsed.name)))
+        .limit(1);
+      if (existingByName.length > 0) {
+        throw new ConnectError("an artifact with this name already exists in this folder", Code.AlreadyExists);
+      }
+
       const newId = `art-${crypto.randomUUID()}`;
+      // M18-T02: see createFolder's comment above on why createdAt is set
+      // explicitly here.
       const payload = {
         id: newId,
         folderId: parsed.folderId,
@@ -156,12 +252,22 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         description: parsed.description,
         content: parsed.content,
         contentType: parsed.contentType,
+        createdAt: new Date(),
       };
 
-      await insertRecord(db, artifacts, payload, isStandalone);
+      // The select-then-insert check above has a race window - fall back to
+      // catching the DB's own unique-constraint violation for a concurrent
+      // duplicate insert, so it surfaces as AlreadyExists instead of a raw
+      // DB error.
+      try {
+        await insertRecord(db, artifacts, payload, isStandalone, false);
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("an artifact with this name already exists in this folder", Code.AlreadyExists);
+      }
 
       publishDomainEvent(nc, "domain.artifact.created", payload);
-      return { artifact: payload };
+      return { artifact: { ...payload, createdAt: payload.createdAt.toISOString() } };
     },
 
     async updateArtifactContent(req: unknown, { values: contextValues }: { values: any }) {
@@ -180,7 +286,11 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       };
       await db.update(artifacts).set(updates).where(eq((artifacts as any).id, parsed.artifactId));
 
-      const artifactResp = { ...existing[0], ...updates };
+      const artifactResp = {
+        ...existing[0],
+        ...updates,
+        createdAt: existing[0].createdAt instanceof Date ? existing[0].createdAt.toISOString() : existing[0].createdAt,
+      };
       publishDomainEvent(nc, "domain.artifact.content_updated", artifactResp);
       return { artifact: artifactResp };
     },
@@ -279,19 +389,19 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         })),
       };
     },
-    async listFolders(req: any, { values: contextValues }: { values: any }) {
+    async listFolders(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.projectId) throw new ConnectError("projectId is required", Code.InvalidArgument);
-      const orgId = await getProjectOrgId(db, req.projectId);
+      const parsed = ListFoldersSchema.parse(req);
+      const orgId = await getProjectOrgId(db, parsed.projectId);
       await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
 
       const flds = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
-      const deletedFolderFilter = req.onlyDeleted ? not(notDeleted(flds)) : notDeleted(flds);
+      const deletedFolderFilter = parsed.onlyDeleted ? not(notDeleted(flds)) : notDeleted(flds);
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
         db,
         flds,
-        and(eq((flds as any).projectId, req.projectId), deletedFolderFilter),
-        req.page,
+        and(eq((flds as any).projectId, parsed.projectId), deletedFolderFilter),
+        parsed.page,
         {
           filterColumn: (flds as any).name,
           sortableColumns: { name: (flds as any).name, createdAt: (flds as any).createdAt },
@@ -314,34 +424,32 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         page: { nextCursor, totalCount },
       };
     },
-    async listArtifacts(req: any, { values: contextValues }: { values: any }) {
+    async listArtifacts(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.folderId && !req.projectId) {
-        throw new ConnectError("folderId or projectId is required", Code.InvalidArgument);
-      }
+      const parsed = ListArtifactsSchema.parse(req);
       // Authorized against whichever scope the caller named — a project-wide
       // list is not a weaker check, it is the same check one level up.
-      const orgId = req.folderId
-        ? await getFolderOrgId(db, req.folderId)
-        : await getProjectOrgId(db, req.projectId);
+      const orgId = parsed.folderId
+        ? await getFolderOrgId(db, parsed.folderId)
+        : await getProjectOrgId(db, parsed.projectId!);
       await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
 
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       const flds2 = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
-      const deletedArtifactFilter = req.onlyDeleted ? not(notDeleted(arts)) : notDeleted(arts);
+      const deletedArtifactFilter = parsed.onlyDeleted ? not(notDeleted(arts)) : notDeleted(arts);
       // Project scope resolves through the folder table rather than fanning out
       // one request per folder, which is what the Bin used to do.
-      const scopeCondition = req.folderId
-        ? eq((arts as any).folderId, req.folderId)
+      const scopeCondition = parsed.folderId
+        ? eq((arts as any).folderId, parsed.folderId)
         : inArray(
             (arts as any).folderId,
-            db.select({ id: (flds2 as any).id }).from(flds2).where(eq((flds2 as any).projectId, req.projectId)),
+            db.select({ id: (flds2 as any).id }).from(flds2).where(eq((flds2 as any).projectId, parsed.projectId!)),
           );
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
         db,
         arts,
         and(scopeCondition, deletedArtifactFilter),
-        req.page,
+        parsed.page,
         {
           filterColumn: (arts as any).name,
           sortableColumns: { name: (arts as any).name, createdAt: (arts as any).createdAt },
@@ -399,6 +507,13 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       // Names its columns for the same reason the list does: `content` can hold
       // ~15 MB of base64, and this response is not where it belongs.
+      //
+      // M18-T01: deliberately not filtered on notDeleted, matching
+      // getArtifactContent, getTask, and getProject - none of this codebase's
+      // other single-row "get" RPCs 404 an archived/soft-deleted row, and this
+      // one used to be the sole exception, which meant a deep link to an
+      // archived artifact resolved via getArtifactContent but not via this
+      // RPC, even though both are meant to serve the same deep-linked viewer.
       const rows = await db
         .select({
           id: (arts as any).id,
@@ -406,13 +521,20 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
           name: (arts as any).name,
           description: (arts as any).description,
           contentType: (arts as any).contentType,
+          createdAt: (arts as any).createdAt,
         })
         .from(arts)
-        .where(and(eq((arts as any).id, parsed.artifactId), notDeleted(arts)))
+        .where(eq((arts as any).id, parsed.artifactId))
         .limit(1);
       if (rows.length === 0) throw new ConnectError("Artifact not found", Code.NotFound);
 
-      return { artifact: rows[0] };
+      const artifact = rows[0];
+      return {
+        artifact: {
+          ...artifact,
+          createdAt: artifact.createdAt instanceof Date ? artifact.createdAt.toISOString() : artifact.createdAt,
+        },
+      };
     },
 
     async getArtifactContent(req: unknown, { values: contextValues }: { values: any }) {

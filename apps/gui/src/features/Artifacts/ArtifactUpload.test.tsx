@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ArtifactUpload, contentTypeOf, formatBytes, MAX_UPLOAD_BYTES } from './ArtifactUpload';
+import { ArtifactUpload, contentTypeOf, formatBytes, MAX_UPLOAD_BYTES, MAX_TEXT_UPLOAD_BYTES } from './ArtifactUpload';
 
 const mockCreate = vi.fn();
 
@@ -67,15 +67,89 @@ describe('formatBytes', () => {
 });
 
 describe('ArtifactUpload', () => {
-  it('sends the file base64-encoded, with its name and type', async () => {
+  // M18-T04: every upload used to go through base64 regardless of type, but
+  // the viewer only ever decoded image/* - a markdown/text/json/csv upload
+  // rendered and edited as a wall of base64, and saving an edit permanently
+  // overwrote the artifact with that undecoded text.
+  it('sends a text upload as plain text, not base64', async () => {
     renderUpload();
     pick(fileOf('notes.md', 'text/markdown', 'hello'));
 
-    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith({
       folderId: 'fld-1',
       name: 'notes.md',
+      description: '',
       contentType: 'text/markdown',
-      // btoa('hello'). The viewer decodes exactly this.
+      content: 'hello',
+    }));
+  });
+
+  // M18-T06: description is a real field on Artifact that the upload path
+  // always sent as '' - the only creation path that produces a file with
+  // actual content had no way to describe what it was for.
+  it('sends the typed description alongside the upload, then clears it on success', async () => {
+    mockCreate.mockResolvedValue({ artifact: { id: 'art-1' } });
+    renderUpload();
+
+    fireEvent.change(screen.getByPlaceholderText('Description (optional)'), { target: { value: '  Q3 roadmap  ' } });
+    pick(fileOf('notes.md', 'text/markdown', 'hello'));
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ description: 'Q3 roadmap' })));
+    await waitFor(() => expect(screen.getByPlaceholderText('Description (optional)')).toHaveValue(''));
+  });
+
+  it('keeps the typed description when the upload fails', async () => {
+    mockCreate.mockRejectedValue(new Error('permission denied'));
+    renderUpload();
+
+    fireEvent.change(screen.getByPlaceholderText('Description (optional)'), { target: { value: 'Q3 roadmap' } });
+    pick(fileOf('notes.md', 'text/markdown', 'hello'));
+
+    await screen.findByText(/Upload failed/);
+    expect(screen.getByPlaceholderText('Description (optional)')).toHaveValue('Q3 roadmap');
+  });
+
+  it('revokes the previous preview URL when a new image is picked, and on unmount', async () => {
+    const revoke = vi.fn();
+    (URL as any).revokeObjectURL = revoke;
+    let createCount = 0;
+    (URL as any).createObjectURL = vi.fn(() => `blob:preview-${++createCount}`);
+
+    const { unmount } = renderUpload();
+    pick(fileOf('first.png', 'image/png'));
+    await screen.findByAltText('Preview of first.png');
+
+    pick(fileOf('second.png', 'image/png'));
+    await screen.findByAltText('Preview of second.png');
+    await waitFor(() => expect(revoke).toHaveBeenCalledWith('blob:preview-1'));
+
+    unmount();
+    expect(revoke).toHaveBeenCalledWith('blob:preview-2');
+  });
+
+  it('sends a binary upload (image) base64-encoded, with its name and type', async () => {
+    renderUpload();
+    pick(fileOf('photo.png', 'image/png', 'hello'));
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith({
+      folderId: 'fld-1',
+      name: 'photo.png',
+      description: '',
+      contentType: 'image/png',
+      // btoa('hello'). The viewer decodes exactly this for image/*.
+      content: 'aGVsbG8=',
+    }));
+  });
+
+  it('sends a PDF and an unrecognized file base64-encoded too, not just images', async () => {
+    renderUpload();
+    pick(fileOf('report.pdf', 'application/pdf', 'hello'));
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ content: 'aGVsbG8=' })));
+
+    mockCreate.mockClear();
+    pick(fileOf('blob.xyz', '', 'hello'));
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+      contentType: 'application/octet-stream',
       content: 'aGVsbG8=',
     })));
   });
@@ -94,6 +168,24 @@ describe('ArtifactUpload', () => {
     pick(fileOf('edge.png', 'image/png', 'x', MAX_UPLOAD_BYTES));
     // An off-by-one here rejects a file the server would have taken.
     await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+  });
+
+  // M18-T04: a text upload is no longer base64-inflated (see
+  // isBinaryContentType), so it gets the full char cap as its byte limit
+  // instead of the base64-adjusted one - a plain-text file between the two
+  // limits used to be refused even though the server would accept it.
+  it('holds a text upload to the full char cap, not the base64-adjusted one', async () => {
+    renderUpload();
+    pick(fileOf('big.md', 'text/markdown', 'x', MAX_UPLOAD_BYTES + 1));
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+    expect(screen.queryByText(/the limit is/)).toBeNull();
+  });
+
+  it('refuses a text upload over its own (larger) limit', async () => {
+    renderUpload();
+    pick(fileOf('huge.md', 'text/markdown', 'x', MAX_TEXT_UPLOAD_BYTES + 1));
+    expect(await screen.findByText(/huge\.md is .* the limit is/)).toBeInTheDocument();
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('previews an image while it uploads', async () => {
@@ -117,7 +209,7 @@ describe('ArtifactUpload', () => {
     expect(await screen.findByText(/Upload failed: permission denied/)).toBeInTheDocument();
   });
 
-  it('reports a file it could not read', async () => {
+  it('reports a binary file it could not read', async () => {
     const realFileReader = globalThis.FileReader;
     class FailingReader {
       onerror: (() => void) | null = null;
@@ -131,6 +223,24 @@ describe('ArtifactUpload', () => {
       pick(fileOf('locked.png', 'image/png'));
       // A file can genuinely fail to read — removed from the disk mid-pick, or
       // a permission error. Silence would leave the picker looking idle.
+      expect(await screen.findByText(/Upload failed: could not read that file/)).toBeInTheDocument();
+    } finally {
+      globalThis.FileReader = realFileReader;
+    }
+  });
+
+  it('reports a text file it could not read', async () => {
+    const realFileReader = globalThis.FileReader;
+    class FailingReader {
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      result: string | null = null;
+      readAsText() { queueMicrotask(() => this.onerror?.()); }
+    }
+    (globalThis as any).FileReader = FailingReader;
+    try {
+      renderUpload();
+      pick(fileOf('locked.md', 'text/markdown'));
       expect(await screen.findByText(/Upload failed: could not read that file/)).toBeInTheDocument();
     } finally {
       globalThis.FileReader = realFileReader;

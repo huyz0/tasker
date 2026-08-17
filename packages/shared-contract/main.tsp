@@ -1015,6 +1015,12 @@ model Folder {
   @field(3) parentId: string;
   @field(4) name: string;
   @field(5) deletedAt?: string;
+
+  // M18-T02: added after the fact - new field number so existing clients are
+  // unaffected. The handler already computed and sorted by this; it was
+  // never on the wire model, so the value was silently dropped before the
+  // response left the function.
+  @field(6) createdAt: string;
 }
 
 model Artifact {
@@ -1044,6 +1050,9 @@ model Artifact {
   // A decoded figure would therefore be wrong for a whole class of artifacts,
   // and being wrong quietly is worse than being coarse honestly.
   @field(8) sizeBytes?: int64;
+
+  // M18-T02: see Folder.createdAt above - same field, same bug, same fix.
+  @field(9) createdAt: string;
 }
 
 // A deep link carries an artifact id and nothing else. Without this, the GUI

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { eq, and } from "drizzle-orm";
+import { Code } from "@connectrpc/connect";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createArtifactsHandler } from "./artifacts.handler";
@@ -45,6 +46,10 @@ describe("Artifacts Handler", () => {
     expect(res.folder.name).toBe("Documents");
     expect(res.folder.id).toStartWith("fld-");
     expect(res.folder.projectId).toBe(projectId);
+    // M18-T02: createdAt used to be computed and then silently dropped
+    // before the response left the handler.
+    expect(typeof res.folder.createdAt).toBe("string");
+    expect(res.folder.createdAt.length).toBeGreaterThan(0);
   });
 
   it("should create nested folder with parentId", async () => {
@@ -100,6 +105,112 @@ describe("Artifacts Handler", () => {
     ).rejects.toThrow();
   });
 
+  // M18-T03: folders had no unique-name constraint - two folders named
+  // "Docs" at the project root, or two "Docs" under the same parent, were
+  // indistinguishable in the tree until opened.
+  it("should reject a duplicate root-level folder name in the same project", async () => {
+    await handler.createFolder({ projectId, name: "Docs" }, ctx);
+    await expect(
+      handler.createFolder({ projectId, name: "Docs" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+  });
+
+  it("should reject a duplicate folder name under the same parent", async () => {
+    const parent = await handler.createFolder({ projectId, name: "Parent" }, ctx);
+    await handler.createFolder({ projectId, parentId: parent.folder.id, name: "Child" }, ctx);
+    await expect(
+      handler.createFolder({ projectId, parentId: parent.folder.id, name: "Child" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+  });
+
+  it("should allow the same folder name under different parents, and in a different project", async () => {
+    const parentA = await handler.createFolder({ projectId, name: "Parent A" }, ctx);
+    const parentB = await handler.createFolder({ projectId, name: "Parent B" }, ctx);
+    await handler.createFolder({ projectId, parentId: parentA.folder.id, name: "Shared" }, ctx);
+    await expect(
+      handler.createFolder({ projectId, parentId: parentB.folder.id, name: "Shared" }, ctx)
+    ).resolves.toBeDefined();
+    await expect(
+      handler.createFolder({ projectId: otherProjectId, name: "Shared" }, ctx)
+    ).resolves.toBeDefined();
+  });
+
+  // Under a real parent, not the project root: NULL parentId isn't
+  // distinguishable from another NULL to the unique index (see the schema
+  // comment), so only the has-a-real-parent case is guaranteed to be caught
+  // by the DB constraint rather than just the pre-check's race window.
+  it("should reject one of two concurrent createFolder calls racing for the same name under the same parent, as AlreadyExists rather than a raw DB error", async () => {
+    const parent = await handler.createFolder({ projectId, name: "Race Parent" }, ctx);
+    const results = await Promise.allSettled([
+      handler.createFolder({ projectId, parentId: parent.folder.id, name: "Race" }, ctx),
+      handler.createFolder({ projectId, parentId: parent.folder.id, name: "Race" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
+  });
+
+  // --- updateFolder ---
+
+  it("should rename a folder and return the updated folder", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Original" }, ctx);
+    const res = await handler.updateFolder({ folderId: folder.folder.id, name: "Renamed" }, ctx);
+    expect(res.folder.name).toBe("Renamed");
+    expect(res.folder.id).toBe(folder.folder.id);
+    expect(typeof res.folder.createdAt).toBe("string");
+    expect(res.folder.createdAt.length).toBeGreaterThan(0);
+
+    const [row] = await db.select().from(schemaSqlite.folders).where(eq(schemaSqlite.folders.id, folder.folder.id));
+    expect(row.name).toBe("Renamed");
+  });
+
+  it("should reject updateFolder for a nonexistent folder", async () => {
+    await expect(handler.updateFolder({ folderId: "fld-does-not-exist", name: "X" }, ctx)).rejects.toThrow();
+  });
+
+  it("should reject updateFolder from a user outside the folder's org", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    await expect(
+      handler.updateFolder({ folderId: folder.folder.id, name: "X" }, makeAuthContext("user-outsider"))
+    ).rejects.toThrow();
+  });
+
+  it("should reject renaming a folder to a name already used by a sibling", async () => {
+    await handler.createFolder({ projectId, name: "Taken" }, ctx);
+    const other = await handler.createFolder({ projectId, name: "Available" }, ctx);
+    await expect(
+      handler.updateFolder({ folderId: other.folder.id, name: "Taken" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+
+    const [row] = await db.select().from(schemaSqlite.folders).where(eq(schemaSqlite.folders.id, other.folder.id));
+    expect(row.name).toBe("Available");
+  });
+
+  it("should allow renaming a folder to its own current name (a no-op)", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Same" }, ctx);
+    await expect(
+      handler.updateFolder({ folderId: folder.folder.id, name: "Same" }, ctx)
+    ).resolves.toBeDefined();
+  });
+
+  it("should reject one of two concurrent updateFolder calls racing two siblings onto the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const parent = await handler.createFolder({ projectId, name: "Race Parent" }, ctx);
+    const a = await handler.createFolder({ projectId, parentId: parent.folder.id, name: "A" }, ctx);
+    const b = await handler.createFolder({ projectId, parentId: parent.folder.id, name: "B" }, ctx);
+
+    const results = await Promise.allSettled([
+      handler.updateFolder({ folderId: a.folder.id, name: "Race" }, ctx),
+      handler.updateFolder({ folderId: b.folder.id, name: "Race" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
+  });
+
   // --- createArtifact ---
 
   it("should create artifact with valid input", async () => {
@@ -118,6 +229,8 @@ describe("Artifacts Handler", () => {
     expect(res.artifact.name).toBe("Design Doc");
     expect(res.artifact.id).toStartWith("art-");
     expect(res.artifact.contentType).toBe("text/markdown");
+    expect(typeof res.artifact.createdAt).toBe("string");
+    expect(res.artifact.createdAt.length).toBeGreaterThan(0);
   });
 
   it("should create an image artifact with base64 content and an explicit contentType", async () => {
@@ -156,6 +269,38 @@ describe("Artifacts Handler", () => {
     ).rejects.toThrow();
   });
 
+  // M18-T03: artifacts had no unique-name constraint - two artifacts named
+  // "Doc" in the same folder were indistinguishable until opened.
+  it("should reject a duplicate artifact name in the same folder", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    await handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx);
+    await expect(
+      handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+  });
+
+  it("should allow the same artifact name in a different folder", async () => {
+    const folderA = await handler.createFolder({ projectId, name: "Fld A" }, ctx);
+    const folderB = await handler.createFolder({ projectId, name: "Fld B" }, ctx);
+    await handler.createArtifact({ folderId: folderA.folder.id, name: "Doc" }, ctx);
+    await expect(
+      handler.createArtifact({ folderId: folderB.folder.id, name: "Doc" }, ctx)
+    ).resolves.toBeDefined();
+  });
+
+  it("should reject one of two concurrent createArtifact calls racing for the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Race Fld" }, ctx);
+    const results = await Promise.allSettled([
+      handler.createArtifact({ folderId: folder.folder.id, name: "Race" }, ctx),
+      handler.createArtifact({ folderId: folder.folder.id, name: "Race" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
+  });
+
   // --- updateArtifactContent ---
 
   it("should update an artifact's content", async () => {
@@ -164,6 +309,8 @@ describe("Artifacts Handler", () => {
     const res = await handler.updateArtifactContent({ artifactId: created.artifact.id, content: "new content" }, ctx);
     expect(res.artifact.content).toBe("new content");
     expect(res.artifact.contentType).toBe("text/markdown");
+    expect(typeof res.artifact.createdAt).toBe("string");
+    expect(res.artifact.createdAt.length).toBeGreaterThan(0);
   });
 
   it("should update an artifact's contentType alongside its content", async () => {
@@ -186,6 +333,80 @@ describe("Artifacts Handler", () => {
     await expect(
       handler.updateArtifactContent({ artifactId: created.artifact.id, content: "x" }, makeAuthContext("user-outsider"))
     ).rejects.toThrow();
+  });
+
+  // --- getArtifact ---
+
+  it("should get an artifact by id without its content", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({
+      folderId: folder.folder.id, name: "Doc", description: "d", content: "body",
+    }, ctx);
+    const res = await handler.getArtifact({ artifactId: created.artifact.id }, ctx);
+    expect(res.artifact.id).toBe(created.artifact.id);
+    expect(res.artifact.name).toBe("Doc");
+    expect(res.artifact.description).toBe("d");
+    expect((res.artifact as any).content).toBeUndefined();
+    expect(typeof res.artifact.createdAt).toBe("string");
+    expect(res.artifact.createdAt.length).toBeGreaterThan(0);
+  });
+
+  it("should reject getArtifact for a nonexistent artifact", async () => {
+    await expect(handler.getArtifact({ artifactId: "art-does-not-exist" }, ctx)).rejects.toThrow();
+  });
+
+  it("should reject getArtifact from a user outside the artifact's org", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx);
+    await expect(
+      handler.getArtifact({ artifactId: created.artifact.id }, makeAuthContext("user-outsider"))
+    ).rejects.toThrow();
+  });
+
+  // M18-T01: getArtifact used to 404 an archived artifact while
+  // getArtifactContent did not, so a deep link to the same artifact resolved
+  // through one RPC and not the other.
+  it("should still resolve an archived artifact, matching getArtifactContent's behavior", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx);
+    await handler.archiveArtifact({ artifactId: created.artifact.id }, ctx);
+
+    const res = await handler.getArtifact({ artifactId: created.artifact.id }, ctx);
+    expect(res.artifact.id).toBe(created.artifact.id);
+  });
+
+  // --- getArtifactContent ---
+
+  it("should get an artifact's content and size", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({
+      folderId: folder.folder.id, name: "Doc", content: "hello world",
+    }, ctx);
+    const res = await handler.getArtifactContent({ artifactId: created.artifact.id }, ctx);
+    expect(res.content).toBe("hello world");
+    expect(res.contentType).toBe("text/markdown");
+    expect(res.sizeBytes).toBe(BigInt("hello world".length));
+  });
+
+  it("should reject getArtifactContent for a nonexistent artifact", async () => {
+    await expect(handler.getArtifactContent({ artifactId: "art-does-not-exist" }, ctx)).rejects.toThrow();
+  });
+
+  it("should reject getArtifactContent from a user outside the artifact's org", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx);
+    await expect(
+      handler.getArtifactContent({ artifactId: created.artifact.id }, makeAuthContext("user-outsider"))
+    ).rejects.toThrow();
+  });
+
+  it("should still resolve an archived artifact's content", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc", content: "x" }, ctx);
+    await handler.archiveArtifact({ artifactId: created.artifact.id }, ctx);
+
+    const res = await handler.getArtifactContent({ artifactId: created.artifact.id }, ctx);
+    expect(res.content).toBe("x");
   });
 
   // --- linkTaskArtifact ---
@@ -324,6 +545,26 @@ describe("Artifacts Handler", () => {
 
   it("should reject listArtifacts with missing folderId", async () => {
     expect(handler.listArtifacts({}, ctx)).rejects.toThrow();
+  });
+
+  // M18-T02/T03: the project-wide scope (used by the Bin, which wants every
+  // deleted artifact regardless of which folder it lived in) resolves
+  // through a folder-id subquery rather than a plain equality check, and had
+  // no test exercising it at all.
+  it("should list every artifact under a project across multiple folders when scoped by projectId", async () => {
+    const fldA = await handler.createFolder({ projectId, name: "Fld A" }, ctx);
+    const fldB = await handler.createFolder({ projectId, name: "Fld B" }, ctx);
+    await handler.createArtifact({ folderId: fldA.folder.id, name: "In A" }, ctx);
+    await handler.createArtifact({ folderId: fldB.folder.id, name: "In B" }, ctx);
+
+    const otherFld = await handler.createFolder({ projectId: otherProjectId, name: "Other Fld" }, ctx);
+    await handler.createArtifact({ folderId: otherFld.folder.id, name: "In Other Project" }, ctx);
+
+    const res = await handler.listArtifacts({ projectId }, ctx);
+    const names = res.artifacts.map((a: any) => a.name);
+    expect(names).toContain("In A");
+    expect(names).toContain("In B");
+    expect(names).not.toContain("In Other Project");
   });
 
   // --- archive/restore ---
