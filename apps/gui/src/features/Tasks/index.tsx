@@ -189,6 +189,7 @@ function BoardColumn({
   isCreating,
   onOpenTask,
   pullRequestsByTaskId,
+  onDropTask,
 }: {
   status: string;
   display: string;
@@ -202,7 +203,16 @@ function BoardColumn({
   isCreating: boolean;
   onOpenTask: (taskId: string) => void;
   pullRequestsByTaskId: Map<string, any[]>;
+  /** Drag-and-drop status change. Card drop calls this with (taskId, this column's status). */
+  onDropTask: (taskId: string, status: string) => void;
 }) {
+  // Native HTML5 drag-and-drop, not a library: ADR-0009 keeps this app's
+  // primitives hand-rolled until one of its own three reversal conditions
+  // is met, and a single-purpose card-to-column drag doesn't need dnd-kit's
+  // sensors/collision-detection machinery. The status dropdown in the task
+  // detail panel stays as the accessible/keyboard path - this is additive,
+  // not a replacement for it.
+  const [isDragOver, setIsDragOver] = useState(false);
   const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ['tasks', projectId, 'column', status, filter],
     queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
@@ -228,7 +238,18 @@ function BoardColumn({
     // floor is what still forces `overflow-x-auto` on a phone or with more
     // than a few statuses, where sharing space would make every column
     // unreadably narrow instead.
-    <div className="flex-1 basis-80 min-w-[280px] max-w-sm flex flex-col bg-muted/30 rounded-lg p-3">
+    <div
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+      onDragEnter={(e) => { e.preventDefault(); setIsDragOver(true); }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const taskId = e.dataTransfer.getData('text/plain');
+        if (taskId) onDropTask(taskId, status);
+      }}
+      className={`flex-1 basis-80 min-w-[280px] max-w-sm flex flex-col bg-muted/30 rounded-lg p-3 border-2 transition-colors ${isDragOver ? 'border-primary' : 'border-transparent'}`}
+    >
       <div className="flex items-center justify-between mb-3 font-medium text-sm">
         <span className="flex items-center gap-2">
           {display}
@@ -256,6 +277,11 @@ function BoardColumn({
             key={task.id}
             role="button"
             tabIndex={0}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/plain', task.id);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
             onClick={() => onOpenTask(task.id)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -263,7 +289,7 @@ function BoardColumn({
                 onOpenTask(task.id);
               }
             }}
-            className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-grab active:cursor-grabbing transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <div className="text-xs text-muted-foreground mb-1 font-mono">{task.displayId}</div>
             <h4 className="font-medium text-sm leading-tight mb-2">{task.title}</h4>
@@ -682,6 +708,12 @@ export function TasksWorkbench() {
           </ListState>
         </div>
       ) : (
+      <>
+      {updateStatusMutation.isError && (
+        <p className="text-sm text-destructive mb-3">
+          Failed to move task: {(updateStatusMutation.error as Error).message}
+        </p>
+      )}
       <div className="flex gap-4 overflow-x-auto scrollbar-thin pb-4 h-full">
           {columns.map(col => (
             <BoardColumn
@@ -698,9 +730,11 @@ export function TasksWorkbench() {
               isCreating={createTaskMutation.isPending}
               onOpenTask={setExpandedTaskId}
               pullRequestsByTaskId={pullRequestsByTaskId}
+              onDropTask={(taskId, dropStatus) => updateStatusMutation.mutate({ taskId, status: dropStatus })}
             />
           ))}
         </div>
+      </>
       )}
       {createTaskMutation.isError && (
         <p className="text-sm text-destructive">Failed to create task: {(createTaskMutation.error as Error).message}</p>

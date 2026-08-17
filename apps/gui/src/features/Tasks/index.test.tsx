@@ -170,6 +170,61 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
   });
 
+  // Native HTML5 drag-and-drop (no dnd-kit), added alongside the existing
+  // dropdown rather than replacing it - the dropdown stays the accessible/
+  // keyboard path for changing status.
+  function fakeDataTransfer() {
+    const store: Record<string, string> = {};
+    return {
+      setData: (k: string, v: string) => { store[k] = v; },
+      getData: (k: string) => store[k] ?? '',
+      dropEffect: '',
+      effectAllowed: '',
+    };
+  }
+
+  it('moves a task to another column by dragging its card', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockUpdateTaskStatus.mockResolvedValue({ task: { id: 'task-1', title: 'Fix bug', status: 'in-progress', description: '' } });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+
+    const card = screen.getByText('Fix bug').closest('[draggable="true"]') as HTMLElement;
+    expect(card).not.toBeNull();
+    // The column wrapper is the drop target - the "+" button's grandparent,
+    // since the button sits in the column's header row, itself a direct
+    // child of the column.
+    // The empty column also renders a second "Add task to X" button (the
+    // dashed placeholder), so this must take the first match - the one in
+    // the column's header row, whose grandparent is the column itself.
+    const inProgressColumn = screen.getAllByLabelText('Add task to In Progress')[0].parentElement!.parentElement as HTMLElement;
+
+    const dataTransfer = fakeDataTransfer();
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.dragEnter(inProgressColumn, { dataTransfer });
+    fireEvent.drop(inProgressColumn, { dataTransfer });
+
+    await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
+  });
+
+  it('shows an error if a drag-and-drop status move fails', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockUpdateTaskStatus.mockRejectedValue(new Error('transition not allowed'));
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+
+    const card = screen.getByText('Fix bug').closest('[draggable="true"]') as HTMLElement;
+    const doneColumn = screen.getAllByLabelText('Add task to Done')[0].parentElement!.parentElement as HTMLElement;
+
+    const dataTransfer = fakeDataTransfer();
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.drop(doneColumn, { dataTransfer });
+
+    expect(await screen.findByText(/Failed to move task: transition not allowed/)).toBeInTheDocument();
+  });
+
   it('asks the server for one column at a time, rather than the whole project', async () => {
     // This replaces a test that asserted the board looped the cursor until the
     // project was exhausted. That was the defect, not the contract: at the
