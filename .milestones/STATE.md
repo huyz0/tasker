@@ -1,8 +1,8 @@
 ---
 active_milestone: M08
 active_task: null
-last_updated: 2026-08-17
-last_commit: f569b55
+last_updated: 2026-08-18
+last_commit: 3652f9e
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,103 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-18 — Fifth out-of-band review/fix round merged: Tasks feature deep
+review.** Same structure as the Agents (M17) and Artifacts (M18) rounds
+before it: three parallel reviews (backend, GUI, CLI) of the Tasks feature -
+`Task`/`TaskType`/`TaskStatus`/`TaskReviewer`/`TaskNote` entities, the Tasks
+GUI screens, and the CLI `tasks`/`tasks_comments`/`tasks_notes` commands -
+explicitly scoped to exclude what M14 ("Task Reliability & Agent
+Self-Service") and an earlier informal GUI round already fixed, followed by
+fixing everything found. Developed on
+`feature/tasks-feature-review-and-fixes` (branched from `main` post the
+Artifacts round) as nine commits.
+
+One security bug (M19-T01): `updateTaskNote`/`deleteTaskNote` checked only
+an ordinary `tasknote:write` permission, not authorship - any org member,
+or any other agent's token, could rewrite or delete an agent's own record
+of its work. Mirrors `comments.handler.ts`'s `assertCommentAuthor` (M04,
+ADR-0008) - the identical bug, already fixed once for comments.
+
+Backend (M19-T02–T03): `getTask`/`listTasks`/`listTaskNotes` validated by
+hand instead of Zod (same class as M17-T02/M18-T02's fixes elsewhere);
+`Task`/`TaskNote` never exposed `createdAt` on the wire despite the handler
+computing it, and `createTask`/`createTaskNote`'s payloads never had it at
+all - both the "computed then dropped" and the more severe "never set"
+variants of the same recurring bug class, fixed the same way (added field
+11/5 to the contract, explicit `createdAt: new Date()` + `insertRecord`'s
+auto-stamp disabled). `createTask`/`updateTask` never checked a
+project-scoped `taskTypeId` actually belonged to the task's own project -
+mirrors `createTaskType`'s own rule, closed on the task side too.
+`updateTaskType` checked cross-org parents but neither cross-project nor
+cycles when reparenting an *existing* type (impossible on create, since a
+brand-new type can't already be its own ancestor). `taskStatuses`/
+`taskReviewers` gained unique constraints closing check-then-insert races,
+verified against a live MySQL instance. `listTasks`'s
+status/assigneeFilter/onlyDeleted facets could leak a stale cached
+`totalCount` across a differently-scoped request; the shared pagination
+helper (`executePaginatedQuery`) gained an opt-in `extraCacheKey` to close
+this generically rather than one-off for Tasks. `AssignTaskRequest`'s
+`agentId`/`userId` are now real proto3 `optional` fields, matching
+`UnassignTaskRequest` and the Zod schema's existing "exactly one" contract.
+
+GUI (M19-T04–T05): the table view crashed entirely on a task whose status
+matched no resolved column (a non-null assertion on a lookup that can miss
+during a task-type-loading race, or after a status is deleted/renamed) -
+now falls back to showing the raw status string instead of taking the
+whole table down. `AssigneePicker` only invalidated the board/table's list
+query, leaving the task-detail panel's separate `['task', id]` query
+showing a stale assignee list after assigning/unassigning from that panel.
+The open task-detail overlay (URL-driven, so it survives navigation by
+design) and `TaskTypesEditor`'s selected type both also survived a
+project/org *switch*, continuing to query across the old scope - both now
+reset on switch, mirroring M18-T05's identical fix for the Artifacts
+explorer's selection.
+
+CLI (M19-T06–T09): `tasks claim` - the M14-T06 headline agent-self-service
+feature (atomically claim an unassigned task) - had no CLI command at all,
+nor did `tasks get`/`update`/`unassign`, nor `comment update`/`delete` and
+`tasks note-update`/`note-delete` (the latter pair deliberately sequenced
+after M19-T01, since the author-only check had to exist before adding a
+CLI path to reach the RPC). `--idempotency-key` (M14-T07) was unreachable
+from the CLI on both `create` and the new `claim`. `tasks list` gained
+`--only-deleted`/`--status`/`--assignee-filter`. Test coverage backfilled
+across `tasks_notes.go` (previously zero), `tasksAssignCmd`/
+`tasksUpdateStatusCmd`/delete/restore/purge (including their `--json`
+branches, never actually exercised despite looking correct on inspection),
+`tasksCommentsCmd`, and every command's required-flag validation path -
+along the way, found and worked around a recurring package-level-singleton
+flag-persistence gotcha already present in the test suite (a flag value
+set by one test surviving into the next via cobra's shared `Command`
+singletons across `Execute()` calls within one test binary).
+
+Deferred, explicitly out of scope for this round:
+
+- `claimTask` has no GUI surface - deliberate; an agent-facing feature
+  correctly reached via CLI/API, not the human-facing board.
+- `idempotencyKey` is unused by any GUI mutation - a project-wide gap
+  (agents don't operate through the GUI), not Tasks-specific.
+- `TaskNotesPanel` has no add-note UI - likely intentional; a note is an
+  agent's own record of its work, read/moderated by a human, not authored
+  by one.
+- The doubled `"Error: Error:"` CLI prefix (missing `SilenceErrors` in
+  `root.go`, pre-existing and repo-wide across every command with a
+  required-flag check that embeds its own `"Error: "` prefix) - confirmed
+  no new `tasks.go`/`tasks_notes.go`/`comments.go` code copies the
+  offending convention; the actual fix is out of scope for a
+  single-feature round.
+- `UnassignTaskRequest`'s `health.proto` still lacks the `optional`
+  keyword its own `main.tsp` `?` declarations call for (unlike
+  `AssignTaskRequest`, fixed this round) - noticed while fixing Assign's
+  sibling issue, but a separate pre-existing gap this round's findings
+  didn't select.
+
+`moon check --all` (27/27) clean at every commit. Backend: 1322 pass, 0
+fail, coverage held at its established near-100% gate on every touched
+file. GUI: `tsc -b && vite build` clean, vitest coverage held at 98%+
+statements. CLI: `go build`/`vet`/`test` clean, full suite re-run twice
+with `-count=1` to rule out order-dependent flakiness from the
+singleton-command gotcha found along the way.
 
 **2026-08-17 — Fourth out-of-band review/fix round merged: Artifacts feature
 deep review.** Same structure as the Agents round just before it: three
