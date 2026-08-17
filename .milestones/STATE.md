@@ -1,6 +1,6 @@
 ---
-active_milestone: M08
-active_task: null
+active_milestone: M14
+active_task: M14-T01
 last_updated: 2026-08-17
 last_commit: b4be47a
 blocked: false
@@ -15,6 +15,23 @@ blocker: null
 
 ## Now
 
+**2026-08-17 — M14 (Task Reliability & Agent Self-Service) planned and
+inserted ahead of M08, by explicit product direction.**
+
+A deep review of task type/state/editing (UI, UX, API, implementation, test
+depth), a competitive usability read against Linear/Jira/Trello/Monday, and a
+dedicated pass on the agent-facing surface together found three live defects
+in the task edit/status/archive paths and, more fundamentally, that the
+product's own stated goal — usable by autonomous AI agents, not just humans —
+is not yet met: agents cannot claim their own work, there is no atomic claim
+primitive, and no mutating task RPC is retry-safe. Full plan and rationale:
+`.milestones/MILESTONE-14-task-reliability-and-agent-self-service/MILESTONE.md`.
+
+M14 has no `depends_on` edge to M08 — both are unblocked and independent —
+but leads it by priority for the same reason M13 led M10: it fixes the
+active task-management surface rather than adding a new one, and the
+agent-self-service half is this project's namesake capability.
+
 **2026-08-17 — M10 (Teams & Policy-Based RBAC) closed: 13/13 tasks, every
 exit criterion in the milestone's own §6 verification checklist met.**
 Developed on `feature/m10-teams-and-policy-rbac`, not yet merged to `main`
@@ -27,23 +44,20 @@ an optional, disable-able linked identity rather than the account itself
 (M13, closed 2026-08-16); teams as a first-class grouping below the
 organization (M10-T07/T08/T12); and a real, policy-based role and
 permission-management system replacing the old hardcoded four-tier enum
-(ADR-0013, M10). Both milestones are done; nothing further was asked of
-this effort by name.
+(ADR-0013, M10). Both milestones are done.
 
-- **Milestone**: M08 — Events, Audit & Real-Time is next in the ledger's
-  numeric order (unblocked - both `depends_on` entries, M04 and M07, are
-  done) if delivery continues into the pre-existing backlog. Not started;
-  this was not part of the three-part goal above, so it was left queued
-  rather than picked up automatically.
-- **Command to continue**: `/milestone-deliver M08` (or
-  `/milestone-deliver-auto M08`) to start the next queued milestone: `git
-  checkout main && git merge feature/m10-teams-and-policy-rbac` first (and
-  `feature/m13-...` if not already merged) per `git-workflow-standard.md`'s
-  branch-per-milestone convention.
+- **Milestone**: M08 — Events, Audit & Real-Time remains next in the
+  ledger's numeric order (unblocked — both `depends_on` entries, M04 and
+  M07, are done) once M14 closes.
+- **Command to continue**: `/milestone-deliver M14` (or
+  `/milestone-deliver-auto M14`) — branch `feature/m14-task-reliability-and-agent-self-service`
+  off `main` (after merging `feature/m10-teams-and-policy-rbac` and
+  `feature/m13-...` if not already merged) per
+  `git-workflow-standard.md`'s branch-per-milestone convention.
 
 M09, M11, M12 remain queued behind M08 in their prior order, unaffected by
-M10's closure — nothing in their `depends_on` required M08 to run before
-either M13 or M10.
+M10's or M14's insertion — nothing in their `depends_on` required either to
+run first.
 
 ## How to resume
 
@@ -73,8 +87,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 | M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
+| M14 | Task Reliability & Agent Self-Service | todo | M04, M05 | 9   | 0    |
 
-**Total: 160 tasks across 13 milestones — 117 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15).**
+**Total: 169 tasks across 14 milestones — 117 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15).**
 
 ## Dependency graph
 
@@ -98,6 +113,8 @@ graph LR
   M11 --> M12
   M01 --> M13[M13 Local Accounts]
   M03 --> M13
+  M04 --> M14[M14 Task Reliability & Agent Self-Service]
+  M05 --> M14
 ```
 
 Milestones with no dependency edge between them may run in parallel on separate

@@ -70,6 +70,7 @@ The original MVP scope, with the milestone that owns each remaining gap.
 | **M11** | [Observability & Deployability](../../.milestones/MILESTONE-11-observability-and-deployability/MILESTONE.md) | Deployable to a real environment and debuggable there. | M08 |
 | **M12** | [Test Depth & Release](../../.milestones/MILESTONE-12-test-depth-and-release/MILESTONE.md) | The client–server seam is tested, journeys are covered, the product is distributable. | M06, M09, M11 |
 | **M13** | [Local Accounts & Linked Identity](../../.milestones/MILESTONE-13-local-accounts-and-linked-identity/MILESTONE.md) | A user can exist and log in on a local username and password with no email or external provider required; Google is one optional linked identity among possibly several. | M01, M03 |
+| **M14** | [Task Reliability & Agent Self-Service](../../.milestones/MILESTONE-14-task-reliability-and-agent-self-service/MILESTONE.md) | Task mutations are correct under concurrent/retried writes, and an agent can discover, claim and complete work with no human broker. | M04, M05 |
 
 ## Sequencing rationale
 
@@ -100,6 +101,15 @@ whatever a `users` row is. Building M10's teams/grants model after M13 means
 it is designed against a user model that already tolerates no-email accounts,
 rather than assuming — as the current member picker and invitation flow do —
 that every member has an email.
+
+**M14 leads M08 by product priority, not by a technical dependency.** Both are
+unblocked once their `depends_on` lists are satisfied (M14: M04, M05 — both
+done). M14 fixes correctness defects in the task write path that is already
+live, and closes the gap between the product's stated goal — usable by
+autonomous agents — and what the API actually allows an agent principal to
+do (claim work, retry safely). That gap is judged higher priority than adding
+a new capability (M08's real-time/audit surface), so M14 goes first; nothing
+in M08's scope depends on M14 or vice versa.
 
 ## Parallelism
 
