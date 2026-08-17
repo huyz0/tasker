@@ -113,7 +113,11 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       // can()'s project->org ancestor climbing means an org-level grant still
       // works too - this only widens what's accepted, never narrows it.
       await authorizePrincipal(db, principal, result[0].orgId, { scope: 'projects:read', permission: 'project:read' }, { type: 'project', id: parsed.id });
-      return { project: result[0] };
+      // M20-T01: deletedAt is a JS Date straight off the row (or null) - the
+      // wire field is `string deletedAt = 6`, and connect's protobuf JSON
+      // encoder throws ("expected string, got object") on a Date, not just
+      // silently stringifying it. Every archived project 500'd on this RPC.
+      return { project: { ...result[0], deletedAt: result[0].deletedAt instanceof Date ? result[0].deletedAt.toISOString() : result[0].deletedAt } };
     },
     async createProject(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
@@ -194,6 +198,11 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
         projects: items.map((p: any) => ({
           ...p,
           createdAt: p.createdAt instanceof Date ? p.createdAt.toISOString() : p.createdAt,
+          // M20-T01: see getProject's comment - the same Date-vs-string
+          // encoding crash, and this is the path that actually triggers it
+          // in practice (onlyDeleted:true selects nothing but archived
+          // rows, so every row here has a non-null deletedAt).
+          deletedAt: p.deletedAt instanceof Date ? p.deletedAt.toISOString() : p.deletedAt,
         })),
         page: { nextCursor, totalCount },
       };
@@ -213,7 +222,14 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       if (parsed.description !== undefined) updates.description = parsed.description;
       await db.update(ps).set(updates).where(eq((ps as any).id, parsed.projectId));
 
-      const updated = { ...result[0], ...updates };
+      const updated = {
+        ...result[0],
+        ...updates,
+        // M20-T01: same Date-vs-string encoding crash as getProject/
+        // listProjects - reachable here too since nothing stops updateProject
+        // from being called on an already-archived row.
+        deletedAt: result[0].deletedAt instanceof Date ? result[0].deletedAt.toISOString() : result[0].deletedAt,
+      };
       publishDomainEvent(nc, "domain.project.updated", updated);
       return { project: updated };
     },

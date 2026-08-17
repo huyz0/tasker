@@ -1,10 +1,12 @@
 import { expect, test, describe, beforeAll } from "bun:test";
 import { Code } from "@connectrpc/connect";
 import { eq } from "drizzle-orm";
+import { create, toJson } from "@bufbuild/protobuf";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createProjectsHandler, createProjectTemplatesHandler } from "./projects.handler";
 import { createTasksHandler, createTaskManagementHandler } from "../tasks/tasks.handler";
+import { ProjectSchema } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 
 describe("Projects Handler Integration Logic", () => {
   let db: any;
@@ -265,6 +267,19 @@ describe("Projects Handler Integration Logic", () => {
 
     const binList = await pHandler.listProjects({ orgId: "org-test", onlyDeleted: true }, ctx);
     expect(binList.projects.some((p: any) => p.id === pResp.project.id)).toBe(true);
+    const binnedProject = binList.projects.find((p: any) => p.id === pResp.project.id);
+    // M20-T01: deletedAt used to come back as a raw JS Date, not the ISO
+    // string the wire model declares - a Date is not a bug a handler-level
+    // unit test catches on its own (`typeof` still reports "object" either
+    // way from bun:test's point of view unless asserted precisely), so this
+    // also round-trips through the real protobuf encoder below, which is
+    // what actually threw against a live server.
+    expect(typeof binnedProject.deletedAt).toBe("string");
+    expect(() => toJson(ProjectSchema, create(ProjectSchema, binnedProject))).not.toThrow();
+
+    const gotArchived = await pHandler.getProject({ id: pResp.project.id }, ctx);
+    expect(typeof gotArchived.project.deletedAt).toBe("string");
+    expect(() => toJson(ProjectSchema, create(ProjectSchema, gotArchived.project))).not.toThrow();
 
     await expect(pHandler.restoreProject({ projectId: pResp.project.id }, makeAuthContext(memberId))).rejects.toThrow();
 
