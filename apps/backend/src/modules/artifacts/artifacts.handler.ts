@@ -399,6 +399,13 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
       // Names its columns for the same reason the list does: `content` can hold
       // ~15 MB of base64, and this response is not where it belongs.
+      //
+      // M18-T01: deliberately not filtered on notDeleted, matching
+      // getArtifactContent, getTask, and getProject - none of this codebase's
+      // other single-row "get" RPCs 404 an archived/soft-deleted row, and this
+      // one used to be the sole exception, which meant a deep link to an
+      // archived artifact resolved via getArtifactContent but not via this
+      // RPC, even though both are meant to serve the same deep-linked viewer.
       const rows = await db
         .select({
           id: (arts as any).id,
@@ -408,7 +415,7 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
           contentType: (arts as any).contentType,
         })
         .from(arts)
-        .where(and(eq((arts as any).id, parsed.artifactId), notDeleted(arts)))
+        .where(eq((arts as any).id, parsed.artifactId))
         .limit(1);
       if (rows.length === 0) throw new ConnectError("Artifact not found", Code.NotFound);
 

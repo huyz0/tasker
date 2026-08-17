@@ -188,6 +188,78 @@ describe("Artifacts Handler", () => {
     ).rejects.toThrow();
   });
 
+  // --- getArtifact ---
+
+  it("should get an artifact by id without its content", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({
+      folderId: folder.folder.id, name: "Doc", description: "d", content: "body",
+    }, ctx);
+    const res = await handler.getArtifact({ artifactId: created.artifact.id }, ctx);
+    expect(res.artifact.id).toBe(created.artifact.id);
+    expect(res.artifact.name).toBe("Doc");
+    expect(res.artifact.description).toBe("d");
+    expect((res.artifact as any).content).toBeUndefined();
+  });
+
+  it("should reject getArtifact for a nonexistent artifact", async () => {
+    await expect(handler.getArtifact({ artifactId: "art-does-not-exist" }, ctx)).rejects.toThrow();
+  });
+
+  it("should reject getArtifact from a user outside the artifact's org", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx);
+    await expect(
+      handler.getArtifact({ artifactId: created.artifact.id }, makeAuthContext("user-outsider"))
+    ).rejects.toThrow();
+  });
+
+  // M18-T01: getArtifact used to 404 an archived artifact while
+  // getArtifactContent did not, so a deep link to the same artifact resolved
+  // through one RPC and not the other.
+  it("should still resolve an archived artifact, matching getArtifactContent's behavior", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx);
+    await handler.archiveArtifact({ artifactId: created.artifact.id }, ctx);
+
+    const res = await handler.getArtifact({ artifactId: created.artifact.id }, ctx);
+    expect(res.artifact.id).toBe(created.artifact.id);
+  });
+
+  // --- getArtifactContent ---
+
+  it("should get an artifact's content and size", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({
+      folderId: folder.folder.id, name: "Doc", content: "hello world",
+    }, ctx);
+    const res = await handler.getArtifactContent({ artifactId: created.artifact.id }, ctx);
+    expect(res.content).toBe("hello world");
+    expect(res.contentType).toBe("text/markdown");
+    expect(res.sizeBytes).toBe(BigInt("hello world".length));
+  });
+
+  it("should reject getArtifactContent for a nonexistent artifact", async () => {
+    await expect(handler.getArtifactContent({ artifactId: "art-does-not-exist" }, ctx)).rejects.toThrow();
+  });
+
+  it("should reject getArtifactContent from a user outside the artifact's org", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx);
+    await expect(
+      handler.getArtifactContent({ artifactId: created.artifact.id }, makeAuthContext("user-outsider"))
+    ).rejects.toThrow();
+  });
+
+  it("should still resolve an archived artifact's content", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    const created = await handler.createArtifact({ folderId: folder.folder.id, name: "Doc", content: "x" }, ctx);
+    await handler.archiveArtifact({ artifactId: created.artifact.id }, ctx);
+
+    const res = await handler.getArtifactContent({ artifactId: created.artifact.id }, ctx);
+    expect(res.content).toBe("x");
+  });
+
   // --- linkTaskArtifact ---
 
   it("should link task and artifact in the same org", async () => {
