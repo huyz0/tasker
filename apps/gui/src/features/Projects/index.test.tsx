@@ -96,6 +96,7 @@ describe('ProjectsWizard', () => {
       templateId: 'tpl-1',
       name: 'My Real Project',
       ownerId: mockUserId,
+      description: '',
     }));
   });
 
@@ -313,7 +314,36 @@ describe('ProjectsWizard', () => {
     fireEvent.change(nameInput, { target: { value: 'Renamed Project' } });
     fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(mockUpdateProject).toHaveBeenCalledWith({ projectId: 'proj-1', name: 'Renamed Project' }));
+    // description is always sent, even untouched - empty here since the
+    // fixture project had none, same as how Tasks always sends description.
+    await waitFor(() => expect(mockUpdateProject).toHaveBeenCalledWith({ projectId: 'proj-1', name: 'Renamed Project', description: '' }));
+  });
+
+  // M16-T02: no description field existed on a project at all before this.
+  it('shows, edits, and clears a project description through the GUI', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project', description: 'Ships the thing' }] });
+    mockUpdateProject.mockResolvedValue({ project: { id: 'proj-1', name: 'Existing Project', description: 'New description' } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Ships the thing')).toBeDefined());
+
+    fireEvent.click(screen.getByText('Edit'));
+    const descriptionInput = screen.getByDisplayValue('Ships the thing');
+    fireEvent.change(descriptionInput, { target: { value: 'New description' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockUpdateProject).toHaveBeenCalledWith({
+      projectId: 'proj-1', name: 'Existing Project', description: 'New description',
+    }));
+  });
+
+  it('shows a fallback when a project has no description', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    renderPage();
+
+    expect(await screen.findByText('No description.')).toBeInTheDocument();
   });
 
   it('cancels editing a project without saving', async () => {

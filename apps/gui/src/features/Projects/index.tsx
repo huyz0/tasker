@@ -25,6 +25,7 @@ export function ProjectsWizard() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const { userId: activeOwnerId } = useAuthSession();
   const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
   const [isAddingTemplate, setIsAddingTemplate] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDescription, setNewTemplateDescription] = useState('');
@@ -33,6 +34,7 @@ export function ProjectsWizard() {
   const [editTemplateDescription, setEditTemplateDescription] = useState('');
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editProjectName, setEditProjectName] = useState('');
+  const [editProjectDescription, setEditProjectDescription] = useState('');
 
   const queryClient = useQueryClient();
   useEffect(() => setActivePageTitle('Projects'), [setActivePageTitle]);
@@ -73,7 +75,8 @@ export function ProjectsWizard() {
         orgId: activeOrgId,
         templateId,
         name: projectName.trim(),
-        ownerId: activeOwnerId
+        ownerId: activeOwnerId,
+        description: projectDescription.trim(),
       });
       return resp.project;
     },
@@ -81,6 +84,7 @@ export function ProjectsWizard() {
       queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
       queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
       setProjectName('');
+      setProjectDescription('');
     }
   });
 
@@ -111,8 +115,8 @@ export function ProjectsWizard() {
   });
 
   const updateProjectMutation = useMutation({
-    mutationFn: async (variables: { projectId: string; name: string }) => {
-      await projectClient.updateProject({ projectId: variables.projectId, name: variables.name });
+    mutationFn: async (variables: { projectId: string; name: string; description: string }) => {
+      await projectClient.updateProject(variables);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
@@ -185,14 +189,23 @@ export function ProjectsWizard() {
           </form>
         )}
 
-        <div className="mb-4">
+        <div className="mb-4 flex flex-col gap-2 max-w-sm">
           <input
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
             placeholder="New project name"
-            className="w-full max-w-sm rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
           />
-          <p className="text-xs text-muted-foreground mt-1">Enter a project name, then pick a template below to create it.</p>
+          <label className="sr-only" htmlFor="new-project-description">Project description</label>
+          <textarea
+            id="new-project-description"
+            value={projectDescription}
+            onChange={(e) => setProjectDescription(e.target.value)}
+            placeholder="What is this project for? (optional)"
+            rows={2}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <p className="text-xs text-muted-foreground">Enter a project name, then pick a template below to create it.</p>
         </div>
         {createProjectMutation.isError && (
           <p className="text-sm text-destructive mb-4">Failed to create project: {(createProjectMutation.error as Error).message}</p>
@@ -312,9 +325,11 @@ export function ProjectsWizard() {
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
-                        if (editProjectName.trim()) updateProjectMutation.mutate({ projectId: p.id, name: editProjectName.trim() });
+                        if (editProjectName.trim()) {
+                          updateProjectMutation.mutate({ projectId: p.id, name: editProjectName.trim(), description: editProjectDescription });
+                        }
                       }}
-                      className="flex items-center gap-2 flex-1"
+                      className="flex flex-col gap-2 flex-1"
                     >
                       <input
                         autoFocus
@@ -322,31 +337,47 @@ export function ProjectsWizard() {
                         onChange={(e) => setEditProjectName(e.target.value)}
                         className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
                       />
-                      <button
-                        type="submit"
-                        disabled={!editProjectName.trim() || updateProjectMutation.isPending}
-                        className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
-                      >
-                        {updateProjectMutation.isPending ? 'Saving...' : 'Save'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingProjectId(null)}
-                        className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
-                      >
-                        Cancel
-                      </button>
+                      <label className="sr-only" htmlFor={`edit-project-description-${p.id}`}>Project description</label>
+                      <textarea
+                        id={`edit-project-description-${p.id}`}
+                        value={editProjectDescription}
+                        onChange={(e) => setEditProjectDescription(e.target.value)}
+                        placeholder="What is this project for? (optional)"
+                        rows={2}
+                        className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="submit"
+                          disabled={!editProjectName.trim() || updateProjectMutation.isPending}
+                          className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
+                        >
+                          {updateProjectMutation.isPending ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingProjectId(null)}
+                          className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </form>
                   ) : (
                     <div>
                       <h3 className="font-semibold text-lg">{p.name} <span className="text-xs font-mono text-muted-foreground">[{p.key}]</span></h3>
+                      {p.description ? (
+                        <p className="text-sm text-muted-foreground mt-1">{p.description}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic mt-1">No description.</p>
+                      )}
                       <p className="text-xs text-muted-foreground mt-1">ID: {p.id}</p>
                     </div>
                   )}
                   {editingProjectId !== p.id && (
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => { setEditingProjectId(p.id); setEditProjectName(p.name); }}
+                        onClick={() => { setEditingProjectId(p.id); setEditProjectName(p.name); setEditProjectDescription(p.description || ''); }}
                         className="text-muted-foreground hover:text-foreground text-sm"
                       >
                         Edit
