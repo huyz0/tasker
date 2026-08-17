@@ -5,6 +5,7 @@ import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import { requirePrincipal, authorizePrincipal, getTaskOrgId } from "../../lib/authz";
+import type { Principal } from "../auth/session";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schema ---
@@ -26,6 +27,24 @@ const UpdateTaskNoteSchema = z.object({
 const DeleteTaskNoteSchema = z.object({
   taskNoteId: z.string().min(1, "taskNoteId is required"),
 });
+
+/**
+ * A task note may only be edited or deleted by the agent that authored it.
+ *
+ * M19-T01: updateTaskNote/deleteTaskNote used to check only that the caller
+ * held tasknote:write in the note's organization - an ordinary permission,
+ * not admin-gated - so any member, or any other agent's token, could rewrite
+ * or delete an agent's own record of its work. createTaskNote already
+ * restricted authorship to the calling agent; this closes the same gap on
+ * its sibling RPCs. Mirrors comments.handler.ts's assertCommentAuthor
+ * (M04, ADR-0008) - the identical bug, already fixed once for comments.
+ */
+function assertTaskNoteAuthor(note: any, principal: Principal) {
+  const isAuthor = principal.kind === "agent" && note.agentId === principal.agentId;
+  if (!isAuthor) {
+    throw new ConnectError("only the note's author can edit or delete it", Code.PermissionDenied);
+  }
+}
 
 // --- Handler Factory ---
 
@@ -73,6 +92,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       if (!existing || existing.length === 0) throw new ConnectError("task note not found", Code.NotFound);
       const orgId = await getTaskOrgId(db, existing[0].taskId);
       await authorizePrincipal(db, principal, orgId, { scope: 'comments:write', permission: 'tasknote:write' });
+      assertTaskNoteAuthor(existing[0], principal);
 
       await db.update(notes).set({ content: parsed.content }).where(eq((notes as any).id, parsed.taskNoteId));
 
@@ -89,6 +109,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       if (!existing || existing.length === 0) throw new ConnectError("task note not found", Code.NotFound);
       const orgId = await getTaskOrgId(db, existing[0].taskId);
       await authorizePrincipal(db, principal, orgId, { scope: 'comments:write', permission: 'tasknote:write' });
+      assertTaskNoteAuthor(existing[0], principal);
 
       await db.delete(notes).where(eq((notes as any).id, parsed.taskNoteId));
 
