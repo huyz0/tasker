@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { RepositoryIntegrationConfig } from '../../components/ui/repositories/RepositoryIntegrationConfig';
 import { useAuthSession } from '../../hooks/useAuthSession';
@@ -66,6 +66,7 @@ type Grant = { id: string; subjectType: string; subjectId: string; roleId: strin
  */
 function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string }) {
   const queryClient = useQueryClient();
+  const { confirm, confirmDialog } = useConfirm();
   const [isOpen, setIsOpen] = useState(false);
   const [isPicking, setIsPicking] = useState(false);
   const [search, setSearch] = useState('');
@@ -90,6 +91,22 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
     enabled: isPicking && !!orgId,
     queryFn: () => orgClient.listOrgMembers({ orgId, page: { limit: SEARCH_PAGE, filter: debouncedSearch || undefined } }),
   });
+
+  // M20-T07: a grant only carries subjectId - the raw user id was rendered
+  // directly, both as the visible row text and the revoke button's
+  // aria-label, naming nobody a screen reader user (or anyone else) could
+  // recognize. Shares the exact query key the picker above uses for its own
+  // unfiltered page (`debouncedSearch === ''`), so opening this panel and
+  // opening "+ Grant access" don't each fetch their own copy of the same
+  // page - one request serves both. Best-effort: a subject outside this
+  // page's org-member listing still falls back to its raw id.
+  const directoryQuery = useQuery({
+    queryKey: ['projectMemberCandidates', orgId, ''],
+    queryFn: () => orgClient.listOrgMembers({ orgId, page: { limit: SEARCH_PAGE } }),
+    enabled: isOpen && !!orgId,
+  });
+  const directoryById = new Map((directoryQuery.data?.members ?? []).map((m: any) => [m.userId, m]));
+  const displayNameFor = (subjectId: string) => directoryById.get(subjectId)?.name || directoryById.get(subjectId)?.email || subjectId;
 
   const grantMutation = useMutation({
     mutationFn: () => roleClient.grantRole({
@@ -117,7 +134,11 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
   // click exists to avoid.
   if (!isOpen) {
     return (
-      <button onClick={() => setIsOpen(true)} className="text-xs text-muted-foreground hover:text-foreground">
+      <button
+        onClick={() => { setIsOpen(true); revokeMutation.reset(); }}
+        aria-expanded={false}
+        className="text-xs text-muted-foreground hover:text-foreground"
+      >
         Members
       </button>
     );
@@ -127,7 +148,15 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
     <div className="mt-3 border-t pt-3 flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-medium">Project members</h4>
-        <button onClick={() => setIsOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">
+        <button
+          // M20-T06: collapsing this panel doesn't unmount it (isOpen===false
+          // is an early return above, not an unmount), so a failed revoke's
+          // error used to survive being hidden and reappear on the next
+          // expand with no action having been taken yet.
+          onClick={() => { setIsOpen(false); revokeMutation.reset(); }}
+          aria-expanded={true}
+          className="text-xs text-muted-foreground hover:text-foreground"
+        >
           Hide
         </button>
       </div>
@@ -146,12 +175,30 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
         <ul className="flex flex-col gap-1">
           {grants.map((g) => (
             <li key={g.id} className="flex items-center gap-2 text-xs bg-muted px-2 py-1 rounded-md">
-              <span className="flex-1 truncate">{g.subjectId}</span>
+              <span className="flex-1 truncate">{displayNameFor(g.subjectId)}</span>
               <span className="text-muted-foreground">{g.roleName}</span>
               <button
-                aria-label={`Revoke ${g.roleName} from this project`}
-                onClick={() => revokeMutation.mutate(g.id)}
-                disabled={revokeMutation.isPending}
+                aria-label={`Revoke ${displayNameFor(g.subjectId)}'s ${g.roleName} access`}
+                onClick={async () => {
+                  // M20-T07: every other destructive action on this page
+                  // (archiving a project, unlinking a repository) confirms
+                  // first - revoking someone's access was the one silent
+                  // exception, one misclick away from an unannounced,
+                  // unconfirmed permission change.
+                  if (await confirm({
+                    title: `Revoke ${displayNameFor(g.subjectId)}'s ${g.roleName} access to this project?`,
+                    consequence: 'They keep whatever an org-wide role already gives them, but lose this project-specific grant.',
+                    undo: 'You can grant it again from this same panel.',
+                    confirmLabel: 'Revoke access',
+                  })) {
+                    revokeMutation.mutate(g.id);
+                  }
+                }}
+                // M20-T06: one shared mutation object across every grant row
+                // meant revoking one disabled the ✕ on every other row too -
+                // compare against the specific grant id this mutation was
+                // called with.
+                disabled={revokeMutation.isPending && revokeMutation.variables === g.id}
                 className="text-muted-foreground hover:text-destructive disabled:opacity-50"
               >
                 ✕
@@ -165,7 +212,10 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
       )}
 
       {!isPicking ? (
-        <button onClick={() => setIsPicking(true)} className="self-start text-xs text-primary hover:underline">
+        <button
+          onClick={() => { setIsPicking(true); grantMutation.reset(); }}
+          className="self-start text-xs text-primary hover:underline"
+        >
           + Grant access
         </button>
       ) : (
@@ -195,7 +245,10 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
               {candidatesQuery.isSuccess && candidates.length === 0 && (
                 <span className="text-xs text-muted-foreground">No matches.</span>
               )}
-              <button onClick={() => { setIsPicking(false); setSearch(''); }} className="self-start text-xs text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => { setIsPicking(false); setSearch(''); grantMutation.reset(); }}
+                className="self-start text-xs text-muted-foreground hover:text-foreground"
+              >
                 Cancel
               </button>
             </>
@@ -229,7 +282,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
               </button>
               <button
                 type="button"
-                onClick={() => { setPendingSubjectId(''); setIsPicking(false); }}
+                onClick={() => { setPendingSubjectId(''); setIsPicking(false); grantMutation.reset(); }}
                 className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
               >
                 Cancel
@@ -241,6 +294,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
           )}
         </div>
       )}
+      {confirmDialog}
     </div>
   );
 }
@@ -249,6 +303,8 @@ export function ProjectsWizard() {
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
+  const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const setActiveProjectId = useLayoutStore((s) => s.setActiveProjectId);
   const { userId: activeOwnerId } = useAuthSession();
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
@@ -264,6 +320,29 @@ export function ProjectsWizard() {
 
   const queryClient = useQueryClient();
   useEffect(() => setActivePageTitle('Projects'), [setActivePageTitle]);
+
+  // M20-T05: none of the page-level drafts (new project name/description,
+  // the new-template form, the two inline edit forms) ever reset on an org
+  // switch - typing a project name intended for org A, switching to org B,
+  // then clicking "Use Template" created the project in org B carrying org
+  // A's draft name, with no visible reset having happened. Skipped on the
+  // very first render so mounting doesn't clear a draft nobody has typed
+  // yet.
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setProjectName('');
+    setProjectDescription('');
+    setIsAddingTemplate(false);
+    setNewTemplateName('');
+    setNewTemplateDescription('');
+    setEditingTemplateId(null);
+    setEditingProjectId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOrgId]);
 
   const { data: templatesData, isLoading: isLoadingTemplates, error: templatesError, refetch: refetchTemplates } = useQuery({
     queryKey: ['templates', activeOrgId],
@@ -307,8 +386,13 @@ export function ProjectsWizard() {
       return resp.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+      // M20-T05: `['projects', activeOrgId]` matches no query in the app at
+      // all - the sidebar switcher is keyed `['projects', 'switcher', orgId,
+      // search]`, so a new project never appeared there. Invalidating the
+      // bare `['projects']` prefix (matching every project-list key,
+      // including the switcher's and the bin's) is the same pattern the
+      // Organizations screen already uses correctly for `['orgs']`.
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       setProjectName('');
       setProjectDescription('');
     }
@@ -345,8 +429,11 @@ export function ProjectsWizard() {
       await projectClient.updateProject(variables);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+      // M20-T05: same dead/wrong-key fix as createProjectMutation above -
+      // this is also what left a renamed project's stale old name in the
+      // sidebar switcher even after the query itself refreshed (see
+      // OrgProjectSwitcher's own fix for the other half of that bug).
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       setEditingProjectId(null);
     },
   });
@@ -355,10 +442,16 @@ export function ProjectsWizard() {
     mutationFn: async (projectId: string) => {
       await projectClient.archiveProject({ projectId });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', 'bin', activeOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
+    onSuccess: (_data, projectId) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      // M20-T05: archiving the currently-active project left activeProjectId
+      // pointing at a project that no longer appears in any list - Tasks,
+      // Artifacts, the Bin's own task/folder/artifact tabs, and the
+      // Dashboard all kept querying it indefinitely, and the switcher's
+      // auto-select-fallback never fires on its own since the id is still
+      // non-empty. Clearing it here lets that same fallback pick a
+      // survivor once the switcher's project list refetches.
+      if (projectId === activeProjectId) setActiveProjectId('');
     },
   });
 
@@ -388,14 +481,18 @@ export function ProjectsWizard() {
               if (newTemplateName.trim()) createTemplateMutation.mutate();
             }}
           >
+            <label className="sr-only" htmlFor="new-template-name">Template name</label>
             <input
+              id="new-template-name"
               autoFocus
               value={newTemplateName}
               onChange={(e) => setNewTemplateName(e.target.value)}
               placeholder="Template name"
               className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
             />
+            <label className="sr-only" htmlFor="new-template-description">Template description</label>
             <textarea
+              id="new-template-description"
               value={newTemplateDescription}
               onChange={(e) => setNewTemplateDescription(e.target.value)}
               placeholder="Description (optional)"
@@ -416,7 +513,9 @@ export function ProjectsWizard() {
         )}
 
         <div className="mb-4 flex flex-col gap-2 max-w-sm">
+          <label className="sr-only" htmlFor="new-project-name">New project name</label>
           <input
+            id="new-project-name"
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
             placeholder="New project name"
@@ -461,13 +560,17 @@ export function ProjectsWizard() {
                      }}
                      className="flex flex-col gap-2 mb-4"
                    >
+                     <label className="sr-only" htmlFor={`edit-template-name-${t.id}`}>Template name</label>
                      <input
+                       id={`edit-template-name-${t.id}`}
                        autoFocus
                        value={editTemplateName}
                        onChange={(e) => setEditTemplateName(e.target.value)}
                        className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
                      />
+                     <label className="sr-only" htmlFor={`edit-template-description-${t.id}`}>Template description</label>
                      <textarea
+                       id={`edit-template-description-${t.id}`}
                        value={editTemplateDescription}
                        onChange={(e) => setEditTemplateDescription(e.target.value)}
                        rows={2}
@@ -486,7 +589,7 @@ export function ProjectsWizard() {
                        </button>
                        <button
                          type="button"
-                         onClick={() => setEditingTemplateId(null)}
+                         onClick={() => { setEditingTemplateId(null); updateTemplateMutation.reset(); }}
                          className="flex-1 px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
                        >
                          Cancel
@@ -502,6 +605,12 @@ export function ProjectsWizard() {
                            setEditingTemplateId(t.id);
                            setEditTemplateName(t.name);
                            setEditTemplateDescription(t.description);
+                           // M20-T06: this mutation object is shared across
+                           // every template card - without resetting here,
+                           // opening Edit on template B after template A's
+                           // edit failed showed A's stale error as if B's
+                           // edit had just failed too.
+                           updateTemplateMutation.reset();
                          }}
                          className="text-xs text-muted-foreground hover:text-foreground shrink-0"
                        >
@@ -511,10 +620,15 @@ export function ProjectsWizard() {
                      <p className="text-sm text-muted-foreground mt-1 mb-6 flex-grow">{t.description}</p>
                      <button
                        onClick={() => createProjectMutation.mutate(t.id)}
-                       disabled={createProjectMutation.isPending || !projectName.trim()}
+                       // M20-T06: one shared mutation object across every
+                       // template card meant using one showed "Creating..."
+                       // and disabled every other card's button too -
+                       // compare against the specific template id this
+                       // mutation was called with.
+                       disabled={(createProjectMutation.isPending && createProjectMutation.variables === t.id) || !projectName.trim()}
                        className="w-full px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
                      >
-                       {createProjectMutation.isPending ? 'Creating...' : 'Use Template'}
+                       {createProjectMutation.isPending && createProjectMutation.variables === t.id ? 'Creating...' : 'Use Template'}
                      </button>
                    </>
                  )}
@@ -557,7 +671,9 @@ export function ProjectsWizard() {
                       }}
                       className="flex flex-col gap-2 flex-1"
                     >
+                      <label className="sr-only" htmlFor={`edit-project-name-${p.id}`}>Project name</label>
                       <input
+                        id={`edit-project-name-${p.id}`}
                         autoFocus
                         value={editProjectName}
                         onChange={(e) => setEditProjectName(e.target.value)}
@@ -582,7 +698,7 @@ export function ProjectsWizard() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setEditingProjectId(null)}
+                          onClick={() => { setEditingProjectId(null); updateProjectMutation.reset(); }}
                           className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
                         >
                           Cancel
@@ -607,7 +723,17 @@ export function ProjectsWizard() {
                   {editingProjectId !== p.id && (
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => { setEditingProjectId(p.id); setEditProjectName(p.name); setEditProjectDescription(p.description || ''); }}
+                        onClick={() => {
+                          setEditingProjectId(p.id);
+                          setEditProjectName(p.name);
+                          setEditProjectDescription(p.description || '');
+                          // M20-T06: this mutation object is shared across
+                          // every project card - without resetting here,
+                          // opening Edit on project B after project A's edit
+                          // failed showed A's stale error as if B's edit had
+                          // just failed too.
+                          updateProjectMutation.reset();
+                        }}
                         className="text-muted-foreground hover:text-foreground text-sm"
                       >
                         Edit
@@ -623,7 +749,12 @@ export function ProjectsWizard() {
                             archiveProjectMutation.mutate(p.id);
                           }
                         }}
-                        disabled={archiveProjectMutation.isPending}
+                        // M20-T06: one shared mutation object across every
+                        // project row meant archiving one disabled the
+                        // Delete button on every other row too - compare
+                        // against the specific project id this mutation was
+                        // called with.
+                        disabled={archiveProjectMutation.isPending && archiveProjectMutation.variables === p.id}
                         className="text-muted-foreground hover:text-destructive text-sm disabled:opacity-50"
                       >
                         Delete
@@ -631,7 +762,13 @@ export function ProjectsWizard() {
                     </div>
                   )}
                 </div>
-                {updateProjectMutation.isError && (
+                {/* M20-T06: this used to render unconditionally - one shared
+                    mutation object for the whole page meant a single failed
+                    rename painted this banner on every visible project card,
+                    not just the one being edited. Gated on editingProjectId
+                    now that Cancel/Edit both reset the mutation, so a stale
+                    error can't resurface on an unrelated row either. */}
+                {editingProjectId === p.id && updateProjectMutation.isError && (
                   <p className="text-sm text-destructive mb-4">Failed to update project: {(updateProjectMutation.error as Error).message}</p>
                 )}
                 <RepositoryIntegrationConfig projectId={p.id} />

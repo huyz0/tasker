@@ -209,6 +209,8 @@ export const projectTemplates = mysqlTable("project_templates", {
 }, (table) => {
   return {
     orgIdIdx: index("project_templates_org_id_idx").on(table.orgId),
+    // M20-T04: see the SQLite counterpart for the race this closes.
+    orgIdNameIdx: uniqueIndex("project_templates_org_id_name_idx").on(table.orgId, table.name),
   };
 });
 

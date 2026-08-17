@@ -210,28 +210,38 @@ export function OrgProjectSwitcher() {
     if (!activeOrgId) {
       setActiveOrgId(orgs[0].id);
       setOrgLabel(orgs[0].name);
-    } else if (!orgLabel) {
-      const found = orgs.find((o: any) => o.id === activeOrgId);
-      if (found) setOrgLabel(found.name);
+      return;
     }
-  }, [orgs, activeOrgId, orgLabel, setActiveOrgId]);
+    // M20-T05: this used to be gated on `!orgLabel`, so once set it was
+    // never updated again from fresh query data - renaming the active org
+    // left the sidebar showing its old name for the rest of the session,
+    // fixable only by an org switch (which resets the label) or a reload.
+    // Re-syncing whenever the active org's row is present in whatever page
+    // just loaded keeps the label live without needing its own dedicated
+    // fetch, and still leaves the label untouched (not blanked) on pages
+    // that don't happen to include it.
+    const found = orgs.find((o: any) => o.id === activeOrgId);
+    if (found) setOrgLabel(found.name);
+  }, [orgs, activeOrgId, setActiveOrgId]);
 
   useEffect(() => {
     if (projects.length === 0) return;
-    // Only when nothing is chosen. The old switcher held *every* project, so
-    // "the active one is not in this list" meant it was gone; with one page it
-    // means it is on another page — and re-selecting projects[0] there silently
-    // threw away the choice the user just made. Picking project 1234 of 2000
-    // put the switcher back on project 0999 (M06-T09).
+    // Only auto-*select* when nothing is chosen. The old switcher held
+    // *every* project, so "the active one is not in this list" meant it was
+    // gone; with one page it means it is on another page — and
+    // re-selecting projects[0] there silently threw away the choice the
+    // user just made. Picking project 1234 of 2000 put the switcher back on
+    // project 0999 (M06-T09).
     if (!activeProjectId) {
       setActiveProjectId(projects[0].id);
       setProjectLabel(projects[0].name);
       return;
     }
-    if (!projectLabel) {
-      const found = projects.find((p: any) => p.id === activeProjectId);
-      if (found) setProjectLabel(found.name);
-    }
+    // M20-T05: same re-sync fix as the org effect above - a rename used to
+    // never reach the sidebar because this only ever ran once, gated on
+    // `!projectLabel`.
+    const found = projects.find((p: any) => p.id === activeProjectId);
+    if (found) setProjectLabel(found.name);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects, activeProjectId]);
 

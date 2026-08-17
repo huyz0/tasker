@@ -90,9 +90,12 @@ function ProjectsBin() {
   const restoreMutation = useMutation({
     mutationFn: async (projectId: string) => { await projectClient.restoreProject({ projectId }); },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', 'bin', activeOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
+      // M20-T05: `['projects', activeOrgId]` matches no query in the app -
+      // the sidebar switcher is keyed `['projects', 'switcher', orgId,
+      // search]`, so a restored project never reappeared there. The bare
+      // `['projects']` prefix covers every project-list key at once,
+      // including this bin's own and the switcher's.
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
   });
   const purgeMutation = useMutation({

@@ -70,13 +70,19 @@ function BuildsPanel({ repositoryLinkId }: { repositoryLinkId: string }) {
     <ul className="pl-3 py-1 space-y-1">
       {builds.map(build => (
         <li key={build.id}>
-          <div
+          {/* M20-T07: a bare <div onClick> is invisible to a screen reader
+              and unreachable from the keyboard - this is a disclosure toggle
+              like every other one on this page, so it gets a real button
+              and an aria-expanded state like the rest of them. */}
+          <button
+            type="button"
             onClick={() => setExpandedBuildId(expandedBuildId === build.id ? null : build.id)}
-            className="text-xs flex items-center justify-between px-2 py-1 rounded bg-muted/20 cursor-pointer hover:bg-muted/30"
+            aria-expanded={expandedBuildId === build.id}
+            className="w-full text-left text-xs flex items-center justify-between px-2 py-1 rounded bg-muted/20 cursor-pointer hover:bg-muted/30"
           >
             <span>{build.commitSha.substring(0, 7)}</span>
             <StatusBadge status={build.status} />
-          </div>
+          </button>
           {expandedBuildId === build.id && (
             <DeploymentsList buildId={build.id} repositoryLinkId={repositoryLinkId} commitSha={build.commitSha} />
           )}
@@ -167,6 +173,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setExpandedLinkId(expandedLinkId === link.id ? null : link.id)}
+                    aria-expanded={expandedLinkId === link.id}
                     className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded hover:bg-secondary/80"
                   >
                     {expandedLinkId === link.id ? 'Hide Builds' : 'Show Builds'}
@@ -189,7 +196,14 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                         removeLinkMutation.mutate(link.id);
                       }
                     }}
-                    disabled={removeLinkMutation.isPending}
+                    // M20-T06: one shared mutation object across every link's
+                    // row meant unlinking link A disabled the Unlink button
+                    // on every other link too, not just A's - comparing
+                    // against the specific link id this mutation was called
+                    // with (unlike syncMutation just above, which really is
+                    // one project-wide action shared across every row, so
+                    // its blanket isPending is correct as-is).
+                    disabled={removeLinkMutation.isPending && removeLinkMutation.variables === link.id}
                     className="text-xs text-muted-foreground hover:text-destructive px-2 py-1 disabled:opacity-50"
                   >
                     Unlink
@@ -243,6 +257,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
           </select>
           <input
             type="text"
+            aria-label="Repository remote"
             placeholder="Remote (e.g. huyz0/tasker)"
             value={remoteName}
             onChange={e => setRemoteName(e.target.value)}
@@ -260,6 +275,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
               <div className="flex gap-2">
                 <input
                   type="email"
+                  aria-label="Atlassian account email"
                   placeholder="Atlassian account email"
                   value={bitbucketEmail}
                   onChange={e => setBitbucketEmail(e.target.value)}
@@ -267,6 +283,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                 />
                 <input
                   type="password"
+                  aria-label="API token"
                   placeholder="API token"
                   value={apiToken}
                   onChange={e => setApiToken(e.target.value)}
@@ -282,6 +299,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
               </p>
               <input
                 type="password"
+                aria-label="Personal access token"
                 placeholder="Personal access token"
                 value={apiToken}
                 onChange={e => setApiToken(e.target.value)}

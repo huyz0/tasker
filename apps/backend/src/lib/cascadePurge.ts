@@ -63,8 +63,11 @@ async function bulkPurgeArtifacts(db: any, schema: any, artifactIds: string[]): 
 
 // Bulk-deletes everything under a set of task-type ids (their statuses and
 // transitions) plus the task types themselves. Shared by
-// purgeProjectCascade and purgeOrgCascade.
-async function bulkPurgeTaskTypes(db: any, schema: any, taskTypeIds: string[]): Promise<void> {
+// purgeProjectCascade and purgeOrgCascade, and (M20-T04) by projects.
+// handler.ts's own purgeProject - which used to re-implement this exact
+// loop by hand, one row of DELETEs at a time instead of three bulk
+// statements, a divergence from this shared version free to drift further.
+export async function bulkPurgeTaskTypes(db: any, schema: any, taskTypeIds: string[]): Promise<void> {
   if (taskTypeIds.length === 0) return;
   await db.delete(schema.taskStatusTransitions).where(inArray(schema.taskStatusTransitions.taskTypeId, taskTypeIds));
   await db.delete(schema.taskStatuses).where(inArray(schema.taskStatuses.taskTypeId, taskTypeIds));

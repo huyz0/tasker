@@ -1,10 +1,12 @@
 import { expect, test, describe, beforeAll } from "bun:test";
 import { Code } from "@connectrpc/connect";
 import { eq } from "drizzle-orm";
-import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
+import { create, toJson } from "@bufbuild/protobuf";
+import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createProjectsHandler, createProjectTemplatesHandler } from "./projects.handler";
 import { createTasksHandler, createTaskManagementHandler } from "../tasks/tasks.handler";
+import { ProjectSchema } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 
 describe("Projects Handler Integration Logic", () => {
   let db: any;
@@ -54,6 +56,11 @@ describe("Projects Handler Integration Logic", () => {
 
      expect(tResp.template.id).toBeDefined();
      expect(tResp.template.name).toBe("Test Template");
+     // M20-T02: createdAt used to be computed for listTemplates only and
+     // silently dropped everywhere else - Project/ProjectTemplate had no
+     // field to put it on at all.
+     expect(typeof tResp.template.createdAt).toBe("string");
+     expect(tResp.template.createdAt.length).toBeGreaterThan(0);
 
      const pResp = await pHandler.createProject({
          orgId: "org-test",
@@ -64,15 +71,19 @@ describe("Projects Handler Integration Logic", () => {
 
      expect(pResp.project.id).toBeDefined();
      expect(pResp.project.name).toBe("Test Project");
+     expect(typeof pResp.project.createdAt).toBe("string");
+     expect(pResp.project.createdAt.length).toBeGreaterThan(0);
      expect(mockNc.publishedMessages.map((m: any) => m.subject)).toContain("domain.project.created");
 
      // Fetch project
      const fetchProj = await pHandler.getProject({ id: pResp.project.id }, ctx);
      expect(fetchProj.project.name).toBe("Test Project");
+     expect(typeof fetchProj.project.createdAt).toBe("string");
 
      // Fetch template
      const fetchTpl = await ptHandler.getTemplate({ id: tResp.template.id }, ctx);
      expect(fetchTpl.template.name).toBe("Test Template");
+     expect(typeof fetchTpl.template.createdAt).toBe("string");
 
      // Test 404 throws
      expect(pHandler.getProject({ id: "invalid-id" }, ctx)).rejects.toThrow();
@@ -82,6 +93,7 @@ describe("Projects Handler Integration Logic", () => {
      const listRes = await pHandler.listProjects({ orgId: "org-test" }, ctx);
      expect(listRes.projects.length).toBeGreaterThan(0);
      expect(listRes.projects.some((p: any) => p.name === "Test Project")).toBe(true);
+     expect(listRes.projects.every((p: any) => typeof p.createdAt === "string" && p.createdAt.length > 0)).toBe(true);
 
      expect(pHandler.listProjects({}, ctx)).rejects.toThrow();
   });
@@ -111,6 +123,7 @@ describe("Projects Handler Integration Logic", () => {
     // touch it", the same distinction M14-T01 fixed for tasks.
     const renamedOnly = await pHandler.updateProject({ projectId: created.project.id, name: "Renamed Desc Project" }, ctx);
     expect(renamedOnly.project.description).toBe("Ships the thing");
+    expect(typeof renamedOnly.project.createdAt).toBe("string");
     expect((await pHandler.getProject({ id: created.project.id }, ctx)).project.description).toBe("Ships the thing");
 
     // An explicit empty string clears it.
@@ -140,6 +153,144 @@ describe("Projects Handler Integration Logic", () => {
     const otherTypeResp = await ttHandler.createTaskType({ orgId: otherOrgId, name: "Other Root Type" }, makeAuthContext(otherUserId));
 
     await expect(ptHandler.createTemplate({ orgId: "org-test", name: "Cross-org Root", rootTaskTypeId: otherTypeResp.taskType.id }, ctx)).rejects.toThrow();
+
+    // M20-T03: a template is org-wide by definition - a project-scoped task
+    // type has no project of its own to survive purgeProject with, so it
+    // must be rejected as a root, not silently accepted and left dangling
+    // the first time that project is purged.
+    const tResp2 = await ptHandler.createTemplate({ orgId: "org-test", name: "For Scoped Root Test" }, ctx);
+    const pResp2 = await pHandler.createProject({ orgId: "org-test", templateId: tResp2.template.id, name: "Scoped Root Project", ownerId: "user-test" }, ctx);
+    const scopedTypeResp = await ttHandler.createTaskType({ orgId: "org-test", projectId: pResp2.project.id, name: "Scoped Type" }, ctx);
+    await expect(
+      ptHandler.createTemplate({ orgId: "org-test", name: "Bad Scoped Root", rootTaskTypeId: scopedTypeResp.taskType.id }, ctx)
+    ).rejects.toThrow();
+  });
+
+  // M20-T04: two identically-named templates in one org were silently
+  // allowed - no pre-check and no DB constraint behind it.
+  test("createTemplate rejects a duplicate name within the same org, but allows it in a different org", async () => {
+    await ptHandler.createTemplate({ orgId: "org-test", name: "Duplicate Name Template" }, ctx);
+
+    await expect(
+      ptHandler.createTemplate({ orgId: "org-test", name: "Duplicate Name Template" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+
+    const otherOrgId = "org-dup-template-other-" + Date.now();
+    const otherUserId = "user-dup-template-other-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: otherOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    await expect(
+      ptHandler.createTemplate({ orgId: otherOrgId, name: "Duplicate Name Template" }, makeAuthContext(otherUserId))
+    ).resolves.toBeDefined();
+  });
+
+  // Forces the race by firing two identical calls concurrently, rather than
+  // relying on the pre-check alone - mirrors M18-T03/M19-T03's race tests.
+  test("rejects one of two concurrent createTemplate calls racing for the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const results = await Promise.allSettled([
+      ptHandler.createTemplate({ orgId: "org-test", name: "Concurrent Name Race Template" }, ctx),
+      ptHandler.createTemplate({ orgId: "org-test", name: "Concurrent Name Race Template" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
+  });
+
+  test("updateTemplate rejects renaming to a name already used by another template in the same org", async () => {
+    await ptHandler.createTemplate({ orgId: "org-test", name: "Existing Rename Target" }, ctx);
+    const toRename = await ptHandler.createTemplate({ orgId: "org-test", name: "Rename Me" }, ctx);
+
+    await expect(
+      ptHandler.updateTemplate({ id: toRename.template.id, name: "Existing Rename Target" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+
+    // Renaming to its own current name is a no-op, not a self-collision.
+    const noOp = await ptHandler.updateTemplate({ id: toRename.template.id, name: "Rename Me" }, ctx);
+    expect(noOp.template.name).toBe("Rename Me");
+  });
+
+  // Forces the race the pre-check alone can't catch: two different
+  // templates renamed to the same target concurrently.
+  test("rejects one of two concurrent updateTemplate renames racing for the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const first = await ptHandler.createTemplate({ orgId: "org-test", name: "Update Race Source A" }, ctx);
+    const second = await ptHandler.createTemplate({ orgId: "org-test", name: "Update Race Source B" }, ctx);
+
+    const results = await Promise.allSettled([
+      ptHandler.updateTemplate({ id: first.template.id, name: "Update Race Target" }, ctx),
+      ptHandler.updateTemplate({ id: second.template.id, name: "Update Race Target" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
+  });
+
+  // M20-T03: updateTemplate had zero test coverage before this - the only
+  // references anywhere in the backend were denial tests that never reached
+  // the function body. This also covers the fix itself: description/
+  // rootTaskTypeId used to squash "" to "leave untouched", making both
+  // permanently unclearable.
+  test("updateTemplate sets, clears, and leaves fields untouched, and validates rootTaskTypeId", async () => {
+    const ttHandler = createTasksHandler(db, mockNc);
+    const typeResp = await ttHandler.createTaskType({ orgId: "org-test", name: "Update Root Type" }, ctx);
+
+    const created = await ptHandler.createTemplate({
+      orgId: "org-test", name: "Update Me", description: "Original description", rootTaskTypeId: typeResp.taskType.id,
+    }, ctx);
+
+    // Renaming alone must not touch description or rootTaskTypeId - unset
+    // means "don't touch", the same distinction UpdateProjectSchema already
+    // enforces for projects.
+    const renamedOnly = await ptHandler.updateTemplate({ id: created.template.id, name: "Renamed" }, ctx);
+    expect(renamedOnly.template.name).toBe("Renamed");
+    expect(renamedOnly.template.description).toBe("Original description");
+    expect(renamedOnly.template.rootTaskTypeId).toBe(typeResp.taskType.id);
+    expect(typeof renamedOnly.template.createdAt).toBe("string");
+
+    // An explicit empty description clears it - it used to silently no-op.
+    const clearedDesc = await ptHandler.updateTemplate({ id: created.template.id, description: "" }, ctx);
+    expect(clearedDesc.template.description).toBe("");
+    expect((await ptHandler.getTemplate({ id: created.template.id }, ctx)).template.description).toBe("");
+
+    // An explicit empty rootTaskTypeId clears it too - same fix, same bug.
+    const clearedRoot = await ptHandler.updateTemplate({ id: created.template.id, rootTaskTypeId: "" }, ctx);
+    expect(clearedRoot.template.rootTaskTypeId).toBeFalsy();
+    expect((await ptHandler.getTemplate({ id: created.template.id }, ctx)).template.rootTaskTypeId).toBeFalsy();
+
+    // A non-empty value updates it normally.
+    const updatedDesc = await ptHandler.updateTemplate({ id: created.template.id, description: "New description" }, ctx);
+    expect(updatedDesc.template.description).toBe("New description");
+
+    // An empty name is invalid input, not a meaningful "clear" - rejected
+    // outright rather than silently ignored.
+    await expect(ptHandler.updateTemplate({ id: created.template.id, name: "" }, ctx)).rejects.toThrow();
+
+    // A nonexistent template id is NotFound.
+    await expect(ptHandler.updateTemplate({ id: "pt-does-not-exist", name: "X" }, ctx)).rejects.toThrow();
+
+    // A nonexistent root task type is rejected.
+    await expect(ptHandler.updateTemplate({ id: created.template.id, rootTaskTypeId: "tt-does-not-exist" }, ctx)).rejects.toThrow();
+
+    // A root task type from a different org is rejected.
+    const otherOrgId = "org-updatetpl-other-" + Date.now();
+    const otherUserId = "user-updatetpl-other-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: otherOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    const otherTypeResp = await ttHandler.createTaskType({ orgId: otherOrgId, name: "Other Org Type" }, makeAuthContext(otherUserId));
+    await expect(ptHandler.updateTemplate({ id: created.template.id, rootTaskTypeId: otherTypeResp.taskType.id }, ctx)).rejects.toThrow();
+
+    // A project-scoped root task type is rejected, same as on create.
+    const pResp = await pHandler.createProject({ orgId: "org-test", templateId: created.template.id, name: "Update Root Project", ownerId: "user-test" }, ctx);
+    const scopedTypeResp = await ttHandler.createTaskType({ orgId: "org-test", projectId: pResp.project.id, name: "Scoped Update Type" }, ctx);
+    await expect(ptHandler.updateTemplate({ id: created.template.id, rootTaskTypeId: scopedTypeResp.taskType.id }, ctx)).rejects.toThrow();
+
+    // An outsider cannot update another org's template.
+    await expect(ptHandler.updateTemplate({ id: created.template.id, name: "Hijacked" }, makeAuthContext(otherUserId))).rejects.toThrow();
   });
 
   test("derives a short project key from the name and de-duplicates on collision", async () => {
@@ -188,6 +339,32 @@ describe("Projects Handler Integration Logic", () => {
     expect(listed.projects.filter((p: any) => p.id === resp.project.id)).toHaveLength(1);
   });
 
+  // M20-T04: the retry loop's own exhaustion path (MAX_ATTEMPTS conflicts in
+  // a row) had no test - only the single-retry-then-success case did.
+  test("createProject surfaces the raw conflict once every retry attempt is exhausted", async () => {
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Exhaustion Template" }, ctx);
+
+    const realInsert = db.insert.bind(db);
+    const alwaysRacyDb = Object.assign(Object.create(Object.getPrototypeOf(db)), db, {
+      insert: (table: any) => {
+        const original = realInsert(table);
+        return Object.assign(Object.create(Object.getPrototypeOf(original)), original, {
+          values: async () => {
+            if (table === schemaSqlite.projects) {
+              throw new Error("UNIQUE constraint failed: projects_org_id_key_idx");
+            }
+            return original.values;
+          },
+        });
+      },
+    });
+
+    const alwaysRacyHandler = createProjectsHandler(alwaysRacyDb, mockNc);
+    await expect(
+      alwaysRacyHandler.createProject({ orgId: "org-test", templateId: tResp.template.id, name: "Always Conflicts", ownerId: "user-test" }, ctx)
+    ).rejects.toThrow(/UNIQUE constraint failed/);
+  });
+
   test("rejects access from a user who isn't a member of the org", async () => {
      const outsiderCtx = makeAuthContext("user-outsider");
      await db.insert(schemaSqlite.users).values({ id: "user-outsider", email: "outsider@example.com", createdAt: new Date() });
@@ -195,6 +372,47 @@ describe("Projects Handler Integration Logic", () => {
      await expect(pHandler.listProjects({ orgId: "org-test" }, outsiderCtx)).rejects.toThrow();
      await expect(pHandler.createProject({ orgId: "org-test", templateId: "t-1", name: "X", ownerId: "user-outsider" }, outsiderCtx)).rejects.toThrow();
      await expect(pHandler.listProjects({}, makeAuthContext(null))).rejects.toThrow();
+  });
+
+  // M20-T04: getTemplate had no cross-org denial test - only listTemplates did.
+  test("getTemplate denies a user outside the template's org", async () => {
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "GetTemplate Denial Tpl" }, ctx);
+    await expect(ptHandler.getTemplate({ id: tResp.template.id }, makeAuthContext("user-outsider-gettpl"))).rejects.toThrow();
+    await expect(ptHandler.getTemplate({ id: "pt-does-not-exist" }, ctx)).rejects.toThrow();
+  });
+
+  // M20-T04: updateProject against a nonexistent id had no test.
+  test("updateProject rejects a nonexistent project id", async () => {
+    await expect(pHandler.updateProject({ projectId: "project-does-not-exist", name: "X" }, ctx)).rejects.toMatchObject({ code: Code.NotFound });
+  });
+
+  // M20-T04: listProjects had no pagination test at all - listTemplates
+  // already has an equivalent (filter/sort) but projects never did.
+  test("listProjects supports cursor/limit paging and filter/sort by name", async () => {
+    const orgId = "org-listproj-page-" + Date.now();
+    const userId = "user-listproj-page-" + Date.now();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "List Projects Paging Org" });
+    const pageCtx = makeAuthContext(userId);
+    const tResp = await ptHandler.createTemplate({ orgId, name: "Paging Template" }, pageCtx);
+
+    await pHandler.createProject({ orgId, templateId: tResp.template.id, name: "Zebra Project", ownerId: userId }, pageCtx);
+    await pHandler.createProject({ orgId, templateId: tResp.template.id, name: "Aardvark Project", ownerId: userId }, pageCtx);
+    await pHandler.createProject({ orgId, templateId: tResp.template.id, name: "Middle Project", ownerId: userId }, pageCtx);
+
+    const page1 = await pHandler.listProjects({ orgId, page: { limit: 2 } }, pageCtx);
+    expect(page1.projects).toHaveLength(2);
+    expect(page1.page.totalCount).toBe(3);
+    expect(page1.page.nextCursor).toBeTruthy();
+
+    const page2 = await pHandler.listProjects({ orgId, page: { limit: 2, cursor: page1.page.nextCursor } }, pageCtx);
+    expect(page2.projects).toHaveLength(1);
+
+    const filtered = await pHandler.listProjects({ orgId, page: { filter: "Zebra" } }, pageCtx);
+    expect(filtered.projects.every((p: any) => p.name.includes("Zebra"))).toBe(true);
+
+    const sorted = await pHandler.listProjects({ orgId, page: { sort: "name:asc" } }, pageCtx);
+    const names = sorted.projects.map((p: any) => p.name);
+    expect(names.indexOf("Aardvark Project")).toBeLessThan(names.indexOf("Zebra Project"));
   });
 
   test("rejects createProject when ownerId isn't a member of the org", async () => {
@@ -230,6 +448,7 @@ describe("Projects Handler Integration Logic", () => {
     await ptHandler.createTemplate({ orgId: "org-test", name: "Listable Template" }, ctx);
     const res = await ptHandler.listTemplates({ orgId: "org-test" }, ctx);
     expect(res.templates.some((t: any) => t.name === "Listable Template")).toBe(true);
+    expect(res.templates.every((t: any) => typeof t.createdAt === "string" && t.createdAt.length > 0)).toBe(true);
 
     await expect(ptHandler.listTemplates({}, ctx)).rejects.toThrow();
     await expect(ptHandler.listTemplates({ orgId: "org-test" }, makeAuthContext("user-outsider"))).rejects.toThrow();
@@ -265,6 +484,19 @@ describe("Projects Handler Integration Logic", () => {
 
     const binList = await pHandler.listProjects({ orgId: "org-test", onlyDeleted: true }, ctx);
     expect(binList.projects.some((p: any) => p.id === pResp.project.id)).toBe(true);
+    const binnedProject = binList.projects.find((p: any) => p.id === pResp.project.id);
+    // M20-T01: deletedAt used to come back as a raw JS Date, not the ISO
+    // string the wire model declares - a Date is not a bug a handler-level
+    // unit test catches on its own (`typeof` still reports "object" either
+    // way from bun:test's point of view unless asserted precisely), so this
+    // also round-trips through the real protobuf encoder below, which is
+    // what actually threw against a live server.
+    expect(typeof binnedProject.deletedAt).toBe("string");
+    expect(() => toJson(ProjectSchema, create(ProjectSchema, binnedProject))).not.toThrow();
+
+    const gotArchived = await pHandler.getProject({ id: pResp.project.id }, ctx);
+    expect(typeof gotArchived.project.deletedAt).toBe("string");
+    expect(() => toJson(ProjectSchema, create(ProjectSchema, gotArchived.project))).not.toThrow();
 
     await expect(pHandler.restoreProject({ projectId: pResp.project.id }, makeAuthContext(memberId))).rejects.toThrow();
 
@@ -291,6 +523,20 @@ describe("Projects Handler Integration Logic", () => {
     await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId: pResp.project.id, title: "T", status: "todo", createdAt: new Date() });
     await expect(pHandler.purgeProject({ projectId: pResp.project.id }, ctx)).rejects.toThrow();
     await db.delete(schemaSqlite.tasks).where(eq(schemaSqlite.tasks.id, taskId));
+
+    // A remaining folder blocks purge too, not just tasks.
+    const folderId = "fld-purge-proj-" + Date.now();
+    await db.insert(schemaSqlite.folders).values({ id: folderId, projectId: pResp.project.id, name: "F", createdAt: new Date() });
+    await expect(pHandler.purgeProject({ projectId: pResp.project.id }, ctx)).rejects.toThrow();
+    await db.delete(schemaSqlite.folders).where(eq(schemaSqlite.folders.id, folderId));
+
+    // As does a remaining repository link.
+    const repoLinkId = "rl-purge-proj-" + Date.now();
+    await db.insert(schemaSqlite.repositoryLinks).values({
+      id: repoLinkId, projectId: pResp.project.id, provider: "github", remoteName: "org/repo", accessTokenEncrypted: "enc", createdAt: new Date(),
+    });
+    await expect(pHandler.purgeProject({ projectId: pResp.project.id }, ctx)).rejects.toThrow();
+    await db.delete(schemaSqlite.repositoryLinks).where(eq(schemaSqlite.repositoryLinks.id, repoLinkId));
 
     await pHandler.purgeProject({ projectId: pResp.project.id }, ctx);
 
@@ -404,6 +650,14 @@ describe("Project-scope grants (M10-T10)", () => {
 
     const afterPurge = await db.select().from(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, pResp.project.id));
     expect(afterPurge.length).toBe(0);
+
+    // M20-T03: the grant that just purged this project must not survive it -
+    // left behind, it becomes a stale scopeId no RPC can ever resolve again
+    // (revokeGrant/listGrants both 404 via getProjectOrgId once the project
+    // is gone, since resolving a project-scoped grant's org requires the
+    // project to still exist), permanently stuck and unrevokable.
+    const remainingGrants = await db.select().from(schemaSqlite.grants).where(eq(schemaSqlite.grants.scopeId, pResp.project.id));
+    expect(remainingGrants.length).toBe(0);
   });
 
   test("a project-scoped grant does not reach a sibling project under the same org (exit criterion 6)", async () => {

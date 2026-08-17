@@ -26,6 +26,7 @@ var projectsListCmd = &cobra.Command{
 		sort, _ := cmd.Flags().GetString("sort")
 		limit, _ := cmd.Flags().GetInt32("limit")
 		cursor, _ := cmd.Flags().GetString("cursor")
+		onlyDeleted, _ := cmd.Flags().GetBool("only-deleted")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
 		}
@@ -36,8 +37,9 @@ var projectsListCmd = &cobra.Command{
 
 		client := backend.NewProjectServiceClient()
 		res, err := client.ListProjects(context.Background(), connect.NewRequest(&healthv1.ListProjectsRequest{
-			OrgId: orgID,
-			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
+			OrgId:       orgID,
+			Page:        &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
+			OnlyDeleted: onlyDeleted,
 		}))
 		if err != nil {
 			cmd.PrintErrf("Failed to list projects: %v\n", err)
@@ -89,22 +91,32 @@ var projectsCreateCmd = &cobra.Command{
 		title, _ := cmd.Flags().GetString("title")
 		orgID, _ := cmd.Flags().GetString("org")
 		owner, _ := cmd.Flags().GetString("owner")
+		description, _ := cmd.Flags().GetString("description")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if orgID == "" {
 			orgID = backend.DefaultOrgID()
 		}
-		if title == "" || template == "" || orgID == "" {
-			cmd.Println("Error: --org, --template and --title flags are required.")
-			return fmt.Errorf("--org, --template and --title flags are required")
+		// M20-T09: ownerId is a required field at the backend
+		// (CreateProjectSchema, min 1) - an omitted --owner used to reach the
+		// server anyway and come back as an opaque remote validation error.
+		// Checking it locally, in the same breath as --title/--template/--org,
+		// gives the same clear message the other three already give.
+		if title == "" || template == "" || orgID == "" || owner == "" {
+			cmd.Println("Error: --org, --template, --title and --owner flags are required.")
+			return fmt.Errorf("--org, --template, --title and --owner flags are required")
 		}
 
 		client := backend.NewProjectServiceClient()
-		res, err := client.CreateProject(context.Background(), connect.NewRequest(&healthv1.CreateProjectRequest{
+		req := &healthv1.CreateProjectRequest{
 			OrgId:      orgID,
 			TemplateId: template,
 			Name:       title,
 			OwnerId:    owner,
-		}))
+		}
+		if cmd.Flags().Changed("description") {
+			req.Description = &description
+		}
+		res, err := client.CreateProject(context.Background(), connect.NewRequest(req))
 		if err != nil {
 			cmd.PrintErrf("Failed to create project: %v\n", err)
 			return err
@@ -120,18 +132,69 @@ var projectsCreateCmd = &cobra.Command{
 	},
 }
 
+var projectsUpdateCmd = &cobra.Command{
+	Use:   "update [project_id]",
+	Short: "Update a project's title or description",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
+		title, _ := cmd.Flags().GetString("title")
+		// UpdateProjectRequest.Name is a required field on the wire, not
+		// proto3 `optional` like Description below - there is no "leave the
+		// title untouched" request shape, so the CLI has to fail the same way
+		// --title/--template/--org do on create rather than silently sending
+		// an empty title through.
+		if title == "" {
+			cmd.Println("Error: --title is required.")
+			return fmt.Errorf("--title is required")
+		}
+
+		req := &healthv1.UpdateProjectRequest{ProjectId: args[0], Name: title}
+		// Description is real proto3 `optional` (M20-T03's lesson: unset must
+		// stay distinct from explicitly cleared to "") - only set the pointer
+		// for a flag the caller actually passed, matching `tasks update`'s
+		// pattern (M19-T07), so an unset --description leaves the project's
+		// existing description untouched instead of blanking it.
+		if cmd.Flags().Changed("description") {
+			description, _ := cmd.Flags().GetString("description")
+			req.Description = &description
+		}
+
+		client := backend.NewProjectServiceClient()
+		res, err := client.UpdateProject(context.Background(), connect.NewRequest(req))
+		if err != nil {
+			cmd.PrintErrf("Failed to update project: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Project)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Project %s updated\n", res.Msg.Project.Id)
+		}
+		return nil
+	},
+}
+
 var projectsDeleteCmd = &cobra.Command{
 	Use:   "delete [project_id]",
 	Short: "Move a project to the bin (requires org admin)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewProjectServiceClient()
-		_, err := client.ArchiveProject(context.Background(), connect.NewRequest(&healthv1.ArchiveProjectRequest{ProjectId: args[0]}))
+		res, err := client.ArchiveProject(context.Background(), connect.NewRequest(&healthv1.ArchiveProjectRequest{ProjectId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete project: %v\n", err)
 			return err
 		}
-		cmd.Printf("Project %s moved to bin\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "projectId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Project %s moved to bin\n", args[0])
+		}
 		return nil
 	},
 }
@@ -141,13 +204,19 @@ var projectsRestoreCmd = &cobra.Command{
 	Short: "Restore a project from the bin (requires org admin)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewProjectServiceClient()
-		_, err := client.RestoreProject(context.Background(), connect.NewRequest(&healthv1.RestoreProjectRequest{ProjectId: args[0]}))
+		res, err := client.RestoreProject(context.Background(), connect.NewRequest(&healthv1.RestoreProjectRequest{ProjectId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore project: %v\n", err)
 			return err
 		}
-		cmd.Printf("Project %s restored\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "projectId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Project %s restored\n", args[0])
+		}
 		return nil
 	},
 }
@@ -157,13 +226,19 @@ var projectsPurgeCmd = &cobra.Command{
 	Short: "Permanently delete an already-binned, empty project (requires org admin)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewProjectServiceClient()
-		_, err := client.PurgeProject(context.Background(), connect.NewRequest(&healthv1.PurgeProjectRequest{ProjectId: args[0]}))
+		res, err := client.PurgeProject(context.Background(), connect.NewRequest(&healthv1.PurgeProjectRequest{ProjectId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge project: %v\n", err)
 			return err
 		}
-		cmd.Printf("Project %s permanently deleted\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "projectId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Project %s permanently deleted\n", args[0])
+		}
 		return nil
 	},
 }
@@ -173,6 +248,7 @@ func init() {
 	projectsCmd.AddCommand(projectsListCmd)
 	projectsCmd.AddCommand(projectsGetCmd)
 	projectsCmd.AddCommand(projectsCreateCmd)
+	projectsCmd.AddCommand(projectsUpdateCmd)
 	projectsCmd.AddCommand(projectsDeleteCmd)
 	projectsCmd.AddCommand(projectsRestoreCmd)
 	projectsCmd.AddCommand(projectsPurgeCmd)
@@ -180,10 +256,14 @@ func init() {
 	projectsCreateCmd.Flags().String("template", "", "Project template to inherit from")
 	projectsCreateCmd.Flags().String("title", "", "Descriptive title for the new project")
 	projectsCreateCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
-	projectsCreateCmd.Flags().String("owner", "", "User ID of the project owner")
+	projectsCreateCmd.Flags().String("owner", "", "User ID of the project owner (required)")
+	projectsCreateCmd.Flags().String("description", "", "Project description")
+	projectsUpdateCmd.Flags().String("title", "", "New project title (required)")
+	projectsUpdateCmd.Flags().String("description", "", "New description (pass an empty string to clear it)")
 	projectsListCmd.Flags().String("org", "", "Organization ID (or set TASKER_ORG_ID)")
 	projectsListCmd.Flags().StringP("filter", "f", "", "Substring match against project name")
 	projectsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 	projectsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	projectsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	projectsListCmd.Flags().Bool("only-deleted", false, "List only archived (binned) projects, instead of active ones")
 }

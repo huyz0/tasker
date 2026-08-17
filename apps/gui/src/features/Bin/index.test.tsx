@@ -67,11 +67,12 @@ import { confirmAction, cancelAction } from '../../test/confirm';
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const utils = render(
     <QueryClientProvider client={queryClient}>
       <BinDashboard />
     </QueryClientProvider>
   );
+  return { ...utils, queryClient };
 }
 
 describe('BinDashboard', () => {
@@ -190,7 +191,8 @@ describe('BinDashboard', () => {
     mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-2', name: 'Archived Project', deletedAt: new Date().toISOString() }] });
     mockRestoreProject.mockResolvedValue({ success: true });
 
-    renderPage();
+    const { queryClient } = renderPage();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Projects' }));
@@ -199,6 +201,12 @@ describe('BinDashboard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
     await waitFor(() => expect(mockRestoreProject).toHaveBeenCalledWith({ projectId: 'proj-2' }));
+    // M20-T05: this used to invalidate three separate keys, one of them
+    // (`['projects', 'org-1']`) matching no query in the app, and none of
+    // them the sidebar switcher's own `['projects', 'switcher', ...]` key -
+    // a restored project never reappeared there. The bare `['projects']`
+    // prefix covers every project-list key at once.
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['projects'] });
   });
 
   it('switches to the Agents tab and lists/purges an archived agent', async () => {
