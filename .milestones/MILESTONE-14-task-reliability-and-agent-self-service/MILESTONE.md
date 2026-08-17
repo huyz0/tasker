@@ -67,7 +67,7 @@ backlogs.
       see PROGRESS.md M14-T07).
 - [x] `tasker artifacts link-task` exists in the CLI and round-trips against a
       running backend.
-- [ ] Task type status/transition editing lives in exactly one GUI surface;
+- [x] Task type status/transition editing lives in exactly one GUI surface;
       the other no longer offers a second, incomplete copy of the same CRUD.
 - [ ] `moon check --all` is clean and every new/changed behaviour above is
       covered by a test that fails without the fix (verified by reverting the
@@ -166,7 +166,7 @@ touches `repositories.handler.ts`, none currently scheduled.
       - Verify: `tasker artifacts link-task --task <id> --artifact <id> --json`
         against a running backend returns the created link; `cli:test` green.
 
-- [ ] **M14-T09** — De-duplicate Task Type CRUD: the Projects screen currently
+- [x] **M14-T09** — De-duplicate Task Type CRUD: the Projects screen currently
       offers create+rename with no status/transition editor, while the Task
       Types screen offers the full editor with no rename. Pick the Task
       Types screen as canonical (it already owns the state machine), move

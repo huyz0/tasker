@@ -6,6 +6,7 @@ import { TaskTypesEditor } from './index';
 const mockListTypes = vi.fn();
 const mockGetType = vi.fn();
 const mockCreateType = vi.fn();
+const mockUpdateType = vi.fn();
 const mockCreateStatus = vi.fn();
 const mockReorder = vi.fn();
 const mockCreateTransition = vi.fn();
@@ -26,6 +27,7 @@ vi.mock('@connectrpc/connect', async (importOriginal) => ({
           listTaskTypes: (...a: unknown[]) => mockListTypes(...a),
           getTaskType: (...a: unknown[]) => mockGetType(...a),
           createTaskType: (...a: unknown[]) => mockCreateType(...a),
+          updateTaskType: (...a: unknown[]) => mockUpdateType(...a),
           createTaskStatus: (...a: unknown[]) => mockCreateStatus(...a),
           reorderTaskStatuses: (...a: unknown[]) => mockReorder(...a),
           createTaskStatusTransition: (...a: unknown[]) => mockCreateTransition(...a),
@@ -62,6 +64,7 @@ beforeEach(() => {
   mockGetType.mockResolvedValue({ taskType: { id: 'tt-1', name: 'Bug' }, statuses, transitions: [] });
   mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Default Template', rootTaskTypeId: '' }] });
   mockCreateType.mockResolvedValue({ taskType: { id: 'tt-2', name: 'Story' } });
+  mockUpdateType.mockResolvedValue({ taskType: { id: 'tt-1', name: 'Defect' } });
   mockCreateStatus.mockResolvedValue({ status: { id: 'st-9' } });
   mockReorder.mockResolvedValue({ statuses });
   mockCreateTransition.mockResolvedValue({ transition: { id: 'tr-1' } });
@@ -94,6 +97,61 @@ describe('TaskTypesEditor', () => {
     await openBug();
     // A reader who assumes "no edges = nothing allowed" has it backwards.
     expect(await screen.findByText(/Every status change is allowed until the first transition/)).toBeInTheDocument();
+  });
+
+  // M14-T09: rename moved here from the Projects screen, which used to offer
+  // it with no view of the statuses/transitions being renamed alongside it.
+  it('renames the selected task type', async () => {
+    renderEditor();
+    await openBug();
+
+    fireEvent.click(screen.getByText('Rename'));
+    const nameInput = screen.getByLabelText('Task type name');
+    fireEvent.change(nameInput, { target: { value: 'Defect' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockUpdateType).toHaveBeenCalledWith({ id: 'tt-1', name: 'Defect' }));
+  });
+
+  it('cancels a rename without saving', async () => {
+    renderEditor();
+    await openBug();
+
+    fireEvent.click(screen.getByText('Rename'));
+    fireEvent.change(screen.getByLabelText('Task type name'), { target: { value: 'Something Else' } });
+    fireEvent.click(screen.getByText('Cancel'));
+
+    expect(screen.getByRole('heading', { name: 'Bug' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Task type name')).toBeNull();
+    expect(mockUpdateType).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when renaming fails', async () => {
+    mockUpdateType.mockRejectedValue(new Error('name already exists'));
+    renderEditor();
+    await openBug();
+
+    fireEvent.click(screen.getByText('Rename'));
+    fireEvent.change(screen.getByLabelText('Task type name'), { target: { value: 'Defect' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    expect(await screen.findByText(/Failed to rename/)).toBeInTheDocument();
+  });
+
+  it('closing and reopening a different type does not leave the rename form open', async () => {
+    mockListTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Bug' }, { id: 'tt-2', name: 'Story' }] });
+    mockGetType.mockImplementation(async ({ id }: { id: string }) =>
+      id === 'tt-1'
+        ? { taskType: { id: 'tt-1', name: 'Bug' }, statuses, transitions: [] }
+        : { taskType: { id: 'tt-2', name: 'Story' }, statuses: [], transitions: [] });
+    renderEditor();
+    await openBug();
+    fireEvent.click(screen.getByText('Rename'));
+    expect(screen.getByLabelText('Task type name')).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Story' }));
+    await screen.findByText('Story');
+    expect(screen.queryByLabelText('Task type name')).toBeNull();
   });
 
   it('sends the whole new order when a status moves up', async () => {
@@ -247,6 +305,37 @@ describe('TaskTypesEditor', () => {
     expect(await screen.findByText(/already exists/)).toBeInTheDocument();
   });
 
+  it('reports a failed transition add', async () => {
+    mockCreateTransition.mockRejectedValue(new Error('that edge already exists'));
+    renderEditor();
+    await openBug();
+    fireEvent.change(screen.getByLabelText('From status'), { target: { value: 'st-1' } });
+    fireEvent.change(screen.getByLabelText('To status'), { target: { value: 'st-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Allow' }));
+    expect(await screen.findByText(/Failed to add transition/)).toBeInTheDocument();
+  });
+
+  it('reports a failed transition removal', async () => {
+    mockGetType.mockResolvedValue({
+      taskType: { id: 'tt-1', name: 'Bug' },
+      statuses,
+      transitions: [{ id: 'tr-1', taskTypeId: 'tt-1', fromStatusId: 'st-1', toStatusId: 'st-2' }],
+    });
+    mockDeleteTransition.mockRejectedValue(new Error('not found'));
+    renderEditor();
+    await openBug();
+    fireEvent.click(screen.getByLabelText(/Remove the transition from/));
+    expect(await screen.findByText(/Failed to remove transition/)).toBeInTheDocument();
+  });
+
+  it('reports a failed root-type change', async () => {
+    mockUpdateTemplate.mockRejectedValue(new Error('template not found'));
+    renderEditor();
+    await openBug();
+    fireEvent.change(screen.getByLabelText('Template to set this as the root type of'), { target: { value: 'tpl-1' } });
+    expect(await screen.findByText(/Failed to set root type/)).toBeInTheDocument();
+  });
+
   it('asks for a type before showing an editor', async () => {
     renderEditor();
     expect(await screen.findByText(/Choose a task type to configure/)).toBeInTheDocument();
@@ -256,5 +345,28 @@ describe('TaskTypesEditor', () => {
     mockListTypes.mockResolvedValue({ taskTypes: [] });
     renderEditor();
     expect(await screen.findByText('No task types yet.')).toBeInTheDocument();
+  });
+
+  it('retries fetching the task type list after a failure', async () => {
+    mockListTypes.mockRejectedValue(new Error('boom'));
+    renderEditor();
+
+    const tryAgain = await screen.findByText('Try again');
+    mockListTypes.mockClear();
+    fireEvent.click(tryAgain);
+
+    await waitFor(() => expect(mockListTypes).toHaveBeenCalled());
+  });
+
+  it('retries fetching the selected type\'s detail after a failure', async () => {
+    mockGetType.mockRejectedValue(new Error('boom'));
+    renderEditor();
+    fireEvent.click(await screen.findByRole('button', { name: 'Bug' }));
+
+    const tryAgain = await screen.findByText('Try again');
+    mockGetType.mockClear();
+    fireEvent.click(tryAgain);
+
+    await waitFor(() => expect(mockGetType).toHaveBeenCalled());
   });
 });

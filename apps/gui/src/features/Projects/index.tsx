@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { RepositoryIntegrationConfig } from '../../components/ui/repositories/RepositoryIntegrationConfig';
 import { useAuthSession } from '../../hooks/useAuthSession';
@@ -29,15 +30,11 @@ export function ProjectsWizard() {
   const [isAddingTemplate, setIsAddingTemplate] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDescription, setNewTemplateDescription] = useState('');
-  const [isAddingTaskType, setIsAddingTaskType] = useState(false);
-  const [newTaskTypeName, setNewTaskTypeName] = useState('');
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [editTemplateName, setEditTemplateName] = useState('');
   const [editTemplateDescription, setEditTemplateDescription] = useState('');
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editProjectName, setEditProjectName] = useState('');
-  const [editingTaskTypeId, setEditingTaskTypeId] = useState<string | null>(null);
-  const [editTaskTypeName, setEditTaskTypeName] = useState('');
 
   const queryClient = useQueryClient();
   useEffect(() => setActivePageTitle('Projects'), [setActivePageTitle]);
@@ -132,27 +129,6 @@ export function ProjectsWizard() {
       queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
       queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
       setEditingProjectId(null);
-    },
-  });
-
-  const createTaskTypeMutation = useMutation({
-    mutationFn: async () => {
-      await taskTypeClient.createTaskType({ orgId: activeOrgId, name: newTaskTypeName.trim() });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['taskTypes', activeOrgId] });
-      setNewTaskTypeName('');
-      setIsAddingTaskType(false);
-    },
-  });
-
-  const updateTaskTypeMutation = useMutation({
-    mutationFn: async (variables: { id: string; name: string }) => {
-      await taskTypeClient.updateTaskType(variables);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['taskTypes', activeOrgId] });
-      setEditingTaskTypeId(null);
     },
   });
 
@@ -323,44 +299,16 @@ export function ProjectsWizard() {
       <section>
         <div className="flex items-center justify-between mb-4 border-t pt-8">
           <h2 className="text-xl font-medium">Task Types</h2>
-          <button
-            onClick={() => setIsAddingTaskType((v) => !v)}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            {isAddingTaskType ? 'Cancel' : '+ New Task Type'}
-          </button>
+          {/* M14-T09: this used to be a second, partial editor here (create
+              and rename, no statuses or transitions visible) alongside the
+              full one on /task-types - a caller could rename a type without
+              ever seeing the state machine it governs. The Task Types page
+              is now the only place that edits a task type; this is a
+              read-only glance plus a link there. */}
+          <Link to="/task-types" className="text-sm text-muted-foreground hover:text-foreground">
+            Manage task types →
+          </Link>
         </div>
-
-        {isAddingTaskType && (
-          <form
-            className="mb-4 border rounded-lg bg-card p-4 flex gap-2 max-w-md"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (newTaskTypeName.trim()) createTaskTypeMutation.mutate();
-            }}
-          >
-            <input
-              autoFocus
-              value={newTaskTypeName}
-              onChange={(e) => setNewTaskTypeName(e.target.value)}
-              placeholder="Task type name (e.g. Bug, Epic)"
-              className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
-            />
-            <button
-              type="submit"
-              disabled={createTaskTypeMutation.isPending || !newTaskTypeName.trim()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:bg-muted disabled:text-muted-foreground"
-            >
-              {createTaskTypeMutation.isPending ? 'Creating...' : 'Create'}
-            </button>
-          </form>
-        )}
-        {createTaskTypeMutation.isError && (
-          <p className="text-sm text-destructive mb-4">Failed to create task type: {(createTaskTypeMutation.error as Error).message}</p>
-        )}
-        {updateTaskTypeMutation.isError && (
-          <p className="text-sm text-destructive mb-4">Failed to update task type: {(updateTaskTypeMutation.error as Error).message}</p>
-        )}
 
         <ListState
           isLoading={isLoadingTaskTypes}
@@ -368,40 +316,14 @@ export function ProjectsWizard() {
           isEmpty={!taskTypesData || taskTypesData.length === 0}
           loadingMessage="Loading task types…"
           emptyMessage="No task types yet."
-          emptyAction={<p className="text-xs">Use “+ New Task Type” above to add one.</p>}
+          emptyAction={<Link to="/task-types" className="text-xs text-primary hover:underline">Add one on the Task Types page.</Link>}
           onRetry={() => refetchTaskTypes()}
         >
           <div className="flex flex-wrap gap-2">
             {(taskTypesData ?? []).map(tt => (
-              editingTaskTypeId === tt.id ? (
-                <form
-                  key={tt.id}
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (editTaskTypeName.trim()) updateTaskTypeMutation.mutate({ id: tt.id, name: editTaskTypeName.trim() });
-                  }}
-                  className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-full"
-                >
-                  <input
-                    autoFocus
-                    value={editTaskTypeName}
-                    onChange={(e) => setEditTaskTypeName(e.target.value)}
-                    className="bg-transparent border-b outline-none focus:border-primary w-24"
-                  />
-                  <button type="submit" disabled={!editTaskTypeName.trim() || updateTaskTypeMutation.isPending} className="text-primary disabled:opacity-50">Save</button>
-                  <button type="button" onClick={() => setEditingTaskTypeId(null)} className="text-muted-foreground">Cancel</button>
-                </form>
-              ) : (
-                <span key={tt.id} className="inline-flex items-center gap-2 text-xs bg-muted px-2 py-1 rounded-full">
-                  {tt.name}
-                  <button
-                    onClick={() => { setEditingTaskTypeId(tt.id); setEditTaskTypeName(tt.name); }}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    Edit
-                  </button>
-                </span>
-              )
+              <span key={tt.id} className="inline-flex items-center gap-2 text-xs bg-muted px-2 py-1 rounded-full">
+                {tt.name}
+              </span>
             ))}
           </div>
         </ListState>

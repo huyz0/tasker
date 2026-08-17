@@ -358,3 +358,54 @@
   reordering tests to dodge it, which would only have hidden the same trap
   for the next person who adds a test.
 - **Next**: M14-T09
+
+## M14-T09 — De-duplicate Task Type CRUD across Projects and Task Types
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**: `apps/gui/src/features/Projects/index.tsx`,
+  `apps/gui/src/features/Projects/index.test.tsx`,
+  `apps/gui/src/features/TaskTypes/index.tsx`,
+  `apps/gui/src/features/TaskTypes/index.test.tsx`
+- **Verified**: `bun run test -- src/features/Projects src/features/TaskTypes`
+  — 57 pass, 0 fail. Full `bun run test` — 59 files, 758 tests, 0 fail.
+  `bun run test:coverage` — 95.31% branches (threshold 95%). `moon run
+  gui:build` (tsc -b) and `moon check --all` (27 tasks) both clean.
+- **Notes**: Removed the create+rename mini-editor from the Projects
+  screen entirely - it duplicated `updateTaskType`/`createTaskType` with no
+  visibility into the statuses or transitions a rename affects. Replaced
+  with a read-only glance list (task type name chips, no controls) and a
+  `Link to="/task-types"` ("Manage task types →"), including in the
+  empty-state action. Added the missing half to the Task Types screen
+  instead: a `Rename` control next to the selected type's heading, using
+  the same inline edit/save/cancel shape the removed Projects editor used,
+  now sitting directly above the Statuses/Transitions sections it renames
+  alongside. `updateTaskType` itself was already exercised (M14-T04
+  backend coverage); this is the GUI's first test of it.
+
+  Test churn was larger than the feature change: removed 6 Projects tests
+  that exercised the deleted create/rename UI (`lists and creates task
+  types...`, `shows an error message when task type creation fails`, the
+  task-type halves of `does not submit blank...`/`shows pending
+  labels...`/`toggles the new-template and new-task-type forms...`, and
+  all 3 rename tests), added 1 replacement (read-only list + link) and 4
+  rename tests on the Task Types side (`renames the selected task type`,
+  cancel, error, and a regression guard for the shape of bug this kind of
+  state usually produces - `closing and reopening a different type does
+  not leave the rename form open`).
+
+  Shrinking Projects/index.tsx tripped the workspace's global 95% branch
+  coverage gate (dropped to 94.88%) purely as an artifact of the file
+  getting smaller - the specific lines flagged were **pre-existing**
+  untested branches unrelated to this task (template/project rename's
+  blank-submit guard and pending-label ternary; two `ListState` retry
+  callbacks in Projects; three error-message branches and one retry
+  callback in TaskTypes that had never been exercised). Closed all of them
+  rather than treating the gate as noise: 9 new tests total across both
+  files covering retry-after-failure for every `ListState` in both
+  screens, blank-submit guards, and pending-label states for project and
+  template rename, plus the three previously-untested TaskTypes error
+  paths (failed transition add, failed transition removal, failed
+  root-type change). None of this was in T09's original scope - it
+  surfaced only because the gate is real and ran.
+- **Next**: M14 review pass
