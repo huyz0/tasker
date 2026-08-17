@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { RepositoryIntegrationConfig } from '../../components/ui/repositories/RepositoryIntegrationConfig';
 import { useAuthSession } from '../../hooks/useAuthSession';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { ProjectService, ProjectTemplateService, TaskTypeService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { ProjectService, ProjectTemplateService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { PaginationControls } from '../../components/PaginationControls';
 import { Package } from 'lucide-react';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -19,7 +18,6 @@ const PROJECT_ROW_HEIGHT = 220;
 
 const projectClient = createClient(ProjectService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
-const taskTypeClient = createClient(TaskTypeService, transport);
 
 export function ProjectsWizard() {
   const { confirm, confirmDialog } = useConfirm();
@@ -38,15 +36,6 @@ export function ProjectsWizard() {
 
   const queryClient = useQueryClient();
   useEffect(() => setActivePageTitle('Projects'), [setActivePageTitle]);
-
-  const { data: taskTypesData, isLoading: isLoadingTaskTypes, error: taskTypesError, refetch: refetchTaskTypes } = useQuery({
-    queryKey: ['taskTypes', activeOrgId],
-    queryFn: async () => {
-      const resp = await taskTypeClient.listTaskTypes({ orgId: activeOrgId });
-      return resp.taskTypes;
-    },
-    enabled: !!activeOrgId,
-  });
 
   const { data: templatesData, isLoading: isLoadingTemplates, error: templatesError, refetch: refetchTemplates } = useQuery({
     queryKey: ['templates', activeOrgId],
@@ -291,39 +280,6 @@ export function ProjectsWizard() {
                    </>
                  )}
               </div>
-            ))}
-          </div>
-        </ListState>
-      </section>
-
-      <section>
-        <div className="flex items-center justify-between mb-4 border-t pt-8">
-          <h2 className="text-xl font-medium">Task Types</h2>
-          {/* M14-T09: this used to be a second, partial editor here (create
-              and rename, no statuses or transitions visible) alongside the
-              full one on /task-types - a caller could rename a type without
-              ever seeing the state machine it governs. The Task Types page
-              is now the only place that edits a task type; this is a
-              read-only glance plus a link there. */}
-          <Link to="/task-types" className="text-sm text-muted-foreground hover:text-foreground">
-            Manage task types →
-          </Link>
-        </div>
-
-        <ListState
-          isLoading={isLoadingTaskTypes}
-          error={taskTypesError}
-          isEmpty={!taskTypesData || taskTypesData.length === 0}
-          loadingMessage="Loading task types…"
-          emptyMessage="No task types yet."
-          emptyAction={<Link to="/task-types" className="text-xs text-primary hover:underline">Add one on the Task Types page.</Link>}
-          onRetry={() => refetchTaskTypes()}
-        >
-          <div className="flex flex-wrap gap-2">
-            {(taskTypesData ?? []).map(tt => (
-              <span key={tt.id} className="inline-flex items-center gap-2 text-xs bg-muted px-2 py-1 rounded-full">
-                {tt.name}
-              </span>
             ))}
           </div>
         </ListState>

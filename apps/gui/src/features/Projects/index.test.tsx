@@ -1,14 +1,12 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
 
-const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockListTaskTypes, mockArchiveProject, mockUpdateProject, mockUpdateTemplate } = vi.hoisted(() => ({
+const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockArchiveProject, mockUpdateProject, mockUpdateTemplate } = vi.hoisted(() => ({
   mockListTemplates: vi.fn(),
   mockListProjects: vi.fn(),
   mockCreateProject: vi.fn(),
   mockCreateTemplate: vi.fn(),
-  mockListTaskTypes: vi.fn(),
   mockArchiveProject: vi.fn(),
   mockUpdateProject: vi.fn(),
   mockUpdateTemplate: vi.fn(),
@@ -23,7 +21,6 @@ vi.mock('@connectrpc/connect', () => ({
     listProjects: mockListProjects,
     createProject: mockCreateProject,
     createTemplate: mockCreateTemplate,
-    listTaskTypes: mockListTaskTypes,
     archiveProject: mockArchiveProject,
     updateProject: mockUpdateProject,
     updateTemplate: mockUpdateTemplate,
@@ -32,7 +29,6 @@ vi.mock('@connectrpc/connect', () => ({
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   ProjectService: {},
   ProjectTemplateService: {},
-  TaskTypeService: {},
 }));
 vi.mock('../../components/ui/repositories/RepositoryIntegrationConfig', () => ({
   RepositoryIntegrationConfig: () => null,
@@ -56,11 +52,9 @@ import { confirmAction, cancelAction } from '../../test/confirm';
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utils = render(
-    <MemoryRouter>
-      <QueryClientProvider client={queryClient}>
-        <ProjectsWizard />
-      </QueryClientProvider>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <ProjectsWizard />
+    </QueryClientProvider>
   );
   return { ...utils, queryClient };
 }
@@ -71,8 +65,6 @@ describe('ProjectsWizard', () => {
     mockListProjects.mockReset();
     mockCreateProject.mockReset();
     mockCreateTemplate.mockReset();
-    mockListTaskTypes.mockReset();
-    mockListTaskTypes.mockResolvedValue({ taskTypes: [] });
     mockArchiveProject.mockReset();
     mockUpdateProject.mockReset();
     mockUpdateTemplate.mockReset();
@@ -167,19 +159,6 @@ describe('ProjectsWizard', () => {
   // M14-T09: this screen used to create and rename task types itself, with
   // no view of the statuses/transitions the rename affects. It is now a
   // read-only glance, linking to /task-types for anything that changes one.
-  it('lists task types read-only and links to the Task Types page to manage them', async () => {
-    mockListTemplates.mockResolvedValue({ templates: [] });
-    mockListProjects.mockResolvedValue({ projects: [] });
-    mockListTaskTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Bug' }] });
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Bug')).toBeDefined());
-    expect(screen.queryByText('Edit')).toBeNull();
-
-    const manageLink = screen.getByRole('link', { name: 'Manage task types →' });
-    expect(manageLink).toHaveAttribute('href', '/task-types');
-  });
-
   it('loads the next page of projects when Load More is clicked', async () => {
     mockListTemplates.mockResolvedValue({ templates: [] });
     mockListProjects
@@ -195,33 +174,29 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText('No more items to load')).toBeDefined());
   });
 
-  it('shows empty-state messages for templates, task types, and projects', async () => {
+  it('shows empty-state messages for templates and projects', async () => {
     mockListTemplates.mockResolvedValue({ templates: [] });
     mockListProjects.mockResolvedValue({ projects: [] });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('No templates yet.')).toBeDefined());
-    expect(screen.getByText('No task types yet.')).toBeDefined();
     expect(screen.getByText('No projects yet.')).toBeDefined();
   });
 
-  it('retries fetching templates, task types, and projects after a failure', async () => {
+  it('retries fetching templates and projects after a failure', async () => {
     mockListTemplates.mockRejectedValue(new Error('boom'));
-    mockListTaskTypes.mockRejectedValue(new Error('boom'));
     mockListProjects.mockRejectedValue(new Error('boom'));
     renderPage();
 
     const tryAgainButtons = await screen.findAllByText('Try again');
-    expect(tryAgainButtons).toHaveLength(3);
+    expect(tryAgainButtons).toHaveLength(2);
 
     mockListTemplates.mockClear();
-    mockListTaskTypes.mockClear();
     mockListProjects.mockClear();
     tryAgainButtons.forEach((btn) => fireEvent.click(btn));
 
     await waitFor(() => {
       expect(mockListTemplates).toHaveBeenCalled();
-      expect(mockListTaskTypes).toHaveBeenCalled();
       expect(mockListProjects).toHaveBeenCalled();
     });
   });

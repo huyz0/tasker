@@ -170,6 +170,61 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
   });
 
+  // Native HTML5 drag-and-drop (no dnd-kit), added alongside the existing
+  // dropdown rather than replacing it - the dropdown stays the accessible/
+  // keyboard path for changing status.
+  function fakeDataTransfer() {
+    const store: Record<string, string> = {};
+    return {
+      setData: (k: string, v: string) => { store[k] = v; },
+      getData: (k: string) => store[k] ?? '',
+      dropEffect: '',
+      effectAllowed: '',
+    };
+  }
+
+  it('moves a task to another column by dragging its card', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockUpdateTaskStatus.mockResolvedValue({ task: { id: 'task-1', title: 'Fix bug', status: 'in-progress', description: '' } });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+
+    const card = screen.getByText('Fix bug').closest('[draggable="true"]') as HTMLElement;
+    expect(card).not.toBeNull();
+    // The column wrapper is the drop target - the "+" button's grandparent,
+    // since the button sits in the column's header row, itself a direct
+    // child of the column.
+    // The empty column also renders a second "Add task to X" button (the
+    // dashed placeholder), so this must take the first match - the one in
+    // the column's header row, whose grandparent is the column itself.
+    const inProgressColumn = screen.getAllByLabelText('Add task to In Progress')[0].parentElement!.parentElement as HTMLElement;
+
+    const dataTransfer = fakeDataTransfer();
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.dragEnter(inProgressColumn, { dataTransfer });
+    fireEvent.drop(inProgressColumn, { dataTransfer });
+
+    await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
+  });
+
+  it('shows an error if a drag-and-drop status move fails', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockUpdateTaskStatus.mockRejectedValue(new Error('transition not allowed'));
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+
+    const card = screen.getByText('Fix bug').closest('[draggable="true"]') as HTMLElement;
+    const doneColumn = screen.getAllByLabelText('Add task to Done')[0].parentElement!.parentElement as HTMLElement;
+
+    const dataTransfer = fakeDataTransfer();
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.drop(doneColumn, { dataTransfer });
+
+    expect(await screen.findByText(/Failed to move task: transition not allowed/)).toBeInTheDocument();
+  });
+
   it('asks the server for one column at a time, rather than the whole project', async () => {
     // This replaces a test that asserted the board looped the cursor until the
     // project was exhausted. That was the defect, not the contract: at the
@@ -711,6 +766,104 @@ describe('TasksWorkbench', () => {
 
     expect(screen.getByText('ENG-1')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Title' })).toBeInTheDocument();
+  });
+
+  it('bulk-changes the status of tasks selected in the table', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
+      { id: 'task-2', title: 'Write docs', status: 'todo', description: '', displayId: 'ENG-2' },
+    ] });
+    mockUpdateTaskStatus.mockResolvedValue({ task: { id: 'task-1', status: 'in-progress' } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    fireEvent.click(screen.getByLabelText('Select Fix bug'));
+    fireEvent.click(screen.getByLabelText('Select Write docs'));
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Change status of selected tasks'), { target: { value: 'in-progress' } });
+
+    await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
+    expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-2', status: 'in-progress' });
+    // Selection clears on full success - the toolbar disappears.
+    await waitFor(() => expect(screen.queryByText('2 selected')).toBeNull());
+  });
+
+  it('selects every loaded task via the header checkbox', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
+      { id: 'task-2', title: 'Write docs', status: 'todo', description: '', displayId: 'ENG-2' },
+    ] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    fireEvent.click(screen.getByLabelText('Select all loaded tasks'));
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+    expect(screen.getByLabelText('Select Fix bug')).toBeChecked();
+    expect(screen.getByLabelText('Select Write docs')).toBeChecked();
+  });
+
+  it('shows a pending state while a bulk status change is in flight', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
+    ] });
+    let resolveUpdate: (v: any) => void = () => {};
+    mockUpdateTaskStatus.mockReturnValue(new Promise((resolve) => { resolveUpdate = resolve; }));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+    fireEvent.click(screen.getByLabelText('Select Fix bug'));
+
+    const select = screen.getByLabelText('Change status of selected tasks') as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: 'in-progress' } });
+
+    await waitFor(() => expect(select).toBeDisabled());
+    expect(screen.getByText('Updating…')).toBeInTheDocument();
+    resolveUpdate({ task: { id: 'task-1', status: 'in-progress' } });
+  });
+
+  it('clears the bulk selection via the toolbar button', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
+    ] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    fireEvent.click(screen.getByLabelText('Select Fix bug'));
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Clear selection'));
+    expect(screen.queryByText('1 selected')).toBeNull();
+    expect(screen.getByLabelText('Select Fix bug')).not.toBeChecked();
+  });
+
+  it('reports a partial failure in a bulk status change without discarding the selection', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [
+      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
+      { id: 'task-2', title: 'Write docs', status: 'todo', description: '', displayId: 'ENG-2' },
+    ] });
+    mockUpdateTaskStatus.mockImplementation(async ({ taskId }: any) => {
+      if (taskId === 'task-2') throw new Error('transition not allowed');
+      return { task: { id: taskId, status: 'in-progress' } };
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    fireEvent.click(screen.getByLabelText('Select all loaded tasks'));
+    fireEvent.change(screen.getByLabelText('Change status of selected tasks'), { target: { value: 'in-progress' } });
+
+    expect(await screen.findByText('1 of 2 tasks failed to update')).toBeInTheDocument();
+    // A partial failure keeps the selection so the user can see what happened.
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
   });
 
   it('shows an empty state in table view when there are no tasks', async () => {
