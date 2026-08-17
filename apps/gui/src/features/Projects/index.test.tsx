@@ -2,7 +2,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockArchiveProject, mockUpdateProject, mockUpdateTemplate, mockListTasks } = vi.hoisted(() => ({
+const {
+  mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockArchiveProject, mockUpdateProject,
+  mockUpdateTemplate, mockListTasks, mockListRoles, mockListGrants, mockGrantRole, mockRevokeGrant, mockListOrgMembers,
+} = vi.hoisted(() => ({
   mockListTemplates: vi.fn(),
   mockListProjects: vi.fn(),
   mockCreateProject: vi.fn(),
@@ -11,6 +14,11 @@ const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTempla
   mockUpdateProject: vi.fn(),
   mockUpdateTemplate: vi.fn(),
   mockListTasks: vi.fn(),
+  mockListRoles: vi.fn(),
+  mockListGrants: vi.fn(),
+  mockGrantRole: vi.fn(),
+  mockRevokeGrant: vi.fn(),
+  mockListOrgMembers: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -26,12 +34,19 @@ vi.mock('@connectrpc/connect', () => ({
     updateProject: mockUpdateProject,
     updateTemplate: mockUpdateTemplate,
     listTasks: mockListTasks,
+    listRoles: mockListRoles,
+    listGrants: mockListGrants,
+    grantRole: mockGrantRole,
+    revokeGrant: mockRevokeGrant,
+    listOrgMembers: mockListOrgMembers,
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   ProjectService: {},
   ProjectTemplateService: {},
   TaskService: {},
+  RoleService: {},
+  OrgService: {},
 }));
 vi.mock('../../components/ui/repositories/RepositoryIntegrationConfig', () => ({
   RepositoryIntegrationConfig: () => null,
@@ -73,6 +88,14 @@ describe('ProjectsWizard', () => {
     mockUpdateTemplate.mockReset();
     mockListTasks.mockReset();
     mockListTasks.mockResolvedValue({ tasks: [], page: { totalCount: 0 } });
+    mockListRoles.mockReset();
+    mockListRoles.mockResolvedValue({ roles: [] });
+    mockListGrants.mockReset();
+    mockListGrants.mockResolvedValue({ grants: [] });
+    mockGrantRole.mockReset();
+    mockRevokeGrant.mockReset();
+    mockListOrgMembers.mockReset();
+    mockListOrgMembers.mockResolvedValue({ members: [] });
     mockAuthUserId = mockUserId;
   });
 
@@ -532,4 +555,158 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText(/Failed to update template/)).toBeInTheDocument());
   });
 
+  // M16-T04: grantRole/listGrants/revokeGrant(scopeType: 'project') have
+  // existed and been tested at the API layer since M10 - no GUI screen ever
+  // called them with that scope. These tests are that screen.
+  describe('project members (scopeType: project)', () => {
+    it('is collapsed by default and does not fetch grants until opened', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      renderPage();
+
+      await screen.findByText('Members');
+      expect(mockListGrants).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByText('Members'));
+      await waitFor(() => expect(mockListGrants).toHaveBeenCalledWith({ scopeType: 'project', scopeId: 'proj-1' }));
+    });
+
+    it('lists existing project grants once expanded', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListGrants.mockResolvedValue({ grants: [
+        { id: 'grant-1', subjectType: 'user', subjectId: 'user-2', roleId: 'role-1', roleName: 'QA Lead' },
+      ] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      expect(await screen.findByText('QA Lead')).toBeInTheDocument();
+    });
+
+    it('revokes a project grant', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListGrants.mockResolvedValue({ grants: [
+        { id: 'grant-1', subjectType: 'user', subjectId: 'user-2', roleId: 'role-1', roleName: 'QA Lead' },
+      ] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      await screen.findByText('QA Lead');
+      fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
+
+      await waitFor(() => expect(mockRevokeGrant).toHaveBeenCalledWith({ grantId: 'grant-1' }));
+    });
+
+    it('searches org members and grants a role at this project scope', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'QA Lead' }] });
+      mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-2', name: 'Jamie Reviewer', email: 'jamie@test.com' }] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      fireEvent.click(await screen.findByText('+ Grant access'));
+
+      fireEvent.change(screen.getByLabelText('Search people'), { target: { value: 'Jamie' } });
+      fireEvent.click(await screen.findByText('Jamie Reviewer'));
+
+      fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'role-1' } });
+      fireEvent.click(screen.getByText('Grant role'));
+
+      await waitFor(() => expect(mockGrantRole).toHaveBeenCalledWith({
+        subjectType: 'user', subjectId: 'user-2', scopeType: 'project', scopeId: 'proj-1', roleId: 'role-1',
+      }));
+    });
+
+    it('reports a failed grant and a failed revoke', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListGrants.mockResolvedValue({ grants: [
+        { id: 'grant-1', subjectType: 'user', subjectId: 'user-2', roleId: 'role-1', roleName: 'QA Lead' },
+      ] });
+      mockListRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'QA Lead' }] });
+      mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-3', name: 'New Person', email: 'new@test.com' }] });
+      mockGrantRole.mockRejectedValue(new Error('not an org admin'));
+      mockRevokeGrant.mockRejectedValue(new Error('grant not found'));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      await screen.findByText('QA Lead');
+      fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
+      await waitFor(() => expect(screen.getByText(/Failed to revoke: grant not found/)).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText('+ Grant access'));
+      fireEvent.click(await screen.findByText('New Person'));
+      fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'role-1' } });
+      fireEvent.click(screen.getByText('Grant role'));
+      await waitFor(() => expect(screen.getByText(/Failed to grant: not an org admin/)).toBeInTheDocument());
+    });
+
+    it('falls back to email for a candidate with no name, and shows "no matches"/"no roles" empty states', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListRoles.mockResolvedValue({ roles: [] });
+      mockListOrgMembers.mockImplementation(async ({ page }: any) =>
+        page?.filter === 'nomatch'
+          ? { members: [] }
+          : { members: [{ userId: 'user-4', name: '', email: 'noname@test.com' }] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      fireEvent.click(await screen.findByText('+ Grant access'));
+      fireEvent.change(screen.getByLabelText('Search people'), { target: { value: 'x' } });
+
+      const candidate = await screen.findByText('noname@test.com');
+      fireEvent.click(candidate);
+      // No roles at this org yet - the select has nothing but the placeholder.
+      expect(screen.getByLabelText('Role')).toHaveDisplayValue('Choose a role…');
+
+      fireEvent.click(screen.getByText('Cancel'));
+      fireEvent.click(screen.getByText('+ Grant access'));
+      fireEvent.change(screen.getByLabelText('Search people'), { target: { value: 'nomatch' } });
+      expect(await screen.findByText('No matches.')).toBeInTheDocument();
+    });
+
+    it('shows a search-failure state and a pending state while granting', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'QA Lead' }] });
+      mockListOrgMembers.mockRejectedValue(new Error('boom'));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      fireEvent.click(await screen.findByText('+ Grant access'));
+      fireEvent.change(screen.getByLabelText('Search people'), { target: { value: 'x' } });
+      expect(await screen.findByText('Search failed')).toBeInTheDocument();
+    });
+
+    it('shows a pending label while granting a role', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'QA Lead' }] });
+      mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-2', name: 'Jamie Reviewer', email: 'jamie@test.com' }] });
+      let resolveGrant: (v: any) => void = () => {};
+      mockGrantRole.mockReturnValue(new Promise((resolve) => { resolveGrant = resolve; }));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      fireEvent.click(await screen.findByText('+ Grant access'));
+      fireEvent.click(await screen.findByText('Jamie Reviewer'));
+      fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'role-1' } });
+      fireEvent.click(screen.getByText('Grant role'));
+
+      expect(await screen.findByText('Granting…')).toBeInTheDocument();
+      resolveGrant({ grant: { id: 'grant-2' } });
+    });
+  });
+
+  it("falls back to 0 when a task-count response carries no totalCount", async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    mockListTasks.mockResolvedValue({ tasks: [] });
+    renderPage();
+
+    expect(await screen.findByText('No tasks yet')).toBeInTheDocument();
+  });
 });
