@@ -454,6 +454,15 @@ model ProjectTemplate {
   @field(3) name: string;
   @field(4) description: string;
   @field(5) rootTaskTypeId?: string;
+
+  // M20-T02: added after the fact - new field number so existing clients
+  // are unaffected. The handler already computed and formatted this for
+  // listTemplates; it was never on the wire model, so the value was
+  // silently dropped everywhere else (getTemplate/createTemplate/
+  // updateTemplate), the same "computed, then silently dropped" pattern
+  // already fixed for AgentRole (M17-T02), Folder/Artifact (M18-T02), and
+  // Task/TaskNote (M19-T02).
+  @field(6) createdAt: string;
 }
 
 model Project {
@@ -470,6 +479,11 @@ model Project {
   // "never set" and "explicitly cleared" both read back as absent/empty
   // the same way `updateProject` treats them (see UpdateProjectRequest).
   @field(8) description?: string;
+
+  // M20-T02: same "computed, then silently dropped" fix as
+  // ProjectTemplate.createdAt above - listProjects already formatted it,
+  // getProject/createProject/updateProject never had anywhere to put it.
+  @field(9) createdAt: string;
 }
 
 // ==== Project Services ====

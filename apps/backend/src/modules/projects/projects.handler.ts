@@ -97,6 +97,17 @@ const PurgeProjectSchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
 });
 
+const ListProjectsSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+  page: z.any().optional(),
+  onlyDeleted: z.boolean().optional(),
+});
+
+const ListTemplatesSchema = z.object({
+  orgId: z.string().min(1, "orgId is required"),
+  page: z.any().optional(),
+});
+
 // --- Handler Factories ---
 
 export const createProjectsHandler = (db: any, nc: any = null) => {
@@ -117,7 +128,16 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       // wire field is `string deletedAt = 6`, and connect's protobuf JSON
       // encoder throws ("expected string, got object") on a Date, not just
       // silently stringifying it. Every archived project 500'd on this RPC.
-      return { project: { ...result[0], deletedAt: result[0].deletedAt instanceof Date ? result[0].deletedAt.toISOString() : result[0].deletedAt } };
+      // M20-T02: createdAt needs the same conversion now that it's on the
+      // wire at all - previously computing it here would have been pointless
+      // since Project had nowhere to put it.
+      return {
+        project: {
+          ...result[0],
+          deletedAt: result[0].deletedAt instanceof Date ? result[0].deletedAt.toISOString() : result[0].deletedAt,
+          createdAt: result[0].createdAt instanceof Date ? result[0].createdAt.toISOString() : result[0].createdAt,
+        },
+      };
     },
     async createProject(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
@@ -150,6 +170,11 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       let lastError: unknown;
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         const key = await generateUniqueProjectKey(db, ps, parsed.orgId, parsed.name);
+        // M20-T02: set explicitly rather than left to insertRecord's default
+        // - that default only fires in standalone/sqlite mode, and either
+        // way it was never added to the object returned below, only to the
+        // copy insertRecord wrote to the DB (same bug already fixed for
+        // Agents/Artifacts/Tasks' create* RPCs).
         const payload = {
           id: newId,
           orgId: parsed.orgId,
@@ -159,11 +184,13 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
           nextTaskNumber: 1,
           ownerId: parsed.ownerId,
           description: parsed.description,
+          createdAt: new Date(),
         };
         try {
-          await insertRecord(db, ps, payload, isStandalone);
-          publishDomainEvent(nc, "domain.project.created", payload);
-          return { project: payload };
+          await insertRecord(db, ps, payload, isStandalone, false);
+          const projectResp = { ...payload, createdAt: payload.createdAt.toISOString() };
+          publishDomainEvent(nc, "domain.project.created", projectResp);
+          return { project: projectResp };
         } catch (e) {
           if (!isProjectKeyConflict(e)) throw e;
           lastError = e;
@@ -171,14 +198,14 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       }
       throw lastError;
     },
-    async listProjects(req: any, { values: contextValues }: { values: any }) {
+    async listProjects(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read', permission: 'project:read' });
+      const parsed = ListProjectsSchema.parse(req);
+      await authorizePrincipal(db, principal, parsed.orgId, { scope: 'projects:read', permission: 'project:read' });
 
       const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
-      const deletedFilter = req.onlyDeleted ? not(notDeleted(ps)) : notDeleted(ps);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, ps, and(eq((ps as any).orgId, req.orgId), deletedFilter), req.page, {
+      const deletedFilter = parsed.onlyDeleted ? not(notDeleted(ps)) : notDeleted(ps);
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, ps, and(eq((ps as any).orgId, parsed.orgId), deletedFilter), parsed.page, {
         filterColumn: (ps as any).name,
         sortableColumns: { name: (ps as any).name, createdAt: (ps as any).createdAt },
         select: {
@@ -192,6 +219,13 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
           createdAt: (ps as any).createdAt,
           deletedAt: (ps as any).deletedAt,
         },
+        // M20-T02: onlyDeleted narrows `scope` (baseCondition) just as much
+        // as the free-text filter does, but executePaginatedQuery's cached-
+        // totalCount guard only ever compared `filter` - a cursor minted
+        // while paging active projects and then reused against a request
+        // for the bin (or vice versa) would report the wrong set's count.
+        // Same fix as M19-T03's listTasks facets.
+        extraCacheKey: parsed.onlyDeleted ? "1" : "0",
       });
 
       return {
@@ -229,6 +263,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
         // listProjects - reachable here too since nothing stops updateProject
         // from being called on an already-archived row.
         deletedAt: result[0].deletedAt instanceof Date ? result[0].deletedAt.toISOString() : result[0].deletedAt,
+        createdAt: result[0].createdAt instanceof Date ? result[0].createdAt.toISOString() : result[0].createdAt,
       };
       publishDomainEvent(nc, "domain.project.updated", updated);
       return { project: updated };
@@ -322,7 +357,12 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
       const result = await db.select().from(pts).where(eq((pts as any).id, parsed.id)).limit(1);
       if (!result || result.length === 0) throw new ConnectError("template not found", Code.NotFound);
       await authorizePrincipal(db, principal, result[0].orgId, { scope: 'projects:read', permission: 'project:read' });
-      return { template: result[0] };
+      return {
+        template: {
+          ...result[0],
+          createdAt: result[0].createdAt instanceof Date ? result[0].createdAt.toISOString() : result[0].createdAt,
+        },
+      };
     },
     async createTemplate(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
@@ -340,18 +380,21 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
 
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
       const newId = `pt-${crypto.randomUUID()}`;
+      // M20-T02: same never-set createdAt fix as createProject above.
       const payload = {
         id: newId,
         orgId: parsed.orgId,
         name: parsed.name,
         description: parsed.description,
         rootTaskTypeId: parsed.rootTaskTypeId || null,
+        createdAt: new Date(),
       };
 
-      await insertRecord(db, pts, payload, isStandalone);
+      await insertRecord(db, pts, payload, isStandalone, false);
 
-      publishDomainEvent(nc, "domain.project_template.created", payload);
-      return { template: payload };
+      const templateResp = { ...payload, createdAt: payload.createdAt.toISOString() };
+      publishDomainEvent(nc, "domain.project_template.created", templateResp);
+      return { template: templateResp };
     },
     async updateTemplate(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
@@ -377,17 +420,21 @@ export const createProjectTemplatesHandler = (db: any, nc: any = null) => {
 
       await db.update(pts).set(updates).where(eq((pts as any).id, parsed.id));
 
-      const updated = { ...result[0], ...updates };
+      const updated = {
+        ...result[0],
+        ...updates,
+        createdAt: result[0].createdAt instanceof Date ? result[0].createdAt.toISOString() : result[0].createdAt,
+      };
       publishDomainEvent(nc, "domain.project_template.updated", updated);
       return { template: updated };
     },
-    async listTemplates(req: any, { values: contextValues }: { values: any }) {
+    async listTemplates(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
-      await authorizePrincipal(db, principal, req.orgId, { scope: 'projects:read', permission: 'project:read' });
+      const parsed = ListTemplatesSchema.parse(req);
+      await authorizePrincipal(db, principal, parsed.orgId, { scope: 'projects:read', permission: 'project:read' });
 
       const pts = isStandalone ? schemaSqlite.projectTemplates : schemaMysql.projectTemplates;
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, req.orgId), req.page, {
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, pts, eq((pts as any).orgId, parsed.orgId), parsed.page, {
         filterColumn: (pts as any).name,
         sortableColumns: { name: (pts as any).name, createdAt: (pts as any).createdAt },
         select: {

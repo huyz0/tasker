@@ -371,6 +371,7 @@ message ProjectTemplate {
   string name = 3;
   string description = 4;
   string rootTaskTypeId = 5;
+  string createdAt = 6;
 }
 
 message Project {
@@ -384,6 +385,7 @@ message Project {
 
   // M16-T01: no description field existed anywhere on a project.
   string description = 8;
+  string createdAt = 9;
 }
 
 message GetProjectTemplateRequest {

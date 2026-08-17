@@ -56,6 +56,11 @@ describe("Projects Handler Integration Logic", () => {
 
      expect(tResp.template.id).toBeDefined();
      expect(tResp.template.name).toBe("Test Template");
+     // M20-T02: createdAt used to be computed for listTemplates only and
+     // silently dropped everywhere else - Project/ProjectTemplate had no
+     // field to put it on at all.
+     expect(typeof tResp.template.createdAt).toBe("string");
+     expect(tResp.template.createdAt.length).toBeGreaterThan(0);
 
      const pResp = await pHandler.createProject({
          orgId: "org-test",
@@ -66,15 +71,19 @@ describe("Projects Handler Integration Logic", () => {
 
      expect(pResp.project.id).toBeDefined();
      expect(pResp.project.name).toBe("Test Project");
+     expect(typeof pResp.project.createdAt).toBe("string");
+     expect(pResp.project.createdAt.length).toBeGreaterThan(0);
      expect(mockNc.publishedMessages.map((m: any) => m.subject)).toContain("domain.project.created");
 
      // Fetch project
      const fetchProj = await pHandler.getProject({ id: pResp.project.id }, ctx);
      expect(fetchProj.project.name).toBe("Test Project");
+     expect(typeof fetchProj.project.createdAt).toBe("string");
 
      // Fetch template
      const fetchTpl = await ptHandler.getTemplate({ id: tResp.template.id }, ctx);
      expect(fetchTpl.template.name).toBe("Test Template");
+     expect(typeof fetchTpl.template.createdAt).toBe("string");
 
      // Test 404 throws
      expect(pHandler.getProject({ id: "invalid-id" }, ctx)).rejects.toThrow();
@@ -84,6 +93,7 @@ describe("Projects Handler Integration Logic", () => {
      const listRes = await pHandler.listProjects({ orgId: "org-test" }, ctx);
      expect(listRes.projects.length).toBeGreaterThan(0);
      expect(listRes.projects.some((p: any) => p.name === "Test Project")).toBe(true);
+     expect(listRes.projects.every((p: any) => typeof p.createdAt === "string" && p.createdAt.length > 0)).toBe(true);
 
      expect(pHandler.listProjects({}, ctx)).rejects.toThrow();
   });
@@ -113,6 +123,7 @@ describe("Projects Handler Integration Logic", () => {
     // touch it", the same distinction M14-T01 fixed for tasks.
     const renamedOnly = await pHandler.updateProject({ projectId: created.project.id, name: "Renamed Desc Project" }, ctx);
     expect(renamedOnly.project.description).toBe("Ships the thing");
+    expect(typeof renamedOnly.project.createdAt).toBe("string");
     expect((await pHandler.getProject({ id: created.project.id }, ctx)).project.description).toBe("Ships the thing");
 
     // An explicit empty string clears it.
@@ -232,6 +243,7 @@ describe("Projects Handler Integration Logic", () => {
     await ptHandler.createTemplate({ orgId: "org-test", name: "Listable Template" }, ctx);
     const res = await ptHandler.listTemplates({ orgId: "org-test" }, ctx);
     expect(res.templates.some((t: any) => t.name === "Listable Template")).toBe(true);
+    expect(res.templates.every((t: any) => typeof t.createdAt === "string" && t.createdAt.length > 0)).toBe(true);
 
     await expect(ptHandler.listTemplates({}, ctx)).rejects.toThrow();
     await expect(ptHandler.listTemplates({ orgId: "org-test" }, makeAuthContext("user-outsider"))).rejects.toThrow();
