@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
@@ -52,6 +52,31 @@ export function ArtifactsBrowser() {
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editFolderName, setEditFolderName] = useState('');
   const queryClient = useQueryClient();
+
+  // M18-T05: switching the active project (or org) changes what foldersData
+  // resolves to, but nothing reset the locally-held selection - the sidebar
+  // tree repainted for the new project while the main pane kept rendering
+  // whatever folder/artifact id was selected under the old one, resolved
+  // against whatever happened to still be in the query cache.
+  //
+  // Skipped on the very first run: a deep link (`/artifacts/:artifactId`)
+  // has to survive mounting into whatever the active project/org happens to
+  // already be, not get redirected away from before it has ever rendered.
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setSelectedFolderId(null);
+    setExpandedFolderIds(new Set());
+    setIsEditingContent(false);
+    if (artifactId) navigate('/artifacts');
+    // Deliberately only activeProjectId/activeOrgId: this resets the
+    // selection when the *scope* changes, not on every ordinary navigation
+    // within it (which would fight the very selection the user just made).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProjectId, activeOrgId]);
 
   // The one remaining `fetchAllPages` in this view, and a deliberate one
   // (M07 exit criterion 1): this renders a *tree*, and a tree with some of its
@@ -236,6 +261,23 @@ export function ArtifactsBrowser() {
     },
   });
 
+  // M18-T05: six of these seven mutations never rendered their error at all
+  // - a failed rename/create/delete closed no dialog and left the form or
+  // button simply un-pending, with nothing telling the user it didn't work.
+  // One derived value per area rather than a check-and-render per mutation,
+  // so a new folder/artifact mutation added later doesn't quietly repeat the
+  // gap by being left out of an ad-hoc list of conditions.
+  const folderMutationError =
+    (createFolderMutation.isError && { label: 'create folder', error: createFolderMutation.error }) ||
+    (createSubfolderMutation.isError && { label: 'create subfolder', error: createSubfolderMutation.error }) ||
+    (archiveFolderMutation.isError && { label: 'delete folder', error: archiveFolderMutation.error }) ||
+    (updateFolderMutation.isError && { label: 'rename folder', error: updateFolderMutation.error }) ||
+    null;
+  const artifactMutationError =
+    (createArtifactMutation.isError && { label: 'create artifact', error: createArtifactMutation.error }) ||
+    (archiveArtifactMutation.isError && { label: 'delete artifact', error: archiveArtifactMutation.error }) ||
+    null;
+
   const selectArtifact = (artifact: { id: string }) => {
     setIsEditingContent(false);
     navigate(`/artifacts/${artifact.id}`);
@@ -371,6 +413,11 @@ export function ArtifactsBrowser() {
               {/* Show artifacts if this folder is selected */}
               {selectedFolderId === folder.id && (
                 <div className="pl-6 mt-1 space-y-1">
+                  {artifactMutationError && (
+                    <p className="text-xs text-destructive px-2">
+                      Failed to {artifactMutationError.label}: {(artifactMutationError.error as Error).message}
+                    </p>
+                  )}
                   {(isLoadingArtifacts || artifactsError) && (
                     <ListState
                       isLoading={isLoadingArtifacts}
@@ -465,7 +512,12 @@ export function ArtifactsBrowser() {
                   <div style={{ paddingLeft: (depth + 1) * 12 }}>
                     <InlineCreateForm
                       placeholder="Subfolder name"
-                      isSubmitting={createFolderMutation.isPending}
+                      // M18-T05: was reading createFolderMutation's pending
+                      // state - a different mutation than the one this form
+                      // submits to - so the Add button never disabled while
+                      // this request was actually in flight, and a
+                      // double-click could fire it twice.
+                      isSubmitting={createSubfolderMutation.isPending}
                       onSubmit={(name) => createSubfolderMutation.mutate({ parentId: folder.id, name })}
                       onCancel={() => setAddingSubfolderTo(null)}
                     />
@@ -498,6 +550,11 @@ export function ArtifactsBrowser() {
           </button>
         </div>
         <div className="p-2 space-y-1 text-sm overflow-y-auto">
+          {folderMutationError && (
+            <p className="text-xs text-destructive px-1">
+              Failed to {folderMutationError.label}: {(folderMutationError.error as Error).message}
+            </p>
+          )}
           {isAddingFolder && (
             <InlineCreateForm
               placeholder="Folder name"

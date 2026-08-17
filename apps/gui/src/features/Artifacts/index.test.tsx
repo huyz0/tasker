@@ -81,11 +81,13 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   // Artifact comments (M05-T07).
   CommentService: 'CommentService',
 }));
+let mockActiveProjectId = 'proj-1';
+let mockActiveOrgId = 'org-1';
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
     setActivePageTitle: vi.fn(),
-    activeProjectId: 'proj-1',
-    activeOrgId: 'org-1',
+    get activeProjectId() { return mockActiveProjectId; },
+    get activeOrgId() { return mockActiveOrgId; },
   })),
 }));
 
@@ -101,17 +103,23 @@ function LocationProbe() {
   return null;
 }
 
+function page(initialEntry = '/artifacts') {
+  return (
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <LocationProbe />
+      <Routes>
+        <Route path="/artifacts" element={<ArtifactsBrowser />} />
+        <Route path="/artifacts/:artifactId" element={<ArtifactsBrowser />} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
 function renderPage(initialEntry = '/artifacts') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utils = render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialEntry]}>
-        <LocationProbe />
-        <Routes>
-          <Route path="/artifacts" element={<ArtifactsBrowser />} />
-          <Route path="/artifacts/:artifactId" element={<ArtifactsBrowser />} />
-        </Routes>
-      </MemoryRouter>
+      {page(initialEntry)}
     </QueryClientProvider>
   );
   return { ...utils, queryClient };
@@ -119,6 +127,8 @@ function renderPage(initialEntry = '/artifacts') {
 
 describe('ArtifactsBrowser', () => {
   beforeEach(() => {
+    mockActiveProjectId = 'proj-1';
+    mockActiveOrgId = 'org-1';
     mockListFolders.mockReset();
     mockListArtifacts.mockReset();
     mockGetArtifact.mockReset();
@@ -857,5 +867,150 @@ describe('ArtifactsBrowser', () => {
       await waitFor(() => expect(locationRef.current).toBe('/artifacts'));
       expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
     });
+  });
+
+  // M18-T05: six of the seven mutations in this view never rendered their
+  // error - a failed create/rename/delete left the form or button simply
+  // un-pending, with nothing telling the user it didn't work.
+  describe('mutation errors', () => {
+    it('reports a failed folder creation', async () => {
+      mockListFolders.mockResolvedValue({ folders: [] });
+      mockCreateFolder.mockRejectedValue(new Error('permission denied'));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('+ Folder'));
+      fireEvent.change(await screen.findByPlaceholderText('Folder name'), { target: { value: 'New Folder' } });
+      fireEvent.click(screen.getByText('Add'));
+
+      expect(await screen.findByText('Failed to create folder: permission denied')).toBeInTheDocument();
+    });
+
+    it('reports a failed subfolder creation', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [] });
+      mockCreateFolder.mockRejectedValue(new Error('name taken'));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('docs'));
+      fireEvent.click(await screen.findByText('+ Subfolder in docs'));
+      fireEvent.change(await screen.findByPlaceholderText('Subfolder name'), { target: { value: 'specs' } });
+      fireEvent.submit(screen.getByPlaceholderText('Subfolder name').closest('form')!);
+
+      expect(await screen.findByText('Failed to create subfolder: name taken')).toBeInTheDocument();
+    });
+
+    it('reports a failed folder deletion', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockArchiveFolder.mockRejectedValue(new Error('in use'));
+      renderPage();
+
+      await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+      fireEvent.click(screen.getByLabelText('Delete folder docs'));
+      await confirmAction();
+
+      expect(await screen.findByText('Failed to delete folder: in use')).toBeInTheDocument();
+    });
+
+    it('reports a failed folder rename', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockUpdateFolder.mockRejectedValue(new Error('folder not found'));
+      renderPage();
+
+      await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+      fireEvent.click(screen.getByLabelText('Rename folder docs'));
+      fireEvent.change(screen.getByDisplayValue('docs'), { target: { value: 'documents' } });
+      fireEvent.click(screen.getByText('Save'));
+
+      expect(await screen.findByText('Failed to rename folder: folder not found')).toBeInTheDocument();
+    });
+
+    it('reports a failed artifact creation', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [] });
+      mockCreateArtifact.mockRejectedValue(new Error('name taken'));
+      renderPage();
+
+      await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+      fireEvent.click(screen.getByText('docs'));
+      fireEvent.click(await screen.findByText('+ New artifact'));
+      fireEvent.change(await screen.findByPlaceholderText('Artifact name'), { target: { value: 'notes.md' } });
+      fireEvent.click(screen.getByText('Add'));
+
+      expect(await screen.findByText('Failed to create artifact: name taken')).toBeInTheDocument();
+    });
+
+    it('reports a failed artifact deletion', async () => {
+      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello' }] });
+      mockArchiveArtifact.mockRejectedValue(new Error('artifact locked'));
+      renderPage();
+
+      await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+      fireEvent.click(screen.getByText('docs'));
+      await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+      fireEvent.click(screen.getByLabelText('Delete artifact readme.md'));
+      await confirmAction();
+
+      expect(await screen.findByText('Failed to delete artifact: artifact locked')).toBeInTheDocument();
+    });
+  });
+
+  it('disables the subfolder Add button only while its own request is in flight', async () => {
+    // Regression: this read createFolderMutation's pending state, a
+    // different mutation than the one this form submits to, so the button
+    // never disabled while the subfolder request was actually running and a
+    // double-click could fire it twice.
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    let release: (v: unknown) => void = () => {};
+    mockCreateFolder.mockReturnValue(new Promise((r) => { release = r; }));
+    renderPage();
+
+    fireEvent.click(await screen.findByText('docs'));
+    fireEvent.click(await screen.findByText('+ Subfolder in docs'));
+    fireEvent.change(await screen.findByPlaceholderText('Subfolder name'), { target: { value: 'specs' } });
+    fireEvent.submit(screen.getByPlaceholderText('Subfolder name').closest('form')!);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled());
+    release({ folder: { id: 'fld-9' } });
+    await waitFor(() => expect(mockCreateFolder).toHaveBeenCalledTimes(1));
+  });
+
+  // M18-T05: switching the active project changed what foldersData resolved
+  // to, but nothing reset the locally-held selection - the sidebar tree
+  // repainted for the new project while the main pane kept rendering
+  // whatever folder/artifact was selected under the old one.
+  it('closes the open artifact and collapses the tree when the active project changes', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>{page('/artifacts/art-1')}</QueryClientProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+
+    mockActiveProjectId = 'proj-2';
+    rerender(<QueryClientProvider client={queryClient}>{page('/artifacts/art-1')}</QueryClientProvider>);
+
+    await waitFor(() => expect(locationRef.current).toBe('/artifacts'));
+    expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
+  });
+
+  it('does not reset the selection on an ordinary render - only when the project/org actually changes', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>{page('/artifacts/art-1')}</QueryClientProvider>,
+    );
+    await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+
+    // Same project/org, just a re-render (e.g. an unrelated store update).
+    rerender(<QueryClientProvider client={queryClient}>{page('/artifacts/art-1')}</QueryClientProvider>);
+
+    expect(locationRef.current).toBe('/artifacts/art-1');
+    expect(screen.getByText('Hello world')).toBeInTheDocument();
   });
 });
