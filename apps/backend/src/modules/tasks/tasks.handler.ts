@@ -876,7 +876,17 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     async deleteTask(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = DeleteTaskSchema.parse(req);
-      const orgId = await getTaskOrgId(db, parsed.taskId);
+      // includeDeleted=true here, deliberately: archiveProject only soft-
+      // deletes the project row and never touches its tasks, so archiving a
+      // project that still has live tasks used to leave no way forward -
+      // deleteTask's default (false) propagates through to the project
+      // lookup and reports "Project not found" for a perfectly live task,
+      // while purgeProject refuses to run while any task remains. Cleaning
+      // up a task is exactly the operation an admin needs *after* archiving
+      // a project, not one the project's own archived state should block
+      // (M14-T03). A task that no longer exists at all still 404s below;
+      // only the project's archived state is now tolerated.
+      const orgId = await getTaskOrgId(db, parsed.taskId, true);
       await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "task:admin");
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;

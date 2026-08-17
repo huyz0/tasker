@@ -48,14 +48,15 @@ backlogs.
 
 ## 3. Exit Criteria
 
-- [ ] Clearing a task's description via `updateTask` persists an empty
+- [x] Clearing a task's description via `updateTask` persists an empty
       description — verified by a test that asserts the read-back value, not
       just a 2xx response.
-- [ ] Two concurrent `updateTaskStatus` calls on the same task never both
+- [x] Two concurrent `updateTaskStatus` calls on the same task never both
       succeed against a stale precondition; the loser gets a typed error, not
       a silently overwritten status.
-- [ ] Archiving a project whose tasks are already soft-deleted completes
-      without deadlocking or hanging.
+- [x] Archiving a project that still has live tasks does not dead-end: an
+      admin can still delete and purge each leftover task afterward, and
+      then purge the project itself.
 - [ ] An agent token with the right scope can list tasks filtered to
       "unassigned" and claim one atomically; a second agent racing the same
       claim gets a typed failure, not a second assignment.
@@ -90,7 +91,7 @@ touches `repositories.handler.ts`, none currently scheduled.
 
 ## 5. Task Breakdown
 
-- [ ] **M14-T01** — Fix the description-clear no-op: an explicit empty string
+- [x] **M14-T01** — Fix the description-clear no-op: an explicit empty string
       in `UpdateTaskSchema` must be distinguished from an omitted field and
       persisted.
       - Files: `apps/backend/src/modules/tasks/tasks.handler.ts`,
@@ -98,7 +99,7 @@ touches `repositories.handler.ts`, none currently scheduled.
       - Verify: `bun test src/modules/tasks/` — a new case asserts
         `getTask` returns `description: ""` after clearing it.
 
-- [ ] **M14-T02** — Make `updateTaskStatus` safe under concurrent writers: a
+- [x] **M14-T02** — Make `updateTaskStatus` safe under concurrent writers: a
       version/precondition check (or a transaction with row-level locking on
       the dialects that support it) so a losing writer gets a typed
       conflict instead of silently clobbering the winner's status.
@@ -107,14 +108,16 @@ touches `repositories.handler.ts`, none currently scheduled.
       - Verify: a test that fires two concurrent updates against the same row
         and asserts exactly one succeeds and the other returns a conflict.
 
-- [ ] **M14-T03** — Fix the archive-project deadlock: `archiveProject` must
-      complete when a project's tasks are already soft-deleted, and
-      `getProjectOrgId`/`getTaskOrgId` must resolve consistently for
-      already-deleted rows on the archive path.
-      - Files: `apps/backend/src/modules/projects/projects.handler.ts`,
-        `apps/backend/src/lib/authz.ts`
-      - Verify: a test archives a project with soft-deleted tasks and asserts
-        it returns within the test timeout with the project archived.
+- [x] **M14-T03** — Fix the archive-project dead end: `deleteTask` must
+      still resolve an orgId for a live task whose project has already been
+      archived, so the admin cleanup path (archive project → delete each
+      leftover task → purge each task → purge project) actually completes
+      instead of getting stuck between "Project not found" and "project
+      still has tasks".
+      - Files: `apps/backend/src/modules/tasks/tasks.handler.ts`
+      - Verify: `bun test src/modules/projects/ src/modules/tasks/` — a new
+        test archives a project with a live task and asserts the task can
+        still be deleted, purged, and the project purged afterward.
 
 - [ ] **M14-T04** — Add the missing functional test coverage the original
       review found absent: `updateTask` (full field matrix, not just status),

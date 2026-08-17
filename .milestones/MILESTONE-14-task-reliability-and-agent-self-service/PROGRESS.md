@@ -65,3 +65,47 @@
   now-fixed counter claim — this is the same failure mode, one call site
   over.
 - **Next**: M14-T03
+
+## M14-T03 — Fix the archive-project dead end
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**: `apps/backend/src/modules/tasks/tasks.handler.ts`,
+  `apps/backend/src/modules/projects/projects.test.ts`
+- **Verified**: `bun test src/modules/projects/ src/modules/tasks/
+  src/lib/authz.test.ts` — 101 pass / 1 skip / 0 fail. Full `bun test` at
+  the repo root — 1274 pass / 12 skip / 0 fail. New test in
+  `projects.test.ts`: archives a project with a live task, then asserts
+  `deleteTask`, `purgeTask`, and `purgeProject` all still succeed
+  afterward. Confirmed the failure by hand before the fix (a throwaway
+  repro): `deleteTask` on a live task under an already-archived project
+  threw `NotFound: Project not found`, and `purgeProject` separately threw
+  `FailedPrecondition: project still has tasks...` — the two errors
+  together are the dead end named in the milestone goal, since neither
+  side of it could be resolved from the API.
+- **Notes**: This was **not** a literal hang or DB-level deadlock —
+  `archiveProject` is a single-row soft-delete with no cascade, so nothing
+  ever blocks on a lock. The real defect: `archiveProject` never touches a
+  project's tasks, so archiving a project that still has live tasks left
+  those tasks stranded. `deleteTask` resolved its orgId via
+  `getTaskOrgId(db, taskId)` with the default `includeDeleted=false`, which
+  (correctly, per `authz.test.ts`'s existing pinned tests) propagates to
+  the project lookup and excludes archived projects — so `deleteTask`
+  reported "Project not found" for a perfectly live task the moment its
+  parent project was archived. Meanwhile `purgeProject` requires zero
+  remaining task rows (soft-deleted or not — it has to, or purging the
+  project would orphan them), so there was no way to reach zero. Deliberately
+  did **not** change `getTaskOrgId`'s own default behaviour or its
+  `includeDeleted` coupling — that function's contract is exercised by
+  named tests in `authz.test.ts` for the folder/artifact cases too, and
+  changing it would have widened this fix into every read path that calls
+  it. Instead, `deleteTask` alone now passes `includeDeleted: true`, which
+  is exactly the operation an admin needs *after* archiving a project. As a
+  side effect `deleteTask` is now idempotent on an already-deleted task
+  (previously 404s), matching the idempotent-mutation convention already
+  used elsewhere in this handler (`addTaskReviewer`, `assignTask`,
+  `createTaskStatusTransition`); no existing test asserted the opposite.
+  `purgeTask` already tolerated an archived project (it already passed
+  `includeDeleted: true`, covered by an existing test) — it was solely
+  `deleteTask` blocking the workflow.
+- **Next**: M14-T04

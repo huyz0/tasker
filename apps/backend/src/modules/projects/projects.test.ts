@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createProjectsHandler, createProjectTemplatesHandler } from "./projects.handler";
-import { createTasksHandler } from "../tasks/tasks.handler";
+import { createTasksHandler, createTaskManagementHandler } from "../tasks/tasks.handler";
 
 describe("Projects Handler Integration Logic", () => {
   let db: any;
@@ -260,6 +260,33 @@ describe("Projects Handler Integration Logic", () => {
     const afterPurge = await db.select().from(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, pResp.project.id));
     expect(afterPurge.length).toBe(0);
     expect(mockNc.publishedMessages.map((m: any) => m.subject)).toContain("domain.project.purged");
+  });
+
+  // M14-T03: archiveProject only soft-deletes the project row - it never
+  // touches the project's own tasks. Archiving a project that still has
+  // live tasks used to be a dead end with no path back through the API:
+  // deleteTask's default org lookup excluded archived projects and
+  // reported "Project not found" for a perfectly live task, while
+  // purgeProject refused to run while any task row remained (including
+  // ones that could never be reached to remove). This proves the whole
+  // admin cleanup workflow - archive, then delete and purge each leftover
+  // task, then purge the project - actually completes.
+  test("archiving a project with live tasks does not dead-end: tasks can still be deleted and purged afterward", async () => {
+    const tResp = await ptHandler.createTemplate({ orgId: "org-test", name: "Deadlock Template" }, ctx);
+    const pResp = await pHandler.createProject({ orgId: "org-test", templateId: tResp.template.id, name: "Deadlock Me", ownerId: "user-test" }, ctx);
+    const taskHandler = createTaskManagementHandler(db, mockNc);
+
+    const taskResp = await taskHandler.createTask({ projectId: pResp.project.id, title: "Still Live", status: "todo", description: "" }, ctx);
+
+    // Archive the project while the task is still live - this must not
+    // silently strand the task.
+    await pHandler.archiveProject({ projectId: pResp.project.id }, ctx);
+
+    // Before the fix this threw "Project not found" even though the task
+    // itself was never touched.
+    await expect(taskHandler.deleteTask({ taskId: taskResp.task.id }, ctx)).resolves.toEqual({ success: true });
+    await expect(taskHandler.purgeTask({ taskId: taskResp.task.id }, ctx)).resolves.toEqual({ success: true });
+    await expect(pHandler.purgeProject({ projectId: pResp.project.id }, ctx)).resolves.toEqual({ success: true });
   });
 
   test("restoreProject rejects restoring into an archived organization", async () => {
