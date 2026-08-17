@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { setupIntegrationTest } from "../test/setup";
 import * as schemaSqlite from "./schema.sqlite";
 import { executePaginatedQuery, encodeCursor, decodeCursor } from "./query-builder";
@@ -77,5 +77,40 @@ describe("executePaginatedQuery cursor-cached totalCount", () => {
 
     const page = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 10, cursor: legacyCursor }, { select: { id: schemaSqlite.tasks.id, projectId: schemaSqlite.tasks.projectId, title: schemaSqlite.tasks.title, status: schemaSqlite.tasks.status, createdAt: schemaSqlite.tasks.createdAt } });
     expect(page.totalCount).toBe(2);
+  });
+
+  // M19-T03: listTasks folds status/assigneeFilter into baseCondition, not
+  // into `filter` (which stays reserved for the free-text title search) -
+  // without extraCacheKey, the guard above only ever compared `filter`, so
+  // reusing a cursor minted under one facet against a request for a
+  // *different* facet still passed the guard and leaked the wrong count.
+  it("recomputes totalCount fresh when extraCacheKey changes between pages, instead of reusing a stale cached count for a different facet", async () => {
+    const { db } = await setupIntegrationTest();
+    const projectId = "proj-cache-facet-" + Date.now();
+    await seedTasks(db, 3, projectId);
+    await db.update(schemaSqlite.tasks).set({ status: "done" }).where(eq(schemaSqlite.tasks.id, `${projectId}-tsk-0`));
+
+    const opts = { select: { id: schemaSqlite.tasks.id, projectId: schemaSqlite.tasks.projectId, title: schemaSqlite.tasks.title, status: schemaSqlite.tasks.status, createdAt: schemaSqlite.tasks.createdAt } };
+
+    // Page 1: scoped to status="todo" (2 of the 3 seeded tasks), with the
+    // facet folded into the cache key the same way listTasks does.
+    const page1 = await executePaginatedQuery(
+      db, schemaSqlite.tasks,
+      and(eq(schemaSqlite.tasks.projectId, projectId), eq(schemaSqlite.tasks.status, "todo")),
+      { limit: 1 },
+      { ...opts, extraCacheKey: "todo" },
+    );
+    expect(page1.totalCount).toBe(2);
+
+    // Reuse page 1's cursor, but for a request scoped to status="done" (1
+    // task) - the cached count (2, for "todo") must not leak into this
+    // differently-scoped request.
+    const page2 = await executePaginatedQuery(
+      db, schemaSqlite.tasks,
+      and(eq(schemaSqlite.tasks.projectId, projectId), eq(schemaSqlite.tasks.status, "done")),
+      { limit: 1, cursor: page1.nextCursor },
+      { ...opts, extraCacheKey: "done" },
+    );
+    expect(page2.totalCount).toBe(1);
   });
 });

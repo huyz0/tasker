@@ -115,11 +115,17 @@ var tasksAssignCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskServiceClient()
-		res, err := client.AssignTask(context.Background(), connect.NewRequest(&healthv1.AssignTaskRequest{
-			TaskId:  args[0],
-			AgentId: agentID,
-			UserId:  userID,
-		}))
+		req := &healthv1.AssignTaskRequest{TaskId: args[0]}
+		// M19-T03: agent_id/user_id are now `optional string` on the wire -
+		// only set the pointer for whichever one the caller actually passed,
+		// rather than always sending both (one real, one the empty string).
+		if agentID != "" {
+			req.AgentId = &agentID
+		}
+		if userID != "" {
+			req.UserId = &userID
+		}
+		res, err := client.AssignTask(context.Background(), connect.NewRequest(req))
 		if err != nil {
 			cmd.PrintErrf("Failed to assign task: %v\n", err)
 			return err

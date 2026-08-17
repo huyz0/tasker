@@ -728,8 +728,8 @@ message CreateTaskResponse {
 
 message AssignTaskRequest {
   string task_id = 1;
-  string agent_id = 2;
-  string user_id = 3;
+  optional string agent_id = 2;
+  optional string user_id = 3;
 }
 
 message AssignTaskResponse {

@@ -9,6 +9,21 @@ import { assertCan } from "../../lib/policy";
 import { withIdempotency } from "../../lib/idempotency";
 import { ConnectError, Code } from "@connectrpc/connect";
 
+// Distinguishes a real DB-level unique-constraint violation (a concurrent
+// createTaskStatus/addTaskReviewer call won the race for the same unique
+// key) from any other insert failure, so only the former is treated as a
+// benign duplicate rather than a raw DB error reaching the caller (M19-T03,
+// same pattern as artifacts.handler.ts/labels.handler.ts).
+function isUniqueConstraintConflict(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e);
+  return (
+    msg.includes("task_statuses_task_type_id_name_idx") ||
+    msg.includes("task_reviewers_task_id_user_id_idx") ||
+    msg.includes("UNIQUE constraint failed") ||
+    msg.includes("Duplicate entry")
+  );
+}
+
 // --- Zod Request Schemas ---
 
 const GetTaskTypeSchema = z.object({
@@ -278,6 +293,32 @@ export const createTasksHandler = (db: any, nc: any = null) => {
         if (parentRows[0].orgId !== existing[0].orgId) {
           throw new ConnectError("parent task type belongs to a different organization", Code.InvalidArgument);
         }
+        // M19-T03: same project-scope rule createTaskType already enforces on
+        // create - a project-scoped parent must stay within its own
+        // project's type tree; an org-wide parent (projectId null) is
+        // reusable by any project. Reparenting had never checked this.
+        if (parentRows[0].projectId && parentRows[0].projectId !== (existing[0].projectId || null)) {
+          throw new ConnectError("parent task type belongs to a different project", Code.InvalidArgument);
+        }
+
+        // M19-T03: createTaskType can never introduce a cycle - every type it
+        // creates is brand new, so it can't already be its own ancestor.
+        // Reparenting an *existing* type can: walk the new parent's ancestor
+        // chain and reject if it leads back to the type being updated,
+        // otherwise the tree stops being a tree - anything that walks "up to
+        // the root" (a breadcrumb, a depth computation) loops forever.
+        let cursor: any = parentRows[0];
+        const visited = new Set<string>([parsed.id]);
+        while (cursor.parentId) {
+          if (cursor.parentId === parsed.id) {
+            throw new ConnectError("this parent is a descendant of the task type being updated - would create a cycle", Code.InvalidArgument);
+          }
+          if (visited.has(cursor.parentId)) break; // pre-existing cycle in stored data; do not loop forever here.
+          visited.add(cursor.parentId);
+          const nextRows = await db.select().from(types).where(eq((types as any).id, cursor.parentId)).limit(1);
+          if (!nextRows || nextRows.length === 0) break;
+          cursor = nextRows[0];
+        }
       }
 
       const updates: Record<string, unknown> = {};
@@ -320,7 +361,16 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       const newId = `tst-${crypto.randomUUID()}`;
       const payload = { id: newId, taskTypeId: parsed.taskTypeId, name: parsed.name, position };
 
-      await insertRecord(db, statuses, payload, isStandalone, false);
+      // M19-T03: the select-then-insert check above has a race window - fall
+      // back to catching the DB's own unique-constraint violation for a
+      // concurrent duplicate insert, so it surfaces as AlreadyExists instead
+      // of a raw DB error.
+      try {
+        await insertRecord(db, statuses, payload, isStandalone, false);
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("a status with this name already exists for this task type", Code.AlreadyExists);
+      }
 
       publishDomainEvent(nc, "domain.task_status.created", payload);
       return { status: payload };
@@ -545,6 +595,15 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
           if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
           if (typeRows[0].orgId !== orgId) throw new ConnectError("task type belongs to a different organization", Code.InvalidArgument);
+          // M19-T03: createTaskType already refuses to let a project-scoped
+          // type parent a different project's type (see its own comment) -
+          // this closes the matching gap on the task side: a project-scoped
+          // type could otherwise be attached to a task in any project in the
+          // org, not just the project it was scoped to. An org-wide type
+          // (projectId null) stays usable by any project.
+          if (typeRows[0].projectId && typeRows[0].projectId !== parsed.projectId) {
+            throw new ConnectError("task type belongs to a different project", Code.InvalidArgument);
+          }
         }
         await validateStatusForTaskType(db, isStandalone, parsed.taskTypeId || null, null, parsed.status);
 
@@ -702,6 +761,13 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           createdAt: (tasks as any).createdAt,
           deletedAt: (tasks as any).deletedAt,
         },
+        // M19-T03: status/assigneeFilter/onlyDeleted all narrow `scope`
+        // (baseCondition) just as much as the free-text filter does, but
+        // executePaginatedQuery's cached-totalCount guard only ever compared
+        // against `filter` - a cursor minted while paging with status="todo"
+        // and then reused against a request for status="done" would report
+        // "todo"'s count under "done"'s results.
+        extraCacheKey: [parsed.onlyDeleted ? "1" : "0", parsed.status ?? "", parsed.assigneeFilter ?? ""].join("|"),
       });
       // Sorting by displayId is deliberately not offered: it is a string, so
       // "SEED-100" sorts before "SEED-99". Ids are assigned in creation order,
@@ -877,7 +943,15 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       if (existing.length > 0) return { success: true };
 
       const newId = `trv-${crypto.randomUUID()}`;
-      await db.insert(reviewers).values({ id: newId, taskId: parsed.taskId, userId: parsed.userId });
+      // M19-T03: same check-then-insert race as createTaskStatus above - fall
+      // back to the DB's own unique-constraint violation for a concurrent
+      // duplicate add. A benign no-op either way (the reviewer ends up
+      // added), so there is no error to surface, unlike the status case.
+      try {
+        await db.insert(reviewers).values({ id: newId, taskId: parsed.taskId, userId: parsed.userId });
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+      }
       return { success: true };
     },
     async removeTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
@@ -933,6 +1007,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
         if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
         if (typeRows[0].orgId !== orgId) throw new ConnectError("task type belongs to a different organization", Code.InvalidArgument);
+        // M19-T03: same project-scope rule as createTask - see its comment.
+        if (typeRows[0].projectId && typeRows[0].projectId !== existing[0].projectId) {
+          throw new ConnectError("task type belongs to a different project", Code.InvalidArgument);
+        }
       }
 
       const updates: Record<string, unknown> = {};

@@ -161,6 +161,8 @@ export const taskStatuses = mysqlTable("task_statuses", {
 }, (table) => {
   return {
     taskTypeIdIdx: index("task_statuses_task_type_id_idx").on(table.taskTypeId),
+    // M19-T03: see the SQLite counterpart for the race this closes.
+    taskTypeIdNameIdx: uniqueIndex("task_statuses_task_type_id_name_idx").on(table.taskTypeId, table.name),
   };
 });
 
@@ -304,6 +306,8 @@ export const taskReviewers = mysqlTable("task_reviewers", {
   return {
     taskIdIdx: index("task_reviewers_task_id_idx").on(table.taskId),
     userIdIdx: index("task_reviewers_user_id_idx").on(table.userId),
+    // M19-T03: see the SQLite counterpart for the race this closes.
+    taskIdUserIdIdx: uniqueIndex("task_reviewers_task_id_user_id_idx").on(table.taskId, table.userId),
   };
 });
 

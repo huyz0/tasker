@@ -847,8 +847,14 @@ model CreateTaskResponse {
 
 model AssignTaskRequest {
   @field(1) taskId: string;
-  @field(2) agentId: string;
-  @field(3) userId: string;
+
+  // Exactly one of agentId/userId is required (enforced by the handler) -
+  // marked optional, like UnassignTaskRequest's equivalent fields, so proto3
+  // gives each real field presence instead of collapsing "omitted" into the
+  // same empty string as "explicitly assign to nobody" (M19-T03).
+  @field(2) agentId?: string;
+
+  @field(3) userId?: string;
 }
 
 model AssignTaskResponse {
