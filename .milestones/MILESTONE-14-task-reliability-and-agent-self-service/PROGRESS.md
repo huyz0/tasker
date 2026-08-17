@@ -326,3 +326,35 @@
   note about drizzle-sqlite snapshot drift is why these were hand-written
   rather than generated).
 - **Next**: M14-T08
+
+## M14-T08 — Wire linkTaskArtifact/unlinkTaskArtifact into the CLI
+
+- **Status**: done
+- **Date**: 2026-08-17
+- **Changed**: `apps/cli/cmd/artifacts.go`, `apps/cli/cmd/artifacts_test.go`
+- **Verified**: `go test ./...` in `apps/cli` — all pass, including 3 new
+  tests (`TestArtifactsLinkTaskCommandSendsTaskAndArtifactIds`,
+  `TestArtifactsLinkTaskCommandRequiresBothFlags`,
+  `TestArtifactsUnlinkTaskCommandSendsTaskAndArtifactIds`). `moon check
+  --all` (27 tasks) clean, including `cli:coverage` at 97.9%.
+- **Notes**: Landed as `tasker artifacts link-task`/`unlink-task` rather
+  than `tasker task link-artifact` (the milestone's original placeholder
+  path) - the RPCs live on `ArtifactService`, and `artifacts.go` already
+  had the `ArtifactServiceClient` wiring and the exact command shape to
+  extend, so putting the new subcommands there (alongside `create`,
+  `delete`, `restore`, `purge`) matched the existing structure better than
+  starting a new file under `tasks.go` for two commands. `--task`/`--artifact`
+  are both required flags, checked client-side before the RPC call, same
+  pattern as `artifacts create`'s `--folder`/`--name` check.
+
+  Caught my own test bug via a real gotcha this codebase had already
+  named: `TestArtifactsLinkTaskCommandRequiresBothFlags` initially failed
+  because Cobra/pflag flag values persist across `Execute()` calls on the
+  same command instance within a test binary - the prior test's
+  `--artifact art_1` was still set when this one only passed `--task`.
+  `teams_test.go` had already hit and fixed the identical issue
+  (`teamsCreateCmd.Flags().Set("name", "")`); followed the same fix here
+  (`artifactsLinkTaskCmd.Flags().Set("artifact", "")`) rather than
+  reordering tests to dodge it, which would only have hidden the same trap
+  for the next person who adds a test.
+- **Next**: M14-T09

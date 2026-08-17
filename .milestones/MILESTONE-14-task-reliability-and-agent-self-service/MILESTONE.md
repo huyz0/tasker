@@ -65,7 +65,7 @@ backlogs.
       (sequential retries fully covered; two genuinely concurrent calls
       carrying the same key are a documented, deliberately deferred gap -
       see PROGRESS.md M14-T07).
-- [ ] `tasker task link-artifact` exists in the CLI and round-trips against a
+- [x] `tasker artifacts link-task` exists in the CLI and round-trips against a
       running backend.
 - [ ] Task type status/transition editing lives in exactly one GUI surface;
       the other no longer offers a second, incomplete copy of the same CRUD.
@@ -160,11 +160,10 @@ touches `repositories.handler.ts`, none currently scheduled.
       - Verify: a test calls `createTask` twice with the same key and asserts
         one task exists and both calls return the same id.
 
-- [ ] **M14-T08** — Wire `linkTaskArtifact`/`unlinkTaskArtifact` into the CLI;
+- [x] **M14-T08** — Wire `linkTaskArtifact`/`unlinkTaskArtifact` into the CLI;
       today the RPCs exist but only the GUI calls them.
-      - Files: `apps/cli/cmd/task.go` (or wherever task subcommands live),
-        `apps/cli/internal/backend/client.go`
-      - Verify: `tasker task link-artifact --task <id> --artifact <id> --json`
+      - Files: `apps/cli/cmd/artifacts.go`, `apps/cli/cmd/artifacts_test.go`
+      - Verify: `tasker artifacts link-task --task <id> --artifact <id> --json`
         against a running backend returns the created link; `cli:test` green.
 
 - [ ] **M14-T09** — De-duplicate Task Type CRUD: the Projects screen currently

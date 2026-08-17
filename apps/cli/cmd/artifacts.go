@@ -302,6 +302,66 @@ var artifactsPurgeCmd = &cobra.Command{
 	},
 }
 
+// M14-T08: LinkTaskArtifact/UnlinkTaskArtifact have existed since M05 but
+// were only ever reachable from the GUI - an agent working entirely through
+// the CLI had no way to attach its own output to the task it was given.
+var artifactsLinkTaskCmd = &cobra.Command{
+	Use:   "link-task",
+	Short: "Link an artifact to a task, so the task detail view shows it as evidence",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		taskID, _ := cmd.Flags().GetString("task")
+		artifactID, _ := cmd.Flags().GetString("artifact")
+		isJson, _ := cmd.Flags().GetBool("json")
+		if taskID == "" || artifactID == "" {
+			cmd.Println("Error: --task and --artifact are required.")
+			return errors.New("Error: --task and --artifact are required.")
+		}
+
+		client := backend.NewArtifactServiceClient()
+		res, err := client.LinkTaskArtifact(context.Background(), connect.NewRequest(&healthv1.LinkTaskArtifactRequest{
+			TaskId:     taskID,
+			ArtifactId: artifactID,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to link artifact to task: %v\n", err)
+			return err
+		}
+
+		if isJson {
+			jsonString, _ := json.Marshal(res.Msg.Link)
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Linked artifact '%s' to task '%s'\n", res.Msg.Link.ArtifactName, res.Msg.Link.TaskTitle)
+		}
+		return nil
+	},
+}
+
+var artifactsUnlinkTaskCmd = &cobra.Command{
+	Use:   "unlink-task",
+	Short: "Remove a task-artifact link (the artifact itself is untouched)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		taskID, _ := cmd.Flags().GetString("task")
+		artifactID, _ := cmd.Flags().GetString("artifact")
+		if taskID == "" || artifactID == "" {
+			cmd.Println("Error: --task and --artifact are required.")
+			return errors.New("Error: --task and --artifact are required.")
+		}
+
+		client := backend.NewArtifactServiceClient()
+		_, err := client.UnlinkTaskArtifact(context.Background(), connect.NewRequest(&healthv1.UnlinkTaskArtifactRequest{
+			TaskId:     taskID,
+			ArtifactId: artifactID,
+		}))
+		if err != nil {
+			cmd.PrintErrf("Failed to unlink artifact from task: %v\n", err)
+			return err
+		}
+		cmd.Printf("Unlinked artifact %s from task %s\n", artifactID, taskID)
+		return nil
+	},
+}
+
 var foldersPurgeCmd = &cobra.Command{
 	Use:   "purge-folder [folder_id]",
 	Short: "Permanently delete an already-binned, empty folder",
@@ -326,6 +386,8 @@ func init() {
 	artifactsCmd.AddCommand(artifactsDeleteCmd)
 	artifactsCmd.AddCommand(artifactsRestoreCmd)
 	artifactsCmd.AddCommand(artifactsPurgeCmd)
+	artifactsCmd.AddCommand(artifactsLinkTaskCmd)
+	artifactsCmd.AddCommand(artifactsUnlinkTaskCmd)
 	artifactsCmd.AddCommand(foldersCreateCmd)
 	artifactsCmd.AddCommand(foldersDeleteCmd)
 	artifactsCmd.AddCommand(foldersRestoreCmd)
@@ -345,4 +407,8 @@ func init() {
 	foldersCreateCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	foldersCreateCmd.Flags().String("parent", "", "Parent folder ID (optional, for nesting)")
 	foldersCreateCmd.Flags().String("name", "", "Folder name")
+	artifactsLinkTaskCmd.Flags().String("task", "", "Task ID to link the artifact to")
+	artifactsLinkTaskCmd.Flags().String("artifact", "", "Artifact ID to link")
+	artifactsUnlinkTaskCmd.Flags().String("task", "", "Task ID to unlink the artifact from")
+	artifactsUnlinkTaskCmd.Flags().String("artifact", "", "Artifact ID to unlink")
 }
