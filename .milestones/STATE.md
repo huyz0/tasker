@@ -2,7 +2,7 @@
 active_milestone: M08
 active_task: null
 last_updated: 2026-08-17
-last_commit: c6bd1aa
+last_commit: db5f9e2
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,31 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-17 — Second out-of-band GUI/backend follow-up merged: Project
+model usability.** A review of the `Project` entity itself (not just its
+list screen) against Linear/Jira/Asana/Monday/ClickUp/Basecamp found the
+model was closer to a bare Jira project record than any competitor's - no
+description, no signal of what's inside it, and a real, tested M10
+capability (project-scoped role grants) with zero GUI screen ever calling
+it. All four findings fixed on `feature/project-model-usability-improvements`
+(stacked on the task-screen-ux branch, itself stacked on M14) and merged in
+the same push: a `description` field on `Project` (schema, contract,
+handler, GUI - real proto3 presence like M14-T01's fix, not the "" -> unset
+squash); a per-project task count on the list card (plain count, not "N of
+M done" - deliberately not attempted, since a task type's statuses are
+configurable per type and there is no universal "done" to total against);
+and a collapsed-by-default "Members" section wiring `grantRole`/
+`listGrants`/`revokeGrant(scopeType: 'project')` into the GUI for the first
+time since M10 built and tested that primitive. Like the prior GUI
+follow-up, not run through the formal milestone process (no `MILESTONE.md`,
+non-`mNN` branch) - same deliberate lighter-weight treatment for a
+conversational "fix all findings" request. The project-home-page question
+this review raised was decided explicitly rather than deferred: enrich the
+existing list screen rather than build a new `/projects/:id` route, to stay
+consistent with the global-active-project model Tasks and Artifacts already
+use, and because it closes every finding without the much larger scope a
+new page/IA would need.
 
 **2026-08-17 — M14 (Task Reliability & Agent Self-Service) closed: 9/9
 tasks, 8/8 exit criteria met, verified against actual passing tests
