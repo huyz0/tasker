@@ -803,6 +803,13 @@ model CreateTaskRequest {
   @field(3) status: string;
   @field(4) description: string;
   @field(5) taskTypeId?: string;
+
+  // Retry-safety (M14-T07): replaying the same key from the same principal
+  // returns the original response instead of creating a second task. Scoped
+  // per-caller, so two different principals may reuse the same key string
+  // with no collision. Unset behaves exactly as before this field existed -
+  // every call creates a new task.
+  @field(6) idempotencyKey?: string;
 }
 
 model CreateTaskResponse {
@@ -817,6 +824,22 @@ model AssignTaskRequest {
 
 model AssignTaskResponse {
   @field(1) success: boolean;
+}
+
+// Agent self-service (M14-T06): claims the task for the *calling* principal
+// only, atomically - there is no field to name a different assignee, unlike
+// AssignTaskRequest. Succeeds only if the task currently has no assignee at
+// all; a second caller racing the same task gets FailedPrecondition rather
+// than a second, silent assignment.
+model ClaimTaskRequest {
+  @field(1) taskId: string;
+
+  // Retry-safety (M14-T07), same contract as CreateTaskRequest.idempotencyKey.
+  @field(2) idempotencyKey?: string;
+}
+
+model ClaimTaskResponse {
+  @field(1) task: Task;
 }
 
 model TaskReviewer {
@@ -881,6 +904,14 @@ model ListTasksRequest {
   // paginated list and `page.totalCount` is that column's real count, computed
   // by the database (M07-T03).
   @field(4) status?: string;
+
+  // Agent self-service (M14-T05): "unassigned" returns tasks with no
+  // assignee at all - the query an agent runs to find claimable work.
+  // "me" returns tasks assigned to the calling principal (human or agent),
+  // resolved server-side from the credential rather than trusting a passed
+  // id. Unset returns every task regardless of assignment, same as before
+  // this field existed.
+  @field(5) assigneeFilter?: string;
 }
 
 model ListTasksResponse {
@@ -936,6 +967,7 @@ interface TaskService {
   createTask(request: CreateTaskRequest): CreateTaskResponse;
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
   unassignTask(request: UnassignTaskRequest): UnassignTaskResponse;
+  claimTask(request: ClaimTaskRequest): ClaimTaskResponse;
   getTask(request: GetTaskRequest): GetTaskResponse;
   listTasks(request: ListTasksRequest): ListTasksResponse;
   updateTask(request: UpdateTaskRequest): UpdateTaskResponse;

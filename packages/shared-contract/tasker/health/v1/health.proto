@@ -702,6 +702,10 @@ message CreateTaskRequest {
   string status = 3;
   string description = 4;
   string task_type_id = 5;
+
+  // Retry-safety (M14-T07): replaying the same key from the same principal
+  // returns the original response instead of creating a second task.
+  string idempotencyKey = 6;
 }
 
 message CreateTaskResponse {
@@ -716,6 +720,20 @@ message AssignTaskRequest {
 
 message AssignTaskResponse {
   bool success = 1;
+}
+
+// Agent self-service (M14-T06): claims the task for the calling principal
+// only - no field names a different assignee. Succeeds only if the task
+// currently has no assignee at all.
+message ClaimTaskRequest {
+  string task_id = 1;
+
+  // Retry-safety (M14-T07), same contract as CreateTaskRequest.idempotencyKey.
+  string idempotencyKey = 2;
+}
+
+message ClaimTaskResponse {
+  Task task = 1;
 }
 
 message TaskReviewer {
@@ -784,6 +802,10 @@ message ListTasksRequest {
   // project and group in the browser; with this facet each column is its own
   // paginated list and page.totalCount is that column's real count (M07-T03).
   string status = 4;
+
+  // Agent self-service (M14-T05): "unassigned" finds claimable work, "me"
+  // resolves to the calling principal server-side. Unset returns every task.
+  string assigneeFilter = 5;
 }
 
 message ListTasksResponse {
@@ -838,6 +860,7 @@ service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
   rpc UnassignTask(UnassignTaskRequest) returns (UnassignTaskResponse);
+  rpc ClaimTask(ClaimTaskRequest) returns (ClaimTaskResponse);
   rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);

@@ -22,7 +22,9 @@ type fakeArtifactHandler struct {
 	gotListArtifactsPage *healthv1.PageRequest
 	// artifactPages simulates a folder whose artifacts span multiple pages,
 	// keyed by the cursor that requests that page ("" for the first page).
-	artifactPages map[string]*healthv1.ListArtifactsResponse
+	artifactPages    map[string]*healthv1.ListArtifactsResponse
+	gotLinkRequest   *healthv1.LinkTaskArtifactRequest
+	gotUnlinkRequest *healthv1.UnlinkTaskArtifactRequest
 }
 
 func (f *fakeArtifactHandler) ListFolders(
@@ -67,6 +69,30 @@ func (f *fakeArtifactHandler) CreateArtifact(
 			ContentType: req.Msg.ContentType,
 		},
 	}), nil
+}
+
+func (f *fakeArtifactHandler) LinkTaskArtifact(
+	_ context.Context,
+	req *connect.Request[healthv1.LinkTaskArtifactRequest],
+) (*connect.Response[healthv1.LinkTaskArtifactResponse], error) {
+	f.gotLinkRequest = req.Msg
+	return connect.NewResponse(&healthv1.LinkTaskArtifactResponse{
+		Link: &healthv1.TaskArtifactLink{
+			Id:           "link_1",
+			TaskId:       req.Msg.TaskId,
+			ArtifactId:   req.Msg.ArtifactId,
+			ArtifactName: "logo.png",
+			TaskTitle:    "Ship the release",
+		},
+	}), nil
+}
+
+func (f *fakeArtifactHandler) UnlinkTaskArtifact(
+	_ context.Context,
+	req *connect.Request[healthv1.UnlinkTaskArtifactRequest],
+) (*connect.Response[healthv1.UnlinkTaskArtifactResponse], error) {
+	f.gotUnlinkRequest = req.Msg
+	return connect.NewResponse(&healthv1.UnlinkTaskArtifactResponse{Success: true}), nil
 }
 
 func TestArtifactsCreateCommandDefaultsContentTypeToTextMarkdown(t *testing.T) {
@@ -202,5 +228,87 @@ func TestArtifactsReadCommandFindsArtifactPastFirstPage(t *testing.T) {
 	}
 	if !strings.Contains(output, "second page content") {
 		t.Fatalf("expected output to contain the artifact's content, got %s", output)
+	}
+}
+
+// M14-T08: LinkTaskArtifact/UnlinkTaskArtifact existed as RPCs since M05 but
+// were unreachable from the CLI - an agent working headlessly had no way to
+// attach its own output to the task it was given.
+func TestArtifactsLinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"artifacts", "link-task", "--task", "tsk_1", "--artifact", "art_1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.gotLinkRequest == nil {
+		t.Fatal("expected LinkTaskArtifact to be called")
+	}
+	if fake.gotLinkRequest.TaskId != "tsk_1" || fake.gotLinkRequest.ArtifactId != "art_1" {
+		t.Errorf("expected taskId=tsk_1 artifactId=art_1, got %+v", fake.gotLinkRequest)
+	}
+	if !strings.Contains(b.String(), `"artifactName":"logo.png"`) {
+		t.Errorf("expected the created link in the output, got %s", b.String())
+	}
+}
+
+func TestArtifactsLinkTaskCommandRequiresBothFlags(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	// pflag values persist across Execute() calls on the same command
+	// instance - without this reset, an earlier test's --artifact would
+	// still be set here (same reason teams_test.go resets --name).
+	artifactsLinkTaskCmd.Flags().Set("artifact", "")
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"artifacts", "link-task", "--task", "tsk_1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected an error when --artifact is omitted")
+	}
+	if fake.gotLinkRequest != nil {
+		t.Error("expected LinkTaskArtifact not to be called with an incomplete request")
+	}
+}
+
+func TestArtifactsUnlinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"artifacts", "unlink-task", "--task", "tsk_1", "--artifact", "art_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.gotUnlinkRequest == nil {
+		t.Fatal("expected UnlinkTaskArtifact to be called")
+	}
+	if fake.gotUnlinkRequest.TaskId != "tsk_1" || fake.gotUnlinkRequest.ArtifactId != "art_1" {
+		t.Errorf("expected taskId=tsk_1 artifactId=art_1, got %+v", fake.gotUnlinkRequest)
+	}
+	if !strings.Contains(b.String(), "Unlinked artifact art_1 from task tsk_1") {
+		t.Errorf("expected a confirmation message, got %s", b.String())
 	}
 }

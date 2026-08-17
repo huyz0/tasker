@@ -1,9 +1,10 @@
 import { expect, test, describe } from "bun:test";
-import { Code } from "@connectrpc/connect";
-import { eq, and } from "drizzle-orm";
+import { Code, createContextValues } from "@connectrpc/connect";
+import { eq, and, isNull } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin, seedProject } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createTasksHandler, createTaskManagementHandler } from "./tasks.handler";
+import { currentPrincipalKey } from "../auth/session";
 
 describe("Tasks Handler Integration Tests", () => {
   test("createTaskType can create, publish, and retrieve task types", async () => {
@@ -131,6 +132,62 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.listTaskTypes({}, ctx)).rejects.toThrow();
   });
 
+  // M14-T04: updateTaskType had zero test coverage before this - the
+  // original deep review flagged it as an untested handler path.
+  test("updateTaskType renames, reparents, and rejects a self-parent or a cross-org parent", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-updatett-" + Date.now().toString();
+    const userId = "user-updatett-" + Date.now().toString();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org UpdateTT" });
+    const ctx = makeAuthContext(userId);
+    const handler = createTasksHandler(db, nc);
+
+    const typeA = await handler.createTaskType({ orgId, name: "Original Name" }, ctx);
+    const typeB = await handler.createTaskType({ orgId, name: "Would-be Parent" }, ctx);
+
+    const renamed = await handler.updateTaskType({ id: typeA.taskType.id, name: "New Name" }, ctx);
+    expect(renamed.taskType.name).toBe("New Name");
+    expect(renamed.taskType.parentId).toBeFalsy();
+
+    const reparented = await handler.updateTaskType({ id: typeA.taskType.id, parentId: typeB.taskType.id }, ctx);
+    expect(reparented.taskType.parentId).toBe(typeB.taskType.id);
+    // The name from the previous update must survive an update that only
+    // touches parentId - updates are field-level, not a full overwrite.
+    expect(reparented.taskType.name).toBe("New Name");
+
+    // A type cannot become its own parent.
+    await expect(
+      handler.updateTaskType({ id: typeA.taskType.id, parentId: typeA.taskType.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A nonexistent parent is rejected.
+    await expect(
+      handler.updateTaskType({ id: typeA.taskType.id, parentId: "tt-does-not-exist" }, ctx)
+    ).rejects.toThrow();
+
+    // A parent belonging to a different org is rejected.
+    const otherOrgId = "org-updatett-other-" + Date.now();
+    const otherUserId = "user-updatett-other-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: otherOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    const otherOrgType = await handler.createTaskType({ orgId: otherOrgId, name: "Foreign" }, makeAuthContext(otherUserId));
+    await expect(
+      handler.updateTaskType({ id: typeA.taskType.id, parentId: otherOrgType.taskType.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A nonexistent type id is NotFound.
+    await expect(
+      handler.updateTaskType({ id: "tt-does-not-exist", name: "X" }, ctx)
+    ).rejects.toMatchObject({ code: Code.NotFound });
+
+    // An outsider cannot rename another org's task type.
+    await expect(
+      handler.updateTaskType({ id: typeA.taskType.id, name: "Hijacked" }, makeAuthContext(otherUserId))
+    ).rejects.toThrow();
+  });
+
   test("createTaskManagementHandler can create/assign tasks", async () => {
     const { db, nc } = await setupIntegrationTest();
 
@@ -236,6 +293,42 @@ describe("Tasks Handler Integration Tests", () => {
     // Omitting both agentId and userId would otherwise create an orphaned
     // assignment row tied to nobody.
     await expect(handler.assignTask({ taskId: taskResp.task.id }, ctx)).rejects.toThrow();
+
+    // M14-T04: an agent that exists but belongs to a *different* org is a
+    // distinct rejection reason from "agent not found" - this branch had no
+    // test coverage before.
+    const crossOrgId = "org-assign-cross-" + Date.now();
+    const crossOrgAgentRoleId = "role-assign-cross-" + Date.now();
+    const crossOrgAgentId = "agent-assign-cross-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: crossOrgId, name: "Cross", slug: crossOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.agentRoles).values({ id: crossOrgAgentRoleId, orgId: crossOrgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: crossOrgAgentId, orgId: crossOrgId, agentRoleId: crossOrgAgentRoleId, name: "Cross-org Agent" });
+    await expect(
+      handler.assignTask({ taskId: taskResp.task.id, agentId: crossOrgAgentId }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // M14-T04: unassignTask had zero test coverage before this. Matched on
+    // the exact (agentId: null, userId) pair - the plain userId assignment
+    // made earlier, not the agentId+userId row that shares the same userId.
+    await expect(handler.unassignTask({ taskId: taskResp.task.id, userId }, ctx)).resolves.toEqual({ success: true });
+    const remaining = await db.select().from(schemaSqlite.taskAssignments).where(and(
+      eq(schemaSqlite.taskAssignments.taskId, taskResp.task.id),
+      eq(schemaSqlite.taskAssignments.userId, userId),
+      isNull(schemaSqlite.taskAssignments.agentId),
+    ));
+    expect(remaining.length).toBe(0);
+    // Removing an assignment that is no longer there is a no-op success,
+    // not an error - and only touches the exact (agentId, userId) pair, not
+    // the agent+otherUserId assignment made earlier in this same test.
+    await expect(handler.unassignTask({ taskId: taskResp.task.id, userId }, ctx)).resolves.toEqual({ success: true });
+    const untouched = await db.select().from(schemaSqlite.taskAssignments)
+      .where(and(eq(schemaSqlite.taskAssignments.taskId, taskResp.task.id), eq(schemaSqlite.taskAssignments.agentId, agentId)));
+    expect(untouched.length).toBe(2);
+
+    await expect(handler.unassignTask({ taskId: taskResp.task.id }, ctx)).rejects.toThrow();
+    await expect(
+      handler.unassignTask({ taskId: taskResp.task.id, userId }, outsiderCtx)
+    ).rejects.toThrow();
   });
 
   test("createTask records createdBy, and task reviewers can be added/listed/removed", async () => {
@@ -325,6 +418,49 @@ describe("Tasks Handler Integration Tests", () => {
     const outsiderCtx = makeAuthContext("user-outsider-status");
     await db.insert(schemaSqlite.users).values({ id: "user-outsider-status", email: "outsider-status@test.com", createdAt: new Date() });
     await expect(handler.updateTaskStatus({ taskId: taskResp.task.id, status: "done" }, outsiderCtx)).rejects.toThrow();
+  });
+
+  // M14-T02: two callers racing a status change used to both read the same
+  // stale status, both pass validation against it, and both write - the
+  // loser silently clobbered with no error to either side, and its own
+  // response lied about the status it had "successfully" set. This is the
+  // same interleaving the M03-T15 tests below prove is real on bun:sqlite
+  // for plain awaited select-then-write calls with no transaction wrapping
+  // them - exactly this code path.
+  test("updateTaskStatus is safe under concurrent writers: exactly one racing change wins", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-status-race-" + Date.now().toString();
+    const userId = "user-status-race-" + Date.now().toString();
+    const templateId = "tmpl-status-race-" + Date.now().toString();
+    const projectId = "proj-status-race-" + Date.now().toString();
+
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Status Race Org" });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "P" });
+    const ctx = makeAuthContext(userId);
+    const handler = createTaskManagementHandler(db, nc);
+
+    const taskResp = await handler.createTask({ projectId, title: "Race Task", status: "todo", description: "" }, ctx);
+
+    // No task-type state machine is configured, so both targets are
+    // independently valid transitions from "todo" - exactly the shape where
+    // two agents racing to claim the same task by moving it out of "todo"
+    // must not both be told they won.
+    const results = await Promise.allSettled([
+      handler.updateTaskStatus({ taskId: taskResp.task.id, status: "in-progress" }, ctx),
+      handler.updateTaskStatus({ taskId: taskResp.task.id, status: "done" }, ctx),
+    ]);
+
+    const fulfilled = results.filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled");
+    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
+    expect(rejected[0].reason).toMatchObject({ code: Code.Aborted });
+
+    // The persisted status matches the winner's own response, not "whoever
+    // committed last, regardless of what either caller was told".
+    const finalTask = await handler.getTask({ taskId: taskResp.task.id }, ctx);
+    expect(finalTask.task.status).toBe(fulfilled[0].value.task.status);
   });
 
   test("deleteTask soft-deletes, hides from listTasks, and can be restored; requires org admin", async () => {
@@ -514,6 +650,265 @@ describe("Tasks Handler Integration Tests", () => {
     expect(task2.task.displayId).toBe("BS-2");
   });
 
+  // M14-T05: agent self-service - an agent needs to find claimable work
+  // without paging every task and filtering client-side, and needs to be
+  // able to ask "what's assigned to me" without being trusted to supply its
+  // own id (which would let one principal read another's queue).
+  test("listTasks filters by assigneeFilter: unassigned finds claimable work, me resolves the calling principal", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-assigneefilter-" + Date.now();
+    const adminId = "user-assigneefilter-" + Date.now();
+    const templateId = "tmpl-assigneefilter-" + Date.now();
+    const projectId = "proj-assigneefilter-" + Date.now();
+    const agentRoleId = "role-assigneefilter-" + Date.now();
+    const agentId = "agent-assigneefilter-" + Date.now();
+    const otherAgentId = "agent-assigneefilter-other-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Assignee Filter Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
+    await db.insert(schemaSqlite.agents).values({ id: otherAgentId, orgId, agentRoleId, name: "Other Agent" });
+
+    const ctx = makeAuthContext(adminId);
+    const handler = createTaskManagementHandler(db, nc);
+    const agentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-test", scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any;
+
+    const unclaimed = await handler.createTask({ projectId, title: "Unclaimed", status: "todo", description: "" }, ctx);
+    const mine = await handler.createTask({ projectId, title: "Mine", status: "todo", description: "" }, ctx);
+    const someoneElses = await handler.createTask({ projectId, title: "Someone Else's", status: "todo", description: "" }, ctx);
+
+    await handler.assignTask({ taskId: mine.task.id, agentId }, ctx);
+    await handler.assignTask({ taskId: someoneElses.task.id, agentId: otherAgentId }, ctx);
+
+    const unassignedResp = await handler.listTasks({ projectId, assigneeFilter: "unassigned" }, ctx);
+    expect(unassignedResp.tasks.map((t: any) => t.id)).toEqual([unclaimed.task.id]);
+
+    // "me" resolved from the agent's own token, not a field in the request -
+    // there is nowhere in ListTasksRequest to even name a different agent.
+    const mineResp = await handler.listTasks({ projectId, assigneeFilter: "me" }, agentCtx);
+    expect(mineResp.tasks.map((t: any) => t.id)).toEqual([mine.task.id]);
+
+    // A human's "me" resolves against userId, not agentId - the admin has no
+    // assignments here at all.
+    const humanMineResp = await handler.listTasks({ projectId, assigneeFilter: "me" }, ctx);
+    expect(humanMineResp.tasks.length).toBe(0);
+
+    // No filter returns everything, same as before this field existed.
+    const allResp = await handler.listTasks({ projectId }, ctx);
+    expect(allResp.tasks.length).toBe(3);
+
+    await expect(handler.listTasks({ projectId, assigneeFilter: "bogus" }, ctx)).rejects.toMatchObject({ code: Code.InvalidArgument });
+  });
+
+  // M14-T06: the atomic claim primitive - the missing half of "an agent can
+  // discover and take work with no human broker". claimTask always assigns
+  // the *calling* principal; there is no field to claim on someone else's
+  // behalf.
+  test("claimTask atomically assigns the calling principal, only on an unassigned task", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-claim-" + Date.now();
+    const adminId = "user-claim-" + Date.now();
+    const templateId = "tmpl-claim-" + Date.now();
+    const projectId = "proj-claim-" + Date.now();
+    const agentRoleId = "role-claim-" + Date.now();
+    const agentId = "agent-claim-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Claim Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
+
+    const ctx = makeAuthContext(adminId);
+    const handler = createTaskManagementHandler(db, nc);
+    const agentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-test", scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any;
+
+    const task = await handler.createTask({ projectId, title: "Claimable", status: "todo", description: "" }, ctx);
+
+    const claimed = await handler.claimTask({ taskId: task.task.id }, agentCtx);
+    expect(claimed.task.id).toBe(task.task.id);
+
+    const rows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, task.task.id));
+    expect(rows.length).toBe(1);
+    expect(rows[0].agentId).toBe(agentId);
+    expect(rows[0].userId).toBeFalsy();
+
+    // Claiming an already-claimed task is a typed conflict, not a second,
+    // silent assignment - even for the same principal claiming again.
+    await expect(handler.claimTask({ taskId: task.task.id }, agentCtx)).rejects.toMatchObject({ code: Code.FailedPrecondition });
+
+    const otherTask = await handler.createTask({ projectId, title: "Also Claimable", status: "todo", description: "" }, ctx);
+    // A human can claim their own work too - claimTask isn't agent-only,
+    // just self-only.
+    const humanClaimed = await handler.claimTask({ taskId: otherTask.task.id }, ctx);
+    expect(humanClaimed.task.id).toBe(otherTask.task.id);
+    const humanRows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, otherTask.task.id));
+    expect(humanRows[0].userId).toBe(adminId);
+    expect(humanRows[0].agentId).toBeFalsy();
+
+    await expect(handler.claimTask({ taskId: "task-does-not-exist" }, agentCtx)).rejects.toMatchObject({ code: Code.NotFound });
+
+    const outsiderId = "user-claim-outsider-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    const thirdTask = await handler.createTask({ projectId, title: "Guarded", status: "todo", description: "" }, ctx);
+    await expect(handler.claimTask({ taskId: thirdTask.task.id }, makeAuthContext(outsiderId))).rejects.toThrow();
+
+    // An agent token without tasks:write cannot claim, even for itself.
+    const readOnlyAgentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-ro", scopes: ["tasks:read"] });
+      return v;
+    })() } as any;
+    await expect(handler.claimTask({ taskId: thirdTask.task.id }, readOnlyAgentCtx)).rejects.toMatchObject({ code: Code.PermissionDenied });
+  });
+
+  // M14-T06: the whole point - fires N concurrent claims at the same
+  // unassigned task and proves exactly one wins, the same shape M03-T15
+  // proved for createTask's counter claim.
+  test("claimTask is race-safe: exactly one of several concurrent claims on the same task wins", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-claimrace-" + Date.now();
+    const adminId = "user-claimrace-" + Date.now();
+    const templateId = "tmpl-claimrace-" + Date.now();
+    const projectId = "proj-claimrace-" + Date.now();
+    const agentRoleId = "role-claimrace-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Claim Race Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+
+    const ctx = makeAuthContext(adminId);
+    const handler = createTaskManagementHandler(db, nc);
+    const task = await handler.createTask({ projectId, title: "Contested", status: "todo", description: "" }, ctx);
+
+    const agentIds = Array.from({ length: 5 }, (_, i) => `agent-claimrace-${i}-${Date.now()}`);
+    for (const agentId of agentIds) {
+      await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: agentId });
+    }
+    const agentCtxs = agentIds.map((agentId) => ({ values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-" + agentId, scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any));
+
+    const results = await Promise.allSettled(agentCtxs.map((c) => handler.claimTask({ taskId: task.task.id }, c)));
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(4);
+    for (const r of rejected as PromiseRejectedResult[]) {
+      expect(r.reason).toMatchObject({ code: Code.FailedPrecondition });
+    }
+
+    const rows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, task.task.id));
+    expect(rows.length).toBe(1);
+  });
+
+  // M14-T07: retry-safety. The realistic failure mode is a client timing
+  // out, the mutation having already succeeded, and retrying sequentially
+  // once it regains control - not two truly simultaneous calls (that
+  // narrower case is documented as open in lib/idempotency.ts and in this
+  // milestone's PROGRESS.md).
+  test("createTask with an idempotencyKey replays the original task instead of creating a duplicate", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-idem-create-" + Date.now();
+    const userId = "user-idem-create-" + Date.now();
+    const templateId = "tmpl-idem-create-" + Date.now();
+    const projectId = "proj-idem-create-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Idem Create Org" });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "P" });
+    const ctx = makeAuthContext(userId);
+    const handler = createTaskManagementHandler(db, nc);
+
+    const first = await handler.createTask({ projectId, title: "Once Only", status: "todo", description: "", idempotencyKey: "retry-key-1" }, ctx);
+    const replay = await handler.createTask({ projectId, title: "Once Only", status: "todo", description: "", idempotencyKey: "retry-key-1" }, ctx);
+    expect(replay.task.id).toBe(first.task.id);
+    expect(replay.task.displayId).toBe(first.task.displayId);
+
+    const rows = await db.select().from(schemaSqlite.tasks).where(eq(schemaSqlite.tasks.projectId, projectId));
+    expect(rows.length).toBe(1);
+
+    // A *different* key from the same principal creates a genuinely new task.
+    const second = await handler.createTask({ projectId, title: "A Different Task", status: "todo", description: "", idempotencyKey: "retry-key-2" }, ctx);
+    expect(second.task.id).not.toBe(first.task.id);
+
+    // The same key string from a *different* principal is not a collision -
+    // each caller's idempotency keys live in their own namespace.
+    const otherUserId = "user-idem-create-other-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    const third = await handler.createTask(
+      { projectId, title: "Same Key Different Caller", status: "todo", description: "", idempotencyKey: "retry-key-1" },
+      makeAuthContext(otherUserId),
+    );
+    expect(third.task.id).not.toBe(first.task.id);
+
+    const allRows = await db.select().from(schemaSqlite.tasks).where(eq(schemaSqlite.tasks.projectId, projectId));
+    expect(allRows.length).toBe(3);
+
+    // No key at all behaves exactly as before this field existed - every
+    // call creates a new task.
+    const fourth = await handler.createTask({ projectId, title: "Once Only", status: "todo", description: "" }, ctx);
+    const fifth = await handler.createTask({ projectId, title: "Once Only", status: "todo", description: "" }, ctx);
+    expect(fourth.task.id).not.toBe(fifth.task.id);
+  });
+
+  test("claimTask with an idempotencyKey replays success instead of FailedPrecondition on a retried claim", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-idem-claim-" + Date.now();
+    const adminId = "user-idem-claim-" + Date.now();
+    const templateId = "tmpl-idem-claim-" + Date.now();
+    const projectId = "proj-idem-claim-" + Date.now();
+    const agentRoleId = "role-idem-claim-" + Date.now();
+    const agentId = "agent-idem-claim-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Idem Claim Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
+
+    const handler = createTaskManagementHandler(db, nc);
+    const agentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-test", scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any;
+
+    const task = await handler.createTask({ projectId, title: "Claim Me", status: "todo", description: "" }, makeAuthContext(adminId));
+
+    const first = await handler.claimTask({ taskId: task.task.id, idempotencyKey: "claim-retry-1" }, agentCtx);
+    expect(first.task.id).toBe(task.task.id);
+
+    // Without idempotency this would be FailedPrecondition (already
+    // claimed) - the whole point is that a client that timed out on the
+    // first response and retried does not see that.
+    const replay = await handler.claimTask({ taskId: task.task.id, idempotencyKey: "claim-retry-1" }, agentCtx);
+    expect(replay.task.id).toBe(task.task.id);
+
+    const rows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, task.task.id));
+    expect(rows.length).toBe(1);
+
+    // A genuinely new claim attempt (no key, or a different key) on an
+    // already-claimed task still fails normally - idempotency replays a
+    // specific prior call, it does not make claiming reentrant.
+    await expect(handler.claimTask({ taskId: task.task.id }, agentCtx)).rejects.toMatchObject({ code: Code.FailedPrecondition });
+    await expect(handler.claimTask({ taskId: task.task.id, idempotencyKey: "a-different-key" }, agentCtx)).rejects.toMatchObject({ code: Code.FailedPrecondition });
+  });
+
   test("enforces a task type's configured status enum and transition state machine", async () => {
     const { db, nc } = await setupIntegrationTest();
     const { createProjectsHandler, createProjectTemplatesHandler } = require("../projects/projects.handler");
@@ -619,6 +1014,216 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(
       taskHandler.updateTaskStatus({ taskId: created.task.id, status: "todo" }, ctx)
     ).rejects.toThrow();
+  });
+
+  // M14-T04: deleteTaskStatusTransition had zero test coverage before this.
+  test("deleteTaskStatusTransition removes an edge, is idempotent, and is authorized against the type", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-deltrans-" + Date.now();
+    const userId = "user-deltrans-" + Date.now();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Del Trans Org" });
+    const ctx = makeAuthContext(userId);
+    const typesHandler = createTasksHandler(db, nc);
+
+    const taskType = await typesHandler.createTaskType({ orgId, name: "Workflow" }, ctx);
+    const open = await typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "open" }, ctx);
+    const closed = await typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "closed" }, ctx);
+    const transition = await typesHandler.createTaskStatusTransition({
+      taskTypeId: taskType.taskType.id, fromStatusId: open.status.id, toStatusId: closed.status.id,
+    }, ctx);
+
+    await expect(
+      typesHandler.deleteTaskStatusTransition({ taskTypeId: taskType.taskType.id, transitionId: transition.transition.id }, ctx)
+    ).resolves.toEqual({ success: true });
+
+    const rows = await db.select().from(schemaSqlite.taskStatusTransitions)
+      .where(eq(schemaSqlite.taskStatusTransitions.id, transition.transition.id));
+    expect(rows.length).toBe(0);
+
+    // Deleting an edge that is already gone is a no-op success, not an error.
+    await expect(
+      typesHandler.deleteTaskStatusTransition({ taskTypeId: taskType.taskType.id, transitionId: transition.transition.id }, ctx)
+    ).resolves.toEqual({ success: true });
+
+    // A nonexistent task type is rejected before any authorization check runs.
+    await expect(
+      typesHandler.deleteTaskStatusTransition({ taskTypeId: "tt-does-not-exist", transitionId: transition.transition.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.NotFound });
+
+    // An outsider cannot delete a transition on another org's task type,
+    // even naming a transitionId that no longer exists.
+    const outsiderId = "user-deltrans-outsider-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    await expect(
+      typesHandler.deleteTaskStatusTransition(
+        { taskTypeId: taskType.taskType.id, transitionId: transition.transition.id },
+        makeAuthContext(outsiderId),
+      )
+    ).rejects.toThrow();
+  });
+
+  // M14-T04: reorderTaskStatuses had zero test coverage before this.
+  test("reorderTaskStatuses demands the complete list and rejects a partial or foreign one", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-reorder-" + Date.now();
+    const userId = "user-reorder-" + Date.now();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Reorder Org" });
+    const ctx = makeAuthContext(userId);
+    const typesHandler = createTasksHandler(db, nc);
+
+    const taskType = await typesHandler.createTaskType({ orgId, name: "Pipeline" }, ctx);
+    const s1 = await typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "todo" }, ctx);
+    const s2 = await typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "doing" }, ctx);
+    const s3 = await typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "done" }, ctx);
+
+    const reordered = await typesHandler.reorderTaskStatuses({
+      taskTypeId: taskType.taskType.id,
+      statusIds: [s3.status.id, s1.status.id, s2.status.id],
+    }, ctx);
+    expect(reordered.statuses.map((s: any) => s.id)).toEqual([s3.status.id, s1.status.id, s2.status.id]);
+
+    // A partial list (missing one of this type's statuses) is rejected -
+    // silently accepting it would leave the omitted status at a stale
+    // position, which is how two statuses end up sharing one.
+    await expect(
+      typesHandler.reorderTaskStatuses({ taskTypeId: taskType.taskType.id, statusIds: [s1.status.id, s2.status.id] }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A duplicate id in the list is rejected.
+    await expect(
+      typesHandler.reorderTaskStatuses(
+        { taskTypeId: taskType.taskType.id, statusIds: [s1.status.id, s1.status.id, s2.status.id] }, ctx
+      )
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A foreign id (not one of this type's statuses) is rejected.
+    await expect(
+      typesHandler.reorderTaskStatuses(
+        { taskTypeId: taskType.taskType.id, statusIds: [s1.status.id, s2.status.id, "tst-does-not-exist"] }, ctx
+      )
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // A nonexistent task type is NotFound.
+    await expect(
+      typesHandler.reorderTaskStatuses({ taskTypeId: "tt-does-not-exist", statusIds: ["tst-does-not-exist"] }, ctx)
+    ).rejects.toMatchObject({ code: Code.NotFound });
+
+    const outsiderId = "user-reorder-outsider-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    await expect(
+      typesHandler.reorderTaskStatuses(
+        { taskTypeId: taskType.taskType.id, statusIds: [s3.status.id, s1.status.id, s2.status.id] },
+        makeAuthContext(outsiderId),
+      )
+    ).rejects.toThrow();
+  });
+
+  // M14-T01: `description` has proto3 `optional` presence tracking, so the
+  // wire can and does distinguish "field omitted" from "field explicitly set
+  // to empty". A Zod preprocess step that collapsed both into "not provided"
+  // made clearing a description a silent no-op - the request returned 2xx
+  // and the field never changed. This test reads the value back through
+  // `getTask` rather than trusting `updateTask`'s own response.
+  test("updateTask persists field changes, including clearing description to empty", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createTaskManagementHandler(db, nc);
+
+    const orgId = "org-updatetask-" + Date.now().toString();
+    const userId = "user-updatetask-" + Date.now().toString();
+    const templateId = "tmpl-updatetask-" + Date.now().toString();
+    const projectId = "proj-updatetask-" + Date.now().toString();
+
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org UpdateTask" });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "Test Proj" });
+    const ctx = makeAuthContext(userId);
+
+    const created = await handler.createTask({
+      projectId, title: "Original Title", description: "Original description",
+    }, ctx);
+
+    // Change title and description together.
+    const updated = await handler.updateTask({
+      taskId: created.task.id, title: "New Title", description: "New description",
+    }, ctx);
+    expect(updated.task.title).toBe("New Title");
+    expect(updated.task.description).toBe("New description");
+
+    // Clearing the description to "" must actually persist as "", not be
+    // silently dropped because it looks like an unset field.
+    const cleared = await handler.updateTask({
+      taskId: created.task.id, title: "New Title", description: "",
+    }, ctx);
+    expect(cleared.task.description).toBe("");
+
+    // Read it back through a second call, not the mutation's own echo.
+    const refetched = await handler.getTask({ taskId: created.task.id }, ctx);
+    expect(refetched.task.description).toBe("");
+    expect(refetched.task.title).toBe("New Title");
+
+    // Omitting title/description entirely (only taskId + taskTypeId) must
+    // leave both untouched.
+    const typesHandler = createTasksHandler(db, nc);
+    const newType = await typesHandler.createTaskType({ orgId, name: "Retyped" }, ctx);
+    const retyped = await handler.updateTask({ taskId: created.task.id, taskTypeId: newType.taskType.id }, ctx);
+    expect(retyped.task.title).toBe("New Title");
+    expect(retyped.task.description).toBe("");
+    expect(retyped.task.taskTypeId).toBe(newType.taskType.id);
+
+    // A taskTypeId belonging to a different org is rejected.
+    const otherOrgId = "org-updatetask-other-" + Date.now();
+    const otherUserId = "user-updatetask-other-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: otherOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    const otherOrgType = await typesHandler.createTaskType({ orgId: otherOrgId, name: "Foreign" }, makeAuthContext(otherUserId));
+    await expect(
+      handler.updateTask({ taskId: created.task.id, taskTypeId: otherOrgType.taskType.id }, ctx)
+    ).rejects.toThrow();
+
+    // A task that does not exist is NotFound, not a generic throw.
+    await expect(
+      handler.updateTask({ taskId: "task-does-not-exist", title: "X" }, ctx)
+    ).rejects.toMatchObject({ code: Code.NotFound });
+
+    // An outsider (not a member of this org) cannot update the task.
+    const outsiderId = "user-updatetask-outsider-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    await expect(
+      handler.updateTask({ taskId: created.task.id, title: "Hijacked" }, makeAuthContext(outsiderId))
+    ).rejects.toThrow();
+  });
+
+  test("getTask returns the full task including description, and denies non-members", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createTaskManagementHandler(db, nc);
+
+    const orgId = "org-gettask-" + Date.now().toString();
+    const userId = "user-gettask-" + Date.now().toString();
+    const templateId = "tmpl-gettask-" + Date.now().toString();
+    const projectId = "proj-gettask-" + Date.now().toString();
+
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org GetTask" });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "Test Proj" });
+    const ctx = makeAuthContext(userId);
+
+    const created = await handler.createTask({
+      projectId, title: "Gettable", description: "Has a body",
+    }, ctx);
+
+    const fetched = await handler.getTask({ taskId: created.task.id }, ctx);
+    expect(fetched.task.id).toBe(created.task.id);
+    expect(fetched.task.title).toBe("Gettable");
+    expect(fetched.task.description).toBe("Has a body");
+    expect(Array.isArray(fetched.task.assignees)).toBe(true);
+
+    await expect(handler.getTask({ taskId: "task-does-not-exist" }, ctx)).rejects.toMatchObject({ code: Code.NotFound });
+    await expect(handler.getTask({}, ctx)).rejects.toThrow();
+
+    const outsiderId = "user-gettask-outsider-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    await expect(handler.getTask({ taskId: created.task.id }, makeAuthContext(outsiderId))).rejects.toThrow();
   });
 });
 

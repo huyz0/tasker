@@ -55,6 +55,15 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     createTask: 'tasks:write',
     updateTask: 'tasks:write',
     updateTaskStatus: 'tasks:write',
+    // claimTask (M14-T06) is the narrow exception the note below argues
+    // against for assignTask/unassignTask: it can only ever assign the
+    // *calling* principal, and only when the task currently has no
+    // assignee at all - there is no way to reassign someone else's task,
+    // take yourself off one you were given, or hand work to a different
+    // agent. That is a materially smaller grant than assignTask's "name
+    // any assignee", so it is safe to open under the same tasks:write
+    // scope that already covers creating and updating tasks.
+    claimTask: 'tasks:write',
     // assignTask and unassignTask are deliberately absent. Deciding which
     // worker picks up a piece of work is an orchestration decision, and a token
     // that can reassign work to itself is a token that can help itself to any

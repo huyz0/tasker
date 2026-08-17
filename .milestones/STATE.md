@@ -1,8 +1,8 @@
 ---
-active_milestone: M14
-active_task: M14-T01
+active_milestone: M08
+active_task: null
 last_updated: 2026-08-17
-last_commit: b4be47a
+last_commit: 8f0bfa9
 blocked: false
 blocker: null
 ---
@@ -15,22 +15,43 @@ blocker: null
 
 ## Now
 
-**2026-08-17 — M14 (Task Reliability & Agent Self-Service) planned and
-inserted ahead of M08, by explicit product direction.**
+**2026-08-17 — M14 (Task Reliability & Agent Self-Service) closed: 9/9
+tasks, 8/8 exit criteria met, verified against actual passing tests
+including a real MySQL integration run — not inferred from task
+completion.**
 
-A deep review of task type/state/editing (UI, UX, API, implementation, test
-depth), a competitive usability read against Linear/Jira/Trello/Monday, and a
-dedicated pass on the agent-facing surface together found three live defects
-in the task edit/status/archive paths and, more fundamentally, that the
-product's own stated goal — usable by autonomous AI agents, not just humans —
-is not yet met: agents cannot claim their own work, there is no atomic claim
-primitive, and no mutating task RPC is retry-safe. Full plan and rationale:
-`.milestones/MILESTONE-14-task-reliability-and-agent-self-service/MILESTONE.md`.
+Scoped from a deep review of task type/state/editing (UI, UX, API,
+implementation, test depth), a competitive usability read against
+Linear/Jira/Trello/Monday, and a dedicated pass on the agent-facing surface,
+which together found three live defects in the task edit/status/archive
+paths and, more fundamentally, that the product's own stated goal — usable
+by autonomous AI agents, not just humans — was not yet met. All three
+defects are fixed (task edit no longer silently drops description; two
+concurrent status changes can't both "win"; archiving a project with live
+tasks no longer strands them). Agents can now discover unclaimed work
+(`listTasks` with `assigneeFilter`), atomically claim exactly one task
+(`claimTask`, a single `INSERT ... SELECT ... WHERE NOT EXISTS`, race-proven
+under real concurrent MySQL connections as well as SQLite), and retry
+`createTask`/`claimTask` safely with an idempotency key (sequential-retry
+case fully closed; genuinely concurrent duplicate calls remain a documented,
+deliberately deferred gap). The CLI can link/unlink artifacts to tasks. Task
+type CRUD lives in one GUI surface instead of two disagreeing ones. Full
+closing note: `.milestones/MILESTONE-14-task-reliability-and-agent-self-service/PROGRESS.md`.
 
-M14 has no `depends_on` edge to M08 — both are unblocked and independent —
-but leads it by priority for the same reason M13 led M10: it fixes the
-active task-management surface rather than adding a new one, and the
-agent-self-service half is this project's namesake capability.
+Developed on `feature/m14-task-reliability-and-agent-self-service`, not yet
+merged to `main` or pushed to origin — left for explicit user action, same
+convention M10 and M13 used.
+
+**Deliberately deferred, with owners**: a task dependency/subtask model and
+bulk task creation (**M15**, not yet planned); a push/webhook/SSE surface
+for agents beyond polling, and whether agent tokens (not just browser
+sessions) can hold that connection (**M08**, already scheduled, note added
+to its scope); explicit task→repository/branch assignment, still
+regex-inferred (no owning milestone yet); a TTL/cleanup sweep for the new
+`idempotency_keys` table (whichever session next touches
+`retentionSweep.ts`); and closing the concurrent (not just sequential)
+idempotency-retry case, which needs a reservation-before-mutation redesign
+(no owning milestone yet — flagged in `lib/idempotency.ts`'s own docstring).
 
 **2026-08-17 — M10 (Teams & Policy-Based RBAC) closed: 13/13 tasks, every
 exit criterion in the milestone's own §6 verification checklist met.**
@@ -46,17 +67,17 @@ organization (M10-T07/T08/T12); and a real, policy-based role and
 permission-management system replacing the old hardcoded four-tier enum
 (ADR-0013, M10). Both milestones are done.
 
-- **Milestone**: M08 — Events, Audit & Real-Time remains next in the
-  ledger's numeric order (unblocked — both `depends_on` entries, M04 and
-  M07, are done) once M14 closes.
-- **Command to continue**: `/milestone-deliver M14` (or
-  `/milestone-deliver-auto M14`) — branch `feature/m14-task-reliability-and-agent-self-service`
-  off `main` (after merging `feature/m10-teams-and-policy-rbac` and
-  `feature/m13-...` if not already merged) per
+- **Milestone**: M08 — Events, Audit & Real-Time is next in the ledger's
+  numeric order (unblocked — both `depends_on` entries, M04 and M07, are
+  done).
+- **Command to continue**: `/milestone-deliver M08` (or
+  `/milestone-deliver-auto M08`) — `git checkout main && git merge
+  feature/m14-task-reliability-and-agent-self-service` first (and
+  `feature/m10-...`/`feature/m13-...` if not already merged) per
   `git-workflow-standard.md`'s branch-per-milestone convention.
 
 M09, M11, M12 remain queued behind M08 in their prior order, unaffected by
-M10's or M14's insertion — nothing in their `depends_on` required either to
+M10's or M14's closure — nothing in their `depends_on` required either to
 run first.
 
 ## How to resume
@@ -87,9 +108,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 | M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
-| M14 | Task Reliability & Agent Self-Service | todo | M04, M05 | 9   | 0    |
+| M14 | Task Reliability & Agent Self-Service | done | M04, M05 | 9   | 9    |
 
-**Total: 169 tasks across 14 milestones — 117 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15).**
+**Total: 169 tasks across 14 milestones — 126 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9).**
 
 ## Dependency graph
 

@@ -1,18 +1,17 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 
-const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockListTaskTypes, mockCreateTaskType, mockArchiveProject, mockUpdateProject, mockUpdateTemplate, mockUpdateTaskType } = vi.hoisted(() => ({
+const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockListTaskTypes, mockArchiveProject, mockUpdateProject, mockUpdateTemplate } = vi.hoisted(() => ({
   mockListTemplates: vi.fn(),
   mockListProjects: vi.fn(),
   mockCreateProject: vi.fn(),
   mockCreateTemplate: vi.fn(),
   mockListTaskTypes: vi.fn(),
-  mockCreateTaskType: vi.fn(),
   mockArchiveProject: vi.fn(),
   mockUpdateProject: vi.fn(),
   mockUpdateTemplate: vi.fn(),
-  mockUpdateTaskType: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -25,11 +24,9 @@ vi.mock('@connectrpc/connect', () => ({
     createProject: mockCreateProject,
     createTemplate: mockCreateTemplate,
     listTaskTypes: mockListTaskTypes,
-    createTaskType: mockCreateTaskType,
     archiveProject: mockArchiveProject,
     updateProject: mockUpdateProject,
     updateTemplate: mockUpdateTemplate,
-    updateTaskType: mockUpdateTaskType,
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
@@ -59,9 +56,11 @@ import { confirmAction, cancelAction } from '../../test/confirm';
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utils = render(
-    <QueryClientProvider client={queryClient}>
-      <ProjectsWizard />
-    </QueryClientProvider>
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <ProjectsWizard />
+      </QueryClientProvider>
+    </MemoryRouter>
   );
   return { ...utils, queryClient };
 }
@@ -74,11 +73,9 @@ describe('ProjectsWizard', () => {
     mockCreateTemplate.mockReset();
     mockListTaskTypes.mockReset();
     mockListTaskTypes.mockResolvedValue({ taskTypes: [] });
-    mockCreateTaskType.mockReset();
     mockArchiveProject.mockReset();
     mockUpdateProject.mockReset();
     mockUpdateTemplate.mockReset();
-    mockUpdateTaskType.mockReset();
     mockAuthUserId = mockUserId;
   });
 
@@ -167,20 +164,20 @@ describe('ProjectsWizard', () => {
     }));
   });
 
-  it('lists and creates task types via real API calls', async () => {
+  // M14-T09: this screen used to create and rename task types itself, with
+  // no view of the statuses/transitions the rename affects. It is now a
+  // read-only glance, linking to /task-types for anything that changes one.
+  it('lists task types read-only and links to the Task Types page to manage them', async () => {
     mockListTemplates.mockResolvedValue({ templates: [] });
     mockListProjects.mockResolvedValue({ projects: [] });
     mockListTaskTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Bug' }] });
-    mockCreateTaskType.mockResolvedValue({ taskType: { id: 'tt-new', name: 'Epic' } });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Bug')).toBeDefined());
+    expect(screen.queryByText('Edit')).toBeNull();
 
-    fireEvent.click(screen.getByText('+ New Task Type'));
-    fireEvent.change(screen.getByPlaceholderText('Task type name (e.g. Bug, Epic)'), { target: { value: 'Epic' } });
-    fireEvent.click(screen.getByText('Create'));
-
-    await waitFor(() => expect(mockCreateTaskType).toHaveBeenCalledWith({ orgId: 'org-1', name: 'Epic' }));
+    const manageLink = screen.getByRole('link', { name: 'Manage task types →' });
+    expect(manageLink).toHaveAttribute('href', '/task-types');
   });
 
   it('loads the next page of projects when Load More is clicked', async () => {
@@ -208,6 +205,27 @@ describe('ProjectsWizard', () => {
     expect(screen.getByText('No projects yet.')).toBeDefined();
   });
 
+  it('retries fetching templates, task types, and projects after a failure', async () => {
+    mockListTemplates.mockRejectedValue(new Error('boom'));
+    mockListTaskTypes.mockRejectedValue(new Error('boom'));
+    mockListProjects.mockRejectedValue(new Error('boom'));
+    renderPage();
+
+    const tryAgainButtons = await screen.findAllByText('Try again');
+    expect(tryAgainButtons).toHaveLength(3);
+
+    mockListTemplates.mockClear();
+    mockListTaskTypes.mockClear();
+    mockListProjects.mockClear();
+    tryAgainButtons.forEach((btn) => fireEvent.click(btn));
+
+    await waitFor(() => {
+      expect(mockListTemplates).toHaveBeenCalled();
+      expect(mockListTaskTypes).toHaveBeenCalled();
+      expect(mockListProjects).toHaveBeenCalled();
+    });
+  });
+
   it('shows an error message when template creation fails', async () => {
     mockListTemplates.mockResolvedValue({ templates: [] });
     mockListProjects.mockResolvedValue({ projects: [] });
@@ -220,20 +238,6 @@ describe('ProjectsWizard', () => {
     fireEvent.click(screen.getByText('Create Template'));
 
     await waitFor(() => expect(screen.getByText(/Failed to create template/)).toBeDefined());
-  });
-
-  it('shows an error message when task type creation fails', async () => {
-    mockListTemplates.mockResolvedValue({ templates: [] });
-    mockListProjects.mockResolvedValue({ projects: [] });
-    mockCreateTaskType.mockRejectedValue(new Error('name already exists'));
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('+ New Task Type')).toBeDefined());
-    fireEvent.click(screen.getByText('+ New Task Type'));
-    fireEvent.change(screen.getByPlaceholderText('Task type name (e.g. Bug, Epic)'), { target: { value: 'Dup' } });
-    fireEvent.click(screen.getByText('Create'));
-
-    await waitFor(() => expect(screen.getByText(/Failed to create task type/)).toBeDefined());
   });
 
   it('does not archive a project when confirmation is cancelled', async () => {
@@ -275,7 +279,7 @@ describe('ProjectsWizard', () => {
     expect(mockCreateProject).not.toHaveBeenCalled();
   });
 
-  it('does not submit blank template or task-type forms', async () => {
+  it('does not submit a blank template form', async () => {
     mockListTemplates.mockResolvedValue({ templates: [] });
     mockListProjects.mockResolvedValue({ projects: [] });
     renderPage();
@@ -284,21 +288,15 @@ describe('ProjectsWizard', () => {
     fireEvent.click(screen.getByText('+ New Template'));
     fireEvent.submit(screen.getByPlaceholderText('Template name').closest('form')!);
     expect(mockCreateTemplate).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByText('+ New Task Type'));
-    fireEvent.submit(screen.getByPlaceholderText('Task type name (e.g. Bug, Epic)').closest('form')!);
-    expect(mockCreateTaskType).not.toHaveBeenCalled();
   });
 
-  it('shows pending labels while creating a project, a template, and a task type', async () => {
+  it('shows pending labels while creating a project and a template', async () => {
     mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
     mockListProjects.mockResolvedValue({ projects: [] });
     let resolveProject: (v: any) => void = () => {};
     mockCreateProject.mockReturnValue(new Promise((resolve) => { resolveProject = resolve; }));
     let resolveTemplate: (v: any) => void = () => {};
     mockCreateTemplate.mockReturnValue(new Promise((resolve) => { resolveTemplate = resolve; }));
-    let resolveTaskType: (v: any) => void = () => {};
-    mockCreateTaskType.mockReturnValue(new Promise((resolve) => { resolveTaskType = resolve; }));
 
     renderPage();
     await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
@@ -313,15 +311,9 @@ describe('ProjectsWizard', () => {
     fireEvent.click(screen.getByText('Create Template'));
     await waitFor(() => expect(screen.getByText('Creating...')).toBeInTheDocument());
     resolveTemplate({ template: { id: 'tpl-new', name: 'Tmpl' } });
-
-    fireEvent.click(screen.getByText('+ New Task Type'));
-    fireEvent.change(screen.getByPlaceholderText('Task type name (e.g. Bug, Epic)'), { target: { value: 'Bug' } });
-    fireEvent.click(screen.getByText('Create'));
-    await waitFor(() => expect(screen.getByText('Creating...')).toBeInTheDocument());
-    resolveTaskType({ taskType: { id: 'tt-new', name: 'Bug' } });
   });
 
-  it('toggles the new-template and new-task-type forms closed via Cancel', async () => {
+  it('toggles the new-template form closed via Cancel', async () => {
     mockListTemplates.mockResolvedValue({ templates: [] });
     mockListProjects.mockResolvedValue({ projects: [] });
     renderPage();
@@ -331,11 +323,6 @@ describe('ProjectsWizard', () => {
     expect(screen.getByPlaceholderText('Template name')).toBeDefined();
     fireEvent.click(screen.getByText('Cancel'));
     expect(screen.queryByPlaceholderText('Template name')).toBeNull();
-
-    fireEvent.click(screen.getByText('+ New Task Type'));
-    expect(screen.getByPlaceholderText('Task type name (e.g. Bug, Epic)')).toBeDefined();
-    fireEvent.click(screen.getByText('Cancel'));
-    expect(screen.queryByPlaceholderText('Task type name (e.g. Bug, Epic)')).toBeNull();
   });
 
   it('renames a project through the GUI', async () => {
@@ -381,6 +368,35 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText(/Failed to update project/)).toBeInTheDocument());
   });
 
+  it('does not submit a blank project rename', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    const nameInput = screen.getByDisplayValue('Existing Project');
+    fireEvent.change(nameInput, { target: { value: '  ' } });
+    fireEvent.submit(nameInput.closest('form')!);
+
+    expect(mockUpdateProject).not.toHaveBeenCalled();
+  });
+
+  it('shows a pending label while renaming a project', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    let resolveUpdate: (v: any) => void = () => {};
+    mockUpdateProject.mockReturnValue(new Promise((resolve) => { resolveUpdate = resolve; }));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Existing Project')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(screen.getByText('Saving...')).toBeInTheDocument());
+    resolveUpdate({ project: { id: 'proj-1', name: 'Existing Project' } });
+  });
+
   it('edits a template through the GUI', async () => {
     mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
     mockListProjects.mockResolvedValue({ projects: [] });
@@ -395,6 +411,35 @@ describe('ProjectsWizard', () => {
     fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => expect(mockUpdateTemplate).toHaveBeenCalledWith({ id: 'tpl-1', name: 'Software Renamed', description: 'new desc' }));
+  });
+
+  it('does not submit a blank template rename', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    const nameInput = screen.getByDisplayValue('Software');
+    fireEvent.change(nameInput, { target: { value: '  ' } });
+    fireEvent.submit(nameInput.closest('form')!);
+
+    expect(mockUpdateTemplate).not.toHaveBeenCalled();
+  });
+
+  it('shows a pending label while renaming a template', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    let resolveUpdate: (v: any) => void = () => {};
+    mockUpdateTemplate.mockReturnValue(new Promise((resolve) => { resolveUpdate = resolve; }));
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(screen.getByText('Saving...')).toBeInTheDocument());
+    resolveUpdate({ template: { id: 'tpl-1', name: 'Software', description: 'desc' } });
   });
 
   it('cancels editing a template without saving', async () => {
@@ -424,49 +469,4 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText(/Failed to update template/)).toBeInTheDocument());
   });
 
-  it('edits a task type name through the GUI', async () => {
-    mockListTemplates.mockResolvedValue({ templates: [] });
-    mockListProjects.mockResolvedValue({ projects: [] });
-    mockListTaskTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Bug' }] });
-    mockUpdateTaskType.mockResolvedValue({ taskType: { id: 'tt-1', name: 'Defect' } });
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Bug')).toBeDefined());
-    fireEvent.click(screen.getByText('Edit'));
-
-    const nameInput = screen.getByDisplayValue('Bug');
-    fireEvent.change(nameInput, { target: { value: 'Defect' } });
-    fireEvent.click(screen.getByText('Save'));
-
-    await waitFor(() => expect(mockUpdateTaskType).toHaveBeenCalledWith({ id: 'tt-1', name: 'Defect' }));
-  });
-
-  it('cancels editing a task type without saving', async () => {
-    mockListTemplates.mockResolvedValue({ templates: [] });
-    mockListProjects.mockResolvedValue({ projects: [] });
-    mockListTaskTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Bug' }] });
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Bug')).toBeDefined());
-    fireEvent.click(screen.getByText('Edit'));
-    expect(screen.getByDisplayValue('Bug')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Cancel'));
-    expect(screen.getByText('Bug')).toBeInTheDocument();
-    expect(mockUpdateTaskType).not.toHaveBeenCalled();
-  });
-
-  it('shows an error message when updating a task type fails', async () => {
-    mockListTemplates.mockResolvedValue({ templates: [] });
-    mockListProjects.mockResolvedValue({ projects: [] });
-    mockListTaskTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Bug' }] });
-    mockUpdateTaskType.mockRejectedValue(new Error('task type not found'));
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('Bug')).toBeDefined());
-    fireEvent.click(screen.getByText('Edit'));
-    fireEvent.click(screen.getByText('Save'));
-
-    await waitFor(() => expect(screen.getByText(/Failed to update task type/)).toBeInTheDocument());
-  });
 });
