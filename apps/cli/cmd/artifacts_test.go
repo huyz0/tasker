@@ -33,6 +33,16 @@ type fakeArtifactHandler struct {
 	gotUpdateContentReq *healthv1.UpdateArtifactContentRequest
 	gotUpdateFolderReq  *healthv1.UpdateFolderRequest
 	links               []*healthv1.TaskArtifactLink
+	// M18-T09: archive/restore/purge for artifacts and folders had no fake
+	// handler at all, so a --json fix to any of them (or a test of the
+	// positive path) could not have been verified through this fixture.
+	archivedArtifactID string
+	restoredArtifactID string
+	purgedArtifactID   string
+	archivedFolderID   string
+	restoredFolderID   string
+	purgedFolderID     string
+	gotCreateFolderReq *healthv1.CreateFolderRequest
 }
 
 func (f *fakeArtifactHandler) ListFolders(
@@ -136,6 +146,64 @@ func (f *fakeArtifactHandler) CreateArtifact(
 			ContentType: req.Msg.ContentType,
 		},
 	}), nil
+}
+
+func (f *fakeArtifactHandler) CreateFolder(
+	_ context.Context,
+	req *connect.Request[healthv1.CreateFolderRequest],
+) (*connect.Response[healthv1.CreateFolderResponse], error) {
+	f.gotCreateFolderReq = req.Msg
+	return connect.NewResponse(&healthv1.CreateFolderResponse{
+		Folder: &healthv1.Folder{Id: "fld_new", ProjectId: req.Msg.ProjectId, ParentId: req.Msg.ParentId, Name: req.Msg.Name},
+	}), nil
+}
+
+func (f *fakeArtifactHandler) ArchiveArtifact(
+	_ context.Context,
+	req *connect.Request[healthv1.ArchiveArtifactRequest],
+) (*connect.Response[healthv1.ArchiveArtifactResponse], error) {
+	f.archivedArtifactID = req.Msg.ArtifactId
+	return connect.NewResponse(&healthv1.ArchiveArtifactResponse{Success: true}), nil
+}
+
+func (f *fakeArtifactHandler) RestoreArtifact(
+	_ context.Context,
+	req *connect.Request[healthv1.RestoreArtifactRequest],
+) (*connect.Response[healthv1.RestoreArtifactResponse], error) {
+	f.restoredArtifactID = req.Msg.ArtifactId
+	return connect.NewResponse(&healthv1.RestoreArtifactResponse{Success: true}), nil
+}
+
+func (f *fakeArtifactHandler) PurgeArtifact(
+	_ context.Context,
+	req *connect.Request[healthv1.PurgeArtifactRequest],
+) (*connect.Response[healthv1.PurgeArtifactResponse], error) {
+	f.purgedArtifactID = req.Msg.ArtifactId
+	return connect.NewResponse(&healthv1.PurgeArtifactResponse{Success: true}), nil
+}
+
+func (f *fakeArtifactHandler) ArchiveFolder(
+	_ context.Context,
+	req *connect.Request[healthv1.ArchiveFolderRequest],
+) (*connect.Response[healthv1.ArchiveFolderResponse], error) {
+	f.archivedFolderID = req.Msg.FolderId
+	return connect.NewResponse(&healthv1.ArchiveFolderResponse{Success: true}), nil
+}
+
+func (f *fakeArtifactHandler) RestoreFolder(
+	_ context.Context,
+	req *connect.Request[healthv1.RestoreFolderRequest],
+) (*connect.Response[healthv1.RestoreFolderResponse], error) {
+	f.restoredFolderID = req.Msg.FolderId
+	return connect.NewResponse(&healthv1.RestoreFolderResponse{Success: true}), nil
+}
+
+func (f *fakeArtifactHandler) PurgeFolder(
+	_ context.Context,
+	req *connect.Request[healthv1.PurgeFolderRequest],
+) (*connect.Response[healthv1.PurgeFolderResponse], error) {
+	f.purgedFolderID = req.Msg.FolderId
+	return connect.NewResponse(&healthv1.PurgeFolderResponse{Success: true}), nil
 }
 
 func (f *fakeArtifactHandler) LinkTaskArtifact(
@@ -465,6 +533,10 @@ func TestArtifactsUnlinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
 	rootCmd.AddCommand(artifactsCmd)
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
+	// --json persists on rootCmd across Execute() calls in this test binary;
+	// TestArtifactsLinkTaskCommandSendsTaskAndArtifactIds sets it and would
+	// otherwise leak into this test.
+	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"artifacts", "unlink-task", "--task", "tsk_1", "--artifact", "art_1"})
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal(err)
@@ -478,6 +550,29 @@ func TestArtifactsUnlinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
 	}
 	if !strings.Contains(b.String(), "Unlinked artifact art_1 from task tsk_1") {
 		t.Errorf("expected a confirmation message, got %s", b.String())
+	}
+}
+
+// M18-T09: unlink-task ignored --json entirely and always printed plain text.
+func TestArtifactsUnlinkTaskCommandJSON(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	t.Cleanup(func() { rootCmd.Flags().Set("json", "false") })
+	rootCmd.SetArgs([]string{"artifacts", "unlink-task", "--task", "tsk_1", "--artifact", "art_1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, `"success":true`) || !strings.Contains(out, `"tsk_1"`) || !strings.Contains(out, `"art_1"`) {
+		t.Fatalf("expected JSON output, got %s", out)
 	}
 }
 
@@ -720,5 +815,178 @@ func TestArtifactsListCommandForwardsOnlyDeleted(t *testing.T) {
 	}
 	if fake.gotListArtifactsReq == nil || !fake.gotListArtifactsReq.OnlyDeleted {
 		t.Fatalf("expected OnlyDeleted to be forwarded to ListArtifacts, got %+v", fake.gotListArtifactsReq)
+	}
+}
+
+// M18-T09: delete/restore/purge for artifacts and folders had no fake
+// handler at all - a --json fix to any of them could not have been verified
+// through this fixture, and the positive path itself was untested.
+func TestArtifactsAndFoldersDeleteRestorePurgeCmd(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+
+	rootCmd.SetArgs([]string{"artifacts", "delete", "art_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.archivedArtifactID != "art_1" {
+		t.Errorf("expected ArchiveArtifact to be called with art_1, got %q", fake.archivedArtifactID)
+	}
+
+	rootCmd.SetArgs([]string{"artifacts", "restore", "art_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.restoredArtifactID != "art_1" {
+		t.Errorf("expected RestoreArtifact to be called with art_1, got %q", fake.restoredArtifactID)
+	}
+
+	rootCmd.SetArgs([]string{"artifacts", "purge", "art_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.purgedArtifactID != "art_1" {
+		t.Errorf("expected PurgeArtifact to be called with art_1, got %q", fake.purgedArtifactID)
+	}
+
+	rootCmd.SetArgs([]string{"artifacts", "delete-folder", "fld_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.archivedFolderID != "fld_1" {
+		t.Errorf("expected ArchiveFolder to be called with fld_1, got %q", fake.archivedFolderID)
+	}
+
+	rootCmd.SetArgs([]string{"artifacts", "restore-folder", "fld_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.restoredFolderID != "fld_1" {
+		t.Errorf("expected RestoreFolder to be called with fld_1, got %q", fake.restoredFolderID)
+	}
+
+	rootCmd.SetArgs([]string{"artifacts", "purge-folder", "fld_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if fake.purgedFolderID != "fld_1" {
+		t.Errorf("expected PurgeFolder to be called with fld_1, got %q", fake.purgedFolderID)
+	}
+}
+
+// M18-T09: none of these six commands honored --json - always plain text.
+func TestArtifactsAndFoldersDeleteRestorePurgeCmdJSON(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	t.Cleanup(func() { rootCmd.Flags().Set("json", "false") })
+
+	rootCmd.AddCommand(artifactsCmd)
+	for _, args := range [][]string{
+		{"artifacts", "delete", "art_1", "--json"},
+		{"artifacts", "restore", "art_1", "--json"},
+		{"artifacts", "purge", "art_1", "--json"},
+		{"artifacts", "delete-folder", "fld_1", "--json"},
+		{"artifacts", "restore-folder", "fld_1", "--json"},
+		{"artifacts", "purge-folder", "fld_1", "--json"},
+	} {
+		b := bytes.NewBufferString("")
+		rootCmd.SetOut(b)
+		rootCmd.SetArgs(args)
+		if err := rootCmd.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(b.String(), `"success":true`) {
+			t.Fatalf("expected %v to print JSON, got %s", args, b.String())
+		}
+	}
+}
+
+// M18-T09: foldersCreateCmd had no test at all.
+func TestFoldersCreateCommand(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(artifactsCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.Flags().Set("json", "false")
+	rootCmd.SetArgs([]string{"artifacts", "create-folder", "--project", "proj_1", "--name", "New Folder"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	if fake.gotCreateFolderReq == nil || fake.gotCreateFolderReq.ProjectId != "proj_1" || fake.gotCreateFolderReq.Name != "New Folder" {
+		t.Fatalf("expected CreateFolder to be called with proj_1/New Folder, got %+v", fake.gotCreateFolderReq)
+	}
+	if !strings.Contains(b.String(), "New Folder") {
+		t.Errorf("expected confirmation with the new folder's name, got %s", b.String())
+	}
+}
+
+// M18-T09: none of these required-flag validations had a test asserting
+// the actual error message, only (in some cases) that an error occurred at
+// all via a different test's incidental coverage.
+func TestArtifactsRequiredFlagValidations(t *testing.T) {
+	fake := &fakeArtifactHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	rootCmd.AddCommand(artifactsCmd)
+
+	// Every flag every case below touches, reset before each case: flags
+	// persist on their command across Execute() calls in this test binary,
+	// so a value set by one case (or an earlier test in this file) would
+	// otherwise leak into the next and silently satisfy a check meant to
+	// fail.
+	reset := func() {
+		artifactsCreateCmd.Flags().Set("folder", "")
+		artifactsCreateCmd.Flags().Set("name", "")
+		artifactsCreateCmd.Flags().Set("file", "")
+		artifactsListCmd.Flags().Set("project", "")
+		artifactsListCmd.Flags().Set("folder", "")
+		foldersCreateCmd.Flags().Set("project", "")
+		foldersCreateCmd.Flags().Set("name", "")
+	}
+
+	for _, tc := range []struct {
+		args    []string
+		wantErr string
+	}{
+		{[]string{"artifacts", "create", "--name", "Doc"}, "--folder and --name are required"},
+		{[]string{"artifacts", "create", "--folder", "fld_1"}, "--folder and --name are required"},
+		{[]string{"artifacts", "list"}, "--project or --folder is required"},
+		{[]string{"artifacts", "create-folder", "--name", "F"}, "--project and --name are required"},
+		{[]string{"artifacts", "create-folder", "--project", "proj_1"}, "--project and --name are required"},
+	} {
+		reset()
+		b := bytes.NewBufferString("")
+		rootCmd.SetOut(b)
+		rootCmd.SetErr(b)
+		rootCmd.SetArgs(tc.args)
+		if err := rootCmd.Execute(); err == nil {
+			t.Fatalf("expected %v to require a flag", tc.args)
+		}
+		if !strings.Contains(b.String(), tc.wantErr) {
+			t.Errorf("expected %v to say %q, got %s", tc.args, tc.wantErr, b.String())
+		}
 	}
 }

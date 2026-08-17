@@ -391,13 +391,19 @@ var artifactsDeleteCmd = &cobra.Command{
 	Short: "Move an artifact to the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
 		_, err := client.ArchiveArtifact(context.Background(), connect.NewRequest(&healthv1.ArchiveArtifactRequest{ArtifactId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete artifact: %v\n", err)
 			return err
 		}
-		cmd.Printf("Artifact %s moved to bin\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "artifactId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Artifact %s moved to bin\n", args[0])
+		}
 		return nil
 	},
 }
@@ -407,13 +413,19 @@ var artifactsRestoreCmd = &cobra.Command{
 	Short: "Restore an artifact from the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
 		_, err := client.RestoreArtifact(context.Background(), connect.NewRequest(&healthv1.RestoreArtifactRequest{ArtifactId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore artifact: %v\n", err)
 			return err
 		}
-		cmd.Printf("Artifact %s restored\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "artifactId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Artifact %s restored\n", args[0])
+		}
 		return nil
 	},
 }
@@ -423,13 +435,19 @@ var foldersDeleteCmd = &cobra.Command{
 	Short: "Move a folder to the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
 		_, err := client.ArchiveFolder(context.Background(), connect.NewRequest(&healthv1.ArchiveFolderRequest{FolderId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to delete folder: %v\n", err)
 			return err
 		}
-		cmd.Printf("Folder %s moved to bin\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "folderId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Folder %s moved to bin\n", args[0])
+		}
 		return nil
 	},
 }
@@ -439,13 +457,19 @@ var foldersRestoreCmd = &cobra.Command{
 	Short: "Restore a folder from the bin",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
 		_, err := client.RestoreFolder(context.Background(), connect.NewRequest(&healthv1.RestoreFolderRequest{FolderId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to restore folder: %v\n", err)
 			return err
 		}
-		cmd.Printf("Folder %s restored\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "folderId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Folder %s restored\n", args[0])
+		}
 		return nil
 	},
 }
@@ -455,13 +479,19 @@ var artifactsPurgeCmd = &cobra.Command{
 	Short: "Permanently delete an already-binned, unlinked artifact",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
 		_, err := client.PurgeArtifact(context.Background(), connect.NewRequest(&healthv1.PurgeArtifactRequest{ArtifactId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge artifact: %v\n", err)
 			return err
 		}
-		cmd.Printf("Artifact %s permanently deleted\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "artifactId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Artifact %s permanently deleted\n", args[0])
+		}
 		return nil
 	},
 }
@@ -507,6 +537,7 @@ var artifactsUnlinkTaskCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		taskID, _ := cmd.Flags().GetString("task")
 		artifactID, _ := cmd.Flags().GetString("artifact")
+		isJson, _ := cmd.Flags().GetBool("json")
 		if taskID == "" || artifactID == "" {
 			cmd.Println("Error: --task and --artifact are required.")
 			return errors.New("Error: --task and --artifact are required.")
@@ -521,7 +552,12 @@ var artifactsUnlinkTaskCmd = &cobra.Command{
 			cmd.PrintErrf("Failed to unlink artifact from task: %v\n", err)
 			return err
 		}
-		cmd.Printf("Unlinked artifact %s from task %s\n", artifactID, taskID)
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "taskId": taskID, "artifactId": artifactID})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Unlinked artifact %s from task %s\n", artifactID, taskID)
+		}
 		return nil
 	},
 }
@@ -531,13 +567,19 @@ var foldersPurgeCmd = &cobra.Command{
 	Short: "Permanently delete an already-binned, empty folder",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		isJson, _ := cmd.Flags().GetBool("json")
 		client := backend.NewArtifactServiceClient()
 		_, err := client.PurgeFolder(context.Background(), connect.NewRequest(&healthv1.PurgeFolderRequest{FolderId: args[0]}))
 		if err != nil {
 			cmd.PrintErrf("Failed to purge folder: %v\n", err)
 			return err
 		}
-		cmd.Printf("Folder %s permanently deleted\n", args[0])
+		if isJson {
+			jsonString, _ := json.Marshal(map[string]any{"success": true, "folderId": args[0]})
+			cmd.Println(string(jsonString))
+		} else {
+			cmd.Printf("Folder %s permanently deleted\n", args[0])
+		}
 		return nil
 	},
 }
