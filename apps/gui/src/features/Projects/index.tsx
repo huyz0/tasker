@@ -3,9 +3,10 @@ import { useLayoutStore } from '../../store/layout';
 import { RepositoryIntegrationConfig } from '../../components/ui/repositories/RepositoryIntegrationConfig';
 import { useAuthSession } from '../../hooks/useAuthSession';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useDebounce } from 'use-debounce';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { ProjectService, ProjectTemplateService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { ProjectService, ProjectTemplateService, TaskService, RoleService, OrgService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { PaginationControls } from '../../components/PaginationControls';
 import { Package } from 'lucide-react';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -15,9 +16,234 @@ import { ListState } from '../../components/ui/ListState';
 // Only the estimate used before a card has been measured — `measureRows` reads
 // the real height, because a card grows when its edit form opens.
 const PROJECT_ROW_HEIGHT = 220;
+const SEARCH_PAGE = 10;
 
 const projectClient = createClient(ProjectService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
+const taskClient = createClient(TaskService, transport);
+const roleClient = createClient(RoleService, transport);
+const orgClient = createClient(OrgService, transport);
+
+/**
+ * A project's live task count, read the same way a board column reads its
+ * own count (M07-T03): `page.totalCount` from a `limit: 1` request, not a
+ * client-side count of a fetched list. Deliberately *not* "N of M done" -
+ * a task type's statuses are configurable per type (M14/M15), so there is
+ * no single, universal "done" status this could total against across every
+ * task type a project might use. A plain count is the honest thing to show.
+ */
+function ProjectTaskCount({ projectId }: { projectId: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['tasks', 'count', projectId],
+    queryFn: async () => taskClient.listTasks({ projectId, page: { limit: 1 } }),
+  });
+
+  if (isLoading) return <span className="text-xs text-muted-foreground">Loading tasks…</span>;
+  if (error) return <span className="text-xs text-muted-foreground">Task count unavailable</span>;
+
+  const count = Number(data?.page?.totalCount ?? 0);
+  return (
+    <span className="text-xs text-muted-foreground">
+      {count === 0 ? 'No tasks yet' : count === 1 ? '1 task' : `${count} tasks`}
+    </span>
+  );
+}
+
+type Grant = { id: string; subjectType: string; subjectId: string; roleId: string; roleName: string };
+
+/**
+ * Project-scoped access, granted directly on the project it applies to.
+ *
+ * The primitive behind this (`grantRole`/`listGrants`/`revokeGrant` with
+ * `scopeType: 'project'`) has existed since M10 and is fully tested there -
+ * "a project-scoped grant reaches the project, with no organization
+ * membership at all." Nothing in the GUI ever called it with that scope:
+ * a real capability with no screen. Collapsed behind a toggle by default,
+ * same reasoning as the create-template/create-project forms elsewhere on
+ * this page - a third eager widget per card (after the description and the
+ * task count) would make an already-dense list heavier for everyone to load
+ * the one time in ten anyone opens it.
+ */
+function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string }) {
+  const queryClient = useQueryClient();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPicking, setIsPicking] = useState(false);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebounce(search, 250);
+  const [pendingSubjectId, setPendingSubjectId] = useState('');
+  const [grantRoleId, setGrantRoleId] = useState('');
+
+  const rolesQuery = useQuery({
+    queryKey: ['roles', orgId],
+    queryFn: async () => (await roleClient.listRoles({ orgId })).roles,
+    enabled: isOpen && !!orgId,
+  });
+
+  const grantsQuery = useQuery({
+    queryKey: ['grants', 'project', projectId],
+    queryFn: async () => (await roleClient.listGrants({ scopeType: 'project', scopeId: projectId })).grants as Grant[],
+    enabled: isOpen,
+  });
+
+  const candidatesQuery = useQuery({
+    queryKey: ['projectMemberCandidates', orgId, debouncedSearch],
+    enabled: isPicking && !!orgId,
+    queryFn: () => orgClient.listOrgMembers({ orgId, page: { limit: SEARCH_PAGE, filter: debouncedSearch || undefined } }),
+  });
+
+  const grantMutation = useMutation({
+    mutationFn: () => roleClient.grantRole({
+      subjectType: 'user', subjectId: pendingSubjectId, scopeType: 'project', scopeId: projectId, roleId: grantRoleId,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['grants', 'project', projectId] });
+      setPendingSubjectId('');
+      setGrantRoleId('');
+      setIsPicking(false);
+      setSearch('');
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (grantId: string) => roleClient.revokeGrant({ grantId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['grants', 'project', projectId] }),
+  });
+
+  const grants = grantsQuery.data ?? [];
+  const candidates = candidatesQuery.data?.members ?? [];
+
+  // No count on the collapsed toggle - that would mean fetching grants
+  // eagerly for every card, exactly the cost collapsing this behind a
+  // click exists to avoid.
+  if (!isOpen) {
+    return (
+      <button onClick={() => setIsOpen(true)} className="text-xs text-muted-foreground hover:text-foreground">
+        Members
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 border-t pt-3 flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-medium">Project members</h4>
+        <button onClick={() => setIsOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">
+          Hide
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Roles granted specifically on this project, in addition to whatever an org-wide role already gives someone.
+      </p>
+
+      <ListState
+        isLoading={grantsQuery.isLoading}
+        error={grantsQuery.error}
+        isEmpty={!grantsQuery.isLoading && !grantsQuery.error && grants.length === 0}
+        loadingMessage="Loading members…"
+        emptyMessage="No one has a project-specific role here yet."
+        onRetry={() => grantsQuery.refetch()}
+      >
+        <ul className="flex flex-col gap-1">
+          {grants.map((g) => (
+            <li key={g.id} className="flex items-center gap-2 text-xs bg-muted px-2 py-1 rounded-md">
+              <span className="flex-1 truncate">{g.subjectId}</span>
+              <span className="text-muted-foreground">{g.roleName}</span>
+              <button
+                aria-label={`Revoke ${g.roleName} from this project`}
+                onClick={() => revokeMutation.mutate(g.id)}
+                disabled={revokeMutation.isPending}
+                className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      </ListState>
+      {revokeMutation.isError && (
+        <p className="text-xs text-destructive">Failed to revoke: {(revokeMutation.error as Error).message}</p>
+      )}
+
+      {!isPicking ? (
+        <button onClick={() => setIsPicking(true)} className="self-start text-xs text-primary hover:underline">
+          + Grant access
+        </button>
+      ) : (
+        <div className="flex flex-col gap-2 rounded-md border bg-card p-2">
+          {!pendingSubjectId ? (
+            <>
+              <label className="text-xs font-medium" htmlFor={`project-member-search-${projectId}`}>Search people</label>
+              <input
+                id={`project-member-search-${projectId}`}
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Name or email"
+                className="rounded-md border bg-background px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              {candidatesQuery.isLoading && <span className="text-xs text-muted-foreground">Searching…</span>}
+              {candidatesQuery.error && <span className="text-xs text-destructive">Search failed</span>}
+              {candidates.map((m: any) => (
+                <button
+                  key={m.userId}
+                  onClick={() => setPendingSubjectId(m.userId)}
+                  className="rounded px-1 py-0.5 text-left text-xs hover:bg-accent"
+                >
+                  {m.name || m.email}
+                </button>
+              ))}
+              {candidatesQuery.isSuccess && candidates.length === 0 && (
+                <span className="text-xs text-muted-foreground">No matches.</span>
+              )}
+              <button onClick={() => { setIsPicking(false); setSearch(''); }} className="self-start text-xs text-muted-foreground hover:text-foreground">
+                Cancel
+              </button>
+            </>
+          ) : (
+            <form
+              className="flex flex-wrap items-end gap-2"
+              onSubmit={(e) => { e.preventDefault(); if (grantRoleId) grantMutation.mutate(); }}
+            >
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium">Granting to</span>
+                <span className="text-xs">{candidates.find((m: any) => m.userId === pendingSubjectId)?.name ?? pendingSubjectId}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium" htmlFor={`project-grant-role-${projectId}`}>Role</label>
+                <select
+                  id={`project-grant-role-${projectId}`}
+                  value={grantRoleId}
+                  onChange={(e) => setGrantRoleId(e.target.value)}
+                  className="rounded-md border bg-background px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <option value="">Choose a role…</option>
+                  {(rolesQuery.data ?? []).map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+              <button
+                type="submit"
+                disabled={!grantRoleId || grantMutation.isPending}
+                className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
+              >
+                {grantMutation.isPending ? 'Granting…' : 'Grant role'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPendingSubjectId(''); setIsPicking(false); }}
+                className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
+              >
+                Cancel
+              </button>
+            </form>
+          )}
+          {grantMutation.isError && (
+            <p className="text-xs text-destructive">Failed to grant: {(grantMutation.error as Error).message}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ProjectsWizard() {
   const { confirm, confirmDialog } = useConfirm();
@@ -25,6 +251,7 @@ export function ProjectsWizard() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const { userId: activeOwnerId } = useAuthSession();
   const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
   const [isAddingTemplate, setIsAddingTemplate] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDescription, setNewTemplateDescription] = useState('');
@@ -33,6 +260,7 @@ export function ProjectsWizard() {
   const [editTemplateDescription, setEditTemplateDescription] = useState('');
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editProjectName, setEditProjectName] = useState('');
+  const [editProjectDescription, setEditProjectDescription] = useState('');
 
   const queryClient = useQueryClient();
   useEffect(() => setActivePageTitle('Projects'), [setActivePageTitle]);
@@ -73,7 +301,8 @@ export function ProjectsWizard() {
         orgId: activeOrgId,
         templateId,
         name: projectName.trim(),
-        ownerId: activeOwnerId
+        ownerId: activeOwnerId,
+        description: projectDescription.trim(),
       });
       return resp.project;
     },
@@ -81,6 +310,7 @@ export function ProjectsWizard() {
       queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
       queryClient.invalidateQueries({ queryKey: ['projects', activeOrgId] });
       setProjectName('');
+      setProjectDescription('');
     }
   });
 
@@ -111,8 +341,8 @@ export function ProjectsWizard() {
   });
 
   const updateProjectMutation = useMutation({
-    mutationFn: async (variables: { projectId: string; name: string }) => {
-      await projectClient.updateProject({ projectId: variables.projectId, name: variables.name });
+    mutationFn: async (variables: { projectId: string; name: string; description: string }) => {
+      await projectClient.updateProject(variables);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', 'paginated', activeOrgId] });
@@ -185,14 +415,23 @@ export function ProjectsWizard() {
           </form>
         )}
 
-        <div className="mb-4">
+        <div className="mb-4 flex flex-col gap-2 max-w-sm">
           <input
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
             placeholder="New project name"
-            className="w-full max-w-sm rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
           />
-          <p className="text-xs text-muted-foreground mt-1">Enter a project name, then pick a template below to create it.</p>
+          <label className="sr-only" htmlFor="new-project-description">Project description</label>
+          <textarea
+            id="new-project-description"
+            value={projectDescription}
+            onChange={(e) => setProjectDescription(e.target.value)}
+            placeholder="What is this project for? (optional)"
+            rows={2}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <p className="text-xs text-muted-foreground">Enter a project name, then pick a template below to create it.</p>
         </div>
         {createProjectMutation.isError && (
           <p className="text-sm text-destructive mb-4">Failed to create project: {(createProjectMutation.error as Error).message}</p>
@@ -312,9 +551,11 @@ export function ProjectsWizard() {
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
-                        if (editProjectName.trim()) updateProjectMutation.mutate({ projectId: p.id, name: editProjectName.trim() });
+                        if (editProjectName.trim()) {
+                          updateProjectMutation.mutate({ projectId: p.id, name: editProjectName.trim(), description: editProjectDescription });
+                        }
                       }}
-                      className="flex items-center gap-2 flex-1"
+                      className="flex flex-col gap-2 flex-1"
                     >
                       <input
                         autoFocus
@@ -322,31 +563,51 @@ export function ProjectsWizard() {
                         onChange={(e) => setEditProjectName(e.target.value)}
                         className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
                       />
-                      <button
-                        type="submit"
-                        disabled={!editProjectName.trim() || updateProjectMutation.isPending}
-                        className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
-                      >
-                        {updateProjectMutation.isPending ? 'Saving...' : 'Save'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingProjectId(null)}
-                        className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
-                      >
-                        Cancel
-                      </button>
+                      <label className="sr-only" htmlFor={`edit-project-description-${p.id}`}>Project description</label>
+                      <textarea
+                        id={`edit-project-description-${p.id}`}
+                        value={editProjectDescription}
+                        onChange={(e) => setEditProjectDescription(e.target.value)}
+                        placeholder="What is this project for? (optional)"
+                        rows={2}
+                        className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="submit"
+                          disabled={!editProjectName.trim() || updateProjectMutation.isPending}
+                          className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
+                        >
+                          {updateProjectMutation.isPending ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingProjectId(null)}
+                          className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </form>
                   ) : (
                     <div>
                       <h3 className="font-semibold text-lg">{p.name} <span className="text-xs font-mono text-muted-foreground">[{p.key}]</span></h3>
-                      <p className="text-xs text-muted-foreground mt-1">ID: {p.id}</p>
+                      {p.description ? (
+                        <p className="text-sm text-muted-foreground mt-1">{p.description}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic mt-1">No description.</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-muted-foreground">ID: {p.id}</p>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <ProjectTaskCount projectId={p.id} />
+                      </div>
                     </div>
                   )}
                   {editingProjectId !== p.id && (
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => { setEditingProjectId(p.id); setEditProjectName(p.name); }}
+                        onClick={() => { setEditingProjectId(p.id); setEditProjectName(p.name); setEditProjectDescription(p.description || ''); }}
                         className="text-muted-foreground hover:text-foreground text-sm"
                       >
                         Edit
@@ -374,6 +635,7 @@ export function ProjectsWizard() {
                   <p className="text-sm text-destructive mb-4">Failed to update project: {(updateProjectMutation.error as Error).message}</p>
                 )}
                 <RepositoryIntegrationConfig projectId={p.id} />
+                <ProjectMembers projectId={p.id} orgId={activeOrgId} />
               </div>
               )}
             />

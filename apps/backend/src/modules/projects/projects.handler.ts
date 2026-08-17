@@ -55,6 +55,7 @@ const CreateProjectSchema = z.object({
   templateId: z.string().min(1, "templateId is required"),
   name: z.string().min(1, "name is required").max(256),
   ownerId: z.string().min(1, "ownerId is required"),
+  description: z.string().max(1024).optional().default(""),
 });
 
 const GetTemplateSchema = z.object({
@@ -71,6 +72,10 @@ const CreateTemplateSchema = z.object({
 const UpdateProjectSchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
   name: z.string().min(1, "name is required").max(256),
+  // Real proto3 presence, not the "" -> unset squash M14-T01 had to fix for
+  // tasks: unset means "don't touch the description", an explicit empty
+  // string means "clear it", and the two must stay distinguishable here too.
+  description: z.string().max(1024).optional(),
 });
 
 const UpdateTemplateSchema = z.object({
@@ -149,6 +154,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
           key,
           nextTaskNumber: 1,
           ownerId: parsed.ownerId,
+          description: parsed.description,
         };
         try {
           await insertRecord(db, ps, payload, isStandalone);
@@ -178,6 +184,7 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
           name: (ps as any).name,
           key: (ps as any).key,
           ownerId: (ps as any).ownerId,
+          description: (ps as any).description,
           createdAt: (ps as any).createdAt,
           deletedAt: (ps as any).deletedAt,
         },
@@ -202,9 +209,11 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
       if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
       await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:write");
 
-      await db.update(ps).set({ name: parsed.name }).where(eq((ps as any).id, parsed.projectId));
+      const updates: Record<string, unknown> = { name: parsed.name };
+      if (parsed.description !== undefined) updates.description = parsed.description;
+      await db.update(ps).set(updates).where(eq((ps as any).id, parsed.projectId));
 
-      const updated = { ...result[0], name: parsed.name };
+      const updated = { ...result[0], ...updates };
       publishDomainEvent(nc, "domain.project.updated", updated);
       return { project: updated };
     },

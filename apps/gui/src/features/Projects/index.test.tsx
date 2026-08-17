@@ -2,7 +2,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockArchiveProject, mockUpdateProject, mockUpdateTemplate } = vi.hoisted(() => ({
+const {
+  mockListTemplates, mockListProjects, mockCreateProject, mockCreateTemplate, mockArchiveProject, mockUpdateProject,
+  mockUpdateTemplate, mockListTasks, mockListRoles, mockListGrants, mockGrantRole, mockRevokeGrant, mockListOrgMembers,
+} = vi.hoisted(() => ({
   mockListTemplates: vi.fn(),
   mockListProjects: vi.fn(),
   mockCreateProject: vi.fn(),
@@ -10,6 +13,12 @@ const { mockListTemplates, mockListProjects, mockCreateProject, mockCreateTempla
   mockArchiveProject: vi.fn(),
   mockUpdateProject: vi.fn(),
   mockUpdateTemplate: vi.fn(),
+  mockListTasks: vi.fn(),
+  mockListRoles: vi.fn(),
+  mockListGrants: vi.fn(),
+  mockGrantRole: vi.fn(),
+  mockRevokeGrant: vi.fn(),
+  mockListOrgMembers: vi.fn(),
 }));
 
 vi.mock('@connectrpc/connect-web', () => ({
@@ -24,11 +33,20 @@ vi.mock('@connectrpc/connect', () => ({
     archiveProject: mockArchiveProject,
     updateProject: mockUpdateProject,
     updateTemplate: mockUpdateTemplate,
+    listTasks: mockListTasks,
+    listRoles: mockListRoles,
+    listGrants: mockListGrants,
+    grantRole: mockGrantRole,
+    revokeGrant: mockRevokeGrant,
+    listOrgMembers: mockListOrgMembers,
   })),
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   ProjectService: {},
   ProjectTemplateService: {},
+  TaskService: {},
+  RoleService: {},
+  OrgService: {},
 }));
 vi.mock('../../components/ui/repositories/RepositoryIntegrationConfig', () => ({
   RepositoryIntegrationConfig: () => null,
@@ -68,6 +86,16 @@ describe('ProjectsWizard', () => {
     mockArchiveProject.mockReset();
     mockUpdateProject.mockReset();
     mockUpdateTemplate.mockReset();
+    mockListTasks.mockReset();
+    mockListTasks.mockResolvedValue({ tasks: [], page: { totalCount: 0 } });
+    mockListRoles.mockReset();
+    mockListRoles.mockResolvedValue({ roles: [] });
+    mockListGrants.mockReset();
+    mockListGrants.mockResolvedValue({ grants: [] });
+    mockGrantRole.mockReset();
+    mockRevokeGrant.mockReset();
+    mockListOrgMembers.mockReset();
+    mockListOrgMembers.mockResolvedValue({ members: [] });
     mockAuthUserId = mockUserId;
   });
 
@@ -96,6 +124,7 @@ describe('ProjectsWizard', () => {
       templateId: 'tpl-1',
       name: 'My Real Project',
       ownerId: mockUserId,
+      description: '',
     }));
   });
 
@@ -313,7 +342,89 @@ describe('ProjectsWizard', () => {
     fireEvent.change(nameInput, { target: { value: 'Renamed Project' } });
     fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(mockUpdateProject).toHaveBeenCalledWith({ projectId: 'proj-1', name: 'Renamed Project' }));
+    // description is always sent, even untouched - empty here since the
+    // fixture project had none, same as how Tasks always sends description.
+    await waitFor(() => expect(mockUpdateProject).toHaveBeenCalledWith({ projectId: 'proj-1', name: 'Renamed Project', description: '' }));
+  });
+
+  // M16-T02: no description field existed on a project at all before this.
+  it('shows, edits, and clears a project description through the GUI', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project', description: 'Ships the thing' }] });
+    mockUpdateProject.mockResolvedValue({ project: { id: 'proj-1', name: 'Existing Project', description: 'New description' } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Ships the thing')).toBeDefined());
+
+    fireEvent.click(screen.getByText('Edit'));
+    const descriptionInput = screen.getByDisplayValue('Ships the thing');
+    fireEvent.change(descriptionInput, { target: { value: 'New description' } });
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(mockUpdateProject).toHaveBeenCalledWith({
+      projectId: 'proj-1', name: 'Existing Project', description: 'New description',
+    }));
+  });
+
+  it('shows a fallback when a project has no description', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    renderPage();
+
+    expect(await screen.findByText('No description.')).toBeInTheDocument();
+  });
+
+  // M16-T03: no task count, or any project-level signal at all, existed on
+  // this list before this - "% done" isn't attempted (no universal
+  // terminal status across custom task types), just a plain count.
+  it("shows each project's task count, read the same way a board column reads its own", async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    mockListTasks.mockResolvedValue({ tasks: [], page: { totalCount: 47 } });
+    renderPage();
+
+    expect(await screen.findByText('47 tasks')).toBeInTheDocument();
+    expect(mockListTasks).toHaveBeenCalledWith({ projectId: 'proj-1', page: { limit: 1 } });
+  });
+
+  it('says so when a project has no tasks yet, and singularizes exactly one', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [
+      { id: 'proj-1', name: 'Empty Project' },
+      { id: 'proj-2', name: 'One Task Project' },
+    ] });
+    mockListTasks.mockImplementation(async ({ projectId }: any) => ({
+      tasks: [], page: { totalCount: projectId === 'proj-1' ? 0 : 1 },
+    }));
+    renderPage();
+
+    expect(await screen.findByText('No tasks yet')).toBeInTheDocument();
+    expect(await screen.findByText('1 task')).toBeInTheDocument();
+  });
+
+  it('shows a loading state, then reports when the task count fails to load', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    let rejectCount: (e: Error) => void = () => {};
+    mockListTasks.mockReturnValue(new Promise((_resolve, reject) => { rejectCount = reject; }));
+    renderPage();
+
+    expect(await screen.findByText('Loading tasks…')).toBeInTheDocument();
+    rejectCount(new Error('boom'));
+    expect(await screen.findByText('Task count unavailable')).toBeInTheDocument();
+  });
+
+  it('sends a description typed into the new-project field', async () => {
+    mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Software', description: 'desc' }] });
+    mockListProjects.mockResolvedValue({ projects: [] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
+    fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
+    fireEvent.change(screen.getByPlaceholderText('What is this project for? (optional)'), { target: { value: 'A real description' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Use Template' }));
+
+    await waitFor(() => expect(mockCreateProject).toHaveBeenCalledWith(expect.objectContaining({ description: 'A real description' })));
   });
 
   it('cancels editing a project without saving', async () => {
@@ -444,4 +555,158 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText(/Failed to update template/)).toBeInTheDocument());
   });
 
+  // M16-T04: grantRole/listGrants/revokeGrant(scopeType: 'project') have
+  // existed and been tested at the API layer since M10 - no GUI screen ever
+  // called them with that scope. These tests are that screen.
+  describe('project members (scopeType: project)', () => {
+    it('is collapsed by default and does not fetch grants until opened', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      renderPage();
+
+      await screen.findByText('Members');
+      expect(mockListGrants).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByText('Members'));
+      await waitFor(() => expect(mockListGrants).toHaveBeenCalledWith({ scopeType: 'project', scopeId: 'proj-1' }));
+    });
+
+    it('lists existing project grants once expanded', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListGrants.mockResolvedValue({ grants: [
+        { id: 'grant-1', subjectType: 'user', subjectId: 'user-2', roleId: 'role-1', roleName: 'QA Lead' },
+      ] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      expect(await screen.findByText('QA Lead')).toBeInTheDocument();
+    });
+
+    it('revokes a project grant', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListGrants.mockResolvedValue({ grants: [
+        { id: 'grant-1', subjectType: 'user', subjectId: 'user-2', roleId: 'role-1', roleName: 'QA Lead' },
+      ] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      await screen.findByText('QA Lead');
+      fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
+
+      await waitFor(() => expect(mockRevokeGrant).toHaveBeenCalledWith({ grantId: 'grant-1' }));
+    });
+
+    it('searches org members and grants a role at this project scope', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'QA Lead' }] });
+      mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-2', name: 'Jamie Reviewer', email: 'jamie@test.com' }] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      fireEvent.click(await screen.findByText('+ Grant access'));
+
+      fireEvent.change(screen.getByLabelText('Search people'), { target: { value: 'Jamie' } });
+      fireEvent.click(await screen.findByText('Jamie Reviewer'));
+
+      fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'role-1' } });
+      fireEvent.click(screen.getByText('Grant role'));
+
+      await waitFor(() => expect(mockGrantRole).toHaveBeenCalledWith({
+        subjectType: 'user', subjectId: 'user-2', scopeType: 'project', scopeId: 'proj-1', roleId: 'role-1',
+      }));
+    });
+
+    it('reports a failed grant and a failed revoke', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListGrants.mockResolvedValue({ grants: [
+        { id: 'grant-1', subjectType: 'user', subjectId: 'user-2', roleId: 'role-1', roleName: 'QA Lead' },
+      ] });
+      mockListRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'QA Lead' }] });
+      mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-3', name: 'New Person', email: 'new@test.com' }] });
+      mockGrantRole.mockRejectedValue(new Error('not an org admin'));
+      mockRevokeGrant.mockRejectedValue(new Error('grant not found'));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      await screen.findByText('QA Lead');
+      fireEvent.click(screen.getByLabelText('Revoke QA Lead from this project'));
+      await waitFor(() => expect(screen.getByText(/Failed to revoke: grant not found/)).toBeInTheDocument());
+
+      fireEvent.click(screen.getByText('+ Grant access'));
+      fireEvent.click(await screen.findByText('New Person'));
+      fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'role-1' } });
+      fireEvent.click(screen.getByText('Grant role'));
+      await waitFor(() => expect(screen.getByText(/Failed to grant: not an org admin/)).toBeInTheDocument());
+    });
+
+    it('falls back to email for a candidate with no name, and shows "no matches"/"no roles" empty states', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListRoles.mockResolvedValue({ roles: [] });
+      mockListOrgMembers.mockImplementation(async ({ page }: any) =>
+        page?.filter === 'nomatch'
+          ? { members: [] }
+          : { members: [{ userId: 'user-4', name: '', email: 'noname@test.com' }] });
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      fireEvent.click(await screen.findByText('+ Grant access'));
+      fireEvent.change(screen.getByLabelText('Search people'), { target: { value: 'x' } });
+
+      const candidate = await screen.findByText('noname@test.com');
+      fireEvent.click(candidate);
+      // No roles at this org yet - the select has nothing but the placeholder.
+      expect(screen.getByLabelText('Role')).toHaveDisplayValue('Choose a role…');
+
+      fireEvent.click(screen.getByText('Cancel'));
+      fireEvent.click(screen.getByText('+ Grant access'));
+      fireEvent.change(screen.getByLabelText('Search people'), { target: { value: 'nomatch' } });
+      expect(await screen.findByText('No matches.')).toBeInTheDocument();
+    });
+
+    it('shows a search-failure state and a pending state while granting', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'QA Lead' }] });
+      mockListOrgMembers.mockRejectedValue(new Error('boom'));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      fireEvent.click(await screen.findByText('+ Grant access'));
+      fireEvent.change(screen.getByLabelText('Search people'), { target: { value: 'x' } });
+      expect(await screen.findByText('Search failed')).toBeInTheDocument();
+    });
+
+    it('shows a pending label while granting a role', async () => {
+      mockListTemplates.mockResolvedValue({ templates: [] });
+      mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+      mockListRoles.mockResolvedValue({ roles: [{ id: 'role-1', name: 'QA Lead' }] });
+      mockListOrgMembers.mockResolvedValue({ members: [{ userId: 'user-2', name: 'Jamie Reviewer', email: 'jamie@test.com' }] });
+      let resolveGrant: (v: any) => void = () => {};
+      mockGrantRole.mockReturnValue(new Promise((resolve) => { resolveGrant = resolve; }));
+      renderPage();
+
+      fireEvent.click(await screen.findByText('Members'));
+      fireEvent.click(await screen.findByText('+ Grant access'));
+      fireEvent.click(await screen.findByText('Jamie Reviewer'));
+      fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'role-1' } });
+      fireEvent.click(screen.getByText('Grant role'));
+
+      expect(await screen.findByText('Granting…')).toBeInTheDocument();
+      resolveGrant({ grant: { id: 'grant-2' } });
+    });
+  });
+
+  it("falls back to 0 when a task-count response carries no totalCount", async () => {
+    mockListTemplates.mockResolvedValue({ templates: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Existing Project' }] });
+    mockListTasks.mockResolvedValue({ tasks: [] });
+    renderPage();
+
+    expect(await screen.findByText('No tasks yet')).toBeInTheDocument();
+  });
 });
