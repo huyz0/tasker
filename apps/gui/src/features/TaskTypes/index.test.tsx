@@ -338,7 +338,7 @@ describe('TaskTypesEditor', () => {
 
   it('asks for a type before showing an editor', async () => {
     renderEditor();
-    expect(await screen.findByText(/Choose a task type to configure/)).toBeInTheDocument();
+    expect(await screen.findByText(/Choose a task type on the left to configure/)).toBeInTheDocument();
   });
 
   it('says so when the organization has no task types', async () => {
