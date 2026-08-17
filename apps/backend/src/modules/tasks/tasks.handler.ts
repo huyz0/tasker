@@ -109,7 +109,11 @@ const ReorderTaskStatusesSchema = z.object({
 const UpdateTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   title: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).max(512).optional()),
-  description: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(4096).optional()),
+  // description has proto3 `optional` presence tracking end to end (the
+  // wire distinguishes "field omitted" from "field explicitly set to
+  // empty"), so unlike title it must NOT collapse "" into undefined —
+  // that would make clearing a description a silent no-op (M14-T01).
+  description: z.string().max(4096).optional(),
   taskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().nullable().optional()),
 });
 

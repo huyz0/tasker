@@ -620,6 +620,112 @@ describe("Tasks Handler Integration Tests", () => {
       taskHandler.updateTaskStatus({ taskId: created.task.id, status: "todo" }, ctx)
     ).rejects.toThrow();
   });
+
+  // M14-T01: `description` has proto3 `optional` presence tracking, so the
+  // wire can and does distinguish "field omitted" from "field explicitly set
+  // to empty". A Zod preprocess step that collapsed both into "not provided"
+  // made clearing a description a silent no-op - the request returned 2xx
+  // and the field never changed. This test reads the value back through
+  // `getTask` rather than trusting `updateTask`'s own response.
+  test("updateTask persists field changes, including clearing description to empty", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createTaskManagementHandler(db, nc);
+
+    const orgId = "org-updatetask-" + Date.now().toString();
+    const userId = "user-updatetask-" + Date.now().toString();
+    const templateId = "tmpl-updatetask-" + Date.now().toString();
+    const projectId = "proj-updatetask-" + Date.now().toString();
+
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org UpdateTask" });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "Test Proj" });
+    const ctx = makeAuthContext(userId);
+
+    const created = await handler.createTask({
+      projectId, title: "Original Title", description: "Original description",
+    }, ctx);
+
+    // Change title and description together.
+    const updated = await handler.updateTask({
+      taskId: created.task.id, title: "New Title", description: "New description",
+    }, ctx);
+    expect(updated.task.title).toBe("New Title");
+    expect(updated.task.description).toBe("New description");
+
+    // Clearing the description to "" must actually persist as "", not be
+    // silently dropped because it looks like an unset field.
+    const cleared = await handler.updateTask({
+      taskId: created.task.id, title: "New Title", description: "",
+    }, ctx);
+    expect(cleared.task.description).toBe("");
+
+    // Read it back through a second call, not the mutation's own echo.
+    const refetched = await handler.getTask({ taskId: created.task.id }, ctx);
+    expect(refetched.task.description).toBe("");
+    expect(refetched.task.title).toBe("New Title");
+
+    // Omitting title/description entirely (only taskId + taskTypeId) must
+    // leave both untouched.
+    const typesHandler = createTasksHandler(db, nc);
+    const newType = await typesHandler.createTaskType({ orgId, name: "Retyped" }, ctx);
+    const retyped = await handler.updateTask({ taskId: created.task.id, taskTypeId: newType.taskType.id }, ctx);
+    expect(retyped.task.title).toBe("New Title");
+    expect(retyped.task.description).toBe("");
+    expect(retyped.task.taskTypeId).toBe(newType.taskType.id);
+
+    // A taskTypeId belonging to a different org is rejected.
+    const otherOrgId = "org-updatetask-other-" + Date.now();
+    const otherUserId = "user-updatetask-other-" + Date.now();
+    await db.insert(schemaSqlite.organizations).values({ id: otherOrgId, name: "Other", slug: otherOrgId, createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: otherUserId, email: `${otherUserId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId: otherOrgId, userId: otherUserId, role: "admin", joinedAt: new Date() });
+    const otherOrgType = await typesHandler.createTaskType({ orgId: otherOrgId, name: "Foreign" }, makeAuthContext(otherUserId));
+    await expect(
+      handler.updateTask({ taskId: created.task.id, taskTypeId: otherOrgType.taskType.id }, ctx)
+    ).rejects.toThrow();
+
+    // A task that does not exist is NotFound, not a generic throw.
+    await expect(
+      handler.updateTask({ taskId: "task-does-not-exist", title: "X" }, ctx)
+    ).rejects.toMatchObject({ code: Code.NotFound });
+
+    // An outsider (not a member of this org) cannot update the task.
+    const outsiderId = "user-updatetask-outsider-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    await expect(
+      handler.updateTask({ taskId: created.task.id, title: "Hijacked" }, makeAuthContext(outsiderId))
+    ).rejects.toThrow();
+  });
+
+  test("getTask returns the full task including description, and denies non-members", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createTaskManagementHandler(db, nc);
+
+    const orgId = "org-gettask-" + Date.now().toString();
+    const userId = "user-gettask-" + Date.now().toString();
+    const templateId = "tmpl-gettask-" + Date.now().toString();
+    const projectId = "proj-gettask-" + Date.now().toString();
+
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org GetTask" });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "Test Proj" });
+    const ctx = makeAuthContext(userId);
+
+    const created = await handler.createTask({
+      projectId, title: "Gettable", description: "Has a body",
+    }, ctx);
+
+    const fetched = await handler.getTask({ taskId: created.task.id }, ctx);
+    expect(fetched.task.id).toBe(created.task.id);
+    expect(fetched.task.title).toBe("Gettable");
+    expect(fetched.task.description).toBe("Has a body");
+    expect(Array.isArray(fetched.task.assignees)).toBe(true);
+
+    await expect(handler.getTask({ taskId: "task-does-not-exist" }, ctx)).rejects.toMatchObject({ code: Code.NotFound });
+    await expect(handler.getTask({}, ctx)).rejects.toThrow();
+
+    const outsiderId = "user-gettask-outsider-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
+    await expect(handler.getTask({ taskId: created.task.id }, makeAuthContext(outsiderId))).rejects.toThrow();
+  });
 });
 
 describe("Concurrent task creation (M03-T15)", () => {
