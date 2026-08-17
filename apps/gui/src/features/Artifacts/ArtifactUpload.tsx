@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
@@ -101,6 +101,22 @@ export function ArtifactUpload({ folderId }: { folderId: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [tooLarge, setTooLarge] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
+  // M18-T06: description is a real field on Artifact (main.tsp) that the
+  // upload path always sent as '' - the only creation path that produces a
+  // file with actual content, and it had no way to describe what the file
+  // is for.
+  const [description, setDescription] = useState('');
+
+  // The preview is a blob: URL (an object URL holds memory until revoked
+  // explicitly - the browser does not garbage-collect it on its own), and
+  // was never revoked anywhere: not when replaced by the next pick, not on
+  // upload success, not on unmount. Revoked here, once, wherever `preview`
+  // stops pointing at a given URL.
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview.url);
+    };
+  }, [preview]);
 
   const upload = useMutation({
     mutationFn: async (file: File) => {
@@ -109,7 +125,7 @@ export function ArtifactUpload({ folderId }: { folderId: string }) {
       await artifactClient.createArtifact({
         folderId,
         name: file.name,
-        description: '',
+        description: description.trim(),
         content,
         contentType,
       });
@@ -117,6 +133,7 @@ export function ArtifactUpload({ folderId }: { folderId: string }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['artifacts'] });
       setPreview(null);
+      setDescription('');
       if (inputRef.current) inputRef.current.value = '';
     },
   });
@@ -138,6 +155,16 @@ export function ArtifactUpload({ folderId }: { folderId: string }) {
 
   return (
     <div className="flex flex-col gap-1 px-1 py-1">
+      <label className="sr-only" htmlFor={`upload-description-${folderId}`}>Description (optional)</label>
+      <input
+        id={`upload-description-${folderId}`}
+        type="text"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Description (optional)"
+        disabled={upload.isPending}
+        className="border p-1 rounded text-xs bg-background disabled:opacity-50"
+      />
       <label className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
         <input
           ref={inputRef}

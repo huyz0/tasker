@@ -869,6 +869,63 @@ describe('ArtifactsBrowser', () => {
     });
   });
 
+  // M18-T06: description is a real field on Artifact with no GUI display -
+  // set at upload time, it existed but was invisible everywhere in the
+  // browser.
+  it('shows an artifact\'s description when it has one', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({
+      artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world', description: 'The project overview' }],
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+    fireEvent.click(screen.getByText('readme.md'));
+
+    expect(await screen.findByText('The project overview')).toBeInTheDocument();
+  });
+
+  it('shows no description line for an artifact that has none', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+    fireEvent.click(screen.getByText('readme.md'));
+
+    await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+    expect(screen.queryByText('undefined')).toBeNull();
+  });
+
+  // M18-T06: neither the folder-rename input nor the content-edit textarea
+  // had an accessible name - a screen reader announced only "text box" with
+  // no indication of what either edits.
+  it('gives the folder-rename input and the content-edit textarea an accessible name', async () => {
+    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }] });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
+    fireEvent.click(screen.getByLabelText('Rename folder docs'));
+    expect(screen.getByLabelText('Folder name for docs')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Cancel'));
+
+    fireEvent.click(screen.getByText('docs'));
+    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
+    fireEvent.click(screen.getByText('readme.md'));
+    await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByText('Edit').at(-1)!);
+
+    expect(screen.getByLabelText('Content of readme.md')).toBeInTheDocument();
+  });
+
   // M18-T05: six of the seven mutations in this view never rendered their
   // error - a failed create/rename/delete left the form or button simply
   // un-pending, with nothing telling the user it didn't work.

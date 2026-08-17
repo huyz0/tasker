@@ -354,6 +354,7 @@ export function ArtifactsBrowser() {
                 >
                   <input
                     autoFocus
+                    aria-label={`Folder name for ${folder.name}`}
                     value={editFolderName}
                     onChange={(e) => setEditFolderName(e.target.value)}
                     className="flex-1 text-sm bg-transparent border-b outline-none focus:border-primary"
@@ -618,6 +619,9 @@ export function ArtifactsBrowser() {
                )}
             </div>
             <Breadcrumbs className="px-6 pt-4" items={artifactCrumbs} />
+            {selectedArtifact.description && (
+              <p className="px-6 pt-1 text-sm text-muted-foreground">{selectedArtifact.description}</p>
+            )}
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
                {updateContentMutation.isError && (
                  <p className="text-sm text-destructive mb-3">Failed to save: {(updateContentMutation.error as Error).message}</p>
@@ -625,6 +629,7 @@ export function ArtifactsBrowser() {
                {isEditingContent ? (
                  <textarea
                    autoFocus
+                   aria-label={`Content of ${selectedArtifact.name}`}
                    value={editedContent}
                    onChange={(e) => setEditedContent(e.target.value)}
                    className="w-full h-full min-h-[300px] rounded-md border bg-background p-3 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/50"

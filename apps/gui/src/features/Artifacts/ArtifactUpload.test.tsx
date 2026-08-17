@@ -84,6 +84,49 @@ describe('ArtifactUpload', () => {
     }));
   });
 
+  // M18-T06: description is a real field on Artifact that the upload path
+  // always sent as '' - the only creation path that produces a file with
+  // actual content had no way to describe what it was for.
+  it('sends the typed description alongside the upload, then clears it on success', async () => {
+    mockCreate.mockResolvedValue({ artifact: { id: 'art-1' } });
+    renderUpload();
+
+    fireEvent.change(screen.getByPlaceholderText('Description (optional)'), { target: { value: '  Q3 roadmap  ' } });
+    pick(fileOf('notes.md', 'text/markdown', 'hello'));
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ description: 'Q3 roadmap' })));
+    await waitFor(() => expect(screen.getByPlaceholderText('Description (optional)')).toHaveValue(''));
+  });
+
+  it('keeps the typed description when the upload fails', async () => {
+    mockCreate.mockRejectedValue(new Error('permission denied'));
+    renderUpload();
+
+    fireEvent.change(screen.getByPlaceholderText('Description (optional)'), { target: { value: 'Q3 roadmap' } });
+    pick(fileOf('notes.md', 'text/markdown', 'hello'));
+
+    await screen.findByText(/Upload failed/);
+    expect(screen.getByPlaceholderText('Description (optional)')).toHaveValue('Q3 roadmap');
+  });
+
+  it('revokes the previous preview URL when a new image is picked, and on unmount', async () => {
+    const revoke = vi.fn();
+    (URL as any).revokeObjectURL = revoke;
+    let createCount = 0;
+    (URL as any).createObjectURL = vi.fn(() => `blob:preview-${++createCount}`);
+
+    const { unmount } = renderUpload();
+    pick(fileOf('first.png', 'image/png'));
+    await screen.findByAltText('Preview of first.png');
+
+    pick(fileOf('second.png', 'image/png'));
+    await screen.findByAltText('Preview of second.png');
+    await waitFor(() => expect(revoke).toHaveBeenCalledWith('blob:preview-1'));
+
+    unmount();
+    expect(revoke).toHaveBeenCalledWith('blob:preview-2');
+  });
+
   it('sends a binary upload (image) base64-encoded, with its name and type', async () => {
     renderUpload();
     pick(fileOf('photo.png', 'image/png', 'hello'));
