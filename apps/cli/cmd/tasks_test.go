@@ -226,6 +226,76 @@ func TestTasksCommentAddCommand(t *testing.T) {
 	}
 }
 
+// M19-T09: tasksCommentAddCmd had a test; tasksCommentsCmd (list) never did.
+func TestTasksCommentAddCommandRequiresContent(t *testing.T) {
+	_ = tasksCommentAddCmd.Flags().Set("content", "")
+	t.Cleanup(func() { _ = tasksCommentAddCmd.Flags().Set("content", "") })
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"tasks", "comment-add", "task-123"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected comment-add to fail without --content")
+	}
+	if !strings.Contains(b.String(), "--content is required") {
+		t.Errorf("expected the required-flag error to be reported, got %s", b.String())
+	}
+}
+
+func (f *fakeCommentHandler) ListComments(
+	_ context.Context,
+	req *connect.Request[healthv1.ListCommentsRequest],
+) (*connect.Response[healthv1.ListCommentsResponse], error) {
+	return connect.NewResponse(&healthv1.ListCommentsResponse{
+		Comments: []*healthv1.Comment{
+			{Id: "cmt_1", EntityId: req.Msg.EntityId, EntityType: req.Msg.EntityType, Content: "Looks good", CreatedAt: "2026-01-01T00:00:00Z"},
+		},
+	}), nil
+}
+
+func TestTasksCommentsListCommand(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewCommentServiceHandler(&fakeCommentHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "comments", "task-123"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks comments failed: %v", err)
+	}
+
+	output := b.String()
+	if !strings.Contains(output, "Looks good") {
+		t.Errorf("expected output to contain the listed comment, got %s", output)
+	}
+}
+
+func TestTasksCommentsListCommandReportsFailure(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewCommentServiceHandler(&v1connect.UnimplementedCommentServiceHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"tasks", "comments", "task-123"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected tasks comments to fail on an RPC error")
+	}
+	if !strings.Contains(b.String(), "Failed to list comments") {
+		t.Errorf("expected the failure to be reported, got %s", b.String())
+	}
+}
+
 type fakeTaskReviewerHandler struct {
 	v1connect.UnimplementedTaskServiceHandler
 	reviewers []string
@@ -592,6 +662,275 @@ func TestTasksUnassignCommandRequiresAgentOrUser(t *testing.T) {
 		t.Fatal("expected tasks unassign to fail without --agent or --user")
 	}
 	if !strings.Contains(b.String(), "one of --agent or --user is required") {
+		t.Errorf("expected the required-flag error to be reported, got %s", b.String())
+	}
+}
+
+// M19-T09: tasksAssignCmd, tasksUpdateStatusCmd, and delete/restore/purge had
+// no test coverage at all before this - including their --json branches,
+// which had never actually been exercised despite looking correct on
+// inspection.
+type fakeTaskLifecycleHandler struct {
+	v1connect.UnimplementedTaskServiceHandler
+	gotAssignReq       *healthv1.AssignTaskRequest
+	gotUpdateStatusReq *healthv1.UpdateTaskStatusRequest
+	gotDeleteReq       *healthv1.DeleteTaskRequest
+	gotRestoreReq      *healthv1.RestoreTaskRequest
+	gotPurgeReq        *healthv1.PurgeTaskRequest
+}
+
+func (f *fakeTaskLifecycleHandler) AssignTask(
+	_ context.Context,
+	req *connect.Request[healthv1.AssignTaskRequest],
+) (*connect.Response[healthv1.AssignTaskResponse], error) {
+	f.gotAssignReq = req.Msg
+	return connect.NewResponse(&healthv1.AssignTaskResponse{Success: true}), nil
+}
+
+func (f *fakeTaskLifecycleHandler) UpdateTaskStatus(
+	_ context.Context,
+	req *connect.Request[healthv1.UpdateTaskStatusRequest],
+) (*connect.Response[healthv1.UpdateTaskStatusResponse], error) {
+	f.gotUpdateStatusReq = req.Msg
+	return connect.NewResponse(&healthv1.UpdateTaskStatusResponse{
+		Task: &healthv1.Task{Id: req.Msg.TaskId, Status: req.Msg.Status},
+	}), nil
+}
+
+func (f *fakeTaskLifecycleHandler) DeleteTask(
+	_ context.Context,
+	req *connect.Request[healthv1.DeleteTaskRequest],
+) (*connect.Response[healthv1.DeleteTaskResponse], error) {
+	f.gotDeleteReq = req.Msg
+	return connect.NewResponse(&healthv1.DeleteTaskResponse{Success: true}), nil
+}
+
+func (f *fakeTaskLifecycleHandler) RestoreTask(
+	_ context.Context,
+	req *connect.Request[healthv1.RestoreTaskRequest],
+) (*connect.Response[healthv1.RestoreTaskResponse], error) {
+	f.gotRestoreReq = req.Msg
+	return connect.NewResponse(&healthv1.RestoreTaskResponse{Success: true}), nil
+}
+
+func (f *fakeTaskLifecycleHandler) PurgeTask(
+	_ context.Context,
+	req *connect.Request[healthv1.PurgeTaskRequest],
+) (*connect.Response[healthv1.PurgeTaskResponse], error) {
+	f.gotPurgeReq = req.Msg
+	return connect.NewResponse(&healthv1.PurgeTaskResponse{Success: true}), nil
+}
+
+func withTaskLifecycleServer(t *testing.T) *fakeTaskLifecycleHandler {
+	t.Helper()
+	fake := &fakeTaskLifecycleHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	return fake
+}
+
+func TestTasksAssignCommand(t *testing.T) {
+	t.Cleanup(func() {
+		_ = tasksAssignCmd.Flags().Set("agent", "")
+		_ = tasksAssignCmd.Flags().Set("user", "")
+	})
+	fake := withTaskLifecycleServer(t)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "assign", "task-1", "--user", "user-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks assign failed: %v", err)
+	}
+
+	if fake.gotAssignReq == nil || fake.gotAssignReq.UserId == nil || *fake.gotAssignReq.UserId != "user-1" {
+		t.Fatalf("expected the backend to receive an AssignTask request naming user-1, got %+v", fake.gotAssignReq)
+	}
+	if !strings.Contains(b.String(), "\"success\":true") {
+		t.Errorf("expected output to report success, got %s", b.String())
+	}
+}
+
+func TestTasksAssignCommandRequiresAgentOrUser(t *testing.T) {
+	_ = tasksAssignCmd.Flags().Set("agent", "")
+	_ = tasksAssignCmd.Flags().Set("user", "")
+	t.Cleanup(func() {
+		_ = tasksAssignCmd.Flags().Set("agent", "")
+		_ = tasksAssignCmd.Flags().Set("user", "")
+	})
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"tasks", "assign", "task-1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected tasks assign to fail without --agent or --user")
+	}
+	if !strings.Contains(b.String(), "one of --agent or --user is required") {
+		t.Errorf("expected the required-flag error to be reported, got %s", b.String())
+	}
+}
+
+func TestTasksUpdateStatusCommand(t *testing.T) {
+	fake := withTaskLifecycleServer(t)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "update-status", "task-1", "--status", "in-progress", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks update-status failed: %v", err)
+	}
+
+	if fake.gotUpdateStatusReq == nil || fake.gotUpdateStatusReq.Status != "in-progress" {
+		t.Fatalf("expected the backend to receive an UpdateTaskStatus request for in-progress, got %+v", fake.gotUpdateStatusReq)
+	}
+	if !strings.Contains(b.String(), "in-progress") {
+		t.Errorf("expected output to contain the new status, got %s", b.String())
+	}
+}
+
+func TestTasksDeleteRestorePurgeCommands(t *testing.T) {
+	fake := withTaskLifecycleServer(t)
+
+	rootCmd.AddCommand(tasksCmd)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "delete", "task-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks delete failed: %v", err)
+	}
+	if fake.gotDeleteReq == nil || fake.gotDeleteReq.TaskId != "task-1" {
+		t.Fatalf("expected the backend to receive a DeleteTask request for task-1, got %+v", fake.gotDeleteReq)
+	}
+	if !strings.Contains(b.String(), "\"success\":true") {
+		t.Errorf("expected delete --json output to report success, got %s", b.String())
+	}
+
+	b.Reset()
+	rootCmd.SetArgs([]string{"tasks", "restore", "task-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks restore failed: %v", err)
+	}
+	if fake.gotRestoreReq == nil || fake.gotRestoreReq.TaskId != "task-1" {
+		t.Fatalf("expected the backend to receive a RestoreTask request for task-1, got %+v", fake.gotRestoreReq)
+	}
+	if !strings.Contains(b.String(), "\"success\":true") {
+		t.Errorf("expected restore --json output to report success, got %s", b.String())
+	}
+
+	b.Reset()
+	rootCmd.SetArgs([]string{"tasks", "purge", "task-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks purge failed: %v", err)
+	}
+	if fake.gotPurgeReq == nil || fake.gotPurgeReq.TaskId != "task-1" {
+		t.Fatalf("expected the backend to receive a PurgeTask request for task-1, got %+v", fake.gotPurgeReq)
+	}
+	if !strings.Contains(b.String(), "\"success\":true") {
+		t.Errorf("expected purge --json output to report success, got %s", b.String())
+	}
+}
+
+func TestTasksDeleteRestorePurgeCommandsPlainOutput(t *testing.T) {
+	withTaskLifecycleServer(t)
+
+	// --json is a persistent flag on rootCmd, so the previous test's value
+	// survives unless cleared first.
+	_ = rootCmd.Flags().Set("json", "false")
+	t.Cleanup(func() { _ = rootCmd.Flags().Set("json", "false") })
+
+	rootCmd.AddCommand(tasksCmd)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "delete", "task-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks delete failed: %v", err)
+	}
+	if !strings.Contains(b.String(), "moved to bin") {
+		t.Errorf("expected plain delete output, got %s", b.String())
+	}
+
+	b.Reset()
+	rootCmd.SetArgs([]string{"tasks", "restore", "task-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks restore failed: %v", err)
+	}
+	if !strings.Contains(b.String(), "restored") {
+		t.Errorf("expected plain restore output, got %s", b.String())
+	}
+
+	b.Reset()
+	rootCmd.SetArgs([]string{"tasks", "purge", "task-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks purge failed: %v", err)
+	}
+	if !strings.Contains(b.String(), "permanently deleted") {
+		t.Errorf("expected plain purge output, got %s", b.String())
+	}
+}
+
+// M19-T09: no required-flag validation error-message test existed anywhere
+// in this file before this round.
+func TestTasksCreateCommandRequiresTitleAndProject(t *testing.T) {
+	_ = tasksCreateCmd.Flags().Set("title", "")
+	_ = tasksCreateCmd.Flags().Set("project", "")
+	t.Cleanup(func() {
+		_ = tasksCreateCmd.Flags().Set("title", "")
+		_ = tasksCreateCmd.Flags().Set("project", "")
+	})
+	t.Setenv("TASKER_PROJECT_ID", "")
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"tasks", "create"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected tasks create to fail without --title/--project")
+	}
+	if !strings.Contains(b.String(), "--project and --title flags are required") {
+		t.Errorf("expected the required-flag error to be reported, got %s", b.String())
+	}
+}
+
+func TestTasksReviewerAddCommandRequiresUser(t *testing.T) {
+	_ = tasksReviewerAddCmd.Flags().Set("user", "")
+	t.Cleanup(func() { _ = tasksReviewerAddCmd.Flags().Set("user", "") })
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"tasks", "reviewer-add", "task-1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected reviewer-add to fail without --user")
+	}
+	if !strings.Contains(b.String(), "--user is required") {
+		t.Errorf("expected the required-flag error to be reported, got %s", b.String())
+	}
+}
+
+func TestTasksReviewerRemoveCommandRequiresUser(t *testing.T) {
+	_ = tasksReviewerRemoveCmd.Flags().Set("user", "")
+	t.Cleanup(func() { _ = tasksReviewerRemoveCmd.Flags().Set("user", "") })
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"tasks", "reviewer-remove", "task-1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected reviewer-remove to fail without --user")
+	}
+	if !strings.Contains(b.String(), "--user is required") {
 		t.Errorf("expected the required-flag error to be reported, got %s", b.String())
 	}
 }
