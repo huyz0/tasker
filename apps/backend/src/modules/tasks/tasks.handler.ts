@@ -9,6 +9,21 @@ import { assertCan } from "../../lib/policy";
 import { withIdempotency } from "../../lib/idempotency";
 import { ConnectError, Code } from "@connectrpc/connect";
 
+// Distinguishes a real DB-level unique-constraint violation (a concurrent
+// createTaskStatus/addTaskReviewer call won the race for the same unique
+// key) from any other insert failure, so only the former is treated as a
+// benign duplicate rather than a raw DB error reaching the caller (M19-T03,
+// same pattern as artifacts.handler.ts/labels.handler.ts).
+function isUniqueConstraintConflict(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e);
+  return (
+    msg.includes("task_statuses_task_type_id_name_idx") ||
+    msg.includes("task_reviewers_task_id_user_id_idx") ||
+    msg.includes("UNIQUE constraint failed") ||
+    msg.includes("Duplicate entry")
+  );
+}
+
 // --- Zod Request Schemas ---
 
 const GetTaskTypeSchema = z.object({
@@ -140,6 +155,18 @@ const PurgeTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
 });
 
+const GetTaskSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+});
+
+const ListTasksSchema = z.object({
+  projectId: z.string().min(1, "projectId is required"),
+  page: z.any().optional(),
+  onlyDeleted: z.boolean().optional(),
+  status: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
+  assigneeFilter: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+});
+
 // --- Handler Factories ---
 
 export const createTasksHandler = (db: any, nc: any = null) => {
@@ -266,6 +293,32 @@ export const createTasksHandler = (db: any, nc: any = null) => {
         if (parentRows[0].orgId !== existing[0].orgId) {
           throw new ConnectError("parent task type belongs to a different organization", Code.InvalidArgument);
         }
+        // M19-T03: same project-scope rule createTaskType already enforces on
+        // create - a project-scoped parent must stay within its own
+        // project's type tree; an org-wide parent (projectId null) is
+        // reusable by any project. Reparenting had never checked this.
+        if (parentRows[0].projectId && parentRows[0].projectId !== (existing[0].projectId || null)) {
+          throw new ConnectError("parent task type belongs to a different project", Code.InvalidArgument);
+        }
+
+        // M19-T03: createTaskType can never introduce a cycle - every type it
+        // creates is brand new, so it can't already be its own ancestor.
+        // Reparenting an *existing* type can: walk the new parent's ancestor
+        // chain and reject if it leads back to the type being updated,
+        // otherwise the tree stops being a tree - anything that walks "up to
+        // the root" (a breadcrumb, a depth computation) loops forever.
+        let cursor: any = parentRows[0];
+        const visited = new Set<string>([parsed.id]);
+        while (cursor.parentId) {
+          if (cursor.parentId === parsed.id) {
+            throw new ConnectError("this parent is a descendant of the task type being updated - would create a cycle", Code.InvalidArgument);
+          }
+          if (visited.has(cursor.parentId)) break; // pre-existing cycle in stored data; do not loop forever here.
+          visited.add(cursor.parentId);
+          const nextRows = await db.select().from(types).where(eq((types as any).id, cursor.parentId)).limit(1);
+          if (!nextRows || nextRows.length === 0) break;
+          cursor = nextRows[0];
+        }
       }
 
       const updates: Record<string, unknown> = {};
@@ -308,7 +361,16 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       const newId = `tst-${crypto.randomUUID()}`;
       const payload = { id: newId, taskTypeId: parsed.taskTypeId, name: parsed.name, position };
 
-      await insertRecord(db, statuses, payload, isStandalone, false);
+      // M19-T03: the select-then-insert check above has a race window - fall
+      // back to catching the DB's own unique-constraint violation for a
+      // concurrent duplicate insert, so it surfaces as AlreadyExists instead
+      // of a raw DB error.
+      try {
+        await insertRecord(db, statuses, payload, isStandalone, false);
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("a status with this name already exists for this task type", Code.AlreadyExists);
+      }
 
       publishDomainEvent(nc, "domain.task_status.created", payload);
       return { status: payload };
@@ -533,6 +595,15 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
           if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
           if (typeRows[0].orgId !== orgId) throw new ConnectError("task type belongs to a different organization", Code.InvalidArgument);
+          // M19-T03: createTaskType already refuses to let a project-scoped
+          // type parent a different project's type (see its own comment) -
+          // this closes the matching gap on the task side: a project-scoped
+          // type could otherwise be attached to a task in any project in the
+          // org, not just the project it was scoped to. An org-wide type
+          // (projectId null) stays usable by any project.
+          if (typeRows[0].projectId && typeRows[0].projectId !== parsed.projectId) {
+            throw new ConnectError("task type belongs to a different project", Code.InvalidArgument);
+          }
         }
         await validateStatusForTaskType(db, isStandalone, parsed.taskTypeId || null, null, parsed.status);
 
@@ -589,6 +660,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         const displayId = `${projectRow.key}-${taskNumber}`;
 
         const newId = `tsk-${crypto.randomUUID()}`;
+        // M19-T02: set explicitly rather than left to insertRecord's default -
+        // that default only fires in standalone/sqlite mode, and either way it
+        // was never added to the object returned below, only to the copy
+        // insertRecord wrote to the DB.
         const payload = {
           id: newId,
           projectId: parsed.projectId,
@@ -598,12 +673,13 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           title: parsed.title,
           status: parsed.status,
           description: parsed.description,
+          createdAt: new Date(),
         };
 
-        await insertRecord(db, tasks, payload, isStandalone, true);
+        await insertRecord(db, tasks, payload, isStandalone, false);
 
         publishDomainEvent(nc, "domain.task.created", payload);
-        return { task: payload };
+        return { task: { ...payload, createdAt: payload.createdAt.toISOString(), assignees: [] } };
       });
     },
     /**
@@ -612,14 +688,14 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
      * `description` is unbounded free text that no list renders, so it is not
      * selected there (M07-T01). This is where the detail view reads it back.
      */
-    async getTask(req: any, { values: contextValues }: { values: any }) {
+    async getTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req?.taskId) throw new ConnectError("taskId is required", Code.InvalidArgument);
-      const orgId = await getTaskOrgId(db, req.taskId);
+      const parsed = GetTaskSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
       await authorizePrincipal(db, principal, orgId, { scope: 'tasks:read', permission: 'task:read' });
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-      const rows = await db.select().from(tasks).where(eq((tasks as any).id, req.taskId)).limit(1);
+      const rows = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
       if (!rows || rows.length === 0) throw new ConnectError("task not found", Code.NotFound);
 
       const t = rows[0];
@@ -632,19 +708,19 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         },
       };
     },
-    async listTasks(req: any, { values: contextValues }: { values: any }) {
+    async listTasks(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
-      if (!req.projectId) throw new ConnectError("projectId is required", Code.InvalidArgument);
-      const orgId = await getProjectOrgId(db, req.projectId);
+      const parsed = ListTasksSchema.parse(req);
+      const orgId = await getProjectOrgId(db, parsed.projectId);
       await authorizePrincipal(db, principal, orgId, { scope: 'tasks:read', permission: 'task:read' });
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-      const deletedFilter = req.onlyDeleted ? not(notDeleted(tasks)) : notDeleted(tasks);
+      const deletedFilter = parsed.onlyDeleted ? not(notDeleted(tasks)) : notDeleted(tasks);
       // One board column, when asked for. The count that comes back is then
       // that column's real count, computed by the database over the whole
       // project rather than by counting one page's worth in the browser
       // (M07-T03).
-      const statusFacet = req.status ? eq((tasks as any).status, req.status) : undefined;
+      const statusFacet = parsed.status ? eq((tasks as any).status, parsed.status) : undefined;
 
       // Agent self-service (M14-T05): "unassigned" is the query an agent
       // runs to find claimable work; "me" resolves to the *calling*
@@ -653,23 +729,23 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // are correlated subqueries against taskAssignments rather than a
       // join, so a task with two assignees isn't returned twice.
       let assigneeFacet: any = undefined;
-      if (req.assigneeFilter === "unassigned") {
+      if (parsed.assigneeFilter === "unassigned") {
         const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
         assigneeFacet = sql`NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id})`;
-      } else if (req.assigneeFilter === "me") {
+      } else if (parsed.assigneeFilter === "me") {
         const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
         const selfColumn = principal.kind === "user" ? (assignments as any).userId : (assignments as any).agentId;
         const selfId = principal.kind === "user" ? principal.userId : principal.agentId;
         assigneeFacet = sql`EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id} AND ${selfColumn} = ${selfId})`;
-      } else if (req.assigneeFilter) {
-        throw new ConnectError(`invalid assigneeFilter "${req.assigneeFilter}" - expected "unassigned" or "me"`, Code.InvalidArgument);
+      } else if (parsed.assigneeFilter) {
+        throw new ConnectError(`invalid assigneeFilter "${parsed.assigneeFilter}" - expected "unassigned" or "me"`, Code.InvalidArgument);
       }
 
-      const conditions = [eq((tasks as any).projectId, req.projectId), deletedFilter];
+      const conditions = [eq((tasks as any).projectId, parsed.projectId), deletedFilter];
       if (statusFacet) conditions.push(statusFacet);
       if (assigneeFacet) conditions.push(assigneeFacet);
       const scope = and(...conditions);
-      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, scope, req.page, {
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, scope, parsed.page, {
         filterColumn: (tasks as any).title,
         sortableColumns: { title: (tasks as any).title, status: (tasks as any).status, createdAt: (tasks as any).createdAt },
         // `description` is free text with no length bound and the list renders
@@ -685,6 +761,13 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           createdAt: (tasks as any).createdAt,
           deletedAt: (tasks as any).deletedAt,
         },
+        // M19-T03: status/assigneeFilter/onlyDeleted all narrow `scope`
+        // (baseCondition) just as much as the free-text filter does, but
+        // executePaginatedQuery's cached-totalCount guard only ever compared
+        // against `filter` - a cursor minted while paging with status="todo"
+        // and then reused against a request for status="done" would report
+        // "todo"'s count under "done"'s results.
+        extraCacheKey: [parsed.onlyDeleted ? "1" : "0", parsed.status ?? "", parsed.assigneeFilter ?? ""].join("|"),
       });
       // Sorting by displayId is deliberately not offered: it is a string, so
       // "SEED-100" sorts before "SEED-99". Ids are assigned in creation order,
@@ -836,7 +919,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
         const task = result[0];
         publishDomainEvent(nc, "domain.task.claimed", { taskId: parsed.taskId, agentId: selfAgentId, userId: selfUserId });
-        return { task };
+        return { task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt } };
       });
     },
     async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
@@ -860,7 +943,15 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       if (existing.length > 0) return { success: true };
 
       const newId = `trv-${crypto.randomUUID()}`;
-      await db.insert(reviewers).values({ id: newId, taskId: parsed.taskId, userId: parsed.userId });
+      // M19-T03: same check-then-insert race as createTaskStatus above - fall
+      // back to the DB's own unique-constraint violation for a concurrent
+      // duplicate add. A benign no-op either way (the reviewer ends up
+      // added), so there is no error to surface, unlike the status case.
+      try {
+        await db.insert(reviewers).values({ id: newId, taskId: parsed.taskId, userId: parsed.userId });
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+      }
       return { success: true };
     },
     async removeTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
@@ -916,6 +1007,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
         if (!typeRows || typeRows.length === 0) throw new ConnectError("task type not found", Code.NotFound);
         if (typeRows[0].orgId !== orgId) throw new ConnectError("task type belongs to a different organization", Code.InvalidArgument);
+        // M19-T03: same project-scope rule as createTask - see its comment.
+        if (typeRows[0].projectId && typeRows[0].projectId !== existing[0].projectId) {
+          throw new ConnectError("task type belongs to a different project", Code.InvalidArgument);
+        }
       }
 
       const updates: Record<string, unknown> = {};
@@ -929,7 +1024,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const task = result[0];
 
       publishDomainEvent(nc, "domain.task.updated", task);
-      return { task };
+      return { task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt } };
     },
     async updateTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
@@ -967,7 +1062,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const task = result[0];
 
       publishDomainEvent(nc, "domain.task.status_updated", task);
-      return { task };
+      return { task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt } };
     },
     async deleteTask(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);

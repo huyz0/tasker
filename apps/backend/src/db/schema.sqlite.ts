@@ -262,6 +262,12 @@ export const taskStatuses = sqliteTable("task_statuses", {
 }, (table) => {
   return {
     taskTypeIdIdx: index("task_statuses_task_type_id_idx").on(table.taskTypeId),
+    // M19-T03: createTaskStatus already select-then-inserts to reject a
+    // duplicate name up front, but that check has a race window - two
+    // concurrent calls can both pass the check before either commits. This
+    // index closes it at the DB level, same pattern as M18-T03's folder/
+    // artifact name uniqueness.
+    taskTypeIdNameIdx: uniqueIndex("task_statuses_task_type_id_name_idx").on(table.taskTypeId, table.name),
   };
 });
 
@@ -423,6 +429,10 @@ export const taskReviewers = sqliteTable("task_reviewers", {
   return {
     taskIdIdx: index("task_reviewers_task_id_idx").on(table.taskId),
     userIdIdx: index("task_reviewers_user_id_idx").on(table.userId),
+    // M19-T03: same check-then-insert race as task_statuses above -
+    // addTaskReviewer's own duplicate check has a window two concurrent
+    // calls can both pass.
+    taskIdUserIdIdx: uniqueIndex("task_reviewers_task_id_user_id_idx").on(table.taskId, table.userId),
   };
 });
 

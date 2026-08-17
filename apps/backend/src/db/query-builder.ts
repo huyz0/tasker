@@ -218,6 +218,17 @@ export interface PaginatedQueryOptions {
    * as drizzle interpolated an undefined column into the ORDER BY.
    */
   defaultSort?: { field: string; column: any };
+  /**
+   * Extra facets folded into baseCondition that aren't the free-text
+   * `filter` - e.g. listTasks's status/assigneeFilter. The cached-totalCount
+   * guard below only ever compared against `filter`, so reusing a cursor
+   * minted under one status/assignee facet against a request for a
+   * *different* one still passed the guard and returned a stale count
+   * computed for the wrong scope (M19-T03). Callers whose baseCondition can
+   * vary independently of `filter` should pass a string that changes
+   * whenever that condition does; everyone else can leave this unset.
+   */
+  extraCacheKey?: string;
 }
 
 export async function executePaginatedQuery(
@@ -227,7 +238,7 @@ export async function executePaginatedQuery(
   pageOpts: any,
   opts: PaginatedQueryOptions,
 ) {
-  const { filterColumn, sortableColumns, select, join, defaultSort } = opts;
+  const { filterColumn, sortableColumns, select, join, defaultSort, extraCacheKey } = opts;
   const limit = Math.min(Math.max(pageOpts?.limit || 50, 1), 100);
   const condition = applyFilter(baseCondition, filterColumn, pageOpts?.filter);
 
@@ -253,7 +264,12 @@ export async function executePaginatedQuery(
   // filter hasn't changed since that count was computed (an older cursor
   // minted before this existed, or one whose filter doesn't match the
   // current request, still recomputes fresh, same as before this existed).
-  const currentFilter = pageOpts?.filter || undefined;
+  // extraCacheKey rides along inside the same `filter` slot the cursor
+  // already carries - it exists purely to gate count reuse, not to be
+  // reapplied as a WHERE clause, so folding it in here (rather than adding a
+  // second cursor field) needs no change anywhere else that reads `filter`.
+  const rawFilter = pageOpts?.filter || undefined;
+  const currentFilter = extraCacheKey ? `${rawFilter ?? ""} ${extraCacheKey}` : rawFilter;
   const canReuseCursorCount = cursorData?.totalCount !== undefined && cursorData.filter === currentFilter;
 
   // The join is applied to the count as well as the page. It has to be: the

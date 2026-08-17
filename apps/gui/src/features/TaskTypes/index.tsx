@@ -32,6 +32,13 @@ export function TaskTypesEditor() {
 
   useEffect(() => { setActivePageTitle('Task Types'); }, [setActivePageTitle]);
 
+  // M19-T05: switching the active org left `selectedId` pointing at the
+  // previous org's task type - `detail` (keyed only on `selectedId`) kept
+  // querying it under the new org's identity, either failing authorization
+  // or, worse, briefly showing one org's type tree as if it belonged to
+  // another while the type list itself had already repainted for the switch.
+  useEffect(() => { setSelectedId(null); }, [activeOrgId]);
+
   const typesQuery = useQuery({
     queryKey: ['taskTypes', activeOrgId],
     enabled: !!activeOrgId,

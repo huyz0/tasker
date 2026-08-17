@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import { eq } from "drizzle-orm";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createTaskNotesHandler } from "./task_notes.handler";
@@ -12,13 +13,14 @@ describe("Task Notes Handler", () => {
   let agentCtx: any;
   let taskId: string;
   let agentId: string;
+  let orgId: string;
 
   beforeEach(async () => {
     const setup = await setupIntegrationTest();
     db = setup.db;
     handler = createTaskNotesHandler(db, null);
 
-    const orgId = "org-" + crypto.randomUUID();
+    orgId = "org-" + crypto.randomUUID();
     const userId = "user-" + crypto.randomUUID();
     const templateId = "tmpl-" + crypto.randomUUID();
     const projectId = "proj-" + crypto.randomUUID();
@@ -58,6 +60,10 @@ describe("Task Notes Handler", () => {
     expect(res.taskNote.taskId).toBe(taskId);
     expect(res.taskNote.agentId).toBe(agentId);
     expect(res.taskNote.id).toStartWith("tnt-");
+    // M19-T02: createdAt used to be computed and then silently dropped
+    // before the response left the handler.
+    expect(typeof res.taskNote.createdAt).toBe("string");
+    expect(res.taskNote.createdAt.length).toBeGreaterThan(0);
   });
 
   // --- Zod validation rejection ---
@@ -152,6 +158,7 @@ describe("Task Notes Handler", () => {
     const res = await handler.listTaskNotes({ taskId }, ctx);
     expect(res.taskNotes).toHaveLength(2);
     expect(res.taskNotes.map((n: any) => n.content)).toContain("N1");
+    expect(res.taskNotes.every((n: any) => typeof n.createdAt === "string" && n.createdAt.length > 0)).toBe(true);
   });
 
   it("should reject listTaskNotes with missing taskId", async () => {
@@ -160,5 +167,78 @@ describe("Task Notes Handler", () => {
 
   it("should reject listTaskNotes from a user outside the task's org", async () => {
     expect(handler.listTaskNotes({ taskId }, makeAuthContext("user-outsider"))).rejects.toThrow();
+  });
+
+  // --- updateTaskNote / deleteTaskNote (M19-T01) ---
+  //
+  // updateTaskNote/deleteTaskNote used to check only tasknote:write - an
+  // ordinary, non-admin permission - so any org member, or any other agent's
+  // token, could rewrite or delete an agent's own record of its work. Mirrors
+  // comments.handler.ts's author check (M04, ADR-0008), the identical bug
+  // already fixed once for comments.
+  describe("author-only edit/delete", () => {
+    it("lets the authoring agent update its own note", async () => {
+      const created = await handler.createTaskNote({ taskId, content: "original" }, agentCtx);
+      const res = await handler.updateTaskNote({ taskNoteId: created.taskNote.id, content: "revised" }, agentCtx);
+      expect(res.taskNote.content).toBe("revised");
+      expect(typeof res.taskNote.createdAt).toBe("string");
+      expect(res.taskNote.createdAt.length).toBeGreaterThan(0);
+
+      const [row] = await db.select().from(schemaSqlite.taskNotes).where(eq(schemaSqlite.taskNotes.id, created.taskNote.id));
+      expect(row.content).toBe("revised");
+    });
+
+    it("lets the authoring agent delete its own note", async () => {
+      const created = await handler.createTaskNote({ taskId, content: "to delete" }, agentCtx);
+      await handler.deleteTaskNote({ taskNoteId: created.taskNote.id }, agentCtx);
+
+      const rows = await db.select().from(schemaSqlite.taskNotes).where(eq(schemaSqlite.taskNotes.id, created.taskNote.id));
+      expect(rows).toHaveLength(0);
+    });
+
+    it("rejects a different agent updating or deleting the note", async () => {
+      const created = await handler.createTaskNote({ taskId, content: "original" }, agentCtx);
+
+      const otherAgentRoleId = "ar-other-" + crypto.randomUUID();
+      const otherAgentId = "agt-other-" + crypto.randomUUID();
+      await db.insert(schemaSqlite.agentRoles).values({ id: otherAgentRoleId, orgId, name: "Other Role", systemPrompt: "p", capabilities: "{}" });
+      await db.insert(schemaSqlite.agents).values({ id: otherAgentId, orgId, agentRoleId: otherAgentRoleId, name: "Other Agent", createdAt: new Date() });
+      const otherAgentCtx = { values: (() => {
+        const v = createContextValues();
+        v.set(currentPrincipalKey, { kind: "agent", agentId: otherAgentId, orgId, tokenId: "tok-other", scopes: ["tasks:write", "comments:write"] });
+        return v;
+      })() } as any;
+
+      await expect(
+        handler.updateTaskNote({ taskNoteId: created.taskNote.id, content: "hijacked" }, otherAgentCtx)
+      ).rejects.toThrow(/only the note's author/);
+      await expect(
+        handler.deleteTaskNote({ taskNoteId: created.taskNote.id }, otherAgentCtx)
+      ).rejects.toThrow(/only the note's author/);
+
+      const [row] = await db.select().from(schemaSqlite.taskNotes).where(eq(schemaSqlite.taskNotes.id, created.taskNote.id));
+      expect(row.content).toBe("original");
+    });
+
+    it("rejects a human org admin updating or deleting the note, despite holding tasknote:write", async () => {
+      const created = await handler.createTaskNote({ taskId, content: "original" }, agentCtx);
+
+      // ctx is the org admin seeded in beforeEach - admins hold tasknote:write
+      // by default, which used to be sufficient on its own.
+      await expect(
+        handler.updateTaskNote({ taskNoteId: created.taskNote.id, content: "hijacked" }, ctx)
+      ).rejects.toThrow(/only the note's author/);
+      await expect(
+        handler.deleteTaskNote({ taskNoteId: created.taskNote.id }, ctx)
+      ).rejects.toThrow(/only the note's author/);
+
+      const [row] = await db.select().from(schemaSqlite.taskNotes).where(eq(schemaSqlite.taskNotes.id, created.taskNote.id));
+      expect(row.content).toBe("original");
+    });
+
+    it("rejects updateTaskNote/deleteTaskNote for a nonexistent note", async () => {
+      await expect(handler.updateTaskNote({ taskNoteId: "tnt-does-not-exist", content: "x" }, agentCtx)).rejects.toThrow();
+      await expect(handler.deleteTaskNote({ taskNoteId: "tnt-does-not-exist" }, agentCtx)).rejects.toThrow();
+    });
   });
 });

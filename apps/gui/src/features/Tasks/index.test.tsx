@@ -77,11 +77,13 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   // The task breadcrumb resolves the project's name from its id (M06-T08).
   ProjectService: 'ProjectService',
 }));
+let mockActiveProjectId = 'proj-1';
+let mockActiveOrgId = 'org-1';
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
     setActivePageTitle: vi.fn(),
-    activeProjectId: 'proj-1',
-    activeOrgId: 'org-1',
+    get activeProjectId() { return mockActiveProjectId; },
+    get activeOrgId() { return mockActiveOrgId; },
   })),
 }));
 
@@ -98,23 +100,29 @@ function LocationProbe() {
   return null;
 }
 
+function page(initialEntry = '/tasks') {
+  return (
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <LocationProbe />
+      <Routes>
+        <Route path="/tasks" element={<TasksWorkbench />} />
+        <Route path="/tasks/:taskId" element={<TasksWorkbench />} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
 function renderPage(initialEntry = '/tasks') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialEntry]}>
-        <LocationProbe />
-        <Routes>
-          <Route path="/tasks" element={<TasksWorkbench />} />
-          <Route path="/tasks/:taskId" element={<TasksWorkbench />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{page(initialEntry)}</QueryClientProvider>
   );
 }
 
 describe('TasksWorkbench', () => {
   beforeEach(() => {
+    mockActiveProjectId = 'proj-1';
+    mockActiveOrgId = 'org-1';
     mockListTasks.mockReset();
     mockGetTask.mockReset();
     mockListTaskTypes.mockReset();
@@ -936,6 +944,39 @@ describe('TasksWorkbench', () => {
     expect(screen.getByText('Todo')).toBeInTheDocument();
   });
 
+  // M19-T04: columnDefs only ever covers the default statuses plus whatever
+  // custom task-type statuses have resolved by this render - a status this
+  // page has never seen (a race with the task-type query, or a status
+  // deleted/renamed after the task was set to it) used to end in a
+  // `.find(...)!` that threw straight through the whole table's render,
+  // instead of just that one row falling back to showing the raw status.
+  it('shows a task row instead of crashing the whole table when its status matches no resolved column', async () => {
+    // The board fetches one status column at a time (M07-T03), so a task
+    // whose status matches none of them (todo/in-progress/done, and no
+    // custom task type is registered here to add another) never appears
+    // there - table view has no such facet, so it is the only place this
+    // status is ever reachable to render.
+    mockListTasks.mockResolvedValue({
+      tasks: [
+        { id: 'task-1', title: 'Orphaned status task', status: 'archived-elsewhere', description: '', displayId: 'ENG-1' },
+        { id: 'task-2', title: 'Normal task', status: 'todo', description: '', displayId: 'ENG-2' },
+      ],
+    });
+    renderPage();
+
+    // Wait for the board to finish its initial render (a column heading
+    // that exists regardless of which tasks loaded) before switching, so
+    // the switch isn't racing the board's own fetch.
+    await waitFor(() => expect(screen.getAllByLabelText('Add task to Todo')[0]).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    // Both rows render - the unresolved status falls back to its own raw
+    // string rather than taking the rest of the table down with it.
+    await waitFor(() => expect(screen.getByText('Orphaned status task')).toBeInTheDocument());
+    expect(screen.getByText('Normal task')).toBeInTheDocument();
+    expect(screen.getByText('archived-elsewhere')).toBeInTheDocument();
+  });
+
   it('asks the server to sort, and cycles asc/desc/off', async () => {
     mockListTasks.mockResolvedValue({ tasks: [
       { id: 'task-1', title: 'Zebra task', status: 'todo', description: '', displayId: 'ENG-1' },
@@ -1088,6 +1129,59 @@ describe('TasksWorkbench', () => {
 
       await waitFor(() => expect(screen.getByText('Fix bug')).toBeInTheDocument());
       expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
+    });
+
+    // M19-T05: the open task lives in the URL, not local state, so
+    // switching the active project/org used to leave it open across the
+    // switch - `getTask` kept resolving (or failing) against a task that
+    // belongs to whatever project/org was active when the link was
+    // followed, not the one the sidebar now shows.
+    it('closes the detail overlay when the active project changes', async () => {
+      mockListTasks.mockResolvedValue({ tasks: [task] });
+
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>,
+      );
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
+
+      mockActiveProjectId = 'proj-2';
+      rerender(<QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>);
+
+      await waitFor(() => expect(locationRef.current).toBe('/tasks'));
+      expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
+    });
+
+    it('closes the detail overlay when the active org changes', async () => {
+      mockListTasks.mockResolvedValue({ tasks: [task] });
+
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>,
+      );
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
+
+      mockActiveOrgId = 'org-2';
+      rerender(<QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>);
+
+      await waitFor(() => expect(locationRef.current).toBe('/tasks'));
+      expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
+    });
+
+    it('does not close the overlay on an ordinary re-render - only when the project/org actually changes', async () => {
+      mockListTasks.mockResolvedValue({ tasks: [task] });
+
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>,
+      );
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
+
+      // Same project/org, just a re-render (e.g. an unrelated store update).
+      rerender(<QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>);
+
+      expect(locationRef.current).toBe('/tasks/task-1');
+      expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument();
     });
   });
 });

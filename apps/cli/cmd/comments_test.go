@@ -40,6 +40,22 @@ func (f *fakeCommentListHandler) ListComments(
 	}), nil
 }
 
+func (f *fakeCommentListHandler) UpdateComment(
+	_ context.Context,
+	req *connect.Request[healthv1.UpdateCommentRequest],
+) (*connect.Response[healthv1.UpdateCommentResponse], error) {
+	return connect.NewResponse(&healthv1.UpdateCommentResponse{
+		Comment: &healthv1.Comment{Id: req.Msg.CommentId, Content: req.Msg.Content},
+	}), nil
+}
+
+func (f *fakeCommentListHandler) DeleteComment(
+	_ context.Context,
+	_ *connect.Request[healthv1.DeleteCommentRequest],
+) (*connect.Response[healthv1.DeleteCommentResponse], error) {
+	return connect.NewResponse(&healthv1.DeleteCommentResponse{Success: true}), nil
+}
+
 func withCommentServer(t *testing.T) *fakeCommentListHandler {
 	t.Helper()
 	fake := &fakeCommentListHandler{}
@@ -81,6 +97,76 @@ func TestCommentListCmd(t *testing.T) {
 	}
 	if fake.gotListPage == nil || fake.gotListPage.Cursor != "cursor-2" || fake.gotListPage.Limit != 10 {
 		t.Fatalf("expected cursor/limit to be forwarded, got %+v", fake.gotListPage)
+	}
+}
+
+// M19-T08: UpdateComment/DeleteComment existed on the wire since M04
+// (ADR-0008's author-only edit/delete) but had no CLI command at all.
+func TestCommentUpdateCmd(t *testing.T) {
+	withCommentServer(t)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"comment", "update", "cmt_1", "--content", "Revised"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "cmt_1") {
+		t.Fatalf("expected output to contain the updated comment's id, got %s", out)
+	}
+}
+
+func TestCommentDeleteCmd(t *testing.T) {
+	withCommentServer(t)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"comment", "delete", "cmt_1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, "cmt_1") || !strings.Contains(out, "deleted") {
+		t.Fatalf("expected output to confirm deletion of cmt_1, got %s", out)
+	}
+}
+
+func TestCommentUpdateCmdReportsErrorWithoutExitingProcess(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewCommentServiceHandler(&v1connect.UnimplementedCommentServiceHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"comment", "update", "cmt_1", "--content", "x"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected rootCmd.Execute() to return an error on RPC failure")
+	}
+	if !strings.Contains(b.String(), "failed to update comment") {
+		t.Fatalf("expected an error message and for the process to still be alive, got %s", b.String())
+	}
+}
+
+func TestCommentDeleteCmdReportsErrorWithoutExitingProcess(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewCommentServiceHandler(&v1connect.UnimplementedCommentServiceHandler{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetErr(b)
+	rootCmd.SetArgs([]string{"comment", "delete", "cmt_1"})
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("expected rootCmd.Execute() to return an error on RPC failure")
+	}
+	if !strings.Contains(b.String(), "failed to delete comment") {
+		t.Fatalf("expected an error message and for the process to still be alive, got %s", b.String())
 	}
 }
 

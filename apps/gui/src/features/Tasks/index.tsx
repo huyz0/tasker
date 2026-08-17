@@ -443,6 +443,29 @@ export function TasksWorkbench() {
 
   useEffect(() => setIsEditingTask(false), [expandedTaskId]);
 
+  // M19-T05: the open task lives in the URL, so switching the active
+  // project/org left it open across the switch - `getTask` kept resolving
+  // (or failing) against a task that belongs to whatever project/org was
+  // active when the link was followed, not the one now showing in the
+  // sidebar. Closes the panel so a stale task can't be edited under the
+  // wrong project's identity.
+  //
+  // Skipped on the very first run: a deep link (`/tasks/:taskId`) has to
+  // survive mounting into whatever the active project/org happens to
+  // already be, not get redirected away from before it has ever rendered.
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (expandedTaskId) navigate('/tasks');
+    // Deliberately only activeProjectId/activeOrgId: this resets the panel
+    // when the *scope* changes, not on every ordinary navigation within it
+    // (which would fight the very task the user just opened).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProjectId, activeOrgId]);
+
   // Focused-overlay UX (matches Jira/Linear's task-detail pattern): Escape
   // closes it from anywhere, not just via the visible close button.
   useEffect(() => {
@@ -570,7 +593,14 @@ export function TasksWorkbench() {
     ? statusesByTaskType.get(expandedTask.taskTypeId)!.map(name => ({ id: name, display: name }))
     : DEFAULT_STATUS_OPTIONS;
 
-  const statusDisplay = (statusId: string) => columnDefs.find(c => c.id === statusId)!.display;
+  // M19-T04: columnDefs only ever covers statuses this render has resolved
+  // (DEFAULT_STATUS_OPTIONS plus whatever statusesByTaskType has loaded so
+  // far) - a task rendered before its type's statuses finish loading, or one
+  // whose status was since deleted/renamed on its type, has a status string
+  // with no matching entry. The non-null assertion this used to end in threw
+  // straight through the table's render, taking the whole view down for
+  // every row instead of just the one with the stale/unresolved status.
+  const statusDisplay = (statusId: string) => columnDefs.find(c => c.id === statusId)?.display ?? statusId;
 
   // The server orders the rows. Sorting them again here would reorder one
   // page's worth of a paginated set and call the result sorted.

@@ -33,11 +33,12 @@ const openPicker = async () => {
 
 const renderPicker = (assignees: any[] = []) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const result = render(
     <QueryClientProvider client={client}>
       <AssigneePicker taskId="task-1" orgId="org-1" assignees={assignees} />
     </QueryClientProvider>,
   );
+  return { ...result, client };
 };
 
 beforeEach(() => {
@@ -190,6 +191,33 @@ describe('AssigneePicker', () => {
     expect(await screen.findByText(/Failed to remove/)).toBeInTheDocument();
     // The assignment still exists, so the row still belongs there.
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+  });
+
+  // M19-T05: this picker also renders inside the task-detail panel, whose
+  // assignee list comes from a separate `['task', id]` query - invalidating
+  // only `['tasks']` refreshed the board/table but left that panel showing
+  // whatever it had already fetched.
+  it('invalidates the task-detail query, not just the tasks list, after assigning', async () => {
+    // A different test in this file leaves mockAssign rejecting -
+    // clearAllMocks resets call history but not a configured
+    // resolved/rejected value, so this must set its own to not depend on
+    // file order.
+    mockAssign.mockResolvedValue(undefined);
+    const { client } = renderPicker([]);
+    const invalidateSpy = vi.spyOn(client, 'invalidateQueries');
+    await openPicker();
+    fireEvent.click(await screen.findByRole('button', { name: 'Ada Lovelace' }));
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['tasks'] }));
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['task', 'task-1'] });
+  });
+
+  it('invalidates the task-detail query, not just the tasks list, after removing', async () => {
+    mockUnassign.mockResolvedValue(undefined);
+    const { client } = renderPicker([{ userId: 'u-1', agentId: '', name: 'Ada Lovelace' }]);
+    const invalidateSpy = vi.spyOn(client, 'invalidateQueries');
+    fireEvent.click(await screen.findByLabelText('Remove Ada Lovelace from this task'));
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['tasks'] }));
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['task', 'task-1'] });
   });
 
   it('distinguishes "nobody left" from "nothing matched"', async () => {

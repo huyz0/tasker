@@ -696,6 +696,8 @@ message Task {
   // task_assignments has stored these since M01 and nothing could read them,
   // so the GUI showed a hardcoded avatar instead (M05-T02).
   repeated Assignee assignees = 10;
+  // M19-T02.
+  string created_at = 11;
 }
 
 message UnassignTaskRequest {
@@ -726,8 +728,8 @@ message CreateTaskResponse {
 
 message AssignTaskRequest {
   string task_id = 1;
-  string agent_id = 2;
-  string user_id = 3;
+  optional string agent_id = 2;
+  optional string user_id = 3;
 }
 
 message AssignTaskResponse {
@@ -1181,6 +1183,8 @@ message TaskNote {
   string taskId = 2;
   string agentId = 3;
   string content = 4;
+  // M19-T02.
+  string created_at = 5;
 }
 
 message CreateTaskNoteRequest {

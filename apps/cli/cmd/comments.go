@@ -77,10 +77,60 @@ var commentListCmd = &cobra.Command{
 	},
 }
 
+// M19-T08: UpdateComment/DeleteComment have existed on the wire since M04
+// (ADR-0008's author-only edit/delete) but were never reachable from the
+// CLI - only `comment add`/`list` were wired.
+var commentUpdateCmd = &cobra.Command{
+	Use:   "update [comment_id]",
+	Short: "Update a comment's content (author only)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := backend.NewCommentServiceClient()
+
+		req := connect.NewRequest(&healthv1.UpdateCommentRequest{
+			CommentId: args[0],
+			Content:   content,
+		})
+
+		res, err := client.UpdateComment(context.Background(), req)
+		if err != nil {
+			cmd.PrintErrf("failed to update comment: %v\n", err)
+			return err
+		}
+
+		cmd.Printf("Comment %s updated\n", res.Msg.Comment.Id)
+		return nil
+	},
+}
+
+var commentDeleteCmd = &cobra.Command{
+	Use:   "delete [comment_id]",
+	Short: "Delete a comment (author only)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := backend.NewCommentServiceClient()
+
+		req := connect.NewRequest(&healthv1.DeleteCommentRequest{
+			CommentId: args[0],
+		})
+
+		_, err := client.DeleteComment(context.Background(), req)
+		if err != nil {
+			cmd.PrintErrf("failed to delete comment: %v\n", err)
+			return err
+		}
+
+		cmd.Printf("Comment %s deleted\n", args[0])
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(commentCmd)
 	commentCmd.AddCommand(commentAddCmd)
 	commentCmd.AddCommand(commentListCmd)
+	commentCmd.AddCommand(commentUpdateCmd)
+	commentCmd.AddCommand(commentDeleteCmd)
 
 	commentAddCmd.Flags().StringVar(&entityId, "entity", "", "Entity ID (task or artifact ID)")
 	commentAddCmd.MarkFlagRequired("entity")
@@ -93,4 +143,7 @@ func init() {
 	commentListCmd.Flags().StringVar(&entityType, "type", "task", "Entity type")
 	commentListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	commentListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+
+	commentUpdateCmd.Flags().StringVar(&content, "content", "", "New markdown content of the comment")
+	commentUpdateCmd.MarkFlagRequired("content")
 }

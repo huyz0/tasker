@@ -816,6 +816,12 @@ model Task {
   // task_assignments has stored these since M01 and nothing could read them,
   // so the GUI showed a hardcoded avatar instead (M05-T02).
   @field(10) assignees: Assignee[];
+
+  // M19-T02: added after the fact - new field number so existing clients are
+  // unaffected. getTask/listTasks already computed and formatted this; it
+  // was never on the wire model, so the value was silently dropped before
+  // the response left the handler (listTasks even sorts by it).
+  @field(11) createdAt: string;
 }
 
 // ==== Task Services ====
@@ -841,8 +847,14 @@ model CreateTaskResponse {
 
 model AssignTaskRequest {
   @field(1) taskId: string;
-  @field(2) agentId: string;
-  @field(3) userId: string;
+
+  // Exactly one of agentId/userId is required (enforced by the handler) -
+  // marked optional, like UnassignTaskRequest's equivalent fields, so proto3
+  // gives each real field presence instead of collapsing "omitted" into the
+  // same empty string as "explicitly assign to nobody" (M19-T03).
+  @field(2) agentId?: string;
+
+  @field(3) userId?: string;
 }
 
 model AssignTaskResponse {
@@ -1327,6 +1339,9 @@ model TaskNote {
   @field(2) taskId: string;
   @field(3) agentId: string;
   @field(4) content: string;
+
+  // M19-T02: see Task.createdAt above - same field, same bug, same fix.
+  @field(5) createdAt: string;
 }
 
 model CreateTaskNoteRequest {

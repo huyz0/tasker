@@ -188,6 +188,62 @@ describe("Tasks Handler Integration Tests", () => {
     ).rejects.toThrow();
   });
 
+  // M19-T03: updateTaskType checked cross-org parents but not the two other
+  // ways reparenting can corrupt the tree - a project-scoped parent pulled
+  // in from a different project (createTaskType already rejects this on
+  // create, but reparenting an existing type skipped it entirely), and a
+  // cycle (impossible on create, since a brand-new type can't already be its
+  // own ancestor, but very possible once a type can be reparented).
+  test("updateTaskType rejects reparenting across projects and into a cycle", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-updatett-cycle-" + Date.now().toString();
+    const userId = "user-updatett-cycle-" + Date.now().toString();
+    const templateId = "tmpl-updatett-cycle-" + Date.now().toString();
+    const projectAId = "proj-updatett-cycle-a-" + Date.now().toString();
+    const projectBId = "proj-updatett-cycle-b-" + Date.now().toString();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org UpdateTT Cycle" });
+    // Both projects share one template - seedProject would try to insert
+    // the same template row twice, so seed it once and add the second
+    // project directly.
+    await seedProject(db, { orgId, userId, templateId, projectId: projectAId, name: "Project A" });
+    await db.insert(schemaSqlite.projects).values({ id: projectBId, orgId, templateId, ownerId: userId, name: "Project B", key: "PB-" + Date.now(), createdAt: new Date() });
+    const ctx = makeAuthContext(userId);
+    const handler = createTasksHandler(db, nc);
+
+    // Project-scope: a project-scoped parent must stay within its own
+    // project's type tree, exactly like createTaskType's own rule.
+    const scopedToA = await handler.createTaskType({ orgId, projectId: projectAId, name: "A-Epic" }, ctx);
+    const scopedToB = await handler.createTaskType({ orgId, projectId: projectBId, name: "B-Story" }, ctx);
+    await expect(
+      handler.updateTaskType({ id: scopedToB.taskType.id, parentId: scopedToA.taskType.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // An org-wide parent (no projectId) remains reusable across projects.
+    const orgWide = await handler.createTaskType({ orgId, name: "Org-wide Epic" }, ctx);
+    const reparented = await handler.updateTaskType({ id: scopedToB.taskType.id, parentId: orgWide.taskType.id }, ctx);
+    expect(reparented.taskType.parentId).toBe(orgWide.taskType.id);
+
+    // Cycle: Epic -> Story -> Task. Reparenting Epic under Task (its own
+    // grandchild) must be rejected, not silently accepted and left as a
+    // loop nothing that walks "up to the root" can ever terminate on.
+    const epic = await handler.createTaskType({ orgId, name: "Epic" }, ctx);
+    const story = await handler.createTaskType({ orgId, name: "Story", parentId: epic.taskType.id }, ctx);
+    const task = await handler.createTaskType({ orgId, name: "Task", parentId: story.taskType.id }, ctx);
+
+    await expect(
+      handler.updateTaskType({ id: epic.taskType.id, parentId: task.taskType.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+    // The direct case (parent = immediate child) is also a cycle, one hop shorter.
+    await expect(
+      handler.updateTaskType({ id: epic.taskType.id, parentId: story.taskType.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // The tree is unchanged by the rejected attempts.
+    const stillRoot = await handler.getTaskType({ id: epic.taskType.id }, ctx);
+    expect(stillRoot.taskType.parentId).toBeFalsy();
+  });
+
   test("createTaskManagementHandler can create/assign tasks", async () => {
     const { db, nc } = await setupIntegrationTest();
 
@@ -356,6 +412,10 @@ describe("Tasks Handler Integration Tests", () => {
 
     const taskResp = await handler.createTask({ projectId, title: "Reviewed Task", status: "todo", description: "" }, ctx);
     expect(taskResp.task.createdBy).toBe(userId);
+    // M19-T02: createdAt used to be computed and then silently dropped
+    // before the response left the handler.
+    expect(typeof taskResp.task.createdAt).toBe("string");
+    expect(taskResp.task.createdAt.length).toBeGreaterThan(0);
 
     const addResp = await handler.addTaskReviewer({ taskId: taskResp.task.id, userId: reviewerId }, ctx);
     expect(addResp.success).toBe(true);
@@ -408,9 +468,18 @@ describe("Tasks Handler Integration Tests", () => {
 
     const updateResp = await handler.updateTaskStatus({ taskId: taskResp.task.id, status: "in-progress" }, ctx);
     expect(updateResp.task.status).toBe("in-progress");
+    expect(typeof updateResp.task.createdAt).toBe("string");
+    expect(updateResp.task.createdAt.length).toBeGreaterThan(0);
 
     const listResp = await handler.listTasks({ projectId }, ctx);
-    expect(listResp.tasks.find((t: any) => t.id === taskResp.task.id)?.status).toBe("in-progress");
+    const listedTask = listResp.tasks.find((t: any) => t.id === taskResp.task.id);
+    expect(listedTask?.status).toBe("in-progress");
+    expect(typeof listedTask?.createdAt).toBe("string");
+    expect(listedTask?.createdAt.length).toBeGreaterThan(0);
+
+    // M19-T02: listTasks used to validate its request by hand instead of
+    // through a Zod schema, like every other RPC in this file.
+    await expect(handler.listTasks({}, ctx)).rejects.toThrow();
 
     await expect(handler.updateTaskStatus({ taskId: taskResp.task.id, status: "not-a-real-status" }, ctx)).rejects.toThrow();
     await expect(handler.updateTaskStatus({ taskId: "task-does-not-exist", status: "done" }, ctx)).rejects.toThrow();
@@ -737,6 +806,8 @@ describe("Tasks Handler Integration Tests", () => {
 
     const claimed = await handler.claimTask({ taskId: task.task.id }, agentCtx);
     expect(claimed.task.id).toBe(task.task.id);
+    expect(typeof claimed.task.createdAt).toBe("string");
+    expect(claimed.task.createdAt.length).toBeGreaterThan(0);
 
     const rows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, task.task.id));
     expect(rows.length).toBe(1);
@@ -1016,6 +1087,62 @@ describe("Tasks Handler Integration Tests", () => {
     ).rejects.toThrow();
   });
 
+  // M19-T03: createTaskStatus's own duplicate-name check is select-then-
+  // insert, same race window M18-T03 closed for folders/artifacts. This
+  // forces the race by firing two identical calls concurrently, rather than
+  // relying on the pre-check alone.
+  test("rejects one of two concurrent createTaskStatus calls racing for the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const orgId = "org-status-race-" + Date.now();
+    const userId = "user-status-race-" + Date.now();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Status Race Org" });
+    const ctx = makeAuthContext(userId);
+    const typesHandler = createTasksHandler(db, nc);
+
+    const taskType = await typesHandler.createTaskType({ orgId, name: "Race Type" }, ctx);
+
+    const results = await Promise.allSettled([
+      typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "open" }, ctx),
+      typesHandler.createTaskStatus({ taskTypeId: taskType.taskType.id, name: "open" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
+  });
+
+  // Same race, on addTaskReviewer's own duplicate check - a benign no-op
+  // either way (the reviewer ends up added exactly once), so unlike the
+  // status case above, both calls succeed rather than one being rejected.
+  test("both of two concurrent addTaskReviewer calls for the same reviewer succeed, leaving exactly one row", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const orgId = "org-reviewer-race-" + Date.now();
+    const userId = "user-reviewer-race-" + Date.now();
+    const reviewerId = "user-reviewer-race-target-" + Date.now();
+    const templateId = "tmpl-reviewer-race-" + Date.now();
+    const projectId = "proj-reviewer-race-" + Date.now();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Reviewer Race Org" });
+    await db.insert(schemaSqlite.users).values({ id: reviewerId, email: `${reviewerId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: reviewerId, role: "member", joinedAt: new Date() });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "Reviewer Race Project" });
+    const ctx = makeAuthContext(userId);
+    const { createTaskManagementHandler } = require("./tasks.handler");
+    const handler = createTaskManagementHandler(db, nc);
+
+    const taskResp = await handler.createTask({ projectId, title: "Race Task", status: "todo", description: "" }, ctx);
+
+    const results = await Promise.allSettled([
+      handler.addTaskReviewer({ taskId: taskResp.task.id, userId: reviewerId }, ctx),
+      handler.addTaskReviewer({ taskId: taskResp.task.id, userId: reviewerId }, ctx),
+    ]);
+    expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+
+    const rows = await db.select().from(schemaSqlite.taskReviewers)
+      .where(and(eq(schemaSqlite.taskReviewers.taskId, taskResp.task.id), eq(schemaSqlite.taskReviewers.userId, reviewerId)));
+    expect(rows).toHaveLength(1);
+  });
+
   // M14-T04: deleteTaskStatusTransition had zero test coverage before this.
   test("deleteTaskStatusTransition removes an edge, is idempotent, and is authorized against the type", async () => {
     const { db, nc } = await setupIntegrationTest();
@@ -1149,6 +1276,8 @@ describe("Tasks Handler Integration Tests", () => {
     }, ctx);
     expect(updated.task.title).toBe("New Title");
     expect(updated.task.description).toBe("New description");
+    expect(typeof updated.task.createdAt).toBe("string");
+    expect(updated.task.createdAt.length).toBeGreaterThan(0);
 
     // Clearing the description to "" must actually persist as "", not be
     // silently dropped because it looks like an unset field.
@@ -1195,6 +1324,51 @@ describe("Tasks Handler Integration Tests", () => {
     ).rejects.toThrow();
   });
 
+  // M19-T03: createTaskType already refuses to let a project-scoped type
+  // parent a different project's type - createTask/updateTask had never
+  // checked the same thing for the type actually attached to a task, so a
+  // type scoped to Project A could freely be attached to a task in Project
+  // B (same org). An org-wide type (projectId null) stays valid everywhere.
+  test("createTask and updateTask reject a taskTypeId scoped to a different project", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createTaskManagementHandler(db, nc);
+    const typesHandler = createTasksHandler(db, nc);
+
+    const orgId = "org-tasktype-scope-" + Date.now().toString();
+    const userId = "user-tasktype-scope-" + Date.now().toString();
+    const templateId = "tmpl-tasktype-scope-" + Date.now().toString();
+    const projectAId = "proj-tasktype-scope-a-" + Date.now().toString();
+    const projectBId = "proj-tasktype-scope-b-" + Date.now().toString();
+    await seedOrgWithAdmin(db, { orgId, userId, name: "Test Org TaskType Scope" });
+    // Both projects share one template - seedProject would try to insert
+    // the same template row twice, so seed it once and add the second
+    // project directly.
+    await seedProject(db, { orgId, userId, templateId, projectId: projectAId, name: "Project A" });
+    await db.insert(schemaSqlite.projects).values({ id: projectBId, orgId, templateId, ownerId: userId, name: "Project B", key: "PB-" + Date.now(), createdAt: new Date() });
+    const ctx = makeAuthContext(userId);
+
+    const scopedToA = await typesHandler.createTaskType({ orgId, projectId: projectAId, name: "A-only Type" }, ctx);
+
+    await expect(
+      handler.createTask({ projectId: projectBId, title: "Wrong Project", status: "todo", taskTypeId: scopedToA.taskType.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+
+    // Same project is fine.
+    const created = await handler.createTask({ projectId: projectAId, title: "Right Project", status: "todo", taskTypeId: scopedToA.taskType.id }, ctx);
+    expect(created.task.taskTypeId).toBe(scopedToA.taskType.id);
+
+    // An org-wide type (no projectId) is usable by any project.
+    const orgWideType = await typesHandler.createTaskType({ orgId, name: "Org-wide Type" }, ctx);
+    const createdOrgWide = await handler.createTask({ projectId: projectBId, title: "Org-wide Type Task", status: "todo", taskTypeId: orgWideType.taskType.id }, ctx);
+    expect(createdOrgWide.task.taskTypeId).toBe(orgWideType.taskType.id);
+
+    // updateTask enforces the same rule against the task's own project - a
+    // task in B cannot be retyped to a type scoped to A.
+    await expect(
+      handler.updateTask({ taskId: createdOrgWide.task.id, taskTypeId: scopedToA.taskType.id }, ctx)
+    ).rejects.toMatchObject({ code: Code.InvalidArgument });
+  });
+
   test("getTask returns the full task including description, and denies non-members", async () => {
     const { db, nc } = await setupIntegrationTest();
     const handler = createTaskManagementHandler(db, nc);
@@ -1217,6 +1391,8 @@ describe("Tasks Handler Integration Tests", () => {
     expect(fetched.task.title).toBe("Gettable");
     expect(fetched.task.description).toBe("Has a body");
     expect(Array.isArray(fetched.task.assignees)).toBe(true);
+    expect(typeof fetched.task.createdAt).toBe("string");
+    expect(fetched.task.createdAt.length).toBeGreaterThan(0);
 
     await expect(handler.getTask({ taskId: "task-does-not-exist" }, ctx)).rejects.toMatchObject({ code: Code.NotFound });
     await expect(handler.getTask({}, ctx)).rejects.toThrow();
