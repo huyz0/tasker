@@ -437,6 +437,14 @@ export const folders = sqliteTable("folders", {
 }, (table) => {
   return {
     projectIdIdx: index("folders_project_id_idx").on(table.projectId),
+    // M18-T03: two folders with the same name in the same parent were never
+    // rejected. NULL parentId (root-level folders) is not covered - SQLite
+    // and MySQL both treat NULL as distinct from every other value,
+    // including another NULL, in a unique index - so this catches siblings
+    // under a real parent folder but not two root folders in the same
+    // project; the application-level pre-check in createFolder covers that
+    // gap.
+    projectParentNameIdx: uniqueIndex("folders_project_id_parent_id_name_idx").on(table.projectId, table.parentId, table.name),
   };
 });
 
@@ -454,6 +462,8 @@ export const artifacts = sqliteTable("artifacts", {
 }, (table) => {
   return {
     folderIdIdx: index("artifacts_folder_id_idx").on(table.folderId),
+    // M18-T03: same reasoning as folders above.
+    folderNameIdx: uniqueIndex("artifacts_folder_id_name_idx").on(table.folderId, table.name),
   };
 });
 

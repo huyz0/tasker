@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { eq, and } from "drizzle-orm";
+import { Code } from "@connectrpc/connect";
 import { setupIntegrationTest, makeAuthContext } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { createArtifactsHandler } from "./artifacts.handler";
@@ -104,6 +105,53 @@ describe("Artifacts Handler", () => {
     ).rejects.toThrow();
   });
 
+  // M18-T03: folders had no unique-name constraint - two folders named
+  // "Docs" at the project root, or two "Docs" under the same parent, were
+  // indistinguishable in the tree until opened.
+  it("should reject a duplicate root-level folder name in the same project", async () => {
+    await handler.createFolder({ projectId, name: "Docs" }, ctx);
+    await expect(
+      handler.createFolder({ projectId, name: "Docs" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+  });
+
+  it("should reject a duplicate folder name under the same parent", async () => {
+    const parent = await handler.createFolder({ projectId, name: "Parent" }, ctx);
+    await handler.createFolder({ projectId, parentId: parent.folder.id, name: "Child" }, ctx);
+    await expect(
+      handler.createFolder({ projectId, parentId: parent.folder.id, name: "Child" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+  });
+
+  it("should allow the same folder name under different parents, and in a different project", async () => {
+    const parentA = await handler.createFolder({ projectId, name: "Parent A" }, ctx);
+    const parentB = await handler.createFolder({ projectId, name: "Parent B" }, ctx);
+    await handler.createFolder({ projectId, parentId: parentA.folder.id, name: "Shared" }, ctx);
+    await expect(
+      handler.createFolder({ projectId, parentId: parentB.folder.id, name: "Shared" }, ctx)
+    ).resolves.toBeDefined();
+    await expect(
+      handler.createFolder({ projectId: otherProjectId, name: "Shared" }, ctx)
+    ).resolves.toBeDefined();
+  });
+
+  // Under a real parent, not the project root: NULL parentId isn't
+  // distinguishable from another NULL to the unique index (see the schema
+  // comment), so only the has-a-real-parent case is guaranteed to be caught
+  // by the DB constraint rather than just the pre-check's race window.
+  it("should reject one of two concurrent createFolder calls racing for the same name under the same parent, as AlreadyExists rather than a raw DB error", async () => {
+    const parent = await handler.createFolder({ projectId, name: "Race Parent" }, ctx);
+    const results = await Promise.allSettled([
+      handler.createFolder({ projectId, parentId: parent.folder.id, name: "Race" }, ctx),
+      handler.createFolder({ projectId, parentId: parent.folder.id, name: "Race" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
+  });
+
   // --- updateFolder ---
 
   it("should rename a folder and return the updated folder", async () => {
@@ -127,6 +175,40 @@ describe("Artifacts Handler", () => {
     await expect(
       handler.updateFolder({ folderId: folder.folder.id, name: "X" }, makeAuthContext("user-outsider"))
     ).rejects.toThrow();
+  });
+
+  it("should reject renaming a folder to a name already used by a sibling", async () => {
+    await handler.createFolder({ projectId, name: "Taken" }, ctx);
+    const other = await handler.createFolder({ projectId, name: "Available" }, ctx);
+    await expect(
+      handler.updateFolder({ folderId: other.folder.id, name: "Taken" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+
+    const [row] = await db.select().from(schemaSqlite.folders).where(eq(schemaSqlite.folders.id, other.folder.id));
+    expect(row.name).toBe("Available");
+  });
+
+  it("should allow renaming a folder to its own current name (a no-op)", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Same" }, ctx);
+    await expect(
+      handler.updateFolder({ folderId: folder.folder.id, name: "Same" }, ctx)
+    ).resolves.toBeDefined();
+  });
+
+  it("should reject one of two concurrent updateFolder calls racing two siblings onto the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const parent = await handler.createFolder({ projectId, name: "Race Parent" }, ctx);
+    const a = await handler.createFolder({ projectId, parentId: parent.folder.id, name: "A" }, ctx);
+    const b = await handler.createFolder({ projectId, parentId: parent.folder.id, name: "B" }, ctx);
+
+    const results = await Promise.allSettled([
+      handler.updateFolder({ folderId: a.folder.id, name: "Race" }, ctx),
+      handler.updateFolder({ folderId: b.folder.id, name: "Race" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
   });
 
   // --- createArtifact ---
@@ -185,6 +267,38 @@ describe("Artifacts Handler", () => {
     expect(
       handler.createArtifact({ folderId: "fld-does-not-exist", name: "Doc" }, ctx)
     ).rejects.toThrow();
+  });
+
+  // M18-T03: artifacts had no unique-name constraint - two artifacts named
+  // "Doc" in the same folder were indistinguishable until opened.
+  it("should reject a duplicate artifact name in the same folder", async () => {
+    const folder = await handler.createFolder({ projectId, name: "F" }, ctx);
+    await handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx);
+    await expect(
+      handler.createArtifact({ folderId: folder.folder.id, name: "Doc" }, ctx)
+    ).rejects.toMatchObject({ code: Code.AlreadyExists });
+  });
+
+  it("should allow the same artifact name in a different folder", async () => {
+    const folderA = await handler.createFolder({ projectId, name: "Fld A" }, ctx);
+    const folderB = await handler.createFolder({ projectId, name: "Fld B" }, ctx);
+    await handler.createArtifact({ folderId: folderA.folder.id, name: "Doc" }, ctx);
+    await expect(
+      handler.createArtifact({ folderId: folderB.folder.id, name: "Doc" }, ctx)
+    ).resolves.toBeDefined();
+  });
+
+  it("should reject one of two concurrent createArtifact calls racing for the same name, as AlreadyExists rather than a raw DB error", async () => {
+    const folder = await handler.createFolder({ projectId, name: "Race Fld" }, ctx);
+    const results = await Promise.allSettled([
+      handler.createArtifact({ folderId: folder.folder.id, name: "Race" }, ctx),
+      handler.createArtifact({ folderId: folder.folder.id, name: "Race" }, ctx),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason.code).toBe(Code.AlreadyExists);
   });
 
   // --- updateArtifactContent ---

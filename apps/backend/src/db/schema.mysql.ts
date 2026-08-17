@@ -1,4 +1,4 @@
-import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, boolean, mediumtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
+import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, boolean, mediumtext, longtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const testSchema = mysqlTable("schema_migrations_test", {
   id: varchar("id", { length: 256 }).primaryKey(),
@@ -318,6 +318,9 @@ export const folders = mysqlTable("folders", {
 }, (table) => {
   return {
     projectIdIdx: index("folders_project_id_idx").on(table.projectId),
+    // M18-T03: see the SQLite counterpart for why NULL parentId (root-level
+    // folders) isn't fully covered by this index.
+    projectParentNameIdx: uniqueIndex("folders_project_id_parent_id_name_idx").on(table.projectId, table.parentId, table.name),
   };
 });
 
@@ -326,13 +329,21 @@ export const artifacts = mysqlTable("artifacts", {
   folderId: varchar("folder_id", { length: 256 }).notNull().references(() => folders.id),
   name: varchar("name", { length: 256 }).notNull(),
   description: varchar("description", { length: 1024 }),
-  content: mediumtext("content"),
+  // M18-T03: mediumtext's 16,777,215-byte cap is a *byte* count, but the
+  // Zod schema caps `content` at 15,000,000 *characters* - fine for base64
+  // image uploads (pure ASCII, 1 byte/char) but not for large multi-byte
+  // UTF-8 text, which could need up to 4x that in bytes. longtext removes
+  // the ceiling instead of shrinking the char cap and taking away headroom
+  // the image-upload path actually uses.
+  content: longtext("content"),
   contentType: varchar("content_type", { length: 128 }).notNull().default("text/markdown"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
 }, (table) => {
   return {
     folderIdIdx: index("artifacts_folder_id_idx").on(table.folderId),
+    // M18-T03: same reasoning as folders above.
+    folderNameIdx: uniqueIndex("artifacts_folder_id_name_idx").on(table.folderId, table.name),
   };
 });
 

@@ -2,7 +2,7 @@ import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and, not, inArray, sql } from "drizzle-orm";
+import { eq, and, not, inArray, sql, isNull } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
@@ -107,6 +107,21 @@ const ListArtifactsSchema = z
     message: "folderId or projectId is required",
   });
 
+// Distinguishes a real DB-level unique-constraint violation (a concurrent
+// createFolder/createArtifact/updateFolder call won the race for the same
+// name) from any other insert/update failure. Same pattern as
+// labels.handler.ts's isUniqueConstraintConflict and, as of M17-T02,
+// agents.handler.ts's.
+function isUniqueConstraintConflict(e: unknown): boolean {
+  const msg = String((e as any)?.message ?? e);
+  return (
+    msg.includes("folders_project_id_parent_id_name_idx") ||
+    msg.includes("artifacts_folder_id_name_idx") ||
+    msg.includes("UNIQUE constraint failed") ||
+    msg.includes("Duplicate entry")
+  );
+}
+
 // --- Handler Factory ---
 
 export const createArtifactsHandler = (db: any, nc: any = null) => {
@@ -129,6 +144,20 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       }
 
       const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
+
+      // M18-T03: a unique index backs this for the has-a-real-parent case,
+      // but NULL parentId (root-level folders) is not distinguishable from
+      // any other NULL to that index, so root folders need this check to
+      // actually catch a same-name collision.
+      const parentIdValue = parsed.parentId || null;
+      const nameConflictCondition = parentIdValue
+        ? and(eq((folders as any).projectId, parsed.projectId), eq((folders as any).parentId, parentIdValue), eq((folders as any).name, parsed.name))
+        : and(eq((folders as any).projectId, parsed.projectId), isNull((folders as any).parentId), eq((folders as any).name, parsed.name));
+      const existingByName = await db.select().from(folders).where(nameConflictCondition).limit(1);
+      if (existingByName.length > 0) {
+        throw new ConnectError("a folder with this name already exists here", Code.AlreadyExists);
+      }
+
       const newId = `fld-${crypto.randomUUID()}`;
       // M18-T02: set explicitly rather than left to insertRecord's default -
       // that default only fires in standalone/sqlite mode, and either way it
@@ -137,12 +166,21 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const payload = {
         id: newId,
         projectId: parsed.projectId,
-        parentId: parsed.parentId || null,
+        parentId: parentIdValue,
         name: parsed.name,
         createdAt: new Date(),
       };
 
-      await insertRecord(db, folders, payload, isStandalone, false);
+      // The select-then-insert check above has a race window for the
+      // has-a-real-parent case - fall back to catching the DB's own
+      // unique-constraint violation for a concurrent duplicate insert, so it
+      // surfaces as AlreadyExists instead of a raw DB error.
+      try {
+        await insertRecord(db, folders, payload, isStandalone, false);
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("a folder with this name already exists here", Code.AlreadyExists);
+      }
 
       const folderResp = { ...payload, createdAt: payload.createdAt.toISOString() };
       publishDomainEvent(nc, "domain.folder.created", folderResp);
@@ -159,7 +197,24 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       const existing = await db.select().from(folders).where(eq((folders as any).id, parsed.folderId)).limit(1);
       if (!existing || existing.length === 0) throw new ConnectError("folder not found", Code.NotFound);
 
-      await db.update(folders).set({ name: parsed.name }).where(eq((folders as any).id, parsed.folderId));
+      // M18-T03: same NULL-parentId caveat as createFolder's pre-check - the
+      // unique index doesn't see two NULL parents as equal, so a rename among
+      // root folders needs this to catch a collision.
+      const parentIdValue = existing[0].parentId ?? null;
+      const nameConflictCondition = parentIdValue
+        ? and(eq((folders as any).projectId, existing[0].projectId), eq((folders as any).parentId, parentIdValue), eq((folders as any).name, parsed.name))
+        : and(eq((folders as any).projectId, existing[0].projectId), isNull((folders as any).parentId), eq((folders as any).name, parsed.name));
+      const nameConflict = await db.select().from(folders).where(nameConflictCondition).limit(1);
+      if (nameConflict.length > 0 && nameConflict[0].id !== parsed.folderId) {
+        throw new ConnectError("a folder with this name already exists here", Code.AlreadyExists);
+      }
+
+      try {
+        await db.update(folders).set({ name: parsed.name }).where(eq((folders as any).id, parsed.folderId));
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("a folder with this name already exists here", Code.AlreadyExists);
+      }
 
       const updated = {
         ...existing[0],
@@ -177,6 +232,16 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
       await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:write', permission: 'artifact:write' });
 
       const artifacts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
+
+      const existingByName = await db
+        .select()
+        .from(artifacts)
+        .where(and(eq((artifacts as any).folderId, parsed.folderId), eq((artifacts as any).name, parsed.name)))
+        .limit(1);
+      if (existingByName.length > 0) {
+        throw new ConnectError("an artifact with this name already exists in this folder", Code.AlreadyExists);
+      }
+
       const newId = `art-${crypto.randomUUID()}`;
       // M18-T02: see createFolder's comment above on why createdAt is set
       // explicitly here.
@@ -190,7 +255,16 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         createdAt: new Date(),
       };
 
-      await insertRecord(db, artifacts, payload, isStandalone, false);
+      // The select-then-insert check above has a race window - fall back to
+      // catching the DB's own unique-constraint violation for a concurrent
+      // duplicate insert, so it surfaces as AlreadyExists instead of a raw
+      // DB error.
+      try {
+        await insertRecord(db, artifacts, payload, isStandalone, false);
+      } catch (e) {
+        if (!isUniqueConstraintConflict(e)) throw e;
+        throw new ConnectError("an artifact with this name already exists in this folder", Code.AlreadyExists);
+      }
 
       publishDomainEvent(nc, "domain.artifact.created", payload);
       return { artifact: { ...payload, createdAt: payload.createdAt.toISOString() } };
