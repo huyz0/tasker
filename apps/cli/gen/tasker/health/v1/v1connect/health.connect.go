@@ -55,6 +55,8 @@ const (
 	TeamServiceName = "tasker.health.v1.TeamService"
 	// RoleServiceName is the fully-qualified name of the RoleService service.
 	RoleServiceName = "tasker.health.v1.RoleService"
+	// MemoryServiceName is the fully-qualified name of the MemoryService service.
+	MemoryServiceName = "tasker.health.v1.MemoryService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -391,6 +393,47 @@ const (
 	RoleServiceRevokeGrantProcedure = "/tasker.health.v1.RoleService/RevokeGrant"
 	// RoleServiceListGrantsProcedure is the fully-qualified name of the RoleService's ListGrants RPC.
 	RoleServiceListGrantsProcedure = "/tasker.health.v1.RoleService/ListGrants"
+	// MemoryServiceRecordBeliefProcedure is the fully-qualified name of the MemoryService's
+	// RecordBelief RPC.
+	MemoryServiceRecordBeliefProcedure = "/tasker.health.v1.MemoryService/RecordBelief"
+	// MemoryServiceGetBeliefProcedure is the fully-qualified name of the MemoryService's GetBelief RPC.
+	MemoryServiceGetBeliefProcedure = "/tasker.health.v1.MemoryService/GetBelief"
+	// MemoryServiceListBeliefsProcedure is the fully-qualified name of the MemoryService's ListBeliefs
+	// RPC.
+	MemoryServiceListBeliefsProcedure = "/tasker.health.v1.MemoryService/ListBeliefs"
+	// MemoryServiceSearchBeliefsProcedure is the fully-qualified name of the MemoryService's
+	// SearchBeliefs RPC.
+	MemoryServiceSearchBeliefsProcedure = "/tasker.health.v1.MemoryService/SearchBeliefs"
+	// MemoryServiceUpdateBeliefProcedure is the fully-qualified name of the MemoryService's
+	// UpdateBelief RPC.
+	MemoryServiceUpdateBeliefProcedure = "/tasker.health.v1.MemoryService/UpdateBelief"
+	// MemoryServiceSupersedeBeliefProcedure is the fully-qualified name of the MemoryService's
+	// SupersedeBelief RPC.
+	MemoryServiceSupersedeBeliefProcedure = "/tasker.health.v1.MemoryService/SupersedeBelief"
+	// MemoryServicePromoteBeliefProcedure is the fully-qualified name of the MemoryService's
+	// PromoteBelief RPC.
+	MemoryServicePromoteBeliefProcedure = "/tasker.health.v1.MemoryService/PromoteBelief"
+	// MemoryServiceRelateBeliefsProcedure is the fully-qualified name of the MemoryService's
+	// RelateBeliefs RPC.
+	MemoryServiceRelateBeliefsProcedure = "/tasker.health.v1.MemoryService/RelateBeliefs"
+	// MemoryServiceUnrelateBeliefsProcedure is the fully-qualified name of the MemoryService's
+	// UnrelateBeliefs RPC.
+	MemoryServiceUnrelateBeliefsProcedure = "/tasker.health.v1.MemoryService/UnrelateBeliefs"
+	// MemoryServiceListBeliefRelationsProcedure is the fully-qualified name of the MemoryService's
+	// ListBeliefRelations RPC.
+	MemoryServiceListBeliefRelationsProcedure = "/tasker.health.v1.MemoryService/ListBeliefRelations"
+	// MemoryServiceListBeliefPromotionsProcedure is the fully-qualified name of the MemoryService's
+	// ListBeliefPromotions RPC.
+	MemoryServiceListBeliefPromotionsProcedure = "/tasker.health.v1.MemoryService/ListBeliefPromotions"
+	// MemoryServiceArchiveBeliefProcedure is the fully-qualified name of the MemoryService's
+	// ArchiveBelief RPC.
+	MemoryServiceArchiveBeliefProcedure = "/tasker.health.v1.MemoryService/ArchiveBelief"
+	// MemoryServiceRestoreBeliefProcedure is the fully-qualified name of the MemoryService's
+	// RestoreBelief RPC.
+	MemoryServiceRestoreBeliefProcedure = "/tasker.health.v1.MemoryService/RestoreBelief"
+	// MemoryServicePurgeBeliefProcedure is the fully-qualified name of the MemoryService's PurgeBelief
+	// RPC.
+	MemoryServicePurgeBeliefProcedure = "/tasker.health.v1.MemoryService/PurgeBelief"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -532,6 +575,21 @@ var (
 	roleServiceGrantRoleMethodDescriptor                      = roleServiceServiceDescriptor.Methods().ByName("GrantRole")
 	roleServiceRevokeGrantMethodDescriptor                    = roleServiceServiceDescriptor.Methods().ByName("RevokeGrant")
 	roleServiceListGrantsMethodDescriptor                     = roleServiceServiceDescriptor.Methods().ByName("ListGrants")
+	memoryServiceServiceDescriptor                            = v1.File_tasker_health_v1_health_proto.Services().ByName("MemoryService")
+	memoryServiceRecordBeliefMethodDescriptor                 = memoryServiceServiceDescriptor.Methods().ByName("RecordBelief")
+	memoryServiceGetBeliefMethodDescriptor                    = memoryServiceServiceDescriptor.Methods().ByName("GetBelief")
+	memoryServiceListBeliefsMethodDescriptor                  = memoryServiceServiceDescriptor.Methods().ByName("ListBeliefs")
+	memoryServiceSearchBeliefsMethodDescriptor                = memoryServiceServiceDescriptor.Methods().ByName("SearchBeliefs")
+	memoryServiceUpdateBeliefMethodDescriptor                 = memoryServiceServiceDescriptor.Methods().ByName("UpdateBelief")
+	memoryServiceSupersedeBeliefMethodDescriptor              = memoryServiceServiceDescriptor.Methods().ByName("SupersedeBelief")
+	memoryServicePromoteBeliefMethodDescriptor                = memoryServiceServiceDescriptor.Methods().ByName("PromoteBelief")
+	memoryServiceRelateBeliefsMethodDescriptor                = memoryServiceServiceDescriptor.Methods().ByName("RelateBeliefs")
+	memoryServiceUnrelateBeliefsMethodDescriptor              = memoryServiceServiceDescriptor.Methods().ByName("UnrelateBeliefs")
+	memoryServiceListBeliefRelationsMethodDescriptor          = memoryServiceServiceDescriptor.Methods().ByName("ListBeliefRelations")
+	memoryServiceListBeliefPromotionsMethodDescriptor         = memoryServiceServiceDescriptor.Methods().ByName("ListBeliefPromotions")
+	memoryServiceArchiveBeliefMethodDescriptor                = memoryServiceServiceDescriptor.Methods().ByName("ArchiveBelief")
+	memoryServiceRestoreBeliefMethodDescriptor                = memoryServiceServiceDescriptor.Methods().ByName("RestoreBelief")
+	memoryServicePurgeBeliefMethodDescriptor                  = memoryServiceServiceDescriptor.Methods().ByName("PurgeBelief")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -4367,4 +4425,410 @@ func (UnimplementedRoleServiceHandler) RevokeGrant(context.Context, *connect.Req
 
 func (UnimplementedRoleServiceHandler) ListGrants(context.Context, *connect.Request[v1.ListGrantsRequest]) (*connect.Response[v1.ListGrantsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.RoleService.ListGrants is not implemented"))
+}
+
+// MemoryServiceClient is a client for the tasker.health.v1.MemoryService service.
+type MemoryServiceClient interface {
+	RecordBelief(context.Context, *connect.Request[v1.RecordBeliefRequest]) (*connect.Response[v1.RecordBeliefResponse], error)
+	GetBelief(context.Context, *connect.Request[v1.GetBeliefRequest]) (*connect.Response[v1.GetBeliefResponse], error)
+	ListBeliefs(context.Context, *connect.Request[v1.ListBeliefsRequest]) (*connect.Response[v1.ListBeliefsResponse], error)
+	SearchBeliefs(context.Context, *connect.Request[v1.SearchBeliefsRequest]) (*connect.Response[v1.SearchBeliefsResponse], error)
+	UpdateBelief(context.Context, *connect.Request[v1.UpdateBeliefRequest]) (*connect.Response[v1.UpdateBeliefResponse], error)
+	SupersedeBelief(context.Context, *connect.Request[v1.SupersedeBeliefRequest]) (*connect.Response[v1.SupersedeBeliefResponse], error)
+	PromoteBelief(context.Context, *connect.Request[v1.PromoteBeliefRequest]) (*connect.Response[v1.PromoteBeliefResponse], error)
+	RelateBeliefs(context.Context, *connect.Request[v1.RelateBeliefsRequest]) (*connect.Response[v1.RelateBeliefsResponse], error)
+	UnrelateBeliefs(context.Context, *connect.Request[v1.UnrelateBeliefsRequest]) (*connect.Response[v1.UnrelateBeliefsResponse], error)
+	ListBeliefRelations(context.Context, *connect.Request[v1.ListBeliefRelationsRequest]) (*connect.Response[v1.ListBeliefRelationsResponse], error)
+	ListBeliefPromotions(context.Context, *connect.Request[v1.ListBeliefPromotionsRequest]) (*connect.Response[v1.ListBeliefPromotionsResponse], error)
+	ArchiveBelief(context.Context, *connect.Request[v1.ArchiveBeliefRequest]) (*connect.Response[v1.ArchiveBeliefResponse], error)
+	RestoreBelief(context.Context, *connect.Request[v1.RestoreBeliefRequest]) (*connect.Response[v1.RestoreBeliefResponse], error)
+	PurgeBelief(context.Context, *connect.Request[v1.PurgeBeliefRequest]) (*connect.Response[v1.PurgeBeliefResponse], error)
+}
+
+// NewMemoryServiceClient constructs a client for the tasker.health.v1.MemoryService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewMemoryServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) MemoryServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &memoryServiceClient{
+		recordBelief: connect.NewClient[v1.RecordBeliefRequest, v1.RecordBeliefResponse](
+			httpClient,
+			baseURL+MemoryServiceRecordBeliefProcedure,
+			connect.WithSchema(memoryServiceRecordBeliefMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getBelief: connect.NewClient[v1.GetBeliefRequest, v1.GetBeliefResponse](
+			httpClient,
+			baseURL+MemoryServiceGetBeliefProcedure,
+			connect.WithSchema(memoryServiceGetBeliefMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listBeliefs: connect.NewClient[v1.ListBeliefsRequest, v1.ListBeliefsResponse](
+			httpClient,
+			baseURL+MemoryServiceListBeliefsProcedure,
+			connect.WithSchema(memoryServiceListBeliefsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		searchBeliefs: connect.NewClient[v1.SearchBeliefsRequest, v1.SearchBeliefsResponse](
+			httpClient,
+			baseURL+MemoryServiceSearchBeliefsProcedure,
+			connect.WithSchema(memoryServiceSearchBeliefsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateBelief: connect.NewClient[v1.UpdateBeliefRequest, v1.UpdateBeliefResponse](
+			httpClient,
+			baseURL+MemoryServiceUpdateBeliefProcedure,
+			connect.WithSchema(memoryServiceUpdateBeliefMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		supersedeBelief: connect.NewClient[v1.SupersedeBeliefRequest, v1.SupersedeBeliefResponse](
+			httpClient,
+			baseURL+MemoryServiceSupersedeBeliefProcedure,
+			connect.WithSchema(memoryServiceSupersedeBeliefMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		promoteBelief: connect.NewClient[v1.PromoteBeliefRequest, v1.PromoteBeliefResponse](
+			httpClient,
+			baseURL+MemoryServicePromoteBeliefProcedure,
+			connect.WithSchema(memoryServicePromoteBeliefMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		relateBeliefs: connect.NewClient[v1.RelateBeliefsRequest, v1.RelateBeliefsResponse](
+			httpClient,
+			baseURL+MemoryServiceRelateBeliefsProcedure,
+			connect.WithSchema(memoryServiceRelateBeliefsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		unrelateBeliefs: connect.NewClient[v1.UnrelateBeliefsRequest, v1.UnrelateBeliefsResponse](
+			httpClient,
+			baseURL+MemoryServiceUnrelateBeliefsProcedure,
+			connect.WithSchema(memoryServiceUnrelateBeliefsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listBeliefRelations: connect.NewClient[v1.ListBeliefRelationsRequest, v1.ListBeliefRelationsResponse](
+			httpClient,
+			baseURL+MemoryServiceListBeliefRelationsProcedure,
+			connect.WithSchema(memoryServiceListBeliefRelationsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listBeliefPromotions: connect.NewClient[v1.ListBeliefPromotionsRequest, v1.ListBeliefPromotionsResponse](
+			httpClient,
+			baseURL+MemoryServiceListBeliefPromotionsProcedure,
+			connect.WithSchema(memoryServiceListBeliefPromotionsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		archiveBelief: connect.NewClient[v1.ArchiveBeliefRequest, v1.ArchiveBeliefResponse](
+			httpClient,
+			baseURL+MemoryServiceArchiveBeliefProcedure,
+			connect.WithSchema(memoryServiceArchiveBeliefMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		restoreBelief: connect.NewClient[v1.RestoreBeliefRequest, v1.RestoreBeliefResponse](
+			httpClient,
+			baseURL+MemoryServiceRestoreBeliefProcedure,
+			connect.WithSchema(memoryServiceRestoreBeliefMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		purgeBelief: connect.NewClient[v1.PurgeBeliefRequest, v1.PurgeBeliefResponse](
+			httpClient,
+			baseURL+MemoryServicePurgeBeliefProcedure,
+			connect.WithSchema(memoryServicePurgeBeliefMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// memoryServiceClient implements MemoryServiceClient.
+type memoryServiceClient struct {
+	recordBelief         *connect.Client[v1.RecordBeliefRequest, v1.RecordBeliefResponse]
+	getBelief            *connect.Client[v1.GetBeliefRequest, v1.GetBeliefResponse]
+	listBeliefs          *connect.Client[v1.ListBeliefsRequest, v1.ListBeliefsResponse]
+	searchBeliefs        *connect.Client[v1.SearchBeliefsRequest, v1.SearchBeliefsResponse]
+	updateBelief         *connect.Client[v1.UpdateBeliefRequest, v1.UpdateBeliefResponse]
+	supersedeBelief      *connect.Client[v1.SupersedeBeliefRequest, v1.SupersedeBeliefResponse]
+	promoteBelief        *connect.Client[v1.PromoteBeliefRequest, v1.PromoteBeliefResponse]
+	relateBeliefs        *connect.Client[v1.RelateBeliefsRequest, v1.RelateBeliefsResponse]
+	unrelateBeliefs      *connect.Client[v1.UnrelateBeliefsRequest, v1.UnrelateBeliefsResponse]
+	listBeliefRelations  *connect.Client[v1.ListBeliefRelationsRequest, v1.ListBeliefRelationsResponse]
+	listBeliefPromotions *connect.Client[v1.ListBeliefPromotionsRequest, v1.ListBeliefPromotionsResponse]
+	archiveBelief        *connect.Client[v1.ArchiveBeliefRequest, v1.ArchiveBeliefResponse]
+	restoreBelief        *connect.Client[v1.RestoreBeliefRequest, v1.RestoreBeliefResponse]
+	purgeBelief          *connect.Client[v1.PurgeBeliefRequest, v1.PurgeBeliefResponse]
+}
+
+// RecordBelief calls tasker.health.v1.MemoryService.RecordBelief.
+func (c *memoryServiceClient) RecordBelief(ctx context.Context, req *connect.Request[v1.RecordBeliefRequest]) (*connect.Response[v1.RecordBeliefResponse], error) {
+	return c.recordBelief.CallUnary(ctx, req)
+}
+
+// GetBelief calls tasker.health.v1.MemoryService.GetBelief.
+func (c *memoryServiceClient) GetBelief(ctx context.Context, req *connect.Request[v1.GetBeliefRequest]) (*connect.Response[v1.GetBeliefResponse], error) {
+	return c.getBelief.CallUnary(ctx, req)
+}
+
+// ListBeliefs calls tasker.health.v1.MemoryService.ListBeliefs.
+func (c *memoryServiceClient) ListBeliefs(ctx context.Context, req *connect.Request[v1.ListBeliefsRequest]) (*connect.Response[v1.ListBeliefsResponse], error) {
+	return c.listBeliefs.CallUnary(ctx, req)
+}
+
+// SearchBeliefs calls tasker.health.v1.MemoryService.SearchBeliefs.
+func (c *memoryServiceClient) SearchBeliefs(ctx context.Context, req *connect.Request[v1.SearchBeliefsRequest]) (*connect.Response[v1.SearchBeliefsResponse], error) {
+	return c.searchBeliefs.CallUnary(ctx, req)
+}
+
+// UpdateBelief calls tasker.health.v1.MemoryService.UpdateBelief.
+func (c *memoryServiceClient) UpdateBelief(ctx context.Context, req *connect.Request[v1.UpdateBeliefRequest]) (*connect.Response[v1.UpdateBeliefResponse], error) {
+	return c.updateBelief.CallUnary(ctx, req)
+}
+
+// SupersedeBelief calls tasker.health.v1.MemoryService.SupersedeBelief.
+func (c *memoryServiceClient) SupersedeBelief(ctx context.Context, req *connect.Request[v1.SupersedeBeliefRequest]) (*connect.Response[v1.SupersedeBeliefResponse], error) {
+	return c.supersedeBelief.CallUnary(ctx, req)
+}
+
+// PromoteBelief calls tasker.health.v1.MemoryService.PromoteBelief.
+func (c *memoryServiceClient) PromoteBelief(ctx context.Context, req *connect.Request[v1.PromoteBeliefRequest]) (*connect.Response[v1.PromoteBeliefResponse], error) {
+	return c.promoteBelief.CallUnary(ctx, req)
+}
+
+// RelateBeliefs calls tasker.health.v1.MemoryService.RelateBeliefs.
+func (c *memoryServiceClient) RelateBeliefs(ctx context.Context, req *connect.Request[v1.RelateBeliefsRequest]) (*connect.Response[v1.RelateBeliefsResponse], error) {
+	return c.relateBeliefs.CallUnary(ctx, req)
+}
+
+// UnrelateBeliefs calls tasker.health.v1.MemoryService.UnrelateBeliefs.
+func (c *memoryServiceClient) UnrelateBeliefs(ctx context.Context, req *connect.Request[v1.UnrelateBeliefsRequest]) (*connect.Response[v1.UnrelateBeliefsResponse], error) {
+	return c.unrelateBeliefs.CallUnary(ctx, req)
+}
+
+// ListBeliefRelations calls tasker.health.v1.MemoryService.ListBeliefRelations.
+func (c *memoryServiceClient) ListBeliefRelations(ctx context.Context, req *connect.Request[v1.ListBeliefRelationsRequest]) (*connect.Response[v1.ListBeliefRelationsResponse], error) {
+	return c.listBeliefRelations.CallUnary(ctx, req)
+}
+
+// ListBeliefPromotions calls tasker.health.v1.MemoryService.ListBeliefPromotions.
+func (c *memoryServiceClient) ListBeliefPromotions(ctx context.Context, req *connect.Request[v1.ListBeliefPromotionsRequest]) (*connect.Response[v1.ListBeliefPromotionsResponse], error) {
+	return c.listBeliefPromotions.CallUnary(ctx, req)
+}
+
+// ArchiveBelief calls tasker.health.v1.MemoryService.ArchiveBelief.
+func (c *memoryServiceClient) ArchiveBelief(ctx context.Context, req *connect.Request[v1.ArchiveBeliefRequest]) (*connect.Response[v1.ArchiveBeliefResponse], error) {
+	return c.archiveBelief.CallUnary(ctx, req)
+}
+
+// RestoreBelief calls tasker.health.v1.MemoryService.RestoreBelief.
+func (c *memoryServiceClient) RestoreBelief(ctx context.Context, req *connect.Request[v1.RestoreBeliefRequest]) (*connect.Response[v1.RestoreBeliefResponse], error) {
+	return c.restoreBelief.CallUnary(ctx, req)
+}
+
+// PurgeBelief calls tasker.health.v1.MemoryService.PurgeBelief.
+func (c *memoryServiceClient) PurgeBelief(ctx context.Context, req *connect.Request[v1.PurgeBeliefRequest]) (*connect.Response[v1.PurgeBeliefResponse], error) {
+	return c.purgeBelief.CallUnary(ctx, req)
+}
+
+// MemoryServiceHandler is an implementation of the tasker.health.v1.MemoryService service.
+type MemoryServiceHandler interface {
+	RecordBelief(context.Context, *connect.Request[v1.RecordBeliefRequest]) (*connect.Response[v1.RecordBeliefResponse], error)
+	GetBelief(context.Context, *connect.Request[v1.GetBeliefRequest]) (*connect.Response[v1.GetBeliefResponse], error)
+	ListBeliefs(context.Context, *connect.Request[v1.ListBeliefsRequest]) (*connect.Response[v1.ListBeliefsResponse], error)
+	SearchBeliefs(context.Context, *connect.Request[v1.SearchBeliefsRequest]) (*connect.Response[v1.SearchBeliefsResponse], error)
+	UpdateBelief(context.Context, *connect.Request[v1.UpdateBeliefRequest]) (*connect.Response[v1.UpdateBeliefResponse], error)
+	SupersedeBelief(context.Context, *connect.Request[v1.SupersedeBeliefRequest]) (*connect.Response[v1.SupersedeBeliefResponse], error)
+	PromoteBelief(context.Context, *connect.Request[v1.PromoteBeliefRequest]) (*connect.Response[v1.PromoteBeliefResponse], error)
+	RelateBeliefs(context.Context, *connect.Request[v1.RelateBeliefsRequest]) (*connect.Response[v1.RelateBeliefsResponse], error)
+	UnrelateBeliefs(context.Context, *connect.Request[v1.UnrelateBeliefsRequest]) (*connect.Response[v1.UnrelateBeliefsResponse], error)
+	ListBeliefRelations(context.Context, *connect.Request[v1.ListBeliefRelationsRequest]) (*connect.Response[v1.ListBeliefRelationsResponse], error)
+	ListBeliefPromotions(context.Context, *connect.Request[v1.ListBeliefPromotionsRequest]) (*connect.Response[v1.ListBeliefPromotionsResponse], error)
+	ArchiveBelief(context.Context, *connect.Request[v1.ArchiveBeliefRequest]) (*connect.Response[v1.ArchiveBeliefResponse], error)
+	RestoreBelief(context.Context, *connect.Request[v1.RestoreBeliefRequest]) (*connect.Response[v1.RestoreBeliefResponse], error)
+	PurgeBelief(context.Context, *connect.Request[v1.PurgeBeliefRequest]) (*connect.Response[v1.PurgeBeliefResponse], error)
+}
+
+// NewMemoryServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewMemoryServiceHandler(svc MemoryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	memoryServiceRecordBeliefHandler := connect.NewUnaryHandler(
+		MemoryServiceRecordBeliefProcedure,
+		svc.RecordBelief,
+		connect.WithSchema(memoryServiceRecordBeliefMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceGetBeliefHandler := connect.NewUnaryHandler(
+		MemoryServiceGetBeliefProcedure,
+		svc.GetBelief,
+		connect.WithSchema(memoryServiceGetBeliefMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceListBeliefsHandler := connect.NewUnaryHandler(
+		MemoryServiceListBeliefsProcedure,
+		svc.ListBeliefs,
+		connect.WithSchema(memoryServiceListBeliefsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceSearchBeliefsHandler := connect.NewUnaryHandler(
+		MemoryServiceSearchBeliefsProcedure,
+		svc.SearchBeliefs,
+		connect.WithSchema(memoryServiceSearchBeliefsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceUpdateBeliefHandler := connect.NewUnaryHandler(
+		MemoryServiceUpdateBeliefProcedure,
+		svc.UpdateBelief,
+		connect.WithSchema(memoryServiceUpdateBeliefMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceSupersedeBeliefHandler := connect.NewUnaryHandler(
+		MemoryServiceSupersedeBeliefProcedure,
+		svc.SupersedeBelief,
+		connect.WithSchema(memoryServiceSupersedeBeliefMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServicePromoteBeliefHandler := connect.NewUnaryHandler(
+		MemoryServicePromoteBeliefProcedure,
+		svc.PromoteBelief,
+		connect.WithSchema(memoryServicePromoteBeliefMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceRelateBeliefsHandler := connect.NewUnaryHandler(
+		MemoryServiceRelateBeliefsProcedure,
+		svc.RelateBeliefs,
+		connect.WithSchema(memoryServiceRelateBeliefsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceUnrelateBeliefsHandler := connect.NewUnaryHandler(
+		MemoryServiceUnrelateBeliefsProcedure,
+		svc.UnrelateBeliefs,
+		connect.WithSchema(memoryServiceUnrelateBeliefsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceListBeliefRelationsHandler := connect.NewUnaryHandler(
+		MemoryServiceListBeliefRelationsProcedure,
+		svc.ListBeliefRelations,
+		connect.WithSchema(memoryServiceListBeliefRelationsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceListBeliefPromotionsHandler := connect.NewUnaryHandler(
+		MemoryServiceListBeliefPromotionsProcedure,
+		svc.ListBeliefPromotions,
+		connect.WithSchema(memoryServiceListBeliefPromotionsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceArchiveBeliefHandler := connect.NewUnaryHandler(
+		MemoryServiceArchiveBeliefProcedure,
+		svc.ArchiveBelief,
+		connect.WithSchema(memoryServiceArchiveBeliefMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServiceRestoreBeliefHandler := connect.NewUnaryHandler(
+		MemoryServiceRestoreBeliefProcedure,
+		svc.RestoreBelief,
+		connect.WithSchema(memoryServiceRestoreBeliefMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoryServicePurgeBeliefHandler := connect.NewUnaryHandler(
+		MemoryServicePurgeBeliefProcedure,
+		svc.PurgeBelief,
+		connect.WithSchema(memoryServicePurgeBeliefMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.MemoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case MemoryServiceRecordBeliefProcedure:
+			memoryServiceRecordBeliefHandler.ServeHTTP(w, r)
+		case MemoryServiceGetBeliefProcedure:
+			memoryServiceGetBeliefHandler.ServeHTTP(w, r)
+		case MemoryServiceListBeliefsProcedure:
+			memoryServiceListBeliefsHandler.ServeHTTP(w, r)
+		case MemoryServiceSearchBeliefsProcedure:
+			memoryServiceSearchBeliefsHandler.ServeHTTP(w, r)
+		case MemoryServiceUpdateBeliefProcedure:
+			memoryServiceUpdateBeliefHandler.ServeHTTP(w, r)
+		case MemoryServiceSupersedeBeliefProcedure:
+			memoryServiceSupersedeBeliefHandler.ServeHTTP(w, r)
+		case MemoryServicePromoteBeliefProcedure:
+			memoryServicePromoteBeliefHandler.ServeHTTP(w, r)
+		case MemoryServiceRelateBeliefsProcedure:
+			memoryServiceRelateBeliefsHandler.ServeHTTP(w, r)
+		case MemoryServiceUnrelateBeliefsProcedure:
+			memoryServiceUnrelateBeliefsHandler.ServeHTTP(w, r)
+		case MemoryServiceListBeliefRelationsProcedure:
+			memoryServiceListBeliefRelationsHandler.ServeHTTP(w, r)
+		case MemoryServiceListBeliefPromotionsProcedure:
+			memoryServiceListBeliefPromotionsHandler.ServeHTTP(w, r)
+		case MemoryServiceArchiveBeliefProcedure:
+			memoryServiceArchiveBeliefHandler.ServeHTTP(w, r)
+		case MemoryServiceRestoreBeliefProcedure:
+			memoryServiceRestoreBeliefHandler.ServeHTTP(w, r)
+		case MemoryServicePurgeBeliefProcedure:
+			memoryServicePurgeBeliefHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedMemoryServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedMemoryServiceHandler struct{}
+
+func (UnimplementedMemoryServiceHandler) RecordBelief(context.Context, *connect.Request[v1.RecordBeliefRequest]) (*connect.Response[v1.RecordBeliefResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.RecordBelief is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) GetBelief(context.Context, *connect.Request[v1.GetBeliefRequest]) (*connect.Response[v1.GetBeliefResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.GetBelief is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) ListBeliefs(context.Context, *connect.Request[v1.ListBeliefsRequest]) (*connect.Response[v1.ListBeliefsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.ListBeliefs is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) SearchBeliefs(context.Context, *connect.Request[v1.SearchBeliefsRequest]) (*connect.Response[v1.SearchBeliefsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.SearchBeliefs is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) UpdateBelief(context.Context, *connect.Request[v1.UpdateBeliefRequest]) (*connect.Response[v1.UpdateBeliefResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.UpdateBelief is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) SupersedeBelief(context.Context, *connect.Request[v1.SupersedeBeliefRequest]) (*connect.Response[v1.SupersedeBeliefResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.SupersedeBelief is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) PromoteBelief(context.Context, *connect.Request[v1.PromoteBeliefRequest]) (*connect.Response[v1.PromoteBeliefResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.PromoteBelief is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) RelateBeliefs(context.Context, *connect.Request[v1.RelateBeliefsRequest]) (*connect.Response[v1.RelateBeliefsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.RelateBeliefs is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) UnrelateBeliefs(context.Context, *connect.Request[v1.UnrelateBeliefsRequest]) (*connect.Response[v1.UnrelateBeliefsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.UnrelateBeliefs is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) ListBeliefRelations(context.Context, *connect.Request[v1.ListBeliefRelationsRequest]) (*connect.Response[v1.ListBeliefRelationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.ListBeliefRelations is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) ListBeliefPromotions(context.Context, *connect.Request[v1.ListBeliefPromotionsRequest]) (*connect.Response[v1.ListBeliefPromotionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.ListBeliefPromotions is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) ArchiveBelief(context.Context, *connect.Request[v1.ArchiveBeliefRequest]) (*connect.Response[v1.ArchiveBeliefResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.ArchiveBelief is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) RestoreBelief(context.Context, *connect.Request[v1.RestoreBeliefRequest]) (*connect.Response[v1.RestoreBeliefResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.RestoreBelief is not implemented"))
+}
+
+func (UnimplementedMemoryServiceHandler) PurgeBelief(context.Context, *connect.Request[v1.PurgeBeliefRequest]) (*connect.Response[v1.PurgeBeliefResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.PurgeBelief is not implemented"))
 }

@@ -177,6 +177,28 @@ export async function assertOrgAdminOfAny(db: any, userId: string): Promise<void
 }
 
 /**
+ * Resolves a team's orgId, throwing NotFound if the team doesn't exist.
+ * Pass includeDeleted=true from a flow that must still resolve the org for
+ * a team that is currently soft-deleted (mirrors getProjectOrgId's own
+ * reasoning - M21-T05 needs this to authorize a team-scoped belief the
+ * same way project-scoped ones already resolve their owning org).
+ */
+export async function getTeamOrgId(db: any, teamId: string, includeDeleted = false): Promise<string> {
+  const teams = isStandalone() ? schemaSqlite.teams : schemaMysql.teams;
+  const conditions = [eq(teams.id, teamId)];
+  if (!includeDeleted) conditions.push(isNull(teams.deletedAt));
+  const rows = await db
+    .select()
+    .from(teams)
+    .where(and(...conditions))
+    .limit(1);
+  if (!rows || rows.length === 0) {
+    throw new ConnectError('Team not found', Code.NotFound);
+  }
+  return rows[0].orgId;
+}
+
+/**
  * Resolves a project's orgId, throwing NotFound if the project doesn't
  * exist. Pass includeDeleted=true from restore/purge flows, which must
  * still resolve the org for a project that is currently soft-deleted.

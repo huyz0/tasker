@@ -35,6 +35,10 @@ func NewLabelServiceClient() v1connect.LabelServiceClient {
 	return v1connect.NewLabelServiceClient(http.DefaultClient, URL(), ClientOptions()...)
 }
 
+func NewMemoryServiceClient() v1connect.MemoryServiceClient {
+	return v1connect.NewMemoryServiceClient(http.DefaultClient, URL(), ClientOptions()...)
+}
+
 func NewOrgServiceClient() v1connect.OrgServiceClient {
 	return v1connect.NewOrgServiceClient(http.DefaultClient, URL(), ClientOptions()...)
 }

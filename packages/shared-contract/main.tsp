@@ -1601,7 +1601,7 @@ model SnippetMatch {
 
 model SearchResult {
   @field(1) id: string;
-  @field(2) type: string; // "task" | "artifact" | "project" | "agent" | "comment"
+  @field(2) type: string; // "task" | "artifact" | "project" | "agent" | "comment" | "belief"
   @field(3) title: string;
   @field(4) snippet: string;
 
@@ -1929,4 +1929,226 @@ interface RoleService {
   grantRole(request: GrantRoleRequest): GrantRoleResponse;
   revokeGrant(request: RevokeGrantRequest): RevokeGrantResponse;
   listGrants(request: ListGrantsRequest): ListGrantsResponse;
+}
+
+// ==== Shared memory & beliefs (M21, ADR-0014/0015/0016) ====
+//
+// Belief.scopeType/scopeId reuses ADR-0013's existing 'organization' |
+// 'team' | 'project' scope enum unchanged - no fourth, narrower tier
+// (ADR-0014). searchBeliefs, not listBeliefs/getBelief, is the primary
+// read path used by both an agent's capture-belief skill and the GUI's
+// search-first Memory screen. `embedding`/`queryEmbedding` are optional,
+// caller-supplied floats - unindexed and unused by v1's lexical-only
+// retriever, captured so nothing needs backfilling if/when a pluggable
+// VectorBeliefRetriever ships (ADR-0016).
+
+model Belief {
+  @field(1) id: string;
+  @field(2) orgId: string;
+  @field(3) scopeType: string; // 'organization' | 'team' | 'project'
+  @field(4) scopeId: string;
+  @field(5) statement: string;
+  @field(6) confidence: string; // 'low' | 'medium' | 'high'
+  @field(7) status: string; // 'active' | 'superseded' | 'retracted'
+  @field(8) supersedesBeliefId?: string;
+  @field(9) sourceKind: string; // 'agent' | 'user'
+  @field(10) sourceAgentId?: string;
+  @field(11) sourceUserId?: string;
+  @field(12) sourceTaskId?: string;
+  @field(13) sourceCommentId?: string;
+  @field(14) sourceTaskNoteId?: string;
+  @field(15) sourceArtifactId?: string;
+
+  // Denormalized "latest hop" for cheap display - the full promotion
+  // history is BeliefPromotion, reached via listBeliefPromotions.
+  @field(16) promotedFromScopeType?: string;
+
+  @field(17) promotedFromScopeId?: string;
+  @field(18) promotedBy?: string;
+  @field(19) promotedAt?: string;
+  @field(20) deletedAt?: string;
+  @field(21) createdAt: string;
+  @field(22) embedding?: float32[];
+}
+
+model BeliefRelation {
+  @field(1) id: string;
+  @field(2) beliefAId: string;
+  @field(3) beliefBId: string;
+  @field(4) relationType: string; // 'relates_to' | 'supports' | 'contradicts' | 'duplicates'
+  @field(5) createdBy: string;
+  @field(6) createdAt: string;
+}
+
+model BeliefPromotion {
+  @field(1) id: string;
+  @field(2) beliefId: string;
+  @field(3) fromScopeType: string;
+  @field(4) fromScopeId: string;
+  @field(5) toScopeType: string;
+  @field(6) toScopeId: string;
+  @field(7) promotedBy: string;
+  @field(8) promotedAt: string;
+  @field(9) note?: string;
+}
+
+model RecordBeliefRequest {
+  @field(1) orgId: string;
+  @field(2) scopeType: string;
+  @field(3) scopeId: string;
+  @field(4) statement: string;
+  @field(5) confidence?: string; // server defaults to 'medium' when omitted
+  @field(6) sourceTaskId?: string;
+  @field(7) sourceCommentId?: string;
+  @field(8) sourceTaskNoteId?: string;
+  @field(9) sourceArtifactId?: string;
+  @field(10) embedding?: float32[];
+}
+model RecordBeliefResponse {
+  @field(1) belief: Belief;
+}
+
+model GetBeliefRequest {
+  @field(1) id: string;
+}
+model GetBeliefResponse {
+  @field(1) belief: Belief;
+}
+
+model ListBeliefsRequest {
+  @field(1) scopeType: string;
+  @field(2) scopeId: string;
+  @field(3) page?: PageRequest;
+  @field(4) status?: string;
+  @field(5) confidence?: string;
+}
+model ListBeliefsResponse {
+  @field(1) beliefs: Belief[];
+  @field(2) page?: PageResponse;
+}
+
+model SearchBeliefsRequest {
+  @field(1) scopeType: string;
+  @field(2) scopeId: string;
+  @field(3) query: string;
+  @field(4) taskId?: string;
+  @field(5) status?: string;
+  @field(6) confidence?: string;
+  @field(7) queryEmbedding?: float32[];
+  @field(8) limit?: int32;
+}
+model SearchBeliefsResponse {
+  @field(1) beliefs: Belief[];
+}
+
+model UpdateBeliefRequest {
+  @field(1) id: string;
+
+  // Real proto3 presence, matching UpdateProjectRequest.description
+  // (M20-T03's lesson) - unset means "don't touch", explicit empty is
+  // rejected by the handler (a blank statement is not a meaningful
+  // clear, same reasoning UpdateProjectTemplateRequest.name uses).
+  @field(2) statement?: string;
+
+  @field(3) confidence?: string;
+}
+model UpdateBeliefResponse {
+  @field(1) belief: Belief;
+}
+
+model SupersedeBeliefRequest {
+  @field(1) id: string;
+  @field(2) statement: string;
+  @field(3) confidence?: string;
+  @field(4) sourceTaskId?: string;
+  @field(5) sourceCommentId?: string;
+  @field(6) sourceTaskNoteId?: string;
+  @field(7) sourceArtifactId?: string;
+  @field(8) embedding?: float32[];
+}
+model SupersedeBeliefResponse {
+  @field(1) belief: Belief; // the new belief; the superseded one is unchanged except status
+}
+
+model PromoteBeliefRequest {
+  @field(1) id: string;
+  @field(2) toScopeType: string;
+  @field(3) toScopeId: string;
+  @field(4) note?: string;
+}
+model PromoteBeliefResponse {
+  @field(1) belief: Belief;
+  @field(2) promotion: BeliefPromotion;
+}
+
+model RelateBeliefsRequest {
+  @field(1) beliefAId: string;
+  @field(2) beliefBId: string;
+  @field(3) relationType: string;
+}
+model RelateBeliefsResponse {
+  @field(1) relation: BeliefRelation;
+}
+
+model UnrelateBeliefsRequest {
+  @field(1) relationId: string;
+}
+model UnrelateBeliefsResponse {
+  @field(1) success: boolean;
+}
+
+model ListBeliefRelationsRequest {
+  @field(1) beliefId: string;
+}
+model ListBeliefRelationsResponse {
+  @field(1) relations: BeliefRelation[];
+}
+
+model ListBeliefPromotionsRequest {
+  @field(1) beliefId: string;
+}
+model ListBeliefPromotionsResponse {
+  @field(1) promotions: BeliefPromotion[];
+}
+
+model ArchiveBeliefRequest {
+  @field(1) id: string;
+}
+model ArchiveBeliefResponse {
+  @field(1) success: boolean;
+}
+
+model RestoreBeliefRequest {
+  @field(1) id: string;
+}
+model RestoreBeliefResponse {
+  @field(1) success: boolean;
+}
+
+model PurgeBeliefRequest {
+  @field(1) id: string;
+}
+model PurgeBeliefResponse {
+  @field(1) success: boolean;
+}
+
+interface MemoryService {
+  recordBelief(request: RecordBeliefRequest): RecordBeliefResponse;
+  getBelief(request: GetBeliefRequest): GetBeliefResponse;
+  listBeliefs(request: ListBeliefsRequest): ListBeliefsResponse;
+  searchBeliefs(request: SearchBeliefsRequest): SearchBeliefsResponse;
+  updateBelief(request: UpdateBeliefRequest): UpdateBeliefResponse;
+  supersedeBelief(request: SupersedeBeliefRequest): SupersedeBeliefResponse;
+  promoteBelief(request: PromoteBeliefRequest): PromoteBeliefResponse;
+  relateBeliefs(request: RelateBeliefsRequest): RelateBeliefsResponse;
+  unrelateBeliefs(request: UnrelateBeliefsRequest): UnrelateBeliefsResponse;
+  listBeliefRelations(
+    request: ListBeliefRelationsRequest,
+  ): ListBeliefRelationsResponse;
+  listBeliefPromotions(
+    request: ListBeliefPromotionsRequest,
+  ): ListBeliefPromotionsResponse;
+  archiveBelief(request: ArchiveBeliefRequest): ArchiveBeliefResponse;
+  restoreBelief(request: RestoreBeliefRequest): RestoreBeliefResponse;
+  purgeBelief(request: PurgeBeliefRequest): PurgeBeliefResponse;
 }

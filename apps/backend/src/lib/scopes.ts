@@ -19,6 +19,13 @@ export const AGENT_SCOPES = [
   'projects:read',
   'agents:read',
   'repos:read',
+  // M21-T03 (ADR-0015). No memory:admin scope exists for agents, in any
+  // form - promoteBelief/purgeBelief stay unreachable by a token
+  // regardless of what scopes it holds, the same categorical exclusion
+  // this file's own header note already applies to organization
+  // administration and token issuance.
+  'memory:read',
+  'memory:write',
 ] as const;
 
 // A type alias and an isAgentScope guard belong here too, but M04-T07 is what
@@ -118,5 +125,25 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     listPullRequests: 'repos:read',
     listBuilds: 'repos:read',
     listDeployments: 'repos:read',
+  },
+  // M21-T05 (ADR-0015, deferred from T03 - see scopes.ts note above).
+  // memory:admin has no agent-token form at all, so promoteBelief,
+  // archiveBelief, restoreBelief, and purgeBelief are deliberately absent
+  // here - the same categorical exclusion every other entity's own
+  // lifecycle ops already get (archiveProject/restoreProject/purgeProject,
+  // archiveArtifact/restoreArtifact/purgeArtifact, deleteTask/restoreTask/
+  // purgeTask are none of them agent-reachable either), not a narrower
+  // carve-out unique to belief promotion and purge.
+  memory: {
+    getBelief: 'memory:read',
+    listBeliefs: 'memory:read',
+    searchBeliefs: 'memory:read',
+    listBeliefRelations: 'memory:read',
+    listBeliefPromotions: 'memory:read',
+    recordBelief: 'memory:write',
+    updateBelief: 'memory:write',
+    supersedeBelief: 'memory:write',
+    relateBeliefs: 'memory:write',
+    unrelateBeliefs: 'memory:write',
   },
 };

@@ -520,3 +520,69 @@ export const idempotencyKeys = mysqlTable("idempotency_keys", {
       .on(table.principalKey, table.method, table.idempotencyKey),
   };
 });
+
+// M21 (ADR-0014/0015/0016). See the SQLite counterpart for the full
+// reasoning: scopeType/scopeId reuse ADR-0013's existing enum unchanged,
+// exactly one of sourceAgentId/sourceUserId is set, embedding is a
+// JSON-serialized float array stored as text for the same reason
+// apiTokens.scopes is - caller-supplied, unindexed, and unused by v1.
+export const beliefs = mysqlTable("beliefs", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  scopeType: varchar("scope_type", { length: 32 }).notNull(),
+  scopeId: varchar("scope_id", { length: 256 }).notNull(),
+  statement: varchar("statement", { length: 4096 }).notNull(),
+  confidence: varchar("confidence", { length: 16 }).notNull().default("medium"),
+  status: varchar("status", { length: 16 }).notNull().default("active"),
+  supersedesBeliefId: varchar("supersedes_belief_id", { length: 256 }).references((): AnyMySqlColumn => beliefs.id),
+  sourceKind: varchar("source_kind", { length: 16 }).notNull(),
+  sourceAgentId: varchar("source_agent_id", { length: 256 }).references(() => agents.id),
+  sourceUserId: varchar("source_user_id", { length: 256 }).references(() => users.id),
+  sourceTaskId: varchar("source_task_id", { length: 256 }).references(() => tasks.id),
+  sourceCommentId: varchar("source_comment_id", { length: 256 }).references(() => comments.id),
+  sourceTaskNoteId: varchar("source_task_note_id", { length: 256 }).references(() => taskNotes.id),
+  sourceArtifactId: varchar("source_artifact_id", { length: 256 }).references(() => artifacts.id),
+  promotedFromScopeType: varchar("promoted_from_scope_type", { length: 32 }),
+  promotedFromScopeId: varchar("promoted_from_scope_id", { length: 256 }),
+  promotedBy: varchar("promoted_by", { length: 256 }).references(() => users.id),
+  promotedAt: timestamp("promoted_at"),
+  embedding: mediumtext("embedding"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+}, (table) => {
+  return {
+    scopeIdx: index("beliefs_scope_idx").on(table.scopeType, table.scopeId),
+    orgIdIdx: index("beliefs_org_id_idx").on(table.orgId),
+    statusIdx: index("beliefs_status_idx").on(table.status),
+  };
+});
+
+export const beliefRelations = mysqlTable("belief_relations", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  beliefAId: varchar("belief_a_id", { length: 256 }).notNull().references(() => beliefs.id),
+  beliefBId: varchar("belief_b_id", { length: 256 }).notNull().references(() => beliefs.id),
+  relationType: varchar("relation_type", { length: 32 }).notNull(),
+  createdBy: varchar("created_by", { length: 256 }).notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    beliefAIdx: index("belief_relations_belief_a_id_idx").on(table.beliefAId),
+    beliefBIdx: index("belief_relations_belief_b_id_idx").on(table.beliefBId),
+  };
+});
+
+export const beliefPromotions = mysqlTable("belief_promotions", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  beliefId: varchar("belief_id", { length: 256 }).notNull().references(() => beliefs.id),
+  fromScopeType: varchar("from_scope_type", { length: 32 }).notNull(),
+  fromScopeId: varchar("from_scope_id", { length: 256 }).notNull(),
+  toScopeType: varchar("to_scope_type", { length: 32 }).notNull(),
+  toScopeId: varchar("to_scope_id", { length: 256 }).notNull(),
+  promotedBy: varchar("promoted_by", { length: 256 }).notNull().references(() => users.id),
+  promotedAt: timestamp("promoted_at").defaultNow().notNull(),
+  note: varchar("note", { length: 1024 }),
+}, (table) => {
+  return {
+    beliefIdIdx: index("belief_promotions_belief_id_idx").on(table.beliefId),
+  };
+});

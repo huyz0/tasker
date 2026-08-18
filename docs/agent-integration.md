@@ -78,7 +78,7 @@ logged in, with their permissions.
 
 ## 3. Scopes
 
-A token carries some of these eight. They are the complete set — there are no
+A token carries some of these ten. They are the complete set — there are no
 others, and an unrecognised scope is refused at creation rather than silently
 granting nothing.
 
@@ -92,6 +92,8 @@ granting nothing.
 | `projects:read` | read projects, templates and labels |
 | `agents:read` | read the agent and role catalogue |
 | `repos:read` | read repository links, builds and deployments |
+| `memory:read` | search and read shared beliefs (§9) |
+| `memory:write` | record, update, supersede and relate beliefs (§9) |
 
 Ask for the fewest that let your worker do its job. A missing scope is an
 explicit refusal naming what is missing, so it is cheap to discover and add:
@@ -111,6 +113,10 @@ Some things are refused to every token, whatever scopes it holds:
 - **Anything destructive** — archiving, restoring or purging projects, tasks,
   artifacts or agents.
 - **Reassigning work.** An agent can be assigned a task; it cannot assign one.
+- **Promoting, archiving, restoring or purging a belief** (§9). There is no
+  `memory:admin` scope for a token in any form — recording, searching and
+  updating beliefs is fine, but moving one to a wider scope or removing it
+  is human-only.
 
 These are not scopes that were left out. They are refused categorically, and
 adding a scope for them is a decision someone has to make deliberately.
@@ -228,7 +234,67 @@ Operators can change the limits with `AGENT_RATE_LIMIT_BURST` and
 - If you suspect a leak, revoke first and investigate second. Revoking one token
   affects nothing else.
 
+## 9. Shared memory (beliefs)
+
+Tasker keeps a shared belief store per project/team/organization (M21,
+`ADR-0014`) — durable facts, conventions, and gotchas that outlive any one
+task, traceable back to who or what asserted them and when. It exists so an
+agent (or a person) working the same area later doesn't have to rediscover
+what a previous one already learned.
+
+This section is the same guidance as the `capture-belief` skill
+(`.agents/skills/capture-belief/SKILL.md`), for an agent driving the CLI
+directly rather than through a skill-aware harness — read that file if your
+harness does support skills; it has a worked example.
+
+**Search before recording.** A belief store is a knowledge base you query,
+not a table you page through:
+
+```bash
+tasker memory search "flaky CI retry" --scope-type project --scope-id proj-1
+```
+
+`--scope-type` defaults to `project`; `--scope-id` falls back to
+`TASKER_PROJECT_ID`/`TASKER_ORG_ID` for project/organization scope, the same
+convention `--project`/`--org` already use elsewhere in this CLI.
+
+**Record what's worth keeping** — a convention, a gotcha, a decision and its
+reasoning, not task status (that's still `tasks note-add`/`comment-add`):
+
+```bash
+tasker memory record "CI retries flaky network tests up to twice before failing the build." \
+  --org org-1 --scope-type project --scope-id proj-1 \
+  --confidence high --source-task task-42
+```
+
+Provenance is derived from your token automatically — there is no field to
+set naming yourself as the source, the same way a comment or task note is
+already attributed to whichever token wrote it (§4). `--source-task` (or
+`--source-comment`/`--source-note`/`--source-artifact`) is optional evidence
+on top of that: which task, comment, note, or artifact this came from.
+
+**Correct, don't duplicate**, when something you already recorded turns out
+wrong or incomplete:
+
+```bash
+tasker memory supersede blf-abc123 "Corrected statement." --confidence high
+```
+
+The old belief stops appearing in default search results but stays in
+history, linked to its replacement.
+
+**What no token can do** here, same as the rest of §3: `memory promote`,
+`memory archive`, `memory restore`, and `memory purge` all require
+`memory:admin`, which has no token form at all — every one of them returns
+`permission_denied` for an agent regardless of scopes held. Moving a belief
+to a wider scope or removing it stays human-reviewed on purpose.
+
 ## See also
 
 - `ADR-0008` in `.specs/adr/` — why tokens look the way they do, and what was
   rejected.
+- `ADR-0014`, `ADR-0015`, `ADR-0016` in `.specs/adr/` — shared memory's scope
+  model, why agent tokens gain `memory:read`/`memory:write` but no admin
+  form, and why retrieval is lexical by default.
+- `.agents/skills/capture-belief/SKILL.md` — the same §9 guidance, written
+  as a skill for a harness that supports invoking one.

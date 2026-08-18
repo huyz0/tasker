@@ -22,6 +22,7 @@ describe("Search Handler", () => {
   let ctx: any;
   let orgId: string;
   let projectId: string;
+  let userId: string;
 
   beforeEach(async () => {
     const setup = await setupIntegrationTest();
@@ -29,7 +30,7 @@ describe("Search Handler", () => {
     impl = captureServiceImpl(db);
 
     orgId = "org-" + crypto.randomUUID();
-    const userId = "user-" + crypto.randomUUID();
+    userId = "user-" + crypto.randomUUID();
     const templateId = "tmpl-" + crypto.randomUUID();
     projectId = "proj-" + crypto.randomUUID();
     const folderId = "fld-" + crypto.randomUUID();
@@ -51,6 +52,28 @@ describe("Search Handler", () => {
     const types = res.results.map((r: any) => r.type);
     expect(types).toContain("task");
     expect(types).toContain("artifact");
+  });
+
+  it("finds a matching active belief but not a superseded one (M21-T06)", async () => {
+    const activeId = "blf-" + crypto.randomUUID();
+    const supersededId = "blf-" + crypto.randomUUID();
+    await db.insert(schemaSqlite.beliefs).values({
+      id: activeId, orgId, scopeType: "project", scopeId: projectId,
+      statement: "Findable belief statement", confidence: "medium", status: "active",
+      sourceKind: "user", sourceUserId: userId, createdAt: new Date(),
+    });
+    await db.insert(schemaSqlite.beliefs).values({
+      id: supersededId, orgId, scopeType: "project", scopeId: projectId,
+      statement: "Findable superseded belief", confidence: "medium", status: "superseded",
+      sourceKind: "user", sourceUserId: userId, createdAt: new Date(),
+    });
+
+    const res = await impl.universalSearch({ query: "Findable", orgId }, ctx);
+    const beliefHit = res.results.find((r: any) => r.type === "belief");
+    expect(beliefHit).toBeDefined();
+    expect(beliefHit.id).toBe(activeId);
+    expect(beliefHit.title).toContain("Findable belief statement");
+    expect(res.results.some((r: any) => r.id === supersededId)).toBe(false);
   });
 
   it("does not return results from a different org", async () => {
@@ -490,9 +513,9 @@ describe("Search Handler", () => {
   });
 
   it("fills the page from the types that matched, rather than reserving space for those that did not", async () => {
-    // An even split of the limit across five types looks fair and under-fills
-    // every page: a term matching only tasks used to return ceil(limit/5)
-    // results and a next cursor. The share is redistributed instead.
+    // An even split of the limit across every type looks fair and under-fills
+    // every page: a term matching only tasks used to return just tasks' even
+    // share and a next cursor. The share is redistributed instead.
     await db.insert(schemaSqlite.tasks).values(
       Array.from({ length: 9 }, (_, i) => ({
         id: `tsk-fill-${i}-` + crypto.randomUUID(), projectId,

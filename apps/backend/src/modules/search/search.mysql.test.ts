@@ -48,7 +48,7 @@ async function withMysqlFixture(key: string) {
   await db.insert(schemaMysql.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", key });
   await db.insert(schemaMysql.folders).values({ id: folderId, projectId, name: "Folder" });
 
-  return { db, impl, orgId, projectId, folderId, ctx: makeAuthContext(userId) };
+  return { db, impl, orgId, projectId, folderId, userId, ctx: makeAuthContext(userId) };
 }
 
 /** The MySQL branch is only selected when STANDALONE is not "true". */
@@ -160,6 +160,31 @@ testIf("universalSearch (mysql FULLTEXT)", () => {
       expect(comment).toBeDefined();
       expect(comment.parentType).toBe("task");
       expect(comment.parentId).toBe(taskId);
+    });
+  });
+
+  it("finds a matching active belief but not a superseded one (M21-T06)", async () => {
+    await asClustered(async () => {
+      const { db, impl, orgId, projectId, userId, ctx } = await withMysqlFixture("SRCH6");
+
+      const activeId = "blf-" + crypto.randomUUID();
+      const supersededId = "blf-" + crypto.randomUUID();
+      await db.insert(schemaMysql.beliefs).values({
+        id: activeId, orgId, scopeType: "project", scopeId: projectId,
+        statement: "Findable belief statement", confidence: "medium", status: "active",
+        sourceKind: "user", sourceUserId: userId,
+      });
+      await db.insert(schemaMysql.beliefs).values({
+        id: supersededId, orgId, scopeType: "project", scopeId: projectId,
+        statement: "Findable superseded belief", confidence: "medium", status: "superseded",
+        sourceKind: "user", sourceUserId: userId,
+      });
+
+      const res: any = await impl.universalSearch({ query: "Findable", orgId }, ctx);
+      const beliefHit = res.results.find((r: any) => r.type === "belief");
+      expect(beliefHit).toBeDefined();
+      expect(beliefHit.id).toBe(activeId);
+      expect(res.results.some((r: any) => r.id === supersededId)).toBe(false);
     });
   });
 

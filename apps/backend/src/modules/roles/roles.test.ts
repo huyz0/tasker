@@ -23,10 +23,12 @@ describe("Roles Handler Integration Logic", () => {
     await seedOrgWithAdmin(db, { orgId, userId: adminId });
   });
 
-  test("listPermissions returns the full 32-key vocabulary", async () => {
+  test("listPermissions returns the full 35-key vocabulary", async () => {
+    // M21-T03: 32 (ADR-0013) + memory:read/memory:write/memory:admin (ADR-0014).
     const res: any = await handler.listPermissions({ orgId }, ctx);
-    expect(res.permissions).toHaveLength(32);
+    expect(res.permissions).toHaveLength(35);
     expect(res.permissions.map((p: any) => p.key)).toContain("task:write");
+    expect(res.permissions.map((p: any) => p.key)).toContain("memory:admin");
     expect(res.permissions.every((p: any) => p.description.length > 0)).toBe(true);
   });
 

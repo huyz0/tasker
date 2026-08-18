@@ -652,3 +652,88 @@ export const idempotencyKeys = sqliteTable("idempotency_keys", {
       .on(table.principalKey, table.method, table.idempotencyKey),
   };
 });
+
+/**
+ * M21 (ADR-0014/0015/0016). scopeType/scopeId reuse ADR-0013's existing
+ * 'organization' | 'team' | 'project' enum unchanged - no fourth,
+ * narrower tier. Exactly one of sourceAgentId/sourceUserId is set,
+ * matching Task's assignee pattern; sourceTaskId/sourceCommentId/
+ * sourceTaskNoteId/sourceArtifactId are secondary, optional evidence
+ * links, matching the polymorphic-link precedent from task-artifact
+ * linking. embedding is a JSON-serialized float array, stored as text
+ * for the same reason apiTokens.scopes is - both dialects need to agree
+ * on the shape and the array is small enough to read whole - and is
+ * caller-supplied, unindexed, and unused by v1's LexicalBeliefRetriever
+ * (ADR-0016); captured now so nothing needs backfilling later.
+ */
+export const beliefs = sqliteTable("beliefs", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  scopeType: text("scope_type").notNull(),
+  scopeId: text("scope_id").notNull(),
+  statement: text("statement").notNull(),
+  confidence: text("confidence").notNull().default("medium"),
+  status: text("status").notNull().default("active"),
+  supersedesBeliefId: text("supersedes_belief_id").references((): AnySQLiteColumn => beliefs.id),
+  sourceKind: text("source_kind").notNull(),
+  sourceAgentId: text("source_agent_id").references(() => agents.id),
+  sourceUserId: text("source_user_id").references(() => users.id),
+  sourceTaskId: text("source_task_id").references(() => tasks.id),
+  sourceCommentId: text("source_comment_id").references(() => comments.id),
+  sourceTaskNoteId: text("source_task_note_id").references(() => taskNotes.id),
+  sourceArtifactId: text("source_artifact_id").references(() => artifacts.id),
+  // Denormalized "latest hop" for cheap display - the full history is
+  // beliefPromotions, reached via listBeliefPromotions.
+  promotedFromScopeType: text("promoted_from_scope_type"),
+  promotedFromScopeId: text("promoted_from_scope_id"),
+  promotedBy: text("promoted_by").references(() => users.id),
+  promotedAt: integer("promoted_at", { mode: "timestamp" }),
+  embedding: text("embedding"),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    scopeIdx: index("beliefs_scope_idx").on(table.scopeType, table.scopeId),
+    orgIdIdx: index("beliefs_org_id_idx").on(table.orgId),
+    statusIdx: index("beliefs_status_idx").on(table.status),
+  };
+});
+
+/**
+ * "Map them together" - a lightweight edge table rather than a graph
+ * database (ADR-0014's shape section).
+ */
+export const beliefRelations = sqliteTable("belief_relations", {
+  id: text("id").primaryKey(),
+  beliefAId: text("belief_a_id").notNull().references(() => beliefs.id),
+  beliefBId: text("belief_b_id").notNull().references(() => beliefs.id),
+  relationType: text("relation_type").notNull(),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    beliefAIdx: index("belief_relations_belief_a_id_idx").on(table.beliefAId),
+    beliefBIdx: index("belief_relations_belief_b_id_idx").on(table.beliefBId),
+  };
+});
+
+/**
+ * Append-only audit log - the authoritative "who promoted what, when"
+ * trail. Belief's own promotedBy/promotedAt/promotedFrom* columns are
+ * just the latest hop, denormalized for cheap display.
+ */
+export const beliefPromotions = sqliteTable("belief_promotions", {
+  id: text("id").primaryKey(),
+  beliefId: text("belief_id").notNull().references(() => beliefs.id),
+  fromScopeType: text("from_scope_type").notNull(),
+  fromScopeId: text("from_scope_id").notNull(),
+  toScopeType: text("to_scope_type").notNull(),
+  toScopeId: text("to_scope_id").notNull(),
+  promotedBy: text("promoted_by").notNull().references(() => users.id),
+  promotedAt: integer("promoted_at", { mode: "timestamp" }).notNull(),
+  note: text("note"),
+}, (table) => {
+  return {
+    beliefIdIdx: index("belief_promotions_belief_id_idx").on(table.beliefId),
+  };
+});
