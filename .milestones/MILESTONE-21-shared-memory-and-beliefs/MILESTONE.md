@@ -233,13 +233,26 @@ model); a fourth ("agent-private") scope tier below `project`
         cli:vet`/`cli:format`/`cli:build`/`cli:test`/`cli:coverage`;
         `moon check --all` 27/27.
 
-- [ ] **M21-T09** — Write `.agents/skills/capture-belief/SKILL.md` and
+- [x] **M21-T09** — Write `.agents/skills/capture-belief/SKILL.md` and
       update `docs/agent-integration.md` with the same guidance for
       non-Claude agents.
       - Files: `.agents/skills/capture-belief/SKILL.md`,
-        `docs/agent-integration.md`
-      - Verify: `moon run tasker:docs-lint`; a worked example in the
-        skill produces a correct CLI invocation when followed literally.
+        `.agents/workflows/capture-belief.md`,
+        `.claude/skills/capture-belief/SKILL.md`,
+        `.claude/commands/capture-belief.md` (the latter three are
+        `skill-forge sync`-style adapters, hand-written since no sync
+        run was available - `tasker:skills-check`'s pre-commit gate
+        requires all four for a new skill, discovered by the gate
+        itself rather than assumed; see this task's `PROGRESS.md` entry),
+        `docs/agent-integration.md` (new §9 "Shared memory (beliefs)",
+        scopes table extended to ten, "What no token can do" extended)
+      - Verify: `moon run tasker:docs-lint` clean;
+        `node .agents/skills/skill-forge/scripts/validate.mjs` clean (0
+        errors, 0 warnings); every flag named in the skill's worked
+        example (`--org`/`--scope-type`/`--scope-id`/`--confidence`/
+        `--source-task`) checked against `tasker memory
+        record/search/supersede/relate --help` on the actual built
+        M21-T08 binary, not just read against the source.
 
 - [ ] **M21-T10** — Backfill remaining test coverage; run the full
       milestone verification suite.

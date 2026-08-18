@@ -516,3 +516,75 @@
   hand rather than assumed correct). `moon check --all` 27/27 clean.
 - **Next**: M21-T09 — `.agents/skills/capture-belief/SKILL.md` +
   `docs/agent-integration.md` updates.
+
+## M21-T09 — Agent skill + docs
+
+- **Status**: Done
+- **Changed**: `.agents/skills/capture-belief/SKILL.md` (new) - a
+  worker-agent playbook (frontmatter `name`/`description`, matching every
+  other skill's format), distinct in audience from every existing skill in
+  `.agents/skills/` (which are all dev-workflow skills for building
+  *tasker itself* - `spec-shape`, `milestone-plan`, etc.): this one is for
+  an agent doing task work *through* Tasker, driving `tasker memory` while
+  it works. Covers when a moment is capturable (a durable fact, not task
+  status - that stays `tasks note-add`/`comment-add`), search-before-record,
+  record with real `--source-*` provenance, supersede over duplicate,
+  relate over disconnected, and a "never do these as an agent" list
+  (promote/archive/restore/purge - ADR-0015) with a worked example.
+  `docs/agent-integration.md`: extended the scopes table (§3) from eight
+  rows to ten (`memory:read`/`memory:write`), extended "What no token can
+  do" with the belief-lifecycle exclusion, and added a new §9 "Shared
+  memory (beliefs)" carrying the same guidance for an agent driving the
+  CLI directly without a skill-aware harness, explicitly cross-linking to
+  the skill file (and vice versa) rather than letting the two drift
+  independently.
+- **Extra, beyond the task's own file list, and why**: first attempted to
+  commit with only `.agents/skills/capture-belief/SKILL.md` +
+  `docs/agent-integration.md`, matching the task's literal file list.
+  `git commit`'s own pre-commit hook runs a gate this session hadn't
+  exercised before (`tasker:skills-check`,
+  `.agents/skills/skill-forge/scripts/validate.mjs`) and it failed with
+  two real errors, not a formatting nit: the skill was missing a required
+  `# Output Format` section (every skill needs one, per
+  `.agents/protocols/skill-authoring.md`'s contract - checked, not
+  invented after the fact), and had no workflow forwarding to it
+  (`.agents/workflows/capture-belief.md` expected). The validator's own
+  "host adapter parity" check further requires a matching
+  `.claude/commands/<name>.md` for every workflow and a
+  `.claude/skills/<name>/SKILL.md` for every skill - four files total for
+  one new skill, not two, learned from the gate itself rather than
+  assumed from `spec-shape`'s own directory listing alone. Added all
+  four (`.agents/workflows/capture-belief.md`,
+  `.claude/commands/capture-belief.md`,
+  `.claude/skills/capture-belief/SKILL.md`, plus the `# Output Format`
+  section in the main skill file), each hand-written to match an
+  existing skill's exact generated shape (`markdown-lint`'s adapters
+  as the template - a skill with no `AskUserQuestion`/autonomous-mode
+  distinction, the same shape `capture-belief` needed) since no
+  `skill-forge sync` run was available. Also trimmed the skill body
+  from 7268 to 5998 chars to clear a real (non-blocking) tier-1 budget
+  warning the same validator run surfaced, rather than leaving a known,
+  easily-fixed warning in place.
+- **Verified**: `moon run tasker:docs-lint` clean (211 files, up from
+  207 - four new/moved markdown files). `node .agents/skills/skill-forge/
+  scripts/validate.mjs` clean: 0 errors, 0 warnings (17 skills, 20
+  workflows). The pre-commit `tasker:skills-check` gate also runs
+  `sync-adapters.mjs --check`, which caught that the hand-written
+  `.claude/skills/capture-belief/SKILL.md` didn't byte-match what the
+  real generator produces (a `name:` frontmatter field and slightly
+  different forwarding prose) - fixed by running the real
+  `node .agents/skills/skill-forge/scripts/sync-adapters.mjs` (no
+  `--check`) instead of continuing to hand-guess the template, which is
+  what every other skill's adapter in this repo is actually produced by.
+  Built the actual M21-T08 CLI binary (`go build`) and ran
+  `--help` on `memory record`/`search`/`supersede`/`relate` to confirm
+  every flag named in the skill's worked example (`--org`,
+  `--scope-type`, `--scope-id`, `--confidence`, `--source-task`) is
+  real, rather than trusting the source read alone - a live end-to-end
+  run (issuing a token, running the worked example against a live
+  backend) was not attempted since no backend was running in this
+  session and standing one up purely to re-prove flags already
+  cross-checked against T08's own Go source and this exact `--help`
+  output would have been redundant, not more rigorous.
+- **Next**: M21-T10 — backfill remaining test coverage; run the full
+  milestone verification suite (`moon check --all` 27/27).
