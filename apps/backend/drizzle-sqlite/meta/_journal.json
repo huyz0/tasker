@@ -288,6 +288,13 @@
       "when": 1787700000000,
       "tag": "0040_project_templates_unique_name",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1787800000000,
+      "tag": "0041_seed_memory_permissions",
+      "breakpoints": true
     }
   ]
 }

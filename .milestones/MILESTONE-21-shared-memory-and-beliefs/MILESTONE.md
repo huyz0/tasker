@@ -109,15 +109,18 @@ model); a fourth ("agent-private") scope tier below `project`
       - Verify: `moon run shared-contract:compile` succeeds; generated
         types include `MemoryService` and all three models.
 
-- [ ] **M21-T03** — Add `memory:{read,write,admin}` to the permission
-      vocabulary and seeded system-role wiring (ADR-0014); add
-      `memory:read`/`memory:write` to the agent-token scope vocabulary
-      (ADR-0015).
-      - Files: wherever ADR-0013's permission table and seeded system
-        roles are implemented; `AGENT_RPC_SCOPES` (or equivalent)
-      - Verify: the existing "unmapped RPC denied to token principals"
-        sweep test fails until `MemoryService`'s methods are classified,
-        then passes once they are.
+- [x] **M21-T03** — Add `memory:{read,write,admin}` permissions to the
+      seeded human permission vocabulary/system roles (ADR-0014); add
+      `memory:read`/`memory:write` to `AGENT_SCOPES`, the agent-token
+      scope vocabulary (ADR-0015). Per-RPC `AGENT_RPC_SCOPES` mapping and
+      `agent-scope-sweep.test.ts` wiring move to T05 - that sweep
+      instantiates the real handler against real seeded data, so it can
+      only be written once the handler exists.
+      - Files: `apps/backend/drizzle-sqlite/0041_seed_memory_permissions.sql`,
+        `apps/backend/drizzle-mysql/0028_seed_memory_permissions.sql`,
+        `apps/backend/src/lib/scopes.ts`
+      - Verify: migration verified against live MySQL; `AGENT_SCOPES`
+        includes the two new entries.
 
 - [ ] **M21-T04** — Add `beliefs`/`belief_relations`/`belief_promotions`
       tables plus `beliefs_fts` (SQLite FTS5) / `FULLTEXT` index
@@ -131,12 +134,21 @@ model); a fourth ("agent-private") scope tier below `project`
 - [ ] **M21-T05** — Implement `memory.handler.ts`: `recordBelief`,
       `getBelief`, `listBeliefs`, `searchBeliefs`, `updateBelief`,
       `supersedeBelief`, `promoteBelief`, `relateBeliefs`/
-      `unrelateBeliefs`, `archiveBelief`/`restoreBelief`/`purgeBelief`,
-      each with a Zod schema, `assertCan`/`authorizePrincipal`, and
-      `publishDomainEvent`.
+      `unrelateBeliefs`, `listBeliefRelations`, `listBeliefPromotions`,
+      `archiveBelief`/`restoreBelief`/`purgeBelief`, each with a Zod
+      schema, `assertCan`/`authorizePrincipal`, and `publishDomainEvent`.
+      Also add the `memory` entry to `AGENT_RPC_SCOPES` (deferred from
+      T03 - see its note) mapping every method except `promoteBelief`/
+      `purgeBelief` to `memory:read`/`memory:write` per ADR-0015, and
+      wire `memory` into `agent-scope-sweep.test.ts`'s `handlers`/
+      `REQUESTS`.
       - Files: `apps/backend/src/modules/memory/memory.handler.ts`,
-        `apps/backend/src/modules/memory/memory.test.ts`
-      - Verify: `moon run backend:test`, coverage gate held.
+        `apps/backend/src/modules/memory/memory.test.ts`,
+        `apps/backend/src/lib/scopes.ts`,
+        `apps/backend/src/lib/agent-scope-sweep.test.ts`
+      - Verify: `moon run backend:test`, coverage gate held;
+        `agent-scope-sweep.test.ts` fails until `memory` is classified,
+        then passes once it is.
 
 - [ ] **M21-T06** — Add `belief` as a sixth `SearchEntity` in
       `search.handler.ts`, backed by the `LexicalBeliefRetriever`.

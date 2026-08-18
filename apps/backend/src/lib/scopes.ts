@@ -19,6 +19,13 @@ export const AGENT_SCOPES = [
   'projects:read',
   'agents:read',
   'repos:read',
+  // M21-T03 (ADR-0015). No memory:admin scope exists for agents, in any
+  // form - promoteBelief/purgeBelief stay unreachable by a token
+  // regardless of what scopes it holds, the same categorical exclusion
+  // this file's own header note already applies to organization
+  // administration and token issuance.
+  'memory:read',
+  'memory:write',
 ] as const;
 
 // A type alias and an isAgentScope guard belong here too, but M04-T07 is what

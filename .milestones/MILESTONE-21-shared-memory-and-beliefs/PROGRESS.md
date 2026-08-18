@@ -73,3 +73,39 @@
 - **Next**: M21-T03 — add `memory:{read,write,admin}` to the permission
   vocabulary and `memory:read`/`memory:write` to the agent-token scope
   vocabulary.
+
+## M21-T03 — RBAC: memory permission family + agent-token scopes
+
+- **Status**: done
+- **Date**: 2026-08-18
+- **Changed**: `apps/backend/drizzle-sqlite/0041_seed_memory_permissions.sql`,
+  `apps/backend/drizzle-mysql/0028_seed_memory_permissions.sql` (new,
+  both dialects, following `0034`/`0021`'s exact `INSERT OR IGNORE`/
+  `INSERT IGNORE` + re-run-the-wildcard-`SELECT`s pattern so only the
+  three new keys land, idempotently), `meta/_journal.json` in both
+  migration folders, `apps/backend/src/lib/scopes.ts` (`memory:read`/
+  `memory:write` added to `AGENT_SCOPES`), `apps/backend/src/modules/
+  roles/roles.test.ts` (32→35-key vocabulary assertion updated).
+- **Verified**: `bun test` (SQLite, standalone) - 544/544 across the four
+  RBAC-adjacent test files, including the updated 35-key assertion.
+  Verified against live MySQL: `docker compose up -d mysql`,
+  `TASKER_MYSQL_INTEGRATION=1 bun test src/db/db.mysql.test.ts`, then
+  `docker exec tasker-mysql-1 mysql ... -e "SELECT COUNT(*) FROM
+  permissions"` → 35, and a `role_permissions` count-by-role query
+  confirming viewer=1 (`memory:read`), member=2 (`+write`), admin=3
+  (`+admin`), owner=3 - the exact tiering ADR-0014 specifies, produced
+  by the wildcard `LIKE` pattern with zero new logic. `moon check --all`
+  27/27.
+- **Notes**: Deliberately did **not** touch `policy.test.ts`'s exhaustive
+  role×permission×scope matrix (M10-T13) - it parses permission keys
+  directly out of `0034_seed_system_roles_and_migrate_grants.sql` by
+  filename, so a new, separate migration file for the memory family
+  doesn't feed it and the matrix keeps validating exactly what it was
+  built to validate (the original 32-key ADR-0013 rollout). Deferred the
+  `AGENT_RPC_SCOPES` per-RPC mapping and `agent-scope-sweep.test.ts`
+  wiring to T05 (updated `MILESTONE.md` to say so explicitly) -
+  that sweep instantiates the real handler against real seeded data, so
+  it can only be written once `memory.handler.ts` exists; attempting it
+  here would mean either a fake/stub handler or a broken import.
+- **Next**: M21-T04 — `beliefs`/`belief_relations`/`belief_promotions`
+  schema + migrations, both dialects.
