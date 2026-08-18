@@ -438,3 +438,81 @@
 - **Next**: M21-T08 — `apps/cli/cmd/memory.go`: `tasker memory search`
   as the primary command, plus record/get/list/update/supersede/
   promote/relate/archive/restore/purge, `--json` parity.
+
+## M21-T08 — CLI: cmd/memory.go
+
+- **Status**: Done
+- **Changed**: `apps/cli/cmd/memory.go` (new - `memory search` as the
+  primary command per ADR-0016's own framing, plus
+  record/get/list/update/supersede/promote/relate/unrelate/
+  list-relations/list-promotions/archive/restore/purge; a shared
+  `resolveScope` helper reads `--scope-type`/`--scope-id` with the same
+  `TASKER_PROJECT_ID`/`TASKER_ORG_ID` env-var fallback convention
+  `--project`/`--org` already use elsewhere in this CLI - project scope
+  falls back to `TASKER_PROJECT_ID`, organization scope falls back to
+  `TASKER_ORG_ID` since the scope *is* the org in that case, team scope
+  has no fallback since no `TASKER_TEAM_ID` convention exists anywhere
+  else in this CLI either). `apps/cli/internal/backend/clients.go` gained
+  `NewMemoryServiceClient`. `apps/cli/cmd/memory_test.go` (new, 20 tests
+  against a real `httptest` server + a fake `MemoryServiceHandler`,
+  matching `teams_test.go`/`search_test.go`'s established shape).
+- **Design decisions made while implementing**:
+  - **`memory:admin`-gated commands (`promote`/`archive`/`restore`/
+    `purge`) get no special client-side handling.** They're plain
+    commands like any other - an agent token gets `PermissionDenied`
+    from the backend (ADR-0015: `memory:admin` has no token form at
+    all), the same way `projects delete`'s own admin-only RPCs already
+    behave for one. No CLI-side "this needs a human" check was added;
+    the backend is the single source of truth for that refusal, matching
+    every other admin-gated command already in this codebase.
+  - **`resolveScope`'s TASKER_TEAM_ID gap is real, not an oversight**:
+    checked whether this CLI has an existing `TASKER_TEAM_ID` convention
+    to mirror before writing the helper - it does not (`teams.go`'s own
+    commands take a team id as a positional argument, never via an env
+    var) - so team-scoped `memory search`/`record`/`list` require an
+    explicit `--scope-id` with no fallback, which is the honest
+    reflection of "no such env var exists," not a narrower feature than
+    project/organization scope.
+- **Errors and fixes**: Building the test suite surfaced two real
+  flag-leak gaps in `memory_test.go` itself, caught by running
+  `go test ./cmd/... -shuffle=on -count=5` (this session's own
+  established verification step for CLI tests sharing package-level
+  `cobra.Command` singletons, per M20-T10's precedent) rather than
+  trusting the default declaration-order pass:
+  1. `TestMemoryRecordCmdForwardsSourceLinks` set `--org org_1` via args
+     but never reset it, so a later test expecting `--org` to be empty
+     (`TestMemoryRecordCmdRequiresOrg`) could pass or fail depending on
+     shuffle order. Fixed by adding the reset to that test's cleanup,
+     following M20-T10's own `t.Cleanup(...)` pattern.
+  2. `TestMemoryUpdateCmdRequiresAField` assumed `--statement`/
+     `--confidence` were unset, but `cmd.Flags().Changed(name)` never
+     resets itself once true - `Set()` can put the *value* back to `""`,
+     but not `Changed`, for the lifetime of the package-level command
+     singleton. `TestMemoryUpdateCmd` (declared just above it) sets
+     `--confidence`, permanently marking it `Changed`. Fixed the same way
+     `projects_test.go`'s `TestProjectsUpdateCommand` already documents
+     and fixes the identical class of bug: reset `flag.Changed = false`
+     directly via `cmd.Flags().Lookup(name).Changed = false` at the start
+     of the test that needs `Changed()` to read false, since no public
+     API undoes it.
+  Also discovered, not fixed: running the *entire* `cmd` package under
+  `-shuffle=on` surfaces pre-existing flag-leak failures in several
+  unrelated files (`tasks_test.go`, `artifacts_test.go`,
+  `auth_token_test.go`) that predate this task. The default
+  (non-shuffled) order - what `moon run cli:test`/CI actually runs -
+  passes cleanly for the whole package, and fixing shuffle-order safety
+  package-wide is a real, separate, cross-cutting task of its own, not
+  something to absorb into M21-T08's scope.
+- **Verified**: `go build ./...`, `go vet ./...`, `gofmt -l .` (clean),
+  `go test ./cmd/...` (all tests including the 20 new ones), `go test
+  ./cmd/... -run TestMemory -shuffle=on -count=5` (0 failures across 5
+  shuffled runs - order-independent). `moon run
+  cli:vet`/`cli:format`/`cli:build`/`cli:test`/`cli:coverage` all clean;
+  `memory.go`'s three named top-level functions
+  (`resolveScope`/`printBelief`/`init`) at 100%, `cmd` package total
+  96.5% (`go tool cover -func`, scoped to `./cmd/...` directly rather
+  than trusting `moon run cli:coverage`'s output, which returned a
+  suspiciously-stale cached result on first attempt - re-verified by
+  hand rather than assumed correct). `moon check --all` 27/27 clean.
+- **Next**: M21-T09 — `.agents/skills/capture-belief/SKILL.md` +
+  `docs/agent-integration.md` updates.

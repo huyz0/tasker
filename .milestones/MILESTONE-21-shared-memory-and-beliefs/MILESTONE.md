@@ -217,12 +217,21 @@ model); a fourth ("agent-private") scope tier below `project`
         the other two safely wasn't possible within this task's own file
         list; `jest-axe` clean on the populated state.
 
-- [ ] **M21-T08** — Build `apps/cli/cmd/memory.go`: `tasker memory
-      search/record/get/list/update/supersede/promote/relate/archive/
-      restore/purge`, `--json` parity, proto3-optional flags via
-      `cmd.Flags().Changed()`.
+- [x] **M21-T08** — Build `apps/cli/cmd/memory.go`: `tasker memory
+      search` (primary command) plus record/get/list/update/supersede/
+      promote/relate/unrelate/list-relations/list-promotions/archive/
+      restore/purge, `--json` parity, proto3-optional flags via
+      `cmd.Flags().Changed()`, `--scope-type`/`--scope-id` with
+      TASKER_PROJECT_ID/TASKER_ORG_ID env fallbacks matching the rest of
+      the CLI's `--project`/`--org` convention.
       - Files: `apps/cli/cmd/memory.go`, `apps/cli/cmd/memory_test.go`
-      - Verify: `go test ./cmd/...`, `moon run cli:coverage`.
+        (20 tests), `apps/cli/internal/backend/clients.go` (new
+        `NewMemoryServiceClient`)
+      - Verify: `go test ./cmd/...` and `-shuffle=on -count=5` (order-
+        independence, including fixing two flag-leak gaps this task's
+        own tests introduced - see `PROGRESS.md`); `moon run
+        cli:vet`/`cli:format`/`cli:build`/`cli:test`/`cli:coverage`;
+        `moon check --all` 27/27.
 
 - [ ] **M21-T09** — Write `.agents/skills/capture-belief/SKILL.md` and
       update `docs/agent-integration.md` with the same guidance for
