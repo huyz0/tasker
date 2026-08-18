@@ -35,3 +35,41 @@
   per `.specs/adr/README.md`'s own bar for when a decision earns one.
 - **Next**: M21-T02 — add `MemoryService` and the three models to
   `packages/shared-contract/main.tsp`.
+
+## M21-T02 — Contract: MemoryService + Belief/BeliefRelation/BeliefPromotion
+
+- **Status**: done
+- **Date**: 2026-08-18
+- **Changed**: `packages/shared-contract/main.tsp` (14 new models +
+  `MemoryService` interface, appended after `RoleService`),
+  `packages/shared-contract/tasker/health/v1/health.proto` (hand-mirrored
+  - this project's `tsp compile` output does not emit `service` blocks or
+  the `optional` keyword on proto3-optional scalar fields, confirmed by
+  diffing `tsp-output/` against the checked-in file before writing this,
+  so every `?` field was hand-annotated `optional` to match `main.tsp`
+  rather than copied blind), generated
+  `packages/shared-contract/gen/ts/tasker/health/v1/health_pb.ts` and
+  `apps/cli/gen/tasker/health/v1/{health.pb.go,v1connect/health.connect.go}`,
+  `apps/gui/scripts/rpc-coverage.mjs` (14 temporary `EXCEPTIONS` entries
+  for `MemoryService.*`, each citing M21-T07 - the GUI screen isn't built
+  yet and this repo's `gui:rpc-coverage` check fails the build on an
+  RPC with no GUI caller and no documented exception).
+- **Verified**: `moon run shared-contract:compile` clean; generated TS
+  shows `supersedesBeliefId?: string` (proto3 presence preserved) and Go
+  shows `SupersedesBeliefId *string` (pointer, same); `moon check --all`
+  27/27 including `gui:rpc-coverage` (116/134 RPCs reached, 18 excepted
+  with reasons, up from 4 permanent exceptions before this task).
+- **Notes**: `Belief.embedding`/`RecordBeliefRequest.embedding`/
+  `SearchBeliefsRequest.queryEmbedding` are `repeated float`, not
+  `optional repeated float` - proto3 doesn't allow combining the two
+  labels (a `repeated` field already has no presence tracking, empty and
+  absent are indistinguishable, which doesn't matter for an embedding:
+  "caller sent nothing" and "caller sent an empty list" are the same
+  case). `listBeliefRelations`/`listBeliefPromotions` were added to the
+  interface beyond the RPC names enumerated in `MILESTONE.md`'s prose -
+  the GUI's related-beliefs list and promotion-history tab (T07) need a
+  way to read them, and "implement all RPCs above" in T05 already covers
+  it without a `MILESTONE.md` edit.
+- **Next**: M21-T03 — add `memory:{read,write,admin}` to the permission
+  vocabulary and `memory:read`/`memory:write` to the agent-token scope
+  vocabulary.

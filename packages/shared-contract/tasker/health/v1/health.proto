@@ -1713,3 +1713,202 @@ service RoleService {
   rpc RevokeGrant(RevokeGrantRequest) returns (RevokeGrantResponse);
   rpc ListGrants(ListGrantsRequest) returns (ListGrantsResponse);
 }
+
+// ==== Shared memory & beliefs (M21, ADR-0014/0015/0016) ====
+
+message Belief {
+  string id = 1;
+  string orgId = 2;
+  string scopeType = 3;
+  string scopeId = 4;
+  string statement = 5;
+  string confidence = 6;
+  string status = 7;
+  optional string supersedesBeliefId = 8;
+  string sourceKind = 9;
+  optional string sourceAgentId = 10;
+  optional string sourceUserId = 11;
+  optional string sourceTaskId = 12;
+  optional string sourceCommentId = 13;
+  optional string sourceTaskNoteId = 14;
+  optional string sourceArtifactId = 15;
+  optional string promotedFromScopeType = 16;
+  optional string promotedFromScopeId = 17;
+  optional string promotedBy = 18;
+  optional string promotedAt = 19;
+  optional string deletedAt = 20;
+  string createdAt = 21;
+  repeated float embedding = 22;
+}
+
+message BeliefRelation {
+  string id = 1;
+  string beliefAId = 2;
+  string beliefBId = 3;
+  string relationType = 4;
+  string createdBy = 5;
+  string createdAt = 6;
+}
+
+message BeliefPromotion {
+  string id = 1;
+  string beliefId = 2;
+  string fromScopeType = 3;
+  string fromScopeId = 4;
+  string toScopeType = 5;
+  string toScopeId = 6;
+  string promotedBy = 7;
+  string promotedAt = 8;
+  optional string note = 9;
+}
+
+message RecordBeliefRequest {
+  string orgId = 1;
+  string scopeType = 2;
+  string scopeId = 3;
+  string statement = 4;
+  optional string confidence = 5;
+  optional string sourceTaskId = 6;
+  optional string sourceCommentId = 7;
+  optional string sourceTaskNoteId = 8;
+  optional string sourceArtifactId = 9;
+  repeated float embedding = 10;
+}
+message RecordBeliefResponse {
+  Belief belief = 1;
+}
+
+message GetBeliefRequest {
+  string id = 1;
+}
+message GetBeliefResponse {
+  Belief belief = 1;
+}
+
+message ListBeliefsRequest {
+  string scopeType = 1;
+  string scopeId = 2;
+  PageRequest page = 3;
+  optional string status = 4;
+  optional string confidence = 5;
+}
+message ListBeliefsResponse {
+  repeated Belief beliefs = 1;
+  PageResponse page = 2;
+}
+
+message SearchBeliefsRequest {
+  string scopeType = 1;
+  string scopeId = 2;
+  string query = 3;
+  optional string taskId = 4;
+  optional string status = 5;
+  optional string confidence = 6;
+  repeated float queryEmbedding = 7;
+  optional int32 limit = 8;
+}
+message SearchBeliefsResponse {
+  repeated Belief beliefs = 1;
+}
+
+message UpdateBeliefRequest {
+  string id = 1;
+  optional string statement = 2;
+  optional string confidence = 3;
+}
+message UpdateBeliefResponse {
+  Belief belief = 1;
+}
+
+message SupersedeBeliefRequest {
+  string id = 1;
+  string statement = 2;
+  optional string confidence = 3;
+  optional string sourceTaskId = 4;
+  optional string sourceCommentId = 5;
+  optional string sourceTaskNoteId = 6;
+  optional string sourceArtifactId = 7;
+  repeated float embedding = 8;
+}
+message SupersedeBeliefResponse {
+  Belief belief = 1;
+}
+
+message PromoteBeliefRequest {
+  string id = 1;
+  string toScopeType = 2;
+  string toScopeId = 3;
+  optional string note = 4;
+}
+message PromoteBeliefResponse {
+  Belief belief = 1;
+  BeliefPromotion promotion = 2;
+}
+
+message RelateBeliefsRequest {
+  string beliefAId = 1;
+  string beliefBId = 2;
+  string relationType = 3;
+}
+message RelateBeliefsResponse {
+  BeliefRelation relation = 1;
+}
+
+message UnrelateBeliefsRequest {
+  string relationId = 1;
+}
+message UnrelateBeliefsResponse {
+  bool success = 1;
+}
+
+message ListBeliefRelationsRequest {
+  string beliefId = 1;
+}
+message ListBeliefRelationsResponse {
+  repeated BeliefRelation relations = 1;
+}
+
+message ListBeliefPromotionsRequest {
+  string beliefId = 1;
+}
+message ListBeliefPromotionsResponse {
+  repeated BeliefPromotion promotions = 1;
+}
+
+message ArchiveBeliefRequest {
+  string id = 1;
+}
+message ArchiveBeliefResponse {
+  bool success = 1;
+}
+
+message RestoreBeliefRequest {
+  string id = 1;
+}
+message RestoreBeliefResponse {
+  bool success = 1;
+}
+
+message PurgeBeliefRequest {
+  string id = 1;
+}
+message PurgeBeliefResponse {
+  bool success = 1;
+}
+
+service MemoryService {
+  rpc RecordBelief(RecordBeliefRequest) returns (RecordBeliefResponse);
+  rpc GetBelief(GetBeliefRequest) returns (GetBeliefResponse);
+  rpc ListBeliefs(ListBeliefsRequest) returns (ListBeliefsResponse);
+  rpc SearchBeliefs(SearchBeliefsRequest) returns (SearchBeliefsResponse);
+  rpc UpdateBelief(UpdateBeliefRequest) returns (UpdateBeliefResponse);
+  rpc SupersedeBelief(SupersedeBeliefRequest) returns (SupersedeBeliefResponse);
+  rpc PromoteBelief(PromoteBeliefRequest) returns (PromoteBeliefResponse);
+  rpc RelateBeliefs(RelateBeliefsRequest) returns (RelateBeliefsResponse);
+  rpc UnrelateBeliefs(UnrelateBeliefsRequest) returns (UnrelateBeliefsResponse);
+  rpc ListBeliefRelations(ListBeliefRelationsRequest) returns (ListBeliefRelationsResponse);
+  rpc ListBeliefPromotions(ListBeliefPromotionsRequest) returns (ListBeliefPromotionsResponse);
+  rpc ArchiveBelief(ArchiveBeliefRequest) returns (ArchiveBeliefResponse);
+  rpc RestoreBelief(RestoreBeliefRequest) returns (RestoreBeliefResponse);
+  rpc PurgeBelief(PurgeBeliefRequest) returns (PurgeBeliefResponse);
+}

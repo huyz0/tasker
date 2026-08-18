@@ -100,7 +100,7 @@ model); a fourth ("agent-private") scope tier below `project`
         `.milestones/MILESTONE-21-shared-memory-and-beliefs/*`
       - Verify: files exist, `moon run tasker:docs-lint` passes.
 
-- [ ] **M21-T02** — Add `MemoryService` and `Belief`/`BeliefRelation`/
+- [x] **M21-T02** — Add `MemoryService` and `Belief`/`BeliefRelation`/
       `BeliefPromotion` models to the TypeSpec contract; regenerate
       `health.proto` and the generated TS/Go clients.
       - Files: `packages/shared-contract/main.tsp`,
