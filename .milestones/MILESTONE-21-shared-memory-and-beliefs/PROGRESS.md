@@ -109,3 +109,57 @@
   here would mean either a fake/stub handler or a broken import.
 - **Next**: M21-T04 — `beliefs`/`belief_relations`/`belief_promotions`
   schema + migrations, both dialects.
+
+## M21-T04 — Schema + migrations for beliefs/belief_relations/belief_promotions
+
+- **Status**: Done
+- **Changed**: Added `beliefs`/`beliefRelations`/`beliefPromotions` Drizzle
+  table definitions to `schema.sqlite.ts`/`schema.mysql.ts` (self-
+  referencing `supersedesBeliefId` FK via `AnySQLiteColumn`/
+  `AnyMySqlColumn`; `embedding` as JSON-serialized text/`mediumtext`,
+  same pattern as `apiTokens.scopes`). Hand-wrote
+  `apps/backend/drizzle-sqlite/0042_beliefs_schema.sql` (three
+  `CREATE TABLE`s + indexes + a contentless `beliefs_fts` FTS5 virtual
+  table with insert/delete/update triggers, matching
+  `0025_fts5_search_index.sql`'s exact pattern) and
+  `apps/backend/drizzle-mysql/0029_beliefs_schema.sql` (same three
+  tables in MySQL syntax + `CREATE FULLTEXT INDEX beliefs_fts_idx ON
+  beliefs (statement)`, matching `0012_fulltext_search_index.sql` - no
+  triggers needed, InnoDB maintains it transactionally). Manually
+  appended both `meta/_journal.json` entries. Not wired into
+  `search.handler.ts` yet - that's M21-T06.
+- **Verified**: `bun test` (full backend suite, SQLite) 1331 pass/0
+  fail. `TASKER_MYSQL_INTEGRATION=1 bun test src/db/db.mysql.test.ts`
+  passed (`setupDatabase("mysql")` runs every migration on boot, so this
+  is a real apply-from-scratch check, not a schema diff). Direct
+  inspection via `docker exec tasker-mysql-1 mysql ... -e "DESCRIBE
+  beliefs; SHOW INDEX FROM beliefs WHERE Key_name='beliefs_fts_idx'"`
+  confirmed all three tables and the `FULLTEXT` index exist with the
+  expected columns/types. `moon check --all` 27/27 clean.
+- **Notes**: `bunx drizzle-kit generate` against the SQLite schema
+  produced a corrupted migration - `CREATE TABLE` statements for a dozen
+  already-existing tables plus destructive-looking recreate-and-copy
+  statements for `invitations`/`users`, sourced from a stale baseline
+  snapshot (this repo's drizzle-sqlite snapshot lineage has been known-
+  drifted from the real applied-migration history since M13). Confirmed
+  hands-on rather than just trusting the prior flag; discarded the bad
+  output and `git checkout --`-reverted the auto-appended journal entry
+  before it touched any database, then hand-wrote the migration instead,
+  cross-checking every `CREATE TABLE`/`CREATE INDEX` line against
+  `schema.sqlite.ts`. Wrote the MySQL migration by the same hand-written
+  discipline for consistency, even though `drizzle-kit generate` wasn't
+  attempted against that dialect this time.
+  `moon check --all` initially failed on `tasker:knip` flagging the
+  three new schema exports as unused (real - nothing calls
+  `memory.handler.ts` yet, since that's M21-T05). Followed the
+  established `@knipignore` precedent (`testSchema` in the same file)
+  rather than silencing the whole rule or committing dead-looking code
+  unexplained: added a JSDoc `@knipignore` tag with an explanatory
+  comment to each of the three exports, explicitly noting M21-T05 is the
+  first caller and that the tag should come out once it lands. A first
+  attempt using `//` line comments for the tag did not suppress the
+  warning - knip's tag parser only recognizes tags inside a JSDoc `/**
+  */` block, confirmed by matching `testSchema`'s exact working form.
+- **Next**: M21-T05 — `memory.handler.ts` implementing all 14
+  `MemoryService` RPCs, plus the deferred `AGENT_RPC_SCOPES.memory`
+  mapping and `agent-scope-sweep.test.ts` wiring.

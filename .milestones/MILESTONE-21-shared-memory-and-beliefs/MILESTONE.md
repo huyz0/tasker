@@ -122,14 +122,21 @@ model); a fourth ("agent-private") scope tier below `project`
       - Verify: migration verified against live MySQL; `AGENT_SCOPES`
         includes the two new entries.
 
-- [ ] **M21-T04** — Add `beliefs`/`belief_relations`/`belief_promotions`
+- [x] **M21-T04** — Add `beliefs`/`belief_relations`/`belief_promotions`
       tables plus `beliefs_fts` (SQLite FTS5) / `FULLTEXT` index
       (MySQL), both dialects, with paired numbered migrations.
       - Files: `apps/backend/src/db/schema.sqlite.ts`,
-        `apps/backend/src/db/schema.mysql.ts`, new migration files in
-        both `drizzle-sqlite/`/`drizzle-mysql/`
+        `apps/backend/src/db/schema.mysql.ts`,
+        `apps/backend/drizzle-sqlite/0042_beliefs_schema.sql`,
+        `apps/backend/drizzle-mysql/0029_beliefs_schema.sql`, both
+        `meta/_journal.json` files
       - Verify: migrations verified against a live MySQL instance via
-        `docker compose up -d mysql` + integration test run.
+        `docker compose up -d mysql` + integration test run; both
+        migrations hand-written (not `drizzle-kit generate`d) after the
+        SQLite generator produced a corrupted migration against the
+        known-drifted snapshot lineage. New schema exports are
+        `@knipignore`d until `memory.handler.ts` (M21-T05) references
+        them.
 
 - [ ] **M21-T05** — Implement `memory.handler.ts`: `recordBelief`,
       `getBelief`, `listBeliefs`, `searchBeliefs`, `updateBelief`,
