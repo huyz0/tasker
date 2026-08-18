@@ -192,14 +192,30 @@ model); a fourth ("agent-private") scope tier below `project`
         was added - the regression this milestone's own risk list flags
         by name did not reoccur.
 
-- [ ] **M21-T07** — Build the search-first `apps/gui/src/features/
+- [x] **M21-T07** — Build the search-first `apps/gui/src/features/
       Memory/` screen: query box, belief cards with provenance/status/
       confidence, related-beliefs list, Promote action via
-      `ConfirmDialog`, a history tab, and a separate "Browse all" view.
+      `ConfirmDialog`, a history tab (Radix `Tabs`, not hand-rolled), and
+      a separate "Browse all" view. Project/organization scope toggle
+      (team scope stays CLI/API-only for now - see this task's
+      `PROGRESS.md` entry); routed at `/memory` and `/memory/:beliefId`
+      (the latter resolving via `getBelief` for a direct link); wired
+      into `AppShell`'s sidebar nav.
       - Files: `apps/gui/src/features/Memory/index.tsx` + `.test.tsx` +
-        `.stories.tsx`
-      - Verify: `moon run gui:test`, Storybook stories for Empty/
-        Loading/Error/Populated, `jest-axe` clean.
+        `.stories.tsx`, `apps/gui/src/App.tsx` (routes),
+        `apps/gui/src/components/layout/AppShell.tsx` (nav entry),
+        `apps/gui/src/App.test.tsx` (mock gains `MemoryService`),
+        `apps/gui/scripts/rpc-coverage.mjs` (all 14 temporary M21
+        exceptions removed)
+      - Verify: `moon run gui:test` (branch-coverage gate held at
+        95.02%, up from a below-threshold 94.04% on the first pass -
+        backfilled with targeted tests, not a threshold change); `moon
+        run gui:typecheck`/`gui:lint`/`gui:design-lint`/`gui:rpc-coverage`
+        clean; two Storybook stories (`Default`, `WithProjectSelected`),
+        not the four Empty/Loading/Error/Populated `frontend-standard.md`
+        asks for - see this task's `PROGRESS.md` entry for why building
+        the other two safely wasn't possible within this task's own file
+        list; `jest-axe` clean on the populated state.
 
 - [ ] **M21-T08** — Build `apps/cli/cmd/memory.go`: `tasker memory
       search/record/get/list/update/supersede/promote/relate/archive/

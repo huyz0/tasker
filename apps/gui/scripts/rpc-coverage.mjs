@@ -52,26 +52,6 @@ export const EXCEPTIONS = {
     'real gap, not yet scheduled. Wire it into the Organizations member ' +
     'list (an admin action per row, alongside role/remove) and remove this ' +
     'exception when that lands.',
-
-  // M21's MemoryService: contract (T02) and the backend handler (T05) land
-  // before the GUI screen (T07) per the milestone's own task sequence
-  // (.milestones/MILESTONE-21-shared-memory-and-beliefs/MILESTONE.md) -
-  // scheduled, not a permanent gap. Remove every entry below as part of
-  // T07, the same commit that wires features/Memory/ up to each RPC.
-  'MemoryService.recordBelief': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.getBelief': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.listBeliefs': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.searchBeliefs': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.updateBelief': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.supersedeBelief': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.promoteBelief': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.relateBeliefs': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.unrelateBeliefs': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.listBeliefRelations': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.listBeliefPromotions': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.archiveBelief': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.restoreBelief': 'M21-T07 wires this into features/Memory/.',
-  'MemoryService.purgeBelief': 'M21-T07 wires this into features/Memory/.',
 };
 
 /** RPC names per service, read from the TypeSpec interfaces. */

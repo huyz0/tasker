@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  Brain,
   LogOut
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
@@ -39,6 +40,7 @@ const NAV_GROUPS = [
       { name: 'Tasks', path: '/tasks', icon: CheckSquare },
       { name: 'AI Agents', path: '/agents', icon: Bot },
       { name: 'Artifacts', path: '/artifacts', icon: FileBox },
+      { name: 'Memory', path: '/memory', icon: Brain },
     ],
   },
   {

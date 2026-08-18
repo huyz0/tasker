@@ -58,6 +58,7 @@ vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   DashboardService: {},
   RoleService: {},
   TeamService: {},
+  MemoryService: {},
 }));
 
 // -------------------------------------------------------------------

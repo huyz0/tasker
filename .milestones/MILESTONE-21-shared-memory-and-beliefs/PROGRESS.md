@@ -328,3 +328,113 @@
 - **Next**: M21-T07 — search-first `apps/gui/src/features/Memory/`
   screen: query box, belief cards, related-beliefs list, Promote action,
   history tab, a separate "Browse all" view.
+
+## M21-T07 — GUI: Memory feature screen
+
+- **Status**: Done
+- **Changed**: `apps/gui/src/features/Memory/index.tsx` (new,
+  `MemoryExplorer` - list rail with a project/organization scope toggle,
+  search-vs-browse-all mode toggle, status/confidence filter selects,
+  belief cards; a selected belief's detail panel with inline
+  statement/confidence edit, provenance line, Radix `Tabs` for
+  Related/History, a search-and-relate picker mirroring
+  `Teams/index.tsx`'s `AddMemberPicker`, and `RowActionsMenu` actions for
+  Supersede/Promote/Archive-or-Restore/Delete-permanently, each
+  consequential one behind `ConfirmDialog`), `.test.tsx` (46 tests),
+  `.stories.tsx` (2 stories). Routed at `/memory` and `/memory/:beliefId`
+  in `App.tsx` (the latter resolves via `getBelief`, following a link
+  from elsewhere or a direct reload, the same pattern `/tasks/:taskId`
+  already uses); added to `AppShell`'s "Workspace" nav group (daily-use,
+  next to Tasks/Artifacts, not "Configuration"). Removed all 14 temporary
+  `MemoryService` exceptions from `rpc-coverage.mjs` - every RPC is now
+  actually called from the screen. `App.test.tsx`'s shared
+  `health_pb` mock gained `MemoryService: {}` (needed once `App.tsx`
+  imports a component that constructs a `MemoryService` client).
+- **Design decisions made while implementing**:
+  - **Radix `Tabs`, not a hand-rolled tab pair.** First draft used plain
+    buttons with `role="tablist"`/`role="tab"` for Related/History,
+    missing that `@radix-ui/react-tabs` is already a dependency
+    specifically for this (`design-system.md` §4, `Organizations/
+    index.tsx`'s own `Tabs.Root` usage) - `gui:design-lint` does not
+    check for a hand-rolled tab pair, so this was only caught by
+    checking direct precedent (`grep`-ing for existing `Tabs.Root`
+    usage) while writing the History tab, before any test locked the
+    wrong markup in.
+  - **Project and organization scope only, not team.** Belief scope is
+    `'project' | 'team' | 'organization'` on the wire (ADR-0014), but
+    picking a *specific* team needs its own search-and-pick control
+    (the same shape `AddMemberPicker`/`RelateBeliefPicker` already use,
+    applied to teams instead) that nothing in this task's own file list
+    asked for and no M21 exit criterion requires from the GUI
+    specifically - a real, named narrowing, not a silent omission. Team
+    scope stays fully reachable via the CLI (M21-T08) and API/agent
+    skill (M21-T09) exactly as designed; only this one screen doesn't
+    offer a team picker yet.
+  - **`getBelief`'s only caller is the `/memory/:beliefId` direct-link
+    route.** Every other read path (list rail, related list) already
+    holds full `Belief` objects from `searchBeliefs`/`listBeliefs`, so a
+    second per-belief fetch would be redundant data the client already
+    has - the same reasoning `rpc-coverage.mjs`'s pre-existing
+    `ProjectTemplateService.getTemplate` exception records for an
+    analogous case. `getBelief` earns its place specifically as the
+    resolver for a belief not already in whatever page is loaded: a
+    permalink, or a link followed from a task/comment (both real,
+    already-designed use cases from the original plan, not invented to
+    give this RPC a caller).
+  - **Only two Storybook stories (`Default`, `WithProjectSelected`), not
+    the four (Empty/Loading/Error/Populated) `frontend-standard.md`
+    §Storybook requires.** Checked before assuming precedent excused it:
+    *every* existing manager screen in this codebase (`Teams`, `Roles`,
+    `Organizations`, `GlobalSearch`) has exactly the same gap - there is
+    no MSW (or any other fetch-interception) wired into `.storybook/
+    preview.tsx`, and no story anywhere in this codebase uses a `play`
+    function either, so nothing can deterministically drive a
+    *populated* or *error* state for a component that owns a real
+    `createClient(...)` call, only ever a state reachable with zero
+    mocking. Considered and rejected hand-crafting a raw `fetch`
+    response (Connect's JSON wire envelope, not just the message shape)
+    to fake a populated/error/loading state - verified the transport
+    does read `globalThis.fetch` (`connectTransport.ts`), so
+    interception is technically *possible*, but getting the envelope
+    subtly wrong would silently ship a broken "populated" story that
+    *looks* like it satisfies the requirement while not actually
+    testing what it claims to. Building real MSW infrastructure shared
+    across every manager screen is the honest fix, and it's a
+    cross-cutting task of its own, not something to improvise
+    unverified inside this one story file. Documented in a comment at
+    the top of `index.stories.tsx` itself, not just here.
+  - **`fireEvent.mouseDown`, not `.click`, drives Radix `Tabs.Trigger` in
+    tests** - discovered by reading `@radix-ui/react-tabs`'s own source
+    (`onMouseDown`, not `onClick`, changes the selected tab) after a
+    `.click()` silently did nothing in a first draft. Different from
+    `RowActionsMenu`'s Radix dropdown (`Teams/index.test.tsx`'s own
+    precedent), which needs `fireEvent.pointerDown` - two different
+    Radix primitives, two different activation events; both are now
+    documented inline at their call sites in `index.test.tsx` so the
+    next test using either doesn't rediscover this from scratch.
+- **Verified**: `bun run test -- src/features/Memory/index.test.tsx` (46
+  tests). Full GUI suite: 853 pass/0 fail. `moon run gui:test`
+  (statements 98.29%, branches 95.02%, functions 97.03%, lines 98.61% -
+  the branch-coverage gate initially failed at 94.04% against the 95%
+  threshold on the first pass with 19 tests; backfilled with 27 more
+  targeted tests covering every mutation's error path, both confirm/
+  cancel branches, retry paths for all three lists, and the
+  browse-vs-search mode branches, not by lowering the threshold).
+  `gui:typecheck`/`gui:lint`/`gui:design-lint`/`gui:rpc-coverage` all
+  clean (130/134 RPCs reached, back to the original 4 permanent
+  exceptions). `moon check --all` 27/27 clean. `gui:storybook-test` (not
+  part of `moon check --all`'s task set, confirmed empirically - it
+  never appeared in this milestone's own prior `moon check --all` runs
+  either) was tried anyway for extra confidence: the Storybook build
+  itself succeeded (including these new stories), but the a11y-check
+  script timed out on an unrelated, pre-existing story
+  (`RepositoryIntegrationConfig`, deep in the "UI" group, well after
+  where "Features/MemoryExplorer" sorts) - reproduced twice
+  independently against the same static build, so it's a real,
+  reproducible issue, but not one this task's diff caused or could
+  plausibly explain (no shared code, no network/polling logic in that
+  component). Flagged, not fixed - out of scope for a GUI feature task
+  and not part of the gate this milestone's own tasks are held to.
+- **Next**: M21-T08 — `apps/cli/cmd/memory.go`: `tasker memory search`
+  as the primary command, plus record/get/list/update/supersede/
+  promote/relate/archive/restore/purge, `--json` parity.

@@ -8,6 +8,7 @@ import { ArtifactsBrowser } from './features/Artifacts';
 import { LabelsManager } from './features/Labels';
 import { RolesManager } from './features/Roles';
 import { TeamsManager } from './features/Teams';
+import { MemoryExplorer } from './features/Memory';
 import { TaskTypesEditor } from './features/TaskTypes';
 import { BinDashboard } from './features/Bin';
 import { Dashboard } from './pages/Dashboard';
@@ -43,6 +44,11 @@ function App() {
                 <Route path="/labels" element={<LabelsManager />} />
                 <Route path="/roles" element={<RolesManager />} />
                 <Route path="/teams" element={<TeamsManager />} />
+                <Route path="/memory" element={<MemoryExplorer />} />
+                {/* The selected belief is part of the URL for the same reason
+                    the open task is (see /tasks/:taskId above): a direct link
+                    or a reload reopens the same belief. */}
+                <Route path="/memory/:beliefId" element={<MemoryExplorer />} />
                 <Route path="/bin" element={<BinDashboard />} />
                 <Route path="/settings" element={<SystemHealthPage />} />
                 <Route path="/oauth/callback" element={<OAuthCallback />} />
