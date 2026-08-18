@@ -1,8 +1,8 @@
 ---
-active_milestone: M21
-active_task: M21-T02
+active_milestone: M08
+active_task: null
 last_updated: 2026-08-18
-last_commit: 73eb704
+last_commit: 6e7ecda
 blocked: false
 blocker: null
 ---
@@ -15,33 +15,52 @@ blocker: null
 
 ## Now
 
-**2026-08-18 — M21 (Shared Memory & Belief System) started, on
-`feature/m21-shared-memory-and-beliefs`.** Requested directly by the
-user, and — unlike M15–M20's informal review-and-fix rounds — run as a
-*formal* milestone: `.milestones/MILESTONE-21-shared-memory-and-beliefs/
-MILESTONE.md` + `PROGRESS.md`, per `milestone-standard.md`, because this
-is net-new product surface comparable in size to M10, not a fix-what's-
-there pass over an existing feature.
+**2026-08-18 — M21 (Shared Memory & Belief System) closed: 10/10 tasks,
+7/7 exit criteria, merged to `main`.** Requested directly by the user via
+two `/goal` commands (design, then "deliver it end to end"), and — unlike
+M15–M20's informal review-and-fix rounds — run as a *formal* milestone:
+`.milestones/MILESTONE-21-shared-memory-and-beliefs/MILESTONE.md` +
+`PROGRESS.md`, per `milestone-standard.md`, because this is net-new
+product surface comparable in size to M10, not a fix-what's-there pass
+over an existing feature. Developed on
+`feature/m21-shared-memory-and-beliefs` as nine task commits + one
+closeout commit, merged with `--no-ff`.
 
-M21-T01 (spec documentation) is done: two rounds of research (internal
-architecture mapping + external prior art on agent-memory systems) plus
-an interactive design review with the user, captured in `.specs/specs/
-2026-08-18-1622-shared-memory-and-beliefs/` and three new ADRs —
-`ADR-0014` (beliefs reuse ADR-0013's existing organization/team/project
-scope hierarchy, no new tier), `ADR-0015` (agent tokens gain
-`memory:read`/`memory:write`, no `memory:admin` — promotion stays
+Spec/design (T01): two rounds of research (internal architecture mapping
+and external prior art on agent-memory systems) plus an interactive
+design review with the user, captured in `.specs/specs/2026-08-18-1622-shared-
+memory-and-beliefs/` and three new ADRs — `ADR-0014` (beliefs reuse
+ADR-0013's existing organization/team/project scope hierarchy, no new
+tier), `ADR-0015` (agent tokens gain `memory:read`/`memory:write`, no
+`memory:admin` — promotion, archive, restore, and purge all stay
 human-gated), `ADR-0016` (retrieval is pluggable behind a
 `BeliefRetriever` interface; v1 ships lexical search only, reusing
 `search.handler.ts`'s existing FTS5/FULLTEXT machinery as a sixth
 `SearchEntity`; a future vector phase is documented — LanceDB + a local
 in-process embedding model via `transformers.js`, researched against
 current Aug-2026 tooling rather than assumed — but explicitly not built
-now). Remaining tasks (M21-T02 through T10: contract, RBAC, schema,
-backend handler, search integration, GUI, CLI, agent skill, coverage
-backfill) are tracked in `MILESTONE-21`'s own Task Breakdown, executed
-one at a time in the same discipline as every prior round (dedicated
-test, revert-and-confirm-fail, full suites + `moon check --all` clean,
-one commit per task).
+now).
+
+Delivery (T02–T10): `MemoryService` contract + `Belief`/`BeliefRelation`/
+`BeliefPromotion` models (T02); `memory:{read,write,admin}` permission
+family plus the two agent-token scopes (T03); `beliefs`/
+`belief_relations`/`belief_promotions` schema with FTS5/FULLTEXT, hand-
+written migrations verified against live MySQL after the SQLite
+generator produced a corrupted migration against the known-drifted
+snapshot lineage (T04); `memory.handler.ts`'s 14 RPCs plus
+`LexicalBeliefRetriever` (T05); `belief` as a sixth `SearchEntity` in
+`universalSearch`, stress-tested at 20,000 rows with no latency
+regression (T06); a search-first `features/Memory/` GUI screen using
+Radix `Tabs` (its real activation event, `onMouseDown`, found by reading
+library source rather than guessing) for the related/history views (T07);
+`tasker memory` CLI with `search` as the primary command, two real
+flag-leak bugs found and fixed via `-shuffle=on` (T08); the
+`capture-belief` agent skill plus `docs/agent-integration.md` §9,
+which surfaced a previously-unencountered `tasker:skills-check`
+pre-commit gate and its `sync-adapters.mjs` host-adapter-parity
+requirement — fixed by running the real generator rather than hand-
+guessing its output (T09); `moon check --all` 27/27 clean, all seven
+exit criteria re-verified against existing test coverage (T10).
 
 **2026-08-18 — Sixth out-of-band review/fix round merged: Projects feature
 deep review.** Same structure as the Agents (M17)/Artifacts (M18)/Tasks
@@ -557,8 +576,15 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 | M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
 | M14 | Task Reliability & Agent Self-Service | done | M04, M05 | 9   | 9    |
+| M21 | Shared Memory & Belief System   | done   | —          | 10    | 10   |
 
-**Total: 169 tasks across 14 milestones — 126 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9).**
+**Total: 179 tasks across 15 milestones — 136 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10).**
+
+M15–M20 were informal review-and-fix rounds over existing features (no
+`MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
+see `PROGRESS.md`/git history for each. M21 is sequenced by explicit user
+priority (like M13 before M10), with no `depends_on` edge to anything
+still `todo`.
 
 ## Dependency graph
 
