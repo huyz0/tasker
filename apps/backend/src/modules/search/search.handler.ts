@@ -67,7 +67,7 @@ function decodeSearchCursor(cursor: string | undefined): Record<string, number> 
  * Exported (with `toMatchExpression`/`toBooleanModeExpression`/`rowsOf`
  * below) so `modules/memory/retrieval.ts`'s `LexicalBeliefRetriever`
  * (M21-T05, ADR-0016) builds its FTS5/`FULLTEXT` query the same way this
- * file's own five entity types do, rather than a second, driftable copy of
+ * file's own entity types do, rather than a second, driftable copy of
  * the same tokenization rules.
  */
 export function searchTokens(raw: string): string[] {
@@ -212,10 +212,11 @@ async function fullTextSearch(db: any, orgId: string, rawQuery: string, page: an
   // Each type is asked for a whole page, not for its even share of one.
   //
   // Dividing the limit evenly up front looks fair and quietly under-fills every
-  // page: with five types and a limit of 20, a term matching only tasks
-  // returned four results and a next cursor. The even share is applied when
-  // *allocating* below instead, where it can be redistributed to the types that
-  // actually matched.
+  // page: a term matching only one type used to return just that type's even
+  // share (rounded down) and a next cursor, even though every other slot in
+  // the page went unused. The even share is applied when *allocating* below
+  // instead, where it can be redistributed to the types that actually
+  // matched.
   const fetched = await Promise.all(
     dialect.entities.map(async (entity) => {
       const offset = offsets[entity.type] ?? 0;
@@ -415,6 +416,45 @@ const sqliteDialect: SearchDialect = {
         parentId: r.parent_id,
       }),
     },
+    {
+      // M21-T06 (ADR-0016). Org-wide, unlike `MemoryService.searchBeliefs`
+      // (`modules/memory/retrieval.ts`'s `lexicalBeliefRetriever`), which is
+      // scoped to one `(scopeType, scopeId)` - `UniversalSearchRequest` only
+      // ever carries `orgId`, the same as every other entity type here, so
+      // this filters on `beliefs.org_id` directly rather than by scope.
+      // Deliberately reuses the same `beliefs_fts` index and this file's own
+      // tokenization (`toMatchExpression`/`toBooleanModeExpression`, applied
+      // once for the whole dialect) rather than calling
+      // `lexicalBeliefRetriever.search()` - that method's contract is
+      // scope-first and returns ids only, built for `searchBeliefs`, not for
+      // this file's own org-wide, offset-paginated, count-returning shape.
+      // `status = 'active'` matches `searchBeliefs`'s own default: a
+      // superseded or retracted belief must not surface in a default search
+      // (M21's exit criteria) here either.
+      type: "belief",
+      rows: (db, match, orgId, limit, offset) => db.all(sql`
+        SELECT b.id AS id, b.statement AS statement
+        FROM beliefs_fts
+        CROSS JOIN beliefs b ON b.rowid = beliefs_fts.rowid
+        WHERE beliefs_fts MATCH ${match} AND b.org_id = ${orgId}
+          AND b.deleted_at IS NULL AND b.status = 'active'
+        ORDER BY bm25(beliefs_fts), b.id
+        LIMIT ${limit} OFFSET ${offset}
+      `),
+      count: (db, match, orgId) => db.all(sql`
+        SELECT count(*) AS count
+        FROM beliefs_fts
+        CROSS JOIN beliefs b ON b.rowid = beliefs_fts.rowid
+        WHERE beliefs_fts MATCH ${match} AND b.org_id = ${orgId}
+          AND b.deleted_at IS NULL AND b.status = 'active'
+      `),
+      toResult: (r, tokens) => ({
+        id: r.id,
+        type: "belief",
+        title: r.statement.length > 80 ? `${r.statement.slice(0, 80)}…` : r.statement,
+        ...buildSnippet(r.statement, tokens),
+      }),
+    },
   ],
 };
 
@@ -539,6 +579,32 @@ const mysqlDialect: SearchDialect = {
         ...buildSnippet(r.content, tokens),
         parentType: r.parent_type,
         parentId: r.parent_id,
+      }),
+    },
+    {
+      // See the SQLite dialect's `belief` entity above for why this is a
+      // sibling implementation rather than a call into
+      // `lexicalBeliefRetriever.search()`.
+      type: "belief",
+      rows: (db, match, orgId, limit, offset) => db.execute(sql`
+        SELECT b.id AS id, b.statement AS statement
+        FROM beliefs b
+        WHERE ${against(sql`b.statement`, match)} AND b.org_id = ${orgId}
+          AND b.deleted_at IS NULL AND b.status = 'active'
+        ORDER BY ${against(sql`b.statement`, match)} DESC, b.id
+        LIMIT ${limit} OFFSET ${offset}
+      `),
+      count: (db, match, orgId) => db.execute(sql`
+        SELECT count(*) AS count
+        FROM beliefs b
+        WHERE ${against(sql`b.statement`, match)} AND b.org_id = ${orgId}
+          AND b.deleted_at IS NULL AND b.status = 'active'
+      `),
+      toResult: (r, tokens) => ({
+        id: r.id,
+        type: "belief",
+        title: r.statement.length > 80 ? `${r.statement.slice(0, 80)}…` : r.statement,
+        ...buildSnippet(r.statement, tokens),
       }),
     },
   ],

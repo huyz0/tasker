@@ -1601,7 +1601,7 @@ model SnippetMatch {
 
 model SearchResult {
   @field(1) id: string;
-  @field(2) type: string; // "task" | "artifact" | "project" | "agent" | "comment"
+  @field(2) type: string; // "task" | "artifact" | "project" | "agent" | "comment" | "belief"
   @field(3) title: string;
   @field(4) snippet: string;
 

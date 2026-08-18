@@ -5560,7 +5560,7 @@ export type SearchResult = Message<"tasker.health.v1.SearchResult"> & {
   id: string;
 
   /**
-   * "task" | "artifact" | "project" | "agent" | "comment"
+   * "task" | "artifact" | "project" | "agent" | "comment" | "belief"
    *
    * @generated from field: string type = 2;
    */

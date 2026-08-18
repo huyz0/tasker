@@ -12665,7 +12665,7 @@ func (x *SnippetMatch) GetLength() int32 {
 type SearchResult struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type    string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"` // "task" | "artifact" | "project" | "agent" | "comment"
+	Type    string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"` // "task" | "artifact" | "project" | "agent" | "comment" | "belief"
 	Title   string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
 	Snippet string                 `protobuf:"bytes,4,opt,name=snippet,proto3" json:"snippet,omitempty"`
 	// Where to go when the result is not itself a destination. A comment has no

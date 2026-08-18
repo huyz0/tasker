@@ -170,12 +170,27 @@ model); a fourth ("agent-private") scope tier below `project`
         `FULLTEXT` branch of `lexicalBeliefRetriever` smoke-tested
         against live MySQL (ad hoc script, not committed).
 
-- [ ] **M21-T06** — Add `belief` as a sixth `SearchEntity` in
-      `search.handler.ts`, backed by the `LexicalBeliefRetriever`.
-      - Files: `apps/backend/src/modules/search/search.handler.ts`
-      - Verify: `universalSearch` returns belief matches merged with
-        the other five entity types; `bun run measure:latency` stays
-        within budget after the new index is added.
+- [x] **M21-T06** — Add `belief` as a sixth `SearchEntity` in
+      `search.handler.ts`, reusing the `beliefs_fts`/`FULLTEXT` index and
+      tokenization `modules/memory/retrieval.ts`'s `LexicalBeliefRetriever`
+      also uses (a sibling implementation, not a literal call into it -
+      see this task's `PROGRESS.md` entry for why the two shapes don't
+      fit one interface). Org-wide like every other entity type here
+      (`UniversalSearchRequest` carries only `orgId`, not a belief scope),
+      filtered to `status = 'active'` to match `searchBeliefs`'s own
+      default.
+      - Files: `apps/backend/src/modules/search/search.handler.ts`,
+        `apps/backend/src/modules/search/search.test.ts`,
+        `apps/backend/src/modules/search/search.mysql.test.ts`,
+        `packages/shared-contract/main.tsp` + `health.proto` (doc-comment
+        only - `SearchResult.type`'s inline enum comment gains `"belief"`)
+      - Verify: `universalSearch` returns belief matches merged with the
+        other five entity types, excluding superseded ones, on both
+        dialects; `bun run measure:latency` (large-scale seed, plus a
+        20,000-row belief stress insert into the actually-measured org)
+        stayed within the 300ms budget (p95 207.5ms) after the new join
+        was added - the regression this milestone's own risk list flags
+        by name did not reoccur.
 
 - [ ] **M21-T07** — Build the search-first `apps/gui/src/features/
       Memory/` screen: query box, belief cards with provenance/status/

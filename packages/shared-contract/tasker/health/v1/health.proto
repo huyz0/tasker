@@ -1430,7 +1430,7 @@ message SnippetMatch {
 
 message SearchResult {
   string id = 1;
-  string type = 2; // "task" | "artifact" | "project" | "agent" | "comment"
+  string type = 2; // "task" | "artifact" | "project" | "agent" | "comment" | "belief"
   string title = 3;
   string snippet = 4;
   // Where to go when the result is not itself a destination. A comment has no

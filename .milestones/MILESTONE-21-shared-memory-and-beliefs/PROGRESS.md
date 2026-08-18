@@ -265,3 +265,66 @@
   `export`, nothing outside `retrieval.ts` needs it).
 - **Next**: M21-T06 — add `belief` as a 6th `SearchEntity` in
   `search.handler.ts`, backed by this task's own `lexicalBeliefRetriever`.
+
+## M21-T06 — Search integration: belief SearchEntity
+
+- **Status**: Done
+- **Changed**: Added a `belief` entity to both `sqliteDialect.entities`
+  and `mysqlDialect.entities` in `search.handler.ts`, following the exact
+  shape of the existing `project`/`agent` entities (single-table
+  `beliefs`/`beliefs_fts` join, no parent-table joins needed since
+  `beliefs.org_id` is already a direct column). `title` is the statement
+  truncated to 80 chars; `snippet`/`snippetMatches` come from the same
+  `buildSnippet` every text-bearing entity already uses. Filtered to
+  `status = 'active'` (matching `searchBeliefs`'s own default - a
+  superseded/retracted belief must not surface here either) and
+  `deleted_at IS NULL`. Added dedicated tests to `search.test.ts`
+  (SQLite) and `search.mysql.test.ts` (live MySQL) confirming an active
+  belief is found and a superseded one is excluded. `main.tsp`/
+  `health.proto`'s `SearchResult.type` inline comment gained `"belief"`
+  (doc-comment only, regenerated - diff confirmed comment-only before
+  committing). Fixed two now-stale "five types"/"five entity types"
+  comments in `search.handler.ts` and `search.test.ts` (one was this
+  milestone's own T05 addition) to describe the round-robin fill logic
+  generically instead of hard-coding a count that will keep drifting as
+  entity types are added.
+- **Design decision**: **Not** a literal call into
+  `lexicalBeliefRetriever.search()`, despite this bullet's own original
+  wording ("backed by the LexicalBeliefRetriever"). The two call shapes
+  don't fit one interface: `BeliefRetriever.search()` is scope-first
+  (`scopeType`/`scopeId`) and returns ordered ids only, built for
+  `MemoryService.searchBeliefs`; this file's own `SearchEntity.rows`/
+  `.count` contract is org-first, offset-paginated, and count-returning,
+  the same shape every other entity type here already takes. Reusing the
+  literal method would have meant bending one of the two contracts to
+  fit the other for no real benefit - what's actually shared (and is
+  shared) is the underlying `beliefs_fts`/`FULLTEXT` index and this
+  file's own tokenization helpers, which is what "backed by" meant in
+  spirit, spelled out explicitly in both the code comment and here so
+  the wording doesn't read as unmet.
+- **Verified**: `bun test src/modules/search/search.test.ts` (34/34,
+  SQLite), `TASKER_MYSQL_INTEGRATION=1 bun test
+  src/modules/search/search.mysql.test.ts` (6/6, MySQL, including the
+  new belief test). Full backend suite: 1356 pass/0 fail. `moon check
+  --all` 27/27 clean (one transient `gui:test` failure on the first
+  attempt - `exit code 143` + a `dist/coverage` git error, unrelated to
+  any file this task touched; a clean re-run passed). Latency risk
+  (flagged by name in this milestone's own risk list, citing
+  `search.handler.ts`'s historical 58ms→368s CROSS-JOIN-order
+  regression): ran `bun run seed -- --scale large` then `bun run
+  measure:latency` - `universalSearch` p95 stayed at 191ms (budget
+  300ms) against the large-scale fixture with an *empty* `beliefs`
+  table, which doesn't actually exercise the new join under load. Wrote
+  a throwaway script (not committed) to insert 20,000 belief rows
+  directly into the org `measure-latency.ts` actually measures (the
+  "biggest project by task count" query, matched exactly - an
+  unordered `LIMIT 1` landed in the wrong org on the first attempt,
+  caught by checking which project the script printed against the
+  seed's own output before trusting the result) and re-ran the
+  measurement: p95 rose only to 207.5ms, still comfortably inside
+  budget - the CROSS-JOIN-order regression this risk specifically warns
+  about did not reoccur. Belief rows and the throwaway scripts were
+  deleted afterward.
+- **Next**: M21-T07 — search-first `apps/gui/src/features/Memory/`
+  screen: query box, belief cards, related-beliefs list, Promote action,
+  history tab, a separate "Browse all" view.
