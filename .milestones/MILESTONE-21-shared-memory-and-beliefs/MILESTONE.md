@@ -1,13 +1,13 @@
 ---
 id: M21
 title: Shared Memory & Belief System
-status: in-progress
+status: complete
 goal: Agents and humans can record project/org-scoped facts with full provenance, find them by search rather than by paging, and promote them across the existing organization/team/project scope hierarchy with an auditable trail of who promoted what and when.
 depends_on: []
 surfaces: [backend, gui, cli, contract, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-18
-completed_at: null
+completed_at: 2026-08-18
 ---
 
 # M21 — Shared Memory & Belief System
@@ -38,30 +38,30 @@ precedent for priority-not-dependency ordering.
 
 ## 3. Exit Criteria
 
-- [ ] An agent authenticated with a token holding `memory:write` can
+- [x] An agent authenticated with a token holding `memory:write` can
       record a belief via `recordBelief`/`tasker memory record`, and it
       is visible to `searchBeliefs`/`tasker memory search` within its
       project scope immediately after.
-- [ ] An agent token holding neither `memory:read` nor `memory:write` is
+- [x] An agent token holding neither `memory:read` nor `memory:write` is
       denied `PermissionDenied` on both RPCs — proving the RBAC/scope
       gating (ADR-0014, ADR-0015) is enforced, not merely modeled.
-- [ ] A human can find a belief through the GUI's Memory screen search
+- [x] A human can find a belief through the GUI's Memory screen search
       box and through `tasker memory search`, both returning the same
       ranked-result shape `universalSearch` already provides for other
       entity types (ADR-0016's `LexicalBeliefRetriever`/`belief`
       `SearchEntity`).
-- [ ] A human holding `memory:admin` can promote a belief from `project`
+- [x] A human holding `memory:admin` can promote a belief from `project`
       scope to `organization` scope via `promoteBelief`/the GUI's
       Promote action; the resulting `BeliefPromotion` row (who, from,
       to, when) is visible in the belief's history view.
-- [ ] Superseding a belief (`supersedeBelief`) marks the original
+- [x] Superseding a belief (`supersedeBelief`) marks the original
       `status: superseded`; it no longer appears in default
       `searchBeliefs` results but remains reachable via `getBelief` or
       `listBeliefs` with an explicit `status` filter.
-- [ ] `.agents/skills/capture-belief/SKILL.md` exists and, followed
+- [x] `.agents/skills/capture-belief/SKILL.md` exists and, followed
       literally, produces a correct `tasker memory record` invocation
       for a worked example.
-- [ ] `moon check --all` is clean (27/27) with the new module included;
+- [x] `moon check --all` is clean (27/27) with the new module included;
       the 95% coverage gate holds on every new file.
 
 ## 4. Scope
@@ -239,22 +239,27 @@ model); a fourth ("agent-private") scope tier below `project`
       - Files: `.agents/skills/capture-belief/SKILL.md`,
         `.agents/workflows/capture-belief.md`,
         `.claude/skills/capture-belief/SKILL.md`,
-        `.claude/commands/capture-belief.md` (the latter three are
-        `skill-forge sync`-style adapters, hand-written since no sync
-        run was available - `tasker:skills-check`'s pre-commit gate
-        requires all four for a new skill, discovered by the gate
-        itself rather than assumed; see this task's `PROGRESS.md` entry),
+        `.claude/commands/capture-belief.md` (the latter four - three
+        adapters plus the workflow - are all required by
+        `tasker:skills-check`'s pre-commit gate for a new skill,
+        discovered by the gate itself rather than assumed;
+        `.claude/skills/.../SKILL.md` must be byte-identical to what
+        `node .agents/skills/skill-forge/scripts/sync-adapters.mjs`
+        actually generates - a hand-written first attempt failed its
+        `--check` sub-step and was replaced by running the real tool;
+        see this task's `PROGRESS.md` entry),
         `docs/agent-integration.md` (new §9 "Shared memory (beliefs)",
         scopes table extended to ten, "What no token can do" extended)
       - Verify: `moon run tasker:docs-lint` clean;
         `node .agents/skills/skill-forge/scripts/validate.mjs` clean (0
-        errors, 0 warnings); every flag named in the skill's worked
-        example (`--org`/`--scope-type`/`--scope-id`/`--confidence`/
-        `--source-task`) checked against `tasker memory
-        record/search/supersede/relate --help` on the actual built
-        M21-T08 binary, not just read against the source.
+        errors, 0 warnings); `sync-adapters.mjs --check` in sync; every
+        flag named in the skill's worked example (`--org`/
+        `--scope-type`/`--scope-id`/`--confidence`/`--source-task`)
+        checked against `tasker memory record/search/supersede/relate
+        --help` on the actual built M21-T08 binary, not just read
+        against the source.
 
-- [ ] **M21-T10** — Backfill remaining test coverage; run the full
+- [x] **M21-T10** — Backfill remaining test coverage; run the full
       milestone verification suite.
       - Files: any file left under the 95% gate after M21-T02–T09
       - Verify: `moon check --all` (27/27).

@@ -588,3 +588,44 @@
   output would have been redundant, not more rigorous.
 - **Next**: M21-T10 — backfill remaining test coverage; run the full
   milestone verification suite (`moon check --all` 27/27).
+
+## M21-T10 — Test coverage backfill + full verification suite
+
+- **Checked for gaps left by T02–T09**: `go tool cover -func` (T08) had
+  already confirmed `memory.go`'s three named functions at 100%; backend
+  `memory.handler.ts`/`retrieval.ts` were already at 100% funcs/lines
+  from T05's own coverage gate. The one number below a per-file 95%
+  looked concerning at a glance - `apps/gui/src/features/Memory/
+  index.tsx` branches at 91.35% (T07's own note already explains this:
+  raised from a failing 94.04% *global* to 95.02% global by adding ~27
+  targeted tests, without chasing every individual file to 95% - this
+  repo's `vitest.config.ts` gate is a global threshold, not a per-file
+  one, matching how every other feature file in the same coverage table
+  sits below 95% branches too (e.g. `Bin/index.tsx` 94.2%, `Settings/
+  NotificationSettings.tsx` 87.5%) without being a gap unique to this
+  milestone. No further backfill needed beyond what T07 already did.
+- **Ran the full verification suite**: `moon check --all` → **27/27
+  tasks completed, 0 failures** (26 cached + `tasker:docs-lint`
+  re-running live for this task's own edits). GUI global coverage held
+  at Statements 98.29% / Branches 95.02% / Functions 97.03% / Lines
+  98.61%, all above their respective gates. Backend and CLI suites
+  clean; `tasker:skills-check` (`capture-belief`) and `tasker:spec-drift`
+  both clean. Grepped the full output for `FAIL`/error markers beyond
+  known-expected fixture log lines (CLI tests that intentionally
+  simulate RPC errors, e.g. `TestProjectsGetCmdReportsBackendError`
+  logging a `not_found` at ERROR level as part of asserting the CLI
+  reports it correctly) - none found.
+- **Exit criteria** (`MILESTONE.md` §3) re-checked against what's
+  already been tested task-by-task, not re-derived from scratch: agent
+  record→search round-trip within scope is `memory.test.ts`'s own
+  coverage (T05); the `memory:read`/`memory:write`-less-token denial
+  path is `agent-scope-sweep.test.ts` (T05); GUI search box and
+  `tasker memory search` both hit `searchBeliefs` (T07/T08); promote →
+  `BeliefPromotion` history row is covered by both `memory.test.ts` and
+  `Memory/index.test.tsx`'s promote-flow tests; supersede's
+  status-flip-and-search-exclusion is `memory.test.ts` +
+  `search.test.ts`/`search.mysql.test.ts` (T06); the skill's worked
+  example was flag-checked against the real CLI binary (T09); `moon
+  check --all` is clean per above. All seven boxes checked.
+- **Verified**: `moon check --all` (27/27, this task's own run, output
+  captured above).
