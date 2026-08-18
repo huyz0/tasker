@@ -665,12 +665,6 @@ export const idempotencyKeys = sqliteTable("idempotency_keys", {
  * on the shape and the array is small enough to read whole - and is
  * caller-supplied, unindexed, and unused by v1's LexicalBeliefRetriever
  * (ADR-0016); captured now so nothing needs backfilling later.
- *
- * Schema lands in M21-T04; memory.handler.ts (M21-T05) is the first
- * caller. Remove this tag once that handler references the table
- * directly.
- *
- * @knipignore
  */
 export const beliefs = sqliteTable("beliefs", {
   id: text("id").primaryKey(),
@@ -708,10 +702,6 @@ export const beliefs = sqliteTable("beliefs", {
 /**
  * "Map them together" - a lightweight edge table rather than a graph
  * database (ADR-0014's shape section).
- *
- * See beliefs' note above; first caller is M21-T05.
- *
- * @knipignore
  */
 export const beliefRelations = sqliteTable("belief_relations", {
   id: text("id").primaryKey(),
@@ -731,10 +721,6 @@ export const beliefRelations = sqliteTable("belief_relations", {
  * Append-only audit log - the authoritative "who promoted what, when"
  * trail. Belief's own promotedBy/promotedAt/promotedFrom* columns are
  * just the latest hop, denormalized for cheap display.
- *
- * See beliefs' note above; first caller is M21-T05.
- *
- * @knipignore
  */
 export const beliefPromotions = sqliteTable("belief_promotions", {
   id: text("id").primaryKey(),

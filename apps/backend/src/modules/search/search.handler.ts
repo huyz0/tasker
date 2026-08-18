@@ -63,8 +63,14 @@ function decodeSearchCursor(cursor: string | undefined): Record<string, number> 
  * FTS5 an unbalanced quote is not a no-op but a hard `unterminated string`
  * error. Extracting alphanumeric runs means no operator character can survive
  * to be interpreted.
+ *
+ * Exported (with `toMatchExpression`/`toBooleanModeExpression`/`rowsOf`
+ * below) so `modules/memory/retrieval.ts`'s `LexicalBeliefRetriever`
+ * (M21-T05, ADR-0016) builds its FTS5/`FULLTEXT` query the same way this
+ * file's own five entity types do, rather than a second, driftable copy of
+ * the same tokenization rules.
  */
-function searchTokens(raw: string): string[] {
+export function searchTokens(raw: string): string[] {
   return raw.match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 
@@ -72,7 +78,7 @@ function searchTokens(raw: string): string[] {
  * FTS5: every word required, the last one a prefix so that "find" matches
  * "findable" while someone is still typing.
  */
-function toMatchExpression(tokens: string[]): string {
+export function toMatchExpression(tokens: string[]): string {
   return tokens
     .map((t, i) => `"${t}"` + (i === tokens.length - 1 ? "*" : ""))
     .join(" AND ");
@@ -86,7 +92,7 @@ function toMatchExpression(tokens: string[]): string {
  * which on a small table silently returns nothing for a perfectly good search
  * term, and reads as a broken index rather than a documented behaviour.
  */
-function toBooleanModeExpression(tokens: string[]): string {
+export function toBooleanModeExpression(tokens: string[]): string {
   return tokens
     .map((t, i) => `+${t}` + (i === tokens.length - 1 ? "*" : ""))
     .join(" ");
@@ -186,7 +192,7 @@ interface SearchDialect {
  * shape is checked rather than assumed because the wrong branch would surface
  * as an empty result set, not as an error.
  */
-function rowsOf(result: any): any[] {
+export function rowsOf(result: any): any[] {
   if (!result) return [];
   if (Array.isArray(result) && Array.isArray(result[0])) return result[0];
   return Array.isArray(result) ? result : [];

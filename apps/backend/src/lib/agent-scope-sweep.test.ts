@@ -14,6 +14,7 @@ import { createArtifactsHandler } from '../modules/artifacts/artifacts.handler';
 import { createCommentsHandler } from '../modules/comments/comments.handler';
 import { createLabelsHandler } from '../modules/labels/labels.handler';
 import { createRepositoriesHandler } from '../modules/repositories/repositories.handler';
+import { createMemoryHandler } from '../modules/memory/memory.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
 import createSearchHandler from '../modules/search/search.handler';
@@ -57,6 +58,9 @@ const ids = {
   token: 'tok-scope-sweep',
   taskType: 'tt-scope-sweep',
   taskStatus: 'tstat-scope-sweep',
+  belief: 'blf-scope-sweep',
+  belief2: 'blf2-scope-sweep',
+  beliefRelation: 'bfr-scope-sweep',
 };
 
 /** One sample request per method, enough to reach the authorization check. */
@@ -191,6 +195,27 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     removeRepositoryLink: { repositoryLinkId: ids.repoLink },
     syncPullRequests: { repositoryLinkId: ids.repoLink },
   },
+  memory: {
+    recordBelief: { orgId: ids.org, scopeType: 'project', scopeId: ids.project, statement: 'S' },
+    getBelief: { id: ids.belief },
+    listBeliefs: { scopeType: 'project', scopeId: ids.project },
+    searchBeliefs: { scopeType: 'project', scopeId: ids.project, query: 'S' },
+    updateBelief: { id: ids.belief, statement: 'S2' },
+    supersedeBelief: { id: ids.belief, statement: 'S2' },
+    relateBeliefs: { beliefAId: ids.belief, beliefBId: ids.belief2, relationType: 'relates_to' },
+    unrelateBeliefs: { relationId: ids.beliefRelation },
+    listBeliefRelations: { beliefId: ids.belief },
+    listBeliefPromotions: { beliefId: ids.belief },
+    // promoteBelief/archiveBelief/restoreBelief/purgeBelief are absent from
+    // AGENT_RPC_SCOPES.memory (memory:admin has no agent-token form,
+    // ADR-0015) - each uses requireUser, so a sample request here routes
+    // them through the "unmapped methods refuse" check below rather than
+    // leaving them unclassified.
+    promoteBelief: { id: ids.belief, toScopeType: 'organization', toScopeId: ids.org },
+    archiveBelief: { id: ids.belief },
+    restoreBelief: { id: ids.belief },
+    purgeBelief: { id: ids.belief },
+  },
   health: { ping: {} },
 };
 
@@ -230,6 +255,9 @@ beforeAll(async () => {
   await db.insert(schema.taskNotes).values({ id: ids.note, taskId: ids.task, agentId: ids.agent, content: 'n', createdAt: now });
   await db.insert(schema.labels).values({ id: ids.label, orgId: ids.org, name: 'L', color: '#fff', createdAt: now });
   await db.insert(schema.repositoryLinks).values({ id: ids.repoLink, projectId: ids.project, provider: 'github', remoteName: 'o/r', accessTokenEncrypted: 'x', createdAt: now });
+  await db.insert(schema.beliefs).values({ id: ids.belief, orgId: ids.org, scopeType: 'project', scopeId: ids.project, statement: 'S', confidence: 'medium', status: 'active', sourceKind: 'user', sourceUserId: ids.user, createdAt: now });
+  await db.insert(schema.beliefs).values({ id: ids.belief2, orgId: ids.org, scopeType: 'project', scopeId: ids.project, statement: 'S2', confidence: 'medium', status: 'active', sourceKind: 'user', sourceUserId: ids.user, createdAt: now });
+  await db.insert(schema.beliefRelations).values({ id: ids.beliefRelation, beliefAId: ids.belief, beliefBId: ids.belief2, relationType: 'relates_to', createdBy: ids.user, createdAt: now });
 
   handlers = {
     orgs: createOrgsHandler(db, null),
@@ -244,6 +272,7 @@ beforeAll(async () => {
     artifacts: createArtifactsHandler(db, null),
     labels: createLabelsHandler(db, null),
     repositories: createRepositoriesHandler(db, null),
+    memory: createMemoryHandler(db, null),
     health: createHealthHandler(db, null),
     // createSearchHandler takes a ConnectRouter and registers onto it, so the
     // methods are recovered from a stub router rather than from a return value.

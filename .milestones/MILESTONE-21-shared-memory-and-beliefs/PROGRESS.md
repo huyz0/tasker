@@ -163,3 +163,105 @@
 - **Next**: M21-T05 — `memory.handler.ts` implementing all 14
   `MemoryService` RPCs, plus the deferred `AGENT_RPC_SCOPES.memory`
   mapping and `agent-scope-sweep.test.ts` wiring.
+
+## M21-T05 — Backend handler memory.handler.ts
+
+- **Status**: Done
+- **Changed**: `apps/backend/src/modules/memory/memory.handler.ts` (all 14
+  `MemoryService` RPCs, Zod schemas, `assertCan`/`authorizePrincipal`,
+  `publishDomainEvent`), `apps/backend/src/modules/memory/retrieval.ts`
+  (new - `BeliefRetriever` interface + `lexicalBeliefRetriever`, ADR-0016),
+  `apps/backend/src/lib/authz.ts` (new `getTeamOrgId`, mirroring
+  `getProjectOrgId`), `apps/backend/src/lib/scopes.ts`
+  (`AGENT_RPC_SCOPES.memory`), `apps/backend/src/lib/agent-scope-sweep.test.ts`
+  (wired `memory` into `handlers`/`REQUESTS`/seed data),
+  `apps/backend/src/index.ts` (registers `MemoryService`),
+  `apps/backend/src/modules/search/search.handler.ts` (exported
+  `searchTokens`/`toMatchExpression`/`toBooleanModeExpression`/`rowsOf`
+  for `retrieval.ts` to reuse rather than duplicate). Removed the three
+  `@knipignore` tags T04 left on `schema.sqlite.ts`'s belief tables, now
+  that this handler is their first real caller.
+- **Design decisions made while implementing** (the design doc's own
+  wording undersold or left open):
+  - **`searchBeliefs` is *not* T06's job to make work at all** - re-reading
+    T06's own bullet ("backed by the `LexicalBeliefRetriever`") against
+    T05's own bullet (`searchBeliefs` is one of the 14 RPCs T05 lists)
+    means `MemoryService.searchBeliefs` needs a real, working retriever
+    *now*; T06 only adds `belief` as a 6th `SearchEntity` to the
+    *separate* `universalSearch` RPC, reusing the same retriever. Built
+    `retrieval.ts`'s `BeliefRetriever` interface + `LexicalBeliefRetriever`
+    in this task rather than deferring it, exactly as ADR-0016 already
+    specified; T06 will import the same module, not rebuild it.
+  - **`LexicalBeliefRetriever` returns ordered ids, not rows.** A raw
+    `sql` query (required for `MATCH`/`bm25()`, same as
+    `search.handler.ts`'s own five entity types) bypasses drizzle's typed
+    `.select()`, so its timestamp columns come back as driver-native
+    values, not the `Date` objects `.select()` produces - the exact
+    Date-vs-string bug class M20-T01 fixed for `Project`. Rather than
+    give this query its own parallel row-normalization path, it returns
+    matched ids in relevance order and the handler re-fetches full rows
+    through the same typed `.select()` (and the same `beliefToProto`
+    mapper) every other RPC already uses, then re-applies that order
+    client-side.
+  - **`archiveBelief`/`restoreBelief` are human-only, correcting this
+    milestone's own earlier note.** T03's deferral note (and T05's
+    original `MILESTONE.md` wording) said only `promoteBelief`/
+    `purgeBelief` would be excluded from `AGENT_RPC_SCOPES`. Building the
+    handler surfaced a real precedent check: every other entity's own
+    lifecycle ops - `archiveProject`/`restoreProject`/`purgeProject`,
+    `archiveArtifact`/`restoreArtifact`/`purgeArtifact`, `deleteTask`/
+    `restoreTask`/`purgeTask` - are *all* absent from `AGENT_RPC_SCOPES`,
+    not just the permanently-destructive one. `supersedeBelief` already
+    gives an agent a complete self-correction path (record a replacement,
+    the old one flips to `superseded`) without needing archive/restore
+    admin rights at all, so closing those two as well - grouping all four
+    lifecycle ops under human-only `memory:admin` - is the more consistent
+    choice, not a narrower one invented for beliefs alone. `permissions`'s
+    own seeded description for `memory:admin` ("Promote beliefs across
+    scopes and purge them") was already written this way in T03, before
+    this reasoning was spelled out - the implementation matches what was
+    already seeded, not a change to it.
+  - **`promoteBelief` checks `memory:admin` at *both* the source and
+    destination scope.** Neither the design doc nor T03's note specified
+    this; decided by analogy to `createProject`'s own "check both the
+    acting user and the named owner" shape - a promoter needs standing
+    both where the belief already lives and in the wider scope it's about
+    to become visible in, so promotion can't be used to push a belief into
+    a scope the promoter has no authority in themselves.
+  - **Team scope does not climb to org for a belief**, per `policy.ts`'s
+    own documented behavior (project→org and org→ancestor-org are the only
+    climb edges; team has none). Verified with a dedicated test rather
+    than assumed: an org `admin` with zero team standing is denied a
+    team-scoped `recordBelief`, and a user holding a direct team-scoped
+    grant succeeds - the first real feature in this codebase to exercise
+    that edge case end-to-end (`teams.handler.ts`'s own CRUD deliberately
+    checks organization scope for everything, per its file header comment).
+  - **`UpdateBeliefRequest` has no `status` field**, so the `retracted`
+    status value the contract declares (T02) has no RPC path to reach it
+    today - only `recordBelief` (initial `active`) and `supersedeBelief`
+    (old belief → `superseded`) ever change `status`. Flagged, not fixed:
+    correcting it means touching the contract again for a status value no
+    M21 exit criterion requires, the same "found a drift, out of scope"
+    call already made once this milestone for `Project.deletedAt`'s
+    missing `optional` in T02.
+- **Verified**: `bun test src/modules/memory/memory.test.ts` (24 tests,
+  100% funcs/lines on `memory.handler.ts`, covering provenance
+  derivation, orgId/scopeId cross-check, permission boundaries at every
+  tier including the team-scope-does-not-climb case, search's default
+  active-only filtering and explicit-status override, supersede's
+  status flip + back-link, promote's audit trail + dual-scope check,
+  relate/unrelate from both sides, and purge's dangling-reference
+  cleanup). `bun test src/lib/agent-scope-sweep.test.ts` (7/7, `memory`
+  now wired into `handlers`/`REQUESTS`/seed data). Full backend suite:
+  1355 pass/0 fail. `lexicalBeliefRetriever`'s MySQL `FULLTEXT` branch
+  (untested by the SQLite-only suite, same coverage gap
+  `search.handler.ts`'s own MySQL entities already have) smoke-tested
+  directly against live MySQL via a throwaway script (inserted a belief,
+  confirmed the match and the confidence filter both work, deleted the
+  script - not committed, matching this milestone's established
+  don't-trust-new-SQL-unverified discipline from T04). `moon check --all`
+  27/27 clean (one round-trip: `tasker:knip` flagged
+  `BeliefRetrieverOpts` as an unnecessarily-exported type - dropped
+  `export`, nothing outside `retrieval.ts` needs it).
+- **Next**: M21-T06 — add `belief` as a 6th `SearchEntity` in
+  `search.handler.ts`, backed by this task's own `lexicalBeliefRetriever`.

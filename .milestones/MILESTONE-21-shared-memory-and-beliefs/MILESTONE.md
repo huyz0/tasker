@@ -138,24 +138,37 @@ model); a fourth ("agent-private") scope tier below `project`
         `@knipignore`d until `memory.handler.ts` (M21-T05) references
         them.
 
-- [ ] **M21-T05** — Implement `memory.handler.ts`: `recordBelief`,
+- [x] **M21-T05** — Implement `memory.handler.ts`: `recordBelief`,
       `getBelief`, `listBeliefs`, `searchBeliefs`, `updateBelief`,
       `supersedeBelief`, `promoteBelief`, `relateBeliefs`/
       `unrelateBeliefs`, `listBeliefRelations`, `listBeliefPromotions`,
       `archiveBelief`/`restoreBelief`/`purgeBelief`, each with a Zod
       schema, `assertCan`/`authorizePrincipal`, and `publishDomainEvent`.
       Also add the `memory` entry to `AGENT_RPC_SCOPES` (deferred from
-      T03 - see its note) mapping every method except `promoteBelief`/
-      `purgeBelief` to `memory:read`/`memory:write` per ADR-0015, and
-      wire `memory` into `agent-scope-sweep.test.ts`'s `handlers`/
-      `REQUESTS`.
+      T03 - see its note) mapping `getBelief`/`listBeliefs`/
+      `searchBeliefs`/`listBeliefRelations`/`listBeliefPromotions` to
+      `memory:read` and `recordBelief`/`updateBelief`/`supersedeBelief`/
+      `relateBeliefs`/`unrelateBeliefs` to `memory:write` per ADR-0015,
+      and wire `memory` into `agent-scope-sweep.test.ts`'s `handlers`/
+      `REQUESTS`. **Corrected from this bullet's own earlier wording**
+      ("except promoteBelief/purgeBelief"): `archiveBelief`/
+      `restoreBelief` are also absent from the map, human-only via
+      `requireUser` - see this task's `PROGRESS.md` entry for why.
       - Files: `apps/backend/src/modules/memory/memory.handler.ts`,
         `apps/backend/src/modules/memory/memory.test.ts`,
-        `apps/backend/src/lib/scopes.ts`,
-        `apps/backend/src/lib/agent-scope-sweep.test.ts`
-      - Verify: `moon run backend:test`, coverage gate held;
-        `agent-scope-sweep.test.ts` fails until `memory` is classified,
-        then passes once it is.
+        `apps/backend/src/modules/memory/retrieval.ts` (new -
+        `BeliefRetriever`/`lexicalBeliefRetriever`, ADR-0016),
+        `apps/backend/src/modules/search/search.handler.ts` (exports
+        `searchTokens`/`toMatchExpression`/`toBooleanModeExpression`/
+        `rowsOf` for reuse), `apps/backend/src/lib/authz.ts` (new
+        `getTeamOrgId`), `apps/backend/src/lib/scopes.ts`,
+        `apps/backend/src/lib/agent-scope-sweep.test.ts`,
+        `apps/backend/src/index.ts` (registers `MemoryService`)
+      - Verify: `moon run backend:test`, coverage gate held (100%
+        funcs/lines on `memory.handler.ts`); `agent-scope-sweep.test.ts`
+        failed until `memory` was classified, passes now; MySQL
+        `FULLTEXT` branch of `lexicalBeliefRetriever` smoke-tested
+        against live MySQL (ad hoc script, not committed).
 
 - [ ] **M21-T06** — Add `belief` as a sixth `SearchEntity` in
       `search.handler.ts`, backed by the `LexicalBeliefRetriever`.
