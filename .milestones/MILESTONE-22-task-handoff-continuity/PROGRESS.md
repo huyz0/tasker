@@ -207,3 +207,41 @@
   --help` on a freshly built CLI binary.
 - **Next**: M22-T08 — test coverage backfill + final `moon check --all`
   pass (milestone-closing task).
+
+## M22-T08 — Test coverage backfill + full verification suite
+
+- **Status**: done
+- **Date**: 2026-08-19
+- **Checked for gaps left by T02–T07**: each task's own commit already
+  verified its own coverage gate held at commit time (backend
+  95.20%/96.28% functions/lines against bunfig.toml's 95% threshold;
+  GUI 95.03% branches against vitest.config.ts's 95% threshold, up from
+  a below-threshold 94.98% closed by two targeted tests in T02 and T05;
+  CLI's `go tool cover -func` fresh total 96.5%, no hard gate enforced
+  for Go in this repo). No further backfill needed - a fresh
+  `moon check --all` run (below) confirms all three still hold together
+  with nothing else changed since T07's commit.
+- **Verified**: `moon check --all` → **27/27 tasks completed, 0
+  failures** (all cached from T07's own pre-commit run, since nothing
+  changed since - a legitimate cache hit, not a stale one, given the
+  working tree was clean before this task's own doc-only edits).
+- **Exit criteria** (`MILESTONE.md` §3) re-checked against what's
+  already been tested task-by-task: agent-only `note-add --type
+  handoff` and the human-denial path are `task_notes.test.ts` (T04);
+  `claimTask`/`getTask` surfacing is `tasks.test.ts` (T04) and the CLI's
+  own `TestTasksClaimCommandSurfacesLatestHandoffNote`/
+  `TestTasksGetCommandSurfacesLatestHandoffNote` (T06); the GUI summary
+  block and click-through are `Tasks/index.test.tsx` (T05); the
+  cross-task browse view is `Handoffs/index.test.tsx` (GUI, T05) and
+  `TestTasksHandoffsCommand`+siblings (CLI, T06); the skill's worked
+  example was flag-checked against the built CLI binary (T07); `moon
+  check --all` is clean per above. All seven boxes checked.
+- **Notes**: Two genuine, previously-latent bugs were found and fixed
+  along the way (not scope creep - both were blocking this milestone's
+  own verification, the same "found while verifying" pattern M21's own
+  PROGRESS.md documents): the `ArtifactUpload.tsx` flaky coverage branch
+  (T02) and the `rootCmd`-level `--json` PersistentFlag leak across CLI
+  tests (T06). Both documented in their own task's entry above, both
+  fixed with a dedicated regression test, neither left as a TODO.
+- **Verified**: `moon check --all` (27/27, this task's own confirming
+  run, output captured above).

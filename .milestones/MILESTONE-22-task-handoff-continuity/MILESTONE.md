@@ -1,13 +1,13 @@
 ---
 id: M22
 title: Task Handoff & Continuity
-status: in-progress
+status: complete
 goal: An agent about to lose its claim on an unfinished task can record what it tried, what's blocked, and what the concrete next step is, and that context is visible to whoever picks the task up next — in the same round trip as claiming or inspecting the task, and browsable across a whole project without opening tasks one at a time.
 depends_on: []
 surfaces: [backend, gui, cli, contract, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-19
-completed_at: null
+completed_at: 2026-08-19
 ---
 
 # M22 — Task Handoff & Continuity
@@ -39,25 +39,25 @@ ahead of the numbered backlog.
 
 ## 3. Exit Criteria
 
-- [ ] An agent token can call `createTaskNote`/`tasker tasks note-add
+- [x] An agent token can call `createTaskNote`/`tasker tasks note-add
       --type handoff` on a task it holds; a human token attempting the
       same call is denied `PermissionDenied` — the existing
       agent-only restriction, confirmed to still hold with the new
       field present.
-- [ ] `claimTask`/`tasker tasks claim` on a task that has a handoff note
+- [x] `claimTask`/`tasker tasks claim` on a task that has a handoff note
       returns that note in the same response — no second call needed.
-- [ ] `getTask`/`tasker tasks get` on the same task also returns it.
-- [ ] The task detail view in the GUI shows a compact handoff summary
+- [x] `getTask`/`tasker tasks get` on the same task also returns it.
+- [x] The task detail view in the GUI shows a compact handoff summary
       (count + last few, truncated) separate from the general notes
       panel, with a working click-through — not the full history inline.
-- [ ] A human can browse `/handoffs` (GUI) or `tasker tasks handoffs`
+- [x] A human can browse `/handoffs` (GUI) or `tasker tasks handoffs`
       (CLI), project-scoped, and see one row per task with a pending
       handoff note (the latest per task, not full history), without
       opening any task individually.
-- [ ] `.agents/skills/handoff-task/SKILL.md` exists and, followed
+- [x] `.agents/skills/handoff-task/SKILL.md` exists and, followed
       literally, produces a correct `tasker tasks note-add --type
       handoff` invocation for a worked example.
-- [ ] `moon check --all` is clean (27/27) with every changed file
+- [x] `moon check --all` is clean (27/27) with every changed file
       holding the 95% coverage gate.
 
 ## 4. Scope
@@ -92,7 +92,7 @@ promotion of handoff-note content into beliefs (stays a manual
         `.milestones/MILESTONE-22-task-handoff-continuity/*`
       - Verify: files exist, `moon run tasker:docs-lint` passes.
 
-- [ ] **M22-T02** — Add `TaskNote.noteType`,
+- [x] **M22-T02** — Add `TaskNote.noteType`,
       `CreateTaskNoteRequest.noteType`, `ListHandoffNotesRequest/
       Response` + `HandoffNoteEntry`, `ClaimTaskResponse.
       latestHandoffNote`, `GetTaskResponse.latestHandoffNote` to the
@@ -104,7 +104,7 @@ promotion of handoff-note content into beliefs (stays a manual
       - Verify: `moon run shared-contract:compile` succeeds; generated
         types include the new fields/messages.
 
-- [ ] **M22-T03** — Add `note_type` column to `task_notes`, both
+- [x] **M22-T03** — Add `note_type` column to `task_notes`, both
       dialects (`mysqlEnum` on MySQL, plain `text` + Zod on SQLite),
       default `'comment'`, backfilled, with paired numbered migrations.
       - Files: `apps/backend/src/db/schema.sqlite.ts`,
@@ -114,7 +114,7 @@ promotion of handoff-note content into beliefs (stays a manual
         `docker compose up -d mysql` + integration test run; existing
         rows read back as `noteType: 'comment'`.
 
-- [ ] **M22-T04** — Implement `listHandoffNotes` in
+- [x] **M22-T04** — Implement `listHandoffNotes` in
       `task_notes.handler.ts`; add `noteType` to the `createTaskNote`
       Zod schema; add a shared `getLatestHandoffNote(db, taskId)` helper
       and wire it into `claimTask`/`getTask` in `tasks.handler.ts`; add
@@ -130,7 +130,7 @@ promotion of handoff-note content into beliefs (stays a manual
         classified; a human principal still gets `PermissionDenied` from
         `createTaskNote` regardless of `noteType`.
 
-- [ ] **M22-T05** — Build the task-detail Handoffs summary block in
+- [x] **M22-T05** — Build the task-detail Handoffs summary block in
       `apps/gui/src/features/Tasks/index.tsx` (count + last few,
       derived client-side from the already-eager notes query, no new
       network call); build the new top-level `apps/gui/src/features/
@@ -147,7 +147,7 @@ promotion of handoff-note content into beliefs (stays a manual
         `gui:typecheck`/`gui:lint`/`gui:design-lint`/`gui:rpc-coverage`
         clean; Storybook stories for the new screen; `jest-axe` clean.
 
-- [ ] **M22-T06** — Add `--type` flag to `tasks_notes.go`'s `note-add`;
+- [x] **M22-T06** — Add `--type` flag to `tasks_notes.go`'s `note-add`;
       surface `latestHandoffNote` on `tasks claim`/`tasks get` (plain +
       `--json`); add `tasker tasks handoffs [--project P] [--json]`.
       - Files: `apps/cli/cmd/tasks_notes.go`,
@@ -171,7 +171,7 @@ promotion of handoff-note content into beliefs (stays a manual
         --check` in sync; worked example's flags checked against the
         built CLI binary's `--help` output.
 
-- [ ] **M22-T08** — Backfill remaining test coverage; run the full
+- [x] **M22-T08** — Backfill remaining test coverage; run the full
       milestone verification suite.
       - Files: any file left under the 95% gate after M22-T02–T07
       - Verify: `moon check --all` (27/27).
