@@ -96,7 +96,8 @@ func TestTasksCreateCommand(t *testing.T) {
 
 type fakeTaskClaimHandler struct {
 	v1connect.UnimplementedTaskServiceHandler
-	gotReq *healthv1.ClaimTaskRequest
+	gotReq            *healthv1.ClaimTaskRequest
+	latestHandoffNote *healthv1.TaskNote
 }
 
 func (f *fakeTaskClaimHandler) ClaimTask(
@@ -110,6 +111,7 @@ func (f *fakeTaskClaimHandler) ClaimTask(
 			DisplayId: "T-9",
 			Status:    "in-progress",
 		},
+		LatestHandoffNote: f.latestHandoffNote,
 	}), nil
 }
 
@@ -150,6 +152,45 @@ func TestTasksClaimCommand(t *testing.T) {
 	output := b.String()
 	if !strings.Contains(output, "task-1") {
 		t.Errorf("expected output to contain the claimed task's id, got %s", output)
+	}
+}
+
+// M22-T04 (ADR-0017): the whole point of this milestone - claiming a task
+// that has a prior handoff note surfaces it in the same round trip, both in
+// plain text and in the (now whole-response, not bare-task) --json shape.
+func TestTasksClaimCommandSurfacesLatestHandoffNote(t *testing.T) {
+	resetJSONFlag(t)
+	handler := &fakeTaskClaimHandler{
+		latestHandoffNote: &healthv1.TaskNote{
+			Id: "tnt_1", TaskId: "task-1", AgentId: "agent-1",
+			Content: "blocked on review, next: rerun tests", NoteType: "handoff",
+		},
+	}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(handler))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "claim", "task-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("expected task claim to succeed, got error: %v", err)
+	}
+	if !strings.Contains(b.String(), "blocked on review, next: rerun tests") {
+		t.Errorf("expected the handoff note to be printed, got %s", b.String())
+	}
+
+	jsonBuf := bytes.NewBufferString("")
+	rootCmd.SetOut(jsonBuf)
+	rootCmd.SetArgs([]string{"tasks", "claim", "task-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("expected task claim to succeed, got error: %v", err)
+	}
+	if !strings.Contains(jsonBuf.String(), "\"latestHandoffNote\"") {
+		t.Errorf("expected --json output to carry latestHandoffNote, got %s", jsonBuf.String())
 	}
 }
 
@@ -469,7 +510,8 @@ func TestTasksListCmdForwardsFacetFlags(t *testing.T) {
 
 type fakeTaskGetHandler struct {
 	v1connect.UnimplementedTaskServiceHandler
-	gotReq *healthv1.GetTaskRequest
+	gotReq            *healthv1.GetTaskRequest
+	latestHandoffNote *healthv1.TaskNote
 }
 
 func (f *fakeTaskGetHandler) GetTask(
@@ -485,6 +527,7 @@ func (f *fakeTaskGetHandler) GetTask(
 			Status:      "todo",
 			Description: "A longer body only get returns",
 		},
+		LatestHandoffNote: f.latestHandoffNote,
 	}), nil
 }
 
@@ -517,6 +560,45 @@ func TestTasksGetCommand(t *testing.T) {
 	}
 	if !strings.Contains(output, "A longer body only get returns") {
 		t.Errorf("expected output to contain the task's description, got %s", output)
+	}
+}
+
+// M22-T04 (ADR-0017): inspecting a task surfaces prior handoff context
+// without a separate `tasks notes` call, both in plain text and in the
+// (now whole-response) --json shape.
+func TestTasksGetCommandSurfacesLatestHandoffNote(t *testing.T) {
+	resetJSONFlag(t)
+	handler := &fakeTaskGetHandler{
+		latestHandoffNote: &healthv1.TaskNote{
+			Id: "tnt_1", TaskId: "task-1", AgentId: "agent-1",
+			Content: "current understanding: X, next: Y", NoteType: "handoff",
+		},
+	}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(handler))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	rootCmd.AddCommand(tasksCmd)
+	b := bytes.NewBufferString("")
+	rootCmd.SetOut(b)
+	rootCmd.SetArgs([]string{"tasks", "get", "task-1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks get failed: %v", err)
+	}
+	if !strings.Contains(b.String(), "current understanding: X, next: Y") {
+		t.Errorf("expected the handoff note to be printed, got %s", b.String())
+	}
+
+	jsonBuf := bytes.NewBufferString("")
+	rootCmd.SetOut(jsonBuf)
+	rootCmd.SetArgs([]string{"tasks", "get", "task-1", "--json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("tasks get failed: %v", err)
+	}
+	if !strings.Contains(jsonBuf.String(), "\"latestHandoffNote\"") {
+		t.Errorf("expected --json output to carry latestHandoffNote, got %s", jsonBuf.String())
 	}
 }
 
