@@ -61,6 +61,19 @@ const axeSource = readFileSync(AXE, 'utf8');
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 
+// Several stories (any screen/component with a real, unconditional useQuery
+// on mount and no MSW to answer it - CurrentUser, OrgProjectSwitcher,
+// Dashboard, TaskTypesEditor, BinDashboard, SystemHealthPage, and others)
+// fire a real createClient(...) call against BACKEND_URL
+// (src/lib/backendUrl.ts). Nothing listens on that port here, and in this
+// environment a fetch to a closed local port does not fail fast - it hangs
+// indefinitely rather than rejecting, which never lets `networkidle`
+// resolve and times out the whole run on the first such story. Aborting it
+// at the network layer makes it fail immediately instead, matching what a
+// real "backend unreachable" state looks like without needing every story
+// to route around this environment's own quirk individually.
+await page.route('http://localhost:8080/**', (route) => route.abort());
+
 const failures = [];
 for (const story of stories) {
   await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {

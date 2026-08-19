@@ -64,6 +64,14 @@ const stories = Object.values(index.entries).filter((e) => e.type === 'story');
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: WIDTH, height: 900 }, reducedMotion: 'reduce' });
 
+// Same reasoning as storybook-a11y.mjs's own route() call: a story with a
+// real, unconditional useQuery on mount and no MSW to answer it fires a real
+// createClient(...) call against BACKEND_URL, which in this environment
+// hangs rather than fails fast against a closed local port - never letting
+// `networkidle` resolve. Aborting it at the network layer fails it
+// immediately instead.
+await page.route('http://localhost:8080/**', (route) => route.abort());
+
 /** Runs inside the page — no access to anything in this file's closure. */
 function findOverflow(width) {
   const offenders = [];
