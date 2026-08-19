@@ -1,8 +1,8 @@
 ---
 active_milestone: M08
 active_task: null
-last_updated: 2026-08-18
-last_commit: 6e7ecda
+last_updated: 2026-08-19
+last_commit: 4aa14f7
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,55 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-19 — M22 (Task Handoff & Continuity) closed: 8/8 tasks, 7/7
+exit criteria, merged to `main`.** Requested directly by the user in
+conversational follow-up immediately after M21 closed - a different
+problem from shared memory: a cloud agent has no local disk to fall back
+on the way a person coding locally does, so if its claim on a task ends
+before the task is done, whoever picks it up next has nothing but the
+raw diff unless the agent wrote down what it tried. Design pass
+(`.specs/specs/2026-08-19-1659-task-handoff-continuity/` + `ADR-0017`)
+and an interactive scoping review (three `AskUserQuestion` rounds -
+agent-only authorship, a compact task-detail summary rather than the
+full notes panel, a top-level cross-task screen rather than a per-task
+sub-view) preceded implementation, same discipline as every milestone
+since M21. Developed on `feature/m22-task-handoff-continuity` as eight
+task commits, merged with `--no-ff`.
+
+Delivery (T02–T08): `TaskNote.noteType` (`'comment' | 'handoff'`,
+default `'comment'`) plus a new `listHandoffNotes` RPC and
+`latestHandoffNote` on `claimTask`/`getTask` responses (T02) - no new
+entity, no new permission family, no new agent-token scope (ADR-0017);
+`note_type` column + migration, both dialects, a plain `ALTER TABLE ADD
+COLUMN` needing no full-table rebuild (T03); the backend handler, with
+`listHandoffNotes` deliberately avoiding a dialect-branched raw-SQL
+window-function query in favor of a single ordered+capped typed join
+and in-JS dedupe-to-latest-per-task (T04); a task-detail Handoffs
+summary block sharing `TaskNotesPanel`'s own query/cache entry (no new
+network call) plus a new top-level `features/Handoffs/` screen
+mirroring Memory's own M21 nav entry (T05); `tasker tasks handoffs` as
+the CLI's primary new command, `note-add --type`, and `claim`/`get`
+surfacing via a deliberate, documented breaking change to their
+`--json` shape (bare task object → whole response, the only way
+`latestHandoffNote` is reachable at all) (T06); the `handoff-task`
+agent skill plus `docs/agent-integration.md` §10, written correctly on
+the first attempt by directly applying M21-T09's own hard-won
+skill-forge lessons rather than rediscovering them (T07); `moon check
+--all` clean 27/27, all seven exit criteria re-verified (T08).
+
+Two genuine, previously-latent bugs were found and fixed along the way,
+neither scope creep - both were blocking this milestone's own
+verification, named and fixed with a dedicated regression test rather
+than left as a TODO: `ArtifactUpload.tsx` (M18, unrelated feature) had
+one flaky-coverage branch whose v8 report intermittently flipped across
+otherwise-identical runs (its `onSuccess` resets a file input ref that's
+null once the component has unmounted before the async upload
+resolves); and `--json`, a `PersistentFlag` on the CLI's `rootCmd`
+shared by every command in `tasks_notes_test.go`, never resets its
+`cmd.Flags().Changed()` state once a prior test sets it - the same bug
+class M20-T10 already documented, just on a flag every test in that
+file happens to touch.
 
 **2026-08-18 — M21 (Shared Memory & Belief System) closed: 10/10 tasks,
 7/7 exit criteria, merged to `main`.** Requested directly by the user via
@@ -577,14 +626,15 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
 | M14 | Task Reliability & Agent Self-Service | done | M04, M05 | 9   | 9    |
 | M21 | Shared Memory & Belief System   | done   | —          | 10    | 10   |
+| M22 | Task Handoff & Continuity       | done   | —          | 8     | 8    |
 
-**Total: 179 tasks across 15 milestones — 136 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10).**
+**Total: 187 tasks across 16 milestones — 144 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8).**
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
-see `PROGRESS.md`/git history for each. M21 is sequenced by explicit user
-priority (like M13 before M10), with no `depends_on` edge to anything
-still `todo`.
+see `PROGRESS.md`/git history for each. M21 and M22 are sequenced by
+explicit user priority (like M13 before M10), with no `depends_on` edge
+to anything still `todo`.
 
 ## Dependency graph
 
