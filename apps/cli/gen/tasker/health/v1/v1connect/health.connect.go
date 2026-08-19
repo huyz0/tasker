@@ -313,6 +313,9 @@ const (
 	// TaskNoteServiceListTaskNotesProcedure is the fully-qualified name of the TaskNoteService's
 	// ListTaskNotes RPC.
 	TaskNoteServiceListTaskNotesProcedure = "/tasker.health.v1.TaskNoteService/ListTaskNotes"
+	// TaskNoteServiceListHandoffNotesProcedure is the fully-qualified name of the TaskNoteService's
+	// ListHandoffNotes RPC.
+	TaskNoteServiceListHandoffNotesProcedure = "/tasker.health.v1.TaskNoteService/ListHandoffNotes"
 	// LabelServiceCreateLabelProcedure is the fully-qualified name of the LabelService's CreateLabel
 	// RPC.
 	LabelServiceCreateLabelProcedure = "/tasker.health.v1.LabelService/CreateLabel"
@@ -538,6 +541,7 @@ var (
 	taskNoteServiceUpdateTaskNoteMethodDescriptor             = taskNoteServiceServiceDescriptor.Methods().ByName("UpdateTaskNote")
 	taskNoteServiceDeleteTaskNoteMethodDescriptor             = taskNoteServiceServiceDescriptor.Methods().ByName("DeleteTaskNote")
 	taskNoteServiceListTaskNotesMethodDescriptor              = taskNoteServiceServiceDescriptor.Methods().ByName("ListTaskNotes")
+	taskNoteServiceListHandoffNotesMethodDescriptor           = taskNoteServiceServiceDescriptor.Methods().ByName("ListHandoffNotes")
 	labelServiceServiceDescriptor                             = v1.File_tasker_health_v1_health_proto.Services().ByName("LabelService")
 	labelServiceCreateLabelMethodDescriptor                   = labelServiceServiceDescriptor.Methods().ByName("CreateLabel")
 	labelServiceUpdateLabelMethodDescriptor                   = labelServiceServiceDescriptor.Methods().ByName("UpdateLabel")
@@ -3229,6 +3233,7 @@ type TaskNoteServiceClient interface {
 	UpdateTaskNote(context.Context, *connect.Request[v1.UpdateTaskNoteRequest]) (*connect.Response[v1.UpdateTaskNoteResponse], error)
 	DeleteTaskNote(context.Context, *connect.Request[v1.DeleteTaskNoteRequest]) (*connect.Response[v1.DeleteTaskNoteResponse], error)
 	ListTaskNotes(context.Context, *connect.Request[v1.ListTaskNotesRequest]) (*connect.Response[v1.ListTaskNotesResponse], error)
+	ListHandoffNotes(context.Context, *connect.Request[v1.ListHandoffNotesRequest]) (*connect.Response[v1.ListHandoffNotesResponse], error)
 }
 
 // NewTaskNoteServiceClient constructs a client for the tasker.health.v1.TaskNoteService service. By
@@ -3265,15 +3270,22 @@ func NewTaskNoteServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(taskNoteServiceListTaskNotesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listHandoffNotes: connect.NewClient[v1.ListHandoffNotesRequest, v1.ListHandoffNotesResponse](
+			httpClient,
+			baseURL+TaskNoteServiceListHandoffNotesProcedure,
+			connect.WithSchema(taskNoteServiceListHandoffNotesMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // taskNoteServiceClient implements TaskNoteServiceClient.
 type taskNoteServiceClient struct {
-	createTaskNote *connect.Client[v1.CreateTaskNoteRequest, v1.CreateTaskNoteResponse]
-	updateTaskNote *connect.Client[v1.UpdateTaskNoteRequest, v1.UpdateTaskNoteResponse]
-	deleteTaskNote *connect.Client[v1.DeleteTaskNoteRequest, v1.DeleteTaskNoteResponse]
-	listTaskNotes  *connect.Client[v1.ListTaskNotesRequest, v1.ListTaskNotesResponse]
+	createTaskNote   *connect.Client[v1.CreateTaskNoteRequest, v1.CreateTaskNoteResponse]
+	updateTaskNote   *connect.Client[v1.UpdateTaskNoteRequest, v1.UpdateTaskNoteResponse]
+	deleteTaskNote   *connect.Client[v1.DeleteTaskNoteRequest, v1.DeleteTaskNoteResponse]
+	listTaskNotes    *connect.Client[v1.ListTaskNotesRequest, v1.ListTaskNotesResponse]
+	listHandoffNotes *connect.Client[v1.ListHandoffNotesRequest, v1.ListHandoffNotesResponse]
 }
 
 // CreateTaskNote calls tasker.health.v1.TaskNoteService.CreateTaskNote.
@@ -3296,12 +3308,18 @@ func (c *taskNoteServiceClient) ListTaskNotes(ctx context.Context, req *connect.
 	return c.listTaskNotes.CallUnary(ctx, req)
 }
 
+// ListHandoffNotes calls tasker.health.v1.TaskNoteService.ListHandoffNotes.
+func (c *taskNoteServiceClient) ListHandoffNotes(ctx context.Context, req *connect.Request[v1.ListHandoffNotesRequest]) (*connect.Response[v1.ListHandoffNotesResponse], error) {
+	return c.listHandoffNotes.CallUnary(ctx, req)
+}
+
 // TaskNoteServiceHandler is an implementation of the tasker.health.v1.TaskNoteService service.
 type TaskNoteServiceHandler interface {
 	CreateTaskNote(context.Context, *connect.Request[v1.CreateTaskNoteRequest]) (*connect.Response[v1.CreateTaskNoteResponse], error)
 	UpdateTaskNote(context.Context, *connect.Request[v1.UpdateTaskNoteRequest]) (*connect.Response[v1.UpdateTaskNoteResponse], error)
 	DeleteTaskNote(context.Context, *connect.Request[v1.DeleteTaskNoteRequest]) (*connect.Response[v1.DeleteTaskNoteResponse], error)
 	ListTaskNotes(context.Context, *connect.Request[v1.ListTaskNotesRequest]) (*connect.Response[v1.ListTaskNotesResponse], error)
+	ListHandoffNotes(context.Context, *connect.Request[v1.ListHandoffNotesRequest]) (*connect.Response[v1.ListHandoffNotesResponse], error)
 }
 
 // NewTaskNoteServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -3334,6 +3352,12 @@ func NewTaskNoteServiceHandler(svc TaskNoteServiceHandler, opts ...connect.Handl
 		connect.WithSchema(taskNoteServiceListTaskNotesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskNoteServiceListHandoffNotesHandler := connect.NewUnaryHandler(
+		TaskNoteServiceListHandoffNotesProcedure,
+		svc.ListHandoffNotes,
+		connect.WithSchema(taskNoteServiceListHandoffNotesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskNoteService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskNoteServiceCreateTaskNoteProcedure:
@@ -3344,6 +3368,8 @@ func NewTaskNoteServiceHandler(svc TaskNoteServiceHandler, opts ...connect.Handl
 			taskNoteServiceDeleteTaskNoteHandler.ServeHTTP(w, r)
 		case TaskNoteServiceListTaskNotesProcedure:
 			taskNoteServiceListTaskNotesHandler.ServeHTTP(w, r)
+		case TaskNoteServiceListHandoffNotesProcedure:
+			taskNoteServiceListHandoffNotesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -3367,6 +3393,10 @@ func (UnimplementedTaskNoteServiceHandler) DeleteTaskNote(context.Context, *conn
 
 func (UnimplementedTaskNoteServiceHandler) ListTaskNotes(context.Context, *connect.Request[v1.ListTaskNotesRequest]) (*connect.Response[v1.ListTaskNotesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskNoteService.ListTaskNotes is not implemented"))
+}
+
+func (UnimplementedTaskNoteServiceHandler) ListHandoffNotes(context.Context, *connect.Request[v1.ListHandoffNotesRequest]) (*connect.Response[v1.ListHandoffNotesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskNoteService.ListHandoffNotes is not implemented"))
 }
 
 // LabelServiceClient is a client for the tasker.health.v1.LabelService service.

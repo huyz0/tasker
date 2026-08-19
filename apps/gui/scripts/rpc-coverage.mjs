@@ -52,6 +52,11 @@ export const EXCEPTIONS = {
     'real gap, not yet scheduled. Wire it into the Organizations member ' +
     'list (an admin action per row, alongside role/remove) and remove this ' +
     'exception when that lands.',
+  'TaskNoteService.listHandoffNotes':
+    'M22-T02 added the RPC ahead of its GUI caller, same sequencing as ' +
+    'every other milestone here (contract lands before the screen that ' +
+    'calls it). M22-T05 wires this into the new features/Handoffs/ screen ' +
+    'and removes this exception then.',
 };
 
 /** RPC names per service, read from the TypeSpec interfaces. */
