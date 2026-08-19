@@ -15,6 +15,68 @@ blocker: null
 
 ## Now
 
+**2026-08-19/20 — CI fully green: fixed `CI Pipeline` and `Real Integration
+Tests`, both previously broken on every push since at least M21.** Requested
+directly by the user ("cjeck ci", then "fix itest ci also"), not a `/goal`.
+Four fixes across two workflows, each verified against the real GitHub Actions
+run (via `gh run watch`), not just locally — this environment can reproduce
+none of these failures by running the tests, since the sandbox has no real
+network access to a live backend port or a real `GITHUB_TEST_TOKEN`/
+`INTEGRATION_TEST_TOKEN`.
+
+`CI Pipeline` (three fixes, one commit each, merged in sequence):
+
+1. `axe-core` was only reachable as a transitive dependency of
+   `@storybook/addon-a11y`; `scripts/storybook-a11y.mjs`'s
+   `require.resolve('axe-core/package.json')` couldn't reliably find it in a
+   clean CI install (worked locally only because of this session's
+   long-lived, heavily-installed `node_modules`). Fixed by adding `axe-core`
+   as a direct `devDependency` of `apps/gui/package.json` + a `knip.json`
+   ignore entry + a `tech-stack.md` row.
+2. `apps/gui/tests/e2e/universal-search.spec.ts` asserted a placeholder
+   string (`'Type a command or search...'`) that no longer exists in
+   `GlobalSearch.tsx`; updated to the real one.
+3. `apps/gui/tests/e2e/navigation.spec.ts` asserted an "Agent State Machine"
+   heading that doesn't exist anywhere in the current Agents screen; dropped,
+   per the file's own established convention for stale assertions.
+
+Verified via `gh run watch`: `CI Pipeline` went from red to fully green (6/6
+jobs).
+
+`Real Integration Tests` (three fixes, one commit each — each only
+discoverable by reading the *next* real failure the previous fix uncovered,
+since no local run can exercise the real GitHub sandbox path):
+
+1. `.github/workflows/integration.yml`'s "Run Integration Tests" step never
+   set `STANDALONE`, so `authz.ts`'s `isStandalone()` resolved the *mysql*
+   schema objects while `repositories.integration.test.ts`'s `mockDb` only
+   ever recognized *sqlite* schema objects by identity — every authz lookup
+   silently matched nothing, throwing spurious `not_found` regardless of the
+   mock's row data. Fixed by adding `STANDALONE: "true"`, matching every
+   other place this repo runs standalone mode.
+2. That unblocked the org-membership lookup, surfacing the next real gap:
+   `can()` (`policy.ts`) also needs a `role_permissions` lookup to resolve a
+   role into actual granted permission keys, which the mock never
+   special-cased either — every `assertCan()` call then failed
+   `PermissionDenied` regardless of the mocked "admin" membership row. Fixed
+   by mocking `role_permissions` to match the real seeded catalog
+   (`role-admin` → `repository:read`/`repository:write`, confirmed against
+   `drizzle-sqlite/0034_seed_system_roles_and_migrate_grants.sql`).
+3. That unblocked `listBuilds`/`syncPullRequests`, surfacing the last real
+   gap: `listDeployments` cross-validates that `buildId`'s real head commit
+   sha matches the given `commitSha` (a deliberate anti-spoofing check,
+   `repositories.handler.ts:443`) — the test called it with a made-up
+   `buildId` and the literal string `"main"` as a commit sha, a pair that
+   could never correspond. Fixed by resolving a real (run id, head sha) pair
+   from the sandbox repo's own most recent workflow run in `beforeAll`
+   (mirroring the file's own raw-fetch pattern already used in its teardown);
+   the test skips itself if the sandbox repo has no workflow runs at all,
+   rather than asserting an impossible pairing.
+
+Verified via `gh run watch` on the final push: `Real Integration Tests`
+completed fully green (`GitHub Integration Tests` job, all steps including
+the real "Run Integration Tests" step against `huyz0/tasker-test-sandbox`).
+
 **2026-08-19 — Storybook coverage for every custom component and screen,
 merged to `main`.** Requested directly via `/goal` ("ensure storybook
 work for every custom components and screens"), immediately after the
