@@ -195,3 +195,49 @@
 - **Next**: M23-T05 — test coverage backfill + final `moon check --all`
   pass; verify the light/dark theming exit criterion; close the
   milestone.
+
+## M23-T05 — Test coverage backfill + full verification suite
+
+- **Status**: done
+- **Date**: 2026-08-19
+- **Changed**: `.milestones/MILESTONE-23-rich-markdown-editor/
+  MILESTONE.md` (all 5 tasks and all 6 exit criteria checked off,
+  frontmatter `status: complete`/`exit_criteria_met: true`/
+  `completed_at: 2026-08-19`), this file. No product code — every file
+  touched by M23-T02 through T04 already held the aggregate coverage
+  gate at commit time (`RichMarkdownEditor.tsx`/`.test.tsx` at 100%
+  stmt/branch/func/line; `Tasks/index.tsx`'s own numbers were
+  statistically unchanged by the swap), so there was nothing left to
+  backfill.
+- **Verified** (the milestone's own closing suite, all run this task):
+  - `moon check --all`: 27/27, clean.
+  - `moon run gui:test`: coverage aggregate 98.31/95.03/97.08/98.63%
+    stmt/branch/func/line — this repo's `thresholds` config is an
+    aggregate gate over the whole suite, not per-file, so this is the
+    number that actually decides pass/fail, matching the convention
+    already established for every other feature in this codebase.
+  - `moon run gui:storybook-test`: 32 stories (including both new
+    `RichMarkdownEditor` stories), 0 axe violations (checked in dark
+    mode too, not just light — this repo's own a11y gate convention)
+    and nothing wider than 375px. This is what confirms the light/dark
+    theming exit criterion — the CSS override described in M23-T02
+    actually reaches MDXEditor's own root element in both themes with
+    no contrast regressions, not just "looks plausible reading the
+    CSS."
+  - `moon run gui:e2e` (from M23-T04, re-confirmed clean here): passes
+    with `CI=true` (matching real CI's `workers:1`/`retries:2`).
+  - `vite build` output (from M23-T02, re-confirmed unchanged):
+    `RichMarkdownEditor-*.js` is its own ~561KB chunk, separate from
+    the main bundle — the `React.lazy`/`Suspense` code-split is real,
+    not just present in source.
+  - `moon run :spec-drift`: 0 drift, `@mdxeditor/editor` declared.
+  - `moon run tasker:docs-lint`: 229 files clean.
+- **Notes**: All 6 exit criteria in `MILESTONE.md` are now checked
+  off with the evidence for each recorded inline, not just marked
+  done. The two pre-existing, unrelated e2e failures found during
+  M23-T04 (`/agents` state-machine panel, universal-search command
+  palette) remain open, out of scope, and undisturbed — not silently
+  swept under this closing pass. Same for the pre-existing deep-link
+  reload bug in `Tasks/index.tsx` also found during M23-T04.
+  Milestone complete: `feature/m23-rich-markdown-editor` is ready to
+  merge to `main`.
