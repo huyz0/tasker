@@ -157,7 +157,7 @@ promotion of handoff-note content into beliefs (stays a manual
         `moon run cli:vet`/`cli:format`/`cli:build`/`cli:test`/
         `cli:coverage`.
 
-- [ ] **M22-T07** — Write `.agents/skills/handoff-task/SKILL.md` (+ its
+- [x] **M22-T07** — Write `.agents/skills/handoff-task/SKILL.md` (+ its
       four adapter files, the two `.claude/` ones generated via
       `sync-adapters.mjs`, never hand-written) and update
       `docs/agent-integration.md` with a new §10.

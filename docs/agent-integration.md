@@ -289,6 +289,55 @@ history, linked to its replacement.
 `permission_denied` for an agent regardless of scopes held. Moving a belief
 to a wider scope or removing it stays human-reviewed on purpose.
 
+## 10. Task handoff notes
+
+A cloud agent has no local disk to fall back on the way a person coding
+locally does — if your session on a task ends before it's done, whoever
+picks the task up next (agent or human) has nothing but the raw committed
+diff and whatever you wrote down, unless you write down what you tried,
+what's blocked, and the next step (M22, `ADR-0017`). This is not shared
+memory (§9): a handoff note is ephemeral, task-scoped execution state,
+dead the moment the task closes — it does not outlive the task the way a
+belief does.
+
+This section is the same guidance as the `handoff-task` skill
+(`.agents/skills/handoff-task/SKILL.md`), for an agent driving the CLI
+directly rather than through a skill-aware harness — read that file if your
+harness does support skills; it has a worked example.
+
+**Record one before you stop**, when the task is genuinely unfinished:
+
+```bash
+tasker tasks note-add task-42 --type handoff --content \
+  "Current understanding: X. Tried: Y, didn't work because Z. \
+Blocked on: W. Next step: rerun the migration with --verbose."
+```
+
+`--type` is `comment` (the default, when omitted) or `handoff` — a handoff
+note is still an ordinary task note, just typed, so `tasker tasks notes
+task-42` shows it inline (tagged `[handoff]`) alongside everything else
+written about the task.
+
+**The next claimant sees it automatically.** `tasker tasks claim` and
+`tasker tasks get` both return the task's latest handoff note (if any) in
+the same response — no separate `tasks notes` call needed to check for
+prior context before picking up where someone left off.
+
+**Browse what's currently mid-handoff**, project-wide, without opening
+tasks one at a time:
+
+```bash
+tasker tasks handoffs --project proj-1
+```
+
+One row per task — the latest handoff note only, not the full history.
+
+**What no token can do** here: only an agent may create a handoff note
+(or any task note) — `createTaskNote` denies a human caller outright,
+unchanged by this milestone. This is the one direction the usual "humans
+can do more" pattern reverses: the problem a handoff note solves doesn't
+apply to a human in the first place.
+
 ## See also
 
 - `ADR-0008` in `.specs/adr/` — why tokens look the way they do, and what was
@@ -296,5 +345,9 @@ to a wider scope or removing it stays human-reviewed on purpose.
 - `ADR-0014`, `ADR-0015`, `ADR-0016` in `.specs/adr/` — shared memory's scope
   model, why agent tokens gain `memory:read`/`memory:write` but no admin
   form, and why retrieval is lexical by default.
+- `ADR-0017` in `.specs/adr/` — why handoff notes are a typed distinction on
+  the existing `TaskNote`, not a new entity.
 - `.agents/skills/capture-belief/SKILL.md` — the same §9 guidance, written
+  as a skill for a harness that supports invoking one.
+- `.agents/skills/handoff-task/SKILL.md` — the same §10 guidance, written
   as a skill for a harness that supports invoking one.
