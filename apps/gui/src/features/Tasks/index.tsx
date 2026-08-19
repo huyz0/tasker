@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
@@ -26,6 +26,14 @@ const repositoryClient = createClient(RepositoryService, transport);
 const taskTypeClient = createClient(TaskTypeService, transport);
 const taskNoteClient = createClient(TaskNoteService, transport);
 const projectClient = createClient(ProjectService, transport);
+
+// Lazy-loaded: the first use of React.lazy/Suspense in this codebase.
+// @mdxeditor/editor pulls in Lexical, real dependency weight that
+// shouldn't load for a user who never opens task-description edit mode
+// (ADR-0018).
+const RichMarkdownEditor = lazy(() =>
+  import('../../components/ui/RichMarkdownEditor').then((m) => ({ default: m.RichMarkdownEditor }))
+);
 
 function TaskNotesPanel({ taskId }: { taskId: string }) {
   const { confirm, confirmDialog } = useConfirm();
@@ -981,13 +989,19 @@ export function TasksWorkbench() {
                    onChange={(e) => setEditTitle(e.target.value)}
                    className="text-xl font-bold rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
                  />
-                 <textarea
-                   value={editDescription}
-                   onChange={(e) => setEditDescription(e.target.value)}
-                   rows={4}
-                   placeholder="Description (Markdown supported)"
-                   className="text-sm rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
-                 />
+                 <Suspense
+                   fallback={
+                     <div role="status" className="text-sm text-muted-foreground rounded-md border bg-background px-2 py-1">
+                       Loading editor…
+                     </div>
+                   }
+                 >
+                   <RichMarkdownEditor
+                     value={editDescription}
+                     onChange={setEditDescription}
+                     placeholder="Description (Markdown supported)"
+                   />
+                 </Suspense>
                  {updateTaskMutation.isError && (
                    <p className="text-destructive text-xs">Failed to update task: {(updateTaskMutation.error as Error).message}</p>
                  )}

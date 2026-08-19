@@ -86,6 +86,17 @@ vi.mock('../../store/layout', () => ({
     get activeOrgId() { return mockActiveOrgId; },
   })),
 }));
+// The description editor is lazy-loaded and, per ADR-0018, its own
+// RichMarkdownEditor.test.tsx already covers its internal value/onChange
+// wiring against a mocked @mdxeditor/editor. This file only needs to prove
+// Tasks/index.tsx wires editDescription through to whatever renders here,
+// so a plain controlled textarea stands in for it rather than re-mocking
+// @mdxeditor/editor a second time.
+vi.mock('../../components/ui/RichMarkdownEditor', () => ({
+  RichMarkdownEditor: ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
+    <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+  ),
+}));
 
 import { TasksWorkbench } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
@@ -568,7 +579,10 @@ describe('TasksWorkbench', () => {
 
     const titleInput = screen.getByDisplayValue('Fix bug');
     fireEvent.change(titleInput, { target: { value: 'Fix the bug' } });
-    fireEvent.change(screen.getByDisplayValue('Old desc'), { target: { value: 'New desc' } });
+    // The description field is behind React.lazy/Suspense (M23-T03) — it
+    // isn't there on the same tick "Edit" is clicked.
+    const descriptionInput = await screen.findByDisplayValue('Old desc');
+    fireEvent.change(descriptionInput, { target: { value: 'New desc' } });
     fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => expect(mockUpdateTask).toHaveBeenCalledWith({ taskId: 'task-1', title: 'Fix the bug', description: 'New desc' }));

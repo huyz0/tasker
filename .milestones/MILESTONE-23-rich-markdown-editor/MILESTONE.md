@@ -94,7 +94,7 @@ rendered today at all, unrelated to this milestone).
         `gui:design-lint` clean; `moon run :spec-drift` passes with the
         new dependency declared.
 
-- [ ] **M23-T03** — Replace the bare `<textarea>` in `Tasks/index.tsx`'s
+- [x] **M23-T03** — Replace the bare `<textarea>` in `Tasks/index.tsx`'s
       description edit form with `RichMarkdownEditor`, behind
       `React.lazy`/`Suspense` (first instance of this pattern in the
       codebase, documented inline).

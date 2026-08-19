@@ -90,3 +90,41 @@
 - **Next**: M23-T03 — wire `RichMarkdownEditor` into
   `Tasks/index.tsx`'s description edit form, behind
   `React.lazy`/`Suspense`.
+
+## M23-T03 — Wire into task description
+
+- **Status**: done
+- **Date**: 2026-08-19
+- **Changed**: `apps/gui/src/features/Tasks/index.tsx` (+
+  `index.test.tsx`).
+- **Verified**: `moon check --all` (27/27); `gui:test` (69/69 in this
+  file, 900+ overall, coverage gate held at 96.33/91.95/94.11/97.03%
+  stmt/branch/func/line for this file — statistically unchanged from
+  before the swap, meaning the new lazy/Suspense/wiring lines are
+  fully exercised, not merely tolerated by slack elsewhere in the
+  file); existing save/cancel/description-view behavior unchanged
+  (only one of the four description-editing tests needed updating).
+- **Notes**: This is the first use of `React.lazy`/`Suspense` anywhere
+  in the codebase, documented inline at the `lazy(() => import(...))`
+  call site in `Tasks/index.tsx`, not left as an implicit pattern for
+  the next reader to reverse-engineer. The Suspense fallback is a
+  plain status `<div>`, styled to match the surrounding form so the
+  edit panel doesn't visibly jump when the chunk resolves (typically
+  well under a frame in practice, but `role="status"` in case it's
+  ever slow enough to be perceived).
+
+  `Tasks/index.test.tsx` mocks the `RichMarkdownEditor` module
+  directly (not `@mdxeditor/editor` a second time) — a plain
+  controlled `<textarea>` standing in for it, since this file's job is
+  proving `Tasks/index.tsx` wires `editDescription` through correctly,
+  not re-proving `RichMarkdownEditor`'s own internals (already covered
+  in `RichMarkdownEditor.test.tsx`). Of the four existing
+  description-editing tests, only "edits a task title and description
+  through the GUI" touched the description field directly, and needed
+  exactly one change: `screen.getByDisplayValue(...)` →
+  `await screen.findByDisplayValue(...)`, since the field is no longer
+  present on the same tick `Edit` is clicked (it's behind a real,
+  if near-instant, `import()`). The other three
+  (cancel/error/reset-on-switch) only ever touched the title input or
+  clicked Save/Cancel directly, so they needed no changes at all.
+- **Next**: M23-T04 — one Playwright e2e test against the real editor.
