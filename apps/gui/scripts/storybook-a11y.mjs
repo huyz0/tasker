@@ -27,7 +27,16 @@ const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const STATIC = join(ROOT, 'storybook-static');
 // Resolved through the package, not a guessed path: bun links workspace
 // dependencies into `apps/gui/node_modules` as symlinks into `.bun`, so a
-// hand-written `../../node_modules/axe-core` is wrong here.
+// hand-written `../../node_modules/axe-core` is wrong here. `axe-core` is a
+// direct devDependency of `apps/gui/package.json` for exactly this
+// `require.resolve` to work reliably - it was already installed
+// transitively via `@storybook/addon-a11y`, but a transitive copy isn't
+// guaranteed to land somewhere `require.resolve` can walk up to from this
+// package's own directory in every install topology: it resolved locally
+// but not in a clean CI install, which never surfaced until this script
+// actually ran against a real story set there (M06-T13's own gate had
+// been silently failing in CI - `Cannot find module 'axe-core/package.json'`
+// - since at least this repo's M21).
 const require = createRequire(join(ROOT, 'package.json'));
 const AXE = join(dirname(require.resolve('axe-core/package.json')), 'axe.min.js');
 

@@ -18,7 +18,11 @@ test.describe('Universal Search E2E', () => {
 
     await searchBtn.click();
 
-    const searchInput = page.getByPlaceholder('Type a command or search...');
+    // The palette input's placeholder was renamed at some point after this
+    // spec was written ('Type a command or search...' -> the current, more
+    // specific text below) - this assertion had gone stale and was failing
+    // in CI ever since, found while checking CI status for unrelated work.
+    const searchInput = page.getByPlaceholder('Search tasks, artifacts, projects, agents…');
     await expect(searchInput).toBeVisible();
   });
 });

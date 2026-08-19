@@ -45,11 +45,14 @@ test.describe('Shell navigation', () => {
     }
   });
 
-  // From the old agents.spec.ts.
-  test('/agents renders the state machine panel', async ({ page }) => {
-    await page.goto('/agents');
-    await expect(page.getByRole('heading', { name: /Agent State Machine/ })).toBeVisible();
-  });
+  // From the old agents.spec.ts - dropped rather than carried over, for the
+  // same reason this file's own top comment names for the Organizations and
+  // Projects specs: no "Agent State Machine" heading, or state-machine
+  // visualization of any kind, exists anywhere in the current Agents screen
+  // (grep confirms - `AgentsDashboard` shows "AI Agent Instances", "Agent
+  // Activity", "Agent Roles" instead). Found stale and failing in CI while
+  // checking CI status for unrelated work; `/agents renders its own view`
+  // above already covers the route not being empty.
 
   // M01-T02: an unknown URL is a Not Found view with a route back, not a blank
   // content area.
