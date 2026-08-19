@@ -719,6 +719,86 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.getByText(/Failed to delete note/)).toBeInTheDocument());
   });
 
+  // --- Handoffs summary (M22-T05) ---
+  //
+  // A compact summary block, separate from the Agent Notes panel above -
+  // count, the last few (truncated), and a click-through to the dedicated
+  // Handoffs screen. Shares the same ['taskNotes', taskId] query
+  // TaskNotesPanel already fetches, so these fixtures reuse mockListTaskNotes
+  // rather than a second mock.
+
+  it('shows a Handoffs summary, separate from Agent Notes, when the task has a handoff note', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockListTaskNotes.mockResolvedValue({ taskNotes: [
+      { id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Just a comment', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'comment' },
+      { id: 'note-2', taskId: 'task-1', agentId: 'agent-2', content: 'Blocked on review, next: rerun tests', createdAt: '2026-08-19T11:00:00.000Z', noteType: 'handoff' },
+    ] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText((_, el) => el?.textContent === 'Handoffs (1)')).toBeInTheDocument());
+    // The handoff note's content legitimately appears twice - once as this
+    // excerpt, once in the full Agent Notes record below - so this asserts
+    // within the labelled summary region specifically, not page-wide.
+    const summary = within(screen.getByRole('region', { name: 'Handoffs summary' }));
+    expect(summary.getByText('Blocked on review, next: rerun tests')).toBeInTheDocument();
+    // The plain comment is not a handoff - it appears only in Agent Notes,
+    // never inside the summary region.
+    expect(summary.queryByText('Just a comment')).toBeNull();
+  });
+
+  it('shows no Handoffs summary at all when the task has no handoff note', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Just a comment', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'comment' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Just a comment')).toBeInTheDocument());
+    expect(screen.queryByText(/^Handoffs/)).toBeNull();
+  });
+
+  it('shows only the 3 most recent handoff notes in the summary', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockListTaskNotes.mockResolvedValue({ taskNotes: [
+      { id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Oldest handoff', createdAt: '2026-08-19T08:00:00.000Z', noteType: 'handoff' },
+      { id: 'note-2', taskId: 'task-1', agentId: 'agent-1', content: 'Second handoff', createdAt: '2026-08-19T09:00:00.000Z', noteType: 'handoff' },
+      { id: 'note-3', taskId: 'task-1', agentId: 'agent-1', content: 'Third handoff', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'handoff' },
+      { id: 'note-4', taskId: 'task-1', agentId: 'agent-1', content: 'Newest handoff', createdAt: '2026-08-19T11:00:00.000Z', noteType: 'handoff' },
+    ] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText((_, el) => el?.textContent === 'Handoffs (4)')).toBeInTheDocument());
+    const summary = within(screen.getByRole('region', { name: 'Handoffs summary' }));
+    expect(summary.getByText('Newest handoff')).toBeInTheDocument();
+    expect(summary.getByText('Third handoff')).toBeInTheDocument();
+    expect(summary.getByText('Second handoff')).toBeInTheDocument();
+    // Still in the full Agent Notes record below, just not in the 3-item
+    // summary excerpt.
+    expect(summary.queryByText('Oldest handoff')).toBeNull();
+    expect(screen.getByText('Oldest handoff')).toBeInTheDocument();
+  });
+
+  it('navigates to /handoffs when "View all" is clicked', async () => {
+    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Blocked', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'handoff' }] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText((_, el) => el?.textContent === 'Handoffs (1)')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('View all'));
+
+    await waitFor(() => expect(locationRef.current).toBe('/handoffs'));
+  });
+
   it('creates a task via the column\'s bottom Add button', async () => {
     mockListTasks.mockResolvedValue({ tasks: [] });
     mockCreateTask.mockResolvedValue({ task: { id: 'task-new', title: 'New task', status: 'todo', description: '' } });

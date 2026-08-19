@@ -146,6 +146,63 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
   );
 }
 
+/**
+ * A compact summary, not the full history (M22-T05) - count plus the last
+ * few, truncated, each linking to the full picture on the dedicated
+ * Handoffs screen rather than growing this rail into a second notes panel.
+ * Shares TaskNotesPanel's own query key/cache entry (`['taskNotes', taskId]`)
+ * so this costs no extra request - just a client-side filter over data the
+ * detail dialog is already fetching.
+ */
+function HandoffsSummary({ taskId }: { taskId: string }) {
+  const navigate = useNavigate();
+  const queryKey = ['taskNotes', taskId];
+  const { data: notesData } = useQuery({
+    queryKey,
+    queryFn: async () => fetchAllPages(async (cursor) => {
+      const resp = await taskNoteClient.listTaskNotes({ taskId, page: cursor ? { cursor } : undefined });
+      return { items: resp.taskNotes, nextCursor: resp.page?.nextCursor || undefined };
+    }),
+  });
+
+  const handoffs = (notesData ?? [])
+    .filter((n) => n.noteType === 'handoff')
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  // No summary section at all when there's nothing to summarize - the same
+  // "don't show a badge for the unremarkable state" choice Memory's own
+  // StatusBadge makes for `active`.
+  if (handoffs.length === 0) return null;
+
+  // Its own labelled region: handoff-typed notes still also appear in the
+  // full chronological Agent Notes record below (this is a highlighted
+  // excerpt of that same data, not a different data set), so a note's
+  // content can legitimately appear twice on the page. Scoping queries to
+  // this region is how a test - or an assistive-tech user - tells them apart.
+  return (
+    <section aria-label="Handoffs summary">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold tracking-tight">
+          Handoffs <span className="text-muted-foreground font-normal">({handoffs.length})</span>
+        </h3>
+        <button onClick={() => navigate('/handoffs')} className="text-xs text-primary hover:underline">
+          View all
+        </button>
+      </div>
+      <div className="flex flex-col gap-2">
+        {handoffs.slice(0, 3).map((n) => (
+          <div key={n.id} className="rounded-lg border bg-muted/50 p-2">
+            <p className="line-clamp-2 text-xs">{n.content}</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Agent {n.agentId} · {new Date(n.createdAt).toLocaleString()}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // Fallback status set for tasks with no taskTypeId, or whose task type has
 // no custom statuses configured - matches the backend's KNOWN_STATUSES.
 // Fixed-width ID/Status columns keep those cells snug around their content;
@@ -1015,6 +1072,7 @@ export function TasksWorkbench() {
                  </div>
                </Label.Provider>
              </div>
+             <HandoffsSummary taskId={expandedTask.id} />
              <div>
                <h3 className="text-sm font-semibold tracking-tight mb-3">Agent Notes</h3>
                <TaskNotesPanel taskId={expandedTask.id} />
