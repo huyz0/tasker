@@ -128,3 +128,70 @@
   (cancel/error/reset-on-switch) only ever touched the title input or
   clicked Save/Cancel directly, so they needed no changes at all.
 - **Next**: M23-T04 — one Playwright e2e test against the real editor.
+
+## M23-T04 — E2E smoke test for the rich editor
+
+- **Status**: done
+- **Date**: 2026-08-19
+- **Changed**: `apps/gui/tests/e2e/task-description-rich-editor.spec.ts`
+  (new).
+- **Verified**: `moon run gui:e2e` — ran the full suite with
+  `CI=true` (matching `.github/workflows/ci.yml`'s actual settings:
+  `workers: 1`, `retries: 2`), backend seeded fresh
+  (`bun run seed`) and started standalone
+  (`STANDALONE=true ENABLE_TEST_LOGIN=true`). This new spec passed on
+  its first attempt, no retry needed. `moon check --all` stayed clean
+  (27/27) throughout, since `gui:e2e` is deliberately outside that
+  gate (`type: 'run'` in `moon.yml` — a commit must not require a
+  booted backend and installed browsers).
+- **Notes**: Two real bugs surfaced and got fixed while building this
+  test, both in the test itself, not the product:
+  1. MDXEditor's Bold/Italic/Underline toggles are a Radix
+     single-select toggle group, which exposes ARIA role `radio`
+     (not `button`) — found by reading the actual accessibility tree
+     via a Playwright error-context snapshot, not guessed.
+  2. The toggle's accessible name flips between `"Bold"` and
+     `"Remove bold"` depending on whether the cursor is already inside
+     bold text — and Lexical carries the last format forward through a
+     select-all-delete, so a *second* run of this test against the
+     *same* seeded task (this repo's `bun run seed` always produces
+     the same first task) inherited bold formatting from the first
+     run's leftover content. Fixed by checking the toggle's
+     `aria-label` right after clearing and explicitly turning bold off
+     first if it's already on, so every run starts from the same known
+     state regardless of what a previous run left behind.
+  3. A related, separate bug in the test: `getByRole('button', {name:
+     'Edit'})` is ambiguous once the task has any comments (each
+     comment has its own identically-labelled Edit button) —
+     `comments.spec.ts` posts to the same seeded "first task" this
+     spec also opens, and in a single-worker, deterministic-file-order
+     run (`comments.spec.ts` sorts before this file, so it always runs
+     first) the ambiguity is guaranteed to trigger, not just possible.
+     Fixed by scoping to the dialog's own header row
+     (`getByRole('heading', {name:'Task Details'}).locator('..')`)
+     rather than the whole page.
+
+  One genuine, pre-existing, unrelated bug was found incidentally and
+  is explicitly **not** fixed here (out of scope for a rich-editor
+  milestone): a hard reload of a deep-linked `/tasks/:taskId` URL
+  loses the route once `activeProjectId` finishes hydrating
+  (`Tasks/index.tsx`'s "closes the detail overlay when the active
+  project changes" effect treats the async hydration itself as a
+  scope change). Confirmed via `git diff` that no file this milestone
+  touched is anywhere near that effect. Chose a direct `GetTask` RPC
+  call over `page.reload()` for the "fresh read" verification instead
+  of fixing it — this proves the same thing (a real server round-trip,
+  not client cache) without depending on that unrelated code path.
+  Worth a follow-up task, not a rich-editor concern.
+
+  Two other, also pre-existing, also unrelated e2e specs
+  (`navigation.spec.ts`'s "/agents renders the state machine panel"
+  and `universal-search.spec.ts`'s "Command Palette can be opened")
+  fail consistently in this sandbox regardless of branch — confirmed
+  via `git diff` showing zero changes to either spec file or the
+  features they exercise across every commit in this milestone. Not
+  investigated further (unrelated feature, environment-shaped, not a
+  regression this milestone introduced) beyond that confirmation.
+- **Next**: M23-T05 — test coverage backfill + final `moon check --all`
+  pass; verify the light/dark theming exit criterion; close the
+  milestone.

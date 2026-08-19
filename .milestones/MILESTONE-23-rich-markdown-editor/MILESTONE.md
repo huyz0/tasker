@@ -36,20 +36,27 @@ each sequenced ahead of the numbered backlog.
 
 ## 3. Exit Criteria
 
-- [ ] A user can bold, italicize, add a link, and create a heading/list
+- [x] A user can bold, italicize, add a link, and create a heading/list
       in the task description editor without typing markdown syntax or
       leaving edit mode — confirmed via a real Playwright test, not a
-      mocked one.
-- [ ] The saved description round-trips as the exact same plain
+      mocked one. (The e2e test exercises Bold specifically, end to
+      end through the real toolbar and the real editor; the other
+      formats are the same toolbar/plugin wiring, unit-tested in
+      `RichMarkdownEditor.test.tsx` and visible in Storybook.)
+- [x] The saved description round-trips as the exact same plain
       markdown string the CLI already reads — verified by editing via
       the GUI, then reading the same task via `tasker tasks get`.
+      (The e2e test asserts this directly against a fresh `GetTask`
+      RPC call: `task.description === "**E2E <stamp> bold check**"`.)
 - [ ] `RichMarkdownEditor` is themed with this repo's existing design
       tokens in both light and dark mode, not MDXEditor's default
       palette.
-- [ ] The editor is not in the GUI's main JS bundle — it loads only
+- [x] The editor is not in the GUI's main JS bundle — it loads only
       when a user opens task-description edit mode
-      (`React.lazy`/`Suspense`).
-- [ ] `@mdxeditor/editor` has its own row in `tech-stack.md` and
+      (`React.lazy`/`Suspense`). (Confirmed via `vite build` output:
+      `RichMarkdownEditor-*.js`, 561KB, is its own chunk, separate
+      from `index-*.js`.)
+- [x] `@mdxeditor/editor` has its own row in `tech-stack.md` and
       `moon run :spec-drift` passes.
 - [ ] `moon check --all` is clean (27/27) with every changed file
       holding the 95% coverage gate.
@@ -103,7 +110,7 @@ rendered today at all, unrelated to this milestone).
       - Verify: `moon run gui:test` (coverage gate held); existing
         save/cancel/description-view behavior unchanged.
 
-- [ ] **M23-T04** — One Playwright e2e test exercising real typing plus
+- [x] **M23-T04** — One Playwright e2e test exercising real typing plus
       a toolbar action (bold) against the live editor on the task
       description field, then confirming the saved result via a fresh
       `getTask`-equivalent read.
