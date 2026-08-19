@@ -41,6 +41,7 @@ written as `@scope/*` covers that scope's packages.
 | `use-debounce` | ^10.1.1 | Input debouncing |
 | `storybook`, `@storybook/*` (react, react-vite, addon-a11y, addon-docs, addon-vitest) | ^10.3.5 | Component documentation |
 | `@chromatic-com/storybook` | ^5.1.1 | Storybook addon only — no Chromatic service is configured |
+| `axe-core` | ^4.11.3 | Accessibility scanning, driven directly by `scripts/storybook-a11y.mjs` — a direct dependency rather than relying on `@storybook/addon-a11y`'s own transitive copy, which `require.resolve` from `apps/gui/package.json`'s own directory could not reliably find in a clean CI install |
 
 The GUI is a **client-rendered single-page app**. There is no server-side
 rendering; see Dropped.

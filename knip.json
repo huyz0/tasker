@@ -33,6 +33,7 @@
     "tailwindcss",
     "markdownlint-cli2",
     "@a24z/mermaid-parser",
-    "glob"
+    "glob",
+    "axe-core"
   ]
 }
