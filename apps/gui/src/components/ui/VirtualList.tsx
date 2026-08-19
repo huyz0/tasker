@@ -59,7 +59,16 @@ export function VirtualList<T>({
   if (items.length === 0 && emptyState) return <>{emptyState}</>;
 
   return (
-    <div ref={scrollRef} className={className}>
+    // A scrollable region has to be reachable by keyboard on its own -
+    // without tabIndex a mouse is the only way to scroll it, which is
+    // exactly what axe's scrollable-region-focusable rule catches (found
+    // via VirtualList's own Storybook story, the first place this
+    // primitive was ever checked for it: every real caller's own view
+    // happens to have some other focusable element inside the visible
+    // rows, which is enough to satisfy a keyboard user reaching row
+    // content, but not the region itself when a caller wants to scroll
+    // without tabbing through every row first).
+    <div ref={scrollRef} tabIndex={0} className={className}>
       <div style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
         {virtualRows.map((row) => (
           <div

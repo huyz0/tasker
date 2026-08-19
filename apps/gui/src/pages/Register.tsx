@@ -17,7 +17,9 @@ export default function RegisterPage() {
         <CardContent className="flex flex-col gap-4">
           <RegisterForm />
           <p className="text-center text-sm text-muted-foreground">
-            Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
+            {/* Underlined at rest, not just on hover - see Login.tsx's own
+                doc comment on its matching link for why. */}
+            Already have an account? <Link to="/login" className="text-primary underline hover:no-underline">Sign in</Link>
           </p>
         </CardContent>
       </Card>

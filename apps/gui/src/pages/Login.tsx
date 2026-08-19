@@ -32,7 +32,11 @@ export default function LoginPage() {
             Continue with Google
           </Button>
           <p className="text-center text-sm text-muted-foreground">
-            No account? <Link to="/register" className="text-primary hover:underline">Create one</Link>
+            {/* Underlined at rest, not just on hover: a link identified by
+                colour alone next to plain text fails WCAG's link-in-text-block
+                rule - found via Storybook's a11y gate, the first time this
+                page ever had a story to check it against. */}
+            No account? <Link to="/register" className="text-primary underline hover:no-underline">Create one</Link>
           </p>
         </CardContent>
       </Card>
