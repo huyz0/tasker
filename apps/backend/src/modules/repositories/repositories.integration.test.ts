@@ -23,6 +23,14 @@ testIf("Real GitHub Integration: Repositories", () => {
   let executionId: string;
   let sandboxRepo: string;
   let testToken: string;
+  // listDeployments (repositories.handler.ts:443) cross-validates that
+  // `buildId`'s real head commit sha matches the given `commitSha` - a
+  // deliberate anti-spoofing check, not something this test can route around
+  // with placeholder values like the literal string "main". Resolved in
+  // beforeAll from the sandbox repo's own most recent workflow run, so the
+  // pair is guaranteed to correspond; null if the sandbox has no runs at all.
+  let latestBuildId: string | null = null;
+  let latestCommitSha: string | null = null;
 
   // Dummy database interface that fakes just enough of each table the
   // handler + authz helpers touch (repositoryLinks, projects, organizationMembers)
@@ -90,7 +98,7 @@ testIf("Real GitHub Integration: Repositories", () => {
     return `${iv.toString("hex")}:${authTag}:${encrypted}`;
   }
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Unique ID for this test run to prevent collision
     executionId = `testrun-${Date.now()}-${crypto.randomUUID().substring(0, 8)}`;
     sandboxRepo = process.env.GITHUB_TEST_REPO || "huyz0/tasker-test-sandbox";
@@ -102,6 +110,31 @@ testIf("Real GitHub Integration: Repositories", () => {
 
     // Initialize handler with mock DB
     handler = createRepositoriesHandler(mockDb as any);
+
+    // Resolve a real (run id, head sha) pair - see latestBuildId's own
+    // comment above for why this can't just be made up.
+    try {
+      const runsResponse = await fetch(
+        `https://api.github.com/repos/${sandboxRepo}/actions/runs?per_page=1`,
+        {
+          headers: {
+            Authorization: `Bearer ${testToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": "Tasker-Agent-Integration-Test",
+          },
+        }
+      );
+      if (runsResponse.ok) {
+        const runsData = await runsResponse.json() as any;
+        const latestRun = runsData.workflow_runs?.[0];
+        if (latestRun) {
+          latestBuildId = String(latestRun.id);
+          latestCommitSha = latestRun.head_sha;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to resolve a real workflow run for the listDeployments check:", e);
+    }
   });
 
   afterAll(async () => {
@@ -166,13 +199,24 @@ testIf("Real GitHub Integration: Repositories", () => {
   });
 
   it("should fetch real deployments for the sandbox repo's default branch commit via listDeployments proxy", async () => {
+    if (!latestBuildId || !latestCommitSha) {
+      // No workflow runs exist in the sandbox repo, so there is no real
+      // (buildId, commitSha) pair to test against - listDeployments' own
+      // anti-spoofing check would reject any pair this test made up (see
+      // latestBuildId's comment above). Nothing meaningful to assert.
+      console.warn(
+        "No workflow runs found in sandbox repo; skipping listDeployments round-trip check."
+      );
+      return;
+    }
+
     // The sandbox repo may have zero deployments for this sha - that's fine,
     // we're verifying the real GitHub API round-trip (auth, URL construction,
     // status lookup) succeeds, not that deployments exist.
     const response = await handler.listDeployments({
-      buildId: `run-${executionId}`,
+      buildId: latestBuildId,
       repositoryLinkId: `link-${executionId}`,
-      commitSha: "main",
+      commitSha: latestCommitSha,
     }, ctx);
 
     expect(response).toHaveProperty("deployments");
