@@ -84,19 +84,21 @@ describe('App', () => {
     </MemoryRouter>
   );
 
-  it('lands on the dashboard, not on backend telemetry', () => {
+  it('lands on the dashboard, not on backend telemetry', async () => {
     healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp();
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeDefined();
+    // Every screen is now loaded via React.lazy/Suspense, so its content
+    // isn't in the DOM on the same tick render() returns - find* awaits it.
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeDefined();
     // System Health moved to /settings: database latency is an operator's
     // concern and was the only thing on the home screen that ever changed.
     expect(screen.queryByRole('button', { name: 'Ping Backend' })).toBeNull();
   });
 
-  it('serves backend telemetry at /settings, which used to be a placeholder', () => {
+  it('serves backend telemetry at /settings, which used to be a placeholder', async () => {
     healthQueryResult = { data: { message: 'pong', dbStatus: 'ok' }, error: null, isLoading: false };
     renderApp('/settings');
-    expect(screen.getByRole('button', { name: 'Ping Backend' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Ping Backend' })).toBeDefined();
     expect(screen.getByText(/pong/)).toBeDefined();
     // The route used to render "Settings module placeholder area".
     expect(screen.queryByText(/placeholder area/)).toBeNull();
@@ -107,7 +109,7 @@ describe('App', () => {
     renderApp('/settings');
     const before = mockUseQuery.mock.calls.length;
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ping Backend' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ping Backend' }));
 
     await waitFor(() => {
       expect(mockUseQuery.mock.calls.length).toBeGreaterThan(before);
@@ -121,19 +123,20 @@ describe('App', () => {
     expect(firstKey).not.toBe(lastKey);
   });
 
-  it('can toggle the sidebar dynamically', () => {
+  it('can toggle the sidebar dynamically', async () => {
     healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp();
+    await screen.findByRole('heading', { name: 'Dashboard' });
     const toggleBtn = screen.getByRole('button', { name: 'Toggle Sidebar' });
     fireEvent.click(toggleBtn);
     expect(toggleBtn).toBeDefined();
   });
 
-  it('renders the Not Found view on an unknown URL rather than an empty pane', () => {
+  it('renders the Not Found view on an unknown URL rather than an empty pane', async () => {
     healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp('/nonsense');
 
-    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Back to dashboard' })).toBeInTheDocument();
     // Still inside the shell, so the sidebar is there to navigate away with.
     expect(screen.getByRole('link', { name: 'Organizations' })).toBeInTheDocument();
@@ -143,28 +146,85 @@ describe('App', () => {
   // search picked a target. These mount the app at that exact target and check
   // the entity's own view renders there — a dead link would land on Not Found.
   describe('global search navigation targets', () => {
-    it('resolves a task result to the tasks workbench', () => {
+    it('resolves a task result to the tasks workbench', async () => {
       healthQueryResult = { data: undefined, error: null, isLoading: false };
       renderApp(resultRoute({ type: 'task', id: 'tsk-1' })!);
 
-      expect(screen.getByRole('heading', { name: 'Tasks Workbench' })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Tasks Workbench' })).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Page not found' })).toBeNull();
     });
 
-    it('resolves an artifact result to the artifacts browser', () => {
+    it('resolves an artifact result to the artifacts browser', async () => {
       healthQueryResult = { data: undefined, error: null, isLoading: false };
       renderApp(resultRoute({ type: 'artifact', id: 'art-1' })!);
 
-      expect(screen.getByText('Artifacts Explorer')).toBeInTheDocument();
+      expect(await screen.findByText('Artifacts Explorer')).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Page not found' })).toBeNull();
     });
   });
 
-  it('can route to generic placeholder views', () => {
+  it('can route to generic placeholder views', async () => {
     healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp();
+    await screen.findByRole('heading', { name: 'Dashboard' });
     const orgLink = screen.getByRole('link', { name: 'Organizations' });
     fireEvent.click(orgLink);
-    expect(screen.getByText('Organizations & Settings')).toBeInTheDocument();
+    expect(await screen.findByText('Organizations & Settings')).toBeInTheDocument();
+  });
+
+  // Every screen is its own lazy-loaded chunk now (route-level code-
+  // splitting, front-end chunk optimization). These exist to prove each one
+  // actually resolves and renders through its own Suspense boundary, not
+  // just the handful the tests above happen to touch already.
+  describe('every remaining screen resolves through its own lazy chunk', () => {
+    it.each([
+      ['/projects', 'heading', 'Projects'],
+      ['/agents', 'heading', 'AI Agents'],
+      ['/labels', 'heading', 'Labels'],
+      ['/bin', 'heading', 'Bin'],
+      // Roles/Teams/Memory/Handoffs all gate their real content behind
+      // activeOrgId (this test file uses the real layout store, not a
+      // mock, and no org is selected here) - their own "select an org"
+      // copy is still proof the right lazy chunk mounted.
+      ['/roles', 'text', 'Select an organization to manage its roles.'],
+      ['/teams', 'text', 'Select an organization to manage its teams.'],
+      ['/memory', 'text', 'Select an organization to browse its shared memory.'],
+      ['/handoffs', 'text', 'Select an organization to see its pending handoffs.'],
+    ] as const)('%s renders through its own lazy chunk', async (path, kind, name) => {
+      healthQueryResult = { data: undefined, error: null, isLoading: false };
+      renderApp(path);
+      if (kind === 'heading') {
+        expect(await screen.findByRole('heading', { name })).toBeInTheDocument();
+      } else {
+        expect(await screen.findByText(name)).toBeInTheDocument();
+      }
+    });
+
+    it('/task-types renders its own empty state', async () => {
+      healthQueryResult = { data: undefined, error: null, isLoading: false };
+      renderApp('/task-types');
+      expect(await screen.findByText('No task types yet.')).toBeInTheDocument();
+    });
+
+    it('/login renders the sign-in card, outside the authenticated shell', async () => {
+      healthQueryResult = { data: undefined, error: null, isLoading: false };
+      renderApp('/login');
+      expect(await screen.findByRole('button', { name: /continue with google/i })).toBeInTheDocument();
+      // Outside AppShell entirely - no sidebar to navigate away with.
+      expect(screen.queryByRole('link', { name: 'Organizations' })).toBeNull();
+    });
+
+    it('/register renders the account-creation card, outside the authenticated shell', async () => {
+      healthQueryResult = { data: undefined, error: null, isLoading: false };
+      renderApp('/register');
+      expect(await screen.findByRole('heading', { name: 'Create your account' })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Organizations' })).toBeNull();
+    });
+
+    it('/oauth/callback renders its in-progress state', async () => {
+      healthQueryResult = { data: undefined, error: null, isLoading: false };
+      renderApp('/oauth/callback');
+      expect(await screen.findByText('Linking Repository...')).toBeInTheDocument();
+    });
   });
 });
