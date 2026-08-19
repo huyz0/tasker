@@ -47,6 +47,20 @@ testIf("Real GitHub Integration: Repositories", () => {
             rows = [{ id: TEST_PROJECT_ID, orgId: TEST_ORG_ID }];
           } else if (table === schemaSqlite.organizationMembers) {
             rows = [{ orgId: TEST_ORG_ID, userId: TEST_USER_ID, role: "admin" }];
+          } else if (table === schemaSqlite.rolePermissions) {
+            // policy.ts's can() resolves the "admin" org-membership role to
+            // 'role-admin' and then looks up *its* granted permission keys
+            // here - without this, the organizationMembers row above still
+            // resolves a role, but that role silently carries zero
+            // permissions and every assertCan() call fails PermissionDenied
+            // regardless of the caller's real role. Mirrors the real seeded
+            // catalog (drizzle-sqlite/0034_seed_system_roles_and_migrate_
+            // grants.sql): role-admin holds every *:read/*:write/*:admin
+            // permission, so grant just the two this handler's RPCs check.
+            rows = [
+              { roleId: "role-admin", permissionKey: "repository:read" },
+              { roleId: "role-admin", permissionKey: "repository:write" },
+            ];
           } else {
             rows = [];
           }
