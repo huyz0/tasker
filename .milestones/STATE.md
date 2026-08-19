@@ -2,7 +2,7 @@
 active_milestone: M08
 active_task: null
 last_updated: 2026-08-19
-last_commit: 4aa14f7
+last_commit: cb0ff6e
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,67 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-19 — M23 (Rich Markdown Editor) closed: 5/5 tasks, 6/6 exit
+criteria, merged to `main`.** Requested directly by the user, who asked
+whether the GUI had a rich markdown editor for task descriptions,
+comments, and artifact content, and — none existing (three bare
+`<textarea>`s, no library installed) — asked for web research into
+open-source options before deciding. That research, plus a `/goal`
+command to deliver the recommendation, made this a formal milestone:
+`.specs/specs/2026-08-19-2026-rich-markdown-editor/` + `ADR-0018` +
+`.milestones/MILESTONE-23-rich-markdown-editor/`. Developed on
+`feature/m23-rich-markdown-editor` as five task commits, merged with
+`--no-ff`.
+
+`@mdxeditor/editor` (MIT, Lexical + remark) was chosen over Milkdown
+(same markdown-native category, more manual assembly), Tiptap+markdown
+(HTML-native content model — real round-trip-drift risk, since this
+repo's raw markdown strings are read verbatim by the CLI too, not just
+rendered through the GUI's own renderer), and BlockNote (bigger
+block-editor UX shift, more complex license) — `ADR-0018`, mirroring
+`ADR-0011`'s own bar for adopting a third-party UI dependency. React 19
+compatibility was verified live against the npm registry rather than
+trusted from a stale mid-2024 GitHub issue.
+
+Delivery (T02–T05), piloted on the task description field only
+(comments and artifact content are a named follow-up, not silently
+dropped — `ADR-0018`'s own "Foreclosed, for now" section): a new
+`RichMarkdownEditor` wrapper component with a hand-picked plugin/toolbar
+set, re-themed to this repo's own `hsl(var(--token))` design tokens
+rather than MDXEditor's defaults — its theming tokens turned out to be
+declared directly on MDXEditor's own root element (a private class
+alongside a stable public `.mdxeditor` class), so the usual `:root`
+override this repo uses everywhere else would have silently done
+nothing; fixed by targeting `.rich-markdown-editor .mdxeditor` directly
+(T02). Wired into `Tasks/index.tsx`'s description edit form behind
+`React.lazy`/`Suspense` — the first use of that pattern anywhere in this
+GUI, confirmed via `vite build` to actually produce its own ~561KB
+chunk, separate from the main bundle (T03). One Playwright e2e test
+against the real (unmocked) editor, bolding text via the real toolbar
+and confirming the round-trip with a direct `GetTask` RPC call rather
+than trusting the rendered DOM or client cache (T04). Full verification
+suite: `moon check --all` 27/27, `moon run gui:storybook-test` (32
+stories, 0 axe violations — checked in dark mode too, confirming the
+theming exit criterion), `moon run gui:e2e` clean under CI-representative
+settings (T05).
+
+Three test-only bugs were found and fixed while building the e2e test
+(all in the test, not the product): MDXEditor's Bold/Italic/Underline
+toggles expose ARIA role `radio` (a Radix single-select toggle group),
+not `button`; the toggle's accessible name flips `"Bold"`/`"Remove
+bold"` depending on whether the cursor already carries bold formatting
+forward from a previous run against the same seeded task (Lexical keeps
+the last format live through a select-all-delete); and
+`getByRole('button', {name:'Edit'})` is ambiguous once the task has
+comments, since each comment has its own identically-labelled Edit
+button. One genuine, pre-existing, unrelated bug was found and
+deliberately **not** fixed (named as an explicit follow-up instead): a
+hard reload of a deep-linked `/tasks/:taskId` loses the route once
+`activeProjectId` finishes hydrating (`Tasks/index.tsx`'s "closes the
+detail overlay when the active project changes" effect treats the async
+hydration itself as a scope change) — confirmed via `git diff` that no
+file this milestone touched is anywhere near that effect.
 
 **2026-08-19 — M22 (Task Handoff & Continuity) closed: 8/8 tasks, 7/7
 exit criteria, merged to `main`.** Requested directly by the user in
@@ -627,14 +688,15 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M14 | Task Reliability & Agent Self-Service | done | M04, M05 | 9   | 9    |
 | M21 | Shared Memory & Belief System   | done   | —          | 10    | 10   |
 | M22 | Task Handoff & Continuity       | done   | —          | 8     | 8    |
+| M23 | Rich Markdown Editor            | done   | —          | 5     | 5    |
 
-**Total: 187 tasks across 16 milestones — 144 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8).**
+**Total: 192 tasks across 17 milestones — 149 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5).**
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
-see `PROGRESS.md`/git history for each. M21 and M22 are sequenced by
-explicit user priority (like M13 before M10), with no `depends_on` edge
-to anything still `todo`.
+see `PROGRESS.md`/git history for each. M21, M22, and M23 are sequenced
+by explicit user priority (like M13 before M10), with no `depends_on`
+edge to anything still `todo`.
 
 ## Dependency graph
 
