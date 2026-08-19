@@ -539,9 +539,18 @@ export const taskNotes = sqliteTable("task_notes", {
   agentId: text("agent_id").notNull().references(() => agents.id),
   content: text("content").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  // M22-T03 (ADR-0017): a handoff note is a TaskNote with noteType: 'handoff'
+  // - same table, same author restriction, distinguished only by this
+  // column. SQLite has no enum type - "comment" | "handoff" is enforced in
+  // Zod only, same as every other enum-like column in this file.
+  noteType: text("note_type").notNull().default("comment"),
 }, (table) => {
   return {
     taskIdIdx: index("task_notes_task_id_idx").on(table.taskId),
+    // M22-T03: listHandoffNotes filters to noteType = 'handoff' then groups
+    // by taskId for the latest-per-task query - this composite index covers
+    // both.
+    noteTypeTaskIdIdx: index("task_notes_note_type_task_id_idx").on(table.noteType, table.taskId),
   };
 });
 

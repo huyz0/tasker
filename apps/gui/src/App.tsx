@@ -9,6 +9,7 @@ import { LabelsManager } from './features/Labels';
 import { RolesManager } from './features/Roles';
 import { TeamsManager } from './features/Teams';
 import { MemoryExplorer } from './features/Memory';
+import { HandoffsScreen } from './features/Handoffs';
 import { TaskTypesEditor } from './features/TaskTypes';
 import { BinDashboard } from './features/Bin';
 import { Dashboard } from './pages/Dashboard';
@@ -49,6 +50,7 @@ function App() {
                     the open task is (see /tasks/:taskId above): a direct link
                     or a reload reopens the same belief. */}
                 <Route path="/memory/:beliefId" element={<MemoryExplorer />} />
+                <Route path="/handoffs" element={<HandoffsScreen />} />
                 <Route path="/bin" element={<BinDashboard />} />
                 <Route path="/settings" element={<SystemHealthPage />} />
                 <Route path="/oauth/callback" element={<OAuthCallback />} />

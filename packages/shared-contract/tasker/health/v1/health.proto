@@ -750,6 +750,8 @@ message ClaimTaskRequest {
 
 message ClaimTaskResponse {
   Task task = 1;
+  // M22-T02: the task's most recent handoff-typed TaskNote, if one exists.
+  TaskNote latestHandoffNote = 2;
 }
 
 message TaskReviewer {
@@ -807,6 +809,8 @@ message GetTaskRequest {
 
 message GetTaskResponse {
   Task task = 1;
+  // M22-T02: same field, same reasoning, as ClaimTaskResponse.latestHandoffNote.
+  TaskNote latestHandoffNote = 2;
 }
 
 message ListTasksRequest {
@@ -1187,6 +1191,9 @@ message TaskNote {
   string content = 4;
   // M19-T02.
   string created_at = 5;
+  // M22-T02 (ADR-0017): "comment" | "handoff". No proto enum - this repo
+  // validates enum-like fields in Zod only, see Belief.scopeType.
+  string noteType = 6;
 }
 
 message CreateTaskNoteRequest {
@@ -1195,6 +1202,8 @@ message CreateTaskNoteRequest {
   reserved 2;
   reserved "agentId";
   string content = 3;
+  // M22-T02: defaults to "comment" server-side when omitted.
+  string noteType = 4;
 }
 
 message CreateTaskNoteResponse {
@@ -1226,11 +1235,31 @@ message DeleteTaskNoteResponse {
   bool success = 1;
 }
 
+// M22-T02 (ADR-0017): one task's worth of context alongside its latest
+// handoff note, so a cross-task list doesn't need a second fetch per row.
+message HandoffNoteEntry {
+  TaskNote note = 1;
+  string taskTitle = 2;
+  string taskStatus = 3;
+}
+
+message ListHandoffNotesRequest {
+  string projectId = 1;
+  PageRequest page = 2;
+}
+
+message ListHandoffNotesResponse {
+  // One row per task - the latest handoff note only, not full history.
+  repeated HandoffNoteEntry entries = 1;
+  PageResponse page = 2;
+}
+
 service TaskNoteService {
   rpc CreateTaskNote(CreateTaskNoteRequest) returns (CreateTaskNoteResponse);
   rpc UpdateTaskNote(UpdateTaskNoteRequest) returns (UpdateTaskNoteResponse);
   rpc DeleteTaskNote(DeleteTaskNoteRequest) returns (DeleteTaskNoteResponse);
   rpc ListTaskNotes(ListTaskNotesRequest) returns (ListTaskNotesResponse);
+  rpc ListHandoffNotes(ListHandoffNotesRequest) returns (ListHandoffNotesResponse);
 }
 
 message Label {

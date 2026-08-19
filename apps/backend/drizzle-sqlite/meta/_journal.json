@@ -302,6 +302,13 @@
       "when": 1787900000000,
       "tag": "0042_beliefs_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1788000000000,
+      "tag": "0043_task_notes_note_type",
+      "breakpoints": true
     }
   ]
 }

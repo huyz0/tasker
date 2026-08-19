@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Users,
   Brain,
+  Handshake,
   LogOut
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
@@ -41,6 +42,7 @@ const NAV_GROUPS = [
       { name: 'AI Agents', path: '/agents', icon: Bot },
       { name: 'Artifacts', path: '/artifacts', icon: FileBox },
       { name: 'Memory', path: '/memory', icon: Brain },
+      { name: 'Handoffs', path: '/handoffs', icon: Handshake },
     ],
   },
   {

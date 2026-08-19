@@ -83,12 +83,20 @@ var tasksGetCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Task)
+			// M22-T04: the whole response, not just Task - the wrapper is how
+			// latestHandoffNote (present only when a handoff note exists) gets
+			// out at all. A breaking shape change from the bare-task object this
+			// printed before, made deliberately: inspecting a task is exactly
+			// the moment prior handoff context should arrive with it.
+			jsonString, _ := json.Marshal(res.Msg)
 			cmd.Println(string(jsonString))
 		} else {
 			cmd.Printf("%s [%s]: %s (id: %s)\n", res.Msg.Task.DisplayId, res.Msg.Task.Status, res.Msg.Task.Title, res.Msg.Task.Id)
 			if res.Msg.Task.Description != "" {
 				cmd.Printf("\n%s\n", res.Msg.Task.Description)
+			}
+			if res.Msg.LatestHandoffNote != nil {
+				cmd.Printf("\nHandoff note (agent %s): %s\n", res.Msg.LatestHandoffNote.AgentId, res.Msg.LatestHandoffNote.Content)
 			}
 		}
 		return nil
@@ -203,10 +211,16 @@ var tasksClaimCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Task)
+			// M22-T04: same reasoning as `get`'s --json change above - the
+			// whole response, so latestHandoffNote (present only when one
+			// exists) is reachable at all.
+			jsonString, _ := json.Marshal(res.Msg)
 			cmd.Println(string(jsonString))
 		} else {
 			cmd.Printf("Task %s claimed\n", res.Msg.Task.Id)
+			if res.Msg.LatestHandoffNote != nil {
+				cmd.Printf("Handoff note (agent %s): %s\n", res.Msg.LatestHandoffNote.AgentId, res.Msg.LatestHandoffNote.Content)
+			}
 		}
 		return nil
 	},

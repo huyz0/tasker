@@ -889,6 +889,11 @@ model ClaimTaskRequest {
 
 model ClaimTaskResponse {
   @field(1) task: Task;
+
+  // M22-T02: the task's most recent handoff-typed TaskNote, if one exists -
+  // populated in the same round trip as the claim itself succeeding, so the
+  // caller sees prior continuity context without a second call.
+  @field(2) latestHandoffNote?: TaskNote;
 }
 
 model TaskReviewer {
@@ -937,6 +942,11 @@ model GetTaskRequest {
 
 model GetTaskResponse {
   @field(1) task: Task;
+
+  // M22-T02: same field, same reasoning, as ClaimTaskResponse.latestHandoffNote
+  // - inspecting a task should surface prior handoff context without a
+  // separate listTaskNotes call.
+  @field(2) latestHandoffNote?: TaskNote;
 }
 
 model ListTasksRequest {
@@ -1356,11 +1366,23 @@ model TaskNote {
 
   // M19-T02: see Task.createdAt above - same field, same bug, same fix.
   @field(5) createdAt: string;
+
+  // M22-T02 (ADR-0017): "comment" | "handoff". A handoff note is a TaskNote
+  // like any other - same table, same author restriction, same lifecycle -
+  // distinguished only by this field. No TypeSpec enum: this repo has none
+  // anywhere, every enum-like field is a plain string with the allowed
+  // literals in a comment, validated in Zod at the handler boundary.
+  @field(6) noteType: string;
 }
 
 model CreateTaskNoteRequest {
   @field(1) taskId: string;
   @field(3) content: string;
+
+  // M22-T02: defaults to "comment" server-side when omitted - not a
+  // proto3-optional unset-vs-cleared distinction, just an ordinary optional
+  // field with a Zod default, since there is no "clear the type" operation.
+  @field(4) noteType?: string;
 }
 
 model CreateTaskNoteResponse {
@@ -1392,11 +1414,35 @@ model DeleteTaskNoteResponse {
   @field(1) success: boolean;
 }
 
+// M22-T02 (ADR-0017): one task's worth of context alongside its latest
+// handoff note, so a cross-task list doesn't need a second fetch per row to
+// be useful.
+model HandoffNoteEntry {
+  @field(1) note: TaskNote;
+  @field(2) taskTitle: string;
+  @field(3) taskStatus: string;
+}
+
+model ListHandoffNotesRequest {
+  @field(1) projectId: string;
+  @field(2) page?: PageRequest;
+}
+
+model ListHandoffNotesResponse {
+  // One row per task - the latest handoff note only, not full history, so
+  // a task re-handed-off multiple times doesn't crowd this list with its
+  // own stale entries.
+  @field(1) entries: HandoffNoteEntry[];
+
+  @field(2) page?: PageResponse;
+}
+
 interface TaskNoteService {
   createTaskNote(request: CreateTaskNoteRequest): CreateTaskNoteResponse;
   updateTaskNote(request: UpdateTaskNoteRequest): UpdateTaskNoteResponse;
   deleteTaskNote(request: DeleteTaskNoteRequest): DeleteTaskNoteResponse;
   listTaskNotes(request: ListTaskNotesRequest): ListTaskNotesResponse;
+  listHandoffNotes(request: ListHandoffNotesRequest): ListHandoffNotesResponse;
 }
 
 // ==== Labels ====

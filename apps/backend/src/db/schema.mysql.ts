@@ -412,9 +412,16 @@ export const taskNotes = mysqlTable("task_notes", {
   agentId: varchar("agent_id", { length: 256 }).notNull().references(() => agents.id),
   content: varchar("content", { length: 8192 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // M22-T03 (ADR-0017): a handoff note is a TaskNote with noteType: 'handoff'
+  // - same table, same author restriction, distinguished only by this column.
+  noteType: mysqlEnum("note_type", ['comment', 'handoff']).default('comment').notNull(),
 }, (table) => {
   return {
     taskIdIdx: index("task_notes_task_id_idx").on(table.taskId),
+    // M22-T03: listHandoffNotes filters to noteType = 'handoff' then groups
+    // by taskId for the latest-per-task query - this composite index covers
+    // both.
+    noteTypeTaskIdIdx: index("task_notes_note_type_task_id_idx").on(table.noteType, table.taskId),
   };
 });
 
