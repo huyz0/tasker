@@ -80,7 +80,7 @@ rendered today at all, unrelated to this milestone).
         `.milestones/MILESTONE-23-rich-markdown-editor/*`
       - Verify: files exist, `moon run tasker:docs-lint` passes.
 
-- [ ] **M23-T02** — Add `@mdxeditor/editor` to `apps/gui/package.json`
+- [x] **M23-T02** — Add `@mdxeditor/editor` to `apps/gui/package.json`
       + a matching row in `tech-stack.md`; build
       `RichMarkdownEditor.tsx` (headings/lists/quote/thematic-break/
       link/table/markdown-shortcut plugins, a small hand-picked

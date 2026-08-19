@@ -1,0 +1,79 @@
+/*
+ * RichMarkdownEditor theming.
+ *
+ * @mdxeditor/editor's own style.css (imported before this file, in
+ * RichMarkdownEditor.tsx) themes itself through a Radix-Colors-based set of
+ * CSS custom properties ("--base*"/"--accent*"), set directly on the
+ * editor's own root element via a private, hashed class alongside the
+ * stable public ".mdxeditor" class. A declaration on that same element
+ * always wins over one merely inherited from an ancestor, so redefining
+ * the tokens on ":root" (this repo's usual approach, per index.css) would
+ * have no effect here — they have to be redeclared on ".mdxeditor" itself.
+ * The doubled ancestor+class selector below (specificity 0,2,0) beats the
+ * library's own single-class declaration (0,1,0) regardless of import
+ * order, so this still wins even if a future refactor reorders the
+ * imports.
+ *
+ * Values reuse this repo's existing hsl(var(--token)) design tokens
+ * (index.css) rather than inventing new ones. Because those tokens are
+ * themselves swapped by the ":root[data-theme='dark']" attribute selector
+ * (index.css:151-156 — "exactly one dark block rather than one per
+ * trigger"), referencing them here is enough to theme both light and dark;
+ * this file does not need its own "[data-theme='dark']" block.
+ */
+.rich-markdown-editor .mdxeditor {
+  --basePageBg: hsl(var(--background));
+  --baseBase: hsl(var(--muted));
+  --baseBgSubtle: hsl(var(--muted));
+  --baseBg: hsl(var(--background));
+  --baseBgHover: hsl(var(--secondary));
+  --baseBgActive: hsl(var(--secondary));
+  --baseLine: hsl(var(--border));
+  --baseBorder: hsl(var(--border));
+  --baseBorderHover: hsl(var(--ring));
+  --baseSolid: hsl(var(--muted-foreground));
+  --baseSolidHover: hsl(var(--foreground));
+  --baseText: hsl(var(--foreground));
+  --baseTextContrast: hsl(var(--foreground));
+
+  --accentBase: hsl(var(--primary-subtle));
+  --accentBgSubtle: hsl(var(--primary-subtle));
+  --accentBg: hsl(var(--primary-subtle));
+  --accentBgHover: hsl(var(--primary-subtle));
+  --accentBgActive: hsl(var(--primary-subtle));
+  --accentLine: hsl(var(--primary) / 0.4);
+  --accentBorder: hsl(var(--primary) / 0.5);
+  --accentBorderHover: hsl(var(--primary));
+  --accentSolid: hsl(var(--primary));
+  --accentSolidHover: hsl(var(--primary));
+  --accentText: hsl(var(--primary));
+  --accentTextContrast: hsl(var(--primary-foreground));
+}
+
+/* Outer frame matches this repo's other text inputs (rounded-md border
+   bg-background, e.g. the title <input> right next to this component in
+   Tasks/index.tsx) rather than MDXEditor's own default frame. */
+.rich-markdown-editor {
+  border-radius: var(--radius-md, 0.375rem);
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  overflow: hidden;
+}
+
+.rich-markdown-editor:focus-within {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.rich-markdown-editor-toolbar {
+  border-bottom: 1px solid hsl(var(--border));
+  background-color: hsl(var(--muted));
+  padding: 0.25rem 0.5rem;
+}
+
+.rich-markdown-editor-content {
+  padding: 0.5rem 0.75rem;
+  min-height: 8rem;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+}

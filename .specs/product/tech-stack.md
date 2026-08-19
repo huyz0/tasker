@@ -37,6 +37,7 @@ written as `@scope/*` covers that scope's packages.
 | `zustand` | ^5.0.12 | Cross-tree UI state |
 | `lucide-react` | ^1.8.0 | Icon set |
 | `react-markdown`, `remark-gfm`, `rehype-sanitize` | ^10.1.0 / ^4.0.1 / ^6.0.0 | Markdown rendering |
+| `@mdxeditor/editor` | ^4.2.0 | WYSIWYG markdown editing (`RichMarkdownEditor`, piloted on task description — ADR-0018) |
 | `use-debounce` | ^10.1.1 | Input debouncing |
 | `storybook`, `@storybook/*` (react, react-vite, addon-a11y, addon-docs, addon-vitest) | ^10.3.5 | Component documentation |
 | `@chromatic-com/storybook` | ^5.1.1 | Storybook addon only — no Chromatic service is configured |
