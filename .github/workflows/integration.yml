@@ -41,6 +41,17 @@ jobs:
           TASKER_REAL_INTEGRATION: "1"
           GITHUB_TEST_TOKEN: ${{ secrets.INTEGRATION_TEST_TOKEN }}
           GITHUB_TEST_REPO: "huyz0/tasker-test-sandbox"
+          # repositories.integration.test.ts's mockDb only recognizes
+          # schema.sqlite's table objects (`table === schemaSqlite.X`
+          # identity checks) - authz.ts's isStandalone() picks the mysql
+          # schema instead whenever STANDALONE isn't set, which this step
+          # never did, so every authz lookup in the test silently matched
+          # nothing and threw "not found" regardless of what the mock
+          # returned. Every other place this repo runs standalone/sqlite
+          # mode (apps/backend/package.json's seed/measure scripts,
+          # ci.yml's own backend startup for GUI E2E) sets this explicitly;
+          # this step was the one place that didn't.
+          STANDALONE: "true"
         run: moon run backend:test-integration
           
       - name: Skip Notification
