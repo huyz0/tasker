@@ -141,6 +141,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     createTaskNote: { taskId: ids.task, content: 'n' },
     updateTaskNote: { taskNoteId: ids.note, content: 'n2' },
     deleteTaskNote: { taskNoteId: ids.note },
+    listHandoffNotes: { projectId: ids.project },
   },
   comments: {
     listComments: { entityId: ids.task, entityType: 'task' },

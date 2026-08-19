@@ -14,6 +14,7 @@ describe("Task Notes Handler", () => {
   let taskId: string;
   let agentId: string;
   let orgId: string;
+  let projectId: string;
 
   beforeEach(async () => {
     const setup = await setupIntegrationTest();
@@ -23,7 +24,7 @@ describe("Task Notes Handler", () => {
     orgId = "org-" + crypto.randomUUID();
     const userId = "user-" + crypto.randomUUID();
     const templateId = "tmpl-" + crypto.randomUUID();
-    const projectId = "proj-" + crypto.randomUUID();
+    projectId = "proj-" + crypto.randomUUID();
     const agentRoleId = "ar-" + crypto.randomUUID();
     taskId = "tsk-" + crypto.randomUUID();
     agentId = "agt-" + crypto.randomUUID();
@@ -167,6 +168,125 @@ describe("Task Notes Handler", () => {
 
   it("should reject listTaskNotes from a user outside the task's org", async () => {
     expect(handler.listTaskNotes({ taskId }, makeAuthContext("user-outsider"))).rejects.toThrow();
+  });
+
+  // --- noteType (M22-T04, ADR-0017) ---
+
+  describe("noteType", () => {
+    it("defaults a created note to 'comment' when noteType is omitted", async () => {
+      const res = await handler.createTaskNote({ taskId, content: "plain note" }, agentCtx);
+      expect(res.taskNote.noteType).toBe("comment");
+    });
+
+    it("records an explicit 'handoff' note", async () => {
+      const res = await handler.createTaskNote({ taskId, content: "blocked on review", noteType: "handoff" }, agentCtx);
+      expect(res.taskNote.noteType).toBe("handoff");
+    });
+
+    it("rejects an invalid noteType", async () => {
+      await expect(
+        handler.createTaskNote({ taskId, content: "x", noteType: "not_a_real_type" }, agentCtx)
+      ).rejects.toThrow();
+    });
+
+    it("listTaskNotes surfaces noteType on every row", async () => {
+      await handler.createTaskNote({ taskId, content: "N1" }, agentCtx);
+      await handler.createTaskNote({ taskId, content: "N2", noteType: "handoff" }, agentCtx);
+      const res = await handler.listTaskNotes({ taskId }, ctx);
+      const types = res.taskNotes.map((n: any) => n.noteType).sort();
+      expect(types).toEqual(["comment", "handoff"]);
+    });
+  });
+
+  // --- listHandoffNotes (M22-T04, ADR-0017) ---
+
+  describe("listHandoffNotes", () => {
+    async function makeTask(status = "todo") {
+      const id = "tsk-" + crypto.randomUUID();
+      await db.insert(schemaSqlite.tasks).values({ id, projectId, title: "T-" + id, status, createdAt: new Date() });
+      return id;
+    }
+
+    // SQLite's `created_at` column is second-resolution (drizzle's
+    // integer/"timestamp" mode stores whole Unix seconds), so two notes
+    // created via the handler milliseconds apart can land in the same
+    // second and tie on createdAt - the ORDER BY tiebreaks on note id,
+    // which is a random UUID uncorrelated with insertion order (the same
+    // tiebreak convention query-builder.ts's cursor pagination already
+    // uses repo-wide, so this isn't a bug in the query, only in a test
+    // that assumed sub-second precision). Recency-ordering assertions
+    // insert directly with explicit, well-separated timestamps instead of
+    // relying on wall-clock timing between handler.createTaskNote calls.
+    async function insertHandoffNote(forTaskId: string, content: string, createdAt: Date) {
+      await db.insert(schemaSqlite.taskNotes).values({
+        id: "tnt-" + crypto.randomUUID(), taskId: forTaskId, agentId, content, createdAt, noteType: "handoff",
+      });
+    }
+
+    it("returns only handoff-typed notes, one row per task, project-scoped", async () => {
+      const taskB = await makeTask();
+      await handler.createTaskNote({ taskId, content: "just a comment" }, agentCtx);
+      await handler.createTaskNote({ taskId, content: "first handoff", noteType: "handoff" }, agentCtx);
+      await handler.createTaskNote({ taskId: taskB, content: "other task handoff", noteType: "handoff" }, agentCtx);
+
+      const res = await handler.listHandoffNotes({ projectId }, ctx);
+      expect(res.entries).toHaveLength(2);
+      const contents = res.entries.map((e: any) => e.note.content).sort();
+      expect(contents).toEqual(["first handoff", "other task handoff"]);
+      expect(res.entries.every((e: any) => e.note.noteType === "handoff")).toBe(true);
+      expect(res.entries.every((e: any) => typeof e.taskTitle === "string" && e.taskTitle.length > 0)).toBe(true);
+      expect(res.entries.every((e: any) => typeof e.taskStatus === "string")).toBe(true);
+    });
+
+    it("returns only the latest handoff note when a task has been handed off more than once", async () => {
+      await insertHandoffNote(taskId, "older handoff", new Date(Date.now() - 60_000));
+      await insertHandoffNote(taskId, "newer handoff", new Date());
+
+      const res = await handler.listHandoffNotes({ projectId }, ctx);
+      expect(res.entries).toHaveLength(1);
+      expect(res.entries[0].note.content).toBe("newer handoff");
+    });
+
+    it("excludes a handoff note on a soft-deleted task", async () => {
+      const deletedTaskId = await makeTask();
+      await handler.createTaskNote({ taskId: deletedTaskId, content: "orphaned handoff", noteType: "handoff" }, agentCtx);
+      await db.update(schemaSqlite.tasks).set({ deletedAt: new Date() }).where(eq(schemaSqlite.tasks.id, deletedTaskId));
+
+      const res = await handler.listHandoffNotes({ projectId }, ctx);
+      expect(res.entries).toHaveLength(0);
+    });
+
+    it("returns an empty page when the project has no handoff notes", async () => {
+      const res = await handler.listHandoffNotes({ projectId }, ctx);
+      expect(res.entries).toEqual([]);
+      expect(res.page.totalCount).toBe(0);
+    });
+
+    it("paginates via the index cursor it hands back", async () => {
+      const taskB = await makeTask();
+      const taskC = await makeTask();
+      await insertHandoffNote(taskId, "a", new Date(Date.now() - 120_000));
+      await insertHandoffNote(taskB, "b", new Date(Date.now() - 60_000));
+      await insertHandoffNote(taskC, "c", new Date());
+
+      const page1 = await handler.listHandoffNotes({ projectId, page: { limit: 2 } }, ctx);
+      expect(page1.entries).toHaveLength(2);
+      expect(page1.entries.map((e: any) => e.note.content)).toEqual(["c", "b"]);
+      expect(page1.page.nextCursor).toBeTruthy();
+
+      const page2 = await handler.listHandoffNotes({ projectId, page: { limit: 2, cursor: page1.page.nextCursor } }, ctx);
+      expect(page2.entries).toHaveLength(1);
+      expect(page2.entries[0].note.content).toBe("a");
+      expect(page2.page.nextCursor).toBeUndefined();
+    });
+
+    it("rejects listHandoffNotes with missing projectId", async () => {
+      await expect(handler.listHandoffNotes({}, ctx)).rejects.toThrow();
+    });
+
+    it("rejects listHandoffNotes from a user outside the project's org", async () => {
+      await expect(handler.listHandoffNotes({ projectId }, makeAuthContext("user-outsider"))).rejects.toThrow();
+    });
   });
 
   // --- updateTaskNote / deleteTaskNote (M19-T01) ---

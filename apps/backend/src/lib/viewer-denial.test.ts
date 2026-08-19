@@ -46,7 +46,7 @@ const READS: Record<string, string[]> = {
   // Read-only supervision console; a viewer may look at it.
   dashboard: ['getDashboard'],
   search: ['universalSearch'],
-  taskNotes: ['listTaskNotes'],
+  taskNotes: ['listTaskNotes', 'listHandoffNotes'],
   agents: ['listAgentRoles', 'listAgents'],
   artifacts: ['listFolders', 'listArtifacts', 'getArtifact', 'getArtifactContent', 'listTaskArtifactLinks'],
   comments: ['listComments'],

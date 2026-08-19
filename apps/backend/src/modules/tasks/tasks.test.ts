@@ -843,6 +843,55 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.claimTask({ taskId: thirdTask.task.id }, readOnlyAgentCtx)).rejects.toMatchObject({ code: Code.PermissionDenied });
   });
 
+  // M22-T04 (ADR-0017): the whole point of this milestone - claiming a task
+  // that has a prior handoff note surfaces it in the same round trip.
+  test("claimTask returns the task's latest handoff note when one exists", async () => {
+    const { db, nc } = await setupIntegrationTest();
+
+    const orgId = "org-claimhandoff-" + Date.now();
+    const adminId = "user-claimhandoff-" + Date.now();
+    const templateId = "tmpl-claimhandoff-" + Date.now();
+    const projectId = "proj-claimhandoff-" + Date.now();
+    const agentRoleId = "role-claimhandoff-" + Date.now();
+    const agentId = "agent-claimhandoff-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Claim Handoff Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
+
+    const ctx = makeAuthContext(adminId);
+    const handler = createTaskManagementHandler(db, nc);
+    const agentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-test", scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any;
+
+    const task = await handler.createTask({ projectId, title: "Was handed off", status: "todo", description: "" }, ctx);
+
+    // No handoff note yet - claimTask's own response carries no such field.
+    const noNote = await handler.claimTask({ taskId: task.task.id }, agentCtx);
+    expect(noNote.latestHandoffNote).toBeUndefined();
+    await handler.unassignTask({ taskId: task.task.id, agentId }, ctx);
+
+    await db.insert(schemaSqlite.taskNotes).values({
+      id: "tnt-older-" + Date.now(), taskId: task.task.id, agentId, content: "older handoff", createdAt: new Date(Date.now() - 60_000), noteType: "handoff",
+    });
+    await db.insert(schemaSqlite.taskNotes).values({
+      id: "tnt-newer-" + Date.now(), taskId: task.task.id, agentId, content: "blocked on review, next: rerun tests", createdAt: new Date(), noteType: "handoff",
+    });
+    await db.insert(schemaSqlite.taskNotes).values({
+      id: "tnt-comment-" + Date.now(), taskId: task.task.id, agentId, content: "just a comment", createdAt: new Date(), noteType: "comment",
+    });
+
+    const claimed = await handler.claimTask({ taskId: task.task.id }, agentCtx);
+    expect(claimed.latestHandoffNote).toBeDefined();
+    expect(claimed.latestHandoffNote.content).toBe("blocked on review, next: rerun tests");
+    expect(claimed.latestHandoffNote.noteType).toBe("handoff");
+    expect(typeof claimed.latestHandoffNote.createdAt).toBe("string");
+  });
+
   // M14-T06: the whole point - fires N concurrent claims at the same
   // unassigned task and proves exactly one wins, the same shape M03-T15
   // proved for createTask's counter claim.
@@ -1393,6 +1442,8 @@ describe("Tasks Handler Integration Tests", () => {
     expect(Array.isArray(fetched.task.assignees)).toBe(true);
     expect(typeof fetched.task.createdAt).toBe("string");
     expect(fetched.task.createdAt.length).toBeGreaterThan(0);
+    // M22-T04 (ADR-0017): no handoff note recorded for this task.
+    expect(fetched.latestHandoffNote).toBeUndefined();
 
     await expect(handler.getTask({ taskId: "task-does-not-exist" }, ctx)).rejects.toMatchObject({ code: Code.NotFound });
     await expect(handler.getTask({}, ctx)).rejects.toThrow();
@@ -1400,6 +1451,39 @@ describe("Tasks Handler Integration Tests", () => {
     const outsiderId = "user-gettask-outsider-" + Date.now();
     await db.insert(schemaSqlite.users).values({ id: outsiderId, email: `${outsiderId}@test.com`, createdAt: new Date() });
     await expect(handler.getTask({ taskId: created.task.id }, makeAuthContext(outsiderId))).rejects.toThrow();
+  });
+
+  // M22-T04 (ADR-0017): inspecting a task surfaces prior handoff context
+  // without a separate listTaskNotes call.
+  test("getTask returns the task's latest handoff note when one exists", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createTaskManagementHandler(db, nc);
+
+    const orgId = "org-gettaskhandoff-" + Date.now();
+    const userId = "user-gettaskhandoff-" + Date.now();
+    const templateId = "tmpl-gettaskhandoff-" + Date.now();
+    const projectId = "proj-gettaskhandoff-" + Date.now();
+    const agentRoleId = "role-gettaskhandoff-" + Date.now();
+    const agentId = "agent-gettaskhandoff-" + Date.now();
+
+    await seedOrgWithAdmin(db, { orgId, userId, name: "GetTask Handoff Org" });
+    await seedProject(db, { orgId, userId, templateId, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: agentRoleId, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId, name: "Agent" });
+    const ctx = makeAuthContext(userId);
+
+    const created = await handler.createTask({ projectId, title: "Mid-handoff" }, ctx);
+    await db.insert(schemaSqlite.taskNotes).values({
+      id: "tnt-gettask-older-" + Date.now(), taskId: created.task.id, agentId, content: "older handoff", createdAt: new Date(Date.now() - 60_000), noteType: "handoff",
+    });
+    await db.insert(schemaSqlite.taskNotes).values({
+      id: "tnt-gettask-newer-" + Date.now(), taskId: created.task.id, agentId, content: "current understanding: X, next: Y", createdAt: new Date(), noteType: "handoff",
+    });
+
+    const fetched = await handler.getTask({ taskId: created.task.id }, ctx);
+    expect(fetched.latestHandoffNote).toBeDefined();
+    expect(fetched.latestHandoffNote.content).toBe("current understanding: X, next: Y");
+    expect(typeof fetched.latestHandoffNote.createdAt).toBe("string");
   });
 });
 

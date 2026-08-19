@@ -7,6 +7,7 @@ import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restor
 import { requireUser, getProjectOrgId, getTaskOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
 import { withIdempotency } from "../../lib/idempotency";
+import { getLatestHandoffNote } from "./task_notes.handler";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // Distinguishes a real DB-level unique-constraint violation (a concurrent
@@ -700,12 +701,16 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       const t = rows[0];
       const assignees = await assigneesByTask([t.id]);
+      // M22-T04 (ADR-0017): surfaces prior handoff context the moment a
+      // task is inspected, without a separate listTaskNotes call.
+      const latestHandoffNote = await getLatestHandoffNote(db, t.id, isStandalone);
       return {
         task: {
           ...t,
           createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
           assignees: assignees.get(t.id) ?? [],
         },
+        ...(latestHandoffNote ? { latestHandoffNote } : {}),
       };
     },
     async listTasks(req: unknown, { values: contextValues }: { values: any }) {
@@ -919,7 +924,14 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
         const task = result[0];
         publishDomainEvent(nc, "domain.task.claimed", { taskId: parsed.taskId, agentId: selfAgentId, userId: selfUserId });
-        return { task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt } };
+        // M22-T04 (ADR-0017): the moment a claim succeeds is exactly when
+        // prior handoff context matters most - the new claimant sees it in
+        // the same round trip, no second call needed.
+        const latestHandoffNote = await getLatestHandoffNote(db, parsed.taskId, isStandalone);
+        return {
+          task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt },
+          ...(latestHandoffNote ? { latestHandoffNote } : {}),
+        };
       });
     },
     async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {

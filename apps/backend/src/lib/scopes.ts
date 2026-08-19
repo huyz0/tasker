@@ -82,6 +82,10 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     createTaskNote: 'comments:write',
     updateTaskNote: 'comments:write',
     deleteTaskNote: 'comments:write',
+    // M22-T04 (ADR-0017): same family as listTaskNotes - a handoff note is
+    // still a TaskNote, and reading which tasks have one is a read, not a
+    // write.
+    listHandoffNotes: 'tasks:read',
   },
   comments: {
     listComments: 'tasks:read',
