@@ -2,7 +2,7 @@
 active_milestone: M08
 active_task: null
 last_updated: 2026-08-19
-last_commit: ff6f87e
+last_commit: 14ca208
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,59 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-19 — Storybook coverage for every custom component and screen,
+merged to `main`.** Requested directly via `/goal` ("ensure storybook
+work for every custom components and screens"), immediately after the
+chunk-optimization round. Not a numbered milestone (single technical
+task, like M15–M20 and the chunk-optimization round). Developed on
+`feature/storybook-coverage` as one commit, merged with `--no-ff`.
+
+`frontend-standard.md`'s Storybook rule ("all newly created or modified
+UI components, primitives, and screens MUST have a corresponding
+`.stories.tsx` file") had drifted: diffing every non-test/non-story
+`.tsx` file in `apps/gui/src` against every existing `.stories.tsx`
+file found 27 components/screens that had never had one — UI primitives
+(`button`, `card`, `ConfirmDialog`, `Dialog`, `InlineCreateForm`,
+`ListState`, `RowActionsMenu`, `VirtualList`, `ErrorBoundary`), the
+`labels/` compound component (via a new `Label.stories.tsx` mirroring
+the sibling `comments/` subsystem's own `Comment.stories.tsx` pattern),
+layout components (`Breadcrumbs`, `PaginationControls`, `ThemeToggle`,
+`CurrentUser`, `OrgProjectSwitcher`), feature sub-components
+(`AgentTokens`, `ArtifactUpload`, `AssigneePicker`, `ReviewerPicker`,
+`TaskArtifactLinks`), and whole screens (`BinDashboard`,
+`TaskTypesEditor`, `Dashboard`, `SystemHealthPage`, `OAuthCallback`,
+the `Login`/`Register` page wrappers around their already-storied
+forms).
+
+Two real accessibility bugs were found and fixed via Storybook's own
+a11y gate running against surfaces it had never been able to check
+before: `VirtualList.tsx`'s scroll container had no `tabIndex`, so a
+keyboard user could not scroll it without first tabbing through every
+row (every real caller happens to have a focusable element inside the
+visible rows already, which masked this for the region itself until
+`VirtualList` got a story of its own); `Login.tsx`/`Register.tsx`'s
+in-text links were distinguished from surrounding text by colour alone
+at rest (`hover:underline` only, no baseline `underline`).
+
+A latent gap in the shared `storybook-a11y.mjs`/`mobile-overflow.mjs`
+test harness itself was also found and fixed: any component with a
+real, unconditional `useQuery` on mount and no MSW to answer it
+(`CurrentUser`, `OrgProjectSwitcher`, `Dashboard`, `TaskTypesEditor`,
+`BinDashboard`, `SystemHealthPage`, and others) fires a real
+`createClient(...)` call against the backend, and in this environment a
+fetch to a closed local port hangs rather than failing fast — never
+letting Playwright's `networkidle` wait resolve, timing out the whole
+run on the first such story. Never triggered before because no existing
+story fired an unconditional query the same way (the existing
+manager-screen stories, e.g. `Memory`/`Handoffs`, deliberately never
+reach a state that queries at all). Fixed generally, in the shared
+harness, with `page.route('http://localhost:8080/**', route =>
+route.abort())` before iterating stories — benefits every current and
+future story that needs it, not just the ones added here.
+
+Verified: `moon check --all` (27/27); `moon run gui:storybook-test` — 86
+stories (up from 32), 0 axe violations, nothing wider than 375px.
 
 **2026-08-19 — Front-end route-level code-splitting (chunk optimization),
 merged to `main`.** Requested directly by the user via `/goal` ("optimise
