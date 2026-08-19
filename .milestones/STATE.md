@@ -2,7 +2,7 @@
 active_milestone: M08
 active_task: null
 last_updated: 2026-08-19
-last_commit: cb0ff6e
+last_commit: ff6f87e
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,52 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-19 — Front-end route-level code-splitting (chunk optimization),
+merged to `main`.** Requested directly by the user via `/goal` ("optimise
+front end chunks on all screen"). Not a formal milestone (no
+`MILESTONE-NN` folder or ledger slot) — a single, well-scoped technical
+task, developed on `feature/gui-chunk-optimization` as one commit,
+merged with `--no-ff`.
+
+`apps/gui/src/App.tsx` previously imported all 17 routed screens/pages
+eagerly, so every session downloaded one bundle containing every
+feature at once regardless of which screens it actually visited — the
+same problem `RichMarkdownEditor`'s own `React.lazy`/`Suspense` split
+(M23) had just solved for one component, here applied at route scale.
+Every route element (`Dashboard`, `SystemHealth`, `OAuthCallback`,
+`NotFound`, `Login`, `Register`, and all 14 feature screens) is now
+`React.lazy()`, each producing its own chunk behind one of two Suspense
+boundaries (top-level for the unauthenticated Login/Register routes,
+inside `AppShell` for everything else). Rollup/Vite factors out
+whatever two or more lazy chunks share automatically — no
+`manualChunks` config needed.
+
+Result (`vite build`): the main chunk dropped from 960.53kB to
+488.80kB (269.03kB → 146.72kB gzip), a 49% reduction, and any screen a
+session never visits no longer ships to it at all.
+`RichMarkdownEditor`'s own 561.76kB chunk (Lexical) is unaffected,
+already isolated since M23.
+
+`App.test.tsx` needed every synchronous `getByRole`/`getByText`
+assertion immediately after `render()` converted to
+`await findByRole`/`findByText`, since content is no longer in the DOM
+on the same tick a route renders — the same pattern M23-T03 already
+established for one field, applied here to the whole router. Also
+added coverage for every route the test file didn't already exercise
+(Projects/Agents/Labels/Roles/Teams/Memory/Handoffs/Bin/TaskTypes/
+Login/Register/OAuthCallback), taking `App.tsx` itself from
+59%/39% statement/function coverage to 100%/100% (only the routes
+already under test had their `lazy()` call site actually invoked
+before).
+
+Verified: `moon check --all` (27/27, coverage aggregate
+98.34/95.03/97.16/98.64% stmt/branch/func/line); `moon run gui:e2e`'s
+`navigation.spec.ts`/`dashboard.spec.ts` (16/17 — the one failure is
+the same pre-existing, sandbox-specific `/agents` state-machine-panel
+issue already documented as unrelated in M23; confirmed still
+unaffected here since every other route in that same spec, run in the
+same pass, passed).
 
 **2026-08-19 — M23 (Rich Markdown Editor) closed: 5/5 tasks, 6/6 exit
 criteria, merged to `main`.** Requested directly by the user, who asked
