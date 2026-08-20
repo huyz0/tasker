@@ -84,14 +84,14 @@ describe('durableConsumerConfig', () => {
   });
 
   it('requires explicit acks, so a crash mid-write replays rather than loses', () => {
-    expect(durableConsumerConfig().ack_policy).toBe('explicit');
+    expect(String(durableConsumerConfig().ack_policy)).toBe('explicit');
   });
 
   it('delivers all retained events, so a new consumer sees the backlog', () => {
     // `deliver_policy: all` rather than `new` — standing the projector up for
     // the first time must record what is already in the stream, not only what
     // arrives afterwards.
-    expect(durableConsumerConfig().deliver_policy).toBe('all');
+    expect(String(durableConsumerConfig().deliver_policy)).toBe('all');
   });
 
   it('bounds redelivery so one poison message cannot block the stream', () => {
