@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useComments } from './CommentContext';
 import { Button } from '../button';
+import { LazyRichMarkdownEditor } from '../LazyRichMarkdownEditor';
 
 export function CommentComposer() {
   const { state, actions } = useComments();
@@ -25,12 +26,15 @@ export function CommentComposer() {
         <p className="text-sm text-destructive mb-3">Failed to post comment: {state.error?.message}</p>
       )}
       <form onSubmit={handleSubmit} className="flex flex-col space-y-3">
-        <textarea
-          className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder="Add your comment... (Markdown supported)"
+        {/* M23's named follow-up: comments were the second surface the rich
+            editor was always meant to reach once the task-description pilot
+            proved out. The value is still a plain markdown string on the way
+            in and out, so `addComment` is unchanged. */}
+        <LazyRichMarkdownEditor
           value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          disabled={state.isLoading}
+          onChange={setNewComment}
+          placeholder="Add your comment…"
+          readOnly={state.isLoading}
         />
         <div className="flex justify-end">
           <Button type="submit" disabled={state.isLoading || !newComment.trim()}>

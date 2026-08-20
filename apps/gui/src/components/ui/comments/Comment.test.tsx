@@ -28,6 +28,19 @@ vi.mock('../../../hooks/useAuthSession', () => ({
   useAuthSession: vi.fn(() => ({ isLoading: false, authenticated: true, userId: 'user-1' })),
 }));
 
+// The rich editor is lazy-loaded behind Suspense, so rendering the real one
+// here would mean awaiting a chunk to assert on a text field. Its own
+// RichMarkdownEditor.test.tsx already covers the value/onChange wiring
+// against a mocked @mdxeditor/editor (ADR-0018); these tests only need
+// something that holds text, so the Lazy wrapper stands in as a plain
+// controlled textarea — the same substitution Tasks/index.test.tsx makes.
+vi.mock('../LazyRichMarkdownEditor', () => ({
+  LazyRichMarkdownEditor: ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
+    <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
+  ),
+}));
+
+
 function renderWithProvider(children: React.ReactNode) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -53,7 +66,7 @@ describe('Comment Compound Component', () => {
 
     renderWithProvider(<><Comment.List /><Comment.Composer /></>);
 
-    const textarea = await screen.findByPlaceholderText('Add your comment... (Markdown supported)');
+    const textarea = await screen.findByPlaceholderText('Add your comment…');
     await waitFor(() => expect(textarea).not.toBeDisabled());
     fireEvent.change(textarea, { target: { value: 'This is a **bold** comment' } });
 
@@ -116,7 +129,7 @@ describe('Comment Compound Component', () => {
 
     renderWithProvider(<><Comment.List /><Comment.Composer /></>);
 
-    const textarea = await screen.findByPlaceholderText('Add your comment... (Markdown supported)');
+    const textarea = await screen.findByPlaceholderText('Add your comment…');
     fireEvent.change(textarea, { target: { value: '   ' } });
     const form = textarea.closest('form')!;
     fireEvent.submit(form);
@@ -130,7 +143,7 @@ describe('Comment Compound Component', () => {
 
     renderWithProvider(<><Comment.List /><Comment.Composer /></>);
 
-    const textarea = await screen.findByPlaceholderText('Add your comment... (Markdown supported)');
+    const textarea = await screen.findByPlaceholderText('Add your comment…');
     await waitFor(() => expect(textarea).not.toBeDisabled());
     fireEvent.change(textarea, { target: { value: 'Hello there' } });
     const button = screen.getByRole('button', { name: /post/i });
@@ -232,7 +245,7 @@ describe('Comment Compound Component', () => {
 
     renderWithProvider(<><Comment.List /><Comment.Composer /></>);
 
-    const textarea = await screen.findByPlaceholderText('Add your comment... (Markdown supported)');
+    const textarea = await screen.findByPlaceholderText('Add your comment…');
     fireEvent.change(textarea, { target: { value: 'Hello' } });
     fireEvent.click(screen.getByRole('button', { name: /post/i }));
 

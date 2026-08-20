@@ -15,6 +15,7 @@ import { Folder, FolderOpen, FileText, X } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { LazyRichMarkdownEditor } from '../../components/ui/LazyRichMarkdownEditor';
 import { ListState } from '../../components/ui/ListState';
 import { VirtualList } from '../../components/ui/VirtualList';
 
@@ -627,13 +628,28 @@ export function ArtifactsBrowser() {
                  <p className="text-sm text-destructive mb-3">Failed to save: {(updateContentMutation.error as Error).message}</p>
                )}
                {isEditingContent ? (
-                 <textarea
-                   autoFocus
-                   aria-label={`Content of ${selectedArtifact.name}`}
-                   value={editedContent}
-                   onChange={(e) => setEditedContent(e.target.value)}
-                   className="w-full h-full min-h-[300px] rounded-md border bg-background p-3 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/50"
-                 />
+                 // M23's follow-up reaches artifact content, but only where
+                 // the content is actually markdown. An artifact holds
+                 // whatever was uploaded — JSON, a code file, plain text —
+                 // and a WYSIWYG markdown editor would rewrite that on save
+                 // (a `#` in a shell script becoming a heading, a JSON body
+                 // reflowed). Everything that is not markdown keeps the
+                 // monospace plain-text field it had.
+                 selectedArtifact.contentType === 'text/markdown' ? (
+                   <LazyRichMarkdownEditor
+                     value={editedContent}
+                     onChange={setEditedContent}
+                     placeholder={`Content of ${selectedArtifact.name}`}
+                   />
+                 ) : (
+                   <textarea
+                     autoFocus
+                     aria-label={`Content of ${selectedArtifact.name}`}
+                     value={editedContent}
+                     onChange={(e) => setEditedContent(e.target.value)}
+                     className="w-full h-full min-h-[300px] rounded-md border bg-background p-3 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/50"
+                   />
+                 )
                ) : (
                <div className="prose prose-sm dark:prose-invert max-w-none">
                  {contentQuery.isLoading || contentQuery.error || !artifactContent ? (

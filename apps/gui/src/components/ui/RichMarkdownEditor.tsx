@@ -24,6 +24,14 @@ export interface RichMarkdownEditorProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  /**
+   * Blocks editing without unmounting, for a form that is mid-submit.
+   * A `<textarea>` this replaces had `disabled`; MDXEditor's equivalent is
+   * `readOnly`, so swapping one for the other would otherwise drop the
+   * behaviour silently and let a user keep typing into a field whose value
+   * has already been sent.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -41,13 +49,14 @@ export interface RichMarkdownEditorProps {
  * that, use `MDXEditorMethods.setMarkdown` via a ref instead of relying on
  * the `markdown` prop to update live.
  */
-export function RichMarkdownEditor({ value, onChange, placeholder, className }: RichMarkdownEditorProps) {
+export function RichMarkdownEditor({ value, onChange, placeholder, className, readOnly }: RichMarkdownEditorProps) {
   return (
     <div className={`rich-markdown-editor ${className ?? ""}`}>
       <MDXEditor
         markdown={value}
         onChange={onChange}
         placeholder={placeholder}
+        readOnly={readOnly}
         contentEditableClassName="rich-markdown-editor-content"
         plugins={[
           headingsPlugin(),

@@ -91,6 +91,19 @@ vi.mock('../../store/layout', () => ({
   })),
 }));
 
+// The rich editor is lazy-loaded behind Suspense, so rendering the real one
+// here would mean awaiting a chunk to assert on a text field. Its own
+// RichMarkdownEditor.test.tsx already covers the value/onChange wiring
+// against a mocked @mdxeditor/editor (ADR-0018); these tests only need
+// something that holds text, so the Lazy wrapper stands in as a plain
+// controlled textarea — the same substitution Tasks/index.test.tsx makes.
+vi.mock('../../components/ui/LazyRichMarkdownEditor', () => ({
+  LazyRichMarkdownEditor: ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
+    <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
+  ),
+}));
+
+
 import { ArtifactsBrowser } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
 
