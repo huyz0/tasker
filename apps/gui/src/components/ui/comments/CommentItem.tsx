@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { CommentData } from './CommentContext';
 import { useComments } from './CommentContext';
 import { useAuthSession } from '../../../hooks/useAuthSession';
+import { LazyRichMarkdownEditor } from '../LazyRichMarkdownEditor';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 import { Bot } from 'lucide-react';
 import { useConfirm } from '../ConfirmDialog';
@@ -72,12 +73,14 @@ export function CommentItem({ comment }: { comment: CommentData }) {
           }}
           className="flex flex-col gap-2"
         >
-          <textarea
-            autoFocus
+          {/* Same editor the composer uses, so a comment reads back the way
+              it was written. Remounted per edit session (isEditing gates it),
+              which is what RichMarkdownEditor's mount-once `markdown` prop
+              requires. */}
+          <LazyRichMarkdownEditor
             value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            rows={3}
-            className="text-sm rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
+            onChange={setEditContent}
+            placeholder="Edit your comment…"
           />
           <div className="flex gap-2 self-end">
             <button type="submit" disabled={!editContent.trim()} className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium">Save</button>

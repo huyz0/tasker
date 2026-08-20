@@ -1256,6 +1256,28 @@ describe('TasksWorkbench', () => {
       expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
     });
 
+    it('keeps a deep-linked task open while the active project hydrates from empty', async () => {
+      // The hard-reload case. On a fresh load of /tasks/:taskId the layout
+      // store starts with no project and fills one in a tick later, so the
+      // scope changes *after* the first render — which used to be the only
+      // thing guarding this effect. The overlay was closed and the URL thrown
+      // back to /tasks, so reloading a task link never stayed on the task.
+      mockActiveProjectId = '';
+      mockListTasks.mockResolvedValue({ tasks: [task] });
+
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>,
+      );
+
+      // The store hydrates: '' -> a real project id.
+      mockActiveProjectId = 'proj-1';
+      rerender(<QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>);
+
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
+      expect(locationRef.current).toBe('/tasks/task-1');
+    });
+
     it('closes the detail overlay when the active org changes', async () => {
       mockListTasks.mockResolvedValue({ tasks: [task] });
 

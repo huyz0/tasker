@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
@@ -19,6 +19,7 @@ import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { Breadcrumbs } from '../../components/layout/Breadcrumbs';
+import { LazyRichMarkdownEditor } from '../../components/ui/LazyRichMarkdownEditor';
 import { ListState } from '../../components/ui/ListState';
 
 const taskClient = createClient(TaskService, transport);
@@ -27,13 +28,6 @@ const taskTypeClient = createClient(TaskTypeService, transport);
 const taskNoteClient = createClient(TaskNoteService, transport);
 const projectClient = createClient(ProjectService, transport);
 
-// Lazy-loaded: the first use of React.lazy/Suspense in this codebase.
-// @mdxeditor/editor pulls in Lexical, real dependency weight that
-// shouldn't load for a user who never opens task-description edit mode
-// (ADR-0018).
-const RichMarkdownEditor = lazy(() =>
-  import('../../components/ui/RichMarkdownEditor').then((m) => ({ default: m.RichMarkdownEditor }))
-);
 
 function TaskNotesPanel({ taskId }: { taskId: string }) {
   const { confirm, confirmDialog } = useConfirm();
@@ -521,16 +515,30 @@ export function TasksWorkbench() {
   // sidebar. Closes the panel so a stale task can't be edited under the
   // wrong project's identity.
   //
-  // Skipped on the very first run: a deep link (`/tasks/:taskId`) has to
-  // survive mounting into whatever the active project/org happens to
-  // already be, not get redirected away from before it has ever rendered.
-  const isFirstRender = useRef(true);
+  // Skipped while the scope is still arriving: a deep link
+  // (`/tasks/:taskId`) has to survive mounting into whatever the active
+  // project/org turns out to be, not get redirected away before it renders.
+  //
+  // Guarding only the first render was not enough, which is the bug this
+  // replaces. On a hard reload of `/tasks/:taskId` the store starts empty and
+  // hydrates a tick later, so the scope changes from '' to the real project
+  // *after* the first-render flag has already been spent — the effect fired,
+  // saw a task open, and threw the deep link away. Every reload of a task URL
+  // bounced to the board.
+  //
+  // Comparing against the previous scope tells the two apart: hydrating from
+  // "nothing selected yet" is not a switch, while genuinely moving between
+  // two projects is.
+  const previousScope = useRef<string | null>(null);
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    if (expandedTaskId) navigate('/tasks');
+    const scope = `${activeOrgId}/${activeProjectId}`;
+    const previous = previousScope.current;
+    previousScope.current = scope;
+
+    // Nothing to compare against yet, or the scope was still empty — this is
+    // hydration, not navigation.
+    if (previous === null || !previous.split('/')[1]) return;
+    if (previous !== scope && expandedTaskId) navigate('/tasks');
     // Deliberately only activeProjectId/activeOrgId: this resets the panel
     // when the *scope* changes, not on every ordinary navigation within it
     // (which would fight the very task the user just opened).
@@ -995,19 +1003,11 @@ export function TasksWorkbench() {
                    onChange={(e) => setEditTitle(e.target.value)}
                    className="text-xl font-bold rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
                  />
-                 <Suspense
-                   fallback={
-                     <div role="status" className="text-sm text-muted-foreground rounded-md border bg-background px-2 py-1">
-                       Loading editor…
-                     </div>
-                   }
-                 >
-                   <RichMarkdownEditor
-                     value={editDescription}
-                     onChange={setEditDescription}
-                     placeholder="Description (Markdown supported)"
-                   />
-                 </Suspense>
+                 <LazyRichMarkdownEditor
+                   value={editDescription}
+                   onChange={setEditDescription}
+                   placeholder="Description (Markdown supported)"
+                 />
                  {updateTaskMutation.isError && (
                    <p className="text-destructive text-xs">Failed to update task: {(updateTaskMutation.error as Error).message}</p>
                  )}
