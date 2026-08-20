@@ -39,6 +39,7 @@ func (f *fakeTaskCreateHandler) CreateTask(
 }
 
 func TestTasksCreateCommand(t *testing.T) {
+	resetAllFlags(t)
 	handler := &fakeTaskCreateHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskServiceHandler(handler))
@@ -120,6 +121,7 @@ func (f *fakeTaskClaimHandler) ClaimTask(
 // the RPC existing since M14. An agent could only reach it with a
 // hand-rolled ConnectRPC call.
 func TestTasksClaimCommand(t *testing.T) {
+	resetAllFlags(t)
 	handler := &fakeTaskClaimHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskServiceHandler(handler))
@@ -159,6 +161,7 @@ func TestTasksClaimCommand(t *testing.T) {
 // that has a prior handoff note surfaces it in the same round trip, both in
 // plain text and in the (now whole-response, not bare-task) --json shape.
 func TestTasksClaimCommandSurfacesLatestHandoffNote(t *testing.T) {
+	resetAllFlags(t)
 	resetJSONFlag(t)
 	handler := &fakeTaskClaimHandler{
 		latestHandoffNote: &healthv1.TaskNote{
@@ -209,6 +212,7 @@ func (f *fakeTaskClaimFailureHandler) ClaimTask(
 }
 
 func TestTasksClaimCommandReportsFailure(t *testing.T) {
+	resetAllFlags(t)
 	handler := &fakeTaskClaimFailureHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskServiceHandler(handler))
@@ -249,6 +253,7 @@ func (f *fakeCommentHandler) CreateComment(
 }
 
 func TestTasksCommentAddCommand(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewCommentServiceHandler(&fakeCommentHandler{}))
 	srv := httptest.NewServer(mux)
@@ -269,6 +274,7 @@ func TestTasksCommentAddCommand(t *testing.T) {
 
 // M19-T09: tasksCommentAddCmd had a test; tasksCommentsCmd (list) never did.
 func TestTasksCommentAddCommandRequiresContent(t *testing.T) {
+	resetAllFlags(t)
 	_ = tasksCommentAddCmd.Flags().Set("content", "")
 	t.Cleanup(func() { _ = tasksCommentAddCmd.Flags().Set("content", "") })
 
@@ -297,6 +303,7 @@ func (f *fakeCommentHandler) ListComments(
 }
 
 func TestTasksCommentsListCommand(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewCommentServiceHandler(&fakeCommentHandler{}))
 	srv := httptest.NewServer(mux)
@@ -318,6 +325,7 @@ func TestTasksCommentsListCommand(t *testing.T) {
 }
 
 func TestTasksCommentsListCommandReportsFailure(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewCommentServiceHandler(&v1connect.UnimplementedCommentServiceHandler{}))
 	srv := httptest.NewServer(mux)
@@ -376,6 +384,7 @@ func (f *fakeTaskReviewerHandler) ListTaskReviewers(
 }
 
 func TestTasksReviewerCommands(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTaskReviewerHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskServiceHandler(fake))
@@ -442,6 +451,7 @@ func (f *fakeTaskListHandler) ListTasks(
 // past the server's default page size - the --sort flag's help text claimed
 // "works with --cursor for paging" but no such flag was ever registered.
 func TestTasksListCmdForwardsCursorAndLimit(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTaskListHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskServiceHandler(fake))
@@ -473,6 +483,7 @@ func TestTasksListCmdForwardsCursorAndLimit(t *testing.T) {
 // (M14-T05, and the bin's own onlyDeleted) - there was no way from the CLI
 // to page the bin, filter to one board column, or find claimable/own work.
 func TestTasksListCmdForwardsFacetFlags(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTaskListHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskServiceHandler(fake))
@@ -535,6 +546,7 @@ func (f *fakeTaskGetHandler) GetTask(
 // (listTasks deliberately projects description away) - had no CLI command
 // at all.
 func TestTasksGetCommand(t *testing.T) {
+	resetAllFlags(t)
 	handler := &fakeTaskGetHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskServiceHandler(handler))
@@ -567,6 +579,7 @@ func TestTasksGetCommand(t *testing.T) {
 // without a separate `tasks notes` call, both in plain text and in the
 // (now whole-response) --json shape.
 func TestTasksGetCommandSurfacesLatestHandoffNote(t *testing.T) {
+	resetAllFlags(t)
 	resetJSONFlag(t)
 	handler := &fakeTaskGetHandler{
 		latestHandoffNote: &healthv1.TaskNote{
@@ -631,6 +644,7 @@ func (f *fakeTaskUpdateHandler) UpdateTask(
 // one, so a caller who only wants to rename a task doesn't blank its
 // description as a side effect.
 func TestTasksUpdateCommand(t *testing.T) {
+	resetAllFlags(t)
 	handler := &fakeTaskUpdateHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskServiceHandler(handler))
@@ -664,6 +678,7 @@ func TestTasksUpdateCommand(t *testing.T) {
 }
 
 func TestTasksUpdateCommandCanClearDescription(t *testing.T) {
+	resetAllFlags(t)
 	handler := &fakeTaskUpdateHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskServiceHandler(handler))
@@ -701,6 +716,7 @@ func (f *fakeTaskUnassignHandler) UnassignTask(
 // did - a task assigned from the CLI could only be unassigned by hand-rolling
 // a raw ConnectRPC call, or from the GUI.
 func TestTasksUnassignCommand(t *testing.T) {
+	resetAllFlags(t)
 	handler := &fakeTaskUnassignHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskServiceHandler(handler))
@@ -725,6 +741,7 @@ func TestTasksUnassignCommand(t *testing.T) {
 }
 
 func TestTasksUnassignCommandRequiresAgentOrUser(t *testing.T) {
+	resetAllFlags(t)
 	// tasksUnassignCmd is a package-level singleton, so a flag value set by
 	// an earlier test (TestTasksUnassignCommand's --agent agent-1) survives
 	// into this one unless cleared explicitly.
@@ -815,6 +832,7 @@ func withTaskLifecycleServer(t *testing.T) *fakeTaskLifecycleHandler {
 }
 
 func TestTasksAssignCommand(t *testing.T) {
+	resetAllFlags(t)
 	t.Cleanup(func() {
 		_ = tasksAssignCmd.Flags().Set("agent", "")
 		_ = tasksAssignCmd.Flags().Set("user", "")
@@ -838,6 +856,7 @@ func TestTasksAssignCommand(t *testing.T) {
 }
 
 func TestTasksAssignCommandRequiresAgentOrUser(t *testing.T) {
+	resetAllFlags(t)
 	_ = tasksAssignCmd.Flags().Set("agent", "")
 	_ = tasksAssignCmd.Flags().Set("user", "")
 	t.Cleanup(func() {
@@ -859,6 +878,7 @@ func TestTasksAssignCommandRequiresAgentOrUser(t *testing.T) {
 }
 
 func TestTasksUpdateStatusCommand(t *testing.T) {
+	resetAllFlags(t)
 	fake := withTaskLifecycleServer(t)
 
 	rootCmd.AddCommand(tasksCmd)
@@ -878,6 +898,7 @@ func TestTasksUpdateStatusCommand(t *testing.T) {
 }
 
 func TestTasksDeleteRestorePurgeCommands(t *testing.T) {
+	resetAllFlags(t)
 	fake := withTaskLifecycleServer(t)
 
 	rootCmd.AddCommand(tasksCmd)
@@ -921,6 +942,7 @@ func TestTasksDeleteRestorePurgeCommands(t *testing.T) {
 }
 
 func TestTasksDeleteRestorePurgeCommandsPlainOutput(t *testing.T) {
+	resetAllFlags(t)
 	withTaskLifecycleServer(t)
 
 	// --json is a persistent flag on rootCmd, so the previous test's value
@@ -962,6 +984,7 @@ func TestTasksDeleteRestorePurgeCommandsPlainOutput(t *testing.T) {
 // M19-T09: no required-flag validation error-message test existed anywhere
 // in this file before this round.
 func TestTasksCreateCommandRequiresTitleAndProject(t *testing.T) {
+	resetAllFlags(t)
 	_ = tasksCreateCmd.Flags().Set("title", "")
 	_ = tasksCreateCmd.Flags().Set("project", "")
 	t.Cleanup(func() {
@@ -984,6 +1007,7 @@ func TestTasksCreateCommandRequiresTitleAndProject(t *testing.T) {
 }
 
 func TestTasksReviewerAddCommandRequiresUser(t *testing.T) {
+	resetAllFlags(t)
 	_ = tasksReviewerAddCmd.Flags().Set("user", "")
 	t.Cleanup(func() { _ = tasksReviewerAddCmd.Flags().Set("user", "") })
 
@@ -1001,6 +1025,7 @@ func TestTasksReviewerAddCommandRequiresUser(t *testing.T) {
 }
 
 func TestTasksReviewerRemoveCommandRequiresUser(t *testing.T) {
+	resetAllFlags(t)
 	_ = tasksReviewerRemoveCmd.Flags().Set("user", "")
 	t.Cleanup(func() { _ = tasksReviewerRemoveCmd.Flags().Set("user", "") })
 

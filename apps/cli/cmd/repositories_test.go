@@ -74,6 +74,7 @@ func (f *fakeRepositoryHandler) ListDeployments(
 }
 
 func TestRepoListCmd(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
 	srv := httptest.NewServer(mux)
@@ -94,6 +95,7 @@ func TestRepoListCmd(t *testing.T) {
 }
 
 func TestRepoListAndBuildsCmdForwardCursorAndLimit(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeRepositoryHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewRepositoryServiceHandler(fake))
@@ -123,6 +125,7 @@ func TestRepoListAndBuildsCmdForwardCursorAndLimit(t *testing.T) {
 }
 
 func TestRepoLinkCmd(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
 	srv := httptest.NewServer(mux)
@@ -143,6 +146,7 @@ func TestRepoLinkCmd(t *testing.T) {
 }
 
 func TestRepoLinkCmdWithDirectApiToken(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
 	srv := httptest.NewServer(mux)
@@ -167,6 +171,7 @@ func TestRepoLinkCmdWithDirectApiToken(t *testing.T) {
 }
 
 func TestRepoLinkCmdWithGithubDirectApiTokenNeedsNoEmail(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
 	srv := httptest.NewServer(mux)
@@ -190,6 +195,7 @@ func TestRepoLinkCmdWithGithubDirectApiTokenNeedsNoEmail(t *testing.T) {
 }
 
 func TestRepoLinkCmdRequiresOauthCodeOrApiTokenWithEmail(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
 	srv := httptest.NewServer(mux)
@@ -210,6 +216,7 @@ func TestRepoLinkCmdRequiresOauthCodeOrApiTokenWithEmail(t *testing.T) {
 }
 
 func TestRepoPrsCmd(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
 	srv := httptest.NewServer(mux)
@@ -230,6 +237,7 @@ func TestRepoPrsCmd(t *testing.T) {
 }
 
 func TestRepoDeploymentsCmd(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewRepositoryServiceHandler(&fakeRepositoryHandler{}))
 	srv := httptest.NewServer(mux)
@@ -250,6 +258,7 @@ func TestRepoDeploymentsCmd(t *testing.T) {
 }
 
 func TestRepoDeploymentsCmdRequiresLinkAndCommit(t *testing.T) {
+	resetAllFlags(t)
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")

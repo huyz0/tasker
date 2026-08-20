@@ -231,6 +231,7 @@ func (f *fakeArtifactHandler) UnlinkTaskArtifact(
 }
 
 func TestArtifactsCreateCommandDefaultsContentTypeToTextMarkdown(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(&fakeArtifactHandler{}))
 	srv := httptest.NewServer(mux)
@@ -250,6 +251,7 @@ func TestArtifactsCreateCommandDefaultsContentTypeToTextMarkdown(t *testing.T) {
 }
 
 func TestArtifactsCreateCommandUploadsFileAsBase64Image(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(&fakeArtifactHandler{}))
 	srv := httptest.NewServer(mux)
@@ -284,6 +286,7 @@ func TestArtifactsCreateCommandUploadsFileAsBase64Image(t *testing.T) {
 // as a wall of base64. Now only content that cannot survive being read as
 // text is ever base64-encoded (see isBinaryContentType).
 func TestArtifactsCreateCommandUploadsATextFileAsPlainText(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(&fakeArtifactHandler{}))
 	srv := httptest.NewServer(mux)
@@ -310,6 +313,7 @@ func TestArtifactsCreateCommandUploadsATextFileAsPlainText(t *testing.T) {
 
 // Maps to TC-006 from TEST-PLAN.md: CLI - Artifacts command
 func TestArtifactsListCommandIntegration(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(&fakeArtifactHandler{}))
 	srv := httptest.NewServer(mux)
@@ -329,6 +333,7 @@ func TestArtifactsListCommandIntegration(t *testing.T) {
 }
 
 func TestArtifactsListCommandForwardsCursorAndLimit(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -365,6 +370,7 @@ func TestArtifactsListCommandForwardsCursorAndLimit(t *testing.T) {
 // deep link with an artifact id and nothing else - so no --folder is needed
 // and there is no folder to page through.
 func TestArtifactsReadCommandPrintsContentFromGetArtifactContent(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{
 		artifactsByID: map[string]*healthv1.Artifact{
 			"art_1": {Id: "art_1", FolderId: "fld_1", Name: "readme.md", ContentType: "text/markdown", Content: "hello world"},
@@ -392,6 +398,7 @@ func TestArtifactsReadCommandPrintsContentFromGetArtifactContent(t *testing.T) {
 }
 
 func TestArtifactsReadCommandReportsANonexistentArtifact(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{artifactsByID: map[string]*healthv1.Artifact{}}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -410,6 +417,7 @@ func TestArtifactsReadCommandReportsANonexistentArtifact(t *testing.T) {
 }
 
 func TestArtifactsReadCommandOutputsJSON(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{
 		artifactsByID: map[string]*healthv1.Artifact{
 			"art_1": {Id: "art_1", FolderId: "fld_1", Name: "readme.md", Description: "d", ContentType: "text/markdown", Content: "hello"},
@@ -436,6 +444,7 @@ func TestArtifactsReadCommandOutputsJSON(t *testing.T) {
 // Base64 dumped to a terminal is unreadable, and for an actual image is not
 // text at all - printed as a note instead, pointing at --json for the bytes.
 func TestArtifactsReadCommandDescribesBinaryContentInsteadOfDumpingBase64(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{
 		artifactsByID: map[string]*healthv1.Artifact{
 			"art_1": {Id: "art_1", FolderId: "fld_1", Name: "logo.png", ContentType: "image/png", Content: "iVBORw0KGgo="},
@@ -471,6 +480,7 @@ func TestArtifactsReadCommandDescribesBinaryContentInsteadOfDumpingBase64(t *tes
 // were unreachable from the CLI - an agent working headlessly had no way to
 // attach its own output to the task it was given.
 func TestArtifactsLinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -498,6 +508,7 @@ func TestArtifactsLinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
 }
 
 func TestArtifactsLinkTaskCommandRequiresBothFlags(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -523,6 +534,7 @@ func TestArtifactsLinkTaskCommandRequiresBothFlags(t *testing.T) {
 }
 
 func TestArtifactsUnlinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -555,6 +567,7 @@ func TestArtifactsUnlinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
 
 // M18-T09: unlink-task ignored --json entirely and always printed plain text.
 func TestArtifactsUnlinkTaskCommandJSON(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -580,6 +593,7 @@ func TestArtifactsUnlinkTaskCommandJSON(t *testing.T) {
 // CLI command - the only way to change an artifact's content was
 // delete-and-recreate, which loses the artifact id and any task links.
 func TestArtifactsUpdateContentCommand(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -605,6 +619,7 @@ func TestArtifactsUpdateContentCommand(t *testing.T) {
 }
 
 func TestArtifactsUpdateContentCommandUploadsATextFileAsPlainText(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -631,6 +646,7 @@ func TestArtifactsUpdateContentCommandUploadsATextFileAsPlainText(t *testing.T) 
 }
 
 func TestArtifactsUpdateContentCommandRequiresContentOrFile(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -658,6 +674,7 @@ func TestArtifactsUpdateContentCommandRequiresContentOrFile(t *testing.T) {
 // command - a typo'd folder name had no way to be fixed short of deleting
 // and recreating it, orphaning anything already filed under the old id.
 func TestArtifactsUpdateFolderCommand(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -682,6 +699,7 @@ func TestArtifactsUpdateFolderCommand(t *testing.T) {
 }
 
 func TestArtifactsUpdateFolderCommandRequiresName(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -708,6 +726,7 @@ func TestArtifactsUpdateFolderCommandRequiresName(t *testing.T) {
 // output blind - there was no way to see what was currently linked to a
 // task or artifact without going to the GUI.
 func TestArtifactsListTaskLinksCommand(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{
 		links: []*healthv1.TaskArtifactLink{
 			{Id: "link_1", TaskId: "tsk_1", ArtifactId: "art_1", TaskTitle: "Ship the release", ArtifactName: "logo.png"},
@@ -732,6 +751,7 @@ func TestArtifactsListTaskLinksCommand(t *testing.T) {
 }
 
 func TestArtifactsListTaskLinksCommandSaysSoWhenEmpty(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -757,6 +777,7 @@ func TestArtifactsListTaskLinksCommandSaysSoWhenEmpty(t *testing.T) {
 }
 
 func TestArtifactsListTaskLinksCommandRequiresExactlyOneOfTaskOrArtifact(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -785,6 +806,7 @@ func TestArtifactsListTaskLinksCommandRequiresExactlyOneOfTaskOrArtifact(t *test
 // M18-T08: `list` had no way to browse the Bin - restore/purge could only be
 // used if the id was already known from elsewhere.
 func TestArtifactsListCommandForwardsOnlyDeleted(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -822,6 +844,7 @@ func TestArtifactsListCommandForwardsOnlyDeleted(t *testing.T) {
 // handler at all - a --json fix to any of them could not have been verified
 // through this fixture, and the positive path itself was untested.
 func TestArtifactsAndFoldersDeleteRestorePurgeCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -885,6 +908,7 @@ func TestArtifactsAndFoldersDeleteRestorePurgeCmd(t *testing.T) {
 
 // M18-T09: none of these six commands honored --json - always plain text.
 func TestArtifactsAndFoldersDeleteRestorePurgeCmdJSON(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -916,6 +940,7 @@ func TestArtifactsAndFoldersDeleteRestorePurgeCmdJSON(t *testing.T) {
 
 // M18-T09: foldersCreateCmd had no test at all.
 func TestFoldersCreateCommand(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))
@@ -944,6 +969,7 @@ func TestFoldersCreateCommand(t *testing.T) {
 // the actual error message, only (in some cases) that an error occurred at
 // all via a different test's incidental coverage.
 func TestArtifactsRequiredFlagValidations(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeArtifactHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewArtifactServiceHandler(fake))

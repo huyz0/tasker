@@ -102,6 +102,7 @@ func withProjectTemplateServer(t *testing.T) *fakeProjectTemplateHandler {
 }
 
 func TestProjectTemplatesCreateCmd(t *testing.T) {
+	resetAllFlags(t)
 	withProjectTemplateServer(t)
 
 	b := bytes.NewBufferString("")
@@ -118,6 +119,7 @@ func TestProjectTemplatesCreateCmd(t *testing.T) {
 }
 
 func TestProjectTemplatesGetCmd(t *testing.T) {
+	resetAllFlags(t)
 	withProjectTemplateServer(t)
 
 	b := bytes.NewBufferString("")
@@ -144,6 +146,7 @@ func TestProjectTemplatesGetCmd(t *testing.T) {
 // directly, this test's "still unset" assertions only passed by accident of
 // declaration order.
 func TestProjectTemplatesUpdateCmd(t *testing.T) {
+	resetAllFlags(t)
 	for _, name := range []string{"description", "root-task-type"} {
 		if f := projectTemplatesUpdateCmd.Flags().Lookup(name); f != nil {
 			f.Changed = false
@@ -182,6 +185,7 @@ func TestProjectTemplatesUpdateCmd(t *testing.T) {
 }
 
 func TestProjectTemplatesUpdateCmdCanClearDescriptionAndRootTaskType(t *testing.T) {
+	resetAllFlags(t)
 	fake := withProjectTemplateServer(t)
 
 	b := bytes.NewBufferString("")
@@ -201,6 +205,7 @@ func TestProjectTemplatesUpdateCmdCanClearDescriptionAndRootTaskType(t *testing.
 }
 
 func TestProjectTemplatesListCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := withProjectTemplateServer(t)
 
 	b := bytes.NewBufferString("")
@@ -223,6 +228,7 @@ func TestProjectTemplatesListCmd(t *testing.T) {
 // (which supports both on templates too, via the same executePaginatedQuery
 // helper) - `project-templates list` never did.
 func TestProjectTemplatesListCmdForwardsFilterAndSort(t *testing.T) {
+	resetAllFlags(t)
 	fake := withProjectTemplateServer(t)
 
 	b := bytes.NewBufferString("")
@@ -242,6 +248,7 @@ func TestProjectTemplatesListCmdForwardsFilterAndSort(t *testing.T) {
 // backend-error branches below - --org/--name are checked locally the same
 // way `projects create` checks --org/--template/--title.
 func TestProjectTemplatesCreateCmdRequiresOrgAndName(t *testing.T) {
+	resetAllFlags(t)
 	withProjectTemplateServer(t)
 	_ = projectTemplatesCreateCmd.Flags().Set("org", "")
 	_ = projectTemplatesCreateCmd.Flags().Set("name", "")
@@ -266,6 +273,7 @@ func TestProjectTemplatesCreateCmdRequiresOrgAndName(t *testing.T) {
 }
 
 func TestProjectTemplatesCreateCmdJSON(t *testing.T) {
+	resetAllFlags(t)
 	withProjectTemplateServer(t)
 
 	b := bytes.NewBufferString("")
@@ -280,6 +288,7 @@ func TestProjectTemplatesCreateCmdJSON(t *testing.T) {
 }
 
 func TestProjectTemplatesCreateCmdReportsBackendError(t *testing.T) {
+	resetAllFlags(t)
 	fake := withProjectTemplateServer(t)
 	fake.err = connect.NewError(connect.CodeAlreadyExists, errors.New("a template with this name already exists"))
 
@@ -298,6 +307,7 @@ func TestProjectTemplatesCreateCmdReportsBackendError(t *testing.T) {
 }
 
 func TestProjectTemplatesGetCmdJSON(t *testing.T) {
+	resetAllFlags(t)
 	withProjectTemplateServer(t)
 
 	b := bytes.NewBufferString("")
@@ -312,6 +322,7 @@ func TestProjectTemplatesGetCmdJSON(t *testing.T) {
 }
 
 func TestProjectTemplatesGetCmdReportsBackendError(t *testing.T) {
+	resetAllFlags(t)
 	fake := withProjectTemplateServer(t)
 	fake.err = connect.NewError(connect.CodeNotFound, errors.New("template not found"))
 
@@ -330,6 +341,7 @@ func TestProjectTemplatesGetCmdReportsBackendError(t *testing.T) {
 }
 
 func TestProjectTemplatesUpdateCmdJSON(t *testing.T) {
+	resetAllFlags(t)
 	withProjectTemplateServer(t)
 
 	b := bytes.NewBufferString("")
@@ -344,6 +356,7 @@ func TestProjectTemplatesUpdateCmdJSON(t *testing.T) {
 }
 
 func TestProjectTemplatesUpdateCmdReportsBackendError(t *testing.T) {
+	resetAllFlags(t)
 	fake := withProjectTemplateServer(t)
 	fake.err = connect.NewError(connect.CodeNotFound, errors.New("template not found"))
 
@@ -364,6 +377,7 @@ func TestProjectTemplatesUpdateCmdReportsBackendError(t *testing.T) {
 // project-templates list has never required --org locally; it falls back to
 // TASKER_ORG_ID and only then errors, same as `projects list`.
 func TestProjectTemplatesListCmdRequiresOrg(t *testing.T) {
+	resetAllFlags(t)
 	withProjectTemplateServer(t)
 	_ = projectTemplatesListCmd.Flags().Set("org", "")
 	t.Cleanup(func() { _ = projectTemplatesListCmd.Flags().Set("org", "") })
@@ -384,6 +398,7 @@ func TestProjectTemplatesListCmdRequiresOrg(t *testing.T) {
 }
 
 func TestProjectTemplatesListCmdJSON(t *testing.T) {
+	resetAllFlags(t)
 	withProjectTemplateServer(t)
 
 	b := bytes.NewBufferString("")
@@ -398,6 +413,7 @@ func TestProjectTemplatesListCmdJSON(t *testing.T) {
 }
 
 func TestProjectTemplatesListCmdReportsBackendError(t *testing.T) {
+	resetAllFlags(t)
 	fake := withProjectTemplateServer(t)
 	fake.err = connect.NewError(connect.CodeInternal, errors.New("boom"))
 

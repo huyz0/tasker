@@ -17,6 +17,7 @@ import (
 
 // Maps to TC-007 from TEST-PLAN.md: CLI - Agent predictability via strict JSON
 func TestProjectsCreateRejectsUnknownFlags(t *testing.T) {
+	resetAllFlags(t)
 	rootCmd.AddCommand(projectsCmd)
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
@@ -52,6 +53,7 @@ func (f *fakeProjectListHandler) ListProjects(
 }
 
 func TestProjectsListCmdForwardsCursorAndLimit(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectListHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -82,6 +84,7 @@ func TestProjectsListCmdForwardsCursorAndLimit(t *testing.T) {
 // Tasks and Artifacts, but --only-deleted was never wired up here despite
 // existing on both the wire and the backend since M20-T01.
 func TestProjectsListCmdForwardsOnlyDeleted(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectListHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -133,6 +136,7 @@ func (f *fakeProjectUpdateHandler) UpdateProject(
 // underlying pflag.Flag.Changed field directly (the one thing Set() can't
 // touch) is what actually makes this order-independent.
 func TestProjectsUpdateCommand(t *testing.T) {
+	resetAllFlags(t)
 	if f := projectsUpdateCmd.Flags().Lookup("description"); f != nil {
 		f.Changed = false
 	}
@@ -170,6 +174,7 @@ func TestProjectsUpdateCommand(t *testing.T) {
 }
 
 func TestProjectsUpdateCommandCanClearDescription(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectUpdateHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -194,6 +199,7 @@ func TestProjectsUpdateCommandCanClearDescription(t *testing.T) {
 // there is no "leave it untouched" request shape, so the CLI has to refuse
 // locally rather than send an empty title through.
 func TestProjectsUpdateCommandRequiresTitle(t *testing.T) {
+	resetAllFlags(t)
 	// projectsUpdateCmd is a package-level singleton shared across every test
 	// in this file - an earlier test's --title value persists as the flag's
 	// current value until explicitly reset, which would otherwise mask this
@@ -235,6 +241,7 @@ func (f *fakeProjectCreateHandler) CreateProject(
 // min 1) - an omitted --owner used to reach the server anyway and come back
 // as an opaque remote validation error instead of a clear local one.
 func TestProjectsCreateCommandRequiresOwner(t *testing.T) {
+	resetAllFlags(t)
 	// projectsCreateCmd is a package-level singleton shared across every test
 	// in this file - reset every flag this test cares about so an earlier
 	// test's value can't mask the validation path under test.
@@ -257,6 +264,7 @@ func TestProjectsCreateCommandRequiresOwner(t *testing.T) {
 }
 
 func TestProjectsCreateCommandForwardsDescription(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectCreateHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -315,6 +323,7 @@ func (f *fakeProjectBinLifecycleHandler) PurgeProject(
 // ignored --json entirely, unlike every other mutating project command -
 // an agent scripting against --json got human-readable text back instead.
 func TestProjectsDeleteRestorePurgeJSONParity(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectBinLifecycleHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -373,6 +382,7 @@ func (f *fakeProjectGetHandler) GetProject(
 }
 
 func TestProjectsGetCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectGetHandler{project: &healthv1.Project{Id: "proj-1", Name: "Widget Factory", OrgId: "org-1", OwnerId: "user-1"}}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -395,6 +405,7 @@ func TestProjectsGetCmd(t *testing.T) {
 }
 
 func TestProjectsGetCmdJSON(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectGetHandler{project: &healthv1.Project{Id: "proj-1", Name: "Widget Factory"}}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -415,6 +426,7 @@ func TestProjectsGetCmdJSON(t *testing.T) {
 }
 
 func TestProjectsGetCmdReportsBackendError(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectGetHandler{err: connect.NewError(connect.CodeNotFound, errors.New("project not found"))}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -439,6 +451,7 @@ func TestProjectsGetCmdReportsBackendError(t *testing.T) {
 // projects list has never required --org locally; it falls back to
 // TASKER_ORG_ID (default.go's DefaultOrgID()) and only then errors.
 func TestProjectsListCmdRequiresOrg(t *testing.T) {
+	resetAllFlags(t)
 	_ = projectsListCmd.Flags().Set("org", "")
 	t.Cleanup(func() { _ = projectsListCmd.Flags().Set("org", "") })
 	t.Setenv("TASKER_ORG_ID", "")
@@ -459,6 +472,7 @@ func TestProjectsListCmdRequiresOrg(t *testing.T) {
 }
 
 func TestProjectsListCmdHumanReadableOutput(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectListHandlerWithData{projects: []*healthv1.Project{
 		{Id: "proj-1", Key: "WID", Name: "Widget Factory"},
 	}}
@@ -499,6 +513,7 @@ func (f *fakeProjectListHandlerWithData) ListProjects(
 }
 
 func TestProjectsListCmdReportsBackendError(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectListHandlerWithData{err: connect.NewError(connect.CodeInternal, errors.New("boom"))}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -522,6 +537,7 @@ func TestProjectsListCmdReportsBackendError(t *testing.T) {
 }
 
 func TestProjectsCreateCmdHumanReadableOutput(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectCreateHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -544,6 +560,7 @@ func TestProjectsCreateCmdHumanReadableOutput(t *testing.T) {
 }
 
 func TestProjectsCreateCmdFallsBackToDefaultOrgID(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectCreateHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -569,6 +586,7 @@ func TestProjectsCreateCmdFallsBackToDefaultOrgID(t *testing.T) {
 }
 
 func TestProjectsCreateCmdReportsBackendError(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectCreateErrorHandler{err: connect.NewError(connect.CodePermissionDenied, errors.New("not a member"))}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -604,6 +622,7 @@ func (f *fakeProjectCreateErrorHandler) CreateProject(
 }
 
 func TestProjectsUpdateCmdHumanReadableOutput(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectUpdateHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -625,6 +644,7 @@ func TestProjectsUpdateCmdHumanReadableOutput(t *testing.T) {
 }
 
 func TestProjectsUpdateCmdReportsBackendError(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectUpdateErrorHandler{err: connect.NewError(connect.CodeNotFound, errors.New("project not found"))}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -660,6 +680,7 @@ func (f *fakeProjectUpdateErrorHandler) UpdateProject(
 }
 
 func TestProjectsDeleteRestorePurgeHumanReadableOutput(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectBinLifecycleHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))
@@ -692,6 +713,7 @@ func TestProjectsDeleteRestorePurgeHumanReadableOutput(t *testing.T) {
 }
 
 func TestProjectsDeleteRestorePurgeReportBackendErrors(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeProjectBinLifecycleErrorHandler{err: connect.NewError(connect.CodeFailedPrecondition, errors.New("project still has tasks"))}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewProjectServiceHandler(fake))

@@ -39,6 +39,7 @@ func (f *fakeLabelHandler) ListLabels(
 }
 
 func TestLabelsCreateCommand(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewLabelServiceHandler(&fakeLabelHandler{}))
 	srv := httptest.NewServer(mux)
@@ -58,6 +59,7 @@ func TestLabelsCreateCommand(t *testing.T) {
 }
 
 func TestLabelsListCmdForwardsCursorAndLimit(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeLabelHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewLabelServiceHandler(fake))

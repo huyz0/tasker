@@ -89,6 +89,7 @@ func withTaskTypeServer(t *testing.T) *fakeTaskTypeHandler {
 }
 
 func TestTaskTypesCreateCmd(t *testing.T) {
+	resetAllFlags(t)
 	withTaskTypeServer(t)
 
 	b := bytes.NewBufferString("")
@@ -105,6 +106,7 @@ func TestTaskTypesCreateCmd(t *testing.T) {
 }
 
 func TestTaskTypesCreateCmdWithParent(t *testing.T) {
+	resetAllFlags(t)
 	withTaskTypeServer(t)
 
 	b := bytes.NewBufferString("")
@@ -121,6 +123,7 @@ func TestTaskTypesCreateCmdWithParent(t *testing.T) {
 }
 
 func TestTaskTypesListCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := withTaskTypeServer(t)
 
 	b := bytes.NewBufferString("")
@@ -140,6 +143,7 @@ func TestTaskTypesListCmd(t *testing.T) {
 }
 
 func TestTaskTypesGetCmd(t *testing.T) {
+	resetAllFlags(t)
 	withTaskTypeServer(t)
 
 	b := bytes.NewBufferString("")
@@ -159,6 +163,7 @@ func TestTaskTypesGetCmd(t *testing.T) {
 }
 
 func TestTaskTypesCreateStatusCmd(t *testing.T) {
+	resetAllFlags(t)
 	withTaskTypeServer(t)
 
 	b := bytes.NewBufferString("")
@@ -175,6 +180,7 @@ func TestTaskTypesCreateStatusCmd(t *testing.T) {
 }
 
 func TestTaskTypesCreateTransitionCmd(t *testing.T) {
+	resetAllFlags(t)
 	withTaskTypeServer(t)
 
 	b := bytes.NewBufferString("")

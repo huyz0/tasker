@@ -68,6 +68,7 @@ func withCommentServer(t *testing.T) *fakeCommentListHandler {
 }
 
 func TestCommentAddCmd(t *testing.T) {
+	resetAllFlags(t)
 	withCommentServer(t)
 
 	b := bytes.NewBufferString("")
@@ -83,6 +84,7 @@ func TestCommentAddCmd(t *testing.T) {
 }
 
 func TestCommentListCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := withCommentServer(t)
 
 	b := bytes.NewBufferString("")
@@ -103,6 +105,7 @@ func TestCommentListCmd(t *testing.T) {
 // M19-T08: UpdateComment/DeleteComment existed on the wire since M04
 // (ADR-0008's author-only edit/delete) but had no CLI command at all.
 func TestCommentUpdateCmd(t *testing.T) {
+	resetAllFlags(t)
 	withCommentServer(t)
 
 	b := bytes.NewBufferString("")
@@ -118,6 +121,7 @@ func TestCommentUpdateCmd(t *testing.T) {
 }
 
 func TestCommentDeleteCmd(t *testing.T) {
+	resetAllFlags(t)
 	withCommentServer(t)
 
 	b := bytes.NewBufferString("")
@@ -133,6 +137,7 @@ func TestCommentDeleteCmd(t *testing.T) {
 }
 
 func TestCommentUpdateCmdReportsErrorWithoutExitingProcess(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewCommentServiceHandler(&v1connect.UnimplementedCommentServiceHandler{}))
 	srv := httptest.NewServer(mux)
@@ -152,6 +157,7 @@ func TestCommentUpdateCmdReportsErrorWithoutExitingProcess(t *testing.T) {
 }
 
 func TestCommentDeleteCmdReportsErrorWithoutExitingProcess(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewCommentServiceHandler(&v1connect.UnimplementedCommentServiceHandler{}))
 	srv := httptest.NewServer(mux)
@@ -171,6 +177,7 @@ func TestCommentDeleteCmdReportsErrorWithoutExitingProcess(t *testing.T) {
 }
 
 func TestCommentListCmdWithNoComments(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewCommentServiceHandler(&fakeEmptyCommentHandler{}))
 	srv := httptest.NewServer(mux)
@@ -205,6 +212,7 @@ func (f *fakeEmptyCommentHandler) ListComments(
 // entire test binary instead of returning control to cobra, so this failure
 // path had never actually been run under `go test`.
 func TestCommentAddCmdReportsErrorWithoutExitingProcess(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewCommentServiceHandler(&v1connect.UnimplementedCommentServiceHandler{}))
 	srv := httptest.NewServer(mux)
@@ -224,6 +232,7 @@ func TestCommentAddCmdReportsErrorWithoutExitingProcess(t *testing.T) {
 }
 
 func TestCommentListCmdReportsErrorWithoutExitingProcess(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewCommentServiceHandler(&v1connect.UnimplementedCommentServiceHandler{}))
 	srv := httptest.NewServer(mux)

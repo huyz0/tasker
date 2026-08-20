@@ -15,6 +15,7 @@ import (
 )
 
 func TestPingCommandMetadata(t *testing.T) {
+	resetAllFlags(t)
 	if pingCmd.Use != "ping" {
 		t.Errorf("expected pingCmd.Use 'ping', got %q", pingCmd.Use)
 	}
@@ -27,6 +28,7 @@ func TestPingCommandMetadata(t *testing.T) {
 }
 
 func TestPingRegisteredUnderRoot(t *testing.T) {
+	resetAllFlags(t)
 	found := false
 	for _, sub := range rootCmd.Commands() {
 		if sub.Use == "ping" {
@@ -43,6 +45,7 @@ func TestPingRegisteredUnderRoot(t *testing.T) {
 // backend responds successfully. We serve a real Connect handler over httptest
 // so the test exercises the full HTTP round-trip without a live server.
 func TestRunPingSuccess(t *testing.T) {
+	resetAllFlags(t)
 	// Build a minimal in-process Connect handler that returns canned data.
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewHealthServiceHandler(&fakePingHandler{
@@ -86,6 +89,7 @@ func TestRunPingSuccess(t *testing.T) {
 // returns a non-2xx response. We use a real httptest server that always
 // responds 500 to avoid goroutine-leak panics from TCP connect timeouts.
 func TestRunPingError(t *testing.T) {
+	resetAllFlags(t)
 	errSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}))
