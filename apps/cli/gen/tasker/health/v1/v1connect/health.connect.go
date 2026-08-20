@@ -57,6 +57,8 @@ const (
 	RoleServiceName = "tasker.health.v1.RoleService"
 	// MemoryServiceName is the fully-qualified name of the MemoryService service.
 	MemoryServiceName = "tasker.health.v1.MemoryService"
+	// AuditServiceName is the fully-qualified name of the AuditService service.
+	AuditServiceName = "tasker.health.v1.AuditService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -437,6 +439,9 @@ const (
 	// MemoryServicePurgeBeliefProcedure is the fully-qualified name of the MemoryService's PurgeBelief
 	// RPC.
 	MemoryServicePurgeBeliefProcedure = "/tasker.health.v1.MemoryService/PurgeBelief"
+	// AuditServiceListAuditEventsProcedure is the fully-qualified name of the AuditService's
+	// ListAuditEvents RPC.
+	AuditServiceListAuditEventsProcedure = "/tasker.health.v1.AuditService/ListAuditEvents"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -594,6 +599,8 @@ var (
 	memoryServiceArchiveBeliefMethodDescriptor                = memoryServiceServiceDescriptor.Methods().ByName("ArchiveBelief")
 	memoryServiceRestoreBeliefMethodDescriptor                = memoryServiceServiceDescriptor.Methods().ByName("RestoreBelief")
 	memoryServicePurgeBeliefMethodDescriptor                  = memoryServiceServiceDescriptor.Methods().ByName("PurgeBelief")
+	auditServiceServiceDescriptor                             = v1.File_tasker_health_v1_health_proto.Services().ByName("AuditService")
+	auditServiceListAuditEventsMethodDescriptor               = auditServiceServiceDescriptor.Methods().ByName("ListAuditEvents")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -4861,4 +4868,72 @@ func (UnimplementedMemoryServiceHandler) RestoreBelief(context.Context, *connect
 
 func (UnimplementedMemoryServiceHandler) PurgeBelief(context.Context, *connect.Request[v1.PurgeBeliefRequest]) (*connect.Response[v1.PurgeBeliefResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.MemoryService.PurgeBelief is not implemented"))
+}
+
+// AuditServiceClient is a client for the tasker.health.v1.AuditService service.
+type AuditServiceClient interface {
+	ListAuditEvents(context.Context, *connect.Request[v1.ListAuditEventsRequest]) (*connect.Response[v1.ListAuditEventsResponse], error)
+}
+
+// NewAuditServiceClient constructs a client for the tasker.health.v1.AuditService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAuditServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AuditServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &auditServiceClient{
+		listAuditEvents: connect.NewClient[v1.ListAuditEventsRequest, v1.ListAuditEventsResponse](
+			httpClient,
+			baseURL+AuditServiceListAuditEventsProcedure,
+			connect.WithSchema(auditServiceListAuditEventsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// auditServiceClient implements AuditServiceClient.
+type auditServiceClient struct {
+	listAuditEvents *connect.Client[v1.ListAuditEventsRequest, v1.ListAuditEventsResponse]
+}
+
+// ListAuditEvents calls tasker.health.v1.AuditService.ListAuditEvents.
+func (c *auditServiceClient) ListAuditEvents(ctx context.Context, req *connect.Request[v1.ListAuditEventsRequest]) (*connect.Response[v1.ListAuditEventsResponse], error) {
+	return c.listAuditEvents.CallUnary(ctx, req)
+}
+
+// AuditServiceHandler is an implementation of the tasker.health.v1.AuditService service.
+type AuditServiceHandler interface {
+	ListAuditEvents(context.Context, *connect.Request[v1.ListAuditEventsRequest]) (*connect.Response[v1.ListAuditEventsResponse], error)
+}
+
+// NewAuditServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAuditServiceHandler(svc AuditServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	auditServiceListAuditEventsHandler := connect.NewUnaryHandler(
+		AuditServiceListAuditEventsProcedure,
+		svc.ListAuditEvents,
+		connect.WithSchema(auditServiceListAuditEventsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.AuditService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AuditServiceListAuditEventsProcedure:
+			auditServiceListAuditEventsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAuditServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAuditServiceHandler struct{}
+
+func (UnimplementedAuditServiceHandler) ListAuditEvents(context.Context, *connect.Request[v1.ListAuditEventsRequest]) (*connect.Response[v1.ListAuditEventsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.AuditService.ListAuditEvents is not implemented"))
 }

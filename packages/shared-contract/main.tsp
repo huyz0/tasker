@@ -2198,3 +2198,59 @@ interface MemoryService {
   restoreBelief(request: RestoreBeliefRequest): RestoreBeliefResponse;
   purgeBelief(request: PurgeBeliefRequest): PurgeBeliefResponse;
 }
+
+// ==== Audit (M08) ====
+
+/**
+ * One recorded `domain.*` event.
+ *
+ * `payload` is the event's JSON as a string rather than a structured field:
+ * over twenty subjects publish with differing shapes, and a typed field per
+ * subject would make every new event a contract change. A reader that cares
+ * about a specific subject parses it; a reader browsing the trail shows it
+ * as-is.
+ */
+model AuditEvent {
+  @field(1) id: string;
+  @field(2) orgId?: string;
+  @field(3) subject: string;
+
+  /** "user" | "agent" | "system" — see actorId's note. */
+  @field(4) actorType: string;
+
+  /**
+   * Absent for `system`, which is a real answer rather than a gap: a
+   * retention sweep has no principal behind it. Keeping the two
+   * distinguishable is the point of carrying actorType separately.
+   */
+  @field(5) actorId?: string;
+
+  @field(6) requestId?: string;
+  @field(7) payload: string;
+  @field(8) occurredAt: string;
+}
+
+model ListAuditEventsRequest {
+  @field(1) orgId: string;
+  @field(2) page?: PageRequest;
+
+  /** Exact subject, e.g. "domain.agent.token_created". */
+  @field(3) subject?: string;
+
+  /** Narrows to one principal — the "what did this person do" question. */
+  @field(4) actorId?: string;
+}
+
+model ListAuditEventsResponse {
+  @field(1) events: AuditEvent[];
+  @field(2) page?: PageResponse;
+}
+
+/**
+ * Read-only by construction. The trail is written solely by the event
+ * consumer's projector; exposing any mutation here would let the record of
+ * what happened be edited by the same people it records.
+ */
+interface AuditService {
+  listAuditEvents(request: ListAuditEventsRequest): ListAuditEventsResponse;
+}
