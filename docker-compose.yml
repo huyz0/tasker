@@ -13,6 +13,31 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
 
+  # The broker every handler already publishes `domain.*` events to (M08).
+  # Until this existed there was no subscriber and no broker in the stack, so
+  # `nats.connect_failed` on boot was the normal local experience and every
+  # published event went nowhere.
+  #
+  # JetStream (`-js`) rather than core NATS: M08's consumer has to be durable,
+  # which means the stream must retain messages published while the consumer
+  # is down. Core NATS is fire-and-forget and would drop them.
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js", "-m", "8222"]
+    restart: unless-stopped
+    ports:
+      # 4222 client, 8222 monitoring (the /healthz endpoint the compose
+      # healthcheck below uses, and useful by hand when a consumer misbehaves).
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   # Ad-hoc DB inspection during local debugging (browse rows, run one-off
   # SQL) without needing a separately installed MySQL client. Only started
   # if you actually run `docker compose up adminer` / include it in `up` -
@@ -30,3 +55,6 @@ services:
 
 volumes:
   mysql-data:
+  # JetStream's on-disk store. Without a named volume a `docker compose down`
+  # would discard exactly the messages the durable consumer exists to survive.
+  nats-data:
