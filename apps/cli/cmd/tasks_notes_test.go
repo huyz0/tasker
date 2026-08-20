@@ -104,6 +104,7 @@ func withTaskNoteServer(t *testing.T, fake *fakeTaskNoteHandler) *fakeTaskNoteHa
 }
 
 func TestTasksNoteAddCommand(t *testing.T) {
+	resetAllFlags(t)
 	fake := withTaskNoteServer(t, &fakeTaskNoteHandler{})
 
 	rootCmd.AddCommand(tasksCmd)
@@ -125,6 +126,7 @@ func TestTasksNoteAddCommand(t *testing.T) {
 // M22-T06 (ADR-0017): --type is how an agent records a handoff note instead
 // of a plain comment - forwarded as-is, validated server-side.
 func TestTasksNoteAddCommandForwardsType(t *testing.T) {
+	resetAllFlags(t)
 	resetJSONFlag(t)
 	fake := withTaskNoteServer(t, &fakeTaskNoteHandler{})
 	t.Cleanup(func() { _ = tasksNoteAddCmd.Flags().Set("type", "") })
@@ -145,6 +147,7 @@ func TestTasksNoteAddCommandForwardsType(t *testing.T) {
 // An omitted --type sends an empty string, which the backend's Zod default
 // treats as absent (M22-T04) - not this CLI's job to default it locally.
 func TestTasksNoteAddCommandOmitsTypeByDefault(t *testing.T) {
+	resetAllFlags(t)
 	resetJSONFlag(t)
 	fake := withTaskNoteServer(t, &fakeTaskNoteHandler{})
 	t.Cleanup(func() { _ = tasksNoteAddCmd.Flags().Set("type", "") })
@@ -163,6 +166,7 @@ func TestTasksNoteAddCommandOmitsTypeByDefault(t *testing.T) {
 }
 
 func TestTasksNoteAddCommandRequiresContent(t *testing.T) {
+	resetAllFlags(t)
 	// tasksNoteAddCmd is a package-level singleton, so a --content value set
 	// by an earlier test survives into this one unless cleared first.
 	_ = tasksNoteAddCmd.Flags().Set("content", "")
@@ -182,6 +186,7 @@ func TestTasksNoteAddCommandRequiresContent(t *testing.T) {
 }
 
 func TestTasksNotesListCommand(t *testing.T) {
+	resetAllFlags(t)
 	fake := withTaskNoteServer(t, &fakeTaskNoteHandler{
 		notes: []*healthv1.TaskNote{
 			{Id: "tnt_1", TaskId: "task-1", AgentId: "agent-1", Content: "First note"},
@@ -212,6 +217,7 @@ func TestTasksNotesListCommand(t *testing.T) {
 // M22-T06 (ADR-0017): a handoff note stands out in a chronological list
 // dominated by plain comments.
 func TestTasksNotesListCommandTagsHandoffNotes(t *testing.T) {
+	resetAllFlags(t)
 	resetJSONFlag(t)
 	fake := withTaskNoteServer(t, &fakeTaskNoteHandler{
 		notes: []*healthv1.TaskNote{
@@ -241,6 +247,7 @@ func TestTasksNotesListCommandTagsHandoffNotes(t *testing.T) {
 }
 
 func TestTasksNoteUpdateCommand(t *testing.T) {
+	resetAllFlags(t)
 	fake := withTaskNoteServer(t, &fakeTaskNoteHandler{})
 
 	rootCmd.AddCommand(tasksCmd)
@@ -260,6 +267,7 @@ func TestTasksNoteUpdateCommand(t *testing.T) {
 }
 
 func TestTasksNoteUpdateCommandRequiresContent(t *testing.T) {
+	resetAllFlags(t)
 	_ = tasksNoteUpdateCmd.Flags().Set("content", "")
 	t.Cleanup(func() { _ = tasksNoteUpdateCmd.Flags().Set("content", "") })
 
@@ -277,6 +285,7 @@ func TestTasksNoteUpdateCommandRequiresContent(t *testing.T) {
 }
 
 func TestTasksNoteDeleteCommand(t *testing.T) {
+	resetAllFlags(t)
 	fake := withTaskNoteServer(t, &fakeTaskNoteHandler{})
 
 	rootCmd.AddCommand(tasksCmd)
@@ -299,6 +308,7 @@ func TestTasksNoteDeleteCommand(t *testing.T) {
 // point of view - this exercises that the failure is reported, not that
 // authorization itself works (already covered at the handler level).
 func TestTasksNoteUpdateCommandReportsFailure(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskNoteServiceHandler(&v1connect.UnimplementedTaskNoteServiceHandler{}))
 	srv := httptest.NewServer(mux)
@@ -319,6 +329,7 @@ func TestTasksNoteUpdateCommandReportsFailure(t *testing.T) {
 }
 
 func TestTasksNoteDeleteCommandReportsFailure(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewTaskNoteServiceHandler(&v1connect.UnimplementedTaskNoteServiceHandler{}))
 	srv := httptest.NewServer(mux)
@@ -356,6 +367,7 @@ func resetHandoffsProjectFlag(t *testing.T) {
 }
 
 func TestTasksHandoffsCommand(t *testing.T) {
+	resetAllFlags(t)
 	resetHandoffsProjectFlag(t)
 	resetJSONFlag(t)
 	fake := withTaskNoteServer(t, &fakeTaskNoteHandler{
@@ -386,6 +398,7 @@ func TestTasksHandoffsCommand(t *testing.T) {
 }
 
 func TestTasksHandoffsCommandJSON(t *testing.T) {
+	resetAllFlags(t)
 	resetHandoffsProjectFlag(t)
 	resetJSONFlag(t)
 	withTaskNoteServer(t, &fakeTaskNoteHandler{
@@ -408,6 +421,7 @@ func TestTasksHandoffsCommandJSON(t *testing.T) {
 }
 
 func TestTasksHandoffsCommandEmptyState(t *testing.T) {
+	resetAllFlags(t)
 	resetHandoffsProjectFlag(t)
 	resetJSONFlag(t)
 	withTaskNoteServer(t, &fakeTaskNoteHandler{handoffEntries: nil})
@@ -426,6 +440,7 @@ func TestTasksHandoffsCommandEmptyState(t *testing.T) {
 }
 
 func TestTasksHandoffsCommandShowsNextCursorHint(t *testing.T) {
+	resetAllFlags(t)
 	resetHandoffsProjectFlag(t)
 	resetJSONFlag(t)
 	withTaskNoteServer(t, &fakeTaskNoteHandler{
@@ -447,6 +462,7 @@ func TestTasksHandoffsCommandShowsNextCursorHint(t *testing.T) {
 }
 
 func TestTasksHandoffsCommandRequiresProject(t *testing.T) {
+	resetAllFlags(t)
 	resetHandoffsProjectFlag(t)
 	resetJSONFlag(t)
 
@@ -464,6 +480,7 @@ func TestTasksHandoffsCommandRequiresProject(t *testing.T) {
 }
 
 func TestTasksHandoffsCommandFallsBackToProjectEnvVar(t *testing.T) {
+	resetAllFlags(t)
 	resetHandoffsProjectFlag(t)
 	resetJSONFlag(t)
 	t.Setenv("TASKER_PROJECT_ID", "proj-from-env")
@@ -483,6 +500,7 @@ func TestTasksHandoffsCommandFallsBackToProjectEnvVar(t *testing.T) {
 }
 
 func TestTasksHandoffsCommandReportsFailure(t *testing.T) {
+	resetAllFlags(t)
 	resetHandoffsProjectFlag(t)
 	resetJSONFlag(t)
 	mux := http.NewServeMux()

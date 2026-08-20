@@ -21,6 +21,7 @@ import (
 )
 
 func TestAuthCommandMetadata(t *testing.T) {
+	resetAllFlags(t)
 	if authCmd.Use != "auth" {
 		t.Errorf("expected authCmd.Use 'auth', got %q", authCmd.Use)
 	}
@@ -30,6 +31,7 @@ func TestAuthCommandMetadata(t *testing.T) {
 }
 
 func TestGenerateNonceReturnsDistinctValues(t *testing.T) {
+	resetAllFlags(t)
 	a, err := generateNonce()
 	if err != nil {
 		t.Fatalf("expected generateNonce to succeed, got: %v", err)
@@ -47,6 +49,7 @@ func TestGenerateNonceReturnsDistinctValues(t *testing.T) {
 }
 
 func TestCallbackHandlerAcceptsAMatchingNonce(t *testing.T) {
+	resetAllFlags(t)
 	ch := make(chan string, 1)
 	handler := newCallbackHandler("expected-nonce", ch)
 
@@ -68,6 +71,7 @@ func TestCallbackHandlerAcceptsAMatchingNonce(t *testing.T) {
 }
 
 func TestCallbackHandlerRejectsAMismatchedOrMissingNonce(t *testing.T) {
+	resetAllFlags(t)
 	ch := make(chan string, 1)
 	handler := newCallbackHandler("expected-nonce", ch)
 
@@ -94,6 +98,7 @@ func TestCallbackHandlerRejectsAMismatchedOrMissingNonce(t *testing.T) {
 }
 
 func TestLoginCommandMetadata(t *testing.T) {
+	resetAllFlags(t)
 	if loginCmd.Use != "login" {
 		t.Errorf("expected loginCmd.Use 'login', got %q", loginCmd.Use)
 	}
@@ -110,6 +115,7 @@ func TestLoginCommandMetadata(t *testing.T) {
 // failure promptly instead of silently sitting through the full 5-minute
 // timeout as if it were just waiting on the browser.
 func TestLoginCommandReportsCallbackListenerBindFailure(t *testing.T) {
+	resetAllFlags(t)
 	occupier, err := net.Listen("tcp", fmt.Sprintf(":%d", cliCallbackPort))
 	if err != nil {
 		t.Skipf("could not occupy port %d for this test: %v", cliCallbackPort, err)
@@ -138,6 +144,7 @@ func TestLoginCommandReportsCallbackListenerBindFailure(t *testing.T) {
 }
 
 func TestAuthCommandRegistration(t *testing.T) {
+	resetAllFlags(t)
 	// loginCmd must be a sub-command of authCmd
 	found := false
 	for _, sub := range authCmd.Commands() {
@@ -152,6 +159,7 @@ func TestAuthCommandRegistration(t *testing.T) {
 }
 
 func TestAuthRegisteredUnderRoot(t *testing.T) {
+	resetAllFlags(t)
 	found := false
 	for _, sub := range rootCmd.Commands() {
 		if sub.Use == "auth" {
@@ -165,6 +173,7 @@ func TestAuthRegisteredUnderRoot(t *testing.T) {
 }
 
 func TestSaveCredentialsPersistsTokenToDisk(t *testing.T) {
+	resetAllFlags(t)
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("TASKER_CREDENTIALS_PATH", "")
 
@@ -207,6 +216,7 @@ func TestSaveCredentialsPersistsTokenToDisk(t *testing.T) {
 }
 
 func TestCredentialsPathIsUnderHomeDotTasker(t *testing.T) {
+	resetAllFlags(t)
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("TASKER_CREDENTIALS_PATH", "")
@@ -222,6 +232,7 @@ func TestCredentialsPathIsUnderHomeDotTasker(t *testing.T) {
 }
 
 func TestLoadCredentialsReturnsEmptyWhenLoggedOut(t *testing.T) {
+	resetAllFlags(t)
 	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "does-not-exist.json"))
 
 	token, err := backend.LoadCredentials()
@@ -234,6 +245,7 @@ func TestLoadCredentialsReturnsEmptyWhenLoggedOut(t *testing.T) {
 }
 
 func TestClearCredentialsRemovesTheFile(t *testing.T) {
+	resetAllFlags(t)
 	credPath := filepath.Join(t.TempDir(), "credentials.json")
 	t.Setenv("TASKER_CREDENTIALS_PATH", credPath)
 
@@ -269,6 +281,7 @@ func (f *fakeAuthHandler) GetIdentity(
 }
 
 func TestWhoamiSendsTheSavedTokenAsABearerHeader(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeAuthHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewAuthServiceHandler(fake))
@@ -299,6 +312,7 @@ func TestWhoamiSendsTheSavedTokenAsABearerHeader(t *testing.T) {
 }
 
 func TestWhoamiReportsNotLoggedInWithoutSavedCredentials(t *testing.T) {
+	resetAllFlags(t)
 	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "does-not-exist.json"))
 
 	b := bytes.NewBufferString("")
@@ -314,6 +328,7 @@ func TestWhoamiReportsNotLoggedInWithoutSavedCredentials(t *testing.T) {
 }
 
 func TestLogoutCommandClearsSavedCredentials(t *testing.T) {
+	resetAllFlags(t)
 	credPath := filepath.Join(t.TempDir(), "credentials.json")
 	t.Setenv("TASKER_CREDENTIALS_PATH", credPath)
 	if err := backend.SaveCredentials("token-to-remove"); err != nil {
@@ -338,6 +353,7 @@ func TestLogoutCommandClearsSavedCredentials(t *testing.T) {
 // is also a plain HTTP route, not a Connect procedure.
 
 func TestLoginWithPasswordExtractsTokenFromSetCookie(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/auth/password/login" {
 			t.Errorf("expected request to /api/auth/password/login, got %s", r.URL.Path)
@@ -365,6 +381,7 @@ func TestLoginWithPasswordExtractsTokenFromSetCookie(t *testing.T) {
 }
 
 func TestLoginWithPasswordSurfacesMustChangePassword(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "session", Value: "tok"})
 		json.NewEncoder(w).Encode(passwordLoginResponse{UserID: "user-1", MustChangePassword: true})
@@ -381,6 +398,7 @@ func TestLoginWithPasswordSurfacesMustChangePassword(t *testing.T) {
 }
 
 func TestLoginWithPasswordReportsInvalidCredentials(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/problem+json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -400,6 +418,7 @@ func TestLoginWithPasswordReportsInvalidCredentials(t *testing.T) {
 }
 
 func TestLoginWithPasswordReportsLockout(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Retry-After", "30")
 		w.WriteHeader(http.StatusTooManyRequests)
@@ -416,6 +435,7 @@ func TestLoginWithPasswordReportsLockout(t *testing.T) {
 }
 
 func TestLoginWithPasswordErrorsWhenNoCookieIsReturned(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// A malformed/misconfigured backend that answers 200 with no
 		// Set-Cookie at all - must not report success with an empty token.
@@ -430,6 +450,7 @@ func TestLoginWithPasswordErrorsWhenNoCookieIsReturned(t *testing.T) {
 }
 
 func TestLoginWithPasswordFallsBackToRawBodyOnAnUnrecognizedErrorShape(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		fmt.Fprint(w, "upstream error")
@@ -445,6 +466,7 @@ func TestLoginWithPasswordFallsBackToRawBodyOnAnUnrecognizedErrorShape(t *testin
 // runPasswordLogin / the `auth login --username` command end to end.
 
 func TestAuthLoginWithUsernameSavesCredentialsFromTheSessionCookie(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "session", Value: "session-from-password-login"})
 		json.NewEncoder(w).Encode(passwordLoginResponse{UserID: "user-1"})
@@ -474,6 +496,7 @@ func TestAuthLoginWithUsernameSavesCredentialsFromTheSessionCookie(t *testing.T)
 }
 
 func TestAuthLoginWithUsernameReportsMustChangePassword(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "session", Value: "tok"})
 		json.NewEncoder(w).Encode(passwordLoginResponse{UserID: "user-1", MustChangePassword: true})
@@ -495,6 +518,7 @@ func TestAuthLoginWithUsernameReportsMustChangePassword(t *testing.T) {
 }
 
 func TestAuthLoginWithUsernameFailsCleanlyOnWrongPassword(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(problemDetailsBody{Detail: "The username or password is incorrect."})
@@ -518,6 +542,7 @@ func TestAuthLoginWithUsernameFailsCleanlyOnWrongPassword(t *testing.T) {
 }
 
 func TestReadLineFromANormalStream(t *testing.T) {
+	resetAllFlags(t)
 	line, err := readLine(strings.NewReader("hunter2\n"))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -528,6 +553,7 @@ func TestReadLineFromANormalStream(t *testing.T) {
 }
 
 func TestReadLineWithNoTrailingNewline(t *testing.T) {
+	resetAllFlags(t)
 	// A stream that closes right after the line, with no trailing \n -
 	// still a real line, not a failure to read one.
 	line, err := readLine(strings.NewReader("hunter2"))
@@ -540,6 +566,7 @@ func TestReadLineWithNoTrailingNewline(t *testing.T) {
 }
 
 func TestReadLineFromAnEmptyStream(t *testing.T) {
+	resetAllFlags(t)
 	line, err := readLine(strings.NewReader(""))
 	if err == nil {
 		t.Fatal("expected an error reading a line from an empty stream")
@@ -550,6 +577,7 @@ func TestReadLineFromAnEmptyStream(t *testing.T) {
 }
 
 func TestAuthLoginRequiresAPasswordWhenThePromptYieldsNone(t *testing.T) {
+	resetAllFlags(t)
 	// loginCmd's --password flag is a package-level singleton Cobra does
 	// not reset between Execute() calls (the same gotcha orgs_test.go
 	// documents for --email/--username) - an earlier test's real password
@@ -610,6 +638,7 @@ func (f *fakeSetPasswordHandler) SetPassword(
 }
 
 func TestSetPasswordCommandSendsBothFields(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeSetPasswordHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewAuthServiceHandler(fake))
@@ -635,6 +664,7 @@ func TestSetPasswordCommandSendsBothFields(t *testing.T) {
 }
 
 func TestSetPasswordCommandSurfacesServerRejection(t *testing.T) {
+	resetAllFlags(t)
 	setPasswordCmd.Flags().Set("current-password", "") // see the note in the empty-password login test above
 	fake := &fakeAuthHandler{}                         // does not implement SetPassword -> falls through to Unimplemented
 	mux := http.NewServeMux()

@@ -181,6 +181,7 @@ func withMemoryServer(t *testing.T, h *fakeMemoryHandler) {
 }
 
 func TestMemorySearchCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -203,6 +204,7 @@ func TestMemorySearchCmd(t *testing.T) {
 }
 
 func TestMemorySearchCmdDefaultsScopeToProjectEnv(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 	t.Setenv("TASKER_PROJECT_ID", "proj_env")
@@ -218,6 +220,7 @@ func TestMemorySearchCmdDefaultsScopeToProjectEnv(t *testing.T) {
 }
 
 func TestMemorySearchCmdOrganizationScopeUsesOrgEnv(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 	t.Setenv("TASKER_ORG_ID", "org_env")
@@ -240,6 +243,7 @@ func TestMemorySearchCmdOrganizationScopeUsesOrgEnv(t *testing.T) {
 }
 
 func TestMemorySearchCmdRequiresScopeIdForTeamScope(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 	t.Cleanup(func() {
@@ -257,6 +261,7 @@ func TestMemorySearchCmdRequiresScopeIdForTeamScope(t *testing.T) {
 }
 
 func TestMemorySearchCmdForwardsFilters(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 	t.Cleanup(func() {
@@ -282,6 +287,7 @@ func TestMemorySearchCmdForwardsFilters(t *testing.T) {
 }
 
 func TestMemoryRecordCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -306,6 +312,7 @@ func TestMemoryRecordCmd(t *testing.T) {
 }
 
 func TestMemoryRecordCmdRequiresOrg(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 	t.Setenv("TASKER_ORG_ID", "")
@@ -324,6 +331,7 @@ func TestMemoryRecordCmdRequiresOrg(t *testing.T) {
 }
 
 func TestMemoryRecordCmdForwardsSourceLinks(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 	t.Cleanup(func() {
@@ -353,6 +361,7 @@ func TestMemoryRecordCmdForwardsSourceLinks(t *testing.T) {
 }
 
 func TestMemoryGetCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -371,6 +380,7 @@ func TestMemoryGetCmd(t *testing.T) {
 }
 
 func TestMemoryGetCmdJSON(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -390,6 +400,7 @@ func TestMemoryGetCmdJSON(t *testing.T) {
 }
 
 func TestMemoryListCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -411,6 +422,7 @@ func TestMemoryListCmd(t *testing.T) {
 }
 
 func TestMemoryUpdateCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -437,6 +449,7 @@ func TestMemoryUpdateCmd(t *testing.T) {
 // memoryUpdateCmd, which would otherwise make this test's "neither field
 // passed" case pass only by accident of declaration order.
 func TestMemoryUpdateCmdRequiresAField(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 	for _, name := range []string{"statement", "confidence"} {
@@ -456,6 +469,7 @@ func TestMemoryUpdateCmdRequiresAField(t *testing.T) {
 }
 
 func TestMemorySupersedeCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -474,6 +488,7 @@ func TestMemorySupersedeCmd(t *testing.T) {
 }
 
 func TestMemoryPromoteCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -498,6 +513,7 @@ func TestMemoryPromoteCmd(t *testing.T) {
 }
 
 func TestMemoryPromoteCmdRequiresDestination(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -512,6 +528,7 @@ func TestMemoryPromoteCmdRequiresDestination(t *testing.T) {
 }
 
 func TestMemoryRelateAndUnrelateCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -538,6 +555,7 @@ func TestMemoryRelateAndUnrelateCmd(t *testing.T) {
 }
 
 func TestMemoryListRelationsAndPromotionsCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 
@@ -569,6 +587,7 @@ func TestMemoryListRelationsAndPromotionsCmd(t *testing.T) {
 }
 
 func TestMemoryArchiveRestorePurgeCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeMemoryHandler{}
 	withMemoryServer(t, fake)
 

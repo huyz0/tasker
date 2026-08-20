@@ -110,6 +110,7 @@ func withTeamServer(t *testing.T, h *fakeTeamHandler) {
 }
 
 func TestTeamsCreateCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTeamHandler{}
 	withTeamServer(t, fake)
 
@@ -129,6 +130,7 @@ func TestTeamsCreateCmd(t *testing.T) {
 }
 
 func TestTeamsCreateCmdRequiresName(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTeamHandler{}
 	withTeamServer(t, fake)
 	teamsCreateCmd.Flags().Set("name", "")
@@ -144,6 +146,7 @@ func TestTeamsCreateCmdRequiresName(t *testing.T) {
 }
 
 func TestTeamsRenameCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTeamHandler{}
 	withTeamServer(t, fake)
 
@@ -159,6 +162,7 @@ func TestTeamsRenameCmd(t *testing.T) {
 }
 
 func TestTeamsDeleteAndRestoreCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTeamHandler{}
 	withTeamServer(t, fake)
 
@@ -182,6 +186,7 @@ func TestTeamsDeleteAndRestoreCmd(t *testing.T) {
 }
 
 func TestTeamsListCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTeamHandler{}
 	withTeamServer(t, fake)
 	teamsListCmd.Flags().Set("only-deleted", "false")
@@ -201,6 +206,7 @@ func TestTeamsListCmd(t *testing.T) {
 }
 
 func TestTeamsListCmdOnlyDeleted(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTeamHandler{}
 	withTeamServer(t, fake)
 
@@ -216,6 +222,7 @@ func TestTeamsListCmdOnlyDeleted(t *testing.T) {
 }
 
 func TestTeamsAddAndRemoveMemberCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTeamHandler{}
 	withTeamServer(t, fake)
 
@@ -239,6 +246,7 @@ func TestTeamsAddAndRemoveMemberCmd(t *testing.T) {
 }
 
 func TestTeamsListMembersCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTeamHandler{}
 	withTeamServer(t, fake)
 

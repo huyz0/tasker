@@ -23,7 +23,17 @@ tasks:
   # run by this gate. Found in M04-T09 when a new test file compiled locally and
   # the gate reported green without having built it.
   test:
-    command: 'go test -v -coverprofile=coverage.out ./...'
+    # `./...` stays as the package list so every package still compiles and
+    # runs (that is what this gate is for, per the note above), but coverage
+    # is scoped to hand-written code with -coverpkg.
+    #
+    # Without it the profile counted `gen/tasker/**` — the generated protobuf
+    # and connect stubs — and 2,665 of 2,710 measured functions were generated
+    # getters nobody tests. The reported figure was 6.9%, which is true and
+    # useless: the same run measures 94.4% over cmd/ and internal/. A number
+    # that low reads as "untested" and gets ignored, which is how it drifted
+    # from a cached 97.9% to 6.9% without anyone noticing.
+    command: 'go test -v -coverprofile=coverage.out -coverpkg=./cmd/...,./internal/... ./...'
     inputs:
       - '**/*.go'
       - 'go.mod'

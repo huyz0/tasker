@@ -12,6 +12,7 @@ import (
 )
 
 func TestDebugSessionCommandMetadata(t *testing.T) {
+	resetAllFlags(t)
 	if debugSessionCmd.Use != "session [token]" {
 		t.Errorf("expected debugSessionCmd.Use 'session [token]', got %q", debugSessionCmd.Use)
 	}
@@ -24,6 +25,7 @@ func TestDebugSessionCommandMetadata(t *testing.T) {
 }
 
 func TestDebugRegisteredUnderRoot(t *testing.T) {
+	resetAllFlags(t)
 	found := false
 	for _, sub := range rootCmd.Commands() {
 		if sub.Use == "debug" {
@@ -46,6 +48,7 @@ func makeFakeToken(userID string, expMillis int64, jti string) string {
 }
 
 func TestDecodeSessionToken(t *testing.T) {
+	resetAllFlags(t)
 	token := makeFakeToken("user-42", 1234567890000, "jti-abc")
 	payload, err := decodeSessionToken(token)
 	if err != nil {
@@ -63,6 +66,7 @@ func TestDecodeSessionToken(t *testing.T) {
 }
 
 func TestDecodeSessionTokenRejectsMalformedInput(t *testing.T) {
+	resetAllFlags(t)
 	cases := []string{"", "no-dot-here", "bad-base64!!!.sig", "."}
 	for _, c := range cases {
 		if _, err := decodeSessionToken(c); err == nil {
@@ -72,6 +76,7 @@ func TestDecodeSessionTokenRejectsMalformedInput(t *testing.T) {
 }
 
 func TestRunDebugSessionValidToken(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/auth/session" {
 			t.Errorf("expected request to /api/auth/session, got %s", r.URL.Path)
@@ -100,6 +105,7 @@ func TestRunDebugSessionValidToken(t *testing.T) {
 }
 
 func TestRunDebugSessionRevokedOrExpiredToken(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(sessionStatusResponse{Authenticated: false, UserID: nil})
 	}))
@@ -121,6 +127,7 @@ func TestRunDebugSessionRevokedOrExpiredToken(t *testing.T) {
 }
 
 func TestRunDebugSessionNoToken(t *testing.T) {
+	resetAllFlags(t)
 	var buf bytes.Buffer
 	err := runDebugSession(&buf, http.DefaultClient, "http://localhost:8080", "")
 	if err == nil {
@@ -129,6 +136,7 @@ func TestRunDebugSessionNoToken(t *testing.T) {
 }
 
 func TestRunDebugSessionUndecodableToken(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(sessionStatusResponse{Authenticated: false, UserID: nil})
 	}))
@@ -149,6 +157,7 @@ func TestRunDebugSessionUndecodableToken(t *testing.T) {
 }
 
 func TestRunDebugSessionServerUnreachable(t *testing.T) {
+	resetAllFlags(t)
 	token := makeFakeToken("user-42", 9999999999999, "jti-abc")
 	// A short client timeout keeps this test fast - the default client can
 	// take tens of seconds to give up dialing a port nothing listens on.
@@ -164,6 +173,7 @@ func TestRunDebugSessionServerUnreachable(t *testing.T) {
 // middleware error handler) must be reported as a backend error, not
 // silently decoded as if it were a normal {"authenticated": false} status.
 func TestRunDebugSessionNon200ResponseWithJSONBody(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error": "internal server error"}`))
@@ -185,6 +195,7 @@ func TestRunDebugSessionNon200ResponseWithJSONBody(t *testing.T) {
 }
 
 func TestRunDebugSessionMalformedServerResponse(t *testing.T) {
+	resetAllFlags(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Not valid JSON at all - simulates a proxy/gateway error page or a
 		// server that crashed before writing a real body.

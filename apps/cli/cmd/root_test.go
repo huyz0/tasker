@@ -5,6 +5,7 @@ import (
 )
 
 func TestRootCommandMetadata(t *testing.T) {
+	resetAllFlags(t)
 	if rootCmd.Use != "cli" {
 		t.Errorf("expected rootCmd.Use 'cli', got %q", rootCmd.Use)
 	}
@@ -17,6 +18,7 @@ func TestRootCommandMetadata(t *testing.T) {
 }
 
 func TestRootCommandHasJsonFlag(t *testing.T) {
+	resetAllFlags(t)
 	flag := rootCmd.PersistentFlags().Lookup("json")
 	if flag == nil {
 		t.Error("expected --json persistent flag to be registered on root command")
@@ -27,6 +29,7 @@ func TestRootCommandHasJsonFlag(t *testing.T) {
 }
 
 func TestRootCommandHasExpectedSubcommands(t *testing.T) {
+	resetAllFlags(t)
 	names := make(map[string]bool)
 	for _, sub := range rootCmd.Commands() {
 		names[sub.Use] = true

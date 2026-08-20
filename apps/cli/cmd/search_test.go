@@ -41,6 +41,7 @@ func (f *fakeSearchHandler) UniversalSearch(
 }
 
 func TestSearchCmd(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewSearchServiceHandler(&fakeSearchHandler{}))
 	srv := httptest.NewServer(mux)
@@ -62,6 +63,7 @@ func TestSearchCmd(t *testing.T) {
 }
 
 func TestSearchCmdNoResults(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewSearchServiceHandler(&fakeSearchHandler{}))
 	srv := httptest.NewServer(mux)
@@ -82,6 +84,7 @@ func TestSearchCmdNoResults(t *testing.T) {
 }
 
 func TestSearchCmdForwardsCursorAndShowsNextCursor(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeSearchHandler{}
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewSearchServiceHandler(fake))

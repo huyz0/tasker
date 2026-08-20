@@ -114,6 +114,7 @@ func withOrgServer(t *testing.T, h *fakeOrgHandler) {
 }
 
 func TestOrgsSeedCmd(t *testing.T) {
+	resetAllFlags(t)
 	withOrgServer(t, &fakeOrgHandler{})
 
 	b := bytes.NewBufferString("")
@@ -130,6 +131,7 @@ func TestOrgsSeedCmd(t *testing.T) {
 }
 
 func TestOrgsInviteCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeOrgHandler{}
 	withOrgServer(t, fake)
 
@@ -153,6 +155,7 @@ func TestOrgsInviteCmd(t *testing.T) {
 // value another test set (e.g. --email) would otherwise leak in here and
 // trip the exactly-one-of validation. Explicit resets, not a fresh command.
 func TestOrgsInviteCmdByUsername(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeOrgHandler{}
 	withOrgServer(t, fake)
 	orgsInviteCmd.Flags().Set("email", "")
@@ -177,6 +180,7 @@ func TestOrgsInviteCmdByUsername(t *testing.T) {
 }
 
 func TestOrgsInviteCmdRejectsNeitherEmailNorUsername(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeOrgHandler{}
 	withOrgServer(t, fake)
 	orgsInviteCmd.Flags().Set("email", "")
@@ -190,6 +194,7 @@ func TestOrgsInviteCmdRejectsNeitherEmailNorUsername(t *testing.T) {
 }
 
 func TestOrgsInviteCmdRejectsBothEmailAndUsername(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeOrgHandler{}
 	withOrgServer(t, fake)
 
@@ -201,6 +206,7 @@ func TestOrgsInviteCmdRejectsBothEmailAndUsername(t *testing.T) {
 }
 
 func TestOrgsInviteCmdWithRole(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeOrgHandler{}
 	withOrgServer(t, fake)
 	orgsInviteCmd.Flags().Set("username", "")
@@ -218,6 +224,7 @@ func TestOrgsInviteCmdWithRole(t *testing.T) {
 }
 
 func TestOrgsSetMemberRoleCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeOrgHandler{}
 	withOrgServer(t, fake)
 
@@ -236,6 +243,7 @@ func TestOrgsSetMemberRoleCmd(t *testing.T) {
 }
 
 func TestOrgsSetMemberRoleCmdRequiresRole(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeOrgHandler{}
 	withOrgServer(t, fake)
 
@@ -248,6 +256,7 @@ func TestOrgsSetMemberRoleCmdRequiresRole(t *testing.T) {
 }
 
 func TestOrgsListCmd(t *testing.T) {
+	resetAllFlags(t)
 	withOrgServer(t, &fakeOrgHandler{})
 
 	b := bytes.NewBufferString("")
@@ -266,6 +275,7 @@ func TestOrgsListCmd(t *testing.T) {
 // id reaching RemoveOrgMember is the one GetIdentity returned - not one the
 // caller typed.
 func TestOrgsLeaveCmdRemovesTheSignedInUser(t *testing.T) {
+	resetAllFlags(t)
 	orgFake := &fakeOrgHandler{}
 	authFake := &fakeAuthHandler{}
 	mux := http.NewServeMux()
@@ -300,6 +310,7 @@ func TestOrgsLeaveCmdRemovesTheSignedInUser(t *testing.T) {
 // The server rejects a sole owner leaving. The CLI must surface that as a
 // failure, not print "Left organization" over the top of an error.
 func TestOrgsLeaveCmdReportsServerRefusal(t *testing.T) {
+	resetAllFlags(t)
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewOrgServiceHandler(&refusingOrgHandler{}))
 	mux.Handle(v1connect.NewAuthServiceHandler(&fakeAuthHandler{}))
@@ -337,6 +348,7 @@ func (refusingOrgHandler) RemoveOrgMember(
 // M03-T12: the expired marker is the reason to read this list at all — a
 // lapsed invitation looks identical to a live one without it.
 func TestOrgsListInvitesCmdMarksExpiredInvitations(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeOrgHandler{}
 	withOrgServer(t, fake)
 
@@ -361,6 +373,7 @@ func TestOrgsListInvitesCmdMarksExpiredInvitations(t *testing.T) {
 }
 
 func TestOrgsRevokeInviteCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeOrgHandler{}
 	withOrgServer(t, fake)
 

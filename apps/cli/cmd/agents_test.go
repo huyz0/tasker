@@ -134,6 +134,7 @@ func withAgentServer(t *testing.T, h *fakeAgentHandler) {
 }
 
 func TestAgentsListCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeAgentHandler{}
 	withAgentServer(t, fake)
 
@@ -154,6 +155,7 @@ func TestAgentsListCmd(t *testing.T) {
 }
 
 func TestAgentsCreateCmd(t *testing.T) {
+	resetAllFlags(t)
 	withAgentServer(t, &fakeAgentHandler{})
 
 	b := bytes.NewBufferString("")
@@ -170,6 +172,7 @@ func TestAgentsCreateCmd(t *testing.T) {
 }
 
 func TestAgentsListCmdOnlyDeleted(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeAgentHandler{}
 	withAgentServer(t, fake)
 
@@ -186,6 +189,7 @@ func TestAgentsListCmdOnlyDeleted(t *testing.T) {
 }
 
 func TestAgentsUpdateCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeAgentHandler{}
 	withAgentServer(t, fake)
 
@@ -212,6 +216,7 @@ func TestAgentsUpdateCmd(t *testing.T) {
 }
 
 func TestAgentsUpdateCmdRequiresNameOrRole(t *testing.T) {
+	resetAllFlags(t)
 	withAgentServer(t, &fakeAgentHandler{})
 
 	b := bytes.NewBufferString("")
@@ -226,6 +231,7 @@ func TestAgentsUpdateCmdRequiresNameOrRole(t *testing.T) {
 }
 
 func TestAgentsUpdateRoleCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeAgentHandler{}
 	withAgentServer(t, fake)
 
@@ -248,6 +254,7 @@ func TestAgentsUpdateRoleCmd(t *testing.T) {
 }
 
 func TestAgentsUpdateRoleCmdRequiresAField(t *testing.T) {
+	resetAllFlags(t)
 	withAgentServer(t, &fakeAgentHandler{})
 
 	b := bytes.NewBufferString("")
@@ -263,6 +270,7 @@ func TestAgentsUpdateRoleCmdRequiresAField(t *testing.T) {
 }
 
 func TestAgentsListRolesCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeAgentHandler{}
 	withAgentServer(t, fake)
 
@@ -283,6 +291,7 @@ func TestAgentsListRolesCmd(t *testing.T) {
 }
 
 func TestAgentsCreateRoleCmd(t *testing.T) {
+	resetAllFlags(t)
 	withAgentServer(t, &fakeAgentHandler{})
 
 	b := bytes.NewBufferString("")
@@ -299,6 +308,7 @@ func TestAgentsCreateRoleCmd(t *testing.T) {
 }
 
 func TestAgentsDeleteRestorePurgeCmd(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeAgentHandler{}
 	withAgentServer(t, fake)
 
@@ -333,6 +343,7 @@ func TestAgentsDeleteRestorePurgeCmd(t *testing.T) {
 
 // M17-T03: delete/restore/purge always printed plain text, even under --json.
 func TestAgentsDeleteRestorePurgeCmdJSON(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeAgentHandler{}
 	withAgentServer(t, fake)
 	t.Cleanup(func() { rootCmd.Flags().Set("json", "false") })
@@ -363,6 +374,7 @@ func TestAgentsDeleteRestorePurgeCmdJSON(t *testing.T) {
 // previous test passing --org leaves it set and this test would pass while
 // proving nothing.
 func TestAgentRoleCommandsRequireAnOrg(t *testing.T) {
+	resetAllFlags(t)
 	agentsListRolesCmd.Flags().Set("org", "")
 	agentsCreateRoleCmd.Flags().Set("org", "")
 

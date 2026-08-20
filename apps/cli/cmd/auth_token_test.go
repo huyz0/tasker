@@ -74,6 +74,7 @@ func resetTokenFlags(t *testing.T) {
 }
 
 func TestAuthTokenCreateShowsThePlaintextOnce(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTokenHandler{}
 	withTokenServer(t, fake)
 	resetTokenFlags(t)
@@ -101,6 +102,7 @@ func TestAuthTokenCreateShowsThePlaintextOnce(t *testing.T) {
 }
 
 func TestAuthTokenCreateForwardsExpiry(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTokenHandler{}
 	withTokenServer(t, fake)
 	resetTokenFlags(t)
@@ -116,6 +118,7 @@ func TestAuthTokenCreateForwardsExpiry(t *testing.T) {
 }
 
 func TestAuthTokenCreateRequiresNameAndScope(t *testing.T) {
+	resetAllFlags(t)
 	withTokenServer(t, &fakeTokenHandler{})
 	resetTokenFlags(t)
 
@@ -127,6 +130,7 @@ func TestAuthTokenCreateRequiresNameAndScope(t *testing.T) {
 }
 
 func TestAuthTokenListNeverPrintsASecret(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTokenHandler{tokens: []*healthv1.AgentToken{
 		{Id: "tok_1", Name: "CI", TokenPrefix: "tskr_ab12", ExpiresAt: "2026-11-13T00:00:00Z"},
 		{Id: "tok_2", Name: "Old", TokenPrefix: "tskr_cd34", ExpiresAt: "2026-01-01T00:00:00Z", Expired: true},
@@ -151,6 +155,7 @@ func TestAuthTokenListNeverPrintsASecret(t *testing.T) {
 }
 
 func TestAuthTokenListSaysSoWhenThereAreNone(t *testing.T) {
+	resetAllFlags(t)
 	withTokenServer(t, &fakeTokenHandler{})
 	resetTokenFlags(t)
 
@@ -167,6 +172,7 @@ func TestAuthTokenListSaysSoWhenThereAreNone(t *testing.T) {
 }
 
 func TestAuthTokenRevoke(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTokenHandler{}
 	withTokenServer(t, fake)
 	resetTokenFlags(t)
@@ -187,6 +193,7 @@ func TestAuthTokenRevoke(t *testing.T) {
 
 // M17-T03: revoke had no --json support at all.
 func TestAuthTokenRevokeJSON(t *testing.T) {
+	resetAllFlags(t)
 	fake := &fakeTokenHandler{}
 	withTokenServer(t, fake)
 	resetTokenFlags(t)
