@@ -746,3 +746,51 @@ export const beliefPromotions = sqliteTable("belief_promotions", {
     beliefIdIdx: index("belief_promotions_belief_id_idx").on(table.beliefId),
   };
 });
+
+/**
+ * The durable record of every `domain.*` event (M08-T03).
+ *
+ * Written only by the consumer's projector, never by a request handler: the
+ * point of routing through JetStream is that the trail survives an API crash
+ * mid-request, which an inline write in the same transaction would not.
+ *
+ * `payload` is the event's JSON verbatim rather than a set of typed columns.
+ * Over twenty subjects across every module publish here and their shapes
+ * differ; a column per field would mean a migration every time any handler
+ * added one, and the trail would silently lose whatever it had no column for.
+ * Queryability comes from the indexed columns beside it.
+ *
+ * `actorId` is nullable because not every event has a human behind it — a
+ * retention sweep or an agent-token action has no user. `actorType` says
+ * which kind it was rather than leaving null ambiguous between "system" and
+ * "we failed to record it".
+ */
+export const auditLog = sqliteTable("audit_log", {
+  id: text("id").primaryKey(),
+  // Which org's trail this belongs to. Nullable: a few events (a user
+  // registering) precede any org membership, and dropping them would put a
+  // gap in the trail exactly where an account takeover would show.
+  orgId: text("org_id").references(() => organizations.id),
+  // The NATS subject, e.g. "domain.agent.token_created". Indexed because
+  // "show me every token creation" is the query an administrator actually
+  // runs.
+  subject: text("subject").notNull(),
+  actorType: text("actor_type").notNull().default("system"),
+  actorId: text("actor_id"),
+  // Ties a row back to the HTTP request that caused it, via the id
+  // withRequestCorrelation stamps onto every payload.
+  requestId: text("request_id"),
+  payload: text("payload").notNull(),
+  // JetStream's sequence for this event. The projector is at-least-once, so
+  // a redelivery after a crash would otherwise write the same event twice;
+  // this is unique, which makes the write idempotent.
+  streamSeq: integer("stream_seq").notNull(),
+  occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    orgIdx: index("audit_log_org_idx").on(table.orgId, table.occurredAt),
+    subjectIdx: index("audit_log_subject_idx").on(table.subject),
+    actorIdx: index("audit_log_actor_idx").on(table.actorId),
+    streamSeqUnique: uniqueIndex("audit_log_stream_seq_unique").on(table.streamSeq),
+  };
+});

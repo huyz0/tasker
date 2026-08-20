@@ -1,4 +1,4 @@
-import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, boolean, mediumtext, longtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
+import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, bigint, boolean, mediumtext, longtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const testSchema = mysqlTable("schema_migrations_test", {
   id: varchar("id", { length: 256 }).primaryKey(),
@@ -591,5 +591,35 @@ export const beliefPromotions = mysqlTable("belief_promotions", {
 }, (table) => {
   return {
     beliefIdIdx: index("belief_promotions_belief_id_idx").on(table.beliefId),
+  };
+});
+
+/**
+ * The MySQL twin of `audit_log` — see schema.sqlite.ts for the reasoning
+ * behind the shape (verbatim JSON payload, nullable orgId/actorId, unique
+ * stream sequence for idempotent redelivery).
+ *
+ * `payload` is longtext rather than a varchar: an event payload has no
+ * useful upper bound, and truncating an audit record is worse than storing
+ * a large one.
+ */
+export const auditLog = mysqlTable("audit_log", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).references(() => organizations.id),
+  subject: varchar("subject", { length: 256 }).notNull(),
+  actorType: varchar("actor_type", { length: 32 }).notNull().default("system"),
+  actorId: varchar("actor_id", { length: 256 }),
+  requestId: varchar("request_id", { length: 256 }),
+  payload: longtext("payload").notNull(),
+  // bigint in the DDL: JetStream sequences are 64-bit and a busy stream will
+  // outrun a 32-bit int. Drizzle's `int` would silently cap it.
+  streamSeq: bigint("stream_seq", { mode: "number" }).notNull(),
+  occurredAt: timestamp("occurred_at").notNull(),
+}, (table) => {
+  return {
+    orgIdx: index("audit_log_org_idx").on(table.orgId, table.occurredAt),
+    subjectIdx: index("audit_log_subject_idx").on(table.subject),
+    actorIdx: index("audit_log_actor_idx").on(table.actorId),
+    streamSeqUnique: uniqueIndex("audit_log_stream_seq_unique").on(table.streamSeq),
   };
 });

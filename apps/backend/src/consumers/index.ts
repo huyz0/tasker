@@ -14,6 +14,8 @@ import { connect as natsConnect, type NatsConnection } from 'nats';
 import { logger } from '../lib/logger';
 import { reportError } from '../lib/errorReporter';
 import { ensureStreamAndConsumer, decodeEvent, STREAM_NAME, DURABLE_NAME } from './stream';
+import { projectEvent } from './auditProjector';
+import { setupDatabase } from '../db/db';
 
 const NATS_URL = process.env.NATS_URL || 'nats://localhost:4222';
 
@@ -64,9 +66,23 @@ async function main(): Promise<void> {
 
   logger.info({ natsUrl: NATS_URL }, 'consumer.connected');
 
+  // The projector's own connection. The consumer is a separate process from
+  // the API, so it opens its own rather than sharing one.
+  //
+  // `setupDatabase` takes the driver as an argument and defaults to mysql —
+  // it does not read STANDALONE itself — so the consumer has to make the same
+  // choice src/index.ts does, or it silently writes to the wrong database.
+  const db = await setupDatabase(process.env.STANDALONE === 'true' ? 'sqlite' : 'mysql');
+
   const jsm = await nc.jetstreamManager();
   const setup = await ensureStreamAndConsumer(jsm);
-  logger.info({ stream: STREAM_NAME, durable: DURABLE_NAME, ...setup }, 'consumer.stream_ready');
+  logger.info(
+    // `setup` carries its own `stream` key (the create/update status), so
+    // spreading it after `stream: STREAM_NAME` would overwrite the name
+    // with the status and the log line would misreport which stream.
+    { stream: STREAM_NAME, durable: DURABLE_NAME, streamAction: setup.stream, consumerAction: setup.consumer },
+    'consumer.stream_ready',
+  );
 
   const js = nc.jetstream();
   const consumer = await js.consumers.get(STREAM_NAME, DURABLE_NAME);
@@ -86,14 +102,15 @@ async function main(): Promise<void> {
     }
 
     try {
-      // M08-T03 attaches the audit projector here. Until then the consumer
-      // proves the durability contract on its own: it subscribes, it
-      // acknowledges, and it resumes after a restart.
-      logger.info(
-        { subject: event.subject, seq: event.seq, requestId: event.payload.requestId },
-        'consumer.event_received',
-      );
+      const outcome = await projectEvent(db, event);
+      // Ack only after the write. Acking first would mean a crash between the
+      // two loses the event permanently, which is the one thing an audit
+      // trail may not do.
       msg.ack();
+      logger.info(
+        { subject: event.subject, seq: event.seq, requestId: event.payload.requestId, outcome },
+        'consumer.event_projected',
+      );
     } catch (err) {
       // Do not ack: let ack_wait expire so JetStream redelivers, up to
       // max_deliver. A write that failed once often succeeds on retry, and

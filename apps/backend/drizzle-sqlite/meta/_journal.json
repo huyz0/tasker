@@ -309,6 +309,13 @@
       "when": 1788000000000,
       "tag": "0043_task_notes_note_type",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1787232705138,
+      "tag": "0044_audit_log",
+      "breakpoints": true
     }
   ]
 }
