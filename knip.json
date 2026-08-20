@@ -5,6 +5,7 @@
       "entry": [
         "drizzle.mysql.config.ts",
         "drizzle.sqlite.config.ts",
+        "src/consumers/index.ts",
         "src/**/*.test.ts"
       ],
       "project": ["src/**/*.ts", "scripts/**/*.ts"]
