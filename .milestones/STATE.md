@@ -15,6 +15,68 @@ blocker: null
 
 ## Now
 
+**2026-08-20 — UX audit of the GUI, then fixed all four findings, merged to
+`main`.** The user asked for research into how teams use AI for UI/UX review
+(Aug 2026), then had the distilled result built as a portable `ux-review`
+skill at user level (`~/.agents/skills/ux-review/` with a thin
+`~/.claude/skills/` adapter — the same source-plus-adapter split this repo
+uses for its own skills), then ran it against this GUI, then `/goal fix all`.
+
+The skill's governing rule is that a verdict without evidence is not a
+verdict: findings name a `file:line` and the artefact that produced them, and
+a review that never interacted returns `Incomplete` rather than `Pass`. That
+discipline earned its keep twice in one session — see the two false starts
+below.
+
+Findings, all four fixed and each re-verified against the evidence that
+produced it:
+
+1. **Major, site-wide: every route scrolled sideways at 375px.** The mobile
+   header's right group needed 259px of the 214px left beside the brand;
+   document `scrollWidth` measured 420 vs a 375 `clientWidth` on all six
+   routes checked. Fixed with `min-w-0` on the group (the half that actually
+   stops it — established by reverting each half separately) plus a new
+   `compact` icon-only variant of `GlobalSearchTrigger`, since a squeezed
+   "Search tasks, artifacts..." label with a ⌘K hint is the wrong treatment
+   on a device with no ⌘ key. Re-measured 375/375 on all six.
+2. **Major: axe `nested-interactive` (serious) on all 60 task cards.** The
+   card was a `role="button"` div containing `AssigneePicker`'s own button.
+   The card is a plain draggable container now and the title is a real
+   `<button>`, so keyboard activation is native rather than a hand-written
+   `onKeyDown`. Re-ran axe: 0 violations; click-to-open and drag both intact.
+3. **Minor, and the reason #1 shipped: `scripts/mobile-overflow.mjs` only
+   scans `storybook-static`.** It measures components in isolation and never
+   the shell they mount in, and no story contains `AppShell`. Added the
+   route-level companion as an e2e spec (`tests/e2e/mobile-overflow.spec.ts`),
+   where a booted backend and the router already exist. Proven to fail before
+   trusting it: reverting the fix yields "/tasks overflows by 13px",
+   "/agents overflows by 45px", with the overrun named in the message.
+4. **Minor: "Unassigned" plus "Assign…" on every card** — the state and its
+   remedy saying the same thing twice. Merged into one control (the status is
+   the button). Deleting "Unassigned" outright would have been wrong: it
+   exists from an earlier deliberate decision whose test asserts the card
+   says "unassigned rather than showing an empty box".
+
+**Two false starts worth recording, because the process caught both.** The
+audit's first pass read a screenshot and concluded the Kanban board was
+clipped at 375px — measurement showed the container is `overflow-x-auto`, a
+deliberate side-scroller, and the finding was dropped. Its second pass
+reported "create task silently fails" — checking the source showed
+`InlineCreateForm` is a real `<form>`, and re-running scoped to that form
+showed creation works and survives a reload; the original run had typed into
+the page-level filter, which is the first visible input on the page. Both
+would have shipped as confident findings under a read-the-JSX-and-describe-it
+habit.
+
+Also fixed one pre-existing fragility found while verifying: the rich-editor
+e2e located the editable surface by a class MDXEditor also applies to its
+placeholder, so the selector matched two nodes whenever a description was
+empty — it passed only because the seeded first card happened to have body
+text. Located by role now.
+
+Verified: `moon check --all` 27/27 · 918 unit · 27/27 e2e (8 of them new) ·
+Storybook 86 stories, 0 a11y violations, nothing wider than 375px.
+
 **2026-08-20 — Bin feature review: Teams tab + richer row detail, merged to
 `main`.** Raised in plain conversation ("review bins feature, do you think
 it is better to distributed bin into relevant screen or in centralized
