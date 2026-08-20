@@ -273,7 +273,7 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(mockPurgeArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
   });
 
-  it("shows the Projects tab's empty message when no org is active", async () => {
+  it("distinguishes an organization with no archived projects from no organization at all", async () => {
     mockListOrgs.mockResolvedValue({ organizations: [] });
     // Set before rendering. It used to be set after the tab click, so the first
     // call rejected on an unstubbed mock and the pane rendered its empty state
@@ -286,7 +286,7 @@ describe('BinDashboard', () => {
     // Projects query is `enabled: Boolean(activeOrgId)` - with activeOrgId
     // set (org-1, per the mocked layout store), it still resolves via the
     // mock and should show its own empty state without loading forever.
-    await waitFor(() => expect(screen.getByText('No archived projects in the active organization.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('No archived projects in this organization.')).toBeDefined());
   });
 
   it('restores an archived artifact', async () => {
@@ -312,7 +312,7 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Tasks' }));
-    await waitFor(() => expect(screen.getByText('No archived tasks in the active project.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Select a project to see its archived tasks.')).toBeDefined());
     expect(mockListTasks).not.toHaveBeenCalled();
   });
 
@@ -323,7 +323,7 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Agents' }));
-    await waitFor(() => expect(screen.getByText('No archived agents in the active organization.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Select an organization to see its archived agents.')).toBeDefined());
     expect(mockListAgents).not.toHaveBeenCalled();
   });
 
@@ -451,7 +451,7 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Folders' }));
-    await waitFor(() => expect(screen.getByText('No archived folders in the active project.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Select a project to see its archived folders.')).toBeDefined());
     expect(mockListFolders).not.toHaveBeenCalled();
   });
 
@@ -481,7 +481,7 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Teams' }));
-    await waitFor(() => expect(screen.getByText('No archived teams in the active organization.')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Select an organization to see its archived teams.')).toBeDefined());
     expect(mockListTeams).not.toHaveBeenCalled();
   });
 
