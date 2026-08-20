@@ -3,6 +3,10 @@ coverage = true
 coverageSkipTestFiles = true
 coveragePathIgnorePatterns = [
   "src/index.ts",
+  # Process wiring only (signals, exit codes, the consume loop). Every
+  # decision worth asserting — stream/consumer durability config, event
+  # decoding — lives in src/consumers/stream.ts, which is covered.
+  "src/consumers/index.ts",
   "src/db/db.ts",
   "src/db/schema.*.ts",
   "src/test/**"

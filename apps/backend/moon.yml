@@ -13,6 +13,14 @@ tasks:
     inputs:
       - 'src/**/*'
       - '**/*.integration.test.ts'
+  # The M08 event consumer. `type: run` so it stays out of `moon check` —
+  # it is a long-lived process that needs a broker, not a gate.
+  consumer:
+    type: 'run'
+    deps:
+      - 'shared-contract:install-deps'
+    command: 'bun run src/consumers/index.ts'
+
   build:
     deps:
       - 'shared-contract:install-deps'
