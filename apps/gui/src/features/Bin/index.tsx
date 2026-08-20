@@ -114,7 +114,9 @@ function TeamsBin() {
       // TeamService has no purgeTeam RPC (archive/restore only, no hard
       // delete) - BinList omits the "Delete Forever" button entirely when
       // onPurge is absent, rather than wiring it to a call that doesn't exist.
-      emptyMessage="No archived teams in the active organization."
+      emptyMessage={activeOrgId
+        ? 'No archived teams in this organization.'
+        : 'Select an organization to see its archived teams.'}
     />
   );
 }
@@ -163,7 +165,9 @@ function ProjectsBin() {
       onPurge={(id) => purgeMutation.mutate(id)}
       isPurging={purgeMutation.isPending}
       purgeError={purgeMutation.error as Error | null}
-      emptyMessage="No archived projects in the active organization."
+      emptyMessage={activeOrgId
+        ? 'No archived projects in this organization.'
+        : 'Select an organization to see its archived projects.'}
       renderDetail={(item) => item.key || null}
     />
   );
@@ -210,7 +214,9 @@ function TasksBin() {
       onPurge={(id) => purgeMutation.mutate(id)}
       isPurging={purgeMutation.isPending}
       purgeError={purgeMutation.error as Error | null}
-      emptyMessage="No archived tasks in the active project."
+      emptyMessage={activeProjectId
+        ? 'No archived tasks in this project.'
+        : 'Select a project to see its archived tasks.'}
       renderDetail={(item) => {
         const assignees = item.assignees?.length
           ? item.assignees.map((a: { name: string }) => a.name).join(', ')
@@ -261,7 +267,9 @@ function AgentsBin() {
       onPurge={(id) => purgeMutation.mutate(id)}
       isPurging={purgeMutation.isPending}
       purgeError={purgeMutation.error as Error | null}
-      emptyMessage="No archived agents in the active organization."
+      emptyMessage={activeOrgId
+        ? 'No archived agents in this organization.'
+        : 'Select an organization to see its archived agents.'}
     />
   );
 }
@@ -306,7 +314,9 @@ function FoldersBin() {
       onPurge={(id) => purgeMutation.mutate(id)}
       isPurging={purgeMutation.isPending}
       purgeError={purgeMutation.error as Error | null}
-      emptyMessage="No archived folders in the active project."
+      emptyMessage={activeProjectId
+        ? 'No archived folders in this project.'
+        : 'Select a project to see its archived folders.'}
     />
   );
 }
@@ -355,7 +365,9 @@ function ArtifactsBin() {
       onPurge={(id) => purgeMutation.mutate(id)}
       isPurging={purgeMutation.isPending}
       purgeError={purgeMutation.error as Error | null}
-      emptyMessage="No archived artifacts in the active project."
+      emptyMessage={activeProjectId
+        ? 'No archived artifacts in this project.'
+        : 'Select a project to see its archived artifacts.'}
       renderDetail={(item) => {
         const size = typeof item.sizeBytes === 'bigint' ? formatBytes(Number(item.sizeBytes)) : null;
         return [item.contentType, size].filter(Boolean).join(' · ') || null;
