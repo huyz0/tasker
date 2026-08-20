@@ -7,6 +7,7 @@ import { createAuthHandler } from "./modules/auth/auth.handler";
 import { createAuthRoutes } from "./modules/auth/auth";
 import { currentUserIdKey, currentPrincipalKey } from "./modules/auth/session";
 import { resolvePrincipal } from "./lib/authenticate";
+import { setRequestActor } from "./lib/requestContext";
 import { createRateLimiter, rateLimitProblem } from "./lib/rateLimit";
 import { createLoginRateLimiter } from "./lib/loginRateLimiter";
 import { parseBearerToken } from "./modules/auth/session";
@@ -74,6 +75,16 @@ const sessionInterceptor: Interceptor = (next) => async (req) => {
   // has not been migrated to requirePrincipal read this key. An agent leaves it
   // null, which is what makes requireUser refuse a token by default.
   req.contextValues.set(currentUserIdKey, principal?.kind === "user" ? principal.userId : null);
+  // M08-T04: record the acting principal on the request context so every
+  // domain event published during this request carries it, without any
+  // handler having to remember to attach it.
+  if (principal) {
+    setRequestActor(
+      principal.kind === "agent"
+        ? { kind: "agent", agentId: principal.agentId }
+        : { kind: "user", userId: principal.userId },
+    );
+  }
   return next(req);
 };
 

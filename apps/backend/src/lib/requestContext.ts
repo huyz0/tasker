@@ -17,9 +17,24 @@ export interface PolicyCache {
   orgAncestors: Map<string, string[]>;
 }
 
+/**
+ * Who is acting, in the shape audit and event consumers want (M08-T04).
+ * Separate from `userId` because an agent token has no user behind it, and
+ * an audit trail that records only `userId` cannot say an agent did
+ * something — it would look unattributed, which is the one thing an audit
+ * trail must not be ambiguous about.
+ */
+export interface RequestActor {
+  kind: 'user' | 'agent';
+  userId?: string;
+  agentId?: string;
+}
+
 export interface RequestContext {
   requestId: string;
   userId?: string | null;
+  /** Filled in by the session interceptor once it has resolved the caller. */
+  actor?: RequestActor;
   policyCache?: PolicyCache;
 }
 
@@ -35,6 +50,24 @@ export function runWithRequestContext<T>(context: RequestContext, fn: () => T): 
 
 export function getRequestContext(): RequestContext | undefined {
   return requestContextStore.getStore();
+}
+
+/**
+ * Records who is acting, on the context this request is already running in.
+ *
+ * The request context is opened by the logging interceptor, which resolves
+ * only a session user id — it runs before any database handle is available
+ * and adding a lookup there would put a query in front of every log line.
+ * The session interceptor resolves the full principal a moment later, and
+ * mutating the object the store holds makes it visible to everything after
+ * it in the same async scope, including `withRequestCorrelation`.
+ *
+ * A no-op outside a request, so a script or a test calling a handler
+ * directly behaves exactly as before.
+ */
+export function setRequestActor(actor: RequestActor): void {
+  const ctx = requestContextStore.getStore();
+  if (ctx) ctx.actor = actor;
 }
 
 /**

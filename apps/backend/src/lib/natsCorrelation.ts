@@ -34,9 +34,28 @@ export function withRequestCorrelation<T extends { publish: (subject: string, da
           if (ctx && data) {
             try {
               const payload = JSON.parse(data.toString());
-              if (payload && typeof payload === 'object' && !payload.requestId) {
-                payload.requestId = ctx.requestId;
-                data = Buffer.from(JSON.stringify(payload));
+              if (payload && typeof payload === 'object') {
+                let changed = false;
+                if (!payload.requestId) {
+                  payload.requestId = ctx.requestId;
+                  changed = true;
+                }
+                // M08-T04: the acting principal, stamped here rather than at
+                // ~50 publish sites. A projector should not have to infer who
+                // acted from whichever id a given event happens to carry, and
+                // an event whose handler forgot to attach one would be
+                // recorded as unattributed — indistinguishable from something
+                // the system genuinely did on its own.
+                //
+                // A payload that already names an actor keeps it: a handler
+                // acting *on behalf of* someone else is telling the truth
+                // about the subject, and the request's own principal would be
+                // the wrong answer.
+                if (ctx.actor && !payload.actor) {
+                  payload.actor = ctx.actor;
+                  changed = true;
+                }
+                if (changed) data = Buffer.from(JSON.stringify(payload));
               }
             } catch {
               // Not JSON (or unparseable) - publish the original payload unchanged.

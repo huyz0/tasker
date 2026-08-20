@@ -145,3 +145,70 @@ describe('publishDomainEvent', () => {
     expect(getBusinessEventCounts()).toEqual({ 'domain.task.created': 1 });
   });
 });
+
+describe('withRequestCorrelation: the acting principal (M08-T04)', () => {
+  it('stamps the request actor onto every published event', () => {
+    // Attached here rather than at ~50 publish sites: a handler that forgot
+    // would produce an event the audit trail records as unattributed, which
+    // is indistinguishable from something the system genuinely did itself.
+    const { nc, publishedMessages } = makeFakeNc();
+    const wrapped = withRequestCorrelation(nc);
+
+    runWithRequestContext(
+      { requestId: 'req-1', userId: 'usr-1', actor: { kind: 'user', userId: 'usr-1' } },
+      () => { wrapped.publish('domain.task.created', Buffer.from(JSON.stringify({ id: 't1' }))); },
+    );
+
+    expect(JSON.parse(publishedMessages[0]!.data.toString())).toEqual({
+      id: 't1',
+      requestId: 'req-1',
+      actor: { kind: 'user', userId: 'usr-1' },
+    });
+  });
+
+  it('records an agent actor as an agent, not as an absent user', () => {
+    const { nc, publishedMessages } = makeFakeNc();
+    const wrapped = withRequestCorrelation(nc);
+
+    runWithRequestContext(
+      { requestId: 'req-2', userId: null, actor: { kind: 'agent', agentId: 'agt-1' } },
+      () => { wrapped.publish('domain.task.claimed', Buffer.from(JSON.stringify({ id: 't1' }))); },
+    );
+
+    expect(JSON.parse(publishedMessages[0]!.data.toString()).actor).toEqual({ kind: 'agent', agentId: 'agt-1' });
+  });
+
+  it('does not overwrite an actor the handler set deliberately', () => {
+    // A handler acting *on behalf of* someone else is telling the truth about
+    // the subject; the request's own principal would be the wrong answer.
+    const { nc, publishedMessages } = makeFakeNc();
+    const wrapped = withRequestCorrelation(nc);
+
+    runWithRequestContext(
+      { requestId: 'req-3', userId: 'admin-1', actor: { kind: 'user', userId: 'admin-1' } },
+      () => {
+        wrapped.publish(
+          'domain.org.member_removed',
+          Buffer.from(JSON.stringify({ actor: { kind: 'user', userId: 'someone-else' } })),
+        );
+      },
+    );
+
+    expect(JSON.parse(publishedMessages[0]!.data.toString()).actor).toEqual({ kind: 'user', userId: 'someone-else' });
+  });
+
+  it('publishes unchanged when the request has no resolved actor', () => {
+    // An unauthenticated call still emits events (a failed login, say); it
+    // simply has nobody to name.
+    const { nc, publishedMessages } = makeFakeNc();
+    const wrapped = withRequestCorrelation(nc);
+
+    runWithRequestContext({ requestId: 'req-4' }, () => {
+      wrapped.publish('domain.auth.login_failed', Buffer.from(JSON.stringify({ email: 'a@b.test' })));
+    });
+
+    const payload = JSON.parse(publishedMessages[0]!.data.toString());
+    expect(payload.actor).toBeUndefined();
+    expect(payload.requestId).toBe('req-4');
+  });
+});
