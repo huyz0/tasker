@@ -93,20 +93,34 @@ const TYPE_ORDER = ['task', 'artifact', 'project', 'agent', 'comment'];
  * state and its own ⌘K listener, so the shortcut opened two stacked modal
  * dialogs (M06-T03).
  */
-export function GlobalSearchTrigger() {
+/**
+ * `compact` renders the trigger as an icon-only button.
+ *
+ * The mobile header (AppShell) has ~214px for the search trigger, the theme
+ * toggle and the avatar combined; the labelled trigger alone measures 161px,
+ * which pushed every route's document to 420px wide at a 375px viewport — the
+ * whole page scrolled sideways. The label is kept in the accessible tree via
+ * `sr-only` rather than dropped, so the button keeps its name without an
+ * `aria-label` that could drift from the visible text on the wide variant.
+ */
+export function GlobalSearchTrigger({ compact = false }: { compact?: boolean }) {
   const toggleSearch = useLayoutStore((s) => s.toggleSearch);
   return (
     <button
       onClick={toggleSearch}
-      className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 hover:bg-muted/80 px-3 py-1.5 rounded-md border border-border transition-colors w-full min-w-0 justify-between"
+      className={`flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 hover:bg-muted/80 rounded-md border border-border transition-colors min-w-0 ${
+        compact ? 'p-2 shrink-0' : 'px-3 py-1.5 w-full justify-between'
+      }`}
     >
       <span className="flex items-center gap-2">
-        <Search className="w-4 h-4" />
-        Search tasks, artifacts...
+        <Search className="w-4 h-4 shrink-0" />
+        <span className={compact ? 'sr-only' : undefined}>Search tasks, artifacts...</span>
       </span>
-      <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-        <span className="text-xs">⌘</span>K
-      </kbd>
+      {!compact && (
+        <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+          <span className="text-xs">⌘</span>K
+        </kbd>
+      )}
     </button>
   );
 }

@@ -99,7 +99,23 @@ export function AssigneePicker({ taskId, orgId, assignees }: { taskId: string; o
     <div className="flex flex-col gap-2">
       {assignees.length === 0 ? (
         // A normal, actionable state — and the one a manager is looking for.
-        <span className="text-xs text-muted-foreground">Unassigned</span>
+        //
+        // The status and the remedy are one control rather than two. This used
+        // to render the word "Unassigned" with a separate "Assign…" button
+        // directly beneath it, which said the same thing twice on every
+        // unassigned card. Clicking the status opens the picker, so the empty
+        // state *is* the affordance. The accessible name keeps the visible
+        // word first (WCAG 2.5.3) while still naming the action.
+        !isPicking && (
+          <button
+            type="button"
+            onClick={() => setIsPicking(true)}
+            aria-label="Unassigned — assign this task"
+            className="self-start text-xs text-muted-foreground hover:text-primary transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          >
+            Unassigned
+          </button>
+        )
       ) : (
         <ul className="flex flex-col gap-1">
           {assignees.map((a) => (
@@ -198,9 +214,14 @@ export function AssigneePicker({ taskId, orgId, assignees }: { taskId: string; o
           </button>
         </div>
       ) : (
-        <button onClick={() => setIsPicking(true)} className="self-start text-xs text-primary hover:underline">
-          Assign…
-        </button>
+        // Only when someone is already assigned — the unassigned state carries
+        // its own trigger (see the "Unassigned" button above) instead of
+        // repeating the action here.
+        assignees.length > 0 && (
+          <button onClick={() => setIsPicking(true)} className="self-start text-xs text-primary hover:underline">
+            Assign…
+          </button>
+        )
       )}
 
       {assignMutation.isError && (

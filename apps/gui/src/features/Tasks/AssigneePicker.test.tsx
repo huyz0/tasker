@@ -25,9 +25,19 @@ vi.mock('@connectrpc/connect', async (importOriginal) => ({
   },
 }));
 
-/** Opens the picker and waits for the search field. */
+/**
+ * Opens the picker and waits for the search field.
+ *
+ * There are two triggers depending on state, which is deliberate: with nobody
+ * assigned the "Unassigned" status *is* the button (the status and its remedy
+ * used to be two separate elements saying the same thing on every card), and
+ * once someone is assigned a separate "Assign…" button adds another. Matching
+ * both keeps this helper usable from either state.
+ */
 const openPicker = async () => {
-  fireEvent.click(await screen.findByRole('button', { name: 'Assign…' }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: /^(Assign…|Unassigned — assign this task)$/ }),
+  );
   return screen.findByLabelText('Search people and agents');
 };
 

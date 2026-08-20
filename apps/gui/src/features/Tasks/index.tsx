@@ -338,28 +338,34 @@ function BoardColumn({
           />
         )}
         {items.map((task: any) => (
+          // The card is a plain draggable container, not a `role="button"`.
+          // It was one until the UX review: axe flagged `nested-interactive`
+          // on all 60 cards (serious) because a control that announces as a
+          // button contained AssigneePicker's own button, which assistive
+          // technology cannot reliably operate. The title below is now the
+          // real button, so exactly one control opens the task and the
+          // assignee control is a sibling rather than a descendant of it.
           <div
             key={task.id}
-            role="button"
-            tabIndex={0}
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData('text/plain', task.id);
               e.dataTransfer.effectAllowed = 'move';
             }}
-            onClick={() => onOpenTask(task.id)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onOpenTask(task.id);
-              }
-            }}
-            className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-grab active:cursor-grabbing transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-grab active:cursor-grabbing transition-colors focus-within:border-primary"
           >
             <div className="text-xs text-muted-foreground mb-1 font-mono">{task.displayId}</div>
-            <h4 className="font-medium text-sm leading-tight mb-2">{task.title}</h4>
+            <h4 className="mb-2">
+              <button
+                type="button"
+                onClick={() => onOpenTask(task.id)}
+                className="text-left w-full font-medium text-sm leading-tight hover:text-primary transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                {task.title}
+              </button>
+            </h4>
 
-            <div className="mb-3" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
+            <div className="mb-3">
               <AssigneePicker taskId={task.id} orgId={orgId} assignees={task.assignees ?? []} />
             </div>
 
