@@ -15,6 +15,44 @@ blocker: null
 
 ## Now
 
+**2026-08-20 — Bin feature review: Teams tab + richer row detail, merged to
+`main`.** Raised in plain conversation ("review bins feature, do you think
+it is better to distributed bin into relevant screen or in centralized
+screen?"), answered with a recommendation (keep it centralized — matches the
+near-universal trash/recycle-bin mental model, avoids duplicating restore/
+purge/confirm machinery across six already-large feature screens), then the
+user confirmed fixing the two real gaps the review surfaced. Not a numbered
+milestone — single-screen review-and-fix round, same weight as the
+chunk-optimization/Storybook-coverage rounds.
+
+1. **Teams were entirely missing from the Bin.** `teams.handler.ts` already
+   had `archiveTeam`/`restoreTeam` + `listTeams(onlyDeleted)`, and the CLI
+   already had `teams --only-deleted`, but `apps/gui/src/features/Bin/
+   index.tsx`'s `TABS` array never included `'teams'` — an archived team was
+   unrecoverable from the GUI at all. Added a `TeamsBin` tab mirroring the
+   other org-scoped tabs. `TeamService` has no `purgeTeam` RPC (archive/
+   restore only, no hard delete), so `BinList`'s "Delete Forever" button is
+   now optional (`onPurge?`) and simply omitted for this tab rather than
+   wired to a call that doesn't exist.
+2. **Every row rendered only a name and a raw `deletedAt`.** A deleted task
+   showed its title and nothing else (no status, no assignee); a deleted
+   artifact showed its name with no content type or size — despite that data
+   already being on the wire (`Task.status`/`assignees`,
+   `Artifact.contentType`/`sizeBytes`, `Project.key`) and simply never
+   rendered. Added an optional `renderDetail` prop to `BinList` (a second,
+   muted line under the label), wired into Tasks (status + assignee names),
+   Artifacts (content type + size via `ArtifactUpload.tsx`'s existing
+   `formatBytes`, not duplicated), and Projects (key). Organizations/Agents/
+   Folders were deliberately left as-is — no comparable extra context is
+   available for them without a backend/contract change, named here rather
+   than silently skipped.
+
+No backend, contract, or CLI changes — purely a GUI fix using data the
+existing RPCs already return. 30/30 Bin tests pass (14 new, covering the new
+tab, its restore-only affordance, and each tab's new detail line). `moon
+check --all` clean 27/27. Verified via `gh run watch` on the merge push:
+`CI Pipeline` and `Real Integration Tests` both green.
+
 **2026-08-19/20 — CI fully green: fixed `CI Pipeline` and `Real Integration
 Tests`, both previously broken on every push since at least M21.** Requested
 directly by the user ("cjeck ci", then "fix itest ci also"), not a `/goal`.
