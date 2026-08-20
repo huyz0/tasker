@@ -35,6 +35,27 @@ trap cleanup EXIT
 # (see apps/backend/src/config.ts), so it cannot leak out of local dev.
 export ENABLE_TEST_LOGIN="${ENABLE_TEST_LOGIN:-true}"
 
+# NATS (M08). Every handler publishes `domain.*` events, and until the broker
+# existed in the stack those all went nowhere while the backend logged
+# `nats.connect_failed` on boot — the normal local experience.
+#
+# Started opportunistically rather than required: the backend already treats a
+# missing broker as a degraded-but-working mode (`nc` stays null and
+# `publishDomainEvent` still records its in-memory counters), so a developer
+# without Docker gets the same app they got before this, minus live events.
+# Saying which of the two you got beats leaving it to be inferred from a log
+# line further down.
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  echo "Starting NATS (JetStream) via docker compose..."
+  if docker compose up -d nats >/dev/null 2>&1; then
+    echo "  NATS: nats://localhost:4222 (monitoring on :8222)"
+  else
+    echo "  NATS: could not start — continuing without it; domain events will not be delivered."
+  fi
+else
+  echo "NATS: docker unavailable — continuing without it; domain events will not be delivered."
+fi
+
 echo "Starting backend (STANDALONE mode, SQLite at apps/backend/.data/local.sqlite)..."
 echo "  test login: ENABLE_TEST_LOGIN=$ENABLE_TEST_LOGIN"
 (cd apps/backend && STANDALONE=true bun run src/index.ts 2>&1 | sed -e 's/^/[backend] /') &

@@ -10,24 +10,45 @@ import { recordBusinessEvent } from './businessEvents';
  * consumer) has no way to be traced back to the request that caused it.
  */
 export function withRequestCorrelation<T extends { publish: (subject: string, data?: any, opts?: any) => void }>(nc: T): T {
-  return {
-    ...nc,
-    publish(subject: string, data?: any, opts?: any) {
-      const ctx = getRequestContext();
-      if (ctx && data) {
-        try {
-          const payload = JSON.parse(data.toString());
-          if (payload && typeof payload === 'object' && !payload.requestId) {
-            payload.requestId = ctx.requestId;
-            data = Buffer.from(JSON.stringify(payload));
+  // A Proxy, not `{...nc, publish}`. Spreading copies own enumerable
+  // properties only, so every method a NATS connection carries on its
+  // prototype - isClosed, flush, drain, subscribe, jetstream - was silently
+  // dropped, and the wrapper looked fine because `publish` was the one method
+  // defined as an own property.
+  //
+  // Nothing caught it because nothing here had ever held a live connection:
+  // with no broker in the local stack, `natsConnect` always failed and `nc`
+  // stayed null, so the health probe short-circuited on `!nc` and never
+  // reached `nc.isClosed()`. Adding the broker (M08-T01) made the wrapper
+  // real for the first time and the probe started 500ing with
+  // "nc.isClosed is not a function".
+  //
+  // The proxy forwards everything untouched except `publish`, and keeps
+  // methods bound to the underlying connection so they still see its
+  // internal state.
+  return new Proxy(nc, {
+    get(target, prop, receiver) {
+      if (prop === 'publish') {
+        return (subject: string, data?: any, opts?: any) => {
+          const ctx = getRequestContext();
+          if (ctx && data) {
+            try {
+              const payload = JSON.parse(data.toString());
+              if (payload && typeof payload === 'object' && !payload.requestId) {
+                payload.requestId = ctx.requestId;
+                data = Buffer.from(JSON.stringify(payload));
+              }
+            } catch {
+              // Not JSON (or unparseable) - publish the original payload unchanged.
+            }
           }
-        } catch {
-          // Not JSON (or unparseable) - publish the original payload unchanged.
-        }
+          return (target as any).publish(subject, data, opts);
+        };
       }
-      return nc.publish(subject, data, opts);
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === 'function' ? value.bind(target) : value;
     },
-  };
+  });
 }
 
 /**
