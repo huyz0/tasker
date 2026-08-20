@@ -15,6 +15,56 @@ blocker: null
 
 ## Now
 
+**2026-08-20 — CLI test hygiene and coverage measurement, merged to `main`.**
+Requested as `/goal suggest and fix whatever things remain`. Worked the
+long-deferred list at the bottom of this file, verifying each item still
+existed before touching it — two were real, two had already been fixed and
+the notes were stale.
+
+**Fixed: `go test -shuffle=on` failed 8–9 CLI tests per run.** Every command
+in `apps/cli/cmd` is a package-level `var xCmd = &cobra.Command{}` singleton,
+so flag values outlive the test that set them, and cobra never clears
+`Changed` once set. Three narrower helpers each reset a hand-listed subset,
+which is inherently incomplete. The clearest symptom was not a stale boolean:
+a test named `...DefaultsContentTypeToTextMarkdown` failed trying to open a
+file inside `...UploadsFileAsBase64Image`'s temp dir, because the earlier
+test's `--file <t.TempDir()>/logo.png` was still set on `artifactsCreateCmd`
+and that directory had been cleaned up. Added `resetAllFlags(t)`
+(`cmd/flags_reset_test.go`) which walks the whole command tree before and
+after each test, and called it from all 243 tests. The cleanup pass is the
+load-bearing one — tests attach their subtree via `rootCmd.AddCommand` *after*
+setup, so a command may be unreachable when the reset first runs but always
+reachable by the time the test ends. Slice flags needed `Replace`, not `Set`:
+pflag slice values append after the first Set and render their default as
+`"[]"`, which their own parser will not read back, so a naive reset appended a
+literal `"[]"` per call and sent a request carrying three hundred empty
+scopes. Verified 6 consecutive shuffled runs clean; disabling the reset brings
+9 failures straight back.
+
+**Fixed: `cli:coverage` reported a meaningless number.** The profile counted
+`gen/tasker/**` — generated protobuf and connect stubs — so 2,665 of the 2,710
+measured functions were generated getters nobody tests, and the gate printed
+**6.9%** while the same run measures **94.4%** over `cmd/` and `internal/`.
+A figure that low reads as "untested" and gets ignored, which is how it
+drifted from a cached 97.9% to 6.9% unnoticed. Scoped with `-coverpkg`, with
+`./...` kept as the package list so every package still compiles and runs —
+what the note above that task says the gate exists for. Confirmed
+pre-existing, not introduced: a clean checkout of HEAD measures the same 6.9%.
+
+**Checked and found already fixed — notes below were stale, now corrected:**
+the CLI's doubled `Error: Error:` prefix (a single prefix prints for both a
+missing arg and an unknown flag), and `query-builder.ts`'s `softDeleteById`
+double-archive guard (no such symbol in that file; the helper lives there and
+is called by artifacts/memory handlers, but the note described something that
+is not present).
+
+**Still open, and genuinely larger than a fix round** — these are feature
+work, not deferred nits: M23's named follow-up (comments and artifact content
+still use bare `<textarea>`s; the `RichMarkdownEditor` wrapper was built to be
+reused there), the deep-link `/tasks/:taskId` hard-reload bug found during
+M23, `ListState`'s empty message not distinguishing "no org selected" from
+"org genuinely has none", and the `M08`/`M09`/`M11`/`M12` backlog milestones.
+
 **2026-08-20 — UX audit of the GUI, then fixed all four findings, merged to
 `main`.** The user asked for research into how teams use AI for UI/UX review
 (Aug 2026), then had the distilled result built as a portable `ux-review`
