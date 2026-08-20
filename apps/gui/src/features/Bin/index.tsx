@@ -9,21 +9,25 @@ import {
   TaskService,
   AgentService,
   ArtifactService,
+  TeamService,
 } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { VirtualList } from '../../components/ui/VirtualList';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ListState } from '../../components/ui/ListState';
+import { formatBytes } from '../Artifacts/ArtifactUpload';
 
 const orgClient = createClient(OrgService, transport);
 const projectClient = createClient(ProjectService, transport);
 const taskClient = createClient(TaskService, transport);
 const agentClient = createClient(AgentService, transport);
 const artifactClient = createClient(ArtifactService, transport);
+const teamClient = createClient(TeamService, transport);
 
-type EntityKind = 'organizations' | 'projects' | 'tasks' | 'agents' | 'folders' | 'artifacts';
+type EntityKind = 'organizations' | 'teams' | 'projects' | 'tasks' | 'agents' | 'folders' | 'artifacts';
 
 const TABS: { id: EntityKind; label: string }[] = [
   { id: 'organizations', label: 'Organizations' },
+  { id: 'teams', label: 'Teams' },
   { id: 'projects', label: 'Projects' },
   { id: 'tasks', label: 'Tasks' },
   { id: 'agents', label: 'Agents' },
@@ -74,6 +78,47 @@ function OrganizationsBin() {
   );
 }
 
+function TeamsBin() {
+  const activeOrgId = useLayoutStore((s) => s.activeOrgId);
+  const queryClient = useQueryClient();
+  const { data: pages, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['teams', 'bin', activeOrgId],
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      teamClient.listTeams({ orgId: activeOrgId, onlyDeleted: true, page: { cursor: pageParam } }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
+    enabled: Boolean(activeOrgId),
+  });
+  const data = pages?.pages.flatMap((p) => p.teams);
+  const total = Number(pages?.pages[0]?.page?.totalCount ?? 0);
+  const restoreMutation = useMutation({
+    mutationFn: async (teamId: string) => { await teamClient.restoreTeam({ teamId }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams', 'bin', activeOrgId] });
+      queryClient.invalidateQueries({ queryKey: ['teams', activeOrgId] });
+    },
+  });
+  return (
+    <BinList
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => refetch()}
+      items={data}
+      total={total}
+      hasMore={hasNextPage}
+      isLoadingMore={isFetchingNextPage}
+      onLoadMore={() => fetchNextPage()}
+      onRestore={(id) => restoreMutation.mutate(id)}
+      isRestoring={restoreMutation.isPending}
+      restoreError={restoreMutation.error as Error | null}
+      // TeamService has no purgeTeam RPC (archive/restore only, no hard
+      // delete) - BinList omits the "Delete Forever" button entirely when
+      // onPurge is absent, rather than wiring it to a call that doesn't exist.
+      emptyMessage="No archived teams in the active organization."
+    />
+  );
+}
+
 function ProjectsBin() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const queryClient = useQueryClient();
@@ -119,6 +164,7 @@ function ProjectsBin() {
       isPurging={purgeMutation.isPending}
       purgeError={purgeMutation.error as Error | null}
       emptyMessage="No archived projects in the active organization."
+      renderDetail={(item) => item.key || null}
     />
   );
 }
@@ -165,6 +211,12 @@ function TasksBin() {
       isPurging={purgeMutation.isPending}
       purgeError={purgeMutation.error as Error | null}
       emptyMessage="No archived tasks in the active project."
+      renderDetail={(item) => {
+        const assignees = item.assignees?.length
+          ? item.assignees.map((a: { name: string }) => a.name).join(', ')
+          : null;
+        return [item.status, assignees].filter(Boolean).join(' · ') || null;
+      }}
     />
   );
 }
@@ -304,11 +356,15 @@ function ArtifactsBin() {
       isPurging={purgeMutation.isPending}
       purgeError={purgeMutation.error as Error | null}
       emptyMessage="No archived artifacts in the active project."
+      renderDetail={(item) => {
+        const size = typeof item.sizeBytes === 'bigint' ? formatBytes(Number(item.sizeBytes)) : null;
+        return [item.contentType, size].filter(Boolean).join(' · ') || null;
+      }}
     />
   );
 }
 
-function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore, isLoadingMore, onRestore, isRestoring, restoreError, onPurge, isPurging, purgeError, emptyMessage, labelKey = 'name' }: {
+function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore, isLoadingMore, onRestore, isRestoring, restoreError, onPurge, isPurging, purgeError, emptyMessage, labelKey = 'name', renderDetail }: {
   isLoading: boolean;
   /** The server's count of the whole bin, not the number of rows loaded. */
   total: number;
@@ -323,11 +379,25 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
   onRestore: (id: string) => void;
   isRestoring: boolean;
   restoreError: Error | null;
-  onPurge: (id: string) => void;
-  isPurging: boolean;
-  purgeError: Error | null;
+  /**
+   * Absent for entity kinds with no hard-delete RPC (Teams, as of this
+   * writing) - the "Delete Forever" button and its confirm flow are omitted
+   * entirely rather than wired to a call that doesn't exist.
+   */
+  onPurge?: (id: string) => void;
+  isPurging?: boolean;
+  purgeError?: Error | null;
   emptyMessage: string;
   labelKey?: string;
+  /**
+   * A second, muted line under the label - whatever context distinguishes
+   * one archived row from another beyond its name (a task's status and
+   * assignees, an artifact's type and size, a project's key). Returning
+   * `null`/falsy renders nothing, so a row with nothing to add costs no
+   * extra space. Entity kinds with no meaningful extra context (Organizations,
+   * Agents, Folders, Teams) simply don't pass this.
+   */
+  renderDetail?: (item: any) => string | null;
 }) {
   const { confirm, confirmDialog } = useConfirm();
 
@@ -356,15 +426,20 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
           is unbounded and grows with use (M07-T14). */}
       <VirtualList
         items={items}
-        rowHeight={BIN_ROW_HEIGHT}
+        rowHeight={renderDetail ? BIN_ROW_HEIGHT_WITH_DETAIL : BIN_ROW_HEIGHT}
         className="max-h-[60vh] overflow-y-auto divide-y"
-        renderRow={(item: any) => (
+        renderRow={(item: any) => {
+          const detail = renderDetail?.(item);
+          return (
         <div key={item.id} className="p-3 text-sm flex justify-between items-center">
           <div>
-            <span className="font-medium">{item[labelKey] ?? item.id}</span>
-            {item.deletedAt && (
-              <span className="text-xs text-muted-foreground ml-2">Deleted {new Date(item.deletedAt).toLocaleString()}</span>
-            )}
+            <div>
+              <span className="font-medium">{item[labelKey] ?? item.id}</span>
+              {item.deletedAt && (
+                <span className="text-xs text-muted-foreground ml-2">Deleted {new Date(item.deletedAt).toLocaleString()}</span>
+              )}
+            </div>
+            {detail && <div className="text-xs text-muted-foreground mt-0.5">{detail}</div>}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -374,25 +449,28 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
             >
               {isRestoring ? 'Restoring...' : 'Restore'}
             </button>
-            <button
-              onClick={async () => {
-                if (await confirm({
-                  title: `Permanently delete "${item[labelKey] ?? item.id}"?`,
-                  consequence: 'It is removed from the database immediately.',
-                  undo: null,
-                  confirmLabel: 'Delete forever',
-                })) {
-                  onPurge(item.id);
-                }
-              }}
-              disabled={isRestoring || isPurging}
-              className="px-3 py-1 bg-destructive-subtle text-destructive-subtle-foreground hover:bg-destructive hover:text-destructive-foreground rounded-md text-xs font-medium disabled:opacity-50"
-            >
-              {isPurging ? 'Deleting...' : 'Delete Forever'}
-            </button>
+            {onPurge && (
+              <button
+                onClick={async () => {
+                  if (await confirm({
+                    title: `Permanently delete "${item[labelKey] ?? item.id}"?`,
+                    consequence: 'It is removed from the database immediately.',
+                    undo: null,
+                    confirmLabel: 'Delete forever',
+                  })) {
+                    onPurge(item.id);
+                  }
+                }}
+                disabled={isRestoring || isPurging}
+                className="px-3 py-1 bg-destructive-subtle text-destructive-subtle-foreground hover:bg-destructive hover:text-destructive-foreground rounded-md text-xs font-medium disabled:opacity-50"
+              >
+                {isPurging ? 'Deleting...' : 'Delete Forever'}
+              </button>
+            )}
           </div>
         </div>
-        )}
+          );
+        }}
       />
       {hasMore && (
         <button
@@ -411,6 +489,10 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
 // Bin rows are `p-3` around a single line of text with buttons — a fixed
 // height, kept beside the row's own classes so the two cannot drift.
 const BIN_ROW_HEIGHT = 57;
+// A row with a `renderDetail` line underneath the label needs the extra
+// line's own height on top of the base row - kept as its own constant
+// rather than computed, same reasoning as BIN_ROW_HEIGHT above.
+const BIN_ROW_HEIGHT_WITH_DETAIL = 77;
 
 export function BinDashboard() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
@@ -443,6 +525,7 @@ export function BinDashboard() {
         </div>
         <div className="p-4">
           {activeTab === 'organizations' && <OrganizationsBin />}
+          {activeTab === 'teams' && <TeamsBin />}
           {activeTab === 'projects' && <ProjectsBin />}
           {activeTab === 'tasks' && <TasksBin />}
           {activeTab === 'agents' && <AgentsBin />}
