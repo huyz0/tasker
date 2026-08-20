@@ -61,20 +61,55 @@ Verified: a real `domain.org.member_role_updated` produced exactly one row
 naming the actor (`user`/`usr-admin-1`, org and requestId carried through);
 replaying it returned `duplicate` and left one row.
 
+### M08-T04 — actor on every event
+
+Stamped in `withRequestCorrelation`, beside the requestId it already injects,
+rather than at the ~50 publish sites. One place means a handler cannot
+forget, and a forgotten actor is worse than it sounds: the trail records that
+event as unattributed, indistinguishable from something the system did on its
+own.
+
+The request context is opened by the logging interceptor, which knows only a
+session user id — it runs before a database handle exists. `setRequestActor`
+lets the session interceptor fill in the full principal a moment later, on the
+context object already in flight.
+
+A payload that already names an actor keeps it: a handler acting *on behalf
+of* someone else is telling the truth about the subject.
+
+### M08-T05/T06 — listAuditEvents and the trail view
+
+Landed together because `gui:rpc-coverage` refuses contract surface the GUI
+never calls. Read-only by construction — one method, no mutation, because the
+trail is written solely by the projector. Gated on the existing `org:admin`
+rather than a new `audit:*` family that would need seeding everywhere.
+
+A third section under Organizations & Settings: filter by event and by actor,
+virtualized, `domain.` prefix stripped, `system` actors labelled rather than
+left blank.
+
+Three gaps found while building: `executePaginatedQuery` defaults its sort to
+`createdAt` and this table has `occurredAt` (`defaultSort` exists for exactly
+that, and its doc comment names the resulting error); the TypeSpec does not
+emit services, so `buf` generates from the checked-in `.proto` and both need
+updating; and a query-error test can fail on an unhandled rejection from an
+*earlier* test's still-mounted query unless the mock has a resolved fallback
+behind the rejection.
+
 ## Remaining
 
-T04 actor on every payload · T05 `listAuditEvents` · T06 audit UI ·
 T07 streaming endpoint · T08 client subscription · T09 reconnect/fallback ·
 T10 connection indicator · (+1)
 
-## Open question for the next session
+## T07 authorization — decided
 
-T07 needs a decision that is not mine to make unilaterally: how a streaming
-connection is authorized and scoped. The exit criterion says a user receives
-only events for organizations they belong to, which means either
-re-authorizing per event or pinning the subscription's scope at connect and
-tearing it down when membership changes. The second is cheaper and the first
-is safer.
+Authorize at connect, then re-validate the connection's org set when a
+`domain.org.member_*` event flows through the stream it is already subscribed
+to. Cheap in the common case, and self-correcting on revocation: the event
+system polices itself rather than paying a policy check on every message.
+Per-event re-authorization is stricter but costs a `can()` call per message
+per connection, which is the wrong trade for a feed whose whole point is
+volume.
 
 ## Also found, not fixed
 
