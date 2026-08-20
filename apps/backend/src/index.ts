@@ -1,6 +1,6 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
@@ -23,6 +23,7 @@ import { createLabelsHandler } from "./modules/labels/labels.handler";
 import { createTeamsHandler } from "./modules/teams/teams.handler";
 import { createRolesHandler } from "./modules/roles/roles.handler";
 import { createMemoryHandler } from "./modules/memory/memory.handler";
+import { createAuditHandler } from "./modules/audit/audit.handler";
 import { createRepositoriesHandler } from "./modules/repositories/repositories.handler";
 import createSearchHandler from "./modules/search/search.handler";
 import createDashboardHandler from "./modules/dashboard/dashboard.handler";
@@ -146,6 +147,7 @@ const handler = connectNodeAdapter({
     router.service(TeamService as any, createTeamsHandler(db, nc));
     router.service(RoleService as any, createRolesHandler(db, nc));
     router.service(MemoryService as any, createMemoryHandler(db, nc));
+    router.service(AuditService as any, createAuditHandler(db));
     router.service(RepositoryService as any, createRepositoriesHandler(db, nc));
     createSearchHandler(router, db);
     createDashboardHandler(router, db);

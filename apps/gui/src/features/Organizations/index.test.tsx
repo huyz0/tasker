@@ -36,7 +36,15 @@ vi.mock('@connectrpc/connect', () => ({
     revokeInvitation: mockRevokeInvitation,
   })),
 }));
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ OrgService: {} }));
+vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ OrgService: {}, AuditService: {} }));
+
+// The audit panel is a sibling tab with its own query; these tests are about
+// the Organizations and Roles sections, so it stands in as a marker rather
+// than pulling a second RPC surface into every case here. AuditTrail.test.tsx
+// covers it directly.
+vi.mock('./AuditTrail', () => ({
+  AuditTrail: ({ orgId }: { orgId: string }) => <div data-testid="audit-trail">audit for {orgId}</div>,
+}));
 
 let mockActiveOrgId = 'org-1';
 const mockSetActiveOrgId = vi.fn((id: string) => { mockActiveOrgId = id; });

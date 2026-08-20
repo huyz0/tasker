@@ -11,6 +11,7 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ListState } from '../../components/ui/ListState';
 import { RowActionsMenu } from '../../components/ui/RowActionsMenu';
 import * as Tabs from '@radix-ui/react-tabs';
+import { AuditTrail } from './AuditTrail';
 
 const orgClient = createClient(OrgService, transport);
 
@@ -87,7 +88,7 @@ function slugify(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `org-${Date.now()}`;
 }
 
-type Section = 'organizations' | 'members';
+type Section = 'organizations' | 'members' | 'audit';
 
 export function OrganizationsDashboard() {
   const { confirm, confirmDialog } = useConfirm();
@@ -512,6 +513,12 @@ export function OrganizationsDashboard() {
           >
             Roles & Permissions
           </Tabs.Trigger>
+          <Tabs.Trigger
+            value="audit"
+            className="w-full text-left p-2 rounded text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50 data-[state=active]:font-medium data-[state=active]:bg-muted data-[state=inactive]:hover:bg-muted/50"
+          >
+            Audit Trail
+          </Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="organizations" className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
             <>
@@ -855,6 +862,11 @@ export function OrganizationsDashboard() {
                 </div>
               )}
             </>
+        </Tabs.Content>
+        <Tabs.Content value="audit" className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
+          {/* Scoped to the active org: the trail names who did what inside
+              one organization, and the handler refuses any other. */}
+          <AuditTrail orgId={activeOrgId} />
         </Tabs.Content>
       </Tabs.Root>
       {confirmDialog}

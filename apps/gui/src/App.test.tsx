@@ -42,6 +42,7 @@ vi.mock('@connectrpc/connect', () => ({
 
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   HealthService: {},
+  AuditService: {},
   AuthService: {},
   OrgService: {},
   TaskTypeService: {},

@@ -1941,3 +1941,42 @@ service MemoryService {
   rpc RestoreBelief(RestoreBeliefRequest) returns (RestoreBeliefResponse);
   rpc PurgeBelief(PurgeBeliefRequest) returns (PurgeBeliefResponse);
 }
+
+// ==== Audit (M08) ====
+
+// One recorded domain.* event.
+message AuditEvent {
+  string id = 1;
+  optional string orgId = 2;
+  string subject = 3;
+  // "user" | "agent" | "system".
+  string actorType = 4;
+  // Absent for "system", which is a real answer rather than a gap: a
+  // retention sweep has no principal behind it.
+  optional string actorId = 5;
+  optional string requestId = 6;
+  // The event's JSON verbatim. Over twenty subjects publish with differing
+  // shapes; a typed field per subject would make every new event a contract
+  // change.
+  string payload = 7;
+  string occurredAt = 8;
+}
+
+message ListAuditEventsRequest {
+  string orgId = 1;
+  optional PageRequest page = 2;
+  optional string subject = 3;
+  optional string actorId = 4;
+}
+
+message ListAuditEventsResponse {
+  repeated AuditEvent events = 1;
+  optional PageResponse page = 2;
+}
+
+// Read-only by construction. The trail is written solely by the event
+// consumer's projector; exposing a mutation here would let the record of what
+// happened be edited by the people it records.
+service AuditService {
+  rpc ListAuditEvents(ListAuditEventsRequest) returns (ListAuditEventsResponse);
+}
