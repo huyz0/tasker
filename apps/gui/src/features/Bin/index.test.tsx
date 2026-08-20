@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const {
   mockListOrgs, mockRestoreOrg, mockPurgeOrg,
+  mockListTeams, mockRestoreTeam,
   mockListProjects, mockRestoreProject, mockPurgeProject,
   mockListTasks, mockRestoreTask, mockPurgeTask,
   mockListAgents, mockRestoreAgent, mockPurgeAgent,
@@ -13,6 +14,8 @@ const {
   mockListOrgs: vi.fn(),
   mockRestoreOrg: vi.fn(),
   mockPurgeOrg: vi.fn(),
+  mockListTeams: vi.fn(),
+  mockRestoreTeam: vi.fn(),
   mockListProjects: vi.fn(),
   mockRestoreProject: vi.fn(),
   mockPurgeProject: vi.fn(),
@@ -37,6 +40,7 @@ vi.mock('@connectrpc/connect', () => ({
   createClient: vi.fn((service: unknown) => {
     switch (service) {
       case 'OrgService': return { listOrgs: mockListOrgs, restoreOrg: mockRestoreOrg, purgeOrg: mockPurgeOrg };
+      case 'TeamService': return { listTeams: mockListTeams, restoreTeam: mockRestoreTeam };
       case 'ProjectService': return { listProjects: mockListProjects, restoreProject: mockRestoreProject, purgeProject: mockPurgeProject };
       case 'TaskService': return { listTasks: mockListTasks, restoreTask: mockRestoreTask, purgeTask: mockPurgeTask };
       case 'AgentService': return { listAgents: mockListAgents, restoreAgent: mockRestoreAgent, purgeAgent: mockPurgeAgent };
@@ -47,6 +51,7 @@ vi.mock('@connectrpc/connect', () => ({
 }));
 vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
   OrgService: 'OrgService',
+  TeamService: 'TeamService',
   ProjectService: 'ProjectService',
   TaskService: 'TaskService',
   AgentService: 'AgentService',
@@ -79,6 +84,7 @@ describe('BinDashboard', () => {
   beforeEach(() => {
     for (const m of [
       mockListOrgs, mockRestoreOrg, mockPurgeOrg,
+      mockListTeams, mockRestoreTeam,
       mockListProjects, mockRestoreProject, mockPurgeProject,
       mockListTasks, mockRestoreTask, mockPurgeTask,
       mockListAgents, mockRestoreAgent, mockPurgeAgent,
@@ -447,5 +453,92 @@ describe('BinDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Folders' }));
     await waitFor(() => expect(screen.getByText('No archived folders in the active project.')).toBeDefined());
     expect(mockListFolders).not.toHaveBeenCalled();
+  });
+
+  it('switches to the Teams tab and lists/restores an archived team, with no Delete Forever button', async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockListTeams.mockResolvedValue({ teams: [{ id: 'team-2', name: 'Archived Team', deletedAt: new Date().toISOString() }] });
+    mockRestoreTeam.mockResolvedValue({ success: true });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Teams' }));
+    await waitFor(() => expect(screen.getByText('Archived Team')).toBeDefined());
+    expect(mockListTeams).toHaveBeenCalledWith({ orgId: 'org-1', onlyDeleted: true, page: { cursor: undefined } });
+
+    // TeamService has no purgeTeam RPC - the row offers Restore only.
+    expect(screen.queryByRole('button', { name: 'Delete Forever' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(mockRestoreTeam).toHaveBeenCalledWith({ teamId: 'team-2' }));
+  });
+
+  it("shows the Teams tab's empty message when no org is active", async () => {
+    mockActiveOrgId = undefined;
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Teams' }));
+    await waitFor(() => expect(screen.getByText('No archived teams in the active organization.')).toBeDefined());
+    expect(mockListTeams).not.toHaveBeenCalled();
+  });
+
+  it("shows a project's key as its bin row detail", async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-2', name: 'Archived Project', key: 'PROJ', deletedAt: new Date().toISOString() }] });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Projects' }));
+
+    await waitFor(() => expect(screen.getByText('PROJ')).toBeDefined());
+  });
+
+  it("shows a task's status and assignees as its bin row detail", async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockListTasks.mockResolvedValue({
+      tasks: [{
+        id: 'task-1', title: 'Archived Task', status: 'done',
+        assignees: [{ userId: 'u1', agentId: '', name: 'Ada' }, { userId: 'u2', agentId: '', name: 'Grace' }],
+        deletedAt: new Date().toISOString(),
+      }],
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Tasks' }));
+
+    await waitFor(() => expect(screen.getByText('done · Ada, Grace')).toBeDefined());
+  });
+
+  it("omits the detail line for a task with no assignees, showing just its status", async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockListTasks.mockResolvedValue({
+      tasks: [{ id: 'task-1', title: 'Archived Task', status: 'todo', assignees: [], deletedAt: new Date().toISOString() }],
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Tasks' }));
+
+    await waitFor(() => expect(screen.getByText('todo')).toBeDefined());
+  });
+
+  it("shows an artifact's content type and size as its bin row detail", async () => {
+    mockListOrgs.mockResolvedValue({ organizations: [] });
+    mockListArtifacts.mockResolvedValue({
+      artifacts: [{
+        id: 'art-1', name: 'Archived Artifact', contentType: 'image/png', sizeBytes: 2048n,
+        deletedAt: new Date().toISOString(),
+      }],
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Artifacts' }));
+
+    await waitFor(() => expect(screen.getByText('image/png · 2.0 KB')).toBeDefined());
   });
 });
