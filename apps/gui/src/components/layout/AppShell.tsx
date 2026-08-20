@@ -101,8 +101,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Tasker
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <GlobalSearchTrigger />
+        {/* min-w-0 so this group can shrink rather than forcing the document
+            wider than the viewport; the trigger is icon-only here (see
+            GlobalSearchTrigger's own note on the 375px budget). */}
+        <div className="flex items-center gap-2 min-w-0">
+          <GlobalSearchTrigger compact />
           <ThemeToggle />
           <CurrentUser />
         </div>

@@ -6,12 +6,13 @@ test.describe('Rich markdown editor E2E', () => {
     // apps/backend, which CI does before this job (mirrors comments.spec.ts).
     await page.goto('/tasks');
 
-    const firstTaskCard = page
-      .getByRole('button')
-      .filter({ has: page.locator('h4') })
-      .first();
-    await expect(firstTaskCard).toBeVisible({ timeout: 30_000 });
-    await firstTaskCard.locator('h4').click();
+    // The task title is itself the button that opens the task — see the note
+    // in comments.spec.ts: the card stopped being a `role="button"` div when a
+    // UX review flagged the resulting axe `nested-interactive` violation, so
+    // the real control moved inside the h4.
+    const taskTitle = page.locator('h4 > button').first();
+    await expect(taskTitle).toBeVisible({ timeout: 30_000 });
+    await taskTitle.click();
 
     await expect(page.getByRole('heading', { name: 'Task Details' })).toBeVisible();
     const taskId = page.url().split('/tasks/')[1];
@@ -39,7 +40,13 @@ test.describe('Rich markdown editor E2E', () => {
     await expect(boldToggle).toBeVisible();
 
     const stamp = String(Date.now());
-    const content = page.locator('.rich-markdown-editor-content');
+    // By role, not by class: MDXEditor renders its placeholder in a second
+    // element carrying the same `rich-markdown-editor-content` class, so the
+    // class selector matches two nodes — but only when the description is
+    // empty, which is why this passed for a seeded task with body text and
+    // broke the moment the first card had none. The editable surface is the
+    // one with the textbox role.
+    const content = page.getByRole('textbox', { name: 'editable markdown' });
     await content.click();
     // Clear whatever the seed fixture (or a previous run) put here first, so
     // the assertion below can check an exact string, and repeated runs don't

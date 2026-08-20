@@ -431,13 +431,23 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.getByText(/Failed to delete task/)).toBeDefined());
   });
 
-  it('expands a task via keyboard Enter', async () => {
+  it('opens a task from the keyboard, via a real button rather than a div', async () => {
     mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
-    fireEvent.keyDown(screen.getByText('Fix bug'), { key: 'Enter' });
+    // The card used to be a `role="button"` div with a hand-written onKeyDown,
+    // which nested AssigneePicker's own button inside it — axe flagged
+    // `nested-interactive` on every card. The title is a real <button> now, so
+    // keyboard activation is the element's own native behaviour rather than
+    // something this component reimplements.
+    //
+    // jsdom does not synthesise a click from Enter the way a browser does, so
+    // asserting the element *is* a button is what proves keyboard support here;
+    // the e2e suite exercises the real key press against a real browser.
+    const title = await screen.findByRole('button', { name: 'Fix bug' });
+    expect(title.tagName).toBe('BUTTON');
 
+    fireEvent.click(title);
     await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
   });
 

@@ -6,21 +6,18 @@ test.describe('Comments E2E rendering', () => {
     // apps/backend, which CI does before this job.
     await page.goto('/tasks');
 
-    // Board cards are the role=button elements carrying a task title (h4),
-    // which distinguishes them from the column "+" buttons without pinning the
-    // test to Tailwind class names that change with any restyle.
-    const firstTaskCard = page
-      .getByRole('button')
-      .filter({ has: page.locator('h4') })
-      .first();
-    await expect(firstTaskCard).toBeVisible({ timeout: 30_000 });
-
-    // Click the *title*, not the card. Playwright clicks an element's centre,
-    // and the card's centre is now the assignee picker, which deliberately
-    // stops propagation so that choosing an assignee does not also open the
-    // task. Clicking the card body therefore does nothing — correct behaviour,
-    // and the reason this spec had been failing since the picker landed.
-    await firstTaskCard.locator('h4').click();
+    // The task title *is* the button now, so it is what opens the task.
+    //
+    // This used to locate the card as "the role=button containing an h4",
+    // because the whole card was a `role="button"` div. A UX review found that
+    // made every card an axe `nested-interactive` violation (the card
+    // announced as a button while containing the assignee picker's own
+    // button), so the roles were inverted: the card is a plain draggable
+    // container and the h4 holds a real <button>. Same click target as before
+    // — clicking the title — reached through the structure that replaced it.
+    const taskTitle = page.locator('h4 > button').first();
+    await expect(taskTitle).toBeVisible({ timeout: 30_000 });
+    await taskTitle.click();
 
     // Opening a card is a route change now (`/tasks/:taskId`), so wait for the
     // detail overlay before typing into it.
