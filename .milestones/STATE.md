@@ -58,12 +58,22 @@ double-archive guard (no such symbol in that file; the helper lives there and
 is called by artifacts/memory handlers, but the note described something that
 is not present).
 
+**Also fixed in the same round: the Bin's ambiguous empty state.** A list
+gated on `enabled: Boolean(orgId)` never runs when the scope is missing — no
+loading, no error, no data — so `ListState` fell through to its empty branch
+and said "No archived agents in the active organization" whether the org had
+none or none was selected. All six ambiguous messages were in the Bin, so
+this is a call-site fix rather than a new prop on the shared component; each
+tab now names the state it is in. One test was renamed, not just re-worded:
+"shows the Projects tab's empty message when no org is active" never cleared
+`activeOrgId`, so it asserted the opposite of what its name claimed — which
+is how the two states stayed indistinguishable this long.
+
 **Still open, and genuinely larger than a fix round** — these are feature
 work, not deferred nits: M23's named follow-up (comments and artifact content
 still use bare `<textarea>`s; the `RichMarkdownEditor` wrapper was built to be
 reused there), the deep-link `/tasks/:taskId` hard-reload bug found during
-M23, `ListState`'s empty message not distinguishing "no org selected" from
-"org genuinely has none", and the `M08`/`M09`/`M11`/`M12` backlog milestones.
+M23, and the `M08`/`M09`/`M11`/`M12` backlog milestones.
 
 **2026-08-20 — UX audit of the GUI, then fixed all four findings, merged to
 `main`.** The user asked for research into how teams use AI for UI/UX review
