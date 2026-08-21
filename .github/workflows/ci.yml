@@ -170,6 +170,37 @@ jobs:
       - name: Build & Test (Cached)
         run: moon run backend:test
 
+  audit:
+    name: Dependency vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 'latest'
+      - name: Install dependencies
+        run: bun install
+      # A ratchet: fails on any high or critical advisory that is not on the
+      # accepted list in the script, each with a reason and the route it
+      # reaches us by. New ones break the build; the ones already present —
+      # none fixable from here — do not leave the job permanently red.
+      - name: Audit JavaScript dependencies
+        run: ./scripts/audit-dependencies.sh
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/cli/go.mod
+      # The CLI is a separate ecosystem with its own advisory database, and
+      # `govulncheck` reports only vulnerabilities in code paths that are
+      # actually reachable — so a finding here is a finding, not a transitive
+      # coincidence.
+      - name: Audit Go dependencies
+        working-directory: apps/cli
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          "$(go env GOPATH)/bin/govulncheck" ./...
+
   standalone:
     name: Standalone binary (smoke)
     runs-on: ubuntu-latest

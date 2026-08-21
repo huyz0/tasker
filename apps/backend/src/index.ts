@@ -236,6 +236,18 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(report));
       return;
     }
+    // Optional bearer gate (M11-T10). Open by default, because the common
+    // deployment is a scraper on a private network and a token there is
+    // ceremony. Set METRICS_TOKEN wherever `/metrics` is reachable from
+    // somewhere it should not be — the counters name every route and RPC
+    // method this service has, which is an inventory worth not publishing
+    // even though it contains no tenant data.
+    const metricsToken = process.env.METRICS_TOKEN;
+    if (metricsToken && req.headers.authorization !== `Bearer ${metricsToken}`) {
+      res.writeHead(401, { "Content-Type": "application/problem+json" });
+      res.end(JSON.stringify({ type: "about:blank", title: "Unauthorized", status: 401 }));
+      return;
+    }
     res.writeHead(200, { "Content-Type": PROMETHEUS_CONTENT_TYPE });
     res.end(
       renderMetrics(

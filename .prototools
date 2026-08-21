@@ -13,7 +13,12 @@ moon = "2.4.6"
 # Must be >= the `go` directive in apps/cli/go.mod (1.26.1), which is the
 # module's own minimum - a lower pin here means `moon setup` installs a
 # toolchain the CLI refuses to build with.
-go = "1.26.1"
+#
+# 1.26.6 rather than 1.26.1 because `govulncheck` (M11-T11) reports five
+# reachable standard-library vulnerabilities in 1.26.5 and earlier — including
+# ones traced through `net/http` from the CLI's own generated Connect client.
+# The stdlib is a dependency like any other; the fix is the toolchain version.
+go = "1.26.6"
 
 [settings]
 auto-install = true

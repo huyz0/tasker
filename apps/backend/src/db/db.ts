@@ -7,9 +7,9 @@ import mysql from "mysql2/promise";
 import * as schemaMysql from "./schema.mysql";
 import * as schemaSqlite from "./schema.sqlite";
 
-import { migrate as migrateMysql } from "drizzle-orm/mysql2/migrator";
-import { applyEmbeddedMigrations, sqliteRunner } from "./embeddedMigrations";
-import { EMBEDDED_SQLITE_MIGRATIONS } from "./embeddedMigrations.generated";
+import { applyEmbeddedMigrations, sqliteRunner, mysqlRunner } from "./embeddedMigrations";
+import { EMBEDDED_SQLITE_MIGRATIONS, EMBEDDED_MYSQL_MIGRATIONS } from "./embeddedMigrations.generated";
+import { sql } from "drizzle-orm";
 
 export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlitePath: string = ".data/local.sqlite") {
   if (driver === "sqlite") {
@@ -62,6 +62,9 @@ export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlite
     queueLimit: Number(process.env.DB_POOL_QUEUE_LIMIT) || 200,
   });
   const db = drizzleMysql(connection, { schema: schemaMysql, mode: "default" });
-  await migrateMysql(db, { migrationsFolder: "./drizzle-mysql" });
+  // Embedded, for the same reason SQLite's are (M09-T01) and found the same
+  // way: the container image has no `./drizzle-mysql` to read, so the first
+  // boot of the compose stack died before it listened (M11-T07).
+  await applyEmbeddedMigrations(mysqlRunner(db, sql.raw.bind(sql)), EMBEDDED_MYSQL_MIGRATIONS);
   return db;
 }

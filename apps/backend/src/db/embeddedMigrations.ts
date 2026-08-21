@@ -29,18 +29,38 @@ export interface EmbeddedMigration {
   path: string;
 }
 
-/** Minimal surface of `bun:sqlite`'s Database, so tests can stand in for it. */
+/**
+ * Minimal surface of a database connection, so tests can stand in for one.
+ *
+ * Every method may return a promise or not: `bun:sqlite` is synchronous and
+ * mysql2 is not, and the apply loop awaits either. One code path for both
+ * dialects beats two that have to be kept in step.
+ */
 export interface MigrationRunner {
-  run(sql: string): void;
+  run(sql: string): void | Promise<void>;
   /** The `created_at` of the most recently applied migration, or null. */
-  lastAppliedAt(): number | null;
-  record(hash: string, when: number): void;
+  lastAppliedAt(): number | null | Promise<number | null>;
+  record(hash: string, when: number): void | Promise<void>;
 }
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
 				id SERIAL PRIMARY KEY,
 				hash text NOT NULL,
 				created_at numeric
+			)`;
+
+/**
+ * MySQL's version of the same table, as drizzle's MySQL migrator writes it.
+ *
+ * Two differences and no more: `created_at` is a `bigint` rather than
+ * `numeric`, and identifiers are backtick-quoted. The table name, the hash and
+ * the ordering are identical, so a database migrated by `drizzle-kit` is
+ * recognised here and one migrated here stays usable by `drizzle-kit`.
+ */
+const MYSQL_MIGRATIONS_TABLE = `create table if not exists \`__drizzle_migrations\` (
+				id serial primary key,
+				hash text not null,
+				created_at bigint
 			)`;
 
 /**
@@ -80,8 +100,8 @@ export async function applyEmbeddedMigrations(
   migrations: EmbeddedMigration[],
   readSql: (migration: EmbeddedMigration) => Promise<string> = (m) => Bun.file(m.path).text(),
 ): Promise<string[]> {
-  runner.run(MIGRATIONS_TABLE);
-  const lastAppliedAt = runner.lastAppliedAt();
+  await runner.run(MIGRATIONS_TABLE);
+  const lastAppliedAt = await runner.lastAppliedAt();
 
   const pending = [...migrations]
     .sort((a, b) => a.when - b.when)
@@ -99,15 +119,15 @@ export async function applyEmbeddedMigrations(
   // inside a transaction. Run bare, the `ON` half takes effect and stays on
   // for the life of the connection, which turns every fixture that inserts a
   // row before its parent into a foreign-key error.
-  runner.run('BEGIN');
+  await runner.run('BEGIN');
   try {
     for (const migration of pending) {
-      for (const statement of splitStatements(sqlByTag.get(migration.tag)!)) runner.run(statement);
-      runner.record(migration.hash, migration.when);
+      for (const statement of splitStatements(sqlByTag.get(migration.tag)!)) await runner.run(statement);
+      await runner.record(migration.hash, migration.when);
     }
-    runner.run('COMMIT');
+    await runner.run('COMMIT');
   } catch (err) {
-    runner.run('ROLLBACK');
+    await runner.run('ROLLBACK');
     throw err;
   }
 
@@ -126,5 +146,35 @@ export function sqliteRunner(sqlite: any): MigrationRunner {
     },
     record: (hash: string, when: number) =>
       sqlite.query('INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES (?, ?)').run(hash, when),
+  };
+}
+
+/**
+ * Adapts a drizzle MySQL connection to the same runner.
+ *
+ * The migrations table statement is dialect-specific, so it is substituted
+ * here rather than branching inside the apply loop — the loop's job is the
+ * ordering and the bookkeeping, which are identical for both.
+ */
+export function mysqlRunner(db: any, sqlRaw: (statement: string) => any): MigrationRunner {
+  const exec = async (statement: string) => {
+    await db.execute(sqlRaw(statement === MIGRATIONS_TABLE ? MYSQL_MIGRATIONS_TABLE : statement));
+  };
+  return {
+    run: exec,
+    lastAppliedAt: async () => {
+      const rows: any = await db.execute(
+        sqlRaw('select created_at from `__drizzle_migrations` order by created_at desc limit 1'),
+      );
+      // mysql2 returns [rows, fields]; drizzle's execute unwraps that for some
+      // query shapes and not others, so both are handled rather than guessed.
+      const first = Array.isArray(rows) ? (Array.isArray(rows[0]) ? rows[0][0] : rows[0]) : undefined;
+      return first ? Number(first.created_at) : null;
+    },
+    record: async (hash, when) => {
+      await db.execute(
+        sqlRaw(`insert into \`__drizzle_migrations\` (\`hash\`, \`created_at\`) values ('${hash}', ${when})`),
+      );
+    },
   };
 }

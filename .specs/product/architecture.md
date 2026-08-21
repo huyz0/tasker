@@ -175,6 +175,31 @@ What is actually buildable today:
   NATS server. No container images, Kubernetes manifests or CDN configuration
   are committed.
 
+### Observability and deployment (M11)
+
+- **Tracing** is OpenTelemetry, exporting over OTLP **only** when an endpoint is
+  configured; otherwise spans, propagation and log correlation all still work in
+  process with no external dependency. See `observability-standard.md` §5 and
+  ADR-0004, whose "until M11" this discharges.
+- **Metrics** are the same in-process counters, rendered at `GET /metrics` in
+  Prometheus exposition format. No second measurement, no metrics library.
+- **Health** is three signals: `/healthz` (liveness, depends on nothing),
+  `/readyz` (readiness, false while draining) and `HealthService/Ping` (the
+  whole system, database and broker included).
+- **Shutdown** stops reporting ready, waits for the load balancer to notice,
+  drains in-flight requests, then closes NATS and flushes spans — in that
+  order, because closing the broker first makes an in-flight mutation succeed
+  while its event vanishes.
+- **Container image**: `apps/backend/Dockerfile`, two stages, non-root,
+  no interpreter or package manager in the runtime layer. The same image runs
+  the API and the projector, by entrypoint.
+- **Full stack**: `docker compose --profile full up` brings up MySQL, NATS, the
+  API, the projector and an OTLP collector.
+- **Deployment sample**: `deploy/kubernetes.yaml`, annotated — including the
+  proxy read-timeout that M08's streaming endpoint requires, and the
+  `terminationGracePeriodSeconds` that has to exceed the drain budget or a pod
+  is killed mid-drain.
+
 ### Quality gates
 
 `moon check --all` runs 22 tasks, mirrored in `.github/workflows/ci.yml`:

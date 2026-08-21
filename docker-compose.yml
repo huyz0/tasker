@@ -38,6 +38,93 @@ services:
       timeout: 3s
       retries: 5
 
+  # The API itself (M11-T07). Not started by a bare `docker compose up` —
+  # `moon run dev` is the loop most work happens in, and a second backend
+  # holding port 8080 is a confusing thing to have running behind it. Bring the
+  # deployable shape up with:
+  #   docker compose --profile full up
+  backend:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      NODE_ENV: development
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_NAME: tasker
+      NATS_URL: nats://nats:4222
+      # Points at the collector below. Absent, the SDK creates no exporter at
+      # all (M11-T01) — which is exactly what standalone relies on.
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: tasker-backend
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8080
+    depends_on:
+      mysql:
+        condition: service_started
+      nats:
+        condition: service_healthy
+    healthcheck:
+      # Readiness, not liveness: `depends_on` waits on this, and what a
+      # dependent actually needs to know is whether it can send traffic.
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # The event projector (M08-T02), the same image with a different entrypoint.
+  # A separate service rather than a thread inside the API: they scale on
+  # different signals, and an API restart must not drop a partly-processed
+  # batch.
+  consumer:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    entrypoint: ["tasker-consumer"]
+    # The image's HEALTHCHECK probes :8080, which only the API serves — left
+    # inherited, this container reports unhealthy forever. The consumer has no
+    # port to probe; its liveness signal is that the process is still running,
+    # which the restart policy already acts on.
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_NAME: tasker
+      NATS_URL: nats://nats:4222
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: tasker-consumer
+    depends_on:
+      nats:
+        condition: service_healthy
+      backend:
+        # The API applies the migrations; the projector writes to a table they
+        # create. Starting it first means a first-run stack where the consumer
+        # crash-loops until the schema exists.
+        condition: service_healthy
+
+  # Where the traces go (M11-T01/T07). Debug exporter by default: the point of
+  # having it here is to prove the pipeline end to end without also asking
+  # anyone to run Jaeger, and swapping `debug` for a real exporter is one
+  # config file away.
+  otel-collector:
+    profiles: ["full"]
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    restart: unless-stopped
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./deploy/otel-collector.yaml:/etc/otel/config.yaml:ro
+    ports:
+      # 4318 OTLP/HTTP, which is what the backend's exporter speaks.
+      - "4318:4318"
+
   # Ad-hoc DB inspection during local debugging (browse rows, run one-off
   # SQL) without needing a separately installed MySQL client. Only started
   # if you actually run `docker compose up adminer` / include it in `up` -
