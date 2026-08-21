@@ -2,7 +2,7 @@
 active_milestone: null
 active_task: null
 last_updated: 2026-08-22
-last_commit: 4344e3c
+last_commit: 8329130
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,33 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-22 — invitation email delivered, closing M12's last open roadmap
+line.** "Invite users by email — record created, never sent" had been true for
+the life of this repository.
+
+Gmail by default (an app password, port 587, STARTTLS), plain SMTP underneath
+so any provider works by pointing `SMTP_HOST` elsewhere. **Off unless
+configured** — the same rule the OTLP exporter follows, and a test asserts no
+transport is even constructed without a host, because the standalone binary
+must not reach for a service that is not there.
+
+Developable without mailing anyone: `docker compose --profile mail up -d
+mailpit` catches everything at localhost:8025, and the `full` profile starts it
+with the backend already pointed at it. Verified that way rather than described
+— a real invite arrived with the right recipient, subject, organization, role
+and expiry.
+
+**Three decisions worth carrying forward.** There is deliberately **no accept
+link**: acceptance redeems on the identity a person *proves* at sign-in, so a
+forwarded invitation grants nobody anything, and a link that did would be a real
+escalation path. A mail failure **never** costs the invitation — the row is what
+grants membership and the email only says it exists. And TLS is derived from the
+port rather than configured, because getting that backwards produces a hang
+rather than an error.
+
+Two things remain open, both named in MILESTONE-12's PROGRESS.md: **M12-T01**
+(network-level interception in GUI tests) and **code signing**.
 
 **2026-08-22 — M12 Test Depth & Release complete. Every milestone in the
 ledger is now closed.**

@@ -133,6 +133,20 @@ they are not signed: signing needs certificates this project does not have, and
 M09 scoped code signing out for the same reason. Named here rather than left to
 be discovered.
 
+## Closed afterwards
+
+### Invitation email (2026-08-22)
+
+T11 recorded "invite email is never sent" as the one Phase 1 roadmap line still
+open. It is now sent: Gmail by default, any provider by `SMTP_HOST`, off unless
+configured, with Mailpit in `docker compose --profile mail` as a local catcher
+so the feature is developable without mailing anyone. Verified against it end
+to end.
+
+The design decision worth remembering: **no accept link.** Acceptance redeems on
+the identity proven at sign-in, so a forwarded invitation grants nobody
+anything — a link that did would be an escalation path with no way to revoke it.
+
 ## Exit criteria
 
 Six of eight met outright. One partially (binaries released but unsigned); one
