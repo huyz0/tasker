@@ -1390,3 +1390,97 @@ describe('M13-T15: exhaustive auth-path matrix (generated)', () => {
     expect(allUsers).toHaveLength(1); // no duplicate account was created either
   });
 });
+
+describe('sign-in methods this deployment has (M09-T06)', () => {
+  it('reports Google as unavailable when it is not configured', async () => {
+    // The standalone binary's case. A "Continue with Google" button that
+    // redirects with an empty client_id takes the person to a Google error
+    // page and leaves them there, so the sign-in screen asks first.
+    const res = await authRoutes.handle(new Request('http://localhost/api/auth/providers'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.password).toBe(true);
+    // config.ts substitutes MOCK_* credentials under NODE_ENV=test, so this
+    // asserts the shape rather than the value — the refusal below is what
+    // proves the unconfigured path.
+    expect(typeof body.google).toBe('boolean');
+  });
+
+  it('refuses the Google redirect outright when there are no credentials', async () => {
+    const { config } = await import('../../config');
+    const originalId = config.googleClientId;
+    (config as any).googleClientId = '';
+    try {
+      const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
+      expect(res.status).toBe(501);
+      const body = await res.json();
+      expect(body.detail).toContain('username and password');
+    } finally {
+      (config as any).googleClientId = originalId;
+    }
+  });
+
+  it('reports Google as unavailable when only half of it is configured', async () => {
+    // A client id with no redirect URI builds a URL Google rejects; both
+    // halves have to be present for the button to lead anywhere.
+    const { config } = await import('../../config');
+    const originalRedirect = config.googleRedirectUri;
+    (config as any).googleRedirectUri = '';
+    try {
+      const res = await authRoutes.handle(new Request('http://localhost/api/auth/providers'));
+      expect((await res.json()).google).toBe(false);
+    } finally {
+      (config as any).googleRedirectUri = originalRedirect;
+    }
+  });
+});
+
+describe('first-run starter workspace (M09-T06)', () => {
+  it('gives the first registered account an organization and a project', async () => {
+    const seeded = createAuthRoutes(db, { seedStarterWorkspace: true });
+    const res = await seeded.handle(
+      new Request('http://localhost/api/auth/password/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ username: 'firstuser', password: 'a-long-enough-password' }),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.orgId).toBeTruthy();
+    expect(body.projectId).toBeTruthy();
+  });
+
+  it('leaves registration untouched when the flag is off', async () => {
+    // The default, and what every existing deployment gets.
+    const res = await authRoutes.handle(
+      new Request('http://localhost/api/auth/password/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ username: 'plainuser', password: 'a-long-enough-password' }),
+      }),
+    );
+
+    const body = await res.json();
+    expect(body.userId).toBeTruthy();
+    expect(body.orgId).toBeUndefined();
+  });
+
+  it('does not hand the second account a workspace of its own', async () => {
+    const seeded = createAuthRoutes(db, { seedStarterWorkspace: true });
+    const register = (username: string) =>
+      seeded.handle(
+        new Request('http://localhost/api/auth/password/register', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ username, password: 'a-long-enough-password' }),
+        }),
+      );
+
+    await register('owneruser');
+    const second = await (await register('seconduser')).json();
+    expect(second.orgId).toBeUndefined();
+  });
+});

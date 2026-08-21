@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BACKEND_URL } from './connectTransport';
-import { fetchAuthSession, logout } from './authSession';
+import { fetchAuthSession, fetchAuthProviders, logout } from './authSession';
 
 describe('authSession', () => {
   beforeEach(() => {
@@ -38,5 +38,26 @@ describe('authSession', () => {
     const session = await fetchAuthSession();
 
     expect(session.mustChangePassword).toBe(true);
+  });
+});
+
+describe('fetchAuthProviders (M09-T06)', () => {
+  it('reports what the backend says is configured', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ google: true, password: true }),
+    }));
+
+    expect(await fetchAuthProviders()).toEqual({ google: true, password: true });
+    expect(fetch).toHaveBeenCalledWith(`${BACKEND_URL}/api/auth/providers`, { credentials: 'include' });
+  });
+
+  it('assumes no Google when the backend cannot answer', async () => {
+    // A backend too old to have this route, or unreachable. Showing a button
+    // that cannot work is the failure worth avoiding, so the fallback hides
+    // the method that needs configuration and keeps the one that does not.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }));
+
+    expect(await fetchAuthProviders()).toEqual({ google: false, password: true });
   });
 });

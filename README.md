@@ -109,6 +109,23 @@ To deeply understand how these isolated skills chain together, how they discover
 
 ---
 
+## 📥 Just want to run it?
+
+Tasker ships as a **single executable** that carries its own web interface,
+database schema and full-text search. No Node, no Docker, no MySQL, no
+separate frontend build:
+
+```bash
+./tasker --open --seed
+```
+
+👉 **[Standalone quickstart](docs/standalone.md)** — download links, flags,
+what "standalone" does and does not include, and how to build one yourself.
+
+Everything below is for working *on* Tasker rather than running it.
+
+---
+
 ## 🚀 Developer Setup & Prerequisites
 
 This project utilizes [Moonrepo](https://moonrepo.dev/) as its polyglot build system and task runner, backed by the `proto` toolchain manager. This ensures that every developer (and AI agent) automatically uses the exact same versions of Node.js, Bun, and Go without manual installation fighting.

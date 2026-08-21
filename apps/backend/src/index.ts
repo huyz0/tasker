@@ -42,19 +42,40 @@ import { recordHttpRequest } from "./lib/httpMetrics";
 import { createTelemetryRoutes } from "./modules/telemetry/telemetry";
 import { StaticSite } from "./lib/staticServer";
 import guiBundle from "./assets/guiBundle.json";
-
-// Bypassing network stack with local function execution logic
-export const localInProcessTransportRouter = (_req: any) => {
-   return { status: 200, message: "in-process override active" };
-};
+import { resolveRuntimeOptions, CliError, HELP_TEXT } from "./lib/cliFlags";
+import { openBrowser } from "./lib/openBrowser";
 
 const isStandalone = process.env.STANDALONE === "true";
+
+// M09-T05. Parsed before anything else opens a file or a socket, so `--help`
+// on a machine with no write permission still prints help rather than failing
+// to create `.data/`.
+const cliArgs = process.argv.slice(2);
+if (cliArgs.includes("-h") || cliArgs.includes("--help")) {
+  console.log(HELP_TEXT);
+  process.exit(0);
+}
+if (cliArgs.includes("-v") || cliArgs.includes("--version")) {
+  console.log(process.env.GIT_SHA || "dev");
+  process.exit(0);
+}
+
+let runtime;
+try {
+  runtime = resolveRuntimeOptions(cliArgs, process.env);
+} catch (err) {
+  // A usage mistake is not a crash: one line saying what is wrong, and the
+  // help text, rather than a stack trace from deep inside Zod.
+  console.error(err instanceof CliError ? `tasker: ${err.message}` : err);
+  console.error(`\n${HELP_TEXT}`);
+  process.exit(2);
+}
 
 // Decoded once, at startup. Empty unless `bun run build:standalone` filled the
 // manifest in, which is what makes `moon run dev` behave exactly as it did
 // before this existed: Vite serves the GUI there, and this serves nothing.
 const staticSite = new StaticSite(guiBundle as Record<string, string>);
-const db = await setupDatabase(isStandalone ? "sqlite" : "mysql");
+const db = await setupDatabase(isStandalone ? "sqlite" : "mysql", runtime.dbPath);
 
 process.on("uncaughtException", (err) => {
   reportError({ message: "uncaughtException", err, severity: "fatal" });
@@ -134,7 +155,7 @@ function rateLimitKey(authorization: string | null): string | null {
 // for, so this reuses rateLimitProblem rather than a bespoke response.
 const loginRateLimiter = createLoginRateLimiter();
 
-const authRoutes = createAuthRoutes(db);
+const authRoutes = createAuthRoutes(db, { seedStarterWorkspace: isStandalone && runtime.seed });
 const telemetryRoutes = createTelemetryRoutes(db);
 
 const handler = connectNodeAdapter({
@@ -264,8 +285,9 @@ http.createServer(async (req, res) => {
   }
 
   handler(req, res);
-}).listen(8080, () => {
-  logger.info({ port: 8080 }, "backend.listening");
+}).listen(runtime.port, () => {
+  logger.info({ port: runtime.port, dbPath: isStandalone ? runtime.dbPath : undefined }, "backend.listening");
+  if (runtime.open) openBrowser(`http://localhost:${runtime.port}`);
 });
 
 const RETENTION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;

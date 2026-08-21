@@ -159,13 +159,18 @@ What is actually buildable today:
 - `bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts`
   (`apps/backend/package.json`, wired as `backend:build-standalone` in
   `apps/backend/moon.yml`). This compiles **the backend only**.
-- **The SPA is not embedded.** A `GET /` on the standalone binary returns a
-  hardcoded placeholder string (`index.ts:149-152`). Its own text claims
-  "Embedded Vite SPA Assets active"; no asset is bundled, because the compile
-  step above has only `src/index.ts` as input. Serving the real SPA is **M09**.
-- `index.ts:34` exports `localInProcessTransportRouter`, a three-line stub
-  returning `{ status: 200, message: "in-process override active" }`. **It is
-  referenced nowhere.** In-process transport is **M09**.
+- **The SPA is embedded** (M09-T02/T03). `scripts/bundle-gui.ts` packs
+  `apps/gui/dist` into a path → base64 manifest that `bun build --compile`
+  carries, and `lib/staticServer.ts` serves it with content types, cache
+  headers and SPA history fallback. The migrations travel the same way
+  (`db/embeddedMigrations.ts`), so the binary creates and migrates its own
+  SQLite database from an empty directory.
+- **There is no in-process transport, deliberately** — see
+  **ADR-0019**. The former `localInProcessTransportRouter` stub is deleted. The
+  GUI is a browser application, so its calls cross a real socket regardless of
+  what the server does internally, and a second entry point into the handlers
+  would mean a second ordering of the session, rate-limit and logging
+  interceptors.
 - Standalone uses `bun:sqlite`; clustered deployment uses MySQL and an external
   NATS server. No container images, Kubernetes manifests or CDN configuration
   are committed.
@@ -224,15 +229,15 @@ updates without polling.
 
 ### Single portable binary — **M09**
 
-Three separate pieces are missing behind one goal:
+Delivered. The SPA and the SQLite migrations are both embedded in the compiled
+binary, which starts against `bun:sqlite` with FTS5 from an empty directory and
+reads `--port` / `--db` / `--open` / `--seed` layered over the environment.
 
-1. Embedding the built SPA in the compiled binary and serving it, replacing the
-   placeholder at `index.ts:149-152`.
-2. Replacing the `localInProcessTransportRouter` stub (`index.ts:34`) with a
-   real in-process transport that satisfies the same Connect-RPC contract,
-   removing network overhead inside the binary.
-3. Zero-config startup against `bun:sqlite` with FTS5 so standalone loses no
-   capability.
+The one piece deliberately *not* delivered is the in-process transport, which
+**ADR-0019** records as declined rather than deferred: the GUI is a browser
+application, so its RPCs cross a real socket whatever the server does
+internally, and a second entry point into the handlers would duplicate the
+interceptor ordering that authenticates and throttles every caller.
 
 ### Graphical state-machine editing — **M05**
 

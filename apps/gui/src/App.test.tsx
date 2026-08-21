@@ -211,7 +211,10 @@ describe('App', () => {
     it('/login renders the sign-in card, outside the authenticated shell', async () => {
       healthQueryResult = { data: undefined, error: null, isLoading: false };
       renderApp('/login');
-      expect(await screen.findByRole('button', { name: /continue with google/i })).toBeInTheDocument();
+      // The password form's submit, not the Google button: since M09-T06 that
+      // one is conditional on the backend reporting Google as configured, and
+      // this test is about routing, not about which providers exist.
+      expect(await screen.findByRole('button', { name: 'Sign in' })).toBeInTheDocument();
       // Outside AppShell entirely - no sidebar to navigate away with.
       expect(screen.queryByRole('link', { name: 'Organizations' })).toBeNull();
     });
