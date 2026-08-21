@@ -13,6 +13,16 @@ tasks:
     inputs:
       - 'src/**/*'
       - '**/*.integration.test.ts'
+  # M08-T11. Separate from `test-integration` because it needs a broker rather
+  # than a GitHub token — different prerequisite, so a missing one must skip
+  # only its own half.
+  test-integration-realtime:
+    deps:
+      - 'shared-contract:install-deps'
+    command: 'bun run test:integration-realtime'
+    inputs:
+      - 'src/**/*'
+      - '**/*.integration.test.ts'
   # The M08 event consumer. `type: run` so it stays out of `moon check` —
   # it is a long-lived process that needs a broker, not a gate.
   consumer:

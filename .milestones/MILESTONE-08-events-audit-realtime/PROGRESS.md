@@ -168,9 +168,33 @@ shared org received only the ready frame while the owner received
 recorded nothing for task events before the fix, records them against the
 right org after it.
 
+### M08-T11 — the whole chain, against a real broker
+
+`realtime.integration.test.ts` stubs none of the hops: a real `createTask`
+through a real NATS connection, into a real subscription *and* through
+JetStream into a real `audit_log` row. Every other test in this milestone
+stubs one of them, and both bugs the milestone actually hit — the wrapper that
+ate the connection's prototype, and events published with no tenant — were
+invisible to anything that did.
+
+Gated on `TASKER_REAL_INTEGRATION=1`, the same switch the GitHub integration
+test uses, and split into its own moon task and CI job: it needs a broker, not
+a token, and CI can simply start a broker. That job runs on forks, which is
+where most of the value is.
+
+Two things worth recording from writing it. Racing `iter.next()` against a
+timeout deadlocks the generator on cleanup — the losing `next()` stays pending
+and `return()` queues behind a promise that never settles — so the helper
+counts frames instead, which the heartbeat makes a usable clock. And the
+consumer is created with `deliver_policy: new`: the shared stream holds every
+event the broker has ever seen, and replaying them buries the test's own.
+
+Revert-and-confirm-fail: with the org injection disabled, it fails in 9s on
+"expected not null" rather than hanging.
+
 ## Remaining
 
-T11 end-to-end test: mutation → event → projection → second client.
+Nothing. Every task and every exit criterion is met; T11 was the last.
 
 ## T07 authorization — decided
 
