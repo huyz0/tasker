@@ -119,8 +119,13 @@ separate frontend build:
 ./tasker --open --seed
 ```
 
-👉 **[Standalone quickstart](docs/standalone.md)** — download links, flags,
-what "standalone" does and does not include, and how to build one yourself.
+👉 **[Quickstart](docs/quickstart.md)** — ten minutes from nothing to a working
+instance, whichever way you are running it.
+
+Then: **[Standalone guide](docs/standalone.md)** for flags, upgrades and
+backups · **[Agent integration](docs/agent-integration.md)** for connecting an
+autonomous worker · **[CLI reference](docs/cli-reference.md)** for every
+command.
 
 Everything below is for working *on* Tasker rather than running it.
 

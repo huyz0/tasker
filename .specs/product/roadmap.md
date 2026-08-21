@@ -12,34 +12,42 @@ Report on it any time with `/milestone-status`.
 
 ## Phase 1: MVP — status
 
-The original MVP scope, with the milestone that owns each remaining gap.
+**Delivered.** Every capability below is built, and every milestone in the
+ledger is closed (M12-T11, 2026-08-22). The "Owner" column names the milestone
+that closed each gap rather than the one that still owns it.
+
+The one thing worth reading twice: "Delivered" here means built *and* verified
+against something real — a running server, a live broker, a container, a
+browser — not merely present in the source. Where that verification found the
+feature broken, the finding is recorded in the milestone's `PROGRESS.md` rather
+than quietly fixed.
 
 | Capability | State | Owner |
 |---|---|---|
 | Core API, CLI, agent skills | Delivered | — |
-| Real-time GUI | Not built — no subscription of any kind | M08 |
-| Single-bundle portable packaging with embedded DB and search | Not built — the standalone binary serves a placeholder page | M09 |
+| Real-time GUI | Delivered — server-streaming feed, targeted invalidation, reconnect with polling fallback, connection indicator | M08 |
+| Single-bundle portable packaging with embedded DB and search | Delivered — one file carries the GUI, both dialects' migrations and FTS5; verified from an empty directory under `env -i` | M09 |
 | Organizations & users, admin / non-admin roles | Delivered | — |
-| Teams | Not modelled | M10 |
+| Teams | Delivered | M10 |
 | Google login | Delivered | — |
-| Local username/password accounts, no email required | Not modelled — every user is a Google identity today | M13 |
-| Linking/unlinking an external identity to an existing account | Not modelled | M13 |
-| Invite users by email | Record created; never sent, no UI, no expiry or revocation | M03 invite surface, M11 delivery |
-| Hierarchical organization structure | Delivered, capped at two levels, no inheritance | M10 |
+| Local username/password accounts, no email required | Delivered | M13 |
+| Linking/unlinking an external identity to an existing account | Delivered | M13 |
+| Invite users by email | Invite surface delivered (create, list, revoke, expiry). **Email delivery is still not implemented** — no SMTP integration exists, and this is the one Phase 1 line not fully closed | M03 |
+| Hierarchical organization structure | Delivered, with ancestor climbing in the policy engine | M10 |
 | Task types and status enums | Delivered | — |
-| Task state machines | Enforced by the API; not configurable from the GUI | M05 |
+| Task state machines | Delivered — enforced by the API and configurable from the Task Types screen | M05, M15 |
 | Project templates with root task type | Delivered | — |
 | Projects from templates, owner assignment | Delivered | — |
-| Agent roles and configuration | Delivered; globally shared across tenants, and not creatable from the GUI | M03 |
-| Agent instances | Delivered as records; agents have no identity or credential | M04 |
+| Agent roles and configuration | Delivered — scoped to one organization (ADR-0007) and creatable from the GUI | M03, M17 |
+| Agent instances | Delivered — an agent is a principal with its own scoped, revocable, rate-limited token (ADR-0008) | M04 |
 | Tasks with human-readable ids, status, description, comments, labels | Delivered | — |
-| Task ↔ agent / human relationships (created by, assigned to, reviewers) | API and CLI only; unreachable from the GUI | M05 |
-| Artifacts in nested folders | API and CLI complete; GUI has no upload and renders folders flat | M05 |
-| Task-to-artifact links | API and CLI only | M05 |
+| Task ↔ agent / human relationships (created by, assigned to, reviewers) | Delivered across API, CLI and GUI | M05 |
+| Artifacts in nested folders | Delivered — nested tree and upload in the GUI | M05, M18 |
+| Task-to-artifact links | Delivered across API, CLI and GUI | M05, M18 |
 | Task comments and AI task notes | Delivered | — |
 | Markdown throughout | Delivered | — |
-| Artifact commenting | Supported by the API; not mounted in the GUI | M05 |
-| List, search, sort, filter, page across core entities | Backend complete; the GUI sends none of these parameters | M05, M07 |
+| Artifact commenting | Delivered | M05 |
+| List, search, sort, filter, page across core entities | Delivered — the GUI sends them, and no hot read path is a full table scan (gated) | M05, M07 |
 
 ## Phase 2: Post-launch — status
 
@@ -48,8 +56,8 @@ The original MVP scope, with the milestone that owns each remaining gap.
 | GitHub / Bitbucket repositories, read-only | Delivered | — |
 | Project ↔ repository links | Delivered | — |
 | Tasks displayed with linked pull requests | Delivered | — |
-| Build and deployment tracking | Live pass-through implemented; surfaced only in the project repository panel | M05 |
-| Universal search | Delivered — M01 made every shown result resolve to a real route, filtering out those that cannot. Still a `LIKE` scan with no index | M07 |
+| Build and deployment tracking | Delivered as a live pass-through, surfaced in the project repository panel | M05 |
+| Universal search | Delivered — served by SQLite FTS5 / MySQL full-text rather than a `LIKE` scan (ADR-0002 superseded by M07) | M07 |
 
 ---
 

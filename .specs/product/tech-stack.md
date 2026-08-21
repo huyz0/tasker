@@ -122,6 +122,7 @@ standalone promise intact.
 | `go` | 1.26.1 (`.prototools`, `go.mod`) | Language |
 | `connectrpc.com/connect` | v1.19.1 | RPC client |
 | `github.com/spf13/cobra` | v1.10.2 | Command parsing |
+| `github.com/spf13/pflag` | v1.0.10 | Direct, not transitive: the flag-reset test helper uses `SliceValue.Replace` to stop slice flags accumulating across shuffled runs |
 | `google.golang.org/protobuf` | v1.36.11 | Generated message runtime |
 | `golang.org/x/term` | v0.45.0 | Masked password prompt for `auth login --username` (M13-T13) — reading a raw terminal without echo cross-platform isn't a stdlib one-liner, so this is the one dependency-standard.md's minimalism rule doesn't reject. |
 

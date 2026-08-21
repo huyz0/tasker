@@ -263,4 +263,4 @@ jobs:
       - name: Setup Shared Contract
         run: cd packages/shared-contract && bun install
       - name: Build & Test (Cached)
-        run: moon run cli:format cli:vet cli:test cli:build
+        run: moon run cli:format cli:vet cli:test cli:build cli:coverage-gate

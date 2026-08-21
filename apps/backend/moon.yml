@@ -13,6 +13,16 @@ tasks:
     inputs:
       - 'src/**/*'
       - '**/*.integration.test.ts'
+  # M12-T02. The real server as its own process, driven by the real generated
+  # client. Separate again: it binds a port and spawns a process, which is a
+  # different prerequisite from a broker or a token.
+  test-wire:
+    deps:
+      - 'shared-contract:install-deps'
+    command: 'bun run test:wire'
+    inputs:
+      - 'src/**/*'
+
   # M08-T11. Separate from `test-integration` because it needs a broker rather
   # than a GitHub token — different prerequisite, so a missing one must skip
   # only its own half.

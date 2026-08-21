@@ -52,3 +52,31 @@ tasks:
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
+
+  # A runnable binary named what the documentation calls it (M12-T08).
+  # `go build ./...` compiles every package and writes nothing you can run;
+  # this is the one that produces `apps/cli/tasker`.
+  build-binary:
+    command: 'go build -o tasker .'
+    inputs:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+    outputs:
+      - 'tasker'
+
+  # M12-T06. `coverage` prints the number; this fails when it drops.
+  # 80% is the milestone's bar and the figure today is 94.4%, so the gate is a
+  # ratchet against a slide rather than a stretch.
+  #
+  # Runs the profile itself rather than depending on `cli:test`'s. A cached
+  # `cli:test` writes no file, and declaring `coverage.out` as its output makes
+  # moon fail the task outright — `go test` rewrites the profile once per
+  # package, so what survives the run is not what moon expects to cache.
+  coverage-gate:
+    command: 'bash scripts/check-coverage.sh 80'
+    inputs:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'scripts/check-coverage.sh'
