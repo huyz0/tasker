@@ -1980,3 +1980,38 @@ message ListAuditEventsResponse {
 service AuditService {
   rpc ListAuditEvents(ListAuditEventsRequest) returns (ListAuditEventsResponse);
 }
+
+// ==== Live events (M08-T07) ====
+
+// One event pushed to a subscribed client. Deliberately thinner than
+// AuditEvent: a browser needs to know *what changed* so it can refetch that
+// slice, not the full recorded payload. Sending the payload would also push
+// data to a connection that may no longer be entitled to it by the time it
+// arrives.
+message DomainEventMessage {
+  // "domain.<entity>.<action>", or a "stream." control frame —
+  // "stream.ready" once the server has the subscription, "stream.heartbeat"
+  // on a quiet feed. Both exist because an opened stream that has yielded
+  // nothing is indistinguishable from a wedged one.
+  string subject = 1;
+  // Empty on a control frame, which belongs to no tenant.
+  string orgId = 2;
+  // Present when the event names one — lets a client invalidate a single
+  // project's queries rather than everything it holds.
+  optional string projectId = 3;
+  string occurredAt = 4;
+}
+
+message SubscribeEventsRequest {
+  // Narrows the feed. Always intersected with the caller's real memberships,
+  // never trusted on its own: asking for an org you do not belong to yields
+  // nothing rather than an error, because the answer is the same either way
+  // and an error would confirm the org exists.
+  optional string orgId = 1;
+  optional string projectId = 2;
+}
+
+// A live feed of domain events, scoped to what the caller may see.
+service EventService {
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream DomainEventMessage);
+}

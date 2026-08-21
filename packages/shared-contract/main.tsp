@@ -2254,3 +2254,60 @@ model ListAuditEventsResponse {
 interface AuditService {
   listAuditEvents(request: ListAuditEventsRequest): ListAuditEventsResponse;
 }
+
+/**
+ * One live domain event (M08-T07).
+ *
+ * Deliberately thin: subject, tenant, and time. A client uses it to decide
+ * what to refetch, not to render — carrying the full payload would put every
+ * field's authorization rules on this stream too, and the subscriber can
+ * already read whatever the event says it should re-read.
+ */
+model DomainEventMessage {
+  /**
+   * `domain.<entity>.<action>`, or a `stream.` control frame — `stream.ready`
+   * once the server has the subscription, `stream.heartbeat` on a quiet feed.
+   * Both exist because an opened stream that has yielded nothing is
+   * indistinguishable from a wedged one.
+   */
+  @field(1) subject: string;
+
+  /** Empty on a control frame, which belongs to no tenant. */
+  @field(2) orgId: string;
+
+  /**
+   * Present when the event names one — lets a client invalidate a single
+   * project's queries rather than everything it holds.
+   */
+  @field(3) projectId?: string;
+
+  @field(4) occurredAt: string;
+}
+
+model SubscribeEventsRequest {
+  /**
+   * Narrows the feed. Always intersected with the caller's real memberships,
+   * never trusted on its own: asking for an org you do not belong to yields
+   * nothing rather than an error, because the answer is the same either way
+   * and an error would confirm the org exists.
+   */
+  @field(1) orgId?: string;
+
+  @field(2) projectId?: string;
+}
+
+/**
+ * A live feed of domain events, scoped to what the caller may see.
+ *
+ * Server-streaming, and ephemeral by design: it consumes the same subjects as
+ * the audit projector but through core NATS rather than a durable JetStream
+ * consumer. A browser tab that fell behind wants current state, not a backlog.
+ *
+ * The signature below reads as a unary call because TypeSpec has no way to say
+ * "stream of" here, and this file documents the contract rather than emitting
+ * it — `tasker/health/v1/health.proto` is what buf generates from, and there
+ * the return really is `stream DomainEventMessage`.
+ */
+interface EventService {
+  subscribeEvents(request: SubscribeEventsRequest): DomainEventMessage;
+}

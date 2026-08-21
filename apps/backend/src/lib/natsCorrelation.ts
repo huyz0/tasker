@@ -55,6 +55,15 @@ export function withRequestCorrelation<T extends { publish: (subject: string, da
                   payload.actor = ctx.actor;
                   changed = true;
                 }
+                // M08-T07: the tenant, from the org this request authorized
+                // against (see requestContext.ts's setRequestOrg for why most
+                // payloads have none of their own). Only filled when absent —
+                // a payload that names an org is describing that org, and the
+                // request's own is not necessarily the same one.
+                if (ctx.orgId && !payload.orgId) {
+                  payload.orgId = ctx.orgId;
+                  changed = true;
+                }
                 if (changed) data = Buffer.from(JSON.stringify(payload));
               }
             } catch {

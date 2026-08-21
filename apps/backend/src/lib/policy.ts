@@ -4,7 +4,7 @@ import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
 import type { Principal } from '../modules/auth/session';
 import { getProjectOrgId } from './authz';
-import { getPolicyCache } from './requestContext';
+import { getPolicyCache, setRequestOrg } from './requestContext';
 
 // Resolved lazily, same reasoning as authz.ts's isStandalone(): freezing
 // this at module load caught the wrong schema when this module loaded
@@ -149,6 +149,13 @@ export async function can(db: any, principal: Principal, scope: Scope, permissio
     // getTaskOrgId's own includeDeleted note in authz.ts.
     const orgId = await getProjectOrgId(db, scope.id, true);
     scopesToCheck.push({ type: 'organization', id: orgId });
+    // M08-T07: the org this request is acting in, recorded once here so every
+    // domain event it publishes carries a tenant. A project-scoped check is
+    // the case that matters — a task row has a projectId and no orgId, so
+    // without this the whole `domain.task.*` family is published untenanted.
+    setRequestOrg(orgId);
+  } else if (scope.type === 'organization') {
+    setRequestOrg(scope.id);
   }
   // T09: every organization-type scope reached so far (the scope itself,
   // or a project's owning org) also reaches its ancestor organizations.

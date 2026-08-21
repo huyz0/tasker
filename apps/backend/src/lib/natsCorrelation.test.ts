@@ -212,3 +212,48 @@ describe('withRequestCorrelation: the acting principal (M08-T04)', () => {
     expect(payload.requestId).toBe('req-4');
   });
 });
+
+describe('withRequestCorrelation: the acting tenant (M08-T07)', () => {
+  it('stamps the org onto an event whose own payload has none', () => {
+    // A task row carries a projectId and no orgId, so `domain.task.*` — the
+    // highest-traffic subject in the system — was published untenanted. The
+    // live feed dropped every one of them, and the audit trail filed them
+    // under a null org where listAuditEvents could never find them again.
+    const { nc, publishedMessages } = makeFakeNc();
+    const wrapped = withRequestCorrelation(nc);
+
+    runWithRequestContext({ requestId: 'req-1', orgId: 'org-1' }, () => {
+      wrapped.publish('domain.task.created', Buffer.from(JSON.stringify({ id: 't1', projectId: 'p1' })));
+    });
+
+    const payload = JSON.parse(publishedMessages[0]!.data.toString());
+    expect(payload.orgId).toBe('org-1');
+    expect(payload.projectId).toBe('p1');
+  });
+
+  it('leaves an org the payload already names alone', () => {
+    // The event is describing *that* org — archiving one org from inside
+    // another's context, say. The request's own org is not the same claim.
+    const { nc, publishedMessages } = makeFakeNc();
+    const wrapped = withRequestCorrelation(nc);
+
+    runWithRequestContext({ requestId: 'req-2', orgId: 'org-parent' }, () => {
+      wrapped.publish('domain.org.archived', Buffer.from(JSON.stringify({ orgId: 'org-child' })));
+    });
+
+    expect(JSON.parse(publishedMessages[0]!.data.toString()).orgId).toBe('org-child');
+  });
+
+  it('publishes unchanged when the request never authorized against an org', () => {
+    // Registering a user precedes any membership. There is no tenant to name,
+    // and inventing one would be worse than leaving it off.
+    const { nc, publishedMessages } = makeFakeNc();
+    const wrapped = withRequestCorrelation(nc);
+
+    runWithRequestContext({ requestId: 'req-3' }, () => {
+      wrapped.publish('domain.auth.registered', Buffer.from(JSON.stringify({ userId: 'u1' })));
+    });
+
+    expect(JSON.parse(publishedMessages[0]!.data.toString()).orgId).toBeUndefined();
+  });
+});

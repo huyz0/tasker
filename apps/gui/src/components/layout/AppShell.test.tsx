@@ -114,3 +114,18 @@ describe('the mobile sidebar', () => {
     await waitFor(() => expect(useLayoutStore.getState().sidebarOpen).toBe(false));
   });
 });
+
+describe('live connection indicator (M08-T10)', () => {
+  test('reports the feed state in both the mobile header and the desktop rail', () => {
+    // Two placements, one subscription: the shell holds the single
+    // useLiveEvents and passes its status down. Only one is displayed at a
+    // time (the header is md:hidden, the rail is hidden md:flex), but jsdom
+    // applies no CSS, so both are in the tree here.
+    renderShell();
+    const indicators = screen.getAllByTestId('live-status');
+    expect(indicators).toHaveLength(2);
+    for (const indicator of indicators) {
+      expect(indicator.getAttribute('data-status')).toBe('connecting');
+    }
+  });
+});

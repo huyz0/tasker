@@ -81,22 +81,22 @@ OpenSearch, cross-region replication.
       - Files: `apps/gui/src/features/Organizations/`
       - Verify: an administrator can trace a member removal.
 
-- [ ] **M08-T07** — Add a server-streaming subscription endpoint scoped by
+- [x] **M08-T07** — Add a server-streaming subscription endpoint scoped by
       organization and project, authorized per connection.
       - Files: `main.tsp`, `modules/events/events.handler.ts`, `apps/backend/src/index.ts`
       - Verify: a client receives only events for orgs it belongs to.
 
-- [ ] **M08-T08** — Add a client subscription hook that maps events to targeted
+- [x] **M08-T08** — Add a client subscription hook that maps events to targeted
       React Query invalidations rather than blanket refetches.
       - Files: `apps/gui/src/hooks/useDomainEvents.ts`, feature views
       - Verify: a task created in one browser appears in another within two seconds.
 
-- [ ] **M08-T09** — Add reconnection with exponential backoff and a polling
+- [x] **M08-T09** — Add reconnection with exponential backoff and a polling
       fallback when the stream is unavailable.
       - Files: `apps/gui/src/hooks/useDomainEvents.ts`
       - Verify: killing the backend and restarting it restores live updates.
 
-- [ ] **M08-T10** — Add a connection indicator so a user can tell live from stale.
+- [x] **M08-T10** — Add a connection indicator so a user can tell live from stale.
       - Files: `apps/gui/src/components/layout/AppShell.tsx`
       - Verify: the indicator changes state when the stream drops.
 
