@@ -1,0 +1,113 @@
+name: Release
+
+# Tag-driven (M09-T08). A release is a deliberate act, so nothing here runs on
+# a push to a branch — `git tag v0.1.0 && git push --tags` is the trigger, and
+# the tag is what names the artifacts.
+on:
+  push:
+    tags:
+      - 'v*'
+  # Buildable on demand without cutting a release, so a packaging change can be
+  # proven before it is tagged rather than after.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    # Each target is cross-compiled by Bun rather than built on its own runner:
+    # `bun build --compile --target` produces every platform from one machine,
+    # so three artifacts come from one toolchain and one GUI build instead of
+    # three that could quietly differ.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: linux-x64
+            target: bun-linux-x64
+            artifact: tasker-linux-x64
+          - label: macos-arm64
+            target: bun-darwin-arm64
+            artifact: tasker-macos-arm64
+          - label: windows-x64
+            target: bun-windows-x64
+            artifact: tasker-windows-x64.exe
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 'latest'
+      - name: Setup Moon
+        uses: moonrepo/setup-toolchain@v0
+
+      - name: Install dependencies
+        run: |
+          cd packages/shared-contract && bun install && cd ../..
+          cd apps/gui && bun install && cd ../..
+          cd apps/backend && bun install
+
+      - name: Build the GUI
+        run: moon run gui:build
+
+      - name: Compile ${{ matrix.label }}
+        working-directory: apps/backend
+        env:
+          # Stamped into the binary so `--version` and the health endpoint
+          # report the tag rather than "dev".
+          GIT_SHA: ${{ github.ref_name }}
+        run: |
+          bun run scripts/bundle-gui.ts
+          bun build --compile --minify --sourcemap \
+            --target ${{ matrix.target }} \
+            --outfile "dist/${{ matrix.artifact }}" \
+            src/index.ts
+          # Always, even if the compile failed: the manifest is committed empty
+          # and a filled-in one must never survive the job.
+          bun run scripts/bundle-gui.ts --reset
+
+      # The same smoke test CI runs on every pull request, against the release
+      # artifact itself — but only where it can execute. A cross-compiled
+      # Windows or macOS binary cannot be run on a Linux runner, and pretending
+      # otherwise would make the check meaningless for all three.
+      - name: Smoke test (linux only)
+        if: matrix.label == 'linux-x64'
+        run: ./scripts/smoke-standalone.sh "apps/backend/dist/${{ matrix.artifact }}"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: apps/backend/dist/${{ matrix.artifact }}
+          if-no-files-found: error
+
+  release:
+    name: Attach to the release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only for a real tag. A `workflow_dispatch` run builds and uploads
+    # artifacts for inspection without creating a release.
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

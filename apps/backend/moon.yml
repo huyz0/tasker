@@ -38,11 +38,22 @@ tasks:
   build-standalone:
     deps:
       - 'shared-contract:install-deps'
+      # The binary carries the GUI, so the GUI has to exist first (M09-T02).
+      # Without this the bundler exits non-zero rather than quietly compiling
+      # a binary that serves a blank page.
+      - 'gui:build'
     command: 'bun run build:standalone'
     inputs:
       - 'src/**/*'
+      - 'scripts/**/*'
+      - 'drizzle-sqlite/**/*'
     outputs:
       - 'dist/tasker-standalone'
+  # Regenerates the embedded migration list. Run after adding a migration;
+  # `embeddedMigrations.test.ts` fails until you do.
+  generate-migrations:
+    type: 'run'
+    command: 'bun run generate:migrations'
   lint:
     deps:
       - 'shared-contract:install-deps'

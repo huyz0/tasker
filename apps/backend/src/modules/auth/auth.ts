@@ -9,6 +9,7 @@ import { problemDetails } from '../../lib/problemDetails';
 import { revokeSession, isSessionRevoked } from '../../lib/sessionRevocation';
 import { hashPassword, verifyPassword, MIN_PASSWORD_LENGTH } from '../../lib/credentials';
 import { rateLimitProblem } from '../../lib/rateLimit';
+import { maybeCreateStarterWorkspace } from '../../lib/firstRun';
 
 function sessionCookie(userId: string): string {
   const secure = config.nodeEnv === 'production' ? '; Secure' : '';
@@ -364,9 +365,48 @@ async function attemptPasswordLogin(db: any, username: string, password: string,
   return { outcome: 'ok', userId, mustChangePassword: !!cred.mustChangePassword };
 }
 
-export function createAuthRoutes(db: any) {
+export interface AuthRouteOptions {
+  /**
+   * M09-T06 (`--seed`). Gives the very first account a starter organization
+   * and project, so a freshly downloaded binary is usable rather than empty.
+   */
+  seedStarterWorkspace?: boolean;
+}
+
+export function createAuthRoutes(db: any, options: AuthRouteOptions = {}) {
   return new Elysia()
+  /**
+   * Which sign-in methods this deployment actually has (M09-T06).
+   *
+   * The standalone binary ships with no Google credentials, and a
+   * "Continue with Google" button that redirects to an OAuth endpoint with an
+   * empty `client_id` is worse than no button: it takes the person away from
+   * the app to a Google error page and leaves them there. The GUI asks first
+   * and renders only what works.
+   *
+   * Unauthenticated by necessity — it is read on the sign-in screen — and it
+   * discloses nothing beyond which buttons to draw.
+   */
+  .get('/api/auth/providers', () => ({
+    // Both halves have to be present for the redirect to go anywhere useful.
+    google: Boolean(config.googleClientId && config.googleRedirectUri),
+    password: true,
+  }))
   .get('/api/auth/google/login', ({ query }) => {
+    // Refused rather than redirected: without credentials this builds a URL to
+    // Google carrying an empty client_id, and the person lands on Google's
+    // error page with no way back.
+    if (!config.googleClientId || !config.googleRedirectUri) {
+      return new Response(
+        JSON.stringify({
+          type: 'about:blank',
+          title: 'Google sign-in is not configured',
+          status: 501,
+          detail: 'This deployment has no Google credentials. Sign in with a username and password instead.',
+        }),
+        { status: 501, headers: { 'content-type': 'application/problem+json' } },
+      );
+    }
     const isCli = query.cli === 'true';
     const nonce = crypto.randomUUID();
     // The CLI generates its own nonce and never exposes it to arbitrary web
@@ -596,7 +636,8 @@ export function createAuthRoutes(db: any) {
         email: typeof email === 'string' ? email : undefined,
         name: typeof name === 'string' ? name : undefined,
       });
-      return new Response(JSON.stringify({ userId }), {
+      const workspace = await maybeCreateStarterWorkspace(db, userId, options.seedStarterWorkspace === true);
+      return new Response(JSON.stringify(workspace ? { userId, ...workspace } : { userId }), {
         status: 201,
         headers: { 'Content-Type': 'application/json', 'set-cookie': sessionCookie(userId) },
       });
