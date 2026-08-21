@@ -1,8 +1,8 @@
 ---
-active_milestone: M11
+active_milestone: M12
 active_task: null
 last_updated: 2026-08-22
-last_commit: 1dfc252
+last_commit: d93f6b0
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,41 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-22 — M11 Observability & Deployability complete, merged to `main`.**
+Tracing, a Prometheus endpoint, three health signals, a real drain, a container
+image, the full compose stack, a deployment manifest, dependency scanning and a
+security review.
+
+ADR-0004 chose in-process counters over OpenTelemetry "until M11" on two
+grounds: the single binary must run with no external dependency, and there was
+nothing deployed to trace. **Both are answered rather than reversed.** The SDK
+is always installed but an exporter is created *only* when
+`OTEL_EXPORTER_OTLP_ENDPOINT` is set — without one, spans still exist,
+`traceparent` still propagates and every log line still carries a trace id, all
+in process, with nothing ever connecting to a collector that is not there. The
+counters are kept, not replaced; `/metrics` is a *view* of them.
+
+**The find of the round, again in the deployment.** The compose stack's first
+boot died reading `./drizzle-mysql`. M09-T01 embedded only the SQLite
+migrations — the standalone binary was the case in front of us — and a
+container has no repository to read from. Both dialects are embedded now,
+through one dialect-agnostic apply loop whose runner methods may return a
+promise or not, so `bun:sqlite` and mysql2 share a code path.
+
+**Two things worth carrying forward.** `bun audit --ignore` accepts a
+comma-separated list silently and matches nothing: the gate reported green
+while ignoring nothing at all, which is the worst possible failure mode for a
+security check. And a gate that fails on every pre-existing advisory is a gate
+that gets switched off — `scripts/audit-dependencies.sh` is a ratchet with each
+accepted advisory carrying a reason and the route it arrives by.
+
+`govulncheck` found five *reachable* Go standard-library vulnerabilities;
+pinning go1.26.6 clears them. The security review records no open critical or
+high findings, four issues fixed during it, and three things named as out of
+scope rather than left implied.
+
+M12 (Test Depth & Release) is the last milestone in the ledger.
 
 **2026-08-22 — M09 Portable Single Binary complete, merged to `main`.**
 One executable that carries the GUI, every migration and FTS5, verified the way
@@ -1037,13 +1072,10 @@ organization (M10-T07/T08/T12); and a real, policy-based role and
 permission-management system replacing the old hardcoded four-tier enum
 (ADR-0013, M10). Both milestones are done.
 
-- **Milestone**: M11 — Observability & Deployability is next in the ledger's
-  numeric order (unblocked — its `depends_on`, M08, is done).
-- **Command to continue**: `/milestone-deliver M11` (or
-  `/milestone-deliver-auto M11`) — branch straight off `main`:
-  `git checkout -b feature/m11-observability-and-deployability main`.
-
-M12 remains queued behind M11.
+- **Milestone**: M12 — Test Depth & Release is the last one in the ledger.
+- **Command to continue**: `/milestone-deliver M12` (or
+  `/milestone-deliver-auto M12`) — branch straight off `main`:
+  `git checkout -b feature/m12-test-depth-and-release main`.
 
 ## How to resume
 
@@ -1070,7 +1102,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M08 | Events, Audit & Real-Time      | done   | M04, M07   | 11    | 11   |
 | M09 | Portable Single Binary         | done   | M05, M07   | 9     | 9    |
 | M10 | Teams & Policy-Based RBAC      | done   | M03, M04   | 13    | 13   |
-| M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
+| M11 | Observability & Deployability  | done   | M08        | 12    | 12   |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
 | M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
 | M14 | Task Reliability & Agent Self-Service | done | M04, M05 | 9   | 9    |
