@@ -1,8 +1,8 @@
 ---
-active_milestone: M09
+active_milestone: M11
 active_task: null
-last_updated: 2026-08-21
-last_commit: 0217bc5
+last_updated: 2026-08-22
+last_commit: 1dfc252
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,42 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-22 — M09 Portable Single Binary complete, merged to `main`.**
+One executable that carries the GUI, every migration and FTS5, verified the way
+the milestone asks: built, copied to a temporary directory, run under `env -i`
+so nothing it needs can leak in from the checkout it was built in.
+
+The GUI travels as a path → base64 manifest at a committed path. A static
+import has to resolve at typecheck time, but Vite fingerprints every asset name
+— so the committed manifest is *empty*, the build fills it in immediately
+before `--compile` and empties it again after, and a test asserts the committed
+one is still empty so a two-megabyte accident cannot be committed quietly.
+
+**The find of the round.** Migrations run bare, rather than inside a
+transaction, broke twelve unrelated tests with foreign-key errors. Two
+migrations bracket a table rebuild with `PRAGMA foreign_keys=OFF` / `=ON`, and
+SQLite ignores that pragma inside a transaction — which drizzle's migrator
+opens, so the `ON` half had never taken effect in the life of this repository.
+The embedded migrator now opens the same transaction, for atomicity and for
+this.
+
+Also worth carrying forward: `{ type: 'text' }` imports are inlined only by the
+*bundler*. Run from source they yield the path, which turned every migration
+into a one-line syntax error — `{ type: 'file' }` plus `Bun.file` works in
+both.
+
+ADR-0019 decides the long-standing in-process transport question as **declined,
+not deferred**, and deletes the stub. The GUI is a browser application, so its
+RPCs cross a real socket whatever the server does internally; a second entry
+point into the handlers would duplicate the interceptor ordering that
+authenticates and throttles every caller.
+
+The sign-in screen now asks the backend which providers exist and renders only
+those — a "Continue with Google" button on a credential-less binary redirects
+with an empty `client_id` and strands the person on a Google error page.
+
+M11 (Observability & Deployability) is next; M12 behind it.
 
 **2026-08-21 — M08 Events, Audit & Real-Time complete, merged to `main`.**
 T07–T11 in two commits, closing the milestone: a server-streaming
@@ -1001,15 +1037,13 @@ organization (M10-T07/T08/T12); and a real, policy-based role and
 permission-management system replacing the old hardcoded four-tier enum
 (ADR-0013, M10). Both milestones are done.
 
-- **Milestone**: M09 — Portable Single Binary is next in the ledger's
-  numeric order (unblocked — both `depends_on` entries, M04 and M07, are
-  done).
-- **Command to continue**: `/milestone-deliver M09` (or
-  `/milestone-deliver-auto M09`) — branch straight off `main`:
-  `git checkout -b feature/m09-portable-single-binary main`.
+- **Milestone**: M11 — Observability & Deployability is next in the ledger's
+  numeric order (unblocked — its `depends_on`, M08, is done).
+- **Command to continue**: `/milestone-deliver M11` (or
+  `/milestone-deliver-auto M11`) — branch straight off `main`:
+  `git checkout -b feature/m11-observability-and-deployability main`.
 
-M11 and M12 remain queued behind M09 in their prior order. M11's `depends_on`
-named M08, which is now done, so nothing blocks it but sequence.
+M12 remains queued behind M11.
 
 ## How to resume
 
@@ -1034,7 +1068,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M06 | UX, Design System & A11y       | done   | M05        | 14    | 14   |
 | M07 | Read-Path Scale                | done   | M05        | 14    | 14   |
 | M08 | Events, Audit & Real-Time      | done   | M04, M07   | 11    | 11   |
-| M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
+| M09 | Portable Single Binary         | done   | M05, M07   | 9     | 9    |
 | M10 | Teams & Policy-Based RBAC      | done   | M03, M04   | 13    | 13   |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
 | M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
