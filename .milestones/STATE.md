@@ -1,8 +1,8 @@
 ---
-active_milestone: M08
+active_milestone: M09
 active_task: null
-last_updated: 2026-08-19
-last_commit: 14ca208
+last_updated: 2026-08-21
+last_commit: 0217bc5
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,40 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-21 — M08 Events, Audit & Real-Time complete, merged to `main`.**
+T07–T11 in two commits, closing the milestone: a server-streaming
+`EventService.SubscribeEvents`, a GUI hook that turns events into targeted
+React Query invalidations, reconnect with backoff and a polling fallback, a
+connection indicator in the shell, and a real-broker integration test over the
+whole chain.
+
+**The find of the round was not in the new code.** Verified against NATS, a
+task creation produced no event on the feed at all. A task row carries a
+`projectId` and no `orgId`, so `domain.task.*` — the highest-traffic subject
+in the system — has always been published with no tenant on it. The live feed
+refuses to deliver an event it cannot attribute to an org, which is correct
+and is what made the gap visible; the audit trail built in T03/T05 had been
+silently swallowing the same events, filing them under a null org where
+`listAuditEvents(orgId)` could never find them again.
+
+Fixed where T04 put the actor — one injection point rather than fifty publish
+sites. `setRequestOrg` records the org on the request context from the
+authorization check, which is the one place that already knows: `can()`
+resolves a project's owning org anyway, and `authorizePrincipal` takes the org
+as a parameter. `withRequestCorrelation` stamps it onto any payload that does
+not already name one.
+
+Two design notes worth carrying forward. The stream re-authorizes by *watching
+itself*: a `domain.org.member_*` event re-resolves the connection's org set
+before the delivery decision, so a revocation is the very message that cannot
+slip through under the stale answer — no policy check per message on a feed
+whose point is volume. And the feed emits `stream.ready`/`stream.heartbeat`
+control frames, because an opened stream that has yielded nothing is
+indistinguishable from a wedged one, and the connection indicator would
+otherwise have shown "live" for a dead feed.
+
+M08's own remaining item is nothing; M09, M11 and M12 are next in the ledger.
 
 **2026-08-20 — CLI test hygiene and coverage measurement, merged to `main`.**
 Requested as `/goal suggest and fix whatever things remain`. Worked the
@@ -967,16 +1001,15 @@ organization (M10-T07/T08/T12); and a real, policy-based role and
 permission-management system replacing the old hardcoded four-tier enum
 (ADR-0013, M10). Both milestones are done.
 
-- **Milestone**: M08 — Events, Audit & Real-Time is next in the ledger's
+- **Milestone**: M09 — Portable Single Binary is next in the ledger's
   numeric order (unblocked — both `depends_on` entries, M04 and M07, are
   done).
-- **Command to continue**: `/milestone-deliver M08` (or
-  `/milestone-deliver-auto M08`) — `main` already has M10, M13 and M14, so
-  branch straight off it: `git checkout -b feature/m08-events-audit-realtime main`.
+- **Command to continue**: `/milestone-deliver M09` (or
+  `/milestone-deliver-auto M09`) — branch straight off `main`:
+  `git checkout -b feature/m09-portable-single-binary main`.
 
-M09, M11, M12 remain queued behind M08 in their prior order, unaffected by
-M10's or M14's closure — nothing in their `depends_on` required either to
-run first.
+M11 and M12 remain queued behind M09 in their prior order. M11's `depends_on`
+named M08, which is now done, so nothing blocks it but sequence.
 
 ## How to resume
 
@@ -1000,7 +1033,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M05 | GUI / API Parity               | done   | M01        | 12    | 12   |
 | M06 | UX, Design System & A11y       | done   | M05        | 14    | 14   |
 | M07 | Read-Path Scale                | done   | M05        | 14    | 14   |
-| M08 | Events, Audit & Real-Time      | todo   | M04, M07   | 11    | 0    |
+| M08 | Events, Audit & Real-Time      | done   | M04, M07   | 11    | 11   |
 | M09 | Portable Single Binary         | todo   | M05, M07   | 9     | 0    |
 | M10 | Teams & Policy-Based RBAC      | done   | M03, M04   | 13    | 13   |
 | M11 | Observability & Deployability  | todo   | M08        | 12    | 0    |
