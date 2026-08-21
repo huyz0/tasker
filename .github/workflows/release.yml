@@ -92,6 +92,34 @@ jobs:
           path: apps/backend/dist/${{ matrix.artifact }}
           if-no-files-found: error
 
+  # The CLI, via GoReleaser (M12-T07) — the tool that already knows how to
+  # cross-compile, archive, checksum and describe a Go release. Runs after the
+  # backend artifacts are uploaded and appends to the same release rather than
+  # replacing it.
+  cli:
+    name: CLI binaries
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # GoReleaser reads the commit history to build the changelog
+          # (M12-T10); a shallow clone produces an empty one.
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/cli/go.mod
+      - name: Release the CLI
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          args: release --clean
+          workdir: apps/cli
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   release:
     name: Attach to the release
     needs: build

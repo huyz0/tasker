@@ -1,0 +1,87 @@
+# Release configuration for the CLI (M12-T07, M12-T10).
+#
+# The backend binary is built by `.github/workflows/release.yml` with Bun's own
+# cross-compiler; this covers the Go side, where GoReleaser is the tool that
+# already knows how to produce, checksum and describe a multi-platform release.
+#
+# Run locally without publishing anything:
+#   cd apps/cli && goreleaser release --snapshot --clean
+version: 2
+
+project_name: tasker
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: tasker
+    main: .
+    binary: tasker
+    env:
+      # No cgo, so each artifact is a static binary that runs on a machine with
+      # no toolchain — the same promise the backend binary makes.
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      # No Windows on ARM in the wild for this audience, and an artifact nobody
+      # downloads is an artifact nobody notices is broken.
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      # Stamped so `tasker --version` reports the tag rather than "dev".
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+
+archives:
+  - id: tasker
+    # The archive unpacks to a bare `tasker`, not a nested directory — someone
+    # who untars it into ~/bin gets a working command rather than a folder.
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: "checksums.txt"
+
+# M12-T10. The changelog is generated from conventional commits, grouped by
+# what a reader is looking for rather than by prefix order. Anything that is
+# not a feature, fix or performance change is excluded: a release note listing
+# forty "chore(deps)" lines buries the two entries that matter.
+changelog:
+  sort: asc
+  use: github
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Performance
+      regexp: '^.*?perf(\(.+\))??!?:.+$'
+      order: 2
+    - title: Other
+      order: 99
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - '^style:'
+      - '^refactor:'
+      - '^merge:'
+      - 'Merge pull request'
+      - 'Merge branch'
+
+release:
+  # The workflow attaches the backend binaries to the same release, so
+  # GoReleaser must not replace what is already there.
+  mode: append
+  draft: false

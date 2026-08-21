@@ -17,6 +17,20 @@ tasks:
       - '/apps/*/package.json'
       - '/packages/*/package.json'
 
+  # M12-T03. Every RPC's request and response through the real wire format,
+  # enumerated from the descriptor rather than listed by hand so a new service
+  # is covered the moment it is generated. Until this existed, nothing in the
+  # repository ever serialized a contract message: the GUI mocks the generated
+  # module and the backend calls handlers directly.
+  test:
+    deps:
+      - 'shared-contract:install-deps'
+      - 'shared-contract:compile'
+    command: 'bun test contract.roundtrip.test.ts'
+    inputs:
+      - 'contract.roundtrip.test.ts'
+      - 'gen/**/*'
+
   format:
     deps:
       - 'shared-contract:install-deps'
