@@ -1,4 +1,5 @@
 import { getRequestContext } from './requestContext';
+import { injectTraceContext } from './telemetry/otel';
 import { recordBusinessEvent } from './businessEvents';
 
 /**
@@ -63,6 +64,19 @@ export function withRequestCorrelation<T extends { publish: (subject: string, da
                 if (ctx.orgId && !payload.orgId) {
                   payload.orgId = ctx.orgId;
                   changed = true;
+                }
+                // M11-T03: W3C trace context, so the projector's write and the
+                // mutation that caused it are one trace rather than two things
+                // that happen to share a requestId. `requestId` stays — it
+                // predates this, every log line and the audit trail carry it,
+                // and it is the id a person can read out of an error message.
+                if (!payload.traceparent) {
+                  const carrier = injectTraceContext();
+                  if (carrier.traceparent) {
+                    payload.traceparent = carrier.traceparent;
+                    if (carrier.tracestate) payload.tracestate = carrier.tracestate;
+                    changed = true;
+                  }
                 }
                 if (changed) data = Buffer.from(JSON.stringify(payload));
               }

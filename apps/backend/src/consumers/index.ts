@@ -16,6 +16,8 @@ import { reportError } from '../lib/errorReporter';
 import { ensureStreamAndConsumer, decodeEvent, STREAM_NAME, DURABLE_NAME } from './stream';
 import { projectEvent } from './auditProjector';
 import { setupDatabase } from '../db/db';
+import { initTelemetry, readTelemetryConfig, shutdownTelemetry, getTracer, withExtractedContext, failSpan } from '../lib/telemetry/otel';
+import { SpanKind } from '@opentelemetry/api';
 
 const NATS_URL = process.env.NATS_URL || 'nats://localhost:4222';
 
@@ -34,6 +36,8 @@ async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'consumer.shutdown_started');
   try {
     if (nc) await nc.drain();
+    // After the drain, so spans for messages finished during it are flushed.
+    await shutdownTelemetry();
     logger.info({ signal }, 'consumer.shutdown_complete');
     process.exit(0);
   } catch (err) {
@@ -53,6 +57,11 @@ process.on('unhandledRejection', (reason) => {
 });
 
 async function main(): Promise<void> {
+  // M11-T01/T03. Named separately from the API so a trace shows which process
+  // did what; with no OTLP endpoint configured this creates no exporter and
+  // opens no connection, exactly as in the API.
+  initTelemetry({ ...readTelemetryConfig(process.env), serviceName: process.env.OTEL_SERVICE_NAME || 'tasker-consumer' });
+
   try {
     nc = await natsConnect({ servers: NATS_URL });
   } catch (err) {
@@ -101,22 +110,40 @@ async function main(): Promise<void> {
       continue;
     }
 
-    try {
-      const outcome = await projectEvent(db, event);
-      // Ack only after the write. Acking first would mean a crash between the
-      // two loses the event permanently, which is the one thing an audit
-      // trail may not do.
-      msg.ack();
-      logger.info(
-        { subject: event.subject, seq: event.seq, requestId: event.payload.requestId, outcome },
-        'consumer.event_projected',
-      );
-    } catch (err) {
-      // Do not ack: let ack_wait expire so JetStream redelivers, up to
-      // max_deliver. A write that failed once often succeeds on retry, and
-      // acking here would lose the event permanently.
-      reportError({ message: 'consumer.event_failed', err, severity: 'error' });
-    }
+    // M11-T03. The mutation that published this event injected a
+    // `traceparent` into the payload, so the projection continues that trace
+    // rather than starting one of its own — which is the whole point of
+    // tracing across an asynchronous hop. An event published before this
+    // existed, or by something that does not propagate, simply starts a new
+    // trace here.
+    await withExtractedContext(event.payload, () =>
+      getTracer().startActiveSpan(
+        `project ${event.subject}`,
+        { kind: SpanKind.CONSUMER, attributes: { 'messaging.system': 'nats', 'messaging.destination.name': event.subject } },
+        async (span) => {
+          try {
+            const outcome = await projectEvent(db, event);
+            // Ack only after the write. Acking first would mean a crash between
+            // the two loses the event permanently, which is the one thing an
+            // audit trail may not do.
+            msg.ack();
+            span.setAttribute('tasker.projection.outcome', outcome);
+            logger.info(
+              { subject: event.subject, seq: event.seq, requestId: event.payload.requestId, outcome },
+              'consumer.event_projected',
+            );
+          } catch (err) {
+            // Do not ack: let ack_wait expire so JetStream redelivers, up to
+            // max_deliver. A write that failed once often succeeds on retry,
+            // and acking here would lose the event permanently.
+            failSpan(span, err);
+            reportError({ message: 'consumer.event_failed', err, severity: 'error' });
+          } finally {
+            span.end();
+          }
+        },
+      ),
+    );
   }
 }
 
