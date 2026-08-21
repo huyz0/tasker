@@ -7,8 +7,9 @@ import mysql from "mysql2/promise";
 import * as schemaMysql from "./schema.mysql";
 import * as schemaSqlite from "./schema.sqlite";
 
-import { migrate as migrateSqlite } from "drizzle-orm/bun-sqlite/migrator";
 import { migrate as migrateMysql } from "drizzle-orm/mysql2/migrator";
+import { applyEmbeddedMigrations, sqliteRunner } from "./embeddedMigrations";
+import { EMBEDDED_SQLITE_MIGRATIONS } from "./embeddedMigrations.generated";
 
 export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlitePath: string = ".data/local.sqlite") {
   if (driver === "sqlite") {
@@ -28,7 +29,11 @@ export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlite
     `).run();
     
     const db = drizzleSqlite(sqlite, { schema: schemaSqlite });
-    migrateSqlite(db, { migrationsFolder: "./drizzle-sqlite" });
+    // Not drizzle's own migrator: it reads `./drizzle-sqlite` from the working
+    // directory, which the standalone binary does not have once it is copied
+    // somewhere else (M09-T01). The bookkeeping is byte-compatible, so a
+    // database migrated by either one stays usable by the other.
+    await applyEmbeddedMigrations(sqliteRunner(sqlite), EMBEDDED_SQLITE_MIGRATIONS);
     return db;
   }
 

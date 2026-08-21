@@ -40,6 +40,8 @@ import { getRpcMethodStats } from "./lib/rpcMetrics";
 import { getBusinessEventCounts } from "./lib/businessEvents";
 import { recordHttpRequest } from "./lib/httpMetrics";
 import { createTelemetryRoutes } from "./modules/telemetry/telemetry";
+import { StaticSite } from "./lib/staticServer";
+import guiBundle from "./assets/guiBundle.json";
 
 // Bypassing network stack with local function execution logic
 export const localInProcessTransportRouter = (_req: any) => {
@@ -47,6 +49,11 @@ export const localInProcessTransportRouter = (_req: any) => {
 };
 
 const isStandalone = process.env.STANDALONE === "true";
+
+// Decoded once, at startup. Empty unless `bun run build:standalone` filled the
+// manifest in, which is what makes `moon run dev` behave exactly as it did
+// before this existed: Vite serves the GUI there, and this serves nothing.
+const staticSite = new StaticSite(guiBundle as Record<string, string>);
 const db = await setupDatabase(isStandalone ? "sqlite" : "mysql");
 
 process.on("uncaughtException", (err) => {
@@ -239,12 +246,21 @@ http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "GET" && !req.url?.startsWith("/tasker.")) {
-      if (req.url === "/" || req.url === "/index.html") {
-         res.writeHead(200, { "Content-Type": "text/html" });
-         res.end("<html><body><h1>Tasker Standalone Server</h1><p>Embedded Vite SPA Assets active.</p></body></html>");
-         return;
-      }
+  // The GUI, out of the binary (M09-T03). Empty in dev, where Vite serves it,
+  // so this falls straight through to the RPC handler exactly as before.
+  if (req.method === "GET" || req.method === "HEAD") {
+    const pathname = (req.url ?? "/").split("?")[0]!;
+    const asset = staticSite.resolve(pathname);
+    if (asset) {
+      recordHttpRequest(req.method, pathname, 200);
+      res.writeHead(200, {
+        "Content-Type": asset.contentType,
+        "Cache-Control": asset.cacheControl,
+        "Content-Length": String(asset.body.byteLength),
+      });
+      res.end(req.method === "HEAD" ? undefined : Buffer.from(asset.body));
+      return;
+    }
   }
 
   handler(req, res);
