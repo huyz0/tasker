@@ -1,8 +1,8 @@
 ---
-active_milestone: M12
+active_milestone: null
 active_task: null
 last_updated: 2026-08-22
-last_commit: d93f6b0
+last_commit: 4344e3c
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,45 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-22 — M12 Test Depth & Release complete. Every milestone in the
+ledger is now closed.**
+
+**The headline finding.** Until this milestone, *nothing in the repository ever
+serialized a contract message.* The GUI's tests mock the generated module; the
+backend's tests call handler functions directly. A field-number collision or a
+wire-breaking type change would have passed every gate green. Two suites now
+close that from opposite ends: 825 round-trip tests enumerated from the
+descriptor (so a new service is covered the moment it is generated), and a
+wire-level suite that spawns the real server on its own port and drives it with
+the real generated client — which is the only thing that proves the interceptor
+chain, the CORS allowlist, the body cap and the credential lookup are wired at
+all.
+
+**The core journey** runs through the real UI: sign in → organization →
+template → project → task → comment → search → archive. Determinism comes from
+unique per-run names rather than a restored snapshot — order-independent and
+repeatable, and it does not destroy whatever the developer was working on.
+Getting it green took five corrections and every one was the test learning
+something true; the sharpest was that the archive confirmation says **"Move to
+bin"**, so matching `/delete/i` hit the button *behind* the dialog and left the
+task exactly where it was. A green step that proved nothing.
+
+**Two things are deliberately not done, and are recorded as open rather than
+quietly closed** (see MILESTONE-12's PROGRESS.md):
+
+- **M12-T01**, replacing the `health_pb` module mock with network-level
+  interception across 66 GUI test files. What it was buying is now covered by
+  T02 and T03 from two other directions; the residual gap is narrow, and the
+  change is a mechanical rewrite of a passing suite where each file is an
+  opportunity to weaken an assertion while making it compile. Worth its own
+  round, not the tail of a milestone.
+- **Signed** binaries. They are versioned and cross-platform; signing needs
+  certificates this project does not have, as M09 already concluded.
+
+**Also still open, from the roadmap**: invite email is never sent. The invite
+surface exists end to end — create, list, revoke, expiry — and no SMTP
+integration does.
 
 **2026-08-22 — M11 Observability & Deployability complete, merged to `main`.**
 Tracing, a Prometheus endpoint, three health signals, a real drain, a container
@@ -1072,10 +1111,13 @@ organization (M10-T07/T08/T12); and a real, policy-based role and
 permission-management system replacing the old hardcoded four-tier enum
 (ADR-0013, M10). Both milestones are done.
 
-- **Milestone**: M12 — Test Depth & Release is the last one in the ledger.
-- **Command to continue**: `/milestone-deliver M12` (or
-  `/milestone-deliver-auto M12`) — branch straight off `main`:
-  `git checkout -b feature/m12-test-depth-and-release main`.
+- **Milestone**: none. Every milestone in the ledger is closed.
+- **Command to continue**: there is no next milestone. The three things that
+  remain open are named in the entry above and in MILESTONE-12's `PROGRESS.md`
+  — M12-T01's GUI mock replacement, code signing, and invite email delivery.
+  Each is a round of its own, and none blocks the others.
+
+  New work starts with `/milestone-plan`, not `/milestone-deliver`.
 
 ## How to resume
 
@@ -1103,7 +1145,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M09 | Portable Single Binary         | done   | M05, M07   | 9     | 9    |
 | M10 | Teams & Policy-Based RBAC      | done   | M03, M04   | 13    | 13   |
 | M11 | Observability & Deployability  | done   | M08        | 12    | 12   |
-| M12 | Test Depth & Release           | todo   | M06,M09,M11| 11    | 0    |
+| M12 | Test Depth & Release           | done   | M06,M09,M11| 11    | 10   |
 | M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
 | M14 | Task Reliability & Agent Self-Service | done | M04, M05 | 9   | 9    |
 | M21 | Shared Memory & Belief System   | done   | —          | 10    | 10   |

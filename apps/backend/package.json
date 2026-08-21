@@ -9,6 +9,7 @@
     "test:coverage": "bun test --coverage",
     "test:integration": "bun test src/modules/repositories/repositories.integration.test.ts",
     "test:integration-realtime": "bun test src/modules/events/realtime.integration.test.ts",
+    "test:wire": "bun test src/test/wire/wire.integration.test.ts",
     "build:standalone": "bun run scripts/bundle-gui.ts && (bun build --compile --minify --sourcemap --outfile dist/tasker-standalone src/index.ts; ec=$?; bun run scripts/bundle-gui.ts --reset; exit $ec)",
     "bundle:gui": "bun run scripts/bundle-gui.ts",
     "generate:migrations": "bun run scripts/generate-embedded-migrations.ts",
