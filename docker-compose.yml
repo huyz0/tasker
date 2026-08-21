@@ -63,6 +63,12 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: tasker-backend
       CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8080
+      # Points at mailpit, so an invitation sent from the compose stack is
+      # readable at http://localhost:8025 rather than delivered to a real inbox.
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_FROM: tasker@localhost
+      APP_URL: http://localhost:8080
     depends_on:
       mysql:
         condition: service_started
@@ -124,6 +130,30 @@ services:
     ports:
       # 4318 OTLP/HTTP, which is what the backend's exporter speaks.
       - "4318:4318"
+
+  # A local mail server that catches everything and delivers nothing, so the
+  # invitation email can be developed and tested without sending real mail to
+  # anyone (M12 follow-up).
+  #
+  # Its own profile rather than `full`, because it is useful on its own:
+  #   docker compose --profile mail up -d mailpit
+  #   SMTP_HOST=localhost SMTP_PORT=1025 moon run dev
+  # Then read what was sent at http://localhost:8025.
+  #
+  # No credentials, deliberately — a test server that required an app password
+  # would be one more thing to get wrong before seeing the first message.
+  mailpit:
+    profiles: ["mail", "full"]
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    ports:
+      # 1025 SMTP (point SMTP_PORT here), 8025 the web interface.
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
 
   # Ad-hoc DB inspection during local debugging (browse rows, run one-off
   # SQL) without needing a separately installed MySQL client. Only started

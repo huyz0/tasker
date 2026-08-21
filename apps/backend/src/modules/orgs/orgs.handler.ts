@@ -7,6 +7,9 @@ import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restor
 import { requireUser, getOrgMemberRole, countOrgOwners } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
 import { ConnectError, Code } from "@connectrpc/connect";
+import { renderInviteEmail } from "../../lib/inviteEmail";
+import { logger } from "../../lib/logger";
+import type { Mailer } from "../../lib/mailer";
 
 // --- Zod Request Schemas ---
 
@@ -101,8 +104,61 @@ const invitationExpiry = (from: Date = new Date()) =>
 
 // --- Handler Factory ---
 
-export const createOrgsHandler = (db: any, nc: any = null) => {
+/**
+ * `mailer` is optional so every existing caller and test is unaffected: with
+ * none, an invitation behaves exactly as it did before delivery existed — the
+ * row is written and nothing is sent.
+ */
+export const createOrgsHandler = (db: any, nc: any = null, mailer: Mailer | null = null) => {
   const isStandalone = process.env.STANDALONE === "true";
+
+  /**
+   * Sends the invitation, and never lets that failure reach the caller.
+   *
+   * The invitation row is the thing that grants membership — acceptance is
+   * keyed on it, not on anything in the email. Failing the RPC because a mail
+   * server was unreachable would turn a missing email into a lost invitation,
+   * which is strictly worse. The outcome is logged so an admin asking "did it
+   * go" has an answer.
+   */
+  const sendInviteEmail = async (invite: {
+    email?: string | null;
+    username?: string | null;
+    orgId: string;
+    role: string;
+    invitedBy: string;
+    expiresAt?: Date | null;
+  }) => {
+    // A username-targeted invitation has no address to send to. That is not a
+    // failure: it is how you invite someone on a local-accounts deployment
+    // with no email at all (M13-T09).
+    if (!mailer?.enabled || !invite.email) return;
+
+    try {
+      const orgs = isStandalone ? schemaSqlite.organizations : schemaMysql.organizations;
+      const usersTable = isStandalone ? schemaSqlite.users : schemaMysql.users;
+      const [org] = await db.select().from(orgs).where(eq((orgs as any).id, invite.orgId)).limit(1);
+      const [inviter] = await db.select().from(usersTable).where(eq((usersTable as any).id, invite.invitedBy)).limit(1);
+
+      const rendered = renderInviteEmail({
+        email: invite.email,
+        username: invite.username,
+        orgName: org?.name ?? "an organization",
+        // Falls back to the email, then to the id: "undefined has invited you"
+        // is the failure this ordering exists to prevent.
+        invitedByName: inviter?.name || inviter?.email || invite.invitedBy,
+        role: invite.role,
+        appUrl: mailer.appUrl,
+        expiresAt: invite.expiresAt ?? null,
+      });
+
+      const outcome = await mailer.send({ to: invite.email, ...rendered });
+      logger.info({ to: invite.email, orgId: invite.orgId, outcome }, "invite.email");
+    } catch (err) {
+      logger.error({ err, orgId: invite.orgId }, "invite.email_failed");
+    }
+  };
+
   return {
     async listOrgs(req: any, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
@@ -475,9 +531,13 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         const invite = existing[0];
         const isExpired = invite.expiresAt && new Date(invite.expiresAt).getTime() <= Date.now();
         if (isExpired) {
+          const renewedExpiry = invitationExpiry();
           await db.update(invs)
-            .set({ expiresAt: invitationExpiry(), role: parsed.role, invitedBy: userId })
+            .set({ expiresAt: renewedExpiry, role: parsed.role, invitedBy: userId })
             .where(eq((invs as any).id, invite.id));
+          // A renewed invitation is a new invitation as far as the recipient is
+          // concerned — the old email said it expires, and it did.
+          await sendInviteEmail({ ...invite, role: parsed.role, invitedBy: userId, expiresAt: renewedExpiry });
         }
         return { success: true };
       }
@@ -492,6 +552,7 @@ export const createOrgsHandler = (db: any, nc: any = null) => {
         expiresAt: invitationExpiry(),
       };
       await insertRecord(db, invs, payload, isStandalone);
+      await sendInviteEmail(payload);
       return { success: true };
     },
     async archiveOrg(req: unknown, { values: contextValues }: { values: any }) {

@@ -18,9 +18,9 @@ that closed each gap rather than the one that still owns it.
 
 The one thing worth reading twice: "Delivered" here means built *and* verified
 against something real — a running server, a live broker, a container, a
-browser — not merely present in the source. Where that verification found the
-feature broken, the finding is recorded in the milestone's `PROGRESS.md` rather
-than quietly fixed.
+browser, a mail server — not merely present in the source. Where that
+verification found the feature broken, the finding is recorded in the
+milestone's `PROGRESS.md` rather than quietly fixed.
 
 | Capability | State | Owner |
 |---|---|---|
@@ -32,7 +32,7 @@ than quietly fixed.
 | Google login | Delivered | — |
 | Local username/password accounts, no email required | Delivered | M13 |
 | Linking/unlinking an external identity to an existing account | Delivered | M13 |
-| Invite users by email | Invite surface delivered (create, list, revoke, expiry). **Email delivery is still not implemented** — no SMTP integration exists, and this is the one Phase 1 line not fully closed | M03 |
+| Invite users by email | Delivered — create, list, revoke, expiry, and the email is actually sent over SMTP (Gmail by default, any provider by `SMTP_HOST`). Off unless configured, and a delivery failure never costs the invitation | M03, M12 |
 | Hierarchical organization structure | Delivered, with ancestor climbing in the policy engine | M10 |
 | Task types and status enums | Delivered | — |
 | Task state machines | Delivered — enforced by the API and configurable from the Task Types screen | M05, M15 |

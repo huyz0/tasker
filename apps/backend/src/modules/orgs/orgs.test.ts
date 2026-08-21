@@ -1218,3 +1218,141 @@ describe("List and revoke invitations (M03-T12)", () => {
     expect(listed.page.totalCount).toBe(1);
   });
 });
+
+/**
+ * Invitation email delivery.
+ *
+ * The roadmap carried "record created; never sent" for the life of this
+ * repository. These cover the wiring: what is sent, when it is not, and — the
+ * one that matters most — that a mail failure never costs the invitation.
+ */
+describe("invitation email", () => {
+  /** A mailer that records rather than sends. */
+  const recordingMailer = (behaviour: "ok" | "throw" = "ok") => {
+    const sent: any[] = [];
+    return {
+      sent,
+      mailer: {
+        enabled: true,
+        appUrl: "https://tasker.example.com",
+        async send(message: any) {
+          if (behaviour === "throw") throw new Error("smtp down");
+          sent.push(message);
+          return "sent" as const;
+        },
+      },
+    };
+  };
+
+  const seedOrgAndAdmin = async (db: any, handler: any, userId: string) => {
+    await seedUser(db, userId, { name: "Dana", email: `${userId}@test.local` });
+    const ctx = makeAuthContext(userId);
+    const org = await handler.seedOrg({ name: "Acme", slug: `acme-${Date.now()}` }, ctx);
+    return { ctx, orgId: org.organization.id };
+  };
+
+  test("sends the invitation, addressed to the invitee and naming the organization", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const { sent, mailer } = recordingMailer();
+    const handler = createOrgsHandler(db, nc, mailer as any);
+    const { ctx, orgId } = await seedOrgAndAdmin(db, handler, "user-invite-1");
+
+    await handler.inviteUser({ orgId, email: "invitee@example.com", role: "member" }, ctx);
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toBe("invitee@example.com");
+    expect(sent[0].subject).toBe("Dana invited you to Acme on Tasker");
+    expect(sent[0].text).toContain("https://tasker.example.com");
+  });
+
+  test("names the inviter by their display name, never as undefined", async () => {
+    // "undefined has invited you" is the failure the fallback chain exists to
+    // prevent — display name, then email, then id.
+    const { db, nc } = await setupIntegrationTest();
+    const { sent, mailer } = recordingMailer();
+    const handler = createOrgsHandler(db, nc, mailer as any);
+    await seedUser(db, "user-noname", { name: null, email: "noname@test.local" });
+    const ctx = makeAuthContext("user-noname");
+    const org = await handler.seedOrg({ name: "Acme", slug: `acme-nn-${Date.now()}` }, ctx);
+
+    await handler.inviteUser({ orgId: org.organization.id, email: "x@example.com" }, ctx);
+
+    expect(sent[0].subject).toContain("noname@test.local");
+    expect(sent[0].subject).not.toContain("undefined");
+  });
+
+  test("sends nothing for a username-targeted invitation", async () => {
+    // There is no address to send to, and that is the supported way to invite
+    // someone on a local-accounts deployment with no email at all (M13-T09).
+    const { db, nc } = await setupIntegrationTest();
+    const { sent, mailer } = recordingMailer();
+    const handler = createOrgsHandler(db, nc, mailer as any);
+    const { ctx, orgId } = await seedOrgAndAdmin(db, handler, "user-invite-2");
+
+    await handler.inviteUser({ orgId, username: "someone" }, ctx);
+
+    expect(sent).toHaveLength(0);
+  });
+
+  test("does not send again for an invitation that is already live", async () => {
+    // Re-inviting is idempotent, and so is the email — otherwise "invite" is a
+    // button that spams whoever it is pointed at.
+    const { db, nc } = await setupIntegrationTest();
+    const { sent, mailer } = recordingMailer();
+    const handler = createOrgsHandler(db, nc, mailer as any);
+    const { ctx, orgId } = await seedOrgAndAdmin(db, handler, "user-invite-3");
+
+    await handler.inviteUser({ orgId, email: "invitee@example.com" }, ctx);
+    await handler.inviteUser({ orgId, email: "invitee@example.com" }, ctx);
+
+    expect(sent).toHaveLength(1);
+  });
+
+  test("sends again when an expired invitation is renewed", async () => {
+    // The previous email said it expires, and it did. A renewal the recipient
+    // never hears about is a renewal that does nothing.
+    const { db, nc } = await setupIntegrationTest();
+    const { sent, mailer } = recordingMailer();
+    const handler = createOrgsHandler(db, nc, mailer as any);
+    const { ctx, orgId } = await seedOrgAndAdmin(db, handler, "user-invite-4");
+
+    await handler.inviteUser({ orgId, email: "invitee@example.com" }, ctx);
+    await db
+      .update(schemaSqlite.invitations)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(schemaSqlite.invitations.orgId, orgId));
+
+    await handler.inviteUser({ orgId, email: "invitee@example.com", role: "admin" }, ctx);
+
+    expect(sent).toHaveLength(2);
+    expect(sent[1].text).toContain("as a admin");
+  });
+
+  test("still records the invitation when the mail server is unreachable", async () => {
+    // The row is what grants membership; the email is a notification. Failing
+    // the RPC here would trade a missing email for a lost invitation.
+    const { db, nc } = await setupIntegrationTest();
+    const { mailer } = recordingMailer("throw");
+    const handler = createOrgsHandler(db, nc, mailer as any);
+    const { ctx, orgId } = await seedOrgAndAdmin(db, handler, "user-invite-5");
+
+    const res = await handler.inviteUser({ orgId, email: "invitee@example.com" }, ctx);
+
+    expect(res.success).toBe(true);
+    const rows = await db
+      .select()
+      .from(schemaSqlite.invitations)
+      .where(eq(schemaSqlite.invitations.orgId, orgId));
+    expect(rows).toHaveLength(1);
+  });
+
+  test("behaves exactly as before when no mailer is configured", async () => {
+    // Every existing deployment and every existing test takes this path.
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const { ctx, orgId } = await seedOrgAndAdmin(db, handler, "user-invite-6");
+
+    const res = await handler.inviteUser({ orgId, email: "invitee@example.com" }, ctx);
+    expect(res.success).toBe(true);
+  });
+});

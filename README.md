@@ -125,7 +125,7 @@ instance, whichever way you are running it.
 Then: **[Standalone guide](docs/standalone.md)** for flags, upgrades and
 backups · **[Agent integration](docs/agent-integration.md)** for connecting an
 autonomous worker · **[CLI reference](docs/cli-reference.md)** for every
-command.
+command · **[Email](docs/email.md)** for invitation delivery.
 
 Everything below is for working *on* Tasker rather than running it.
 

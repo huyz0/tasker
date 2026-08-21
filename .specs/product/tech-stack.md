@@ -83,6 +83,7 @@ what Radix now exists in this repo to prevent.
 | `nats` | ^2.29.3 | Domain event publishing |
 | `zod` | ^4.3.6 | Runtime validation at boundaries |
 | `pino` | ^10.3.1 | Structured JSON logging |
+| `nodemailer` | ^9.0.5 | SMTP for the invitation email; no transport is constructed unless `SMTP_HOST` is set |
 | `@opentelemetry/api`, `@opentelemetry/core` | ^1.9.1 / ^2.10.0 | Trace context and the propagator (M11) |
 | `@opentelemetry/sdk-trace-node` | ^2.10.0 | Span creation and batching |
 | `@opentelemetry/exporter-trace-otlp-http` | ^0.221.0 | OTLP export, created only when an endpoint is configured |

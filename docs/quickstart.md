@@ -108,6 +108,7 @@ in [the CLI reference](cli-reference.md).
 | Run it for real, or upgrade it | [Standalone guide](standalone.md) |
 | Connect an autonomous worker | [Agent integration](agent-integration.md) |
 | Look up a command | [CLI reference](cli-reference.md) |
+| Make invitation emails actually send | [Email](email.md) |
 | Deploy it to a cluster | [`deploy/kubernetes.yaml`](../deploy/kubernetes.yaml) |
 | Understand how it is built | [`.specs/product/architecture.md`](../.specs/product/architecture.md) |
 
@@ -126,3 +127,9 @@ a timer instead of instantly.
 
 **`moon check --all` fails on a fresh clone.** Run `moon setup` first — it
 installs the pinned Bun, Node and Go versions.
+
+**An invitation was created but no email arrived.** Mail is off unless
+`SMTP_HOST` is set. Start the local catcher with
+`docker compose --profile mail up -d mailpit`, point `SMTP_HOST=localhost
+SMTP_PORT=1025` at it, and read what was sent at <http://localhost:8025>. See
+[Email](email.md).

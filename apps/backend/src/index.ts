@@ -44,6 +44,7 @@ import { StaticSite } from "./lib/staticServer";
 import guiBundle from "./assets/guiBundle.json";
 import { resolveRuntimeOptions, CliError, HELP_TEXT } from "./lib/cliFlags";
 import { openBrowser } from "./lib/openBrowser";
+import { createMailer, readMailerConfig } from "./lib/mailer";
 import { initTelemetry, readTelemetryConfig, shutdownTelemetry } from "./lib/telemetry/otel";
 import { tracingInterceptor } from "./lib/telemetry/tracingInterceptor";
 import { buildMetricFamilies, renderMetrics, PROMETHEUS_CONTENT_TYPE } from "./lib/prometheus";
@@ -88,6 +89,11 @@ initTelemetry(readTelemetryConfig(process.env));
 
 // M11-T08. Requests are counted through this so a drain knows what is still
 // running, and readiness/liveness answer from it.
+// Disabled unless SMTP_HOST is set — the standalone binary must not try to
+// reach a mail server that is not there, the same rule the OTLP exporter
+// follows. See docs/email.md for Gmail and for the local test server.
+const mailer = createMailer(readMailerConfig(process.env));
+
 const lifecycle = new Lifecycle();
 const startedAt = Date.now();
 const db = await setupDatabase(isStandalone ? "sqlite" : "mysql", runtime.dbPath);
@@ -182,7 +188,7 @@ const handler = connectNodeAdapter({
     router.service(HealthService as any, createHealthHandler(db, nc));
     router.service(TaskTypeService as any, createTasksHandler(db, nc));
     router.service(AuthService as any, createAuthHandler(db));
-    router.service(OrgService as any, createOrgsHandler(db, nc));
+    router.service(OrgService as any, createOrgsHandler(db, nc, mailer));
     router.service(ProjectTemplateService as any, createProjectTemplatesHandler(db, nc));
     router.service(ProjectService as any, createProjectsHandler(db, nc));
     router.service(TaskService as any, createTaskManagementHandler(db, nc));
