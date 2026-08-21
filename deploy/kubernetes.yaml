@@ -1,0 +1,163 @@
+# A deployable shape for the backend and its projector (M11-T09).
+#
+# Annotated rather than minimal: every field below that is not boilerplate is
+# here because something in M08 or M11 requires it, and the comment says which.
+# Apply with `kubectl apply -f deploy/kubernetes.yaml` after building and
+# pushing the image from `apps/backend/Dockerfile`.
+#
+# Deliberately not included: an Ingress (every cluster spells it differently),
+# a HorizontalPodAutoscaler (M11 scopes autoscaling policy out), and the
+# database and broker themselves (managed services in any deployment worth
+# writing a manifest for).
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tasker-secrets
+type: Opaque
+stringData:
+  # Both are checked at boot and the process refuses to start with the
+  # development defaults when NODE_ENV=production (config.ts). Replace these.
+  JWT_SECRET: "replace-me"
+  # Exactly 32 bytes: AES-256-GCM rejects any other length, and it does so at
+  # the first encrypt rather than at boot without that check.
+  APP_ENCRYPTION_SECRET: "replace-me-with-32-bytes-exactly"
+  DB_PASSWORD: "replace-me"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tasker-config
+data:
+  NODE_ENV: "production"
+  DB_HOST: "mysql"
+  DB_USER: "tasker"
+  DB_NAME: "tasker"
+  NATS_URL: "nats://nats:4222"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+  CORS_ALLOWED_ORIGINS: "https://tasker.example.com"
+  # How long the process waits between going unready and exiting. Must be
+  # comfortably longer than the interval at which the Service's endpoints are
+  # updated, or requests keep arriving after the drain has begun.
+  SHUTDOWN_PRE_DRAIN_MS: "5000"
+  SHUTDOWN_DRAIN_TIMEOUT_MS: "20000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tasker-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: tasker-backend }
+  template:
+    metadata:
+      labels: { app: tasker-backend }
+    spec:
+      # Longer than SHUTDOWN_PRE_DRAIN_MS + SHUTDOWN_DRAIN_TIMEOUT_MS. The
+      # default 30s would SIGKILL a pod mid-drain, which is precisely the
+      # dropped request M11-T08 exists to prevent.
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+      containers:
+        - name: backend
+          image: ghcr.io/huyz0/tasker-backend:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef: { name: tasker-config }
+            - secretRef: { name: tasker-secrets }
+          # Liveness depends on nothing external, on purpose: a database
+          # outage that failed liveness would restart every replica and turn
+          # one outage into two.
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          # Readiness does, and goes false the moment a drain starts — which is
+          # what removes the pod from the Service before it stops answering.
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            periodSeconds: 5
+            failureThreshold: 2
+          # Startup is a migration, which on a cold database is not instant.
+          # Without this, the liveness probe kills the pod mid-migration and
+          # the next one starts the same migration again.
+          startupProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            failureThreshold: 30
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { memory: "1Gi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tasker-backend
+  annotations:
+    # M08's streaming endpoint holds a connection for as long as a browser tab
+    # is open. Any proxy in front of this needs its read timeout raised to
+    # match, or SubscribeEvents is cut every 60 seconds and the GUI spends its
+    # life reconnecting. On nginx-ingress that is
+    # `nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"`; on a cloud load
+    # balancer it is the idle-timeout setting. The server's own heartbeat
+    # (25s) keeps the connection from looking idle, which is most of the
+    # defence — but a hard timeout still applies.
+    tasker.dev/streaming-endpoint: "EventService.SubscribeEvents holds long-lived connections"
+spec:
+  selector: { app: tasker-backend }
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# The projector (M08-T02). One replica, deliberately: the JetStream consumer is
+# durable and named, and a second replica would share it — which is legal, but
+# means audit rows land in an order neither pod controls, for no throughput
+# this workload needs.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tasker-consumer
+spec:
+  replicas: 1
+  strategy:
+    # Recreate, not RollingUpdate: two consumers on one durable during a
+    # rollout is the same sharing problem as two replicas, briefly.
+    type: Recreate
+  selector:
+    matchLabels: { app: tasker-consumer }
+  template:
+    metadata:
+      labels: { app: tasker-consumer }
+    spec:
+      # The consumer drains rather than closes on SIGTERM, so in-flight
+      # messages are acknowledged instead of redelivered as duplicates.
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: consumer
+          image: ghcr.io/huyz0/tasker-backend:latest
+          command: ["tasker-consumer"]
+          envFrom:
+            - configMapRef: { name: tasker-config }
+            - secretRef: { name: tasker-secrets }
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: tasker-consumer
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { memory: "512Mi" }

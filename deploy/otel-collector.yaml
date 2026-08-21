@@ -1,0 +1,41 @@
+# Collector configuration for the local stack (M11-T07).
+#
+# Receives OTLP over HTTP — the protocol the backend's exporter speaks — and
+# prints what arrives. That is deliberately the least useful destination and
+# the most useful default: it proves the pipeline works end to end without
+# asking anyone to run Jaeger or Tempo to see anything at all.
+#
+# To send somewhere real, replace the `debug` exporter below and add it to the
+# pipeline. Nothing else in the stack changes: the backend only knows an
+# endpoint.
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  # Bounds what a burst can cost the collector. Without it a traffic spike
+  # turns a tracing problem into a memory problem on the same host.
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+
+exporters:
+  debug:
+    # `detailed` prints attributes, which is the whole reason to look at this
+    # locally — `basic` would only confirm that *something* arrived.
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+  telemetry:
+    logs:
+      level: info

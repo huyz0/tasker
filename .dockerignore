@@ -1,0 +1,47 @@
+# Keeps the build context to what the image actually compiles (M11-T06).
+#
+# Without this the context is the whole working tree — every node_modules, the
+# moon cache, local SQLite files, and any `.env` sitting in the repository. The
+# last one is the reason this file matters beyond speed: a build context is
+# readable from inside the build, so a stray credentials file is a credentials
+# file shipped to whoever can run `docker history`.
+
+# Dependencies — reinstalled inside the builder from the manifests.
+**/node_modules
+.moon/cache
+.moon/docker
+
+# Build output — regenerated in the builder, and stale copies would be baked in.
+**/dist
+apps/gui/storybook-static
+apps/cli/tasker
+
+# Local state and secrets.
+**/.env
+**/.env.*
+!**/.env.example
+**/.data
+*.sqlite
+*.sqlite-journal
+*.log
+
+# Version control and editor noise.
+.git
+.github
+.gitignore
+**/.DS_Store
+**/*.swp
+
+# Documentation and process material — none of it is compiled.
+docs
+.specs
+.milestones
+.agents
+.claude
+*.md
+!apps/backend/README.md
+
+# Test artefacts.
+**/coverage
+**/playwright-report
+**/test-results

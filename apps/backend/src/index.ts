@@ -44,6 +44,11 @@ import { StaticSite } from "./lib/staticServer";
 import guiBundle from "./assets/guiBundle.json";
 import { resolveRuntimeOptions, CliError, HELP_TEXT } from "./lib/cliFlags";
 import { openBrowser } from "./lib/openBrowser";
+import { initTelemetry, readTelemetryConfig, shutdownTelemetry } from "./lib/telemetry/otel";
+import { tracingInterceptor } from "./lib/telemetry/tracingInterceptor";
+import { buildMetricFamilies, renderMetrics, PROMETHEUS_CONTENT_TYPE } from "./lib/prometheus";
+import { Lifecycle, DEFAULT_PRE_DRAIN_DELAY_MS, DEFAULT_DRAIN_TIMEOUT_MS } from "./lib/lifecycle";
+import { getHttpRequestCounts } from "./lib/httpMetrics";
 
 const isStandalone = process.env.STANDALONE === "true";
 
@@ -75,6 +80,16 @@ try {
 // manifest in, which is what makes `moon run dev` behave exactly as it did
 // before this existed: Vite serves the GUI there, and this serves nothing.
 const staticSite = new StaticSite(guiBundle as Record<string, string>);
+
+// M11-T01. Before the database, so a slow migration is inside a span rather
+// than before tracing exists. With no OTLP endpoint configured this creates no
+// exporter and opens no connection — the standalone binary's promise.
+initTelemetry(readTelemetryConfig(process.env));
+
+// M11-T08. Requests are counted through this so a drain knows what is still
+// running, and readiness/liveness answer from it.
+const lifecycle = new Lifecycle();
+const startedAt = Date.now();
 const db = await setupDatabase(isStandalone ? "sqlite" : "mysql", runtime.dbPath);
 
 process.on("uncaughtException", (err) => {
@@ -159,7 +174,10 @@ const authRoutes = createAuthRoutes(db, { seedStarterWorkspace: isStandalone && 
 const telemetryRoutes = createTelemetryRoutes(db);
 
 const handler = connectNodeAdapter({
-  interceptors: [requestLoggingInterceptor, sessionInterceptor],
+  // Tracing first, so the span covers authentication and the request-context
+  // setup rather than starting after them — "why was this slow" has a
+  // credential lookup in it often enough to matter.
+  interceptors: [tracingInterceptor, requestLoggingInterceptor, sessionInterceptor],
   routes: (router) => {
     router.service(HealthService as any, createHealthHandler(db, nc));
     router.service(TaskTypeService as any, createTasksHandler(db, nc));
@@ -184,7 +202,7 @@ const handler = connectNodeAdapter({
   },
 });
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   // Access-Control-Allow-Credentials: true means any origin this reflects
   // back can read authenticated responses using a visitor's session
   // cookie - only ever echo an Origin that's on the configured allowlist,
@@ -198,6 +216,51 @@ http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Connect-Protocol-Version, X-Request-Id");
   res.setHeader("Access-Control-Expose-Headers", "X-Request-Id");
+
+  // M11-T05/T08. Ahead of everything else, and unauthenticated: a probe runs
+  // before the process is ready and a scraper has no session. Nothing here
+  // touches the database or names a tenant.
+  const probePath = (req.url ?? "/").split("?")[0];
+  if (req.method === "GET" && (probePath === "/healthz" || probePath === "/readyz" || probePath === "/metrics")) {
+    if (probePath === "/healthz") {
+      // Liveness must not depend on anything external: a database outage that
+      // fails liveness turns one outage into a restart loop across every
+      // replica.
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "live", uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000) }));
+      return;
+    }
+    if (probePath === "/readyz") {
+      const report = lifecycle.readiness();
+      res.writeHead(report.ready ? 200 : 503, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(report));
+      return;
+    }
+    // Optional bearer gate (M11-T10). Open by default, because the common
+    // deployment is a scraper on a private network and a token there is
+    // ceremony. Set METRICS_TOKEN wherever `/metrics` is reachable from
+    // somewhere it should not be — the counters name every route and RPC
+    // method this service has, which is an inventory worth not publishing
+    // even though it contains no tenant data.
+    const metricsToken = process.env.METRICS_TOKEN;
+    if (metricsToken && req.headers.authorization !== `Bearer ${metricsToken}`) {
+      res.writeHead(401, { "Content-Type": "application/problem+json" });
+      res.end(JSON.stringify({ type: "about:blank", title: "Unauthorized", status: 401 }));
+      return;
+    }
+    res.writeHead(200, { "Content-Type": PROMETHEUS_CONTENT_TYPE });
+    res.end(
+      renderMetrics(
+        buildMetricFamilies({
+          rpc: getRpcMethodStats(),
+          http: getHttpRequestCounts(),
+          businessEvents: getBusinessEventCounts(),
+          uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+        }),
+      ),
+    );
+    return;
+  }
 
   if (req.method === "OPTIONS") {
     res.writeHead(204);
@@ -284,11 +347,60 @@ http.createServer(async (req, res) => {
     }
   }
 
-  handler(req, res);
-}).listen(runtime.port, () => {
+  // Counted, so a drain knows what is still running. Deliberately awaits only
+  // the adapter's own handling: a streaming response stays open for as long as
+  // the tab is open, and waiting for those would make every deploy sit out the
+  // full drain timeout.
+  await lifecycle.track(async () => handler(req, res));
+});
+
+server.listen(runtime.port, () => {
+  lifecycle.markReady();
   logger.info({ port: runtime.port, dbPath: isStandalone ? runtime.dbPath : undefined }, "backend.listening");
   if (runtime.open) openBrowser(`http://localhost:${runtime.port}`);
 });
+
+/**
+ * Graceful shutdown (M11-T08).
+ *
+ * The order is the point. Stop reporting ready first, so the load balancer
+ * stops sending new work; wait a beat, because it notices on its own schedule
+ * and requests already routed here are still arriving; then drain what is in
+ * flight; only then close the broker connection and flush spans.
+ *
+ * Closing NATS before the drain would make in-flight mutations publish into a
+ * closed connection — the request succeeds and its event vanishes, which is
+ * the failure mode this ordering exists to avoid.
+ */
+let shuttingDown = false;
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info({ signal, inFlight: lifecycle.inFlightCount }, "backend.shutdown_started");
+
+  // `drain()` flips the state to draining immediately — that is what makes
+  // /readyz start answering 503 — and the promise it returns settles when the
+  // last in-flight request finishes. The delay runs *alongside* it, not
+  // before, so the two overlap rather than adding up.
+  const draining = lifecycle.drain(Number(process.env.SHUTDOWN_DRAIN_TIMEOUT_MS ?? DEFAULT_DRAIN_TIMEOUT_MS));
+  const preDrainMs = Number(process.env.SHUTDOWN_PRE_DRAIN_MS ?? DEFAULT_PRE_DRAIN_DELAY_MS);
+  if (preDrainMs > 0) await new Promise((resolve) => setTimeout(resolve, preDrainMs));
+  const outcome = await draining;
+
+  server.close();
+  try {
+    if (nc && !nc.isClosed?.()) await nc.drain();
+  } catch (err) {
+    logger.warn({ err }, "backend.nats_drain_failed");
+  }
+  await shutdownTelemetry();
+
+  logger.info({ signal, outcome }, "backend.shutdown_complete");
+  process.exit(outcome === "timed-out" ? 1 : 0);
+}
+
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
 
 const RETENTION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 setInterval(() => {

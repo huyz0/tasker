@@ -83,12 +83,24 @@ what Radix now exists in this repo to prevent.
 | `nats` | ^2.29.3 | Domain event publishing |
 | `zod` | ^4.3.6 | Runtime validation at boundaries |
 | `pino` | ^10.3.1 | Structured JSON logging |
+| `@opentelemetry/api`, `@opentelemetry/core` | ^1.9.1 / ^2.10.0 | Trace context and the propagator (M11) |
+| `@opentelemetry/sdk-trace-node` | ^2.10.0 | Span creation and batching |
+| `@opentelemetry/exporter-trace-otlp-http` | ^0.221.0 | OTLP export, created only when an endpoint is configured |
+| `@opentelemetry/resources`, `@opentelemetry/semantic-conventions` | ^2.10.0 / ^1.43.0 | Service identity and standard attribute names |
 
 **Authentication**: OAuth 2.1 with Google, implemented in
 `apps/backend/src/modules/auth/`.
 
-**Events**: the backend *publishes* to NATS. Nothing consumes yet — the audit
-trail and live GUI are M08.
+**Events**: the backend publishes to NATS and a separate consumer process
+projects those events into `audit_log` (M08-T02/T03). The GUI subscribes to a
+live feed of the same subjects over `EventService.SubscribeEvents` (M08-T07).
+
+**Tracing** (M11, superseding ADR-0004's "not yet"): the SDK is always present,
+but an exporter is created **only** when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
+Without one, spans still exist, `traceparent` still propagates and every log
+line still carries a trace id — all in process, and nothing ever opens a
+connection to a collector that is not there, which is what keeps the M09
+standalone promise intact.
 
 ### Database & search
 

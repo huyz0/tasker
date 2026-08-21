@@ -1,13 +1,13 @@
 ---
 id: M11
 title: Observability & Deployability
-status: todo
+status: done
 goal: The system can be deployed to a real environment and debugged there, with distributed traces, metrics and container images.
 depends_on: [M08]
 surfaces: [backend, infra, specs]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+exit_criteria_met: true
+started_at: 2026-08-22
+completed_at: 2026-08-22
 ---
 
 # M11 — Observability & Deployability
@@ -28,20 +28,20 @@ distributing a product that cannot be operated is premature.
 
 ## 3. Exit Criteria
 
-- [ ] Every RPC produces a span; the trace continues through the NATS hop into
+- [x] Every RPC produces a span; the trace continues through the NATS hop into
       the consumer.
-- [ ] `traceparent` is propagated inbound and outbound, and every log line
+- [x] `traceparent` is propagated inbound and outbound, and every log line
       carries the trace id.
-- [ ] Traces export via OTLP when configured, and degrade to a no-op in
+- [x] Traces export via OTLP when configured, and degrade to a no-op in
       standalone mode with no connection errors.
-- [ ] A Prometheus-compatible metrics endpoint exposes the counters that are
+- [x] A Prometheus-compatible metrics endpoint exposes the counters that are
       currently only logged.
-- [ ] A container image builds for the backend, and a compose file brings up the
+- [x] A container image builds for the backend, and a compose file brings up the
       full stack.
-- [ ] The service shuts down gracefully, draining in-flight requests, and
+- [x] The service shuts down gracefully, draining in-flight requests, and
       exposes separate readiness and liveness signals.
-- [ ] `/security-review` passes with no unresolved critical or high findings.
-- [ ] Dependency vulnerability scanning runs in CI.
+- [x] `/security-review` passes with no unresolved critical or high findings.
+- [x] Dependency vulnerability scanning runs in CI.
 
 ## 4. Scope
 
@@ -53,60 +53,60 @@ shutdown and health split, the security review, dependency scanning.
 
 ## 5. Task Breakdown
 
-- [ ] **M11-T01** — Add the OpenTelemetry SDK with the OTLP exporter, configured
+- [x] **M11-T01** — Add the OpenTelemetry SDK with the OTLP exporter, configured
       from standard environment variables and disabled by default in standalone.
       - Files: `apps/backend/src/lib/telemetry/otel.ts`, `config.ts`
       - Verify: with no OTLP endpoint set, startup logs no connection errors.
 
-- [ ] **M11-T02** — Instrument every RPC with a span carrying method, principal
+- [x] **M11-T02** — Instrument every RPC with a span carrying method, principal
       type, org id and outcome.
       - Files: `apps/backend/src/lib/requestLogging.ts`, `index.ts`
       - Verify: a trace shows one span per RPC with attributes.
 
-- [ ] **M11-T03** — Propagate `traceparent` inbound and through NATS into the
+- [x] **M11-T03** — Propagate `traceparent` inbound and through NATS into the
       consumer, replacing the bespoke correlation id or bridging to it.
       - Files: `lib/natsCorrelation.ts`, `consumers/`
       - Verify: a mutation and its projection share one trace.
 
-- [ ] **M11-T04** — Bind trace and span ids into every Pino line.
+- [x] **M11-T04** — Bind trace and span ids into every Pino line.
       - Files: `apps/backend/src/lib/logger.ts`
       - Verify: a log line can be pasted into a trace viewer and found.
 
-- [ ] **M11-T05** — Expose `/metrics` in Prometheus format from the existing RPC,
+- [x] **M11-T05** — Expose `/metrics` in Prometheus format from the existing RPC,
       HTTP and business-event counters, gated to an internal listener.
       - Files: `apps/backend/src/modules/telemetry/telemetry.ts`
       - Verify: the endpoint scrapes cleanly.
 
-- [ ] **M11-T06** — Write the backend Dockerfile with a non-root user and a
+- [x] **M11-T06** — Write the backend Dockerfile with a non-root user and a
       minimal runtime layer.
       - Files: `apps/backend/Dockerfile`, `.dockerignore`
       - Verify: the image builds and the container serves health.
 
-- [ ] **M11-T07** — Extend `docker-compose.yml` to bring up the full stack:
+- [x] **M11-T07** — Extend `docker-compose.yml` to bring up the full stack:
       backend, GUI, MySQL, NATS, and an OTLP collector.
       - Files: `docker-compose.yml`
       - Verify: `docker compose up` yields a working application.
 
-- [ ] **M11-T08** — Add graceful shutdown draining in-flight requests and closing
+- [x] **M11-T08** — Add graceful shutdown draining in-flight requests and closing
       NATS, plus separate readiness and liveness endpoints.
       - Files: `apps/backend/src/index.ts`, `modules/health/`
       - Verify: SIGTERM completes in-flight requests before exit.
 
-- [ ] **M11-T09** — Add a sample Kubernetes manifest or Cloud Run configuration
+- [x] **M11-T09** — Add a sample Kubernetes manifest or Cloud Run configuration
       with the streaming requirements from M08 documented.
       - Files: `deploy/`, `.specs/product/architecture.md`
       - Verify: the manifest is valid and annotated.
 
-- [ ] **M11-T10** — Run `/security-review` across the full surface and resolve
+- [x] **M11-T10** — Run `/security-review` across the full surface and resolve
       every critical and high finding.
       - Verify: the review is recorded with no open items.
 
-- [ ] **M11-T11** — Add dependency vulnerability scanning to CI, failing on high
+- [x] **M11-T11** — Add dependency vulnerability scanning to CI, failing on high
       severity.
       - Files: `.github/workflows/ci.yml`
       - Verify: a known-vulnerable dependency fails the job.
 
-- [ ] **M11-T12** — Update `observability-standard.md` and `architecture.md` to
+- [x] **M11-T12** — Update `observability-standard.md` and `architecture.md` to
       describe what now exists.
       - Files: `.specs/standards/observability-standard.md`, `.specs/product/architecture.md`
       - Verify: the M02 drift check passes.

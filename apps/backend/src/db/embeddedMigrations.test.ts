@@ -7,10 +7,11 @@ import {
   splitStatements,
   hashMigration,
   sqliteRunner,
+  mysqlRunner,
   type EmbeddedMigration,
   type MigrationRunner,
 } from './embeddedMigrations';
-import { EMBEDDED_SQLITE_MIGRATIONS } from './embeddedMigrations.generated';
+import { EMBEDDED_SQLITE_MIGRATIONS, EMBEDDED_MYSQL_MIGRATIONS } from './embeddedMigrations.generated';
 import { generate } from '../../scripts/generate-embedded-migrations';
 
 const migration = (tag: string, when: number, sql = 'SELECT 1;'): EmbeddedMigration & { sql: string } => ({
@@ -183,7 +184,7 @@ describe('sqliteRunner against a real database', () => {
 });
 
 describe('the generated module', () => {
-  it('is in sync with the migrations folder', () => {
+  it('is in sync with the migrations folders', () => {
     // The gate that makes this safe to forget: adding a migration without
     // regenerating produces a binary that silently ships without it, which is
     // a corrupt database rather than a build error.
@@ -191,11 +192,22 @@ describe('the generated module', () => {
     expect(onDisk).toBe(generate());
   });
 
-  it('carries every journalled migration', () => {
-    const journal = JSON.parse(
-      readFileSync(join(import.meta.dir, '../../drizzle-sqlite/meta/_journal.json'), 'utf8'),
-    );
-    expect(EMBEDDED_SQLITE_MIGRATIONS.map((m) => m.tag)).toEqual(journal.entries.map((e: any) => e.tag));
+  it('carries every journalled migration, in both dialects', () => {
+    // MySQL was the gap M11-T07 found: T01 embedded only SQLite, and the
+    // container image then died reading a `./drizzle-mysql` that is not there.
+    for (const [dir, embedded] of [
+      ['drizzle-sqlite', EMBEDDED_SQLITE_MIGRATIONS],
+      ['drizzle-mysql', EMBEDDED_MYSQL_MIGRATIONS],
+    ] as const) {
+      const journal = JSON.parse(readFileSync(join(import.meta.dir, '../..', dir, 'meta/_journal.json'), 'utf8'));
+      expect(embedded.map((m) => m.tag)).toEqual(journal.entries.map((e: any) => e.tag));
+    }
+  });
+
+  it('keeps the two dialects apart, rather than pointing both at one folder', () => {
+    const sqliteTags = new Set(EMBEDDED_SQLITE_MIGRATIONS.map((m) => m.tag));
+    expect(EMBEDDED_MYSQL_MIGRATIONS.some((m) => sqliteTags.has(m.tag))).toBe(false);
+    expect(EMBEDDED_MYSQL_MIGRATIONS.every((m) => m.path.includes('drizzle-mysql'))).toBe(true);
   });
 
   it('resolves each migration to something readable', async () => {
@@ -204,5 +216,49 @@ describe('the generated module', () => {
     // it, so from source every migration became a one-line syntax error.
     const first = EMBEDDED_SQLITE_MIGRATIONS[0]!;
     expect((await Bun.file(first.path).text()).length).toBeGreaterThan(0);
+  });
+});
+
+describe('mysqlRunner', () => {
+  /** Records what would have been executed, without a MySQL server. */
+  const fakeMysql = (lastRow?: { created_at: number }) => {
+    const executed: string[] = [];
+    const db = {
+      execute: async (statement: string) => {
+        executed.push(statement);
+        return statement.includes('order by created_at desc') ? [lastRow].filter(Boolean) : [];
+      },
+    };
+    return { db, executed, runner: mysqlRunner(db, (s: string) => s) };
+  };
+
+  it('creates the table MySQL needs, not the SQLite one', async () => {
+    // `numeric` and double-quoted identifiers are a syntax error in MySQL, so
+    // the shared statement has to be substituted rather than reused.
+    const { runner, executed } = fakeMysql();
+    await applyEmbeddedMigrations(runner, [], async () => '');
+
+    expect(executed[0]).toContain('bigint');
+    expect(executed[0]).toContain('`__drizzle_migrations`');
+    expect(executed[0]).not.toContain('numeric');
+  });
+
+  it('reads the last applied migration the way drizzle records it', async () => {
+    const { runner } = fakeMysql({ created_at: 1234 });
+    expect(await runner.lastAppliedAt()).toBe(1234);
+  });
+
+  it('reports nothing applied for a database with no rows yet', async () => {
+    const { runner } = fakeMysql();
+    expect(await runner.lastAppliedAt()).toBeNull();
+  });
+
+  it('applies and records a migration', async () => {
+    const list = [migration('0000_a', 100, 'CREATE TABLE a (id varchar(36));')];
+    const { runner, executed } = fakeMysql();
+
+    expect(await applyEmbeddedMigrations(runner, list, readFrom(list))).toEqual(['0000_a']);
+    expect(executed.some((s) => s.includes('CREATE TABLE a'))).toBe(true);
+    expect(executed.some((s) => s.includes('insert into `__drizzle_migrations`'))).toBe(true);
   });
 });
