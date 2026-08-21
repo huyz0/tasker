@@ -4,6 +4,7 @@ import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
 import { currentUserIdKey, currentPrincipalKey, type Principal } from '../modules/auth/session';
 import { assertCan, type Scope } from './policy';
+import { setRequestOrg } from './requestContext';
 
 // Resolved lazily inside each function rather than once at module load, since
 // STANDALONE is set at test/runtime, not import time - freezing it here caused
@@ -75,6 +76,11 @@ export async function authorizePrincipal(
   opts: { scope: string; write?: boolean; permission: string },
   humanScope?: Scope,
 ): Promise<void> {
+  // M08-T07: recorded for both principal kinds, but it is the agent branch
+  // that needs it here — `can()` refuses an agent outright and returns before
+  // it resolves any scope, so nothing else on that path knows the org.
+  setRequestOrg(orgId);
+
   if (principal.kind === 'agent') {
     if (principal.orgId !== orgId) {
       throw new ConnectError('this token cannot act in that organization', Code.PermissionDenied);

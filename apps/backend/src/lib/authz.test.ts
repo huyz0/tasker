@@ -17,7 +17,9 @@ import {
   getRepositoryLinkOrgId,
   countActiveSignInMethods,
   assertNotLastSignInMethod,
+  authorizePrincipal,
 } from "./authz";
+import { runWithRequestContext, getRequestContext } from "./requestContext";
 import { ConnectError, Code, createContextValues } from "@connectrpc/connect";
 import { currentUserIdKey } from "../modules/auth/session";
 
@@ -283,5 +285,28 @@ describe("assertNotLastSignInMethod", () => {
   it("allows when at least one method would remain", () => {
     expect(() => assertNotLastSignInMethod(1)).not.toThrow();
     expect(() => assertNotLastSignInMethod(2)).not.toThrow();
+  });
+});
+
+describe("authorizePrincipal records the acting organization (M08-T07)", () => {
+  const agent = { kind: "agent" as const, agentId: "agt-1", orgId: "org-1", scopes: ["task:write"] };
+
+  it("records the org for an agent, which can() never reaches", async () => {
+    // `can()` refuses an agent outright and returns before it resolves any
+    // scope, so nothing on the agent path would know the org otherwise — and
+    // every event an autonomous worker publishes would be untenanted.
+    await runWithRequestContext({ requestId: "req-1" }, async () => {
+      await authorizePrincipal(null, agent, "org-1", { scope: "task:write", permission: "task:write" });
+      expect(getRequestContext()?.orgId).toBe("org-1");
+    });
+  });
+
+  it("records the org even when the token is refused, because the request named it", async () => {
+    await runWithRequestContext({ requestId: "req-2" }, async () => {
+      await expect(
+        authorizePrincipal(null, agent, "org-2", { scope: "task:write", permission: "task:write" }),
+      ).rejects.toThrow("cannot act in that organization");
+      expect(getRequestContext()?.orgId).toBe("org-2");
+    });
   });
 });

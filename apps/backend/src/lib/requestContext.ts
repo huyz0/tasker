@@ -35,6 +35,8 @@ export interface RequestContext {
   userId?: string | null;
   /** Filled in by the session interceptor once it has resolved the caller. */
   actor?: RequestActor;
+  /** Filled in by the first authorization check. See `setRequestOrg`. */
+  orgId?: string;
   policyCache?: PolicyCache;
 }
 
@@ -68,6 +70,31 @@ export function getRequestContext(): RequestContext | undefined {
 export function setRequestActor(actor: RequestActor): void {
   const ctx = requestContextStore.getStore();
   if (ctx) ctx.actor = actor;
+}
+
+/**
+ * Records which organization this request is acting in (M08-T07).
+ *
+ * Set by the authorization check, which is the one place that already knows
+ * the answer — every mutating handler resolves an org (or a project, whose
+ * owning org `can()` looks up anyway) before it touches anything. Read by
+ * `withRequestCorrelation`, which stamps it onto every domain event published
+ * during the request.
+ *
+ * Without this, most events carry no tenant at all: a task row has a
+ * `projectId` and no `orgId`, so `domain.task.*` — the highest-traffic subject
+ * in the system — was published with nothing to scope it by. The live feed
+ * dropped every one of them (it refuses to deliver an event it cannot
+ * attribute to a tenant), and the audit trail recorded them against a null
+ * org, where `listAuditEvents(orgId)` could never find them again.
+ *
+ * First writer wins. A request authorizes against the org it is about before
+ * doing anything else; a later check against some *other* org (moving a
+ * project between two, say) is a second scope, not a correction of the first.
+ */
+export function setRequestOrg(orgId: string): void {
+  const ctx = requestContextStore.getStore();
+  if (ctx && !ctx.orgId && orgId) ctx.orgId = orgId;
 }
 
 /**

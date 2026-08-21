@@ -96,10 +96,105 @@ updating; and a query-error test can fail on an unhandled rejection from an
 *earlier* test's still-mounted query unless the mock has a resolved fallback
 behind the rejection.
 
+### M08-T07/T08/T09/T10 — the live feed
+
+Landed together, for the same reason T05/T06 did: `gui:rpc-coverage` refuses
+contract surface the GUI never calls, and a reconnecting subscription with a
+status indicator is one thing, not four.
+
+**T07 — the endpoint.** `EventService.SubscribeEvents`, server-streaming over
+the same `domain.>` subjects the projector consumes — but through core NATS,
+not a JetStream consumer. The two want opposite things: the projector must
+never lose an event, this feed would rather drop than block, because a browser
+tab that fell behind wants current state and not a backlog.
+
+Authorization lives in `eventScope.ts`, apart from the streaming plumbing, so
+the rules are testable without a broker or a socket. Three of them: an event
+with no org is never delivered; membership is the ceiling regardless of what
+the client asked for; the client's narrowing applies underneath. Asking for an
+org you do not belong to yields nothing rather than an error — the answer is
+the same either way, and an error would confirm the org exists.
+
+Re-authorization is by watching the stream, as decided below: a
+`domain.org.member_*` event flowing through re-resolves the connection's org
+set before the delivery decision, so a removal is exactly the message that
+cannot slip through under the stale answer.
+
+Two control frames, `stream.ready` and `stream.heartbeat`, distinguishable by
+prefix from every `domain.` subject. They exist because an opened stream that
+has yielded nothing is indistinguishable from one whose server is wedged — the
+T10 indicator would have claimed "live" for a dead feed — and because
+idle-timeout proxies cut connections that say nothing.
+
+**T08 — targeted invalidation.** `eventQueryKeys.ts` maps a subject to the
+query keys it makes stale, keyed on the entity segment rather than all 80
+subjects: created/updated/archived/restored/purged all mean "the list you hold
+is wrong". Two subjects drop the whole cache (a retention sweep and an org
+purge, whose blast radius genuinely is everything); an entity the map has
+never heard of narrows to the audit trail rather than falling back to
+everything, so a new publisher costs a missed refresh and not a stampede.
+
+**T09 — reconnect.** Exponential backoff from 1s to 30s, and polling only
+after three consecutive failures. Falling back on the first drop would make
+every deploy briefly turn the app into exactly the timer-based refreshing this
+feed exists to remove. The poll stops the moment the stream returns.
+
+**T10 — the indicator.** One `useLiveEvents` in `AppShell`, its status passed
+to a presentational `LiveStatusIndicator` in both the mobile header and the
+desktop rail — a hook in the component would open a stream per placement. Live
+is a bare dot; the unhappy states earn a word. Offline reads "Refreshing
+periodically", because polling is still updating the screen and "offline"
+alone would suggest the data had stopped being true.
+
+**The bug this uncovered, which was not in the new code.** Verified against
+the real broker, a task creation produced no event on the feed at all. A task
+row carries a `projectId` and no `orgId`, so `domain.task.*` — the
+highest-traffic subject in the system — was published with no tenant on it.
+The feed refuses to deliver an event it cannot attribute, which was correct
+and made the gap visible; the audit trail from T03/T05 had been quietly
+swallowing the same events for days, filing them under a null org where
+`listAuditEvents(orgId)` could never find them again.
+
+Fixed where T04 put the actor: one injection point rather than fifty publish
+sites. `setRequestOrg` records the org on the request context, called from the
+authorization check — the one place that already knows the answer, since
+`can()` resolves a project's owning org anyway and `authorizePrincipal` takes
+the org as a parameter. `withRequestCorrelation` stamps it on, only when the
+payload does not already name one.
+
+Verified end to end against NATS and the running consumer: a second user in no
+shared org received only the ready frame while the owner received
+`domain.task.created` carrying both org and project; the audit trail, which
+recorded nothing for task events before the fix, records them against the
+right org after it.
+
+### M08-T11 — the whole chain, against a real broker
+
+`realtime.integration.test.ts` stubs none of the hops: a real `createTask`
+through a real NATS connection, into a real subscription *and* through
+JetStream into a real `audit_log` row. Every other test in this milestone
+stubs one of them, and both bugs the milestone actually hit — the wrapper that
+ate the connection's prototype, and events published with no tenant — were
+invisible to anything that did.
+
+Gated on `TASKER_REAL_INTEGRATION=1`, the same switch the GitHub integration
+test uses, and split into its own moon task and CI job: it needs a broker, not
+a token, and CI can simply start a broker. That job runs on forks, which is
+where most of the value is.
+
+Two things worth recording from writing it. Racing `iter.next()` against a
+timeout deadlocks the generator on cleanup — the losing `next()` stays pending
+and `return()` queues behind a promise that never settles — so the helper
+counts frames instead, which the heartbeat makes a usable clock. And the
+consumer is created with `deliver_policy: new`: the shared stream holds every
+event the broker has ever seen, and replaying them buries the test's own.
+
+Revert-and-confirm-fail: with the org injection disabled, it fails in 9s on
+"expected not null" rather than hanging.
+
 ## Remaining
 
-T07 streaming endpoint · T08 client subscription · T09 reconnect/fallback ·
-T10 connection indicator · (+1)
+Nothing. Every task and every exit criterion is met; T11 was the last.
 
 ## T07 authorization — decided
 

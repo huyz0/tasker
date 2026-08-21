@@ -25,6 +25,8 @@ import { ThemeToggle } from './ThemeToggle';
 import { useFocusTrap } from '../ui/useFocusTrap';
 import { CurrentUser } from './CurrentUser';
 import { OrgProjectSwitcher } from './OrgProjectSwitcher';
+import { LiveStatusIndicator } from './LiveStatusIndicator';
+import { useLiveEvents } from '../../hooks/useLiveEvents';
 import { logout } from '../../lib/authSession';
 
 // Ten routes, flat, in table-creation order, used to read as an admin
@@ -68,6 +70,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLElement | null>(null);
+  const activeOrgId = useLayoutStore((s) => s.activeOrgId);
+  const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+
+  // One subscription for the whole app, held at the only component guaranteed
+  // to be mounted for the session's lifetime. Per-screen subscriptions would
+  // mean a stream opening and closing on every navigation, and N streams open
+  // whenever two screens are mounted at once.
+  const { status: liveStatus } = useLiveEvents({ orgId: activeOrgId, projectId: activeProjectId });
 
   // On mobile the open sidebar covers the page, so it is modal in every sense
   // except the markup — trapped, escapable, and dismissed by a tap outside.
@@ -105,6 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             wider than the viewport; the trigger is icon-only here (see
             GlobalSearchTrigger's own note on the 375px budget). */}
         <div className="flex items-center gap-2 min-w-0">
+          <LiveStatusIndicator status={liveStatus} />
           <GlobalSearchTrigger compact />
           <ThemeToggle />
           <CurrentUser />
@@ -143,6 +154,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="hidden md:flex flex-col gap-3 px-4 py-3 border-b">
             <GlobalSearchTrigger />
+            <LiveStatusIndicator status={liveStatus} />
             {/* The header above is `md:hidden`, so a desktop user would never
                 have seen the toggle if it only lived there. */}
             <ThemeToggle />

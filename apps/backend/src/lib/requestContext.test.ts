@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { runWithRequestContext, getRequestContext, setRequestActor, getPolicyCache } from './requestContext';
+import { runWithRequestContext, getRequestContext, setRequestActor, setRequestOrg, getPolicyCache } from './requestContext';
 
 describe('setRequestActor', () => {
   it('records the actor on the context already open for this request', () => {
@@ -42,5 +42,46 @@ describe('getPolicyCache', () => {
       expect(first).not.toBeNull();
       expect(getPolicyCache()).toBe(first);
     });
+  });
+});
+
+describe('setRequestOrg', () => {
+  it('records the org the request authorized against', () => {
+    runWithRequestContext({ requestId: 'req-1' }, () => {
+      setRequestOrg('org-1');
+      expect(getRequestContext()?.orgId).toBe('org-1');
+    });
+  });
+
+  it('keeps the first answer when a request checks a second org', () => {
+    // Moving a project between two orgs authorizes against both. The first is
+    // the org the request is *about*; the second is a further check, not a
+    // correction — and the events belong to the first.
+    runWithRequestContext({ requestId: 'req-2' }, () => {
+      setRequestOrg('org-source');
+      setRequestOrg('org-destination');
+      expect(getRequestContext()?.orgId).toBe('org-source');
+    });
+  });
+
+  it('ignores an empty org rather than recording a blank tenant', () => {
+    runWithRequestContext({ requestId: 'req-3' }, () => {
+      setRequestOrg('');
+      expect(getRequestContext()?.orgId).toBeUndefined();
+    });
+  });
+
+  it('is visible to code further down the same async scope', () => {
+    // The property that makes this work: withRequestCorrelation reads the org
+    // long after the authorization check that set it returned.
+    return runWithRequestContext({ requestId: 'req-4' }, async () => {
+      setRequestOrg('org-1');
+      await Promise.resolve();
+      expect(getRequestContext()?.orgId).toBe('org-1');
+    });
+  });
+
+  it('is a no-op outside a request rather than throwing', () => {
+    expect(() => setRequestOrg('org-1')).not.toThrow();
   });
 });

@@ -6,7 +6,7 @@ import { ConnectError, Code } from '@connectrpc/connect';
 import { setupIntegrationTest, seedUser, seedOrgWithAdmin, seedProject } from '../test/setup';
 import * as schema from '../db/schema.sqlite';
 import { can, assertCan, type Scope } from './policy';
-import { runWithRequestContext } from './requestContext';
+import { runWithRequestContext, getRequestContext } from './requestContext';
 
 /** Counts every `db.select(...)` call made inside `fn`, without changing behavior. */
 async function countSelects<T>(db: any, fn: (countingDb: any) => Promise<T>): Promise<{ result: T; selects: number }> {
@@ -262,6 +262,61 @@ describe('can() - project scope climbs to its owning organization', () => {
     await seedGrant(db, { subjectId: 'user-2', scopeType: 'project', scopeId: projectId, roleId: 'role-owner' });
 
     expect(await can(db, { kind: 'user', userId: 'user-2' }, { type: 'organization', id: orgId }, 'org:read')).toBe(false);
+  });
+});
+
+describe('can() - recording the acting organization (M08-T07)', () => {
+  it("records a project's owning org, which is what makes a task event deliverable", async () => {
+    // A task row has a projectId and no orgId. Without this, every
+    // `domain.task.*` event is published untenanted: the live feed refuses to
+    // deliver an event it cannot attribute, and the audit trail files it
+    // under a null org where listAuditEvents can never find it again.
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
+    const { projectId } = await seedProject(db, { orgId, userId, templateId: 'tmpl-1', projectId: 'proj-1' });
+    await seedGrant(db, { subjectId: userId, scopeType: 'organization', scopeId: orgId, roleId: 'role-member' });
+
+    await runWithRequestContext({ requestId: 'req-1' }, async () => {
+      await can(db, { kind: 'user', userId }, { type: 'project', id: projectId }, 'task:write');
+      expect(getRequestContext()?.orgId).toBe(orgId);
+    });
+  });
+
+  it('records an organization scope directly', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
+
+    await runWithRequestContext({ requestId: 'req-2' }, async () => {
+      await can(db, { kind: 'user', userId }, { type: 'organization', id: orgId }, 'org:read');
+      expect(getRequestContext()?.orgId).toBe(orgId);
+    });
+  });
+
+  it('records the org even when the check denies, because the request is still about it', async () => {
+    // The event stream is not a permission decision. A denied request that
+    // still publishes something (it rarely does) belongs to the tenant it
+    // was aimed at, not to no tenant at all.
+    const { db } = await setupIntegrationTest();
+    const { orgId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
+    await seedUser(db, 'outsider');
+
+    await runWithRequestContext({ requestId: 'req-3' }, async () => {
+      expect(await can(db, { kind: 'user', userId: 'outsider' }, { type: 'organization', id: orgId }, 'org:admin')).toBe(false);
+      expect(getRequestContext()?.orgId).toBe(orgId);
+    });
+  });
+
+  it('records nothing for a team scope, which does not name an org on its own', async () => {
+    // Team scope deliberately does not climb to its owning organization (see
+    // policy.ts), so there is no org here to record without inventing one.
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
+    await db.insert(schema.teams).values({ id: 'team-1', orgId, name: 'Team 1', createdAt: new Date() });
+
+    await runWithRequestContext({ requestId: 'req-4' }, async () => {
+      await can(db, { kind: 'user', userId }, { type: 'team', id: 'team-1' }, 'team:read');
+      expect(getRequestContext()?.orgId).toBeUndefined();
+    });
   });
 });
 

@@ -8,6 +8,9 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'apps/backend/src/modules/repositories/**'
+      - 'apps/backend/src/modules/events/**'
+      - 'apps/backend/src/consumers/**'
+      - 'apps/backend/src/lib/natsCorrelation.ts'
       - '.github/workflows/integration.yml'
 
 jobs:
@@ -57,3 +60,47 @@ jobs:
       - name: Skip Notification
         if: env.HAS_TOKEN == 'false'
         run: echo "Skipping integration tests because INTEGRATION_TEST_TOKEN is missing (expected for PRs from forks)."
+
+  realtime:
+    name: Realtime Event Feed (NATS)
+    runs-on: ubuntu-latest
+
+    # No secret to gate on, unlike the GitHub job above — this one needs a
+    # broker, and a broker is something CI can simply start. So it runs on
+    # forks too, which is most of the value: the M08 chain is exactly the kind
+    # of thing that only breaks when something real is on the other end.
+    services:
+      nats:
+        image: nats:2.10-alpine
+        ports:
+          - 4222:4222
+        options: >-
+          --health-cmd "wget -q -O- http://127.0.0.1:8222/healthz || exit 1"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Moon
+        uses: moonrepo/setup-toolchain@v0
+
+      - name: Install dependencies
+        run: |
+          cd packages/shared-contract && bun install && cd ../..
+          cd apps/backend && bun install
+
+      - name: Run Realtime Integration Test
+        env:
+          TASKER_REAL_INTEGRATION: "1"
+          NATS_URL: "nats://localhost:4222"
+          # Same reason as the job above: the test seeds and reads sqlite, and
+          # authz.ts picks its schema off this variable.
+          STANDALONE: "true"
+        run: moon run backend:test-integration-realtime
