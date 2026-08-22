@@ -1,86 +1,10 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { ArtifactService, LabelService, SearchService, CommentService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 
-const {
-  mockListFolders,
-  mockListArtifacts,
-  mockGetArtifact,
-  mockArchiveFolder,
-  mockArchiveArtifact,
-  mockCreateFolder,
-  mockCreateArtifact,
-  mockListEntityLabels,
-  mockListLabels,
-  mockUpdateFolder,
-  mockUpdateArtifactContent,
-  mockListComments,
-  mockCreateComment,
-  mockListTaskArtifactLinks,
-  mockGetArtifactContent,
-} = vi.hoisted(() => ({
-  mockListFolders: vi.fn(),
-  mockListArtifacts: vi.fn(),
-  mockGetArtifact: vi.fn(),
-  mockArchiveFolder: vi.fn(),
-  mockArchiveArtifact: vi.fn(),
-  mockCreateFolder: vi.fn(),
-  mockCreateArtifact: vi.fn(),
-  mockListEntityLabels: vi.fn(),
-  mockListLabels: vi.fn(),
-  mockUpdateFolder: vi.fn(),
-  mockUpdateArtifactContent: vi.fn(),
-  mockListComments: vi.fn(),
-  mockCreateComment: vi.fn(),
-  mockListTaskArtifactLinks: vi.fn(),
-  mockGetArtifactContent: vi.fn(),
-}));
-
-vi.mock('@connectrpc/connect-web', () => ({
-  createConnectTransport: vi.fn(() => ({})),
-}));
-vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn((service: unknown) => {
-    if (service === 'CommentService') return {
-      listComments: mockListComments,
-      createComment: mockCreateComment,
-      updateComment: vi.fn(),
-      deleteComment: vi.fn(),
-    };
-    if (service === 'LabelService') return {
-      listEntityLabels: mockListEntityLabels,
-      listLabels: mockListLabels,
-      attachLabel: vi.fn(),
-      detachLabel: vi.fn(),
-      createLabel: vi.fn(),
-    };
-    return {
-      listFolders: mockListFolders,
-      listArtifacts: mockListArtifacts,
-      getArtifact: mockGetArtifact,
-      getArtifactContent: mockGetArtifactContent,
-      archiveFolder: mockArchiveFolder,
-      archiveArtifact: mockArchiveArtifact,
-      createFolder: mockCreateFolder,
-      createArtifact: mockCreateArtifact,
-      updateFolder: mockUpdateFolder,
-      updateArtifactContent: mockUpdateArtifactContent,
-      listTaskArtifactLinks: mockListTaskArtifactLinks,
-      linkTaskArtifact: vi.fn(),
-      unlinkTaskArtifact: vi.fn(),
-      universalSearch: vi.fn(async () => ({ results: [] })),
-    };
-  }),
-}));
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  ArtifactService: {},
-  LabelService: 'LabelService',
-  // TaskArtifactLinks (M05-T06) searches for tasks to link from this view.
-  SearchService: 'SearchService',
-  // Artifact comments (M05-T07).
-  CommentService: 'CommentService',
-}));
 let mockActiveProjectId = 'proj-1';
 let mockActiveOrgId = 'org-1';
 vi.mock('../../store/layout', () => ({
@@ -102,7 +26,6 @@ vi.mock('../../components/ui/LazyRichMarkdownEditor', () => ({
     <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
   ),
 }));
-
 
 import { ArtifactsBrowser } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
@@ -138,67 +61,68 @@ function renderPage(initialEntry = '/artifacts') {
   return { ...utils, queryClient };
 }
 
+/**
+ * Registers ListFolders, ListArtifacts, GetArtifact and GetArtifactContent
+ * together from one fixture, mirroring how a test only has to declare each
+ * artifact once. `artifacts` answers every ListArtifacts call regardless of
+ * folderId (this file's own long-standing convention: most fixtures describe
+ * one open folder at a time) — pass a function instead for folder-specific
+ * behaviour.
+ *
+ * Content is deliberately withheld from the ListFolders/ListArtifacts/
+ * GetArtifact responses and served only through GetArtifactContent, matching
+ * the real backend (M07-T02): a listing's row is metadata-only so it stays
+ * proportional to the number of files, not their size. A component that read
+ * `.content` straight off a list row instead of fetching it would show
+ * nothing here, the same as it would against the real server.
+ */
+function withProject(
+  folders: any[] | ((body: any) => object),
+  artifacts: any[] | ((body: { folderId?: string }) => object) = [],
+) {
+  const folderRequests: any[] = [];
+  const artifactRequests: any[] = [];
+  const stripContent = (a: any) => { const { content: _content, ...rest } = a; return rest; };
+  const flatArtifacts = Array.isArray(artifacts) ? artifacts : [];
+
+  mockRpc(ArtifactService, 'ListFolders', (body) => {
+    folderRequests.push(body);
+    return typeof folders === 'function' ? folders(body) : { folders };
+  });
+  mockRpc(ArtifactService, 'ListArtifacts', (body) => {
+    artifactRequests.push(body);
+    if (typeof artifacts === 'function') return artifacts(body);
+    return { artifacts: artifacts.map(stripContent) };
+  });
+  mockRpc(ArtifactService, 'GetArtifact', (body: { artifactId: string }) => {
+    const match = flatArtifacts.find((a) => a.id === body.artifactId);
+    return { artifact: match ? stripContent(match) : undefined };
+  });
+  mockRpc(ArtifactService, 'GetArtifactContent', (body: { artifactId: string }) => {
+    const match = flatArtifacts.find((a) => a.id === body.artifactId);
+    return { content: match?.content ?? '', contentType: match?.contentType ?? 'text/markdown' };
+  });
+
+  return { folderRequests, artifactRequests };
+}
+
 describe('ArtifactsBrowser', () => {
   beforeEach(() => {
     mockActiveProjectId = 'proj-1';
     mockActiveOrgId = 'org-1';
-    mockListFolders.mockReset();
-    mockListArtifacts.mockReset();
-    mockGetArtifact.mockReset();
-    mockArchiveFolder.mockReset();
-    mockArchiveArtifact.mockReset();
-    mockCreateFolder.mockReset();
-    mockCreateArtifact.mockReset();
-    mockUpdateFolder.mockReset();
-    mockUpdateArtifactContent.mockReset();
-    mockListEntityLabels.mockReset();
-    mockListEntityLabels.mockResolvedValue({ labels: [] });
-    mockListLabels.mockReset();
-    mockListLabels.mockResolvedValue({ labels: [] });
-    mockListComments.mockReset();
-    mockListComments.mockResolvedValue({ comments: [] });
-    mockCreateComment.mockReset();
-    mockCreateComment.mockResolvedValue({ comment: { id: 'cmt-1' } });
-    mockListTaskArtifactLinks.mockReset();
-    mockListTaskArtifactLinks.mockResolvedValue({ links: [] });
-    mockGetArtifactContent.mockReset();
-    // The body is a separate RPC now (M07-T02), but the fixtures still declare
-    // it on the artifact they belong to — which is where a reader looks for it.
-    // Resolve it the way the server does: by id, from whatever the folder
-    // listing was configured to hold.
-    // A deep link now resolves through `getArtifact` in one request instead of
-    // walking every folder (M07-T12). Resolved from the configured listings so
-    // each test still describes its world in one place.
-    mockGetArtifact.mockImplementation(async ({ artifactId }: { artifactId: string }) => {
-      const { folders = [] } = (await mockListFolders({})) ?? {};
-      const folderIds = folders.length ? folders.map((f: any) => f.id) : [''];
-      for (const folderId of folderIds) {
-        const page = await mockListArtifacts({ folderId });
-        const match = (page?.artifacts ?? []).find((a: any) => a.id === artifactId);
-        if (match) return { artifact: { ...match, folderId } };
-      }
-      return { artifact: undefined };
-    });
-
-    mockGetArtifactContent.mockImplementation(async ({ artifactId }: { artifactId: string }) => {
-      // Ask the listing rather than replaying its past calls: on a deep link
-      // the content query fires before any folder has been listed, so reading
-      // `mock.results` returned nothing and every deep-link test saw an empty
-      // body.
-      const { folders = [] } = (await mockListFolders({})) ?? {};
-      const folderIds = folders.length ? folders.map((f: any) => f.id) : [''];
-      for (const folderId of folderIds) {
-        const page = await mockListArtifacts({ folderId });
-        const match = (page?.artifacts ?? []).find((a: any) => a.id === artifactId);
-        if (match) return { content: match.content ?? '', contentType: match.contentType ?? 'text/markdown' };
-      }
-      return { content: '', contentType: 'text/markdown' };
-    });
+    mockRpc(LabelService, 'ListEntityLabels', { labels: [] });
+    mockRpc(LabelService, 'ListLabels', { labels: [] });
+    mockRpc(CommentService, 'ListComments', { comments: [] });
+    mockRpc(CommentService, 'CreateComment', { comment: { id: 'cmt-1' } });
+    mockRpc(ArtifactService, 'ListTaskArtifactLinks', { links: [] });
+    mockRpc(SearchService, 'UniversalSearch', { results: [] });
   });
 
   it('expands a folder and selects an artifact to view its content', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+    );
 
     renderPage();
 
@@ -212,18 +136,22 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('auto-loads later folder pages, and pages artifacts on demand rather than fetching every page', async () => {
-    mockListFolders
-      .mockResolvedValueOnce({ folders: [{ id: 'fld-1', name: 'Page One Folder', parentId: '' }], page: { nextCursor: 'cursor-2' } })
-      .mockResolvedValueOnce({ folders: [{ id: 'fld-2', name: 'Page Two Folder', parentId: '' }], page: {} });
-    mockListArtifacts
-      .mockResolvedValueOnce({ artifacts: [{ id: 'art-1', name: 'Page One Artifact', content: '' }], page: { nextCursor: 'cursor-2' } })
-      .mockResolvedValueOnce({ artifacts: [{ id: 'art-2', name: 'Page Two Artifact', content: '' }], page: {} });
+    const { folderRequests, artifactRequests } = withProject(
+      (body: { page?: { cursor?: string } }) =>
+        body.page?.cursor
+          ? { folders: [{ id: 'fld-2', name: 'Page Two Folder', parentId: '' }], page: {} }
+          : { folders: [{ id: 'fld-1', name: 'Page One Folder', parentId: '' }], page: { nextCursor: 'cursor-2' } },
+      (body: { folderId?: string; page?: { cursor?: string } }) =>
+        body.page?.cursor
+          ? { artifacts: [{ id: 'art-2', name: 'Page Two Artifact' }], page: {} }
+          : { artifacts: [{ id: 'art-1', name: 'Page One Artifact' }], page: { nextCursor: 'cursor-2' } },
+    );
 
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Page One Folder')).toBeDefined());
     await waitFor(() => expect(screen.getByText('Page Two Folder')).toBeDefined());
-    expect(mockListFolders).toHaveBeenCalledWith({ projectId: 'proj-1', page: { cursor: 'cursor-2' } });
+    expect(folderRequests).toContainEqual({ projectId: 'proj-1', page: { cursor: 'cursor-2' } });
 
     fireEvent.click(screen.getByText('Page One Folder'));
 
@@ -235,12 +163,16 @@ describe('ArtifactsBrowser', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Load more artifacts' }));
 
     await waitFor(() => expect(screen.getByText('Page Two Artifact')).toBeDefined());
-    expect(mockListArtifacts).toHaveBeenCalledWith({ folderId: 'fld-1', page: { cursor: 'cursor-2' } });
+    expect(artifactRequests).toContainEqual({ folderId: 'fld-1', page: { cursor: 'cursor-2' } });
   });
 
   it('archives a folder after confirmation', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockArchiveFolder.mockResolvedValue({});
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }]);
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'ArchiveFolder', (body) => {
+      requests.push(body);
+      return {};
+    });
 
     renderPage();
 
@@ -248,12 +180,12 @@ describe('ArtifactsBrowser', () => {
     fireEvent.click(screen.getByLabelText('Delete folder docs'));
     await confirmAction();
 
-    await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalledWith({ folderId: 'fld-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ folderId: 'fld-1' }));
   });
 
   it('invalidates the Bin page query keys after archiving a folder, so the Bin view refreshes', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockArchiveFolder.mockResolvedValue({});
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }]);
+    mockRpc(ArtifactService, 'ArchiveFolder', {});
 
     const { queryClient } = renderPage();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
@@ -262,8 +194,7 @@ describe('ArtifactsBrowser', () => {
     fireEvent.click(screen.getByLabelText('Delete folder docs'));
     await confirmAction();
 
-    await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalled());
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['folders', 'bin', 'proj-1'] });
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['folders', 'bin', 'proj-1'] }));
   });
 
   it('invalidates artifact lists by prefix after archiving, so a stale folder id cannot skip the refetch', async () => {
@@ -271,9 +202,11 @@ describe('ArtifactsBrowser', () => {
     // selectedFolderId], read from a mutation-level onSuccess closure that lags
     // a render behind component state - so the open folder's list could keep
     // showing an artifact that had just been archived.
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
-    mockArchiveArtifact.mockResolvedValue({});
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+    );
+    mockRpc(ArtifactService, 'ArchiveArtifact', {});
 
     const { queryClient } = renderPage();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
@@ -284,15 +217,18 @@ describe('ArtifactsBrowser', () => {
     fireEvent.click(screen.getByLabelText('Delete artifact readme.md'));
     await confirmAction();
 
-    await waitFor(() => expect(mockArchiveArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
     // The prefix matches every artifacts list, the Bin's included, whatever
     // folder id happened to be captured.
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['artifacts'] });
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['artifacts'] }));
   });
 
   it('renames a folder through the GUI', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockUpdateFolder.mockResolvedValue({ folder: { id: 'fld-1', name: 'documents', parentId: '' } });
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }]);
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'UpdateFolder', (body) => {
+      requests.push(body);
+      return { folder: { id: 'fld-1', name: 'documents', parentId: '' } };
+    });
 
     renderPage();
 
@@ -303,11 +239,16 @@ describe('ArtifactsBrowser', () => {
     fireEvent.change(nameInput, { target: { value: 'documents' } });
     fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(mockUpdateFolder).toHaveBeenCalledWith({ folderId: 'fld-1', name: 'documents' }));
+    await waitFor(() => expect(requests).toContainEqual({ folderId: 'fld-1', name: 'documents' }));
   });
 
   it('cancels renaming a folder without saving', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }]);
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'UpdateFolder', (body) => {
+      requests.push(body);
+      return {};
+    });
 
     renderPage();
 
@@ -317,13 +258,19 @@ describe('ArtifactsBrowser', () => {
 
     fireEvent.click(screen.getByText('Cancel'));
     expect(screen.getByText('docs')).toBeInTheDocument();
-    expect(mockUpdateFolder).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('edits an artifact\'s content through the GUI', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }] });
-    mockUpdateArtifactContent.mockResolvedValue({ artifact: { id: 'art-1', name: 'readme.md', content: 'Updated content', contentType: 'text/markdown' } });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }],
+    );
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'UpdateArtifactContent', (body) => {
+      requests.push(body);
+      return { artifact: { id: 'art-1', name: 'readme.md', content: 'Updated content', contentType: 'text/markdown' } };
+    });
 
     renderPage();
 
@@ -339,12 +286,19 @@ describe('ArtifactsBrowser', () => {
     fireEvent.change(textarea, { target: { value: 'Updated content' } });
     fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(mockUpdateArtifactContent).toHaveBeenCalledWith({ artifactId: 'art-1', content: 'Updated content' }));
+    await waitFor(() => expect(requests).toContainEqual({ artifactId: 'art-1', content: 'Updated content' }));
   });
 
   it('cancels editing artifact content without saving', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }],
+    );
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'UpdateArtifactContent', (body) => {
+      requests.push(body);
+      return {};
+    });
 
     renderPage();
 
@@ -359,13 +313,15 @@ describe('ArtifactsBrowser', () => {
 
     fireEvent.click(screen.getByText('Cancel'));
     expect(screen.getByText('Hello world')).toBeInTheDocument();
-    expect(mockUpdateArtifactContent).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('shows an error message when updating artifact content fails', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }] });
-    mockUpdateArtifactContent.mockRejectedValue(new Error('artifact not found'));
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }],
+    );
+    mockRpcError(ArtifactService, 'UpdateArtifactContent', 'unknown', 'artifact not found');
 
     renderPage();
 
@@ -382,8 +338,10 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('does not show an Edit control for image artifacts', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'photo.png', content: 'base64data', contentType: 'image/png' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'photo.png', content: 'base64data', contentType: 'image/png' }],
+    );
 
     renderPage();
 
@@ -397,8 +355,7 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('shows an empty-folder message when a selected folder has no artifacts', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
 
     renderPage();
 
@@ -409,8 +366,12 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('creates a new folder via a real API call, using real data instead of a static placeholder', async () => {
-    mockListFolders.mockResolvedValue({ folders: [] });
-    mockCreateFolder.mockResolvedValue({ folder: { id: 'fld-new', projectId: 'proj-1', name: 'New Folder' } });
+    withProject([]);
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'CreateFolder', (body) => {
+      requests.push(body);
+      return { folder: { id: 'fld-new', projectId: 'proj-1', name: 'New Folder' } };
+    });
 
     renderPage();
 
@@ -421,13 +382,16 @@ describe('ArtifactsBrowser', () => {
     fireEvent.change(input, { target: { value: 'New Folder' } });
     fireEvent.click(screen.getByText('Add'));
 
-    await waitFor(() => expect(mockCreateFolder).toHaveBeenCalledWith({ projectId: 'proj-1', name: 'New Folder' }));
+    await waitFor(() => expect(requests).toContainEqual({ projectId: 'proj-1', name: 'New Folder' }));
   });
 
   it('creates a new artifact within a selected folder via a real API call', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [] });
-    mockCreateArtifact.mockResolvedValue({ artifact: { id: 'art-new', folderId: 'fld-1', name: 'notes.md' } });
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'CreateArtifact', (body) => {
+      requests.push(body);
+      return { artifact: { id: 'art-new', folderId: 'fld-1', name: 'notes.md' } };
+    });
 
     renderPage();
 
@@ -441,13 +405,19 @@ describe('ArtifactsBrowser', () => {
     fireEvent.change(input, { target: { value: 'notes.md' } });
     fireEvent.click(screen.getByText('Add'));
 
-    await waitFor(() => expect(mockCreateArtifact).toHaveBeenCalledWith({ folderId: 'fld-1', name: 'notes.md' }));
+    await waitFor(() => expect(requests).toContainEqual({ folderId: 'fld-1', name: 'notes.md' }));
   });
 
   it('archives an artifact after confirmation and closes it if it was selected', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello' }] });
-    mockArchiveArtifact.mockResolvedValue({});
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello' }],
+    );
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'ArchiveArtifact', (body) => {
+      requests.push(body);
+      return {};
+    });
 
     renderPage();
 
@@ -459,11 +429,16 @@ describe('ArtifactsBrowser', () => {
 
     fireEvent.click(screen.getByLabelText('Delete artifact readme.md'));
     await confirmAction();
-    await waitFor(() => expect(mockArchiveArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ artifactId: 'art-1' }));
   });
 
   it('does not archive a folder when confirmation is cancelled', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }]);
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'ArchiveFolder', (body) => {
+      requests.push(body);
+      return {};
+    });
 
     renderPage();
 
@@ -471,12 +446,14 @@ describe('ArtifactsBrowser', () => {
     fireEvent.click(screen.getByLabelText('Delete folder docs'));
     await cancelAction();
 
-    expect(mockArchiveFolder).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('renders an image artifact using a data URI', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'pic.png', content: 'abc123', contentType: 'image/png' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'pic.png', content: 'abc123', contentType: 'image/png' }],
+    );
 
     renderPage();
 
@@ -490,8 +467,10 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('shows a placeholder message when the selected artifact has no content', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'empty.md', content: '' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'empty.md', content: '' }],
+    );
 
     renderPage();
 
@@ -504,7 +483,7 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('closes the new-folder form on blur when the name is empty', async () => {
-    mockListFolders.mockResolvedValue({ folders: [] });
+    withProject([]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('+ Folder')).toBeDefined());
@@ -516,8 +495,7 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('closes the new-artifact form on blur when the name is empty', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
@@ -531,8 +509,7 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('selects a folder via keyboard Enter and toggles it off via Space', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
@@ -544,7 +521,7 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('keeps the new-folder form open on blur when there is unsaved text', async () => {
-    mockListFolders.mockResolvedValue({ folders: [] });
+    withProject([]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('+ Folder')).toBeDefined());
@@ -557,7 +534,12 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('does not create a folder when the form is submitted blank', async () => {
-    mockListFolders.mockResolvedValue({ folders: [] });
+    withProject([]);
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'CreateFolder', (body) => {
+      requests.push(body);
+      return {};
+    });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('+ Folder')).toBeDefined());
@@ -565,12 +547,11 @@ describe('ArtifactsBrowser', () => {
     const input = await screen.findByPlaceholderText('Folder name');
     fireEvent.submit(input.closest('form')!);
 
-    expect(mockCreateFolder).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('keeps the new-artifact form open on blur when there is unsaved text', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
@@ -585,8 +566,12 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('does not create an artifact when the form is submitted blank', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'CreateArtifact', (body) => {
+      requests.push(body);
+      return {};
+    });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
@@ -596,12 +581,14 @@ describe('ArtifactsBrowser', () => {
     const input = await screen.findByPlaceholderText('Artifact name');
     fireEvent.submit(input.closest('form')!);
 
-    expect(mockCreateArtifact).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('ignores non-activation keys on the folder and artifact rows', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: '' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: '' }],
+    );
     renderPage();
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
@@ -615,8 +602,7 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('hides the empty-folder message while the new-artifact form is open', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [] });
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
@@ -628,8 +614,10 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('selects an artifact via keyboard Enter', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello there' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello there' }],
+    );
     renderPage();
 
     await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
@@ -642,8 +630,15 @@ describe('ArtifactsBrowser', () => {
 
   describe('URL-driven artifact detail', () => {
     it('opens the artifact straight from /artifacts/:artifactId, expanding its folder', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+      withProject(
+        [{ id: 'fld-1', name: 'docs', parentId: '' }],
+        // folderId matters here specifically: it's what GetArtifact's locate
+        // query (M07-T12) hands back to select the folder — without it the
+        // content still loads (a separate, folder-independent query) but the
+        // folder itself never visibly expands, which is exactly the gap this
+        // test is meant to catch.
+        [{ id: 'art-1', name: 'readme.md', folderId: 'fld-1', content: 'Hello world' }],
+      );
 
       renderPage('/artifacts/art-1');
 
@@ -653,17 +648,21 @@ describe('ArtifactsBrowser', () => {
       // Twice, deliberately: once in the explorer and once as the last
       // breadcrumb, which is how a deep-linked file says where it lives.
       expect(screen.getAllByText('readme.md').length).toBeGreaterThanOrEqual(1);
+      // And the folder itself is genuinely the selected one, not just the
+      // artifact resolved independently of it.
+      expect(screen.getByText('+ New artifact')).toBeInTheDocument();
     });
 
     it('finds the artifact in a later folder when the deep link gives no folder', async () => {
-      mockListFolders.mockResolvedValue({
-        folders: [{ id: 'fld-1', name: 'docs', parentId: '' }, { id: 'fld-2', name: 'specs', parentId: '' }],
-      });
-      mockListArtifacts.mockImplementation(async ({ folderId }: { folderId: string }) =>
-        folderId === 'fld-2'
-          ? { artifacts: [{ id: 'art-9', name: 'design.md', content: 'Second folder content' }] }
-          : { artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] }
+      withProject(
+        [{ id: 'fld-1', name: 'docs', parentId: '' }, { id: 'fld-2', name: 'specs', parentId: '' }],
+        (body: { folderId?: string }) =>
+          body.folderId === 'fld-2'
+            ? { artifacts: [{ id: 'art-9', name: 'design.md' }] }
+            : { artifacts: [{ id: 'art-1', name: 'readme.md' }] },
       );
+      mockRpc(ArtifactService, 'GetArtifact', { artifact: { id: 'art-9', name: 'design.md', folderId: 'fld-2' } });
+      mockRpc(ArtifactService, 'GetArtifactContent', { content: 'Second folder content', contentType: 'text/markdown' });
 
       renderPage('/artifacts/art-9');
 
@@ -671,8 +670,10 @@ describe('ArtifactsBrowser', () => {
     });
 
     it('pushes the artifact id onto the URL when one is selected', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+      withProject(
+        [{ id: 'fld-1', name: 'docs', parentId: '' }],
+        [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+      );
 
       renderPage();
 
@@ -685,10 +686,14 @@ describe('ArtifactsBrowser', () => {
     });
 
     it('reads the comments belonging to the artifact, not to a task', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
-      mockListComments.mockResolvedValue({
-        comments: [{ id: 'cmt-1', entityId: 'art-1', entityType: 'artifact', content: 'Looks right to me', authorName: 'Ada', createdAt: '2026-08-15T00:00:00Z' }],
+      withProject(
+        [{ id: 'fld-1', name: 'docs', parentId: '' }],
+        [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+      );
+      const requests: any[] = [];
+      mockRpc(CommentService, 'ListComments', (body) => {
+        requests.push(body);
+        return { comments: [{ id: 'cmt-1', entityId: 'art-1', entityType: 'artifact', content: 'Looks right to me', authorName: 'Ada', createdAt: '2026-08-15T00:00:00Z' }] };
       });
 
       renderPage('/artifacts/art-1');
@@ -697,14 +702,21 @@ describe('ArtifactsBrowser', () => {
       // entityType is the whole risk here: mounting it as "task" would attach
       // the comment to an id the comments table reads as a task, and the screen
       // would look identical.
-      expect(mockListComments).toHaveBeenCalledWith(
+      expect(requests).toContainEqual(
         expect.objectContaining({ entityId: 'art-1', entityType: 'artifact' }),
       );
     });
 
     it('posts a new comment against the artifact', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+      withProject(
+        [{ id: 'fld-1', name: 'docs', parentId: '' }],
+        [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+      );
+      const requests: any[] = [];
+      mockRpc(CommentService, 'CreateComment', (body) => {
+        requests.push(body);
+        return { comment: { id: 'cmt-1' } };
+      });
 
       renderPage('/artifacts/art-1');
 
@@ -712,21 +724,21 @@ describe('ArtifactsBrowser', () => {
       fireEvent.change(box, { target: { value: 'First' } });
       fireEvent.click(screen.getByRole('button', { name: /post|comment|send/i }));
 
-      await waitFor(() => expect(mockCreateComment).toHaveBeenCalledWith(
+      await waitFor(() => expect(requests).toContainEqual(
         expect.objectContaining({ entityId: 'art-1', entityType: 'artifact', content: 'First' }),
       ));
     });
 
     it('navigates a tree three levels deep', async () => {
-      mockListFolders.mockResolvedValue({
-        folders: [
+      withProject(
+        [
           { id: 'fld-1', name: 'docs', parentId: '' },
           { id: 'fld-2', name: 'specs', parentId: 'fld-1' },
           { id: 'fld-3', name: 'drafts', parentId: 'fld-2' },
         ],
-      });
-      mockListArtifacts.mockImplementation(async ({ folderId }: { folderId: string }) =>
-        folderId === 'fld-3' ? { artifacts: [{ id: 'art-3', name: 'deep.md', content: 'Down here' }] } : { artifacts: [] });
+        (body: { folderId?: string }) =>
+          body.folderId === 'fld-3' ? { artifacts: [{ id: 'art-3', name: 'deep.md' }] } : { artifacts: [] },
+      );
 
       renderPage();
 
@@ -739,15 +751,17 @@ describe('ArtifactsBrowser', () => {
     });
 
     it('keeps the parents open when a deep link lands three levels down', async () => {
-      mockListFolders.mockResolvedValue({
-        folders: [
+      withProject(
+        [
           { id: 'fld-1', name: 'docs', parentId: '' },
           { id: 'fld-2', name: 'specs', parentId: 'fld-1' },
           { id: 'fld-3', name: 'drafts', parentId: 'fld-2' },
         ],
-      });
-      mockListArtifacts.mockImplementation(async ({ folderId }: { folderId: string }) =>
-        folderId === 'fld-3' ? { artifacts: [{ id: 'art-3', name: 'deep.md', content: 'Down here' }] } : { artifacts: [] });
+        (body: { folderId?: string }) =>
+          body.folderId === 'fld-3' ? { artifacts: [{ id: 'art-3', name: 'deep.md' }] } : { artifacts: [] },
+      );
+      mockRpc(ArtifactService, 'GetArtifact', { artifact: { id: 'art-3', name: 'deep.md', folderId: 'fld-3' } });
+      mockRpc(ArtifactService, 'GetArtifactContent', { content: 'Down here', contentType: 'text/markdown' });
 
       renderPage('/artifacts/art-3');
 
@@ -767,13 +781,13 @@ describe('ArtifactsBrowser', () => {
     });
 
     it('collapses a folder and hides its children', async () => {
-      mockListFolders.mockResolvedValue({
-        folders: [
+      withProject(
+        [
           { id: 'fld-1', name: 'docs', parentId: '' },
           { id: 'fld-2', name: 'specs', parentId: 'fld-1' },
         ],
-      });
-      mockListArtifacts.mockResolvedValue({ artifacts: [] });
+        [],
+      );
 
       renderPage();
       fireEvent.click(await screen.findByText('docs'));
@@ -784,9 +798,12 @@ describe('ArtifactsBrowser', () => {
     });
 
     it('creates a subfolder under the folder it was asked from', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [] });
-      mockCreateFolder.mockResolvedValue({ folder: { id: 'fld-9' } });
+      withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
+      const requests: any[] = [];
+      mockRpc(ArtifactService, 'CreateFolder', (body) => {
+        requests.push(body);
+        return { folder: { id: 'fld-9' } };
+      });
 
       renderPage();
       fireEvent.click(await screen.findByText('docs'));
@@ -796,14 +813,18 @@ describe('ArtifactsBrowser', () => {
 
       // Without parentId this creates another root folder, and the tree looks
       // the same until someone reloads.
-      await waitFor(() => expect(mockCreateFolder).toHaveBeenCalledWith(
+      await waitFor(() => expect(requests).toContainEqual(
         expect.objectContaining({ parentId: 'fld-1', name: 'specs' }),
       ));
     });
 
     it('abandons a subfolder when the form is cancelled', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [] });
+      withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
+      const requests: any[] = [];
+      mockRpc(ArtifactService, 'CreateFolder', (body) => {
+        requests.push(body);
+        return {};
+      });
 
       renderPage();
       fireEvent.click(await screen.findByText('docs'));
@@ -813,17 +834,17 @@ describe('ArtifactsBrowser', () => {
       fireEvent.blur(await screen.findByPlaceholderText('Subfolder name'));
 
       await waitFor(() => expect(screen.queryByPlaceholderText('Subfolder name')).toBeNull());
-      expect(mockCreateFolder).not.toHaveBeenCalled();
+      expect(requests).toHaveLength(0);
     });
 
     it('survives a folder whose parent chain loops', async () => {
-      mockListFolders.mockResolvedValue({
-        folders: [
+      withProject(
+        [
           { id: 'fld-a', name: 'alpha', parentId: 'fld-b' },
           { id: 'fld-b', name: 'beta', parentId: 'fld-a' },
         ],
-      });
-      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-x', name: 'x.md', content: 'Looped' }] });
+        [{ id: 'art-x', name: 'x.md', content: 'Looped' }],
+      );
 
       renderPage('/artifacts/art-x');
 
@@ -833,8 +854,10 @@ describe('ArtifactsBrowser', () => {
     });
 
     it('shows the placeholder on a plain /artifacts URL', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+      withProject(
+        [{ id: 'fld-1', name: 'docs', parentId: '' }],
+        [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+      );
 
       renderPage();
 
@@ -843,37 +866,64 @@ describe('ArtifactsBrowser', () => {
     });
 
     it('falls back to the placeholder when the deep-linked artifact exists nowhere', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+      // GetArtifact answers the deep link in one call and returns the
+      // folderId directly (M07-T12) — nothing here ever selects a folder to
+      // list, so an unresolvable id never issues a ListArtifacts call at all.
+      const getArtifactRequests: any[] = [];
+      withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
+      mockRpc(ArtifactService, 'GetArtifact', (body) => {
+        getArtifactRequests.push(body);
+        return { artifact: undefined };
+      });
 
       renderPage('/artifacts/art-does-not-exist');
 
-      await waitFor(() => expect(mockListArtifacts).toHaveBeenCalledWith({ folderId: 'fld-1', page: undefined }));
+      await waitFor(() => expect(getArtifactRequests).toContainEqual({ artifactId: 'art-does-not-exist' }));
       expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
     });
 
     it('closes the open artifact when its folder is deleted', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
-      mockArchiveFolder.mockResolvedValue({});
+      withProject(
+        [{ id: 'fld-1', name: 'docs', parentId: '' }],
+        [{ id: 'art-1', name: 'readme.md', folderId: 'fld-1', content: 'Hello world' }],
+      );
+      const requests: any[] = [];
+      mockRpc(ArtifactService, 'ArchiveFolder', (body) => {
+        requests.push(body);
+        return {};
+      });
 
       renderPage('/artifacts/art-1');
 
       await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+      // Deleting the folder only closes the artifact when the folder is
+      // recognized as the open one (`selectedFolderId === folderId`), which
+      // is set asynchronously off the deep-link's own GetArtifact lookup.
+      // "readme.md" alone isn't enough to wait on — the breadcrumb renders it
+      // from `locatedArtifact` regardless of `selectedFolderId` — so wait
+      // instead on something gated by `selectedFolderId === folder.id`
+      // itself, like the folder's own artifact-creation control.
+      await screen.findByText('+ New artifact');
       fireEvent.click(screen.getByRole('button', { name: 'Delete folder docs' }));
       await confirmAction();
 
-      await waitFor(() => expect(mockArchiveFolder).toHaveBeenCalledWith({ folderId: 'fld-1' }));
+      await waitFor(() => expect(requests).toContainEqual({ folderId: 'fld-1' }));
       await waitFor(() => expect(locationRef.current).toBe('/artifacts'));
     });
 
     it('closes the open artifact when its folder is collapsed', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+      withProject(
+        [{ id: 'fld-1', name: 'docs', parentId: '' }],
+        [{ id: 'art-1', name: 'readme.md', folderId: 'fld-1', content: 'Hello world' }],
+      );
 
       renderPage('/artifacts/art-1');
 
       await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+      // Wait on something gated by `selectedFolderId === folder.id`, not
+      // "readme.md" alone — the breadcrumb renders that from
+      // `locatedArtifact` regardless of whether the folder is selected yet.
+      await screen.findByText('+ New artifact');
       // The explorer's copy, not the breadcrumb's.
       fireEvent.click(screen.getAllByText('docs')[0]);
 
@@ -886,10 +936,10 @@ describe('ArtifactsBrowser', () => {
   // set at upload time, it existed but was invisible everywhere in the
   // browser.
   it('shows an artifact\'s description when it has one', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({
-      artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world', description: 'The project overview' }],
-    });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world', description: 'The project overview' }],
+    );
 
     renderPage();
 
@@ -902,8 +952,10 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('shows no description line for an artifact that has none', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+    );
 
     renderPage();
 
@@ -920,8 +972,10 @@ describe('ArtifactsBrowser', () => {
   // had an accessible name - a screen reader announced only "text box" with
   // no indication of what either edits.
   it('gives the folder-rename input and the content-edit textarea an accessible name', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world', contentType: 'text/markdown' }],
+    );
 
     renderPage();
 
@@ -944,21 +998,20 @@ describe('ArtifactsBrowser', () => {
   // un-pending, with nothing telling the user it didn't work.
   describe('mutation errors', () => {
     it('reports a failed folder creation', async () => {
-      mockListFolders.mockResolvedValue({ folders: [] });
-      mockCreateFolder.mockRejectedValue(new Error('permission denied'));
+      withProject([]);
+      mockRpcError(ArtifactService, 'CreateFolder', 'permission_denied', 'permission denied');
       renderPage();
 
       fireEvent.click(await screen.findByText('+ Folder'));
       fireEvent.change(await screen.findByPlaceholderText('Folder name'), { target: { value: 'New Folder' } });
       fireEvent.click(screen.getByText('Add'));
 
-      expect(await screen.findByText('Failed to create folder: permission denied')).toBeInTheDocument();
+      expect(await screen.findByText(/Failed to create folder:.*permission denied/)).toBeInTheDocument();
     });
 
     it('reports a failed subfolder creation', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [] });
-      mockCreateFolder.mockRejectedValue(new Error('name taken'));
+      withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
+      mockRpcError(ArtifactService, 'CreateFolder', 'unknown', 'name taken');
       renderPage();
 
       fireEvent.click(await screen.findByText('docs'));
@@ -966,24 +1019,24 @@ describe('ArtifactsBrowser', () => {
       fireEvent.change(await screen.findByPlaceholderText('Subfolder name'), { target: { value: 'specs' } });
       fireEvent.submit(screen.getByPlaceholderText('Subfolder name').closest('form')!);
 
-      expect(await screen.findByText('Failed to create subfolder: name taken')).toBeInTheDocument();
+      expect(await screen.findByText(/Failed to create subfolder:.*name taken/)).toBeInTheDocument();
     });
 
     it('reports a failed folder deletion', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockArchiveFolder.mockRejectedValue(new Error('in use'));
+      withProject([{ id: 'fld-1', name: 'docs', parentId: '' }]);
+      mockRpcError(ArtifactService, 'ArchiveFolder', 'unknown', 'in use');
       renderPage();
 
       await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
       fireEvent.click(screen.getByLabelText('Delete folder docs'));
       await confirmAction();
 
-      expect(await screen.findByText('Failed to delete folder: in use')).toBeInTheDocument();
+      expect(await screen.findByText(/Failed to delete folder:.*in use/)).toBeInTheDocument();
     });
 
     it('reports a failed folder rename', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockUpdateFolder.mockRejectedValue(new Error('folder not found'));
+      withProject([{ id: 'fld-1', name: 'docs', parentId: '' }]);
+      mockRpcError(ArtifactService, 'UpdateFolder', 'unknown', 'folder not found');
       renderPage();
 
       await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
@@ -991,13 +1044,12 @@ describe('ArtifactsBrowser', () => {
       fireEvent.change(screen.getByDisplayValue('docs'), { target: { value: 'documents' } });
       fireEvent.click(screen.getByText('Save'));
 
-      expect(await screen.findByText('Failed to rename folder: folder not found')).toBeInTheDocument();
+      expect(await screen.findByText(/Failed to rename folder:.*folder not found/)).toBeInTheDocument();
     });
 
     it('reports a failed artifact creation', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [] });
-      mockCreateArtifact.mockRejectedValue(new Error('name taken'));
+      withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
+      mockRpcError(ArtifactService, 'CreateArtifact', 'unknown', 'name taken');
       renderPage();
 
       await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
@@ -1006,13 +1058,15 @@ describe('ArtifactsBrowser', () => {
       fireEvent.change(await screen.findByPlaceholderText('Artifact name'), { target: { value: 'notes.md' } });
       fireEvent.click(screen.getByText('Add'));
 
-      expect(await screen.findByText('Failed to create artifact: name taken')).toBeInTheDocument();
+      expect(await screen.findByText(/Failed to create artifact:.*name taken/)).toBeInTheDocument();
     });
 
     it('reports a failed artifact deletion', async () => {
-      mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-      mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello' }] });
-      mockArchiveArtifact.mockRejectedValue(new Error('artifact locked'));
+      withProject(
+        [{ id: 'fld-1', name: 'docs', parentId: '' }],
+        [{ id: 'art-1', name: 'readme.md', content: 'Hello' }],
+      );
+      mockRpcError(ArtifactService, 'ArchiveArtifact', 'unknown', 'artifact locked');
       renderPage();
 
       await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
@@ -1021,7 +1075,7 @@ describe('ArtifactsBrowser', () => {
       fireEvent.click(screen.getByLabelText('Delete artifact readme.md'));
       await confirmAction();
 
-      expect(await screen.findByText('Failed to delete artifact: artifact locked')).toBeInTheDocument();
+      expect(await screen.findByText(/Failed to delete artifact:.*artifact locked/)).toBeInTheDocument();
     });
   });
 
@@ -1030,10 +1084,8 @@ describe('ArtifactsBrowser', () => {
     // different mutation than the one this form submits to, so the button
     // never disabled while the subfolder request was actually running and a
     // double-click could fire it twice.
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [] });
-    let release: (v: unknown) => void = () => {};
-    mockCreateFolder.mockReturnValue(new Promise((r) => { release = r; }));
+    withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
+    const pending = mockRpcPending(ArtifactService, 'CreateFolder');
     renderPage();
 
     fireEvent.click(await screen.findByText('docs'));
@@ -1042,8 +1094,8 @@ describe('ArtifactsBrowser', () => {
     fireEvent.submit(screen.getByPlaceholderText('Subfolder name').closest('form')!);
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled());
-    release({ folder: { id: 'fld-9' } });
-    await waitFor(() => expect(mockCreateFolder).toHaveBeenCalledTimes(1));
+    pending.resolve({ folder: { id: 'fld-9' } });
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Add' })).toBeNull());
   });
 
   // M18-T05: switching the active project changed what foldersData resolved
@@ -1051,8 +1103,10 @@ describe('ArtifactsBrowser', () => {
   // repainted for the new project while the main pane kept rendering
   // whatever folder/artifact was selected under the old one.
   it('closes the open artifact and collapses the tree when the active project changes', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+    );
 
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const { rerender } = render(
@@ -1068,8 +1122,10 @@ describe('ArtifactsBrowser', () => {
   });
 
   it('does not reset the selection on an ordinary render - only when the project/org actually changes', async () => {
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-1', name: 'docs', parentId: '' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }] });
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+    );
 
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const { rerender } = render(
