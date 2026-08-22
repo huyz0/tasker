@@ -1,6 +1,6 @@
 ---
-active_milestone: null
-active_task: null
+active_milestone: M25
+active_task: M25-T02
 last_updated: 2026-08-23
 last_commit: 8329130
 blocked: false
@@ -14,6 +14,23 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-23 — M25 (Proactive Alerting for Stalled Claims) planned;
+delivery starts at M25-T01.** Raised via `/goal` immediately after a
+conversation comparing `/reports` (M24) to Linear and Monday — the gap
+named there (pull-based dashboard vs. proactive alerting) became the next
+milestone in the same session. Design was drafted, then reviewed once by a
+dedicated subagent before planning; the review found and fixed three
+load-bearing defects: a NULL-key bug that would have made the dedup table
+dedupe nothing for any claim predating activity collection; the exact
+IN-list scale problem M24-T06 already fixed once on a sibling query,
+about to be reintroduced by running the same query globally; and, the
+most consequential, no first-run digest — without it the very first sweep
+against a live deployment would email every stalled claim ever
+accumulated, the likely way this feature gets disabled on day one. All
+three are designed out before any code exists. Five tasks, one ADR
+(0022); the draft and the review are both preserved in the spec folder at
+M25-T01. See `MILESTONE-25-stalled-claim-alerting/MILESTONE.md`.
 
 **2026-08-23 — M24 (Project Reports & Agent Insights) complete: 10/10 tasks,
 10/10 exit criteria, closed on `feature/m24-project-reports-and-agent-insights`.**
@@ -1367,8 +1384,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M22 | Task Handoff & Continuity       | done   | —          | 8     | 8    |
 | M23 | Rich Markdown Editor            | done   | —          | 5     | 5    |
 | M24 | Project Reports & Agent Insights | done   | —          | 10    | 10   |
+| M25 | Proactive Alerting for Stalled Claims | in-progress | — | 5     | 1    |
 
-**Total: 202 tasks across 18 milestones — 159 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5, M24 10).**
+**Total: 207 tasks across 19 milestones — 159 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5, M24 10).**
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
