@@ -1,12 +1,12 @@
 ---
 id: M24
 title: Project Reports & Agent Insights
-status: todo
+status: in-progress
 goal: A manager overseeing a project of AI agents can open one project-scoped Reports screen and see where work is stuck, which agents need attention, and how work is flowing over time — every panel answering a concrete intervention decision from real recorded history, in Jira's project-report role but built for an agent fleet.
 depends_on: []
 surfaces: [backend, gui, contract, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-22
 completed_at: null
 ---
 
@@ -68,15 +68,19 @@ keeps no history and attribution is otherwise unrecoverable.
 - [ ] Clicking Unassign on a stalled claim frees the task (the row leaves the
       list; the task becomes claimable) — covered by a feature test against
       the real `unassignTask` wire call via MSW, and exercised in e2e.
-- [ ] A status change, claim, assignment, archive/restore, note, comment and
-      handoff each produce exactly one correct `task_activity` row (correct
-      kind, from/to status, terminality flags, actor, assignee-at-event), and
-      a replayed idempotent `claimTask` does not double-count — proven by
-      backend tests including a race/replay test.
+- [ ] A task creation, status change, claim, assignment, unassignment,
+      archive/restore, note, comment and handoff each produce exactly one
+      correct `task_activity` row (correct kind, from/to status, terminality
+      flags, actor, assignee-at-event), and a replayed idempotent
+      `claimTask` does not double-count — proven by backend tests including
+      a race/replay test.
 - [ ] Purging a task, a project, and the retention sweep leave zero orphaned
       `task_activity` rows — proven by cascade tests.
-- [ ] The backfill migration gives every pre-existing task exactly one
-      `created` activity row carrying its current status, in both dialects,
+- [ ] The backfill migration gives every pre-existing non-archived task
+      exactly one `created` activity row carrying its current status
+      (soft-deleted tasks excluded — no unpaired `+1` in the CFD algebra),
+      plus one activity row per pre-existing task note, handoff and
+      task-scoped comment at its real timestamp, in both dialects,
       idempotently (re-running it inserts nothing) — proven by migration
       tests against SQLite and live MySQL.
 - [ ] Both report RPCs refuse agent principals structurally
@@ -117,11 +121,12 @@ heatmaps, org-level cross-project rollups (v2 of this surface, on demand);
 claim-contention counting (telemetry counter territory — deliberately never a
 `task_activity` kind, per ADR-0020); token-expiry alerts (belongs on the
 Agents screen); any Dashboard chart or count tile (the Dashboard's own design
-note forbids it).
+note forbids it); any CLI surface for reports (on demand later — the CLI's
+users are agents, and reports are the humans-only monitoring surface).
 
 ## 5. Task Breakdown
 
-- [ ] **M24-T01** — Save the design record: spec folder (problem, the three
+- [x] **M24-T01** — Save the design record: spec folder (problem, the three
       subagent review reports, the agreed panel set with per-panel decision
       statements, data-model rationale), ADR-0020 (task-activity substrate:
       synchronous first-class table over audit_log; terminality stamped at
@@ -133,7 +138,7 @@ note forbids it).
       - Files: `.specs/specs/2026-08-22-*-project-reports-and-agent-insights/*`,
         `.specs/adr/ADR-0020-*.md`, `.specs/adr/ADR-0021-*.md`,
         `.milestones/MILESTONE-24-project-reports-and-agent-insights/*`
-      - Verify: `moon run tasker:docs-lint` passes; ADR README index updated.
+      - Verify: all named files exist; `moon run tasker:docs-lint` passes.
 
 - [ ] **M24-T02** — Contract: `ReportService` in `main.tsp` **and**
       `tasker/health/v1/health.proto` (kept in sync by hand), two methods —
@@ -160,10 +165,14 @@ note forbids it).
       FK, assignee_agent_id, assignee_user_id, occurred_at; indexes
       `(project_id, kind, occurred_at)` and `(task_id, occurred_at)`);
       per-dialect migrations + truthful backfill (deterministic
-      `act-`-derived ids → idempotent; `to_status = tasks.status`,
-      `occurred_at = tasks.created_at`, actor_type `system`; sqlite `||` vs
-      mysql `CONCAT`); regenerate embedded migrations; add report query
-      shapes to `indexCoverage.test.ts` HOT_QUERIES.
+      `act-`-derived ids → idempotent; `created` rows for non-archived
+      tasks only, `to_status = tasks.status`, `occurred_at =
+      tasks.created_at`, actor_type `system`, terminality stamped from
+      current config, assignee columns NULL; plus `note`/`handoff`/`comment`
+      rows carried over from `task_notes` and task-scoped `comments` at
+      their real timestamps; sqlite `||` vs mysql `CONCAT`); regenerate
+      embedded migrations; add report query shapes to
+      `indexCoverage.test.ts` HOT_QUERIES.
       - Files: `apps/backend/src/db/schema.sqlite.ts`, `schema.mysql.ts`,
         `drizzle-sqlite/00NN_task_activity.sql`,
         `drizzle-mysql/00NN_task_activity.sql`,
@@ -177,10 +186,11 @@ note forbids it).
       (stamps terminality from the task type's status positions at write
       time; resolves assignee-at-event; fires only after the primary write's
       success/CAS check — accepted non-transactional drift per ADR-0020)
-      called from `createTask` (agent creations finally attributable),
-      `updateTaskStatus` (after the `affected` CAS check — the single status
-      choke point), `claimTask` (inside the `withIdempotency` callback, after
-      the claim-won check), `assignTask` (not on the duplicate no-op path),
+      called from `createTask` (agent creations finally attributable; its
+      whole body is already a `withIdempotency` callback — the write stays
+      inside it), `updateTaskStatus` (after the `affected` CAS check — the
+      single status choke point), `claimTask` (inside the `withIdempotency`
+      callback, after the claim-won check), `assignTask` (not on the duplicate no-op path),
       `unassignTask` (handler must first capture affected rows),
       `deleteTask` → `archived` / `restoreTask` → `restored`, task-note
       create (`note`/`handoff`), comment create on tasks (`comment`).
@@ -201,7 +211,9 @@ note forbids it).
       churn (`GROUP BY task_id HAVING count(handoff) >= 2` + claim-held
       join), scorecard aggregation (per-agent and per-role; "(deleted
       agent)" fallback; autonomy = agent-held completions with zero
-      user-actor rows; median cycle via JS over per-task duration rows),
+      user-actor rows; columns: claimed, completed, reopened, handed off,
+      taken away, % autonomous, open now, last active — no cycle-time
+      column, cut with the other cycle-time metrics),
       agent-share stat (window vs prior window). `requireUser` +
       `assertCan(dashboard:read)` through `projects.orgId`; registered in
       `index.ts`, `agent-scope-sweep.test.ts` (handlers + REQUESTS) and
@@ -318,6 +330,9 @@ cd apps/backend && bun run seed -- --scale large && bun run measure:latency
   animation). Anything more reopens the ADR-0021 library question rather
   than growing bespoke code.
 - **Empty-screen first impression.** History-dependent charts are sparse for
-  ~2 weeks after deploy. Mitigated by design: exception cards (1, 3, 4) are
-  fully populated from existing data on day one, and sparse charts label
-  their collection-start date instead of looking broken.
+  ~2 weeks after deploy. Mitigated by design: the backfill carries real
+  existing history over (task creations, notes, handoffs, comments), so the
+  stalled-work and churn cards are truthful on day one and the scorecard is
+  partially populated (open now, last active, handoffs; reopen/autonomy
+  accrue with new activity); sparse charts label their collection-start
+  date instead of looking broken.
