@@ -159,7 +159,7 @@ users are agents, and reports are the humans-only monitoring surface).
         T08/T09 — add temporary EXCEPTIONS entries with a reason if the gate
         runs before then, removed in T09).
 
-- [ ] **M24-T03** — Schema: `task_activity` in `schema.sqlite.ts` +
+- [x] **M24-T03** — Schema: `task_activity` in `schema.sqlite.ts` +
       `schema.mysql.ts` (id, task_id FK, project_id FK, kind, from_status,
       to_status, from_is_terminal, to_is_terminal, actor_type, actor_id — no
       FK, assignee_agent_id, assignee_user_id, occurred_at; indexes

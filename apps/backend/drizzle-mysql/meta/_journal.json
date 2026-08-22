@@ -225,6 +225,20 @@
       "when": 1787232705139,
       "tag": "0031_audit_log",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1788100000000,
+      "tag": "0032_task_activity",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1788200000000,
+      "tag": "0033_backfill_task_activity",
+      "breakpoints": true
     }
   ]
 }

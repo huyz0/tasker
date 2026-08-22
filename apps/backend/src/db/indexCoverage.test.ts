@@ -49,6 +49,10 @@ const HOT_QUERIES: Record<string, string> = {
     "SELECT task_id FROM task_reviewers WHERE user_id='u'",
   "when an agent last called (dashboard)":
     "SELECT max(last_used_at) FROM api_tokens WHERE agent_id='a'",
+  "report kind buckets for a project (reports)":
+    "SELECT kind, count(*) FROM task_activity WHERE project_id='p' AND kind='status_changed' AND occurred_at >= 0 GROUP BY kind",
+  "last signal on a task (stalled claims)":
+    "SELECT id FROM task_activity WHERE task_id='t' ORDER BY occurred_at DESC, id DESC LIMIT 1",
 };
 
 /**

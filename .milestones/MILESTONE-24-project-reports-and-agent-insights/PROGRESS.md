@@ -56,3 +56,36 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   delegated subagent from a fully-pinned message spec; diff reviewed
   before commit.
 - **Next**: M24-T03 (task_activity schema + migrations + backfill).
+
+## M24-T03 — task_activity schema, migrations, truthful backfill
+
+- **Status**: done
+- **Date**: 2026-08-22
+- **Approach**: Add the table to both hand-maintained schema modules
+  exactly as ADR-0020 specifies, generate per-dialect migrations, append
+  the hand-written idempotent backfill (created rows for non-archived
+  tasks carrying current status; note/handoff/comment rows carried over
+  from task_notes and task-scoped comments), regenerate embedded
+  migrations, register the report query shapes in indexCoverage, verify
+  against live MySQL via docker compose.
+- **Changed**: `schema.sqlite.ts`/`schema.mysql.ts` (taskActivity table),
+  `drizzle-sqlite/0045+0046`, `drizzle-mysql/0032+0033` (DDL + hand-written
+  idempotent backfill), regenerated `embeddedMigrations.generated.ts` (47/34),
+  new `taskActivity.migration.test.ts` (10 tests proving the shipped SQL:
+  per-case terminality incl. max-position ties, soft-deleted exclusion,
+  note/handoff/comment carry-over, double-run idempotency), 2 new
+  indexCoverage HOT_QUERIES (covering-index plans confirmed).
+- **Verified**: `moon check backend` green (9 tasks; backend:test 1689 pass);
+  live MySQL via docker compose — all 34 migrations applied to a fresh db,
+  `SHOW CREATE TABLE` confirmed, backfill executed twice with fixture data
+  (10 rows, second run inserted nothing).
+- **Notes**: drizzle-kit's snapshots had been stale since 0023 — every later
+  migration was hand-written — so generated output was trimmed to the new
+  DDL and the fresh snapshots keep future generates honest. Journal `when`
+  values hand-bumped (drizzle stamped a value BELOW the previous rounded
+  entries, which `applyEmbeddedMigrations` would silently never apply); a
+  test now asserts the backfill is the max-`when` migration. **Pre-existing
+  latent bug found, not fixed (out of scope)**: `0044_audit_log`(sqlite)/
+  `0031_audit_log`(mysql) carry raw `when` values smaller than 0041–0043's —
+  a db already past 0043 before audit_log landed would never apply them.
+- **Next**: M24-T04 (activity writes in handlers + purge cascades).
