@@ -15,6 +15,70 @@ blocker: null
 
 ## Now
 
+**2026-08-22 — CI investigation: three real bugs found and fixed behind two
+red GitHub Actions workflows** (commits `970f0a4`, `eb0639b`, `5ceb4fb`).
+Prompted by "check ci" after M12-T01 landed; both `CI Pipeline` and `Real
+Integration Tests` turned out to have been red since the M08/M09/M11/M12
+merges the day before — none of it caused by M12-T01, all three confirmed
+independently and fixed one at a time, each reproduced and verified locally
+before pushing rather than iterated on via push-and-wait:
+
+1. **`ArtifactUpload.test.tsx` coverage flake** (mine, a side effect of the
+   M12-T01 conversion): the regression test built to force
+   `ArtifactUpload.tsx`'s one flaky branch called `pending.resolve(...)`
+   and returned without awaiting anything after it, so the test — and
+   Vitest's teardown — could finish before the resolved fetch's microtask
+   chain (decode → mutation `onSuccess` → the line under test) actually
+   ran. Locally this consistently finished in time; CI's scheduling
+   apparently doesn't always. Fixed by awaiting `invalidateQueries`, the
+   one `onSuccess` side effect still observable after the component has
+   unmounted, pinning the test to `onSuccess` having actually completed.
+2. **Two E2E specs broken by the M23 follow-up** (`comments.spec.ts`,
+   `task-description-rich-editor.spec.ts`), failing on every run since
+   `ba5c2e7`. `getByPlaceholder(...)` can never match a
+   `RichMarkdownEditor` — a Lexical contenteditable has no native
+   `placeholder` attribute regardless of what text MDXEditor's own
+   placeholder plugin renders. And once comments got their own
+   always-mounted rich editor alongside the task description's, unscoped
+   `getByRole('radio', {name: /bold/i})` /
+   `getByRole('textbox', {name: 'editable markdown'})` locators started
+   matching two elements — a strict-mode violation, not a timeout, once
+   reproduced locally instead of read from CI's log. A third, independent
+   bug was hiding inside the identical timeout symptom: `listOrgs` defaults
+   newest-first when given no explicit sort, and the org switcher
+   auto-selects `orgs[0]` on load — so `journeys/core-journey.spec.ts`
+   creating its own org mid-suite silently switches every *later*
+   `page.goto('/tasks')` in the run onto that new, empty org. Fixed the
+   placeholder/scoping bugs directly and added
+   `tests/e2e/selectSeededOrg.ts`, which both specs now use to explicitly
+   pick `bun run seed`'s org via the switcher instead of trusting whatever
+   the app defaults to.
+3. **`Real Integration Tests`' `Realtime Event Feed (NATS)` job, `NatsError:
+   503` on every run since the M08 merge**: `.github/workflows/
+   integration.yml` started NATS via a `services:` block, which has no
+   `command:` key — there is no way to pass `-js` through it, so every run
+   silently started plain core NATS with JetStream disabled, and the
+   durable consumer's first JetStream API call failed with "no responders"
+   100% of the time, not intermittently. `docker-compose.yml`'s own `nats`
+   service already had this right (`command: ["-js", "-m", "8222"]`) — this
+   job just never matched it, because copying that into a `services:` block
+   silently drops the command instead of erroring loudly. Confirmed by hand
+   against the exact image (`nats:2.10-alpine`): `varz.jetstream` comes
+   back `{}` without `-js`, populated with it. Replaced the `services:`
+   block with an explicit `docker run ... -js -m 8222` step, mirroring
+   `ci.yml`'s own backend-startup health-check-poll pattern.
+
+**Also corrected here**: this session's own memory had gone stale by a full
+day — M08 (Events, Audit & Real-Time), M09 (Portable Single Binary), M11
+(Observability & Deployability) and M12 (Test Depth & Release) were all
+designed, implemented and merged on 2026-08-21 by a session with no record
+carried forward, along with a Bin empty-state fix and an M23 follow-up
+(rich editor reaching comments + artifact markdown, plus a deep-link-reload
+fix). This file's own merge-commit history is what caught the discrepancy —
+another argument, on top of the file's own opening instruction, for reading
+it fresh every time rather than trusting a summary written in a previous
+session.
+
 **2026-08-22 — M12-T01 done: all 30 GUI feature test files converted from
 `vi.mock('@connectrpc/connect' …)` to MSW network-level interception.**
 Recorded below (and in MILESTONE-12's PROGRESS.md) as deliberately not
