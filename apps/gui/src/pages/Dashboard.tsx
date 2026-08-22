@@ -6,6 +6,7 @@ import { transport } from '../lib/connectTransport';
 import { DashboardService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore, type LayoutState } from '../store/layout';
 import { ListState } from '../components/ui/ListState';
+import { sinceLabel } from '../lib/sinceLabel';
 
 const dashboardClient = createClient(DashboardService, transport);
 
@@ -23,9 +24,6 @@ const dashboardClient = createClient(DashboardService, transport);
  * reality, and which agents have gone quiet. Everything here is one RPC — the
  * server does the joins rather than the browser doing four round trips.
  */
-
-/** Beyond this an agent has stopped rather than paused. */
-const SILENT_AFTER_HOURS = 24;
 
 function Panel({ title, subtitle, action, children }: {
   title: string;
@@ -60,17 +58,6 @@ function TaskRow({ task, children }: { task: any; children?: ReactNode }) {
       </span>
     </Link>
   );
-}
-
-/** "9 days ago", or "never" — the distinction the fleet panel exists to draw. */
-function sinceLabel(iso?: string): { text: string; silent: boolean } {
-  if (!iso) return { text: 'never called', silent: true };
-  const ms = Date.now() - new Date(iso).getTime();
-  const hours = ms / 3_600_000;
-  const silent = hours > SILENT_AFTER_HOURS;
-  if (hours < 1) return { text: 'active in the last hour', silent };
-  if (hours < 24) return { text: `${Math.floor(hours)}h ago`, silent };
-  return { text: `${Math.floor(hours / 24)}d ago`, silent };
 }
 
 export function Dashboard() {

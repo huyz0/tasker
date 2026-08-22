@@ -218,3 +218,33 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   bars (a one-day path is invisible); empty state says "No data for this
   period yet."
 - **Next**: M24-T08 (Reports screen — exception cards).
+
+## M24-T08 — Reports screen: route, nav, exception cards
+
+- **Status**: done
+- **Date**: 2026-08-22
+- **Approach**: `features/Reports/` decomposed from the start (composition
+  root + one file per card + a shared query hook), lazy route + Workspace
+  nav entry, org/project guards per the Handoffs convention, ListState on
+  the query, cards 1–4 with the Unassign mutation on stalled claims. MSW
+  feature tests; stories per card state.
+- **Changed**: new `features/Reports/` (index 125, StalledWorkCard 147,
+  WentBackwardsCard 47, ChurningTasksCard 57, FleetScorecardCard 108,
+  ReportPanel 45, useReportsQueries 28 — all far under the 400 cap), lazy
+  `/reports` route + Workspace nav entry (BarChart3, after Dashboard);
+  `sinceLabel` extracted to `lib/sinceLabel.ts` on its third copy
+  (Dashboard + Agents now import it, −28 lines there); rpc-coverage
+  exception for getReportExceptions removed (the screen now calls it).
+- **Verified**: red-first TDD; 26 screen tests + card suite + App route
+  case; gui:test 1074 pass with branches 95.26% (first run tripped the
+  gate at 94.98% — fixed by covering the new branches, not by excluding);
+  gui:lint/typecheck/design-lint (0 findings)/query-error-coverage/
+  rpc-coverage/knip all green; axe clean on the populated screen.
+- **Notes**: Unassign sends `{taskId, agentId}` (the generated request's
+  optional pair), confirm-gated, per-row pending via mutation.variables
+  matching (the M20 shared-mutation lesson), invalidates the `['reports']`
+  prefix; header stat shows numerator/denominator and refuses to fake 0%
+  on empty windows; cards take narrow local row types with presentational
+  stories (no MSW in Storybook — the Dashboard/Handoffs convention); h2
+  panel shell because CardTitle is h3 and would break axe heading order.
+- **Next**: M24-T09 (trend cards + live invalidation + Dashboard link).

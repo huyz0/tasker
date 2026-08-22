@@ -260,7 +260,7 @@ users are agents, and reports are the humans-only monitoring surface).
       - Verify: `moon run gui:test` (95% gate holds — pure helpers fully
         covered), `gui:design-lint`, `gui:lint`, `gui:typecheck`.
 
-- [ ] **M24-T08** — Reports screen, exception cards: `features/Reports/`
+- [x] **M24-T08** — Reports screen, exception cards: `features/Reports/`
       (decomposed well under the 400-line cap: `index.tsx` composition +
       one file per card + `useReportQueries.ts`), route + `React.lazy` in
       `App.tsx`, nav entry (Workspace group, `BarChart3` icon), org/project

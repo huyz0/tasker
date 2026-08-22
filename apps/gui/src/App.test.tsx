@@ -165,6 +165,7 @@ describe('App', () => {
       ['/teams', 'text', 'Select an organization to manage its teams.'],
       ['/memory', 'text', 'Select an organization to browse its shared memory.'],
       ['/handoffs', 'text', 'Select an organization to see its pending handoffs.'],
+      ['/reports', 'text', 'Select an organization to see project reports.'],
     ] as const)('%s renders through its own lazy chunk', async (path, kind, name) => {
       healthQueryResult = { data: undefined, error: null, isLoading: false };
       renderApp(path);
