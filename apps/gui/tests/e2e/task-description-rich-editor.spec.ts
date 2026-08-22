@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { selectSeededOrg } from './selectSeededOrg';
 
 test.describe('Rich markdown editor E2E', () => {
   test('bolding text via the toolbar round-trips as markdown, confirmed by a fresh getTask read', async ({ page }) => {
     // Needs a backend seeded with at least one task - `bun run seed` from
     // apps/backend, which CI does before this job (mirrors comments.spec.ts).
-    await page.goto('/tasks');
+    // Explicit, not just `page.goto('/tasks')` - see selectSeededOrg's own
+    // comment for why the default active org can't be trusted here.
+    await selectSeededOrg(page);
 
     // The task title is itself the button that opens the task — see the note
     // in comments.spec.ts: the card stopped being a `role="button"` div when a
@@ -36,7 +39,16 @@ test.describe('Rich markdown editor E2E', () => {
     // every character is deleted (Lexical carries the last format forward
     // through a delete-all), so "Bold" alone isn't a safe locator across
     // repeated runs.
-    const boldToggle = page.getByRole('radio', { name: /bold/i });
+    //
+    // `.first()`: the M23 follow-up gave comments their own always-mounted
+    // RichMarkdownEditor (`CommentComposer`), rendered below the description
+    // in the same dialog - as soon as this description editor opens, there
+    // are two "Bold" toggles and two "editable markdown" textboxes on the
+    // page, and an unscoped locator now throws a strict-mode violation
+    // instead of matching. The description editor is the one that comes
+    // first in the DOM (it precedes the Comments section), which is also
+    // true of every other `.first()` in this file.
+    const boldToggle = page.getByRole('radio', { name: /bold/i }).first();
     await expect(boldToggle).toBeVisible();
 
     const stamp = String(Date.now());
@@ -46,7 +58,7 @@ test.describe('Rich markdown editor E2E', () => {
     // empty, which is why this passed for a seeded task with body text and
     // broke the moment the first card had none. The editable surface is the
     // one with the textbox role.
-    const content = page.getByRole('textbox', { name: 'editable markdown' });
+    const content = page.getByRole('textbox', { name: 'editable markdown' }).first();
     await content.click();
     // Clear whatever the seed fixture (or a previous run) put here first, so
     // the assertion below can check an exact string, and repeated runs don't
