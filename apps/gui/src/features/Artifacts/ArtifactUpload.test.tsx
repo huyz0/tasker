@@ -122,15 +122,29 @@ describe('ArtifactUpload', () => {
   // otherwise-identical runs.
   it('does not touch the file input if the component unmounted before the upload resolved', async () => {
     const pending = mockRpcPending(ArtifactService, 'CreateArtifact');
-    const { unmount } = renderUpload();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(client, 'invalidateQueries');
+    const { unmount } = render(
+      <QueryClientProvider client={client}>
+        <ArtifactUpload folderId="fld-1" />
+      </QueryClientProvider>,
+    );
     pick(fileOf('notes.md', 'text/markdown', 'hello'));
 
     await waitFor(() => expect(screen.getByText('Uploading…')).toBeInTheDocument());
     unmount();
     pending.resolve({ artifact: { id: 'art-1' } });
 
-    // Nothing to assert on the DOM after unmount - this passes by not
-    // throwing when onSuccess touches a null inputRef.
+    // There's nothing left in the DOM to assert on post-unmount, and this
+    // still has to prove onSuccess actually ran the line it exists to cover
+    // rather than just not-throwing - a test that returns the instant
+    // `resolve()` is called can exit before that microtask runs at all,
+    // which is exactly what made this branch's coverage flip between
+    // otherwise-identical runs. `invalidateQueries` is the one onSuccess
+    // side effect visible without a mounted component, so waiting on it
+    // pins the test to onSuccess having actually completed - including the
+    // `if (inputRef.current)` line right after it - before the test ends.
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['artifacts'] }));
   });
 
   it('revokes the previous preview URL when a new image is picked, and on unmount', async () => {
