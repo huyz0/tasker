@@ -26,6 +26,7 @@
  */
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
+import { availableParallelism } from 'node:os';
 import { join, extname, resolve } from 'node:path';
 import { chromium } from 'playwright';
 
@@ -62,15 +63,27 @@ const index = JSON.parse(readFileSync(join(STATIC, 'index.json'), 'utf8'));
 const stories = Object.values(index.entries).filter((e) => e.type === 'story');
 
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: WIDTH, height: 900 }, reducedMotion: 'reduce' });
 
-// Same reasoning as storybook-a11y.mjs's own route() call: a story with a
-// real, unconditional useQuery on mount and no MSW to answer it fires a real
-// createClient(...) call against BACKEND_URL, which in this environment
-// hangs rather than fails fast against a closed local port - never letting
-// `networkidle` resolve. Aborting it at the network layer fails it
-// immediately instead.
-await page.route('http://localhost:8080/**', (route) => route.abort());
+// Several pages at once, for the reason storybook-a11y.mjs sets out at
+// length: per-story cost is CPU-bound page load and render, so a serial loop
+// leaves most of the machine idle and turns two gates over ~94 stories into a
+// 20-minute CI step.
+const CONCURRENCY = Number(process.env.STORYBOOK_CHECK_CONCURRENCY)
+  || Math.max(2, Math.min(4, availableParallelism() - 1));
+
+const pages = await Promise.all(
+  Array.from({ length: CONCURRENCY }, async () => {
+    const page = await browser.newPage({ viewport: { width: WIDTH, height: 900 }, reducedMotion: 'reduce' });
+    // Same reasoning as storybook-a11y.mjs's own route() call: a story with a
+    // real, unconditional useQuery on mount and no MSW to answer it fires a real
+    // createClient(...) call against BACKEND_URL, which in this environment
+    // hangs rather than fails fast against a closed local port - never letting
+    // `networkidle` resolve. Aborting it at the network layer fails it
+    // immediately instead.
+    await page.route('http://localhost:8080/**', (route) => route.abort());
+    return page;
+  }),
+);
 
 /** Runs inside the page — no access to anything in this file's closure. */
 function findOverflow(width) {
@@ -96,30 +109,45 @@ function findOverflow(width) {
 }
 
 const failures = [];
-for (const story of stories) {
-  await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {
-    waitUntil: 'networkidle',
-    timeout: 60000,
-  });
-  await page.waitForSelector('#storybook-root > *', { timeout: 20000 }).catch(() => {});
-  await page.waitForTimeout(250);
+// Shared cursor rather than fixed per-page slices, so a page that draws a
+// run of cheap stories keeps pulling work instead of finishing early.
+let cursor = 0;
 
-  const offenders = await page.evaluate(findOverflow, WIDTH);
-  // One offender per element is noise once the ancestor is already reported —
-  // report only the widest handful, which is enough to find the source.
-  if (offenders.length) {
-    failures.push({
-      story: story.title ? `${story.title} › ${story.name}` : story.id,
-      offenders: offenders.sort((a, b) => b.right - a.right).slice(0, 3),
+async function measureStories(page) {
+  for (;;) {
+    const story = stories[cursor++];
+    if (!story) return;
+
+    await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {
+      waitUntil: 'networkidle',
+      timeout: 60000,
     });
+    await page.waitForSelector('#storybook-root > *', { timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(250);
+
+    const offenders = await page.evaluate(findOverflow, WIDTH);
+    // One offender per element is noise once the ancestor is already reported —
+    // report only the widest handful, which is enough to find the source.
+    if (offenders.length) {
+      failures.push({
+        story: story.title ? `${story.title} › ${story.name}` : story.id,
+        offenders: offenders.sort((a, b) => b.right - a.right).slice(0, 3),
+      });
+    }
   }
 }
+
+await Promise.all(pages.map(measureStories));
+
+// Pages finish out of order; sorting keeps the report stable across runs on
+// an unchanged tree.
+failures.sort((a, b) => a.story.localeCompare(b.story));
 
 await browser.close();
 server.close();
 
 if (failures.length === 0) {
-  console.log(`✓ mobile overflow — ${stories.length} stories, nothing wider than ${WIDTH}px`);
+  console.log(`✓ mobile overflow — ${stories.length} stories, nothing wider than ${WIDTH}px (${CONCURRENCY} pages)`);
   process.exit(0);
 }
 
