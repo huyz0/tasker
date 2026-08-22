@@ -289,7 +289,13 @@ async function main() {
         id: `tsk-seed-${crypto.randomUUID()}`,
         projectId,
         displayId: `SEED-${i + 1}`,
-        taskTypeId,
+        // M24-T10: every 10th task is untyped (the column is nullable and
+        // "untyped" is a first-class CFD scope in getReportTrends). With a
+        // single typed vocabulary the Reports CFD selector renders exactly
+        // one option and cannot be *changed*, so the e2e could never prove
+        // the selector re-queries; this gives it a second deterministic
+        // option ("Untyped") while "Task" stays the most-used default.
+        taskTypeId: i % 10 === 9 ? null : taskTypeId,
         createdBy: userId,
         title: `Seed task #${i + 1}`,
         status: STATUSES[i % STATUSES.length],

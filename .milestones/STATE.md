@@ -1323,7 +1323,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M21 | Shared Memory & Belief System   | done   | —          | 10    | 10   |
 | M22 | Task Handoff & Continuity       | done   | —          | 8     | 8    |
 | M23 | Rich Markdown Editor            | done   | —          | 5     | 5    |
-| M24 | Project Reports & Agent Insights | in-progress | — | 10    | 9    |
+| M24 | Project Reports & Agent Insights | in-progress | — | 10    | 10   |
 
 **Total: 202 tasks across 18 milestones — 149 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5).**
 

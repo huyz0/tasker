@@ -277,3 +277,33 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   lines), non-terminal bands cycle tokens 1–5 so no collision; footnote
   dates pinned en-US/UTC so labels can't shift under the runner's locale.
 - **Next**: M24-T10 (e2e + docs + closeout).
+
+## M24-T10 — E2E, docs, full verification, closeout
+
+- **Status**: done
+- **Date**: 2026-08-22
+- **Approach**: reports.spec.ts driving a real claim + note + status
+  change through the backend and asserting the panels reflect it (incl.
+  Unassign end-to-end and both RPCs actually reached), NAVIGATION.md +
+  roadmap updates, then the full milestone verification suite and the
+  close-milestone procedure.
+- **Changed**: `tests/e2e/reports.spec.ts` (5 tests: nav + both RPCs
+  reached with 200s, seven panels non-blank, Unassign end-to-end over the
+  wire against genuinely seeded stalled claims — row → confirm →
+  unassignTask → refreshed response no longer lists it, window selector
+  drives windowDays=90 on both RPCs, CFD selector drives taskTypeId), new
+  `selectSeededProject` helper (pins "Seed Project" — the switcher's
+  newest-first auto-select can land on a Bulk Project), seed.ts makes
+  every 10th task untyped (the CFD select otherwise has one option and a
+  same-value change never fires), NAVIGATION.md gains the /reports route
+  (mermaid + table + corrected two-group sidebar prose).
+- **Verified**: reports spec 5/5; full e2e suite 38/38 twice; storybook
+  gate 107 stories, 0 axe violations, nothing wider than 375px — after it
+  caught a REAL kit bug on its first pass over the chart stories
+  (ChartShell's sr-only nowrap table measured 697px outside the scroller;
+  moved inside the overflow-x-auto container, semantics preserved);
+  `moon check --all` 32 tasks green; docs-lint clean.
+- **Notes**: pre-existing NAVIGATION.md drift (routes missing since
+  M10–M22) noted, not touched. Backend/GUI dev servers left running for
+  closeout re-verification. Exit criteria verified per the closeout
+  procedure — see the closeout commit.

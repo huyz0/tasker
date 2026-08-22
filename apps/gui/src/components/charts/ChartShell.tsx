@@ -56,6 +56,36 @@ export function ChartShell({
         <div role="img" aria-label={title} {...imgProps}>
           {children}
         </div>
+        {/* Inside the scroller on purpose: `sr-only` clips to a 1×1 box but
+            its `white-space: nowrap` table still *measures* at natural width,
+            and the 375px overflow gate flags any wide element without a
+            scrolling ancestor. The same deliberate-scroller answer the SVG
+            already uses; screen readers read clipped content regardless, now
+            directly after the chart it describes. */}
+        <div className="sr-only">
+          <p>{description}</p>
+          <table>
+            <caption>{title}</caption>
+            <thead>
+              <tr>
+                {columns.map((column) => (
+                  <th key={column} scope="col">
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={i}>
+                  {row.map((cell, j) => (
+                    <td key={j}>{cell}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       {legend}
       {readout !== undefined && (
@@ -64,30 +94,6 @@ export function ChartShell({
         </output>
       )}
       {footnote !== undefined && <p className="text-xs text-muted-foreground">{footnote}</p>}
-      <div className="sr-only">
-        <p>{description}</p>
-        <table>
-          <caption>{title}</caption>
-          <thead>
-            <tr>
-              {columns.map((column) => (
-                <th key={column} scope="col">
-                  {column}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i}>
-                {row.map((cell, j) => (
-                  <td key={j}>{cell}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </figure>
   );
 }
