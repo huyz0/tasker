@@ -1,29 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { TaskService, OrgService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { ReviewerPicker } from './ReviewerPicker';
 
-const mockList = vi.fn();
-const mockAdd = vi.fn();
-const mockRemove = vi.fn();
-const mockListMembers = vi.fn();
-
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  TaskService: 'TaskService',
-  OrgService: 'OrgService',
-}));
 vi.mock('use-debounce', () => ({ useDebounce: (v: string) => [v] }));
-vi.mock('@connectrpc/connect', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@connectrpc/connect')>()),
-  createClient: (service: unknown) =>
-    service === 'OrgService'
-      ? { listOrgMembers: (...a: unknown[]) => mockListMembers(...a) }
-      : {
-          listTaskReviewers: (...a: unknown[]) => mockList(...a),
-          addTaskReviewer: (...a: unknown[]) => mockAdd(...a),
-          removeTaskReviewer: (...a: unknown[]) => mockRemove(...a),
-        },
-}));
+
+/** Registers AddTaskReviewer/RemoveTaskReviewer and records every request each receives. */
+function withAddRemove() {
+  const addRequests: any[] = [];
+  const removeRequests: any[] = [];
+  mockRpc(TaskService, 'AddTaskReviewer', (body) => {
+    addRequests.push(body);
+    return {};
+  });
+  mockRpc(TaskService, 'RemoveTaskReviewer', (body) => {
+    removeRequests.push(body);
+    return {};
+  });
+  return { addRequests, removeRequests };
+}
+
+/** Registers ListOrgMembers and records every request it receives. */
+function withListMembers(response: object) {
+  const requests: any[] = [];
+  mockRpc(OrgService, 'ListOrgMembers', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
 
 const renderIt = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -37,15 +44,15 @@ const renderIt = () => {
 const ada = { id: 'r-1', taskId: 'task-1', userId: 'u-1', name: 'Ada Lovelace' };
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  mockList.mockResolvedValue({ reviewers: [] });
-  mockListMembers.mockResolvedValue({
+  mockRpc(TaskService, 'ListTaskReviewers', { reviewers: [] });
+  withListMembers({
     members: [
       { userId: 'u-1', name: 'Ada Lovelace', email: 'ada@x.test' },
       { userId: 'u-2', name: 'Grace Hopper', email: 'grace@x.test' },
     ],
     page: { totalCount: 2 },
   });
+  withAddRemove();
 });
 
 describe('ReviewerPicker', () => {
@@ -55,7 +62,7 @@ describe('ReviewerPicker', () => {
   });
 
   it('lists reviewers by name, not by id', async () => {
-    mockList.mockResolvedValue({ reviewers: [ada] });
+    mockRpc(TaskService, 'ListTaskReviewers', { reviewers: [ada] });
     renderIt();
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument();
     // A raw user id on screen is the failure this replaces — the contract
@@ -64,25 +71,27 @@ describe('ReviewerPicker', () => {
   });
 
   it('adds a reviewer', async () => {
+    const { addRequests } = withAddRemove();
     renderIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Add reviewer…' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Ada Lovelace' }));
-    await waitFor(() => expect(mockAdd).toHaveBeenCalledWith({ taskId: 'task-1', userId: 'u-1' }));
+    await waitFor(() => expect(addRequests).toContainEqual({ taskId: 'task-1', userId: 'u-1' }));
   });
 
   it('asks the server to filter as you type', async () => {
+    const requests = withListMembers({ members: [], page: { totalCount: 0 } });
     renderIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Add reviewer…' }));
     fireEvent.change(await screen.findByLabelText('Search people'), { target: { value: 'Grace' } });
     // An organization can hold 100,000 members; filtering in the browser does
     // not work at that size (M05-T04).
-    await waitFor(() => expect(mockListMembers).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ page: expect.objectContaining({ filter: 'Grace', limit: 10 }) }),
     ));
   });
 
   it('does not offer someone already reviewing', async () => {
-    mockList.mockResolvedValue({ reviewers: [ada] });
+    mockRpc(TaskService, 'ListTaskReviewers', { reviewers: [ada] });
     renderIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Add reviewer…' }));
     await screen.findByRole('button', { name: 'Grace Hopper' });
@@ -90,14 +99,15 @@ describe('ReviewerPicker', () => {
   });
 
   it('removes a reviewer, naming who', async () => {
-    mockList.mockResolvedValue({ reviewers: [ada] });
+    mockRpc(TaskService, 'ListTaskReviewers', { reviewers: [ada] });
+    const { removeRequests } = withAddRemove();
     renderIt();
     fireEvent.click(await screen.findByLabelText('Remove Ada Lovelace as a reviewer'));
-    await waitFor(() => expect(mockRemove).toHaveBeenCalledWith({ taskId: 'task-1', userId: 'u-1' }));
+    await waitFor(() => expect(removeRequests).toContainEqual({ taskId: 'task-1', userId: 'u-1' }));
   });
 
   it('says how many matched when it is showing only some', async () => {
-    mockListMembers.mockResolvedValue({
+    withListMembers({
       members: [{ userId: 'u-1', name: 'Ada Lovelace', email: 'ada@x.test' }],
       page: { totalCount: 100001 },
     });
@@ -107,7 +117,7 @@ describe('ReviewerPicker', () => {
   });
 
   it('distinguishes "nothing matched" from "everyone already reviews"', async () => {
-    mockListMembers.mockResolvedValue({ members: [], page: { totalCount: 0 } });
+    withListMembers({ members: [], page: { totalCount: 0 } });
     renderIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Add reviewer…' }));
     expect(await screen.findByText('Everyone is already reviewing.')).toBeInTheDocument();
@@ -119,7 +129,7 @@ describe('ReviewerPicker', () => {
   });
 
   it('identifies someone who has a login but no name yet', async () => {
-    mockListMembers.mockResolvedValue({
+    withListMembers({
       members: [{ userId: 'u-9', name: '', email: 'invited@x.test' }],
       page: { totalCount: 1 },
     });
@@ -131,7 +141,7 @@ describe('ReviewerPicker', () => {
   });
 
   it('does not claim there are more matches when the server sent no count', async () => {
-    mockListMembers.mockResolvedValue({ members: [{ userId: 'u-1', name: 'Ada Lovelace', email: 'ada@x.test' }] });
+    withListMembers({ members: [{ userId: 'u-1', name: 'Ada Lovelace', email: 'ada@x.test' }] });
     renderIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Add reviewer…' }));
     await screen.findByRole('button', { name: 'Ada Lovelace' });
@@ -139,15 +149,16 @@ describe('ReviewerPicker', () => {
   });
 
   it('closes without adding when cancelled', async () => {
+    const { addRequests } = withAddRemove();
     renderIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Add reviewer…' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByLabelText('Search people')).toBeNull());
-    expect(mockAdd).not.toHaveBeenCalled();
+    expect(addRequests).toHaveLength(0);
   });
 
   it('reports a failed add', async () => {
-    mockAdd.mockRejectedValue(new Error('permission denied'));
+    mockRpcError(TaskService, 'AddTaskReviewer', 'permission_denied', 'permission denied');
     renderIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Add reviewer…' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Ada Lovelace' }));
@@ -155,8 +166,8 @@ describe('ReviewerPicker', () => {
   });
 
   it('reports a failed removal and keeps the row', async () => {
-    mockList.mockResolvedValue({ reviewers: [ada] });
-    mockRemove.mockRejectedValue(new Error('nope'));
+    mockRpc(TaskService, 'ListTaskReviewers', { reviewers: [ada] });
+    mockRpcError(TaskService, 'RemoveTaskReviewer', 'unknown', 'nope');
     renderIt();
     fireEvent.click(await screen.findByLabelText('Remove Ada Lovelace as a reviewer'));
     expect(await screen.findByText(/Failed to remove reviewer/)).toBeInTheDocument();
