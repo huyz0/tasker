@@ -2,23 +2,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { TaskNoteService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 import { HandoffsScreen } from './index';
 import { expectNoA11yViolations } from '../../test/a11y';
-
-const { mockListHandoffNotes } = vi.hoisted(() => ({
-  mockListHandoffNotes: vi.fn(),
-}));
-
-vi.mock('@connectrpc/connect-web', () => ({
-  createConnectTransport: vi.fn(() => ({})),
-}));
-vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn(() => ({ listHandoffNotes: mockListHandoffNotes })),
-}));
-
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  TaskNoteService: { name: 'TaskNoteService' },
-}));
 
 let mockActiveOrgId: string | null = 'org-1';
 let mockActiveProjectId: string | null = 'proj-1';
@@ -67,8 +54,7 @@ describe('HandoffsScreen', () => {
   beforeEach(() => {
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
-    mockListHandoffNotes.mockReset();
-    mockListHandoffNotes.mockResolvedValue({ entries: ENTRIES, page: {} });
+    mockRpc(TaskNoteService, 'ListHandoffNotes', { entries: ENTRIES, page: {} });
   });
 
   it('lists tasks with a pending handoff note - title, status, excerpt, author, timestamp', async () => {
@@ -84,26 +70,26 @@ describe('HandoffsScreen', () => {
   });
 
   it('shows a loading message while the first page is in flight', async () => {
-    mockListHandoffNotes.mockImplementation(() => new Promise(() => {}));
+    mockRpcPending(TaskNoteService, 'ListHandoffNotes');
     renderPage();
     expect(screen.getByText('Loading handoffs…')).toBeInTheDocument();
   });
 
   it('shows an empty message when no task currently has a pending handoff', async () => {
-    mockListHandoffNotes.mockResolvedValue({ entries: [], page: {} });
+    mockRpc(TaskNoteService, 'ListHandoffNotes', { entries: [], page: {} });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('No tasks currently have a pending handoff note.')).toBeInTheDocument());
   });
 
   it('shows a retryable error when the request fails', async () => {
-    mockListHandoffNotes.mockRejectedValue(new Error('backend unavailable'));
+    mockRpcError(TaskNoteService, 'ListHandoffNotes', 'unavailable', 'backend unavailable');
     renderPage();
 
     await waitFor(() => expect(screen.getByText(/Could not load this list/)).toBeInTheDocument());
     expect(screen.getByText(/backend unavailable/)).toBeInTheDocument();
 
-    mockListHandoffNotes.mockResolvedValue({ entries: ENTRIES, page: {} });
+    mockRpc(TaskNoteService, 'ListHandoffNotes', { entries: ENTRIES, page: {} });
     fireEvent.click(screen.getByText('Try again'));
     await waitFor(() => expect(screen.getByText('Fix flaky test')).toBeInTheDocument());
   });
@@ -118,12 +104,11 @@ describe('HandoffsScreen', () => {
   });
 
   it('loads the next page on demand', async () => {
-    mockListHandoffNotes.mockImplementation(({ page }: { page?: { cursor?: string } }) => {
-      if (!page?.cursor) {
-        return Promise.resolve({ entries: [ENTRIES[0]], page: { nextCursor: 'cursor-2' } });
-      }
-      return Promise.resolve({ entries: [ENTRIES[1]], page: {} });
-    });
+    mockRpc(TaskNoteService, 'ListHandoffNotes', (body: { page?: { cursor?: string } }) =>
+      body.page?.cursor
+        ? { entries: [ENTRIES[1]], page: {} }
+        : { entries: [ENTRIES[0]], page: { nextCursor: 'cursor-2' } },
+    );
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix flaky test')).toBeInTheDocument());
@@ -134,18 +119,15 @@ describe('HandoffsScreen', () => {
   });
 
   it('shows "Loading…" on the load-more control while the next page is in flight', async () => {
-    let resolveNextPage!: (value: unknown) => void;
-    mockListHandoffNotes.mockImplementation(({ page }: { page?: { cursor?: string } }) => {
-      if (!page?.cursor) return Promise.resolve({ entries: [ENTRIES[0]], page: { nextCursor: 'cursor-2' } });
-      return new Promise((resolve) => { resolveNextPage = resolve; });
-    });
+    mockRpc(TaskNoteService, 'ListHandoffNotes', { entries: [ENTRIES[0]], page: { nextCursor: 'cursor-2' } });
     renderPage();
-
     await waitFor(() => expect(screen.getByText('Fix flaky test')).toBeInTheDocument());
+
+    const pending = mockRpcPending(TaskNoteService, 'ListHandoffNotes');
     fireEvent.click(screen.getByText('Load more handoffs'));
 
     await waitFor(() => expect(screen.getByText('Loading…')).toBeInTheDocument());
-    resolveNextPage({ entries: [ENTRIES[1]], page: {} });
+    pending.resolve({ entries: [ENTRIES[1]], page: {} });
     await waitFor(() => expect(screen.getByText('Add note_type column')).toBeInTheDocument());
   });
 
@@ -157,9 +139,14 @@ describe('HandoffsScreen', () => {
 
   it('asks the user to select a project when an org is active but no project is', () => {
     mockActiveProjectId = null;
+    const requests: unknown[] = [];
+    mockRpc(TaskNoteService, 'ListHandoffNotes', (body) => {
+      requests.push(body);
+      return { entries: ENTRIES, page: {} };
+    });
     renderPage();
     expect(screen.getByText('Select a project to see its pending handoffs.')).toBeInTheDocument();
-    expect(mockListHandoffNotes).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('has no accessibility violations once populated', async () => {
