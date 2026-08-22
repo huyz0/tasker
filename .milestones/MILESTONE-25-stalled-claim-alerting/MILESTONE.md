@@ -1,13 +1,13 @@
 ---
 id: M25
 title: Proactive Alerting for Stalled Claims
-status: in-progress
+status: done
 goal: A human with a task_reviewers role (falling back to an org owner/admin) receives one digest email per sweep naming every one of their newly-stalled agent-claimed tasks, with no deployment lacking SMTP paying any cost for it and no deployment ever emailing its entire historical backlog in one run.
 depends_on: []
 surfaces: [backend, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-23
-completed_at: null
+completed_at: 2026-08-23
 ---
 
 # M25 — Proactive Alerting for Stalled Claims
@@ -49,27 +49,27 @@ task breakdown below.
 
 ## 3. Exit Criteria
 
-- [ ] A fixture with several stalled claims across two distinct recipients
+- [x] A fixture with several stalled claims across two distinct recipients
       produces exactly two emails (one digest per recipient), each listing
       every one of that recipient's stalled tasks up to the digest cap,
       with a "+N more" line when capped — proven by an injected-transport
       test, no real SMTP socket.
-- [ ] Re-running the sweep immediately afterward with no state change sends
+- [x] Re-running the sweep immediately afterward with no state change sends
       zero further emails (dedup holds); a fresh claim on a previously
       alerted, now-resolved task becomes eligible again (dedup keys on the
       claim's anchor, not the task).
-- [ ] A claim predating activity collection (no `claimed`/`assigned` row —
+- [x] A claim predating activity collection (no `claimed`/`assigned` row —
       only a `created` row) is still deduped correctly on its second sweep
       — the regression the NULL-key bug would have caused, proven with a
       dedicated test.
-- [ ] The recipient chain resolves `task_reviewers` first, falling back to
+- [x] The recipient chain resolves `task_reviewers` first, falling back to
       the org's `owner`/`admin` members only when the task has no
       reviewers, filtered to non-null email; every sent email states which
       of the two reasons the recipient received it.
-- [ ] `!mailer.enabled` short-circuits the sweep before any database query
+- [x] `!mailer.enabled` short-circuits the sweep before any database query
       runs — proven by asserting no query executes when disabled, not just
       that no email is sent.
-- [ ] The shared detector, called with no `projectId`, returns candidates
+- [x] The shared detector, called with no `projectId`, returns candidates
       across multiple projects/orgs correctly, using a join-based
       `GROUP BY task_id` aggregate rather than a driver-side IN-list over
       held task ids — proven two ways: an `EXPLAIN QUERY PLAN` assertion
@@ -81,10 +81,10 @@ task breakdown below.
       is what proves the shape itself cannot blow up at the 30k+-task scale
       named in this milestone's Risks section, without needing a fixture
       that large.
-- [ ] `reports/exceptions.ts`'s existing stalled-claims panel is rewired
+- [x] `reports/exceptions.ts`'s existing stalled-claims panel is rewired
       onto the shared detector with its behavior unchanged — the existing
       M24 report test suite passes with zero modifications.
-- [ ] `domain.task.stalled` is published per alerted task with an explicit
+- [x] `domain.task.stalled` is published per alerted task with an explicit
       `orgId` and the claimed agent carried as `stalledAgentId` — **not**
       `agentId`, which `consumers/auditProjector.ts`'s `extractActor` would
       read first and misattribute the event to the agent instead of the
@@ -94,17 +94,17 @@ task breakdown below.
       consumers process against a live broker for its own verification
       (T05's Mailpit session, extended to also start `consumers/index.ts`),
       a live observation that the row lands in `audit_log` as `'system'`.
-- [ ] Purging a task or a project leaves zero orphaned
+- [x] Purging a task or a project leaves zero orphaned
       `stalled_claim_alerts` rows — proven by cascade tests, the same
       discipline ADR-0020 established for `task_activity`.
-- [ ] `STALLED_ALERT_AFTER_HOURS` is independently configurable from the
+- [x] `STALLED_ALERT_AFTER_HOURS` is independently configurable from the
       report panel's own threshold (env var, defaulting to the same value)
       — proven by a test that sets it differently and observes a different
       alert boundary than the report would show.
-- [ ] `moon check --all` clean; a real local Mailpit run (`docker compose
+- [x] `moon check --all` clean; a real local Mailpit run (`docker compose
       --profile mail up -d mailpit`) shows an actual digest email arriving
       with the right subject, recipient, and itemized task list.
-- [ ] `findStalledCandidates`'s reported `hoursSilent`/`anchorAt`/
+- [x] `findStalledCandidates`'s reported `hoursSilent`/`anchorAt`/
       `silentSince` are correct against a **real, non-UTC-hosted MySQL
       server** — not just against SQLite or a mocked `db.select` — proven
       by a unit test that reproduces mysql2's actual return shape for a

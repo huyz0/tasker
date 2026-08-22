@@ -1,6 +1,6 @@
 ---
-active_milestone: M25
-active_task: M25-T06
+active_milestone: null
+active_task: null
 last_updated: 2026-08-23
 last_commit: 8329130
 blocked: false
@@ -14,6 +14,67 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-23 — M25 (Proactive Alerting for Stalled Claims) complete: 6/6
+tasks, 12/12 exit criteria, on `feature/m25-stalled-claim-alerting`.** A
+human with a `task_reviewers` role (falling back to an org owner/admin)
+now gets one digest email per hourly sweep naming every one of their
+newly-stalled agent-claimed tasks — the pull-vs-push gap named in a
+Linear/Monday comparison earlier the same session, closed the same day.
+Grew from the planned 5 tasks to 6: T05's live verification (a real
+Mailpit + NATS + consumers + MySQL run, not just unit tests) found a real,
+live-only defect — the alert sweep's own T06 fixed it before close rather
+than shipping with a known bug. Two subagent reviews shaped this
+milestone before and during planning; both caught real, load-bearing
+defects, not style nits.
+
+**Things a next session should know that the code won't say:**
+
+1. **The single most important design fix**: this ships as a *digest*
+   (one email per recipient per sweep), never one email per stalled task.
+   A per-task design would email every stalled claim accumulated over a
+   deployment's entire history on its very first run — independently
+   identified as the most likely way this feature gets disabled on day
+   one. If anyone ever "simplifies" this back to per-task emails, they are
+   reintroducing the bug this design exists to prevent.
+2. **A live-only MySQL timezone bug (T06), found by T05's live
+   verification, not by any unit test.** `lib/stalledClaims.ts`'s
+   conditional-aggregation query (`MAX(CASE WHEN ...)`) returns a plain
+   datetime string from mysql2 with no timezone marker; the old decode
+   (`new Date(v)`) read it as the *host process's local time*, silently
+   wrong by the host's UTC offset on every non-UTC deployment — a real
+   task claimed 2h ago was reported as "silent for 11 hours" on a UTC+10
+   host. This was a regression introduced by M25-T03's own query
+   unification, not inherited from M24. **Lesson worth repeating**: every
+   unit test in this codebase mocks `db.select`, so none of them exercise
+   mysql2's real string-return behavior for a raw computed aggregate
+   column — this class of bug is invisible until something runs against a
+   real MySQL server. If a future change touches raw `sql<...>` aggregate
+   expressions against MySQL, re-verify live rather than trusting a green
+   test suite.
+3. **The recipient chain is deliberately two-tier, not three**:
+   `task_reviewers`, falling back only when none exist to the org's
+   `owner`/`admin` members. A "commenter" tier was drafted and rejected —
+   commenting on a task is itself a signal that clears the stalled
+   condition, so that tier's population would have been self-defeating.
+   `resolveTaskAlertRecipients` is the one function to touch if the
+   fallback tier proves too broad or narrow in practice.
+4. **`domain.task.stalled` is published per alert** (audit_log,
+   `actorType: 'system'`), even though no GUI surface consumes it yet —
+   deliberately, so a future in-app notification bell starts from a
+   working data source. The payload field is `stalledAgentId`, never
+   `agentId` — naming it `agentId` would make the audit projector
+   misattribute the event to the agent instead of the system that raised
+   it (a real bug a docs-review subagent caught before any code existed).
+5. **Named deferrals, not silently dropped**: the GUI notification/bell
+   surface itself (real, separate frontend work); per-user notification
+   preferences beyond the "why you got this" line in the email; an
+   `agents` owner/operator column (would materially improve recipient
+   resolution — there is still no way to notify "whoever runs this
+   agent" specifically); Slack/webhook channels; pruning
+   `stalled_claim_alerts` (growth accepted as small).
+6. Every numbered milestone in the ledger is now `done` again. New work
+   starts with `/milestone-plan`.
 
 **2026-08-23 — M25 planned; delivery started at M25-T01.** Raised via `/goal` immediately after a
 conversation comparing `/reports` (M24) to Linear and Monday — the gap
@@ -1385,7 +1446,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M24 | Project Reports & Agent Insights | done   | —          | 10    | 10   |
 | M25 | Proactive Alerting for Stalled Claims | done   | —          | 6     | 6    |
 
-**Total: 208 tasks across 19 milestones — 159 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5, M24 10).**
+**Total: 208 tasks across 19 milestones — 165 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5, M24 10, M25 6).**
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
