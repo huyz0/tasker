@@ -98,6 +98,39 @@ describe('the generated contract', () => {
   });
 });
 
+describe('optional scalar fields carry real presence', () => {
+  // The class of bug M12-T01 found in `PingResponse.natsLatencyMs`: a plain
+  // (non-`optional`) scalar has no way to be "absent" on the wire — a value
+  // the server never sets decodes to the type's default (0, "", false), which
+  // is indistinguishable from a real zero. A hand-written test mock can
+  // return literal `undefined` regardless of what the .proto says; only a
+  // round trip through the real codec can catch the two disagreeing. This
+  // asserts the general property so a future field makes the same mistake
+  // loudly rather than shipping it.
+  it('decodes every declared `optional` field to undefined when the JSON omits it, not to a type default', () => {
+    const checked: string[] = [];
+    for (const { label, desc } of messagesUnderTest()) {
+      for (const field of desc.fields) {
+        // presence 1 = EXPLICIT ("optional" in the .proto, real presence);
+        // presence 2 = IMPLICIT (a plain scalar — absence and the type's
+        // default are the same value on the wire, so there is nothing to
+        // check). message/list/map fields carry presence structurally and
+        // are out of scope for this check.
+        if ((field as any).presence !== 1) continue;
+        checked.push(`${label}.${field.name}`);
+        // An empty JSON object omits every field, including this one.
+        const decoded = fromJson(desc, {}) as Record<string, unknown>;
+        expect(`${label}.${field.name} = ${decoded[field.localName]}`).toBe(
+          `${label}.${field.name} = undefined`,
+        );
+      }
+    }
+    // A message with no optional fields at all would make this pass on
+    // nothing, same reasoning as the vacuity guards below.
+    expect(checked.length).toBeGreaterThan(0);
+  });
+});
+
 describe('the fixtures are not vacuous', () => {
   it('populates fields with values distinguishable from the default', () => {
     // The whole suite would pass on empty messages, since the default is

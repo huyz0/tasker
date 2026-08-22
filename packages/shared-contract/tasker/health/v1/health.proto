@@ -12,8 +12,15 @@ message PingResponse {
   string natsStatus = 3;
   string version = 4;
   int32 uptimeSeconds = 5;
-  int32 dbLatencyMs = 6;
-  int32 natsLatencyMs = 7;
+  // `main.tsp` already declared both of these `optional` — this file had
+  // drifted from it, which is what buf actually generates from. A plain
+  // scalar has no way to be "absent" on the wire: a value the handler never
+  // sets decodes to 0, not undefined, which is indistinguishable from a real
+  // 0ms measurement. `optional` gives it real presence (found via M12-T01,
+  // converting SystemHealth.test.tsx off a hand-written mock to the real
+  // codec — the mock could return literal `undefined`, and the wire cannot).
+  optional int32 dbLatencyMs = 6;
+  optional int32 natsLatencyMs = 7;
 }
 
 service HealthService {
