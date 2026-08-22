@@ -79,6 +79,13 @@ milestone's `PROGRESS.md` rather than quietly fixed.
 | **M12** | [Test Depth & Release](../../.milestones/MILESTONE-12-test-depth-and-release/MILESTONE.md) | The client–server seam is tested, journeys are covered, the product is distributable. | M06, M09, M11 |
 | **M13** | [Local Accounts & Linked Identity](../../.milestones/MILESTONE-13-local-accounts-and-linked-identity/MILESTONE.md) | A user can exist and log in on a local username and password with no email or external provider required; Google is one optional linked identity among possibly several. | M01, M03 |
 | **M14** | [Task Reliability & Agent Self-Service](../../.milestones/MILESTONE-14-task-reliability-and-agent-self-service/MILESTONE.md) | Task mutations are correct under concurrent/retried writes, and an agent can discover, claim and complete work with no human broker. | M04, M05 |
+| **M21** | [Shared Memory & Belief System](../../.milestones/MILESTONE-21-shared-memory-and-beliefs/MILESTONE.md) | Agents and humans share a searchable, scoped memory of durable beliefs with human-gated promotion. | — |
+| **M22** | [Task Handoff & Continuity](../../.milestones/MILESTONE-22-task-handoff-continuity/MILESTONE.md) | An agent whose claim ends mid-task leaves a handoff note the next agent or human resumes from. | — |
+| **M23** | [Rich Markdown Editor](../../.milestones/MILESTONE-23-rich-markdown-editor/MILESTONE.md) | Markdown surfaces are edited WYSIWYG while the wire contract stays plain markdown. | — |
+| **M24** | [Project Reports & Agent Insights](../../.milestones/MILESTONE-24-project-reports-and-agent-insights/MILESTONE.md) | A project-scoped Reports screen shows where work is stuck, which agents need attention, and how work flows over time — every panel feeding an intervention decision. | — |
+
+M21–M24 are sequenced by explicit user priority (like M13 before M10) and
+carry no dependency edge; every numbered milestone before them is done.
 
 ## Sequencing rationale
 

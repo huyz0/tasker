@@ -1,5 +1,5 @@
 ---
-active_milestone: null
+active_milestone: M24
 active_task: null
 last_updated: 2026-08-22
 last_commit: 8329130
@@ -14,6 +14,22 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-22 — M24 (Project Reports & Agent Insights) planned; delivery
+starts at M24-T01.** Requested via `/goal` ("add chart/diagram for a specific
+project … similar to Jira's project-level reports … especially provide views
+on agents aspect"). The chart set was drafted from the codebase's real data
+model, then reviewed by three independent subagent lenses — product value,
+agents dimension, technical feasibility — before planning, and the reviews
+changed the design materially: exception lists lead trend charts (agents fail
+discretely, not gradually — stalled claims, status regressions, handoff
+churn), the "leaderboard" became a trust scorecard (reopen rate, autonomy
+rate, agent⇄role toggle), tabs were dropped for one urgency-ordered page,
+and the data substrate is a new synchronous `task_activity` table (the audit
+log was rejected: no project scoping, projector-clock timestamps, absent in
+standalone mode). Ten tasks, two ADRs (0020 activity substrate, 0021
+hand-rolled SVG charts); the three review reports land in the spec folder at
+M24-T01. See `MILESTONE-24-project-reports-and-agent-insights/MILESTONE.md`.
 
 **2026-08-22 — the GUI CI job went from 24m to 9m54s** (commit `2e48247`),
 by parallelising the two Storybook browser gates. Worth recording for the
@@ -1307,12 +1323,13 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M21 | Shared Memory & Belief System   | done   | —          | 10    | 10   |
 | M22 | Task Handoff & Continuity       | done   | —          | 8     | 8    |
 | M23 | Rich Markdown Editor            | done   | —          | 5     | 5    |
+| M24 | Project Reports & Agent Insights | todo  | —          | 10    | 0    |
 
-**Total: 192 tasks across 17 milestones — 149 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5).**
+**Total: 202 tasks across 18 milestones — 149 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5).**
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
-see `PROGRESS.md`/git history for each. M21, M22, and M23 are sequenced
+see `PROGRESS.md`/git history for each. M21, M22, M23 and M24 are sequenced
 by explicit user priority (like M13 before M10), with no `depends_on`
 edge to anything still `todo`.
 
