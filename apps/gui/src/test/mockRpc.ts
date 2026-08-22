@@ -75,6 +75,23 @@ export function mockRpcError(service: { typeName: string }, method: string, code
 }
 
 /**
+ * Registers an RPC that does not answer until the test says so — for "is it
+ * still pending" / "what if the component unmounts before this resolves"
+ * cases, which is the one shape the JSON-value form of `mockRpc` cannot
+ * express (there is no request in hand yet to resolve later).
+ */
+export function mockRpcPending(service: { typeName: string }, method: string) {
+  let settle!: (response: JsonBodyType) => void;
+  const promise = new Promise<JsonBodyType>((resolve) => {
+    settle = resolve;
+  });
+  server.use(
+    http.post(`${BACKEND_URL}/${service.typeName}/${method}`, async () => HttpResponse.json(await promise)),
+  );
+  return { resolve: settle };
+}
+
+/**
  * One length-delimited Connect streaming frame: `[flags:1][len:4 BE][json]`.
  * `flags = 2` marks the end-of-stream trailer frame — verified against a real
  * server (`probe-stream.ts`, run once by hand): without it the client never
