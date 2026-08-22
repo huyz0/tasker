@@ -1,13 +1,13 @@
 ---
 id: M24
 title: Project Reports & Agent Insights
-status: in-progress
+status: done
 goal: A manager overseeing a project of AI agents can open one project-scoped Reports screen and see where work is stuck, which agents need attention, and how work is flowing over time — every panel answering a concrete intervention decision from real recorded history, in Jira's project-report role but built for an agent fleet.
 depends_on: []
 surfaces: [backend, gui, contract, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-22
-completed_at: null
+completed_at: 2026-08-23
 ---
 
 # M24 — Project Reports & Agent Insights
@@ -57,7 +57,7 @@ keeps no history and attribution is otherwise unrecoverable.
 
 ## 3. Exit Criteria
 
-- [ ] From a seeded project, `/reports` renders all seven panels with real
+- [x] From a seeded project, `/reports` renders all seven panels with real
       data: stalled work (claimed-and-silent with per-row Unassign, and
       oldest-unclaimed), went-backwards regressions, churning tasks (≥2
       handoffs, claim-still-held flag), fleet scorecard (agent⇄role toggle,
@@ -65,39 +65,39 @@ keeps no history and attribution is otherwise unrecoverable.
       autonomy & rework trend, created vs completed (cumulative), and CFD
       (per-task-type selector) — verified by a Playwright e2e test that
       drives real RPCs, not mocks.
-- [ ] Clicking Unassign on a stalled claim frees the task (the row leaves the
+- [x] Clicking Unassign on a stalled claim frees the task (the row leaves the
       list; the task becomes claimable) — covered by a feature test against
       the real `unassignTask` wire call via MSW, and exercised in e2e.
-- [ ] A task creation, status change, claim, assignment, unassignment,
+- [x] A task creation, status change, claim, assignment, unassignment,
       archive/restore, note, comment and handoff each produce exactly one
       correct `task_activity` row (correct kind, from/to status, terminality
       flags, actor, assignee-at-event), and a replayed idempotent
       `claimTask` does not double-count — proven by backend tests including
       a race/replay test.
-- [ ] Purging a task, a project, and the retention sweep leave zero orphaned
+- [x] Purging a task, a project, and the retention sweep leave zero orphaned
       `task_activity` rows — proven by cascade tests.
-- [ ] The backfill migration gives every pre-existing non-archived task
+- [x] The backfill migration gives every pre-existing non-archived task
       exactly one `created` activity row carrying its current status
       (soft-deleted tasks excluded — no unpaired `+1` in the CFD algebra),
       plus one activity row per pre-existing task note, handoff and
       task-scoped comment at its real timestamp, in both dialects,
       idempotently (re-running it inserts nothing) — proven by migration
       tests against SQLite and live MySQL.
-- [ ] Both report RPCs refuse agent principals structurally
+- [x] Both report RPCs refuse agent principals structurally
       (`agent-scope-sweep` and `viewer-denial` suites pass with the new
       handler registered) and enforce `dashboard:read` cross-tenant.
-- [ ] `bun run seed -- --scale large && bun run measure:latency` shows both
+- [x] `bun run seed -- --scale large && bun run measure:latency` shows both
       report RPCs inside their named 300 ms p95 budget rows in
       `api-standard.md` §6, with `task_activity` seeded at scale.
-- [ ] The CFD balances: for a task history replayed through the handlers, the
+- [x] The CFD balances: for a task history replayed through the handlers, the
       chart's final-day stack equals the project's live per-status counts,
       and archived tasks leave the stack — proven by a backend test on the
       daily-delta + prefix-sum series.
-- [ ] `moon check --all` clean; `gui:storybook-test` clean (0 axe violations,
+- [x] `moon check --all` clean; `gui:storybook-test` clean (0 axe violations,
       no 375 px overflow) including the new chart and card stories in both
       themes; `gui:design-lint` passes with chart colors as `--chart-*`
       tokens only.
-- [ ] `moon run :spec-drift` and `moon run tasker:docs-lint` pass:
+- [x] `moon run :spec-drift` and `moon run tasker:docs-lint` pass:
       NAVIGATION.md shows the Reports route, roadmap names M24, and no
       dependency was added (charts are hand-rolled — ADR-0021).
 
@@ -289,7 +289,7 @@ users are agents, and reports are the humans-only monitoring surface).
       - Verify: `moon run gui:test`; `moon run gui:rpc-coverage` passes with
         no Reports exceptions.
 
-- [ ] **M24-T10** — E2E + closeout: `tests/e2e/reports.spec.ts` (seeded org
+- [x] **M24-T10** — E2E + closeout: `tests/e2e/reports.spec.ts` (seeded org
       via `selectSeededOrg.ts`; drive a real claim + note + status change
       through the backend, assert the panels reflect it, exercise Unassign
       end-to-end, assert both RPCs are actually reached); update

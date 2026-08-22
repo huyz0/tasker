@@ -1,7 +1,7 @@
 ---
-active_milestone: M24
-active_task: M24-T10
-last_updated: 2026-08-22
+active_milestone: null
+active_task: null
+last_updated: 2026-08-23
 last_commit: 8329130
 blocked: false
 blocker: null
@@ -15,8 +15,51 @@ blocker: null
 
 ## Now
 
-**2026-08-22 — M24 (Project Reports & Agent Insights) planned; delivery
-starts at M24-T01.** Requested via `/goal` ("add chart/diagram for a specific
+**2026-08-23 — M24 (Project Reports & Agent Insights) complete: 10/10 tasks,
+10/10 exit criteria, closed on `feature/m24-project-reports-and-agent-insights`.**
+The GUI has its first charts and its first project-level monitoring surface:
+`/reports` — one urgency-ordered page for a manager of an agent fleet.
+Exception lists lead (stalled claims with a per-row wire-verified Unassign,
+status regressions, handoff churn with a claim-still-held flag, a
+trust-pivoted fleet scorecard with an agent⇄role toggle), three honest trend
+charts follow (autonomy & rework, created vs completed cumulative, CFD with a
+per-task-type selector), all on a hand-rolled two-component SVG chart kit
+(ADR-0021, `--chart-1..6` tokens, sr-only tables as the a11y/test contract).
+
+The substrate is the milestone's real contribution: **`task_activity`**
+(ADR-0020) — first-class history written synchronously by every task/note/
+comment mutation site, terminality stamped at write time, assignee-at-event
+denormalized, truthful backfill (current status as day-0 baseline;
+soft-deleted excluded; real note/comment history carried over), explicit
+purge-cascade deletes. The audit log was evaluated and rejected as substrate
+(no project scoping, projector clock, absent in STANDALONE). Measured at the
+50k-task seed: getReportExceptions p95 240.6 ms / getReportTrends 274.7 ms
+against named 300 ms budgets — first implementations measured 548/494 and
+were fixed by algorithm, not budget.
+
+**Things a next session should know that the code won't say:**
+
+1. The design was reshaped by three pre-planning subagent reviews (preserved
+   in the spec folder): exception lists beat trend charts for agent fleets;
+   the completions leaderboard was cut as vanity; cycle-time percentiles cut
+   (no slice dimension exists); one page, no tabs. Honor those arguments
+   before re-adding any of that in a v2.
+2. Every future task-mutation path MUST write task_activity (the T06 CFD
+   balance test catches a miss structurally — replayed history's final stack
+   must equal live GROUP BY counts). `claim_rejected` must NEVER become an
+   activity kind (ADR-0020; polling fleets would dwarf the table).
+3. **Pre-existing latent bug found in T03, not fixed (follow-up):**
+   `0044_audit_log` (sqlite) / `0031_audit_log` (mysql) carry raw `when`
+   values smaller than 0041–0043's rounded ones — a database already past
+   0043 before audit_log landed would silently never apply them.
+   drizzle-kit's snapshots were also stale since 0023; T03 repaired them.
+4. Named deferrals: `task_reviewers` outcome column + review-queue latency
+   (the highest-value adjacent work per the product review); org-level
+   rollups; claim-latency trends; token-expiry alerts (Agents screen);
+   NAVIGATION.md's pre-M24 route drift (Memory/Handoffs/Teams/Roles/Task
+   Types still missing from its map).
+
+**2026-08-22 — M24 planned; delivery started at M24-T01.** Requested via `/goal` ("add chart/diagram for a specific
 project … similar to Jira's project-level reports … especially provide views
 on agents aspect"). The chart set was drafted from the codebase's real data
 model, then reviewed by three independent subagent lenses — product value,
@@ -1323,9 +1366,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M21 | Shared Memory & Belief System   | done   | —          | 10    | 10   |
 | M22 | Task Handoff & Continuity       | done   | —          | 8     | 8    |
 | M23 | Rich Markdown Editor            | done   | —          | 5     | 5    |
-| M24 | Project Reports & Agent Insights | in-progress | — | 10    | 10   |
+| M24 | Project Reports & Agent Insights | done   | —          | 10    | 10   |
 
-**Total: 202 tasks across 18 milestones — 149 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5).**
+**Total: 202 tasks across 18 milestones — 159 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5, M24 10).**
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
