@@ -33,6 +33,9 @@ export async function purgeTaskCascade(db: any, taskId: string): Promise<void> {
   // does NOT touch activity: a purged agent leaves dangling actor_id text,
   // matching the audit_log precedent; readers render "(deleted agent)".)
   await db.delete(schema.taskActivity).where(eq(schema.taskActivity.taskId, taskId));
+  // M25-T02 (ADR-0022 Decision 3): same no-FK-cascade discipline for the
+  // stalled-claim alert dedup ledger.
+  await db.delete(schema.stalledClaimAlerts).where(eq(schema.stalledClaimAlerts.taskId, taskId));
   await db.delete(schema.taskAssignments).where(eq(schema.taskAssignments.taskId, taskId));
   await db.delete(schema.taskReviewers).where(eq(schema.taskReviewers.taskId, taskId));
   await db.delete(schema.taskArtifactLinks).where(eq(schema.taskArtifactLinks.taskId, taskId));
@@ -122,6 +125,9 @@ export async function purgeProjectCascade(db: any, projectId: string): Promise<v
     // M24-T04 (ADR-0020): activity has no FK cascade either - same bulk
     // inArray idiom as the other per-task child tables below.
     await db.delete(schema.taskActivity).where(inArray(schema.taskActivity.taskId, taskIds));
+    // M25-T02 (ADR-0022 Decision 3): neither does the stalled-claim alert
+    // dedup ledger.
+    await db.delete(schema.stalledClaimAlerts).where(inArray(schema.stalledClaimAlerts.taskId, taskIds));
     await db.delete(schema.taskAssignments).where(inArray(schema.taskAssignments.taskId, taskIds));
     await db.delete(schema.taskReviewers).where(inArray(schema.taskReviewers.taskId, taskIds));
     await db.delete(schema.taskArtifactLinks).where(inArray(schema.taskArtifactLinks.taskId, taskIds));

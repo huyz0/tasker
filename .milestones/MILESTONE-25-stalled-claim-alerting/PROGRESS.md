@@ -47,3 +47,33 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   in a client-facing (well, audit-facing) correctness property — worth
   the second look before any code exists.
 - **Next**: M25-T02 (stalled_claim_alerts schema + migrations + purge cascades).
+
+## M25-T02 — Schema: stalled_claim_alerts + migrations + purge cascades
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Approach**: Add the table to both schema modules exactly as ADR-0022
+  specifies (anchor_at NOT NULL — the fixed dedup key), generate per-
+  dialect migrations, regenerate embedded migrations, add explicit deletes
+  to purgeTaskCascade/purgeProjectCascade, verify the unique index
+  actually rejects a duplicate (task_id, anchor_at) pair, verify against
+  live MySQL.
+- **Changed**: `stalledClaimAlerts` table in both schema modules
+  (`anchor_at` NOT NULL — the fixed dedup key, doc-commented with the
+  ADR-0022 rationale), `drizzle-sqlite/0047` + `drizzle-mysql/0034` DDL,
+  regenerated embedded migrations (48/35), explicit deletes in
+  `purgeTaskCascade`/`purgeProjectCascade`, new
+  `stalledClaimAlerts.migration.test.ts` (5 tests incl. a proven unique-
+  constraint rejection: `UNIQUE constraint failed: stalled_claim_alerts.
+  task_id, stalled_claim_alerts.anchor_at`), extended `cascadePurge.test.ts`.
+- **Verified**: `moon check backend` green; backend:test 1734 pass; live
+  MySQL via docker compose — migration applied, `SHOW CREATE TABLE`
+  confirms the NOT NULL columns and the compound unique key.
+- **Notes**: found and fixed a latent bug in M24-T03's own
+  `taskActivity.migration.test.ts` as a byproduct — it asserted the
+  backfill was the max-`when` migration by tag-exclusion, true only until
+  a later migration existed (this one); changed to a `when`-ordering
+  comparison so it stays correct regardless of what lands after it.
+  Journal `when` hand-bumped to 1788300000000 (drizzle-kit's own stamp was
+  smaller than the existing max, same gotcha M24-T03 already documented).
+- **Next**: M25-T03 (extract findStalledCandidates into lib/).

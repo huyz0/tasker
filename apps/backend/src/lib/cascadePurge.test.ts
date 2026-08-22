@@ -29,6 +29,28 @@ describe("cascadePurge", () => {
     expect(remaining.length).toBe(0);
   });
 
+  test("purgeTaskCascade deletes the task's stalled_claim_alerts rows", async () => {
+    const { db } = await setupIntegrationTest();
+
+    const orgId = "org-cascade-sca-" + Date.now();
+    const userId = "user-cascade-sca-" + Date.now();
+    const templateId = "tmpl-cascade-sca-" + Date.now();
+    const projectId = "proj-cascade-sca-" + Date.now();
+    const taskId = "tsk-cascade-sca-" + Date.now();
+
+    await db.insert(schemaSqlite.organizations).values({ id: orgId, name: "Org", slug: "org-cascade-sca-" + Date.now(), createdAt: new Date() });
+    await db.insert(schemaSqlite.users).values({ id: userId, email: `${userId}@test.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: templateId, orgId, name: "Tmpl", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", createdAt: new Date() });
+    await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: "Task", status: "todo", createdAt: new Date() });
+    await db.insert(schemaSqlite.stalledClaimAlerts).values({ id: "sca-cascade-" + Date.now(), taskId, anchorAt: new Date(), alertedAt: new Date() });
+
+    await purgeTaskCascade(db, taskId);
+
+    const remaining = await db.select().from(schemaSqlite.stalledClaimAlerts).where(eq(schemaSqlite.stalledClaimAlerts.taskId, taskId));
+    expect(remaining.length).toBe(0);
+  });
+
   test("purgeArtifactCascade deletes the artifact's entityLabels rows", async () => {
     const { db } = await setupIntegrationTest();
 
@@ -142,6 +164,7 @@ describe("cascadePurge", () => {
     await db.insert(schemaSqlite.projects).values({ id: projectId, orgId, templateId, ownerId: userId, name: "Proj", createdAt: new Date() });
     for (const taskId of taskIds) {
       await db.insert(schemaSqlite.tasks).values({ id: taskId, projectId, title: taskId, status: "todo", createdAt: new Date() });
+      await db.insert(schemaSqlite.stalledClaimAlerts).values({ id: `sca-${taskId}`, taskId, anchorAt: new Date(), alertedAt: new Date() });
     }
     for (const folderId of folderIds) {
       await db.insert(schemaSqlite.folders).values({ id: folderId, projectId, name: folderId, createdAt: new Date() });
@@ -157,6 +180,7 @@ describe("cascadePurge", () => {
 
     expect((await db.select().from(schemaSqlite.projects).where(eq(schemaSqlite.projects.id, projectId))).length).toBe(0);
     expect((await db.select().from(schemaSqlite.tasks).where(inArray(schemaSqlite.tasks.id, taskIds))).length).toBe(0);
+    expect((await db.select().from(schemaSqlite.stalledClaimAlerts).where(inArray(schemaSqlite.stalledClaimAlerts.taskId, taskIds))).length).toBe(0);
     expect((await db.select().from(schemaSqlite.folders).where(inArray(schemaSqlite.folders.id, folderIds))).length).toBe(0);
     expect((await db.select().from(schemaSqlite.repositoryLinks).where(inArray(schemaSqlite.repositoryLinks.id, repoLinkIds))).length).toBe(0);
     expect((await db.select().from(schemaSqlite.remotePullRequests).where(inArray(schemaSqlite.remotePullRequests.repositoryLinkId, repoLinkIds))).length).toBe(0);

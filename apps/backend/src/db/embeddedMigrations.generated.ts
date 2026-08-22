@@ -49,40 +49,42 @@ import path43 from '../../drizzle-sqlite/0043_task_notes_note_type.sql' with { t
 import path44 from '../../drizzle-sqlite/0044_audit_log.sql' with { type: 'file' };
 import path45 from '../../drizzle-sqlite/0045_task_activity.sql' with { type: 'file' };
 import path46 from '../../drizzle-sqlite/0046_backfill_task_activity.sql' with { type: 'file' };
-import path47 from '../../drizzle-mysql/0000_spooky_tana_nile.sql' with { type: 'file' };
-import path48 from '../../drizzle-mysql/0001_rapid_namorita.sql' with { type: 'file' };
-import path49 from '../../drizzle-mysql/0002_huge_dreaming_celestial.sql' with { type: 'file' };
-import path50 from '../../drizzle-mysql/0003_chubby_ricochet.sql' with { type: 'file' };
-import path51 from '../../drizzle-mysql/0004_thick_white_queen.sql' with { type: 'file' };
-import path52 from '../../drizzle-mysql/0005_jazzy_killmonger.sql' with { type: 'file' };
-import path53 from '../../drizzle-mysql/0006_add_roles_owner_viewer.sql' with { type: 'file' };
-import path54 from '../../drizzle-mysql/0007_backfill_org_owners.sql' with { type: 'file' };
-import path55 from '../../drizzle-mysql/0008_scope_agent_roles_to_org.sql' with { type: 'file' };
-import path56 from '../../drizzle-mysql/0009_invitation_expiry.sql' with { type: 'file' };
-import path57 from '../../drizzle-mysql/0010_api_tokens.sql' with { type: 'file' };
-import path58 from '../../drizzle-mysql/0011_task_status_position.sql' with { type: 'file' };
-import path59 from '../../drizzle-mysql/0012_fulltext_search_index.sql' with { type: 'file' };
-import path60 from '../../drizzle-mysql/0013_fulltext_projects_agents_comments.sql' with { type: 'file' };
-import path61 from '../../drizzle-mysql/0014_hot_query_indexes.sql' with { type: 'file' };
-import path62 from '../../drizzle-mysql/0015_users_email_optional_username.sql' with { type: 'file' };
-import path63 from '../../drizzle-mysql/0016_backfill_usernames.sql' with { type: 'file' };
-import path64 from '../../drizzle-mysql/0017_password_credentials_linked_identities.sql' with { type: 'file' };
-import path65 from '../../drizzle-mysql/0018_backfill_google_linked_identities.sql' with { type: 'file' };
-import path66 from '../../drizzle-mysql/0019_invitations_username.sql' with { type: 'file' };
-import path67 from '../../drizzle-mysql/0020_roles_teams_grants.sql' with { type: 'file' };
-import path68 from '../../drizzle-mysql/0021_seed_system_roles_and_migrate_grants.sql' with { type: 'file' };
-import path69 from '../../drizzle-mysql/0022_idempotency_keys.sql' with { type: 'file' };
-import path70 from '../../drizzle-mysql/0023_project_description.sql' with { type: 'file' };
-import path71 from '../../drizzle-mysql/0024_agent_roles_unique_name.sql' with { type: 'file' };
-import path72 from '../../drizzle-mysql/0025_artifacts_unique_names.sql' with { type: 'file' };
-import path73 from '../../drizzle-mysql/0026_task_statuses_reviewers_unique.sql' with { type: 'file' };
-import path74 from '../../drizzle-mysql/0027_project_templates_unique_name.sql' with { type: 'file' };
-import path75 from '../../drizzle-mysql/0028_seed_memory_permissions.sql' with { type: 'file' };
-import path76 from '../../drizzle-mysql/0029_beliefs_schema.sql' with { type: 'file' };
-import path77 from '../../drizzle-mysql/0030_task_notes_note_type.sql' with { type: 'file' };
-import path78 from '../../drizzle-mysql/0031_audit_log.sql' with { type: 'file' };
-import path79 from '../../drizzle-mysql/0032_task_activity.sql' with { type: 'file' };
-import path80 from '../../drizzle-mysql/0033_backfill_task_activity.sql' with { type: 'file' };
+import path47 from '../../drizzle-sqlite/0047_stalled_claim_alerts.sql' with { type: 'file' };
+import path48 from '../../drizzle-mysql/0000_spooky_tana_nile.sql' with { type: 'file' };
+import path49 from '../../drizzle-mysql/0001_rapid_namorita.sql' with { type: 'file' };
+import path50 from '../../drizzle-mysql/0002_huge_dreaming_celestial.sql' with { type: 'file' };
+import path51 from '../../drizzle-mysql/0003_chubby_ricochet.sql' with { type: 'file' };
+import path52 from '../../drizzle-mysql/0004_thick_white_queen.sql' with { type: 'file' };
+import path53 from '../../drizzle-mysql/0005_jazzy_killmonger.sql' with { type: 'file' };
+import path54 from '../../drizzle-mysql/0006_add_roles_owner_viewer.sql' with { type: 'file' };
+import path55 from '../../drizzle-mysql/0007_backfill_org_owners.sql' with { type: 'file' };
+import path56 from '../../drizzle-mysql/0008_scope_agent_roles_to_org.sql' with { type: 'file' };
+import path57 from '../../drizzle-mysql/0009_invitation_expiry.sql' with { type: 'file' };
+import path58 from '../../drizzle-mysql/0010_api_tokens.sql' with { type: 'file' };
+import path59 from '../../drizzle-mysql/0011_task_status_position.sql' with { type: 'file' };
+import path60 from '../../drizzle-mysql/0012_fulltext_search_index.sql' with { type: 'file' };
+import path61 from '../../drizzle-mysql/0013_fulltext_projects_agents_comments.sql' with { type: 'file' };
+import path62 from '../../drizzle-mysql/0014_hot_query_indexes.sql' with { type: 'file' };
+import path63 from '../../drizzle-mysql/0015_users_email_optional_username.sql' with { type: 'file' };
+import path64 from '../../drizzle-mysql/0016_backfill_usernames.sql' with { type: 'file' };
+import path65 from '../../drizzle-mysql/0017_password_credentials_linked_identities.sql' with { type: 'file' };
+import path66 from '../../drizzle-mysql/0018_backfill_google_linked_identities.sql' with { type: 'file' };
+import path67 from '../../drizzle-mysql/0019_invitations_username.sql' with { type: 'file' };
+import path68 from '../../drizzle-mysql/0020_roles_teams_grants.sql' with { type: 'file' };
+import path69 from '../../drizzle-mysql/0021_seed_system_roles_and_migrate_grants.sql' with { type: 'file' };
+import path70 from '../../drizzle-mysql/0022_idempotency_keys.sql' with { type: 'file' };
+import path71 from '../../drizzle-mysql/0023_project_description.sql' with { type: 'file' };
+import path72 from '../../drizzle-mysql/0024_agent_roles_unique_name.sql' with { type: 'file' };
+import path73 from '../../drizzle-mysql/0025_artifacts_unique_names.sql' with { type: 'file' };
+import path74 from '../../drizzle-mysql/0026_task_statuses_reviewers_unique.sql' with { type: 'file' };
+import path75 from '../../drizzle-mysql/0027_project_templates_unique_name.sql' with { type: 'file' };
+import path76 from '../../drizzle-mysql/0028_seed_memory_permissions.sql' with { type: 'file' };
+import path77 from '../../drizzle-mysql/0029_beliefs_schema.sql' with { type: 'file' };
+import path78 from '../../drizzle-mysql/0030_task_notes_note_type.sql' with { type: 'file' };
+import path79 from '../../drizzle-mysql/0031_audit_log.sql' with { type: 'file' };
+import path80 from '../../drizzle-mysql/0032_task_activity.sql' with { type: 'file' };
+import path81 from '../../drizzle-mysql/0033_backfill_task_activity.sql' with { type: 'file' };
+import path82 from '../../drizzle-mysql/0034_stalled_claim_alerts.sql' with { type: 'file' };
 
 export const EMBEDDED_SQLITE_MIGRATIONS: EmbeddedMigration[] = [
   { tag: "0000_mushy_kulan_gath", when: 1775866918648, hash: "337fc90e67c91e887a3596fc6c376ad0cede36ddb1ee2bbcd503b3690ec4a676", path: path0 },
@@ -132,41 +134,43 @@ export const EMBEDDED_SQLITE_MIGRATIONS: EmbeddedMigration[] = [
   { tag: "0044_audit_log", when: 1787232705138, hash: "41f17bef75ac4c854021392c79d53ba5ff96334ab62f322fbb1e454587e09e1e", path: path44 },
   { tag: "0045_task_activity", when: 1788100000000, hash: "4505df255647148a50a9faedee0ac9b43873a7d5a35fd14f981346292e3e0915", path: path45 },
   { tag: "0046_backfill_task_activity", when: 1788200000000, hash: "d9278ef188ee1740006462f77014d20cb95b442553f4a6c73872356f6db44657", path: path46 },
+  { tag: "0047_stalled_claim_alerts", when: 1788300000000, hash: "c067788f41a68f3e4b0741adab5937061b9d91647623f79910b695c5f8d074e2", path: path47 },
 ];
 
 export const EMBEDDED_MYSQL_MIGRATIONS: EmbeddedMigration[] = [
-  { tag: "0000_spooky_tana_nile", when: 1783851552271, hash: "0c390aee091493b713071d81aceae79960a61f198819a272faa42ff83ea53df7", path: path47 },
-  { tag: "0001_rapid_namorita", when: 1783933054771, hash: "5c72d64b3c59484325a98d48f4139d806d595c69638f6233c43ec2b436f8d3c8", path: path48 },
-  { tag: "0002_huge_dreaming_celestial", when: 1783936708277, hash: "2aebc4f5d6ac1b58a2161c85583cf73e6302cd1dea4f48e3fd62938e53cb2d75", path: path49 },
-  { tag: "0003_chubby_ricochet", when: 1784017981443, hash: "5fd8248c97bb206ec196c10cabca04b4fe48b1a6ff47a3dec9f9cf679cd71fec", path: path50 },
-  { tag: "0004_thick_white_queen", when: 1784038035530, hash: "952caf3cb59da1c8d21e4f5c8b6cf2404c6b77044457e7414aafde9965db3ce1", path: path51 },
-  { tag: "0005_jazzy_killmonger", when: 1784057548432, hash: "25f672590a8bf1334054447f0907ba2883c6381d4ef383d86b7f93d35be57b16", path: path52 },
-  { tag: "0006_add_roles_owner_viewer", when: 1784259397844, hash: "921e35263cbad593ce76c4edef78e4e04dda997e7f700678b1c29e9606975f21", path: path53 },
-  { tag: "0007_backfill_org_owners", when: 1784259407596, hash: "47f1a21b0a994bb4685a9258c9af7bb20785b3c33be92637bfa3c4461670138c", path: path54 },
-  { tag: "0008_scope_agent_roles_to_org", when: 1784259408596, hash: "9776c34cb60dc435135f32516d3ad60c690634776812b1f0d7998b2b5a5e3365", path: path55 },
-  { tag: "0009_invitation_expiry", when: 1784259409596, hash: "62698d2cd7c5e664be7061d42804b002f33df5df300a8a9cac432d4be4e2c49f", path: path56 },
-  { tag: "0010_api_tokens", when: 1786772053171, hash: "72f48554eb4d96ae06333b64f8b11a9b7b65b50f447cb4d896c7015e654e2584", path: path57 },
-  { tag: "0011_task_status_position", when: 1786790000000, hash: "bb493a74a5d9263af0acbd893b220c21a9fe4a385b66b260dd7724d61b37c044", path: path58 },
-  { tag: "0012_fulltext_search_index", when: 1786800000000, hash: "e22040069b6e4c2dd98c092b2b151192cf04a464c08801ab695e5a6eb092f556", path: path59 },
-  { tag: "0013_fulltext_projects_agents_comments", when: 1786800010000, hash: "9253d4192af1987a765c9c44a26c314ff3753efdf4c7d197fc3cf8d92097f092", path: path60 },
-  { tag: "0014_hot_query_indexes", when: 1786800020000, hash: "040fa605e0ece1b41aae0a66f28ac1e8d2e9efbcf4e1c9db96523f48ca30b6fb", path: path61 },
-  { tag: "0015_users_email_optional_username", when: 1786900000000, hash: "25d1090b615f9ee2cfeab024ed037664fa04352da3210b2fc2d8a593ed83b95e", path: path62 },
-  { tag: "0016_backfill_usernames", when: 1786900010000, hash: "fafe98412bd1b3ddf8840a6b9a89fb923281a52a3817e9331e5350815c0cf422", path: path63 },
-  { tag: "0017_password_credentials_linked_identities", when: 1786910000000, hash: "0177be6f3598eb5f9c9f8ea8d39cba91a3c4914ac3fc3673c76cf4d7c01cee65", path: path64 },
-  { tag: "0018_backfill_google_linked_identities", when: 1786920000000, hash: "91e04af84152af1622562d513c1a988662f4f1c34ea67ec7fd2abb0dbb938618", path: path65 },
-  { tag: "0019_invitations_username", when: 1786930000000, hash: "be0407e6aba4b6301813e9bb6bf84a684710e8d9dae8a42b3d06906629c78585", path: path66 },
-  { tag: "0020_roles_teams_grants", when: 1787000000000, hash: "29da679aeb07a75bdcd7e1e3024de046b0474dfc5dbb9ff1956f81d5f9f050c6", path: path67 },
-  { tag: "0021_seed_system_roles_and_migrate_grants", when: 1787100000000, hash: "2f103282bc886d8138261da9df7f60538a6640c47d6e42e80d363191964ab74c", path: path68 },
-  { tag: "0022_idempotency_keys", when: 1787200000000, hash: "df4b9812695921ac5837711fbadcd008840e1f23a605f287c066dc4463697837", path: path69 },
-  { tag: "0023_project_description", when: 1787300000000, hash: "d03d4e574a640b5deebf8f478f2791ad38cb99ef6882d35b4e19c3da5ed014cf", path: path70 },
-  { tag: "0024_agent_roles_unique_name", when: 1787400000000, hash: "9594e0169d9924e248c64ec5376493c50fc8f92e8bcff4b3b8e1338bd0d9fb8e", path: path71 },
-  { tag: "0025_artifacts_unique_names", when: 1787500000000, hash: "435099a3720a0f18bfcbb1f34460afd9869d17b16d4dcc2ea878972e279ce9fd", path: path72 },
-  { tag: "0026_task_statuses_reviewers_unique", when: 1787600000000, hash: "7dc10f30341837660036d3af1aa7103bf14fc88316542c223abc0732e6c18a26", path: path73 },
-  { tag: "0027_project_templates_unique_name", when: 1787700000000, hash: "ec5fce313361a2628a5be28d81f86350809a2bf84a54895957531da07dd72a60", path: path74 },
-  { tag: "0028_seed_memory_permissions", when: 1787800000000, hash: "cb167829fd30e8ee88814d86250fbe12e0eca886db7b476da3c0f32f48323c0e", path: path75 },
-  { tag: "0029_beliefs_schema", when: 1787900000000, hash: "2ea153137c5d731790a58820fb20524b4d7dd298f3a90cf631d3eda9321e9bce", path: path76 },
-  { tag: "0030_task_notes_note_type", when: 1788000000000, hash: "e7f35953eefb1cdf9012e25bf5b44318f872ef3b5e023156c61a34c008673259", path: path77 },
-  { tag: "0031_audit_log", when: 1787232705139, hash: "6b92ddd135d993c76fc7cabe735e3d0d1ce5048bb0acdfed255c73d713788828", path: path78 },
-  { tag: "0032_task_activity", when: 1788100000000, hash: "5b5d77254349e09939e52ad156d714da44689e87844c7f10f18c40112c9e4b49", path: path79 },
-  { tag: "0033_backfill_task_activity", when: 1788200000000, hash: "8f361a2695fa075c1eb282b43d6a8bf7d15dd225ed67ea2f564709a2a2f5eae5", path: path80 },
+  { tag: "0000_spooky_tana_nile", when: 1783851552271, hash: "0c390aee091493b713071d81aceae79960a61f198819a272faa42ff83ea53df7", path: path48 },
+  { tag: "0001_rapid_namorita", when: 1783933054771, hash: "5c72d64b3c59484325a98d48f4139d806d595c69638f6233c43ec2b436f8d3c8", path: path49 },
+  { tag: "0002_huge_dreaming_celestial", when: 1783936708277, hash: "2aebc4f5d6ac1b58a2161c85583cf73e6302cd1dea4f48e3fd62938e53cb2d75", path: path50 },
+  { tag: "0003_chubby_ricochet", when: 1784017981443, hash: "5fd8248c97bb206ec196c10cabca04b4fe48b1a6ff47a3dec9f9cf679cd71fec", path: path51 },
+  { tag: "0004_thick_white_queen", when: 1784038035530, hash: "952caf3cb59da1c8d21e4f5c8b6cf2404c6b77044457e7414aafde9965db3ce1", path: path52 },
+  { tag: "0005_jazzy_killmonger", when: 1784057548432, hash: "25f672590a8bf1334054447f0907ba2883c6381d4ef383d86b7f93d35be57b16", path: path53 },
+  { tag: "0006_add_roles_owner_viewer", when: 1784259397844, hash: "921e35263cbad593ce76c4edef78e4e04dda997e7f700678b1c29e9606975f21", path: path54 },
+  { tag: "0007_backfill_org_owners", when: 1784259407596, hash: "47f1a21b0a994bb4685a9258c9af7bb20785b3c33be92637bfa3c4461670138c", path: path55 },
+  { tag: "0008_scope_agent_roles_to_org", when: 1784259408596, hash: "9776c34cb60dc435135f32516d3ad60c690634776812b1f0d7998b2b5a5e3365", path: path56 },
+  { tag: "0009_invitation_expiry", when: 1784259409596, hash: "62698d2cd7c5e664be7061d42804b002f33df5df300a8a9cac432d4be4e2c49f", path: path57 },
+  { tag: "0010_api_tokens", when: 1786772053171, hash: "72f48554eb4d96ae06333b64f8b11a9b7b65b50f447cb4d896c7015e654e2584", path: path58 },
+  { tag: "0011_task_status_position", when: 1786790000000, hash: "bb493a74a5d9263af0acbd893b220c21a9fe4a385b66b260dd7724d61b37c044", path: path59 },
+  { tag: "0012_fulltext_search_index", when: 1786800000000, hash: "e22040069b6e4c2dd98c092b2b151192cf04a464c08801ab695e5a6eb092f556", path: path60 },
+  { tag: "0013_fulltext_projects_agents_comments", when: 1786800010000, hash: "9253d4192af1987a765c9c44a26c314ff3753efdf4c7d197fc3cf8d92097f092", path: path61 },
+  { tag: "0014_hot_query_indexes", when: 1786800020000, hash: "040fa605e0ece1b41aae0a66f28ac1e8d2e9efbcf4e1c9db96523f48ca30b6fb", path: path62 },
+  { tag: "0015_users_email_optional_username", when: 1786900000000, hash: "25d1090b615f9ee2cfeab024ed037664fa04352da3210b2fc2d8a593ed83b95e", path: path63 },
+  { tag: "0016_backfill_usernames", when: 1786900010000, hash: "fafe98412bd1b3ddf8840a6b9a89fb923281a52a3817e9331e5350815c0cf422", path: path64 },
+  { tag: "0017_password_credentials_linked_identities", when: 1786910000000, hash: "0177be6f3598eb5f9c9f8ea8d39cba91a3c4914ac3fc3673c76cf4d7c01cee65", path: path65 },
+  { tag: "0018_backfill_google_linked_identities", when: 1786920000000, hash: "91e04af84152af1622562d513c1a988662f4f1c34ea67ec7fd2abb0dbb938618", path: path66 },
+  { tag: "0019_invitations_username", when: 1786930000000, hash: "be0407e6aba4b6301813e9bb6bf84a684710e8d9dae8a42b3d06906629c78585", path: path67 },
+  { tag: "0020_roles_teams_grants", when: 1787000000000, hash: "29da679aeb07a75bdcd7e1e3024de046b0474dfc5dbb9ff1956f81d5f9f050c6", path: path68 },
+  { tag: "0021_seed_system_roles_and_migrate_grants", when: 1787100000000, hash: "2f103282bc886d8138261da9df7f60538a6640c47d6e42e80d363191964ab74c", path: path69 },
+  { tag: "0022_idempotency_keys", when: 1787200000000, hash: "df4b9812695921ac5837711fbadcd008840e1f23a605f287c066dc4463697837", path: path70 },
+  { tag: "0023_project_description", when: 1787300000000, hash: "d03d4e574a640b5deebf8f478f2791ad38cb99ef6882d35b4e19c3da5ed014cf", path: path71 },
+  { tag: "0024_agent_roles_unique_name", when: 1787400000000, hash: "9594e0169d9924e248c64ec5376493c50fc8f92e8bcff4b3b8e1338bd0d9fb8e", path: path72 },
+  { tag: "0025_artifacts_unique_names", when: 1787500000000, hash: "435099a3720a0f18bfcbb1f34460afd9869d17b16d4dcc2ea878972e279ce9fd", path: path73 },
+  { tag: "0026_task_statuses_reviewers_unique", when: 1787600000000, hash: "7dc10f30341837660036d3af1aa7103bf14fc88316542c223abc0732e6c18a26", path: path74 },
+  { tag: "0027_project_templates_unique_name", when: 1787700000000, hash: "ec5fce313361a2628a5be28d81f86350809a2bf84a54895957531da07dd72a60", path: path75 },
+  { tag: "0028_seed_memory_permissions", when: 1787800000000, hash: "cb167829fd30e8ee88814d86250fbe12e0eca886db7b476da3c0f32f48323c0e", path: path76 },
+  { tag: "0029_beliefs_schema", when: 1787900000000, hash: "2ea153137c5d731790a58820fb20524b4d7dd298f3a90cf631d3eda9321e9bce", path: path77 },
+  { tag: "0030_task_notes_note_type", when: 1788000000000, hash: "e7f35953eefb1cdf9012e25bf5b44318f872ef3b5e023156c61a34c008673259", path: path78 },
+  { tag: "0031_audit_log", when: 1787232705139, hash: "6b92ddd135d993c76fc7cabe735e3d0d1ce5048bb0acdfed255c73d713788828", path: path79 },
+  { tag: "0032_task_activity", when: 1788100000000, hash: "5b5d77254349e09939e52ad156d714da44689e87844c7f10f18c40112c9e4b49", path: path80 },
+  { tag: "0033_backfill_task_activity", when: 1788200000000, hash: "8f361a2695fa075c1eb282b43d6a8bf7d15dd225ed67ea2f564709a2a2f5eae5", path: path81 },
+  { tag: "0034_stalled_claim_alerts", when: 1788300000000, hash: "c090803e8679e557146ea8193e5502c2d972aaa5a45ab440e68a36130c4c1379", path: path82 },
 ];

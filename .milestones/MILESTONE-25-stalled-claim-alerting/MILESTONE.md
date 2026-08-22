@@ -145,7 +145,7 @@ by construction).
         `.milestones/STATE.md`
       - Verify: all named files exist; `moon run tasker:docs-lint` passes.
 
-- [ ] **M25-T02** — Schema: `stalled_claim_alerts` (id, task_id FK,
+- [x] **M25-T02** — Schema: `stalled_claim_alerts` (id, task_id FK,
       anchor_at timestamp **NOT NULL**, alerted_at timestamp, unique
       (task_id, anchor_at)) in both `schema.sqlite.ts`/`schema.mysql.ts`;
       per-dialect migrations; regenerate embedded migrations; explicit
