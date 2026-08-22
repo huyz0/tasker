@@ -122,3 +122,35 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   (only creation is a signal). Users can claim too; the claimed row records
   whichever principal won.
 - **Next**: M24-T05 (exceptions report handler).
+
+## M24-T05 — Exceptions report handler (getReportExceptions)
+
+- **Status**: done
+- **Date**: 2026-08-22
+- **Approach**: New `modules/reports/reports.handler.ts` following the
+  dashboard handler's shape (requireUser + assertCan(dashboard:read)
+  through projects.orgId), TDD against handler-driven fixtures (fixtures
+  created through the real task/note/comment handlers so activity rows are
+  authentic), registered in index.ts + agent-scope-sweep + viewer-denial.
+- **Changed**: new `modules/reports/` — `reports.handler.ts` (88 lines,
+  thin service layer: requireUser-first, Zod→InvalidArgument, project→
+  NotFound, assertCan(project, dashboard:read), T06 stub), `exceptions.ts`
+  (333, panels), `scorecard.ts` (286, fleet rows + headline counts),
+  `common.ts` (50), `reports.test.ts` (25 tests, red-first, fixtures driven
+  through the real task/note/comment handlers; aging done by updating real
+  rows, never inventing shapes); registered in `index.ts`,
+  `agent-scope-sweep.test.ts`, `viewer-denial.test.ts`.
+- **Verified**: backend:test 1708 pass / 0 fail; `moon check backend` green.
+  Review-before-commit caught the handler at 655 lines against
+  coding-standard's hard 400 cap — split into the four files above before
+  committing, suite unchanged.
+- **Notes**: semantics decided beyond the plan, all in code comments:
+  neverStarted anchors on max(claimed, assigned); autonomy additionally
+  requires the completing actor to be an agent; reopened attribution
+  resolves the task's prior terminal transition (<= for same-second);
+  windowDays is rejected (7|30|90) rather than clamped; header counts skip
+  the task join so purged work doesn't rewrite throughput; scorecard rows
+  cap at PANEL_LIMIT with completed→claimed→name ordering; index shapes
+  already pinned by T03's HOT_QUERIES (EXPLAIN-checked, no new entries
+  needed).
+- **Next**: M24-T06 (trends handler + seed + latency measurement).

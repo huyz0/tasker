@@ -18,6 +18,7 @@ import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
 import createDashboardHandler from '../modules/dashboard/dashboard.handler';
 import createSearchHandler from '../modules/search/search.handler';
+import createReportsHandler from '../modules/reports/reports.handler';
 
 /**
  * Exhaustive proof that `viewer` cannot write. See ADR-0006.
@@ -45,6 +46,10 @@ const READS: Record<string, string[]> = {
   taskManagement: ['listTasks', 'getTask', 'listTaskReviewers'],
   // Read-only supervision console; a viewer may look at it.
   dashboard: ['getDashboard'],
+  // Same read-only reasoning as dashboard. getReportTrends is M24-T06's
+  // still-unimplemented stub - a genuine read once it exists, and today a
+  // viewer calling it gets Unimplemented, not data.
+  reports: ['getReportExceptions', 'getReportTrends'],
   search: ['universalSearch'],
   taskNotes: ['listTaskNotes', 'listHandoffNotes'],
   agents: ['listAgentRoles', 'listAgents'],
@@ -324,6 +329,7 @@ beforeAll(async () => {
     // stub router, the same way the agent sweep already does it.
     dashboard: captureRouterMethods(createDashboardHandler, db),
     search: captureRouterMethods(createSearchHandler, db),
+    reports: captureRouterMethods(createReportsHandler, db),
   };
 });
 

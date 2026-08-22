@@ -203,7 +203,7 @@ users are agents, and reports are the humans-only monitoring surface).
         claim replay does not double-count, lost claim race writes nothing,
         unassign of nothing writes nothing, purge cascade leaves zero rows.
 
-- [ ] **M24-T05** — Exceptions report handler: `getReportExceptions` —
+- [x] **M24-T05** — Exceptions report handler: `getReportExceptions` —
       stalled-claims query (last signal per task from the one activity table,
       id tiebreak on equal seconds; joined with `api_tokens.lastUsedAt`
       per-agent liveness; split never-started vs went-quiet), oldest

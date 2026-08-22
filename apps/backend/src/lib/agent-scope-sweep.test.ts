@@ -19,6 +19,7 @@ import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
 import createSearchHandler from '../modules/search/search.handler';
 import createDashboardHandler from '../modules/dashboard/dashboard.handler';
+import createReportsHandler from '../modules/reports/reports.handler';
 
 /**
  * Deny-by-default for agent tokens, the sibling of `viewer-denial.test.ts`.
@@ -96,6 +97,14 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
   // waiting on *your* review", which is not a question an agent has. It uses
   // requireUser, so the denial is structural rather than a scope omission.
   dashboard: { getDashboard: { orgId: ids.org } },
+  // Same reasoning as dashboard: an on-the-loop monitoring surface is a
+  // human's. Both methods call requireUser before anything else - including
+  // the unimplemented getReportTrends stub (M24-T06) - so the denial is
+  // structural, not a scope omission.
+  reports: {
+    getReportExceptions: { projectId: ids.project, windowDays: 7 },
+    getReportTrends: { projectId: ids.project, windowDays: 7 },
+  },
   projects: {
     getProject: { id: ids.project },
     listProjects: { orgId: ids.org },
@@ -280,6 +289,11 @@ beforeAll(async () => {
     dashboard: (() => {
       const captured: Record<string, any> = {};
       createDashboardHandler({ service: (_svc: unknown, impl: Record<string, any>) => Object.assign(captured, impl) } as any, db);
+      return captured;
+    })(),
+    reports: (() => {
+      const captured: Record<string, any> = {};
+      createReportsHandler({ service: (_svc: unknown, impl: Record<string, any>) => Object.assign(captured, impl) } as any, db);
       return captured;
     })(),
     search: (() => {
