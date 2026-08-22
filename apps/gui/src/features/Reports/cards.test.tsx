@@ -68,6 +68,16 @@ const BASE_RESPONSE = {
   agentCompleted: '6', humanCompleted: '2', priorAgentCompleted: '1', priorHumanCompleted: '3',
 };
 
+// The T09 trend cards share the screen; at-rest trends keep this file about
+// the exception cards. TrendsSection.test.tsx owns the populated states.
+const EMPTY_TRENDS = {
+  collectedSince: '2026-08-01T00:00:00.000Z',
+  createdCumulative: [], completedCumulative: [], recentCompletions: [],
+  autonomyRate: [], reworkRate: [], cfdBands: [],
+  cfdTaskTypeId: 'untyped',
+  taskTypeOptions: [{ id: 'untyped', name: 'Untyped', taskCount: '0' }],
+};
+
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -86,6 +96,7 @@ describe('Reports exception cards', () => {
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
     mockRpc(ReportService, 'GetReportExceptions', BASE_RESPONSE);
+    mockRpc(ReportService, 'GetReportTrends', EMPTY_TRENDS);
   });
 
   describe('stalled work', () => {
@@ -273,7 +284,10 @@ describe('Reports exception cards', () => {
       renderPage();
       await waitFor(() => expect(screen.getByRole('cell', { name: 'Builder One' })).toBeInTheDocument());
 
-      const table = screen.getByRole('table');
+      // Scoped to the card: the trend charts each expose an sr-only table of
+      // their own, so a bare getByRole('table') is ambiguous on this screen.
+      const card = screen.getByRole('heading', { name: 'Fleet scorecard' }).closest('section') as HTMLElement;
+      const table = within(card).getByRole('table');
       for (const column of ['Name', 'Claimed', 'Completed', 'Reopened', 'Handed off', 'Taken away', 'Autonomous', 'Open now', 'Last active']) {
         expect(within(table).getByRole('columnheader', { name: column })).toBeInTheDocument();
       }

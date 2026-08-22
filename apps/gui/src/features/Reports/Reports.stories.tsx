@@ -5,6 +5,7 @@ import { StalledWorkCard } from './StalledWorkCard';
 import { WentBackwardsCard } from './WentBackwardsCard';
 import { ChurningTasksCard } from './ChurningTasksCard';
 import { FleetScorecardCard } from './FleetScorecardCard';
+import { TrendCards, type TrendsData } from './TrendCards';
 
 /**
  * Card stories with fixture props, not screen stories: `ReportsScreen` owns a
@@ -122,6 +123,83 @@ export const FleetScorecard: Story = {
           handedOff: 3n, takenAway: 2n, autonomousCompleted: 7n, openNow: 3n, lastActiveAt: hoursAgo(2),
         },
       ]}
+    />
+  ),
+};
+
+// ── T09 trend cards ──────────────────────────────────────────────────────────
+// `TrendCards` is the presentational half of `TrendsSection` (the query
+// wrapper), so every trend state is reachable from fixture props here too.
+
+/** Two weeks of daily buckets, deterministic dates so the axis never shifts. */
+const day = (i: number) => `2026-08-${String(i + 8).padStart(2, '0')}`;
+const counts = (values: number[]) => values.map((v, i) => ({ date: day(i), count: BigInt(v) }));
+const rates = (pairs: Array<[number, number]>) =>
+  pairs.map(([rate, sampleSize], i) => ({ date: day(i), rate, sampleSize: BigInt(sampleSize) }));
+
+/** A healthy fortnight: autonomy climbing, rework rare, flow draining. */
+const POPULATED_TRENDS: TrendsData = {
+  collectedSince: '2026-08-08T00:00:00.000Z',
+  createdCumulative: counts([3, 5, 8, 9, 12, 14, 17, 18, 21, 24, 26, 28, 31, 33]),
+  completedCumulative: counts([1, 2, 4, 6, 8, 11, 13, 15, 17, 19, 22, 25, 27, 30]),
+  recentCompletions: [
+    { taskId: 't-20', taskDisplayId: 'TSK-120', taskTitle: 'Ship the export job', completedAt: hoursAgo(2), byAgent: true },
+    { taskId: 't-21', taskDisplayId: 'TSK-121', taskTitle: 'Fix the retry backoff', completedAt: hoursAgo(7), byAgent: true },
+    { taskId: 't-22', taskDisplayId: 'TSK-122', taskTitle: 'Review the retention doc', completedAt: hoursAgo(26), byAgent: false },
+    { taskId: 't-23', taskDisplayId: 'TSK-123', taskTitle: 'Rotate the API keys', completedAt: hoursAgo(50), byAgent: true },
+  ],
+  autonomyRate: rates([
+    [0.5, 2], [0.5, 2], [0.67, 3], [1, 1], [0.5, 2], [0.75, 4], [0.8, 5],
+    [1, 3], [0.67, 3], [0.75, 4], [1, 2], [0.8, 5], [1, 4], [0.75, 4],
+  ]),
+  reworkRate: rates([
+    [0, 2], [0.5, 2], [0, 3], [0, 1], [0.5, 2], [0.25, 4], [0, 5],
+    [0, 3], [0.33, 3], [0, 4], [0, 2], [0.2, 5], [0, 4], [0.25, 4],
+  ]),
+  // Bottom-first: the terminal band is the floor of the stack.
+  cfdBands: [
+    { status: 'done', isTerminal: true, counts: counts([1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 25, 27]) },
+    { status: 'in_review', isTerminal: false, counts: counts([1, 1, 2, 1, 2, 2, 3, 2, 2, 3, 2, 3, 2, 3]) },
+    { status: 'in_progress', isTerminal: false, counts: counts([2, 3, 2, 3, 3, 4, 3, 4, 3, 3, 4, 3, 4, 3]) },
+    { status: 'blocked', isTerminal: false, counts: counts([0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1]) },
+    { status: 'todo', isTerminal: false, counts: counts([5, 4, 5, 6, 5, 4, 5, 4, 6, 6, 5, 5, 6, 5]) },
+  ],
+  cfdTaskTypeId: 'tt-build',
+  taskTypeOptions: [
+    { id: 'tt-build', name: 'Build', taskCount: 14n },
+    { id: 'tt-review', name: 'Review', taskCount: 3n },
+    { id: 'untyped', name: 'Untyped', taskCount: 2n },
+  ],
+};
+
+export const TrendsPopulated: Story = {
+  render: () => <TrendCards trends={POPULATED_TRENDS} onTaskTypeChange={() => {}} />,
+};
+
+/**
+ * The honesty state: history just started and no day saw a completion — the
+ * autonomy card refuses to draw a zero line about days with nothing to
+ * measure, and every footnote names the collection start.
+ */
+export const TrendsSparseHistory: Story = {
+  render: () => (
+    <TrendCards
+      trends={{
+        collectedSince: '2026-08-19T00:00:00.000Z',
+        createdCumulative: counts([2, 2, 3]).map((c, i) => ({ ...c, date: day(i + 11) })),
+        completedCumulative: counts([0, 0, 0]).map((c, i) => ({ ...c, date: day(i + 11) })),
+        recentCompletions: [],
+        autonomyRate: rates([[0, 0], [0, 0], [0, 0]]).map((r, i) => ({ ...r, date: day(i + 11) })),
+        reworkRate: rates([[0, 0], [0, 0], [0, 0]]).map((r, i) => ({ ...r, date: day(i + 11) })),
+        cfdBands: [
+          { status: 'done', isTerminal: true, counts: counts([0, 0, 0]).map((c, i) => ({ ...c, date: day(i + 11) })) },
+          { status: 'in_progress', isTerminal: false, counts: counts([1, 1, 1]).map((c, i) => ({ ...c, date: day(i + 11) })) },
+          { status: 'todo', isTerminal: false, counts: counts([1, 1, 2]).map((c, i) => ({ ...c, date: day(i + 11) })) },
+        ],
+        cfdTaskTypeId: 'untyped',
+        taskTypeOptions: [{ id: 'untyped', name: 'Untyped', taskCount: 3n }],
+      }}
+      onTaskTypeChange={() => {}}
     />
   ),
 };

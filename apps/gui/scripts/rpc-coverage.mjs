@@ -52,9 +52,6 @@ export const EXCEPTIONS = {
     'real gap, not yet scheduled. Wire it into the Organizations member ' +
     'list (an admin action per row, alongside role/remove) and remove this ' +
     'exception when that lands.',
-  'ReportService.getReportTrends':
-    'M24: wired in at M24-T09, when the trend cards land on the Reports ' +
-    'screen. Temporary - remove this exception in T09.',
 };
 
 /** RPC names per service, read from the TypeSpec interfaces. */

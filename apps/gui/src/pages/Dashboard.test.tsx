@@ -177,6 +177,22 @@ describe('Dashboard', () => {
     await waitFor(() => expect(requests).toHaveLength(1));
   });
 
+  it('links to the project reports when a project is active', async () => {
+    withGetDashboard(EMPTY);
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: 'View project reports →' })).toHaveAttribute('href', '/reports'),
+    );
+  });
+
+  it('offers no reports link without a project — the reports screen is project-scoped', async () => {
+    mockActiveProjectId = '';
+    withGetDashboard(EMPTY);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Nothing is waiting on your review.')).toBeInTheDocument());
+    expect(screen.queryByRole('link', { name: /View project reports/ })).toBeNull();
+  });
+
   it('asks for nothing until an organization is chosen', async () => {
     mockActiveOrgId = '';
     const requests = withGetDashboard(EMPTY);

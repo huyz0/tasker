@@ -75,6 +75,17 @@ const EMPTY_RESPONSE = {
   agentCompleted: '0', humanCompleted: '0', priorAgentCompleted: '0', priorHumanCompleted: '0',
 };
 
+// The T09 trend cards read from their own query; this file is about the
+// exception cards, so the trends fixture stays at rest (every chart empty).
+// TrendsSection.test.tsx owns the populated states.
+const EMPTY_TRENDS = {
+  collectedSince: '2026-08-01T00:00:00.000Z',
+  createdCumulative: [], completedCumulative: [], recentCompletions: [],
+  autonomyRate: [], reworkRate: [], cfdBands: [],
+  cfdTaskTypeId: 'untyped',
+  taskTypeOptions: [{ id: 'untyped', name: 'Untyped', taskCount: '0' }],
+};
+
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -94,6 +105,7 @@ describe('ReportsScreen', () => {
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
     mockRpc(ReportService, 'GetReportExceptions', RESPONSE);
+    mockRpc(ReportService, 'GetReportTrends', EMPTY_TRENDS);
   });
 
   it('asks the user to select an organization when none is active', () => {
@@ -147,10 +159,15 @@ describe('ReportsScreen', () => {
     expect(screen.getByRole('link', { name: /Refactor the mailer/ })).toHaveAttribute('href', '/tasks/task-5');
     expect(screen.getByRole('cell', { name: 'Builder One' })).toBeInTheDocument();
 
-    // Urgency order is the design: stalled before regressions before churn
-    // before the scorecard, in document order.
+    // Urgency order is the design: exceptions (stalled, regressions, churn,
+    // scorecard) lead because agents fail discretely; the trend cards follow,
+    // in document order.
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Flow' })).toBeInTheDocument());
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual(['Stalled work', 'Went backwards', 'Churning tasks', 'Fleet scorecard']);
+    expect(headings).toEqual([
+      'Stalled work', 'Went backwards', 'Churning tasks', 'Fleet scorecard',
+      'Autonomy and rework', 'Created vs completed', 'Flow',
+    ]);
   });
 
   it('computes the agent-share header stat from the four counts', async () => {

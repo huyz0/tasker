@@ -248,3 +248,32 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   stories (no MSW in Storybook — the Dashboard/Handoffs convention); h2
   panel shell because CardTitle is h3 and would break axe heading order.
 - **Next**: M24-T09 (trend cards + live invalidation + Dashboard link).
+
+## M24-T09 — Trend cards, live invalidation, Dashboard cross-link
+
+- **Status**: done
+- **Date**: 2026-08-22
+- **Approach**: Three trend cards on the T07 chart kit beneath the
+  exception cards (autonomy & rework LineChart; created vs completed
+  cumulative LineChart + recent-completions strip; CFD StackedAreaChart
+  with task-type selector), driven by getReportTrends on the shared window
+  selector; honest collection-start footnotes; `['reports']` root wired
+  into eventQueryKeys under task/tasknote/comment; Dashboard "View project
+  reports" cross-link; remove the last rpc-coverage exception.
+- **Changed**: new `TrendCards.tsx` (202, presentational) +
+  `TrendsSection.tsx` (44, thin query container with its own ListState —
+  trends failure leaves the exception cards alive), mounted beneath the
+  exception cards; `['reports']` wired into eventQueryKeys under task/
+  tasknote/comment; Dashboard header gains "View project reports →" when a
+  project is active (one link, no counts — the file's own rule);
+  getReportTrends rpc-coverage exception removed; 2 trend stories.
+- **Verified**: 14 tests red-first then green; 60/60 across affected
+  files; branches 95.33% (gate 95); gui:lint/typecheck/design-lint (0
+  findings)/query-error-coverage/rpc-coverage/knip all green.
+- **Notes**: zero-sample honesty — rate lines keep every day (no torn
+  lines), a subtitle counts days-with-completions, and an all-zero window
+  renders the kit's empty state rather than a lying 0% line; CFD terminal
+  band is always the success-anchored green (matches Completed/Autonomy
+  lines), non-terminal bands cycle tokens 1–5 so no collision; footnote
+  dates pinned en-US/UTC so labels can't shift under the runner's locale.
+- **Next**: M24-T10 (e2e + docs + closeout).

@@ -8,6 +8,7 @@ import { StalledWorkCard } from './StalledWorkCard';
 import { WentBackwardsCard } from './WentBackwardsCard';
 import { ChurningTasksCard } from './ChurningTasksCard';
 import { FleetScorecardCard } from './FleetScorecardCard';
+import { TrendsSection } from './TrendsSection';
 
 /**
  * The "Agents completed N% (M% prior window)" header stat, computed from the
@@ -120,6 +121,11 @@ export function ReportsScreen() {
           </div>
         )}
       </ListState>
+
+      {/* Beneath the exceptions on purpose (urgency order, shape.md): trends
+          inform the retro, exceptions demand action today. Its own query, so
+          one failing read never blanks the other half of the screen. */}
+      <TrendsSection projectId={activeProjectId} windowDays={windowDays} />
     </div>
   );
 }

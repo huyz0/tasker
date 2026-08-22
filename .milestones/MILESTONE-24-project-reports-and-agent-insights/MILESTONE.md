@@ -275,7 +275,7 @@ users are agents, and reports are the humans-only monitoring surface).
       - Verify: `moon run gui:test` + `gui:query-error-coverage` +
         `gui:design-lint`; App.test.tsx route coverage extended.
 
-- [ ] **M24-T09** — Reports screen, trend cards + wiring: cards 5–7 on the
+- [x] **M24-T09** — Reports screen, trend cards + wiring: cards 5–7 on the
       chart kit (autonomy & rework, created vs completed with
       recent-completions strip, CFD with task-type selector), window
       selector (7/30/90d) driving both queries, honest sparse-history

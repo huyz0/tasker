@@ -26,3 +26,19 @@ export function agoLabel(iso: string): string {
   if (hours < 24) return `${Math.floor(hours)}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
 }
+
+/**
+ * "History collected since August 1, 2026" — every trend chart's footnote.
+ *
+ * ADR-0020's backfill draws no false past, so a chart must label its
+ * collection start rather than imply history that was never recorded. Locale
+ * pinned to en-US (the UI's language) and timezone to UTC (the bucket dates
+ * are UTC days), so the label cannot shift under the viewer's — or the test
+ * runner's — environment.
+ */
+export function collectedSinceFootnote(iso: string): string {
+  const formatted = new Date(iso).toLocaleDateString('en-US', {
+    timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric',
+  });
+  return `History collected since ${formatted}`;
+}
