@@ -28,40 +28,13 @@ vi.mock('@tanstack/react-query', () => ({
   useInfiniteQuery: () => mockUseInfiniteQuery(),
 }));
 
-// -------------------------------------------------------------------
-// Mock the ConnectRPC client + transport so the module resolves without
-// a real server. We only need the import-time side-effects silenced.
-// -------------------------------------------------------------------
-vi.mock('@connectrpc/connect-web', () => ({
-  createConnectTransport: vi.fn(() => ({})),
-}));
-
-vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn(() => ({ ping: vi.fn(), listRepositoryLinks: vi.fn(), syncPullRequests: vi.fn() })),
-}));
-
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  HealthService: {},
-  AuditService: {},
-  EventService: {},
-  AuthService: {},
-  OrgService: {},
-  TaskTypeService: {},
-  ProjectTemplateService: {},
-  ProjectService: {},
-  AgentService: {},
-  TaskService: {},
-  ArtifactService: {},
-  CommentService: {},
-  TaskNoteService: {},
-  LabelService: {},
-  RepositoryService: {},
-  SearchService: {},
-  DashboardService: {},
-  RoleService: {},
-  TeamService: {},
-  MemoryService: {},
-}));
+// M12-T01: no mock of `@connectrpc/connect`/`connect-web`/`health_pb` here.
+// `@tanstack/react-query` is mocked wholesale below (`useQuery`/`useMutation`
+// never call the real `queryFn`/`mutationFn`), so nothing in this file ever
+// issues a real RPC regardless; constructing the real generated client
+// against the real transport at import time is safe on its own — no network
+// call happens until a method is actually invoked, and MSW would intercept
+// that anyway (see setupTests.ts).
 
 // -------------------------------------------------------------------
 // ProtectedRoute has its own dedicated test file covering auth-gating and
