@@ -1,29 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ArtifactService, SearchService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { TaskArtifactLinks } from './TaskArtifactLinks';
 
-const mockList = vi.fn();
-const mockLink = vi.fn();
-const mockUnlink = vi.fn();
-const mockSearch = vi.fn();
-
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  ArtifactService: 'ArtifactService',
-  SearchService: 'SearchService',
-}));
 vi.mock('use-debounce', () => ({ useDebounce: (v: string) => [v] }));
-vi.mock('@connectrpc/connect', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@connectrpc/connect')>()),
-  createClient: (service: unknown) =>
-    service === 'SearchService'
-      ? { universalSearch: (...a: unknown[]) => mockSearch(...a) }
-      : {
-          listTaskArtifactLinks: (...a: unknown[]) => mockList(...a),
-          linkTaskArtifact: (...a: unknown[]) => mockLink(...a),
-          unlinkTaskArtifact: (...a: unknown[]) => mockUnlink(...a),
-        },
-}));
+
+/** Registers LinkTaskArtifact/UnlinkTaskArtifact and records every request each receives. */
+function withLinkUnlink() {
+  const linkRequests: any[] = [];
+  const unlinkRequests: any[] = [];
+  mockRpc(ArtifactService, 'LinkTaskArtifact', (body) => {
+    linkRequests.push(body);
+    return { link };
+  });
+  mockRpc(ArtifactService, 'UnlinkTaskArtifact', (body) => {
+    unlinkRequests.push(body);
+    return { success: true };
+  });
+  return { linkRequests, unlinkRequests };
+}
 
 const renderAt = (props: { taskId?: string; artifactId?: string }) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -43,31 +40,41 @@ const link = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  mockList.mockResolvedValue({ links: [] });
-  mockSearch.mockResolvedValue({
+  mockRpc(ArtifactService, 'ListTaskArtifactLinks', { links: [] });
+  mockRpc(SearchService, 'UniversalSearch', {
     results: [
       { id: 'art-2', type: 'artifact', title: 'notes.md', snippet: '' },
       { id: 'task-2', type: 'task', title: 'Ship it', snippet: '' },
     ],
   });
+  withLinkUnlink();
 });
 
 describe('TaskArtifactLinks', () => {
   it('asks for the task end when anchored on a task', async () => {
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'ListTaskArtifactLinks', (body) => {
+      requests.push(body);
+      return { links: [] };
+    });
     renderAt({ taskId: 'task-1' });
-    await waitFor(() => expect(mockList).toHaveBeenCalledWith({ taskId: 'task-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ taskId: 'task-1' }));
     expect(await screen.findByText('No linked artifacts')).toBeInTheDocument();
   });
 
   it('asks for the artifact end when anchored on an artifact', async () => {
+    const requests: any[] = [];
+    mockRpc(ArtifactService, 'ListTaskArtifactLinks', (body) => {
+      requests.push(body);
+      return { links: [] };
+    });
     renderAt({ artifactId: 'art-1' });
-    await waitFor(() => expect(mockList).toHaveBeenCalledWith({ artifactId: 'art-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ artifactId: 'art-1' }));
     expect(await screen.findByText('Not linked to any task')).toBeInTheDocument();
   });
 
   it('shows the artifact name on a task, and the task title on an artifact', async () => {
-    mockList.mockResolvedValue({ links: [link] });
+    mockRpc(ArtifactService, 'ListTaskArtifactLinks', { links: [link] });
     const { unmount } = renderAt({ taskId: 'task-1' });
     expect(await screen.findByText('guide.md')).toBeInTheDocument();
     unmount();
@@ -79,11 +86,16 @@ describe('TaskArtifactLinks', () => {
   });
 
   it('asks for a query rather than opening onto everything', async () => {
+    const requests: unknown[] = [];
+    mockRpc(SearchService, 'UniversalSearch', (body) => {
+      requests.push(body);
+      return { results: [] };
+    });
     renderAt({ taskId: 'task-1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Link an artifact…' }));
     expect(await screen.findByText('Type to search.')).toBeInTheDocument();
     // Opening a picker onto an unbounded list is the M05-T04 defect.
-    expect(mockSearch).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('offers only artifacts when anchored on a task', async () => {
@@ -105,24 +117,26 @@ describe('TaskArtifactLinks', () => {
   });
 
   it('links from the task end with the ids the right way round', async () => {
+    const { linkRequests } = withLinkUnlink();
     renderAt({ taskId: 'task-1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Link an artifact…' }));
     fireEvent.change(screen.getByLabelText('Search artifacts'), { target: { value: 'n' } });
     fireEvent.click(await screen.findByRole('button', { name: 'notes.md' }));
-    await waitFor(() => expect(mockLink).toHaveBeenCalledWith({ taskId: 'task-1', artifactId: 'art-2' }));
+    await waitFor(() => expect(linkRequests).toContainEqual({ taskId: 'task-1', artifactId: 'art-2' }));
   });
 
   it('links from the artifact end with the ids the right way round', async () => {
+    const { linkRequests } = withLinkUnlink();
     renderAt({ artifactId: 'art-1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Link a task…' }));
     fireEvent.change(screen.getByLabelText('Search tasks'), { target: { value: 's' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Ship it' }));
     // Swapping these silently links the wrong pair, and both ids look alike.
-    await waitFor(() => expect(mockLink).toHaveBeenCalledWith({ taskId: 'task-2', artifactId: 'art-1' }));
+    await waitFor(() => expect(linkRequests).toContainEqual({ taskId: 'task-2', artifactId: 'art-1' }));
   });
 
   it('does not offer something already linked', async () => {
-    mockList.mockResolvedValue({ links: [{ ...link, artifactId: 'art-2', artifactName: 'notes.md' }] });
+    mockRpc(ArtifactService, 'ListTaskArtifactLinks', { links: [{ ...link, artifactId: 'art-2', artifactName: 'notes.md' }] });
     renderAt({ taskId: 'task-1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Link an artifact…' }));
     fireEvent.change(screen.getByLabelText('Search artifacts'), { target: { value: 'n' } });
@@ -132,7 +146,7 @@ describe('TaskArtifactLinks', () => {
   });
 
   it('tells "nothing matched" apart from "all matches are linked"', async () => {
-    mockSearch.mockResolvedValue({ results: [] });
+    mockRpc(SearchService, 'UniversalSearch', { results: [] });
     renderAt({ taskId: 'task-1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Link an artifact…' }));
     fireEvent.change(screen.getByLabelText('Search artifacts'), { target: { value: 'zzz' } });
@@ -140,22 +154,24 @@ describe('TaskArtifactLinks', () => {
   });
 
   it('unlinks the pair, naming which', async () => {
-    mockList.mockResolvedValue({ links: [link] });
+    mockRpc(ArtifactService, 'ListTaskArtifactLinks', { links: [link] });
+    const { unlinkRequests } = withLinkUnlink();
     renderAt({ taskId: 'task-1' });
     fireEvent.click(await screen.findByLabelText('Unlink guide.md'));
-    await waitFor(() => expect(mockUnlink).toHaveBeenCalledWith({ taskId: 'task-1', artifactId: 'art-1' }));
+    await waitFor(() => expect(unlinkRequests).toContainEqual({ taskId: 'task-1', artifactId: 'art-1' }));
   });
 
   it('closes without linking when cancelled', async () => {
+    const { linkRequests } = withLinkUnlink();
     renderAt({ taskId: 'task-1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Link an artifact…' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByLabelText('Search artifacts')).toBeNull());
-    expect(mockLink).not.toHaveBeenCalled();
+    expect(linkRequests).toHaveLength(0);
   });
 
   it('reports a failed link', async () => {
-    mockLink.mockRejectedValue(new Error('permission denied'));
+    mockRpcError(ArtifactService, 'LinkTaskArtifact', 'permission_denied', 'permission denied');
     renderAt({ taskId: 'task-1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Link an artifact…' }));
     fireEvent.change(screen.getByLabelText('Search artifacts'), { target: { value: 'n' } });
@@ -164,8 +180,8 @@ describe('TaskArtifactLinks', () => {
   });
 
   it('reports a failed unlink and keeps the row', async () => {
-    mockList.mockResolvedValue({ links: [link] });
-    mockUnlink.mockRejectedValue(new Error('nope'));
+    mockRpc(ArtifactService, 'ListTaskArtifactLinks', { links: [link] });
+    mockRpcError(ArtifactService, 'UnlinkTaskArtifact', 'unknown', 'nope');
     renderAt({ taskId: 'task-1' });
     fireEvent.click(await screen.findByLabelText('Unlink guide.md'));
     expect(await screen.findByText(/Failed to unlink/)).toBeInTheDocument();
