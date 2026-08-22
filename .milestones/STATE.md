@@ -15,6 +15,27 @@ blocker: null
 
 ## Now
 
+**2026-08-22 — M12-T01 done: all 30 GUI feature test files converted from
+`vi.mock('@connectrpc/connect' …)` to MSW network-level interception.**
+Recorded below (and in MILESTONE-12's PROGRESS.md) as deliberately not
+attempted when M12 closed — argued at the time to be adequately covered by
+T02's wire-level suite, T03's codec round-trips, and `gui:typecheck` catching
+a renamed field. Revisited on a direct question about that reasoning: none of
+those three catch a field that still exists, still compiles, and is still
+handled wrong — the exact class of bug this conversion is for.
+
+It found two, on its own, as a byproduct of making the existing tests honest
+rather than from writing new ones: a `PingResponse` optional-presence gap, and
+`Bin/index.tsx` sending `item[labelKey] ?? item.id`, which never actually
+fell back to the id for a nameless row because a plain proto3 scalar decodes
+its missing value to `''`, not `undefined` — fixed to `||`. Both were real,
+both shipped invisible to every prior gate including this milestone's own
+wire-level and round-trip suites, which is the argument for having done this
+in the first place. `apps/gui/src/test/mockRpc.ts` is the shared harness
+(`mockRpc`/`mockRpcError`/`mockRpcPending`/`mockRpcStream`); MILESTONE-12's
+MILESTONE.md and PROGRESS.md are updated to reflect this as closed rather than
+open. `moon check --all` clean.
+
 **2026-08-22 — invitation email delivered, closing M12's last open roadmap
 line.** "Invite users by email — record created, never sent" had been true for
 the life of this repository.
@@ -40,7 +61,8 @@ port rather than configured, because getting that backwards produces a hang
 rather than an error.
 
 Two things remain open, both named in MILESTONE-12's PROGRESS.md: **M12-T01**
-(network-level interception in GUI tests) and **code signing**.
+(network-level interception in GUI tests) and **code signing**. [M12-T01 was
+done later the same day — see the entry at the top of this file.]
 
 **2026-08-22 — M12 Test Depth & Release complete. Every milestone in the
 ledger is now closed.**
@@ -68,12 +90,15 @@ task exactly where it was. A green step that proved nothing.
 **Two things are deliberately not done, and are recorded as open rather than
 quietly closed** (see MILESTONE-12's PROGRESS.md):
 
-- **M12-T01**, replacing the `health_pb` module mock with network-level
-  interception across 66 GUI test files. What it was buying is now covered by
-  T02 and T03 from two other directions; the residual gap is narrow, and the
-  change is a mechanical rewrite of a passing suite where each file is an
-  opportunity to weaken an assertion while making it compile. Worth its own
-  round, not the tail of a milestone.
+- ~~**M12-T01**, replacing the `health_pb` module mock with network-level
+  interception across 66 GUI test files.~~ **Done later the same day** — see
+  the entry at the top of this file. The reasoning below is preserved as the
+  record of what was argued at the time; it undersold the gap, which turned
+  out to include real bugs no other gate in this milestone caught.
+  What it was buying was argued to be covered by T02 and T03 from two other
+  directions; the residual gap was argued to be narrow, and the change a
+  mechanical rewrite of a passing suite where each file is an opportunity to
+  weaken an assertion while making it compile.
 - **Signed** binaries. They are versioned and cross-platform; signing needs
   certificates this project does not have, as M09 already concluded.
 

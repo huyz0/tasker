@@ -103,29 +103,6 @@ exists end to end, but no SMTP integration does.
 
 ## Not done, deliberately
 
-### M12-T01 — network-level interception in GUI tests
-
-**Not attempted.** The task is to replace `vi.mock('…/health_pb')` with
-network-level interception across 66 test files, so requests serialize as they
-do in production.
-
-What it was buying is real: nothing proved the GUI's requests survived the wire.
-But that is now covered from two other directions, both of which landed in this
-milestone — T03 round-trips every message through both codecs, and T02 drives
-the real server with the real client over a socket. The residual gap is narrow:
-whether each GUI *call site* passes the fields it thinks it does.
-
-Against that, the change is a mechanical rewrite of 66 passing test files, each
-one an opportunity to weaken an assertion while making it compile. The exit
-criterion it serves — "renaming a contract field fails a GUI test" — would be
-better served by a much smaller thing: a typecheck against the generated types
-at the call sites, which `gui:typecheck` already does for anything not behind an
-`any`.
-
-Recorded as open rather than closed. It is a real improvement, it is not
-urgent, and it should be done as its own round with room to verify each file
-rather than at the end of a milestone.
-
 ### Signed binaries
 
 The exit criterion says "signed, versioned binaries". They are versioned and
@@ -134,6 +111,42 @@ M09 scoped code signing out for the same reason. Named here rather than left to
 be discovered.
 
 ## Closed afterwards
+
+### M12-T01 — network-level interception in GUI tests (2026-08-22)
+
+Recorded above as deliberately not attempted at the time: the exit criterion —
+"renaming a contract field fails a GUI test" — was argued to be better served
+by `gui:typecheck` catching the call sites than by a mechanical rewrite of 30
+test files, each an opportunity to weaken an assertion while making it
+compile.
+
+Revisited and done anyway, prompted by a direct question — if it wasn't worth
+doing, why was it planned as a real deliverable rather than dropped? — that
+exposed the actual gap in the argument above: `gui:typecheck` catches a field
+that no longer exists, but proves nothing about a field that still exists and
+still compiles with the wrong shape, wrong zero-value handling, or a request
+that never gets sent the way the component believes it does. That is
+specifically the class of bug T03's codec round-trip and T02's wire-level
+server test do not reach either, because neither one exercises a GUI
+component's own call sites — they prove the schema round-trips and the server
+answers a client, not that `Bin/index.tsx` sends what it thinks it sends.
+
+All 30 GUI feature test files converted from `vi.mock('@connectrpc/connect'
+…)`/`vi.mock('…/health_pb')` to MSW network-level interception
+(`apps/gui/src/test/mockRpc.ts`), each committed as its own reviewable step.
+Two real, previously-invisible defects surfaced purely as a byproduct of doing
+the conversion faithfully against the real wire format — not from writing new
+test cases, from making the existing ones honest:
+
+- A `PingResponse` optional-presence gap (found earlier in the same effort).
+- `Bin/index.tsx`'s `item[labelKey] ?? item.id` fallback never actually
+  triggering for a genuinely nameless row — `??` treats a plain proto3
+  scalar's zero-value decode (`''`, not `undefined`) as present, so the
+  fallback to `item.id` was dead code; fixed to `||`.
+
+Neither bug involved a renamed or removed field — exactly the "still compiles,
+still wrong" class of defect a typecheck cannot see and the mock-replacement
+argument above undersold.
 
 ### Invitation email (2026-08-22)
 
@@ -149,5 +162,6 @@ anything — a link that did would be an escalation path with no way to revoke i
 
 ## Exit criteria
 
-Six of eight met outright. One partially (binaries released but unsigned); one
-not (the GUI mock replacement).
+Seven of eight met outright, one partially (binaries released but unsigned).
+The GUI mock replacement, recorded above as not attempted, was later done in
+full (see "Closed afterwards").

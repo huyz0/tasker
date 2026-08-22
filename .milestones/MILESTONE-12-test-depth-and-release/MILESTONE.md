@@ -32,8 +32,9 @@ which is after M10's authorization rewrite and M09's packaging work.
 
 - [x] At least one test suite exercises real protobuf serialization from a real
       client to a real server process.
-- [ ] The GUI's tests no longer mock the generated contract module; requests are
-      intercepted at the network layer. **Not done — see M12-T01 below.**
+- [x] The GUI's tests no longer mock the generated contract module; requests are
+      intercepted at the network layer via MSW. All 30 feature test files
+      converted 2026-08-22 — see M12-T01 below.
 - [x] End-to-end tests cover: sign in, create org, create project, create task,
       assign it, comment, search, find it, and archive it.
 - [x] The CLI is released as versioned binaries for three platforms.
@@ -56,10 +57,16 @@ visual regression beyond the accessibility gate from M06.
 
 ## 5. Task Breakdown
 
-- [ ] **M12-T01** — Replace the `health_pb` module mock in GUI tests with
+- [x] **M12-T01** — Replace the `health_pb` module mock in GUI tests with
       network-level interception, so requests are serialized as in production.
-      - Files: `apps/gui/src/setupTests.ts`, all feature tests
-      - Verify: renaming a contract field fails a GUI test.
+      Done 2026-08-22, after initially shipping the rest of M12 without it — see
+      PROGRESS.md for why it was deferred and what closing it actually found.
+      - Files: `apps/gui/src/setupTests.ts`, `apps/gui/src/test/mockRpc.ts`,
+        all 30 GUI feature test files
+      - Verify: renaming a contract field fails a GUI test. Confirmed via two
+        real bugs the conversion surfaced on its own (a `PingResponse`
+        optional-presence gap, and `Bin/index.tsx`'s `??` vs `||` fallback),
+        neither visible to the old `vi.fn()` mocks.
 
 - [x] **M12-T02** — Add a wire-level integration suite that boots the real server
       and drives it with the real generated client.
