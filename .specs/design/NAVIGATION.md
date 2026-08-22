@@ -21,6 +21,7 @@ graph TD
 
     subgraph Shell["AppShell — sidebar + content pane"]
         Root
+        Reports["/reports"]
         Orgs["/organizations"]
         Projects["/projects"]
         Tasks["/tasks"]
@@ -34,6 +35,7 @@ graph TD
         NotFound["* — Not Found"]
     end
 
+    Root --> Reports
     Root --> Orgs
     Root --> Projects
     Root --> Tasks
@@ -55,6 +57,7 @@ Authoritative. `App.tsx` is the source; this table mirrors it.
 | `/login` | `pages/Login` | unauthenticated entry — the only route outside `ProtectedRoute` |
 | `/oauth/callback` | `pages/OAuthCallback` | Google redirect |
 | `/` | `pages/Dashboard` | sidebar |
+| `/reports` | `features/Reports` | sidebar (Workspace), and the Dashboard's "View project reports" cross-link — project-scoped exception panels, fleet scorecard and trend charts (M24) |
 | `/organizations` | `features/Organizations` | sidebar |
 | `/projects` | `features/Projects` | sidebar |
 | `/tasks` | `features/Tasks` | sidebar |
@@ -67,10 +70,11 @@ Authoritative. `App.tsx` is the source; this table mirrors it.
 | `/settings` | `GenericPlaceholder` | **nothing links to it** — see §3 |
 | `*` | `pages/NotFound` | any unknown URL, inside the shell |
 
-The sidebar carries eight items (`components/layout/AppShell.tsx:22-29`):
-Dashboard, Organizations, Projects, Tasks, AI Agents, Artifacts, Labels, Bin.
-Active state matches on exact path, or prefix for everything but `/`
-(`AppShell.tsx:75`).
+The sidebar's items live in two groups (`components/layout/AppShell.tsx`,
+`NAV_GROUPS`): **Workspace** — Dashboard, Reports, Projects, Tasks, AI Agents,
+Artifacts, Memory, Handoffs — and **Configuration** — Task Types, Labels,
+Organizations, Teams, Roles, Bin, Settings. Active state matches on exact
+path, or prefix for everything but `/`.
 
 ## 3. What is not a route
 

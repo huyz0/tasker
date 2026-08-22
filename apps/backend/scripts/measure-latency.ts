@@ -25,6 +25,7 @@ import { createAgentsHandler } from "../src/modules/agents/agents.handler";
 import { createOrgsHandler } from "../src/modules/orgs/orgs.handler";
 import createSearchHandler from "../src/modules/search/search.handler";
 import createDashboardHandler from "../src/modules/dashboard/dashboard.handler";
+import createReportsHandler from "../src/modules/reports/reports.handler";
 import { sql } from "drizzle-orm";
 
 /** Enough samples for a p95 to mean something, few enough to run in seconds. */
@@ -127,6 +128,7 @@ async function main() {
   const orgs = createOrgsHandler(db, null as any);
   const search = captureRouterMethods(createSearchHandler as any, db);
   const dashboard = captureRouterMethods(createDashboardHandler as any, db);
+  const reports = captureRouterMethods(createReportsHandler as any, db);
 
   // Budgets are the ones documented in `.specs/standards/api-standard.md`.
   const results = [
@@ -146,6 +148,13 @@ async function main() {
       search.universalSearch({ query: "seed", orgId, page: { limit: 20 } }, ctx)),
     await measure("getDashboard", 300, () =>
       dashboard.getDashboard({ orgId }, ctx)),
+    // M24: both Reports RPCs at the widest window - the trends pass reads the
+    // project's ENTIRE activity history for the CFD, so the window barely
+    // shields it and the seeded activity volume is what's being defended.
+    await measure("getReportExceptions", 300, () =>
+      reports.getReportExceptions({ projectId, windowDays: 90 }, ctx)),
+    await measure("getReportTrends", 300, () =>
+      reports.getReportTrends({ projectId, windowDays: 90 }, ctx)),
   ];
 
   console.log("");

@@ -7,6 +7,7 @@ import { transport } from "../../lib/connectTransport";
 import { AgentService, DashboardService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Bot } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
+import { sinceLabel } from '../../lib/sinceLabel';
 import { AgentTokens } from './AgentTokens';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { VirtualList } from '../../components/ui/VirtualList';
@@ -15,20 +16,6 @@ import { ListState } from '../../components/ui/ListState';
 // Only the pre-measurement estimate; `measureRows` reads the real height,
 // because a row grows when its edit form opens.
 const AGENT_ROW_HEIGHT = 76;
-
-/** Beyond this an agent has stopped rather than paused. Matches Dashboard.tsx. */
-const SILENT_AFTER_HOURS = 24;
-
-/** "9 days ago", or "never" — same distinction Dashboard.tsx's fleet panel draws. */
-function sinceLabel(iso?: string): { text: string; silent: boolean } {
-  if (!iso) return { text: 'never called', silent: true };
-  const ms = Date.now() - new Date(iso).getTime();
-  const hours = ms / 3_600_000;
-  const silent = hours > SILENT_AFTER_HOURS;
-  if (hours < 1) return { text: 'active in the last hour', silent };
-  if (hours < 24) return { text: `${Math.floor(hours)}h ago`, silent };
-  return { text: `${Math.floor(hours / 24)}d ago`, silent };
-}
 
 // The backend stores capabilities as an opaque JSON string (main.tsp:
 // `capabilities: string // JSON string`) and never validates it - a typo here

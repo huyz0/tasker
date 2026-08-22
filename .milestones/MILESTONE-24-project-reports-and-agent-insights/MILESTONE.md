@@ -1,13 +1,13 @@
 ---
 id: M24
 title: Project Reports & Agent Insights
-status: todo
+status: done
 goal: A manager overseeing a project of AI agents can open one project-scoped Reports screen and see where work is stuck, which agents need attention, and how work is flowing over time — every panel answering a concrete intervention decision from real recorded history, in Jira's project-report role but built for an agent fleet.
 depends_on: []
 surfaces: [backend, gui, contract, specs]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+exit_criteria_met: true
+started_at: 2026-08-22
+completed_at: 2026-08-23
 ---
 
 # M24 — Project Reports & Agent Insights
@@ -57,7 +57,7 @@ keeps no history and attribution is otherwise unrecoverable.
 
 ## 3. Exit Criteria
 
-- [ ] From a seeded project, `/reports` renders all seven panels with real
+- [x] From a seeded project, `/reports` renders all seven panels with real
       data: stalled work (claimed-and-silent with per-row Unassign, and
       oldest-unclaimed), went-backwards regressions, churning tasks (≥2
       handoffs, claim-still-held flag), fleet scorecard (agent⇄role toggle,
@@ -65,35 +65,39 @@ keeps no history and attribution is otherwise unrecoverable.
       autonomy & rework trend, created vs completed (cumulative), and CFD
       (per-task-type selector) — verified by a Playwright e2e test that
       drives real RPCs, not mocks.
-- [ ] Clicking Unassign on a stalled claim frees the task (the row leaves the
+- [x] Clicking Unassign on a stalled claim frees the task (the row leaves the
       list; the task becomes claimable) — covered by a feature test against
       the real `unassignTask` wire call via MSW, and exercised in e2e.
-- [ ] A status change, claim, assignment, archive/restore, note, comment and
-      handoff each produce exactly one correct `task_activity` row (correct
-      kind, from/to status, terminality flags, actor, assignee-at-event), and
-      a replayed idempotent `claimTask` does not double-count — proven by
-      backend tests including a race/replay test.
-- [ ] Purging a task, a project, and the retention sweep leave zero orphaned
+- [x] A task creation, status change, claim, assignment, unassignment,
+      archive/restore, note, comment and handoff each produce exactly one
+      correct `task_activity` row (correct kind, from/to status, terminality
+      flags, actor, assignee-at-event), and a replayed idempotent
+      `claimTask` does not double-count — proven by backend tests including
+      a race/replay test.
+- [x] Purging a task, a project, and the retention sweep leave zero orphaned
       `task_activity` rows — proven by cascade tests.
-- [ ] The backfill migration gives every pre-existing task exactly one
-      `created` activity row carrying its current status, in both dialects,
+- [x] The backfill migration gives every pre-existing non-archived task
+      exactly one `created` activity row carrying its current status
+      (soft-deleted tasks excluded — no unpaired `+1` in the CFD algebra),
+      plus one activity row per pre-existing task note, handoff and
+      task-scoped comment at its real timestamp, in both dialects,
       idempotently (re-running it inserts nothing) — proven by migration
       tests against SQLite and live MySQL.
-- [ ] Both report RPCs refuse agent principals structurally
+- [x] Both report RPCs refuse agent principals structurally
       (`agent-scope-sweep` and `viewer-denial` suites pass with the new
       handler registered) and enforce `dashboard:read` cross-tenant.
-- [ ] `bun run seed -- --scale large && bun run measure:latency` shows both
+- [x] `bun run seed -- --scale large && bun run measure:latency` shows both
       report RPCs inside their named 300 ms p95 budget rows in
       `api-standard.md` §6, with `task_activity` seeded at scale.
-- [ ] The CFD balances: for a task history replayed through the handlers, the
+- [x] The CFD balances: for a task history replayed through the handlers, the
       chart's final-day stack equals the project's live per-status counts,
       and archived tasks leave the stack — proven by a backend test on the
       daily-delta + prefix-sum series.
-- [ ] `moon check --all` clean; `gui:storybook-test` clean (0 axe violations,
+- [x] `moon check --all` clean; `gui:storybook-test` clean (0 axe violations,
       no 375 px overflow) including the new chart and card stories in both
       themes; `gui:design-lint` passes with chart colors as `--chart-*`
       tokens only.
-- [ ] `moon run :spec-drift` and `moon run tasker:docs-lint` pass:
+- [x] `moon run :spec-drift` and `moon run tasker:docs-lint` pass:
       NAVIGATION.md shows the Reports route, roadmap names M24, and no
       dependency was added (charts are hand-rolled — ADR-0021).
 
@@ -117,11 +121,12 @@ heatmaps, org-level cross-project rollups (v2 of this surface, on demand);
 claim-contention counting (telemetry counter territory — deliberately never a
 `task_activity` kind, per ADR-0020); token-expiry alerts (belongs on the
 Agents screen); any Dashboard chart or count tile (the Dashboard's own design
-note forbids it).
+note forbids it); any CLI surface for reports (on demand later — the CLI's
+users are agents, and reports are the humans-only monitoring surface).
 
 ## 5. Task Breakdown
 
-- [ ] **M24-T01** — Save the design record: spec folder (problem, the three
+- [x] **M24-T01** — Save the design record: spec folder (problem, the three
       subagent review reports, the agreed panel set with per-panel decision
       statements, data-model rationale), ADR-0020 (task-activity substrate:
       synchronous first-class table over audit_log; terminality stamped at
@@ -133,9 +138,9 @@ note forbids it).
       - Files: `.specs/specs/2026-08-22-*-project-reports-and-agent-insights/*`,
         `.specs/adr/ADR-0020-*.md`, `.specs/adr/ADR-0021-*.md`,
         `.milestones/MILESTONE-24-project-reports-and-agent-insights/*`
-      - Verify: `moon run tasker:docs-lint` passes; ADR README index updated.
+      - Verify: all named files exist; `moon run tasker:docs-lint` passes.
 
-- [ ] **M24-T02** — Contract: `ReportService` in `main.tsp` **and**
+- [x] **M24-T02** — Contract: `ReportService` in `main.tsp` **and**
       `tasker/health/v1/health.proto` (kept in sync by hand), two methods —
       `getReportExceptions(projectId, windowDays)` returning stalled
       (claimed-silent split never-started/went-quiet + oldest-unclaimed,
@@ -154,16 +159,20 @@ note forbids it).
         T08/T09 — add temporary EXCEPTIONS entries with a reason if the gate
         runs before then, removed in T09).
 
-- [ ] **M24-T03** — Schema: `task_activity` in `schema.sqlite.ts` +
+- [x] **M24-T03** — Schema: `task_activity` in `schema.sqlite.ts` +
       `schema.mysql.ts` (id, task_id FK, project_id FK, kind, from_status,
       to_status, from_is_terminal, to_is_terminal, actor_type, actor_id — no
       FK, assignee_agent_id, assignee_user_id, occurred_at; indexes
       `(project_id, kind, occurred_at)` and `(task_id, occurred_at)`);
       per-dialect migrations + truthful backfill (deterministic
-      `act-`-derived ids → idempotent; `to_status = tasks.status`,
-      `occurred_at = tasks.created_at`, actor_type `system`; sqlite `||` vs
-      mysql `CONCAT`); regenerate embedded migrations; add report query
-      shapes to `indexCoverage.test.ts` HOT_QUERIES.
+      `act-`-derived ids → idempotent; `created` rows for non-archived
+      tasks only, `to_status = tasks.status`, `occurred_at =
+      tasks.created_at`, actor_type `system`, terminality stamped from
+      current config, assignee columns NULL; plus `note`/`handoff`/`comment`
+      rows carried over from `task_notes` and task-scoped `comments` at
+      their real timestamps; sqlite `||` vs mysql `CONCAT`); regenerate
+      embedded migrations; add report query shapes to
+      `indexCoverage.test.ts` HOT_QUERIES.
       - Files: `apps/backend/src/db/schema.sqlite.ts`, `schema.mysql.ts`,
         `drizzle-sqlite/00NN_task_activity.sql`,
         `drizzle-mysql/00NN_task_activity.sql`,
@@ -173,14 +182,15 @@ note forbids it).
         + migration/backfill tests, incl. idempotent re-run); backfill
         verified against live MySQL via `docker compose`.
 
-- [ ] **M24-T04** — Activity writes: a small `recordTaskActivity` helper
+- [x] **M24-T04** — Activity writes: a small `recordTaskActivity` helper
       (stamps terminality from the task type's status positions at write
       time; resolves assignee-at-event; fires only after the primary write's
       success/CAS check — accepted non-transactional drift per ADR-0020)
-      called from `createTask` (agent creations finally attributable),
-      `updateTaskStatus` (after the `affected` CAS check — the single status
-      choke point), `claimTask` (inside the `withIdempotency` callback, after
-      the claim-won check), `assignTask` (not on the duplicate no-op path),
+      called from `createTask` (agent creations finally attributable; its
+      whole body is already a `withIdempotency` callback — the write stays
+      inside it), `updateTaskStatus` (after the `affected` CAS check — the
+      single status choke point), `claimTask` (inside the `withIdempotency`
+      callback, after the claim-won check), `assignTask` (not on the duplicate no-op path),
       `unassignTask` (handler must first capture affected rows),
       `deleteTask` → `archived` / `restoreTask` → `restored`, task-note
       create (`note`/`handoff`), comment create on tasks (`comment`).
@@ -193,7 +203,7 @@ note forbids it).
         claim replay does not double-count, lost claim race writes nothing,
         unassign of nothing writes nothing, purge cascade leaves zero rows.
 
-- [ ] **M24-T05** — Exceptions report handler: `getReportExceptions` —
+- [x] **M24-T05** — Exceptions report handler: `getReportExceptions` —
       stalled-claims query (last signal per task from the one activity table,
       id tiebreak on equal seconds; joined with `api_tokens.lastUsedAt`
       per-agent liveness; split never-started vs went-quiet), oldest
@@ -201,7 +211,9 @@ note forbids it).
       churn (`GROUP BY task_id HAVING count(handoff) >= 2` + claim-held
       join), scorecard aggregation (per-agent and per-role; "(deleted
       agent)" fallback; autonomy = agent-held completions with zero
-      user-actor rows; median cycle via JS over per-task duration rows),
+      user-actor rows; columns: claimed, completed, reopened, handed off,
+      taken away, % autonomous, open now, last active — no cycle-time
+      column, cut with the other cycle-time metrics),
       agent-share stat (window vs prior window). `requireUser` +
       `assertCan(dashboard:read)` through `projects.orgId`; registered in
       `index.ts`, `agent-scope-sweep.test.ts` (handlers + REQUESTS) and
@@ -213,7 +225,7 @@ note forbids it).
         rows against handler-driven fixtures, cross-tenant denial, agent
         denial.
 
-- [ ] **M24-T06** — Trends report handler + measurement: shared
+- [x] **M24-T06** — Trends report handler + measurement: shared
       dialect-split UTC date-bucket helper (`strftime(..., 'unixepoch')` vs
       `DATE_FORMAT`, unit-tested on both shapes); CFD as one SQL daily-delta
       pass over full project history (+1 `to_status` / −1 `from_status`,
@@ -233,7 +245,7 @@ note forbids it).
         stack); `bun run seed -- --scale large && bun run measure:latency`
         inside budget.
 
-- [ ] **M24-T07** — Chart kit: `apps/gui/src/components/charts/` —
+- [x] **M24-T07** — Chart kit: `apps/gui/src/components/charts/` —
       `LineChart.tsx` (multi-series, cumulative-friendly),
       `StackedAreaChart.tsx`, pure helpers `scale.ts` (domains, nice ticks,
       degenerate single-point/empty cases), shared `ChartShell` (role="img"
@@ -248,7 +260,7 @@ note forbids it).
       - Verify: `moon run gui:test` (95% gate holds — pure helpers fully
         covered), `gui:design-lint`, `gui:lint`, `gui:typecheck`.
 
-- [ ] **M24-T08** — Reports screen, exception cards: `features/Reports/`
+- [x] **M24-T08** — Reports screen, exception cards: `features/Reports/`
       (decomposed well under the 400-line cap: `index.tsx` composition +
       one file per card + `useReportQueries.ts`), route + `React.lazy` in
       `App.tsx`, nav entry (Workspace group, `BarChart3` icon), org/project
@@ -263,7 +275,7 @@ note forbids it).
       - Verify: `moon run gui:test` + `gui:query-error-coverage` +
         `gui:design-lint`; App.test.tsx route coverage extended.
 
-- [ ] **M24-T09** — Reports screen, trend cards + wiring: cards 5–7 on the
+- [x] **M24-T09** — Reports screen, trend cards + wiring: cards 5–7 on the
       chart kit (autonomy & rework, created vs completed with
       recent-completions strip, CFD with task-type selector), window
       selector (7/30/90d) driving both queries, honest sparse-history
@@ -277,7 +289,7 @@ note forbids it).
       - Verify: `moon run gui:test`; `moon run gui:rpc-coverage` passes with
         no Reports exceptions.
 
-- [ ] **M24-T10** — E2E + closeout: `tests/e2e/reports.spec.ts` (seeded org
+- [x] **M24-T10** — E2E + closeout: `tests/e2e/reports.spec.ts` (seeded org
       via `selectSeededOrg.ts`; drive a real claim + note + status change
       through the backend, assert the panels reflect it, exercise Unassign
       end-to-end, assert both RPCs are actually reached); update
@@ -318,6 +330,9 @@ cd apps/backend && bun run seed -- --scale large && bun run measure:latency
   animation). Anything more reopens the ADR-0021 library question rather
   than growing bespoke code.
 - **Empty-screen first impression.** History-dependent charts are sparse for
-  ~2 weeks after deploy. Mitigated by design: exception cards (1, 3, 4) are
-  fully populated from existing data on day one, and sparse charts label
-  their collection-start date instead of looking broken.
+  ~2 weeks after deploy. Mitigated by design: the backfill carries real
+  existing history over (task creations, notes, handoffs, comments), so the
+  stalled-work and churn cards are truthful on day one and the scorecard is
+  partially populated (open now, last active, handoffs; reopen/autonomy
+  accrue with new activity); sparse charts label their collection-start
+  date instead of looking broken.

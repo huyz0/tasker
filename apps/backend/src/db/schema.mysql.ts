@@ -623,3 +623,33 @@ export const auditLog = mysqlTable("audit_log", {
     streamSeqUnique: uniqueIndex("audit_log_stream_seq_unique").on(table.streamSeq),
   };
 });
+
+/**
+ * Task history written synchronously in the handlers (M24-T03, ADR-0020).
+ * See the SQLite counterpart for the full reasoning; `kind` is a varchar
+ * rather than a mysqlEnum deliberately — the vocabulary is app-enforced like
+ * `tasks.status`, and ADR-0020 records decisions (e.g. `claim_rejected` will
+ * never be a kind) that an enum would invite someone to "just extend".
+ */
+export const taskActivity = mysqlTable("task_activity", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
+  projectId: varchar("project_id", { length: 256 }).notNull().references(() => projects.id),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  fromStatus: varchar("from_status", { length: 256 }),
+  toStatus: varchar("to_status", { length: 256 }),
+  fromIsTerminal: boolean("from_is_terminal").notNull().default(false),
+  toIsTerminal: boolean("to_is_terminal").notNull().default(false),
+  actorType: varchar("actor_type", { length: 32 }).notNull().default("system"),
+  actorId: varchar("actor_id", { length: 256 }),
+  assigneeAgentId: varchar("assignee_agent_id", { length: 256 }),
+  assigneeUserId: varchar("assignee_user_id", { length: 256 }),
+  occurredAt: timestamp("occurred_at").notNull(),
+}, (table) => {
+  return {
+    // Every report query filters by kind before bucketing over time.
+    projectKindOccurredIdx: index("task_activity_project_kind_occurred_idx").on(table.projectId, table.kind, table.occurredAt),
+    // Per-task last-signal (stalled claims) and the task history timeline.
+    taskOccurredIdx: index("task_activity_task_occurred_idx").on(table.taskId, table.occurredAt),
+  };
+});

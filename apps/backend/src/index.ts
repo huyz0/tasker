@@ -28,6 +28,7 @@ import { createEventsHandler } from "./modules/events/events.handler";
 import { createRepositoriesHandler } from "./modules/repositories/repositories.handler";
 import createSearchHandler from "./modules/search/search.handler";
 import createDashboardHandler from "./modules/dashboard/dashboard.handler";
+import createReportsHandler from "./modules/reports/reports.handler";
 import { setupDatabase } from "./db/db";
 import { connect as natsConnect } from "nats";
 import { logger } from "./lib/logger";
@@ -205,6 +206,7 @@ const handler = connectNodeAdapter({
     router.service(RepositoryService as any, createRepositoriesHandler(db, nc));
     createSearchHandler(router, db);
     createDashboardHandler(router, db);
+    createReportsHandler(router, db);
   },
 });
 

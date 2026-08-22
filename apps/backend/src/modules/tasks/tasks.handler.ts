@@ -8,6 +8,7 @@ import { requireUser, getProjectOrgId, getTaskOrgId, requirePrincipal, authorize
 import { assertCan } from "../../lib/policy";
 import { withIdempotency } from "../../lib/idempotency";
 import { getLatestHandoffNote } from "./task_notes.handler";
+import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal } from "./taskActivity";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // Distinguishes a real DB-level unique-constraint violation (a concurrent
@@ -679,6 +680,20 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
         await insertRecord(db, tasks, payload, isStandalone, false);
 
+        // M24-T04 (ADR-0020): inside the withIdempotency callback, so a
+        // replayed create replays the stored response without re-recording.
+        // The actor is the request principal - this is what makes
+        // agent-created tasks attributable (tasks.createdBy is users-only).
+        // A just-created task has no assignment.
+        await recordTaskActivity(db, isStandalone, {
+          taskId: newId,
+          projectId: parsed.projectId,
+          kind: "created",
+          toStatus: parsed.status,
+          toIsTerminal: await isTerminalStatus(db, isStandalone, parsed.taskTypeId || null, parsed.status),
+          ...actorFromPrincipal(principal),
+        });
+
         publishDomainEvent(nc, "domain.task.created", payload);
         return { task: { ...payload, createdAt: payload.createdAt.toISOString(), assignees: [] } };
       });
@@ -846,6 +861,23 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       };
 
       await db.insert(assignments).values(payload);
+
+      // M24-T04 (ADR-0020): after the insert, and never on the duplicate
+      // no-op early return above. The assignee is the NEW holder from the
+      // request; the actor is the calling user (assignTask is human-only).
+      // projectId isn't in scope here - one small lookup.
+      const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const taskRows = await db.select().from(tasksTable).where(eq((tasksTable as any).id, parsed.taskId)).limit(1);
+      await recordTaskActivity(db, isStandalone, {
+        taskId: parsed.taskId,
+        projectId: taskRows[0].projectId,
+        kind: "assigned",
+        actorType: "user",
+        actorId: userId,
+        assigneeAgentId: parsed.agentId || null,
+        assigneeUserId: parsed.userId || null,
+      });
+
       return { success: true };
     },
     async unassignTask(req: unknown, { values: contextValues }: { values: any }) {
@@ -859,11 +891,34 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // with, the same shape assignTask's duplicate check uses. Deleting on
       // taskId plus whichever id happens to be set would remove a *different*
       // assignment that shares the task.
-      await db.delete(assignments).where(and(
+      // M24-T04: capture whether a row was actually deleted (same
+      // changes/affectedRows dialect split updateTaskStatus/claimTask use) -
+      // the RPC stays unconditionally idempotent for the caller, but only a
+      // real removal is an event worth recording.
+      const deleteResult = await db.delete(assignments).where(and(
         eq((assignments as any).taskId, parsed.taskId),
         parsed.agentId ? eq((assignments as any).agentId, parsed.agentId) : isNull((assignments as any).agentId),
         parsed.userId ? eq((assignments as any).userId, parsed.userId) : isNull((assignments as any).userId),
       ));
+      const removed = isStandalone ? (deleteResult as any).changes : (deleteResult as any)[0]?.affectedRows;
+
+      if (removed) {
+        // The removed holder needs no pre-delete query: the DELETE matches
+        // the exact (agentId, userId) pair from the request (see the comment
+        // above), so when a row was removed, that pair IS the holder that
+        // was just removed - race-free, unlike a separate SELECT would be.
+        const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+        const taskRows = await db.select().from(tasksTable).where(eq((tasksTable as any).id, parsed.taskId)).limit(1);
+        await recordTaskActivity(db, isStandalone, {
+          taskId: parsed.taskId,
+          projectId: taskRows[0].projectId,
+          kind: "unassigned",
+          actorType: "user",
+          actorId: userId,
+          assigneeAgentId: parsed.agentId || null,
+          assigneeUserId: parsed.userId || null,
+        });
+      }
 
       // Idempotent: removing an assignment that is not there is the state the
       // caller asked for, not an error.
@@ -923,6 +978,22 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
         const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
         const task = result[0];
+
+        // M24-T04 (ADR-0020): after the claim-won check - a LOST claim threw
+        // above and records nothing (claim_rejected is deliberately not a
+        // kind; see the ADR) - and inside the withIdempotency callback, so a
+        // replayed claim replays the stored response without a second row.
+        // Claims are self-service for either principal kind, so the new
+        // holder is whichever of agent/user is calling.
+        await recordTaskActivity(db, isStandalone, {
+          taskId: parsed.taskId,
+          projectId: task.projectId,
+          kind: "claimed",
+          ...actorFromPrincipal(principal),
+          assigneeAgentId: selfAgentId,
+          assigneeUserId: selfUserId,
+        });
+
         publishDomainEvent(nc, "domain.task.claimed", { taskId: parsed.taskId, agentId: selfAgentId, userId: selfUserId });
         // M22-T04 (ADR-0017): the moment a claim succeeds is exactly when
         // prior handoff context matters most - the new claimant sees it in
@@ -1073,6 +1144,24 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
       const task = result[0];
 
+      // M24-T04 (ADR-0020): after the CAS `affected` check - the single
+      // status choke point. fromStatus is the CAS-verified previous status
+      // (the WHERE clause proved it was still current when the write won),
+      // terminality is stamped from the type's status positions at write
+      // time, and the assignee is whoever holds the task as the status moves
+      // - a status change does not touch the assignment.
+      await recordTaskActivity(db, isStandalone, {
+        taskId: parsed.taskId,
+        projectId: currentTask.projectId,
+        kind: "status_changed",
+        fromStatus: currentTask.status,
+        toStatus: parsed.status,
+        fromIsTerminal: await isTerminalStatus(db, isStandalone, currentTask.taskTypeId || null, currentTask.status),
+        toIsTerminal: await isTerminalStatus(db, isStandalone, currentTask.taskTypeId || null, parsed.status),
+        ...actorFromPrincipal(principal),
+        ...(await currentAssignee(db, isStandalone, parsed.taskId)),
+      });
+
       publishDomainEvent(nc, "domain.task.status_updated", task);
       return { task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt } };
     },
@@ -1093,7 +1182,30 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "task:admin");
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      // M24-T04: softDeleteById stamps deletedAt unconditionally, so the
+      // task's pre-archive state (status for the row, deletedAt for the
+      // already-archived guard) must be read before the write - a second
+      // archive of an already-archived task changes nothing and records
+      // nothing.
+      const existingRows = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
+      const wasLive = existingRows.length > 0 && !existingRows[0].deletedAt;
       await softDeleteById(db, tasks, parsed.taskId);
+
+      if (wasLive) {
+        // ADR-0020: `archived` carries fromStatus = <status at archive>,
+        // toStatus = NULL - this is what lets the CFD's -1-from algebra
+        // remove archived tasks from the stack.
+        await recordTaskActivity(db, isStandalone, {
+          taskId: parsed.taskId,
+          projectId: existingRows[0].projectId,
+          kind: "archived",
+          fromStatus: existingRows[0].status,
+          fromIsTerminal: await isTerminalStatus(db, isStandalone, existingRows[0].taskTypeId || null, existingRows[0].status),
+          actorType: "user",
+          actorId: userId,
+          ...(await currentAssignee(db, isStandalone, parsed.taskId)),
+        });
+      }
 
       publishDomainEvent(nc, "domain.task.deleted", { taskId: parsed.taskId });
       return { success: true };
@@ -1105,7 +1217,28 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId }, "task:admin");
 
       const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      // M24-T04: same read-before-write guard as deleteTask - restoreById
+      // nulls deletedAt unconditionally, so only a task that really was
+      // archived records a 'restored' event.
+      const existingRows = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
+      const wasArchived = existingRows.length > 0 && !!existingRows[0].deletedAt;
       await restoreById(db, tasks, parsed.taskId);
+
+      if (wasArchived) {
+        // ADR-0020: `restored` carries fromStatus = NULL, toStatus =
+        // <status at restore> - the +1-to side that re-admits the task into
+        // the CFD stack.
+        await recordTaskActivity(db, isStandalone, {
+          taskId: parsed.taskId,
+          projectId: existingRows[0].projectId,
+          kind: "restored",
+          toStatus: existingRows[0].status,
+          toIsTerminal: await isTerminalStatus(db, isStandalone, existingRows[0].taskTypeId || null, existingRows[0].status),
+          actorType: "user",
+          actorId: userId,
+          ...(await currentAssignee(db, isStandalone, parsed.taskId)),
+        });
+      }
 
       publishDomainEvent(nc, "domain.task.restored", { taskId: parsed.taskId });
       return { success: true };
@@ -1129,7 +1262,11 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
       const pullRequests = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
       const entityLabels = isStandalone ? schemaSqlite.entityLabels : schemaMysql.entityLabels;
+      const activity = isStandalone ? schemaSqlite.taskActivity : schemaMysql.taskActivity;
 
+      // M24-T04 (ADR-0020): no FK cascades exist anywhere in this codebase -
+      // purge deletes activity explicitly.
+      await db.delete(activity).where(eq((activity as any).taskId, parsed.taskId));
       await db.delete(assignments).where(eq((assignments as any).taskId, parsed.taskId));
       await db.delete(reviewers).where(eq((reviewers as any).taskId, parsed.taskId));
       await db.delete(artifactLinks).where(eq((artifactLinks as any).taskId, parsed.taskId));

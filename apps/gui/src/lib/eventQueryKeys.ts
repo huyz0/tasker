@@ -19,8 +19,11 @@
  * `['tasks', projectId, …]` variant without listing them.
  */
 const KEYS_BY_ENTITY: Record<string, string[]> = {
-  task: ['tasks', 'task', 'dashboard'],
-  tasknote: ['handoffNotes', 'task'],
+  // 'reports' (M24): every Reports card derives from task activity — status
+  // changes, handoff notes, comment churn — so those three entities keep the
+  // exception and trend queries live; nothing else re-runs two report RPCs.
+  task: ['tasks', 'task', 'dashboard', 'reports'],
+  tasknote: ['handoffNotes', 'task', 'reports'],
   task_type: ['taskTypes', 'taskType'],
   task_status: ['taskTypes', 'taskType'],
   task_status_transition: ['taskTypes', 'taskType'],
@@ -32,7 +35,7 @@ const KEYS_BY_ENTITY: Record<string, string[]> = {
   agent_role: ['agentRoles', 'agents'],
   artifact: ['artifacts', 'artifactContent', 'artifactLocate'],
   folder: ['folders', 'artifacts'],
-  comment: ['comments'],
+  comment: ['comments', 'reports'],
   label: ['labels'],
   team: ['teams', 'teamMembers'],
   role: ['roles', 'permissionsRoles'],

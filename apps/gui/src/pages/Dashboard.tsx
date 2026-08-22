@@ -6,6 +6,7 @@ import { transport } from '../lib/connectTransport';
 import { DashboardService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore, type LayoutState } from '../store/layout';
 import { ListState } from '../components/ui/ListState';
+import { sinceLabel } from '../lib/sinceLabel';
 
 const dashboardClient = createClient(DashboardService, transport);
 
@@ -23,9 +24,6 @@ const dashboardClient = createClient(DashboardService, transport);
  * reality, and which agents have gone quiet. Everything here is one RPC — the
  * server does the joins rather than the browser doing four round trips.
  */
-
-/** Beyond this an agent has stopped rather than paused. */
-const SILENT_AFTER_HOURS = 24;
 
 function Panel({ title, subtitle, action, children }: {
   title: string;
@@ -62,17 +60,6 @@ function TaskRow({ task, children }: { task: any; children?: ReactNode }) {
   );
 }
 
-/** "9 days ago", or "never" — the distinction the fleet panel exists to draw. */
-function sinceLabel(iso?: string): { text: string; silent: boolean } {
-  if (!iso) return { text: 'never called', silent: true };
-  const ms = Date.now() - new Date(iso).getTime();
-  const hours = ms / 3_600_000;
-  const silent = hours > SILENT_AFTER_HOURS;
-  if (hours < 1) return { text: 'active in the last hour', silent };
-  if (hours < 24) return { text: `${Math.floor(hours)}h ago`, silent };
-  return { text: `${Math.floor(hours / 24)}d ago`, silent };
-}
-
 export function Dashboard() {
   const setActivePageTitle = useLayoutStore((s: LayoutState) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s: LayoutState) => s.activeOrgId);
@@ -102,9 +89,19 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">What needs you, and what your agents have been doing.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">What needs you, and what your agents have been doing.</p>
+        </div>
+        {/* One link, no numbers: the Reports screen (M24) answers "how is work
+            performed", this screen answers "what needs me" — and per the header
+            comment above, no count survives "what will you do differently?". */}
+        {activeProjectId && (
+          <Link to="/reports" className="shrink-0 text-sm text-primary hover:underline">
+            View project reports →
+          </Link>
+        )}
       </div>
 
       {(isLoading || error) && (

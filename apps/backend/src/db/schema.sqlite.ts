@@ -794,3 +794,46 @@ export const auditLog = sqliteTable("audit_log", {
     streamSeqUnique: uniqueIndex("audit_log_stream_seq_unique").on(table.streamSeq),
   };
 });
+
+/**
+ * Task history, written synchronously by the same handlers that perform each
+ * mutation (M24-T03, ADR-0020) — the substrate for the Reports screen, chosen
+ * over deriving from `audit_log` because that table has no project scoping,
+ * stamps the projector's clock rather than the event's, and does not exist at
+ * all in the STANDALONE deployment.
+ *
+ * `kind` is app-enforced (like `tasks.status`): 'created' | 'status_changed' |
+ * 'claimed' | 'assigned' | 'unassigned' | 'archived' | 'restored' | 'note' |
+ * 'comment' | 'handoff'. `archived` carries only `fromStatus`, `restored`
+ * only `toStatus` — the CFD's +1-to/−1-from algebra.
+ *
+ * Terminality is stamped at write time (max `position` of the type's
+ * statuses; 'done' for untyped tasks) so reordering a status list cannot
+ * rewrite last quarter's completion counts. `assigneeAgentId`/`assigneeUserId`
+ * denormalize the holder at event time (XOR, like `task_assignments`) because
+ * assignment history is reconstructible from nothing else. `actorId` and the
+ * assignee columns carry no FK — the `audit_log` precedent: a purged agent
+ * leaves dangling text and readers render "(deleted agent)".
+ */
+export const taskActivity = sqliteTable("task_activity", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => tasks.id),
+  projectId: text("project_id").notNull().references(() => projects.id),
+  kind: text("kind").notNull(),
+  fromStatus: text("from_status"),
+  toStatus: text("to_status"),
+  fromIsTerminal: integer("from_is_terminal", { mode: "boolean" }).notNull().default(false),
+  toIsTerminal: integer("to_is_terminal", { mode: "boolean" }).notNull().default(false),
+  actorType: text("actor_type").notNull().default("system"),
+  actorId: text("actor_id"),
+  assigneeAgentId: text("assignee_agent_id"),
+  assigneeUserId: text("assignee_user_id"),
+  occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    // Every report query filters by kind before bucketing over time.
+    projectKindOccurredIdx: index("task_activity_project_kind_occurred_idx").on(table.projectId, table.kind, table.occurredAt),
+    // Per-task last-signal (stalled claims) and the task history timeline.
+    taskOccurredIdx: index("task_activity_task_occurred_idx").on(table.taskId, table.occurredAt),
+  };
+});

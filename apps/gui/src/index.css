@@ -63,6 +63,18 @@
   --color-neutral-subtle: hsl(var(--neutral-subtle));
   --color-neutral-subtle-foreground: hsl(var(--neutral-subtle-foreground));
 
+  /* Chart series colours (ADR-0021). Deliberately no `-foreground` pairs:
+     chart colours never carry text — legends pair a swatch with `foreground`
+     ink, and WCAG 1.4.1 is met by labels and the sr-only data table, never by
+     colour alone — so the contrast gate's silence on them is a decision, not
+     an oversight. Six tokens; past six the kit cycles the palette. */
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-chart-6: hsl(var(--chart-6));
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -145,6 +157,17 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 271 100% 60%;
 
+    /* Chart series hues (ADR-0021): anchored to the palette above — 1 is the
+       brand violet, 5 the info blue, 6 the success green — and validated as a
+       set for adjacent-pair colourblind separation and ≥3:1 contrast on the
+       light background. Order is part of the contract; do not reshuffle. */
+    --chart-1: 271 76% 53%;
+    --chart-2: 187 95% 34%;
+    --chart-3: 32 92% 45%;
+    --chart-4: 331 74% 51%;
+    --chart-5: 217 85% 50%;
+    --chart-6: 142 64% 33%;
+
     --radius: 0.5rem;
   }
 
@@ -193,6 +216,15 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 271 100% 75%;
+    /* The same six hues re-stepped for the dark background — lighter and less
+       saturated so they hold ≥3:1 contrast and colourblind separation there;
+       a straight copy of the light steps would sink into the surface. */
+    --chart-1: 271 81% 62%;
+    --chart-2: 187 70% 42%;
+    --chart-3: 35 90% 40%;
+    --chart-4: 331 75% 60%;
+    --chart-5: 213 88% 60%;
+    --chart-6: 142 62% 42%;
   }
 
   * {

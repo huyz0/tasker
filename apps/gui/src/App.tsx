@@ -30,6 +30,7 @@ const MemoryExplorer = lazy(() => import('./features/Memory').then((m) => ({ def
 const HandoffsScreen = lazy(() => import('./features/Handoffs').then((m) => ({ default: m.HandoffsScreen })));
 const TaskTypesEditor = lazy(() => import('./features/TaskTypes').then((m) => ({ default: m.TaskTypesEditor })));
 const BinDashboard = lazy(() => import('./features/Bin').then((m) => ({ default: m.BinDashboard })));
+const ReportsScreen = lazy(() => import('./features/Reports').then((m) => ({ default: m.ReportsScreen })));
 
 // A minimal, wordless placeholder rather than a skeleton per-screen: with
 // route-level code-splitting the chunk is typically already cached after
@@ -57,6 +58,7 @@ function App() {
                 <Suspense fallback={<RouteFallback />}>
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
+                    <Route path="/reports" element={<ReportsScreen />} />
                     <Route path="/organizations" element={<OrganizationsDashboard />} />
                     <Route path="/projects" element={<ProjectsWizard />} />
                     <Route path="/tasks" element={<TasksWorkbench />} />

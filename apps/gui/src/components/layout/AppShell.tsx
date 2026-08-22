@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Building2,
   FolderKanban,
   CheckSquare,
@@ -39,6 +40,7 @@ const NAV_GROUPS = [
     label: 'Workspace',
     items: [
       { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+      { name: 'Reports', path: '/reports', icon: BarChart3 },
       { name: 'Projects', path: '/projects', icon: FolderKanban },
       { name: 'Tasks', path: '/tasks', icon: CheckSquare },
       { name: 'AI Agents', path: '/agents', icon: Bot },

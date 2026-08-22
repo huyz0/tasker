@@ -7,7 +7,7 @@ describe('queryKeysForSubject', () => {
   it('invalidates only what a task event touches', () => {
     // The whole point of the feed is to stop refetching everything. A task
     // changing must not re-run artifacts, teams and the memory screen.
-    expect(roots('domain.task.created')).toEqual(['tasks', 'task', 'dashboard', 'auditEvents']);
+    expect(roots('domain.task.created')).toEqual(['tasks', 'task', 'dashboard', 'reports', 'auditEvents']);
   });
 
   it('treats every action on an entity the same way', () => {
@@ -19,7 +19,16 @@ describe('queryKeysForSubject', () => {
   });
 
   it('routes a note to the handoff and task queries, not the board', () => {
-    expect(roots('domain.tasknote.created')).toEqual(['handoffNotes', 'task', 'auditEvents']);
+    expect(roots('domain.tasknote.created')).toEqual(['handoffNotes', 'task', 'reports', 'auditEvents']);
+  });
+
+  it('keeps the report cards live for the events they derive from, and only those', () => {
+    // M24: every Reports card derives from task activity — status changes,
+    // handoff notes, comment churn. Anything else (a label, a team) must not
+    // re-run two report RPCs.
+    expect(roots('domain.comment.created')).toEqual(['comments', 'reports', 'auditEvents']);
+    expect(roots('domain.label.created')).not.toContain('reports');
+    expect(roots('domain.project.updated')).not.toContain('reports');
   });
 
   it('maps the status-vocabulary entities onto the task-type queries that hold them', () => {
