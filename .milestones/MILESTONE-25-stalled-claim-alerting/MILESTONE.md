@@ -183,7 +183,7 @@ by construction).
         with the number of held tasks) plus the untouched `reports.test.ts`
         suite green with zero edits.
 
-- [ ] **M25-T04** — Recipient resolution, email template, digest assembly,
+- [x] **M25-T04** — Recipient resolution, email template, digest assembly,
       sweep, and wiring: export `ADMIN_ROLES` from `lib/authz.ts` (module-
       private today) and use it in `resolveTaskAlertRecipients(db,
       isStandalone, {taskId, orgId})` (task_reviewers → org owner/admin

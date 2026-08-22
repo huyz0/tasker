@@ -67,6 +67,28 @@ export interface StalledClaimCandidate {
   lastSignalAt?: Date;
   agentLastSeenAt?: Date;
   neverStarted: boolean;
+  /**
+   * M25-T04's dedup key (ADR-0022 Decision 3): `max(claimedAt, assignedAt)`,
+   * falling back to the task's own `createdAt` only when neither a claim nor
+   * an assignment row exists - the case a claim predating activity
+   * collection hits. **Always** defined, unlike `claimedAt` above - the
+   * whole point of the NOT NULL fix is that this never has a hole for the
+   * dedup table's unique index to fail to close.
+   *
+   * Deliberately NOT `silentSince` below: that one also incorporates the
+   * most recent signal, so it moves every time *any* activity lands on the
+   * task, which would re-arm the dedup table on a still-genuinely-stalled
+   * claim's very next sweep - the opposite of what dedup is for.
+   */
+  anchorAt: Date;
+  /**
+   * `lastSignalAt ?? claimedAt ?? task.createdAt` - the same silence clock
+   * the detector filters candidates by, exposed so the M25-T04 digest can
+   * sort "most-silent-first" (matching this module's own internal sort
+   * order) and compute an hours-silent figure without recomputing this
+   * three-way fallback itself.
+   */
+  silentSince: Date;
 }
 
 export interface FindStalledCandidatesOptions {
@@ -171,7 +193,13 @@ export async function findStalledCandidates(
     // own createdAt is the honest fallback silence anchor.
     const silentSince: Date = lastSignalAt ?? claimedAt ?? r.createdAt;
     const neverStarted = anchorAt ? (!lastSignalAt || lastSignalAt <= anchorAt) : !lastSignalAt;
-    return { r, lastSignalAt, claimedAt, silentSince, neverStarted };
+    // M25-T04's dedup anchor - a separate value from `anchorAt` above on
+    // purpose: `neverStarted`'s ternary needs to know "no claim/assign row at
+    // all" as a distinct case from "one exists", so that one stays
+    // undefined-able. This is the NOT NULL version ADR-0022 Decision 3 wants
+    // for the dedup table specifically.
+    const dedupAnchorAt: Date = anchorAt ?? r.createdAt;
+    return { r, lastSignalAt, claimedAt, silentSince, neverStarted, dedupAnchorAt };
   });
 
   const stalled = withSilence
@@ -215,5 +243,7 @@ export async function findStalledCandidates(
     lastSignalAt: c.lastSignalAt,
     agentLastSeenAt: lastSeenByAgent.get(c.r.agentId),
     neverStarted: c.neverStarted,
+    anchorAt: c.dedupAnchorAt,
+    silentSince: c.silentSince,
   }));
 }

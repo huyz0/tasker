@@ -108,7 +108,11 @@ export async function assertOrgMember(db: any, userId: string, orgId: string): P
 
 // 'owner' is a superset of 'admin' - every admin-gated action is also
 // permitted for the org's owner(s), so admin checks below accept either.
-const ADMIN_ROLES = ['owner', 'admin'];
+// Exported (M25-T04): `resolveTaskAlertRecipients`'s org owner/admin fallback
+// tier (ADR-0022 Decision 1) needs the same vocabulary this module already
+// enforces admin-gated actions with, rather than a second list drifting out
+// of sync with it.
+export const ADMIN_ROLES = ['owner', 'admin'];
 
 /** Returns the caller's role in the org, or null if they aren't a member. */
 export async function getOrgMemberRole(db: any, userId: string, orgId: string): Promise<string | null> {

@@ -105,3 +105,47 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   concerns) — one small accepted redundancy in exchange for a clean,
   zero-behavior-change extraction.
 - **Next**: M25-T04 (recipient resolution, email, sweep, wiring).
+
+## M25-T04 — Recipient resolution, email, digest sweep, wiring
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Approach**: export ADMIN_ROLES from authz.ts; recipient resolution
+  (task_reviewers -> org owner/admin fallback); a pure digest email
+  template mirroring inviteEmail.ts; the sweep (mailer-enabled early exit,
+  group-by-recipient, dedup writes only for itemized tasks, publishes
+  domain.task.stalled with stalledAgentId not agentId); the
+  STALLED_ALERT_AFTER_HOURS env var; third setInterval block in index.ts.
+  TDD, injected MailTransport, no real socket.
+- **Changed**: exported `ADMIN_ROLES` from `authz.ts`; new
+  `resolveTaskAlertRecipients.ts` (task_reviewers -> org owner/admin
+  fallback, dedup by email, non-null-email filter); new
+  `stalledClaimAlertEmail.ts` (pure template mirroring inviteEmail.ts,
+  digest-shaped, states the reviewer/admin reason, explicit
+  unassign-or-reassign-not-comment guidance); new `stalledClaimAlerts.ts`
+  (the sweep: mailer.enabled early exit before any query, dedup keyed on
+  (taskId, anchorAt), group-by-recipient digests capped at
+  DIGEST_TASK_LIMIT=20 with overflow left eligible for a later sweep,
+  publishes `domain.task.stalled` with `stalledAgentId` — never `agentId`
+  — each write/publish isolated in its own try/catch, per-recipient-group
+  isolation mirroring retentionSweep.ts); third hourly `setInterval` in
+  `index.ts`, no sweep at boot; `stalledClaims.ts` additively extended
+  with `anchorAt`/`silentSince` fields (the sweep's own dedup needs the
+  exact anchor the detector already computes internally — exposing it
+  changes nothing for its existing consumer, `reports/exceptions.ts`,
+  confirmed by its unmodified suite still passing).
+- **Verified**: 49 new tests (resolveTaskAlertRecipients 6,
+  stalledClaimAlertEmail 13, stalledClaimAlerts 15, stalledClaims +3);
+  backend:test 1783 pass; `moon check backend` green. Payload shape
+  observed exactly: `{orgId, projectId, taskId, stalledAgentId,
+  hoursSilent}` with `agentId` proven absent; a second test feeds that
+  exact shape to `auditProjector.ts`'s `extractActor` and confirms
+  `actorType: 'system'` — both halves of exit criterion 8's payload
+  proof now hold (the live audit_log half is still T05's job).
+- **Notes**: `STALLED_ALERT_AFTER_HOURS` reads `process.env` lazily per
+  sweep call (matching `authz.ts`'s `isStandalone()` precedent) rather
+  than freezing at import time, specifically so exit criterion 10's
+  env-var test is possible within one process. `publishDomainEvent`
+  already null-safes `nc` internally; the sweep's own try/catch around it
+  is defense-in-depth, not load-bearing.
+- **Next**: M25-T05 (live verification, docs, closeout).

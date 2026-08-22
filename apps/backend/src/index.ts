@@ -35,6 +35,7 @@ import { logger } from "./lib/logger";
 import { requestLoggingInterceptor } from "./lib/requestLogging";
 import { reportError } from "./lib/errorReporter";
 import { runRetentionSweep } from "./lib/retentionSweep";
+import { runStalledClaimAlertSweep } from "./lib/stalledClaimAlerts";
 import { config } from "./config";
 import { withRequestCorrelation } from "./lib/natsCorrelation";
 import { getRpcMethodStats } from "./lib/rpcMetrics";
@@ -425,3 +426,13 @@ setInterval(() => {
   const eventCounts = getBusinessEventCounts();
   if (Object.keys(eventCounts).length > 0) logger.info({ eventCounts }, "business_events.summary");
 }, METRICS_LOG_INTERVAL_MS);
+
+// M25-T04 (ADR-0022). Hourly, not configurable (Decision 5 - the interval is
+// a mechanism detail, not a policy a deployment has a legitimate reason to
+// tune, mirroring RETENTION_SWEEP_INTERVAL_MS's own precedent). No sweep at
+// boot, matching both blocks above - the first fire is after one full interval.
+const STALLED_ALERT_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
+setInterval(() => {
+  runStalledClaimAlertSweep(db, isStandalone, mailer, nc).catch((err) =>
+    reportError({ message: "stalled_claim_alert_sweep.failed", err, severity: "error" }));
+}, STALLED_ALERT_SWEEP_INTERVAL_MS);

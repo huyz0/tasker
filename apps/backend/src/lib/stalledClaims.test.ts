@@ -332,3 +332,54 @@ describe("findStalledCandidates - global-scale query shape (exit criterion 6)", 
     expect(scopedParams.length).toBeLessThan(10);
   });
 });
+
+describe("findStalledCandidates - anchorAt/silentSince (M25-T04)", () => {
+  it("exposes anchorAt as claimedAt when a claim row exists", async () => {
+    const { db } = await setupIntegrationTest();
+    const base = await seedOrg(db, "anchor1");
+    const projectId = await seedProject(db, base, "anchor1");
+    const agentId = await seedAgent(db, base, "anchor1");
+    const taskId = await seedTask(db, projectId, "anchor1");
+    await seedHold(db, taskId, agentId);
+    const claimedAt = ago(30 * HOUR);
+    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: claimedAt, actorId: agentId, assigneeAgentId: agentId });
+
+    const [c] = await findStalledCandidates(db, true, { projectId, afterHours: 24 });
+    expect(c!.anchorAt).toBeInstanceOf(Date);
+    expect(Math.abs(c!.anchorAt.getTime() - claimedAt.getTime())).toBeLessThan(5000);
+  });
+
+  it("falls back anchorAt to the task's own createdAt for a claim predating activity collection - never undefined", async () => {
+    // This is the exact NOT NULL case ADR-0022 Decision 3 exists for: no
+    // claimed/assigned row at all, so `claimedAt` above is undefined but
+    // `anchorAt` must not be - a dedup table keyed on a hole here is the bug
+    // T02/T03 were built to close.
+    const { db } = await setupIntegrationTest();
+    const base = await seedOrg(db, "anchor2");
+    const projectId = await seedProject(db, base, "anchor2");
+    const agentId = await seedAgent(db, base, "anchor2");
+    const createdAt = ago(30 * HOUR);
+    const taskId = await seedTask(db, projectId, "anchor2", { createdAt });
+    await seedHold(db, taskId, agentId);
+
+    const [c] = await findStalledCandidates(db, true, { projectId, afterHours: 24 });
+    expect(c!.claimedAt).toBeUndefined();
+    expect(c!.anchorAt).toBeInstanceOf(Date);
+    expect(Math.abs(c!.anchorAt.getTime() - createdAt.getTime())).toBeLessThan(5000);
+  });
+
+  it("exposes silentSince matching the detector's own filter clock", async () => {
+    const { db } = await setupIntegrationTest();
+    const base = await seedOrg(db, "anchor3");
+    const projectId = await seedProject(db, base, "anchor3");
+    const agentId = await seedAgent(db, base, "anchor3");
+    const taskId = await seedTask(db, projectId, "anchor3");
+    await seedHold(db, taskId, agentId);
+    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
+    const noteAt = ago(26 * HOUR);
+    await recordActivity(db, { taskId, projectId, kind: "note", occurredAt: noteAt, actorId: agentId });
+
+    const [c] = await findStalledCandidates(db, true, { projectId, afterHours: 24 });
+    expect(Math.abs(c!.silentSince.getTime() - noteAt.getTime())).toBeLessThan(5000);
+  });
+});
