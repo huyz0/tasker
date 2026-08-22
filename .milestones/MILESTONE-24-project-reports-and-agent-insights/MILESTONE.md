@@ -182,7 +182,7 @@ users are agents, and reports are the humans-only monitoring surface).
         + migration/backfill tests, incl. idempotent re-run); backfill
         verified against live MySQL via `docker compose`.
 
-- [ ] **M24-T04** — Activity writes: a small `recordTaskActivity` helper
+- [x] **M24-T04** — Activity writes: a small `recordTaskActivity` helper
       (stamps terminality from the task type's status positions at write
       time; resolves assignee-at-event; fires only after the primary write's
       success/CAS check — accepted non-transactional drift per ADR-0020)

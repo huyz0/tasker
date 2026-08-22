@@ -5,6 +5,7 @@ import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, inArray } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import { requirePrincipal, authorizePrincipal, getTaskOrgId, getArtifactOrgId } from "../../lib/authz";
+import { recordTaskActivity, currentAssignee, actorFromPrincipal } from "../tasks/taskActivity";
 import type { Principal } from "../auth/session";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -116,6 +117,22 @@ export const createCommentsHandler = (db: any, nc: any = null) => {
       };
 
       await insertRecord(db, comments, payload, isStandalone);
+
+      // M24-T04 (ADR-0020): only comments on tasks are task activity - a
+      // comment is a signal for the stalled-claims "last signal per task"
+      // query. Artifact comments record nothing. The project is resolved via
+      // the task (comments carry no projectId of their own).
+      if (parsed.entityType === "task") {
+        const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+        const taskRows = await db.select().from(tasksTable).where(eq((tasksTable as any).id, parsed.entityId)).limit(1);
+        await recordTaskActivity(db, isStandalone, {
+          taskId: parsed.entityId,
+          projectId: taskRows[0].projectId,
+          kind: "comment",
+          ...actorFromPrincipal(principal),
+          ...(await currentAssignee(db, isStandalone, parsed.entityId)),
+        });
+      }
 
       const [withName] = await attachAuthorNames(db, isStandalone, [payload]);
       const commentResp = { ...withName, createdAt: new Date().toISOString() };

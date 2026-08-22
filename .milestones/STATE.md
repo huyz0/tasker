@@ -1,6 +1,6 @@
 ---
 active_milestone: M24
-active_task: M24-T04
+active_task: M24-T05
 last_updated: 2026-08-22
 last_commit: 8329130
 blocked: false
@@ -1323,7 +1323,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M21 | Shared Memory & Belief System   | done   | —          | 10    | 10   |
 | M22 | Task Handoff & Continuity       | done   | —          | 8     | 8    |
 | M23 | Rich Markdown Editor            | done   | —          | 5     | 5    |
-| M24 | Project Reports & Agent Insights | in-progress | — | 10    | 3    |
+| M24 | Project Reports & Agent Insights | in-progress | — | 10    | 4    |
 
 **Total: 202 tasks across 18 milestones — 149 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5).**
 

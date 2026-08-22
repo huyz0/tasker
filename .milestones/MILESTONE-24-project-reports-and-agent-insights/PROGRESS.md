@@ -89,3 +89,36 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   `0031_audit_log`(mysql) carry raw `when` values smaller than 0041–0043's —
   a db already past 0043 before audit_log landed would never apply them.
 - **Next**: M24-T04 (activity writes in handlers + purge cascades).
+
+## M24-T04 — Activity writes in handlers + purge cascades
+
+- **Status**: done
+- **Date**: 2026-08-22
+- **Approach**: One `recordTaskActivity` helper (terminality stamping,
+  assignee-at-event resolution, dialect-aware table pick) called from every
+  write site named in the plan, each placed after the primary write's
+  success/CAS check; claim insert inside the withIdempotency callback;
+  unassignTask gains affected-row capture first; explicit deletes in the
+  three purge paths. TDD: per-site row-correctness tests, replay/race
+  tests, purge-cascade tests.
+- **Changed**: new `modules/tasks/taskActivity.ts` (recordTaskActivity +
+  isTerminalStatus + currentAssignee + actorFromPrincipal; insert failure
+  logged and swallowed — never fails the mutation, per ADR-0020's accepted
+  drift) + `taskActivity.test.ts` (22 tests, 20 red-first TDD, 2 negatives
+  validated by deliberate break); call sites in `tasks.handler.ts` (created/
+  status_changed/claimed/assigned/unassigned/archived/restored — each after
+  its success/CAS check, claim + create inside withIdempotency),
+  `task_notes.handler.ts` (note/handoff), `comments.handler.ts` (task
+  comments only); purge deletes in `purgeTask`, `purgeTaskCascade`,
+  `purgeProjectCascade`.
+- **Verified**: `moon check backend` green; backend:test 1683+22 pass;
+  replay claims write once, lost claims write nothing, unassign-of-nothing
+  writes nothing, double archive writes once, purge fixtures leave zero
+  rows.
+- **Notes**: unassignTask records the removed holder from the request's
+  exact (agentId, userId) pair rather than a pre-delete SELECT — the DELETE
+  matches that exact pair (M14 semantics), so a removed row IS that holder,
+  race-free. `updateTaskNote`/`deleteTaskNote` deliberately record nothing
+  (only creation is a signal). Users can claim too; the claimed row records
+  whichever principal won.
+- **Next**: M24-T05 (exceptions report handler).

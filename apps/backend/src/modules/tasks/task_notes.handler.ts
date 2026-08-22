@@ -5,6 +5,7 @@ import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, desc, isNull } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import { requirePrincipal, authorizePrincipal, getTaskOrgId, getProjectOrgId } from "../../lib/authz";
+import { recordTaskActivity, currentAssignee } from "./taskActivity";
 import type { Principal } from "../auth/session";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -132,6 +133,22 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       };
 
       await insertRecord(db, notes, payload, isStandalone, false);
+
+      // M24-T04 (ADR-0020): a note's creation is a signal for the
+      // stalled-claims "last signal per task" query, recorded as 'note' or
+      // 'handoff' per its type. Only creation is a signal -
+      // updateTaskNote/deleteTaskNote deliberately record no activity.
+      // projectId isn't in scope here - one small lookup.
+      const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const taskRows = await db.select().from(tasksTable).where(eq((tasksTable as any).id, parsed.taskId)).limit(1);
+      await recordTaskActivity(db, isStandalone, {
+        taskId: parsed.taskId,
+        projectId: taskRows[0].projectId,
+        kind: parsed.noteType === "handoff" ? "handoff" : "note",
+        actorType: "agent",
+        actorId: principal.agentId,
+        ...(await currentAssignee(db, isStandalone, parsed.taskId)),
+      });
 
       const noteResp = { ...payload, createdAt: payload.createdAt.toISOString() };
       publishDomainEvent(nc, "domain.tasknote.created", noteResp);
