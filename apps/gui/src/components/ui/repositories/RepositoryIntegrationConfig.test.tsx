@@ -1,35 +1,10 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { expect, test, describe, vi, beforeEach } from 'vitest';
+import { expect, test, describe } from 'vitest';
+import { RepositoryService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError, mockRpcPending } from '../../../test/mockRpc';
 import { RepositoryIntegrationConfig } from './RepositoryIntegrationConfig';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { confirmAction, cancelAction } from '../../../test/confirm';
-
-const { mockListRepositoryLinks, mockListPullRequests, mockSyncPullRequests, mockListBuilds, mockListDeployments, mockAddRepositoryLink, mockRemoveRepositoryLink } = vi.hoisted(() => ({
-  mockListRepositoryLinks: vi.fn(),
-  mockListPullRequests: vi.fn(),
-  mockSyncPullRequests: vi.fn(),
-  mockListBuilds: vi.fn(),
-  mockListDeployments: vi.fn(),
-  mockAddRepositoryLink: vi.fn(),
-  mockRemoveRepositoryLink: vi.fn(),
-}));
-
-// Mock the ConnectRPC client
-vi.mock('@connectrpc/connect', () => ({
-  createClient: () => ({
-    listRepositoryLinks: mockListRepositoryLinks,
-    listPullRequests: mockListPullRequests,
-    syncPullRequests: mockSyncPullRequests,
-    listBuilds: mockListBuilds,
-    listDeployments: mockListDeployments,
-    addRepositoryLink: mockAddRepositoryLink,
-    removeRepositoryLink: mockRemoveRepositoryLink,
-  }),
-}));
-
-vi.mock('@connectrpc/connect-web', () => ({
-  createConnectTransport: vi.fn()
-}));
 
 function renderComponent() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -40,20 +15,80 @@ function renderComponent() {
   );
 }
 
-describe('RepositoryIntegrationConfig', () => {
-  beforeEach(() => {
-    mockListRepositoryLinks.mockReset();
-    mockListPullRequests.mockReset();
-    mockSyncPullRequests.mockReset();
-    mockListBuilds.mockReset();
-    mockListDeployments.mockReset();
-    mockAddRepositoryLink.mockReset();
-    mockRemoveRepositoryLink.mockReset();
+/** Registers ListRepositoryLinks and records every request it receives. */
+function withListLinks(response: object | ((body: any) => object)) {
+  const requests: any[] = [];
+  mockRpc(RepositoryService, 'ListRepositoryLinks', (body) => {
+    requests.push(body);
+    return typeof response === 'function' ? response(body) : response;
   });
+  return requests;
+}
 
+/** Registers ListPullRequests and records every request it receives. */
+function withListPullRequests(response: object | ((body: any) => object)) {
+  const requests: any[] = [];
+  mockRpc(RepositoryService, 'ListPullRequests', (body) => {
+    requests.push(body);
+    return typeof response === 'function' ? response(body) : response;
+  });
+  return requests;
+}
+
+/** Registers SyncPullRequests and records every request it receives. */
+function withSyncPullRequests(response: object = { success: true }) {
+  const requests: any[] = [];
+  mockRpc(RepositoryService, 'SyncPullRequests', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers ListBuilds and records every request it receives. */
+function withListBuilds(response: object | ((body: any) => object)) {
+  const requests: any[] = [];
+  mockRpc(RepositoryService, 'ListBuilds', (body) => {
+    requests.push(body);
+    return typeof response === 'function' ? response(body) : response;
+  });
+  return requests;
+}
+
+/** Registers ListDeployments and records every request it receives. */
+function withListDeployments(response: object) {
+  const requests: any[] = [];
+  mockRpc(RepositoryService, 'ListDeployments', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers AddRepositoryLink and records every request it receives. */
+function withAddLink(response: object) {
+  const requests: any[] = [];
+  mockRpc(RepositoryService, 'AddRepositoryLink', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers RemoveRepositoryLink and records every request it receives. */
+function withRemoveLink(response: object = { success: true }) {
+  const requests: any[] = [];
+  mockRpc(RepositoryService, 'RemoveRepositoryLink', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+describe('RepositoryIntegrationConfig', () => {
   test('renders loading and then data', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    withListLinks({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
 
     renderComponent();
 
@@ -62,7 +97,7 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('does not offer GitLab as a provider option, since it is not supported by the backend', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [] });
+    withListLinks({ links: [] });
 
     renderComponent();
 
@@ -71,8 +106,8 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('links a Bitbucket repository using a direct API token', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [] });
-    mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-2', provider: 'bitbucket', remoteName: 'huyz0/bb-repo' } });
+    withListLinks({ links: [] });
+    const requests = withAddLink({ link: { id: 'link-2', provider: 'bitbucket', remoteName: 'huyz0/bb-repo' } });
 
     renderComponent();
 
@@ -83,7 +118,7 @@ describe('RepositoryIntegrationConfig', () => {
     fireEvent.change(screen.getByPlaceholderText('API token'), { target: { value: 'ATATT-fake-token' } });
     fireEvent.click(screen.getByText('Link with API token'));
 
-    await waitFor(() => expect(mockAddRepositoryLink).toHaveBeenCalledWith({
+    await waitFor(() => expect(requests).toContainEqual({
       projectId: 'proj-123',
       provider: 'bitbucket',
       remoteName: 'huyz0/bb-repo',
@@ -97,8 +132,8 @@ describe('RepositoryIntegrationConfig', () => {
   // fields once the placeholder itself scrolled out of view or was typed
   // over.
   test('the remote, email and API token inputs are reachable by their accessible label', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [] });
-    mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-2', provider: 'bitbucket', remoteName: 'huyz0/bb-repo' } });
+    withListLinks({ links: [] });
+    const requests = withAddLink({ link: { id: 'link-2', provider: 'bitbucket', remoteName: 'huyz0/bb-repo' } });
 
     renderComponent();
 
@@ -110,7 +145,7 @@ describe('RepositoryIntegrationConfig', () => {
     fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'ATATT-fake-token' } });
     fireEvent.click(screen.getByText('Link with API token'));
 
-    await waitFor(() => expect(mockAddRepositoryLink).toHaveBeenCalledWith({
+    await waitFor(() => expect(requests).toContainEqual({
       projectId: 'proj-123',
       provider: 'bitbucket',
       remoteName: 'huyz0/bb-repo',
@@ -120,8 +155,8 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('the GitHub personal access token input is reachable by its accessible label', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [] });
-    mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-3', provider: 'github', remoteName: 'huyz0/gh-repo' } });
+    withListLinks({ links: [] });
+    const requests = withAddLink({ link: { id: 'link-3', provider: 'github', remoteName: 'huyz0/gh-repo' } });
 
     renderComponent();
 
@@ -130,17 +165,18 @@ describe('RepositoryIntegrationConfig', () => {
     fireEvent.change(screen.getByLabelText('Personal access token'), { target: { value: 'ghp_fake-pat' } });
     fireEvent.click(screen.getByText('Link with API token'));
 
-    await waitFor(() => expect(mockAddRepositoryLink).toHaveBeenCalledWith({
+    // An empty `email` is proto3's default for a string field, so the real
+    // JSON codec omits it from the wire rather than sending ''.
+    await waitFor(() => expect(requests).toContainEqual({
       projectId: 'proj-123',
       provider: 'github',
       remoteName: 'huyz0/gh-repo',
-      email: '',
       apiToken: 'ghp_fake-pat',
     }));
   });
 
   test('stores a per-flow nonce in sessionStorage before starting the OAuth redirect, binding the callback to this tab (login CSRF protection)', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [] });
+    withListLinks({ links: [] });
     sessionStorage.removeItem('repoLinkOauthNonce');
 
     const originalLocation = window.location;
@@ -164,8 +200,8 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('links a GitHub repository using a direct personal access token, with no email required', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [] });
-    mockAddRepositoryLink.mockResolvedValue({ link: { id: 'link-3', provider: 'github', remoteName: 'huyz0/gh-repo' } });
+    withListLinks({ links: [] });
+    const requests = withAddLink({ link: { id: 'link-3', provider: 'github', remoteName: 'huyz0/gh-repo' } });
 
     renderComponent();
 
@@ -174,18 +210,17 @@ describe('RepositoryIntegrationConfig', () => {
     fireEvent.change(screen.getByPlaceholderText('Personal access token'), { target: { value: 'ghp_fake-pat' } });
     fireEvent.click(screen.getByText('Link with API token'));
 
-    await waitFor(() => expect(mockAddRepositoryLink).toHaveBeenCalledWith({
+    await waitFor(() => expect(requests).toContainEqual({
       projectId: 'proj-123',
       provider: 'github',
       remoteName: 'huyz0/gh-repo',
-      email: '',
       apiToken: 'ghp_fake-pat',
     }));
   });
 
   test('lists synced pull requests for a linked repository', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({
+    withListLinks({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({
       pullRequests: [{ id: 'pr-1', remotePrId: '42', title: 'Fix the thing', status: 'open' }],
     });
 
@@ -196,8 +231,8 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('shows an empty state when no pull requests have been synced', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    withListLinks({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
 
     renderComponent();
 
@@ -205,41 +240,46 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('syncs pull requests and refreshes the list', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests
-      .mockResolvedValueOnce({ pullRequests: [] })
-      .mockResolvedValueOnce({ pullRequests: [{ id: 'pr-1', remotePrId: '42', title: 'Fix the thing', status: 'open' }] });
-    mockSyncPullRequests.mockResolvedValue({ success: true });
+    withListLinks({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    let synced = false;
+    withListPullRequests(() => {
+      const wasSynced = synced;
+      synced = true;
+      return wasSynced
+        ? { pullRequests: [{ id: 'pr-1', remotePrId: '42', title: 'Fix the thing', status: 'open' }] }
+        : { pullRequests: [] };
+    });
+    const requests = withSyncPullRequests();
 
     renderComponent();
 
     await waitFor(() => expect(screen.getByText('No pull requests synced yet.')).toBeDefined());
     fireEvent.click(screen.getByText('Sync PRs'));
 
-    await waitFor(() => expect(mockSyncPullRequests).toHaveBeenCalledWith({ projectId: 'proj-123' }));
+    await waitFor(() => expect(requests).toContainEqual({ projectId: 'proj-123' }));
     await waitFor(() => expect(screen.getByText('#42: Fix the thing')).toBeDefined());
   });
 
   test('shows an error message when sync fails', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockSyncPullRequests.mockRejectedValue(new Error('provider unavailable'));
+    withListLinks({ links: [{ id: '1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
+    mockRpcError(RepositoryService, 'SyncPullRequests', 'unavailable', 'provider unavailable');
 
     renderComponent();
 
     await waitFor(() => expect(screen.getByText('No pull requests synced yet.')).toBeDefined());
     fireEvent.click(screen.getByText('Sync PRs'));
 
-    await waitFor(() => expect(screen.getByText('Failed to sync pull requests: provider unavailable')).toBeDefined());
+    await waitFor(() => expect(screen.getByText(/Failed to sync pull requests:.*provider unavailable/)).toBeDefined());
   });
 
   test('shows builds and their deployments when expanded', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockListBuilds.mockResolvedValue({
+    withListLinks({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
+    const buildRequests = withListBuilds({
       builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'abc1234def' }],
     });
-    mockListDeployments.mockResolvedValue({
+    const deployRequests = withListDeployments({
       deployments: [{ id: 'dep-1', buildId: 'build-1', environment: 'STAGING', status: 'SUCCESS' }],
     });
 
@@ -248,12 +288,12 @@ describe('RepositoryIntegrationConfig', () => {
     await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
     fireEvent.click(screen.getByText('Show Builds'));
 
-    await waitFor(() => expect(mockListBuilds).toHaveBeenCalledWith({ repositoryLinkId: 'link-1', page: undefined }));
+    await waitFor(() => expect(buildRequests).toContainEqual({ repositoryLinkId: 'link-1' }));
     await waitFor(() => expect(screen.getByText('abc1234')).toBeDefined());
 
     fireEvent.click(screen.getByText('abc1234'));
 
-    await waitFor(() => expect(mockListDeployments).toHaveBeenCalledWith({ buildId: 'build-1', repositoryLinkId: 'link-1', commitSha: 'abc1234def' }));
+    await waitFor(() => expect(deployRequests).toContainEqual({ buildId: 'build-1', repositoryLinkId: 'link-1', commitSha: 'abc1234def' }));
     await waitFor(() => expect(screen.getByText('STAGING')).toBeDefined());
   });
 
@@ -262,12 +302,12 @@ describe('RepositoryIntegrationConfig', () => {
   // now, with an aria-expanded state like every other disclosure toggle on
   // this page.
   test('the build row disclosure is a real button with an aria-expanded state', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockListBuilds.mockResolvedValue({
+    withListLinks({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
+    withListBuilds({
       builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'abc1234def' }],
     });
-    mockListDeployments.mockResolvedValue({ deployments: [] });
+    withListDeployments({ deployments: [] });
 
     renderComponent();
 
@@ -282,31 +322,32 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('auto-loads later pages so repository links and builds past the first page are shown', async () => {
-    mockListRepositoryLinks
-      .mockResolvedValueOnce({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/page-one' }], page: { nextCursor: 'cursor-2' } })
-      .mockResolvedValueOnce({ links: [{ id: 'link-2', provider: 'github', remoteName: 'huyz0/page-two' }], page: {} });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockListBuilds
-      .mockResolvedValueOnce({ builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'aaa1111aaa' }], page: { nextCursor: 'cursor-2' } })
-      .mockResolvedValueOnce({ builds: [{ id: 'build-2', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'bbb2222bbb' }], page: {} });
+    withListLinks((body: { page?: { cursor?: string } }) =>
+      body.page?.cursor
+        ? { links: [{ id: 'link-2', provider: 'github', remoteName: 'huyz0/page-two' }], page: {} }
+        : { links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/page-one' }], page: { nextCursor: 'cursor-2' } });
+    withListPullRequests({ pullRequests: [] });
+    const buildRequests = withListBuilds((body: { page?: { cursor?: string } }) =>
+      body.page?.cursor
+        ? { builds: [{ id: 'build-2', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'bbb2222bbb' }], page: {} }
+        : { builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'aaa1111aaa' }], page: { nextCursor: 'cursor-2' } });
 
     renderComponent();
 
     await waitFor(() => expect(screen.getByText('huyz0/page-one', { exact: false })).toBeDefined());
     expect(screen.getByText('huyz0/page-two', { exact: false })).toBeDefined();
-    expect(mockListRepositoryLinks).toHaveBeenCalledWith({ projectId: 'proj-123', page: { cursor: 'cursor-2' } });
 
     fireEvent.click(screen.getAllByText('Show Builds')[0]);
 
     await waitFor(() => expect(screen.getByText('aaa1111')).toBeDefined());
     expect(screen.getByText('bbb2222')).toBeDefined();
-    expect(mockListBuilds).toHaveBeenCalledWith({ repositoryLinkId: 'link-1', page: { cursor: 'cursor-2' } });
+    expect(buildRequests).toContainEqual({ repositoryLinkId: 'link-1', page: { cursor: 'cursor-2' } });
   });
 
   test('shows an empty state when a repository link has no builds', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockListBuilds.mockResolvedValue({ builds: [] });
+    withListLinks({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
+    withListBuilds({ builds: [] });
 
     renderComponent();
 
@@ -317,25 +358,25 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('shows an error when loading builds fails', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockListBuilds.mockRejectedValue(new Error('boom'));
+    withListLinks({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
+    mockRpcError(RepositoryService, 'ListBuilds', 'unknown', 'boom');
 
     renderComponent();
 
     await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
     fireEvent.click(screen.getByText('Show Builds'));
 
-    await waitFor(() => expect(screen.getByText('Failed to load builds')).toBeDefined());
+    await waitFor(() => expect(screen.getByText(/Failed to load builds/)).toBeDefined());
   });
 
   test('shows a fallback style for an unknown build status and lists deployments for an expanded build', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockListBuilds.mockResolvedValue({
+    withListLinks({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
+    withListBuilds({
       builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'UNKNOWN_STATUS', commitSha: 'abc1234def' }],
     });
-    mockListDeployments.mockResolvedValue({ deployments: [{ id: 'dep-1', buildId: 'build-1', environment: 'PROD', status: 'PENDING' }] });
+    withListDeployments({ deployments: [{ id: 'dep-1', buildId: 'build-1', environment: 'PROD', status: 'PENDING' }] });
 
     renderComponent();
 
@@ -351,12 +392,12 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('shows a no-deployments message for a build with none', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockListBuilds.mockResolvedValue({
+    withListLinks({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
+    withListBuilds({
       builds: [{ id: 'build-1', repositoryLinkId: 'link-1', status: 'SUCCESS', commitSha: 'abc1234def' }],
     });
-    mockListDeployments.mockResolvedValue({ deployments: [] });
+    withListDeployments({ deployments: [] });
 
     renderComponent();
 
@@ -368,7 +409,7 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('shows an error message when loading repository links fails', async () => {
-    mockListRepositoryLinks.mockRejectedValue(new Error('down'));
+    mockRpcError(RepositoryService, 'ListRepositoryLinks', 'unknown', 'down');
 
     renderComponent();
 
@@ -376,8 +417,8 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('shows a fallback style for an unknown pull request status', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({
+    withListLinks({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({
       pullRequests: [{ id: 'pr-1', remotePrId: '1', title: 'Unknown status PR', status: 'unknown' }],
     });
 
@@ -387,7 +428,7 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('builds a Bitbucket OAuth redirect URL when Bitbucket is selected', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [] });
+    withListLinks({ links: [] });
     sessionStorage.removeItem('repoLinkOauthNonce');
 
     const originalLocation = window.location;
@@ -407,9 +448,9 @@ describe('RepositoryIntegrationConfig', () => {
   });
 
   test('unlinks a repository after confirmation', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockRemoveRepositoryLink.mockResolvedValue({ success: true });
+    withListLinks({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
+    const requests = withRemoveLink();
 
     renderComponent();
 
@@ -417,12 +458,13 @@ describe('RepositoryIntegrationConfig', () => {
     fireEvent.click(screen.getByText('Unlink'));
     await confirmAction();
 
-    await waitFor(() => expect(mockRemoveRepositoryLink).toHaveBeenCalledWith({ repositoryLinkId: 'link-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ repositoryLinkId: 'link-1' }));
   });
 
   test('does not unlink a repository when confirmation is cancelled', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
+    withListLinks({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
+    const requests = withRemoveLink();
 
     renderComponent();
 
@@ -430,13 +472,13 @@ describe('RepositoryIntegrationConfig', () => {
     fireEvent.click(screen.getByText('Unlink'));
     await cancelAction();
 
-    expect(mockRemoveRepositoryLink).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   test('shows an error message when unlinking a repository fails', async () => {
-    mockListRepositoryLinks.mockResolvedValue({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockRemoveRepositoryLink.mockRejectedValue(new Error('link not found'));
+    withListLinks({ links: [{ id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' }] });
+    withListPullRequests({ pullRequests: [] });
+    mockRpcError(RepositoryService, 'RemoveRepositoryLink', 'unknown', 'link not found');
 
     renderComponent();
 
@@ -451,15 +493,14 @@ describe('RepositoryIntegrationConfig', () => {
   // unlinking one disabled the Unlink button on every other link too, not
   // just the one actually in flight.
   test('does not disable a different link\'s Unlink button while one link is being unlinked', async () => {
-    mockListRepositoryLinks.mockResolvedValue({
+    withListLinks({
       links: [
         { id: 'link-1', provider: 'github', remoteName: 'huyz0/tasker' },
         { id: 'link-2', provider: 'github', remoteName: 'huyz0/other-repo' },
       ],
     });
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    let resolveRemove: (v: unknown) => void;
-    mockRemoveRepositoryLink.mockReturnValue(new Promise((resolve) => { resolveRemove = resolve; }));
+    withListPullRequests({ pullRequests: [] });
+    const pending = mockRpcPending(RepositoryService, 'RemoveRepositoryLink');
 
     renderComponent();
     await waitFor(() => expect(screen.getByText(/huyz0\/tasker/)).toBeDefined());
@@ -468,10 +509,10 @@ describe('RepositoryIntegrationConfig', () => {
     fireEvent.click(unlinkButtons[0]);
     await confirmAction();
 
-    await waitFor(() => expect(mockRemoveRepositoryLink).toHaveBeenCalledWith({ repositoryLinkId: 'link-1' }));
+    await waitFor(() => expect(pending.requests).toContainEqual({ repositoryLinkId: 'link-1' }));
     expect(screen.getAllByText('Unlink')[0]).toBeDisabled();
     expect(screen.getAllByText('Unlink')[1]).not.toBeDisabled();
 
-    resolveRemove!({ success: true });
+    pending.resolve({ success: true });
   });
 });

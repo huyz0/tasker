@@ -79,16 +79,25 @@ export function mockRpcError(service: { typeName: string }, method: string, code
  * still pending" / "what if the component unmounts before this resolves"
  * cases, which is the one shape the JSON-value form of `mockRpc` cannot
  * express (there is no request in hand yet to resolve later).
+ *
+ * Also records every request it receives, the same as `mockRpc` — useful
+ * when a test needs both "stays pending until I say so" and "which request
+ * actually arrived" (e.g. a shared-mutation-object regression, where two
+ * rows must not disable each other while only one is in flight).
  */
 export function mockRpcPending(service: { typeName: string }, method: string) {
   let settle!: (response: JsonBodyType) => void;
   const promise = new Promise<JsonBodyType>((resolve) => {
     settle = resolve;
   });
+  const requests: unknown[] = [];
   server.use(
-    http.post(`${BACKEND_URL}/${service.typeName}/${method}`, async () => HttpResponse.json(await promise)),
+    http.post(`${BACKEND_URL}/${service.typeName}/${method}`, async ({ request }) => {
+      requests.push(await request.json().catch(() => ({})));
+      return HttpResponse.json(await promise);
+    }),
   );
-  return { resolve: settle };
+  return { resolve: settle, requests };
 }
 
 /**
