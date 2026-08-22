@@ -2,56 +2,11 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { MemoryExplorer } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
 import { expectNoA11yViolations } from '../../test/a11y';
-
-const {
-  mockRecordBelief, mockGetBelief, mockListBeliefs, mockSearchBeliefs, mockUpdateBelief,
-  mockSupersedeBelief, mockPromoteBelief, mockRelateBeliefs, mockUnrelateBeliefs,
-  mockListBeliefRelations, mockListBeliefPromotions, mockArchiveBelief, mockRestoreBelief, mockPurgeBelief,
-} = vi.hoisted(() => ({
-  mockRecordBelief: vi.fn(),
-  mockGetBelief: vi.fn(),
-  mockListBeliefs: vi.fn(),
-  mockSearchBeliefs: vi.fn(),
-  mockUpdateBelief: vi.fn(),
-  mockSupersedeBelief: vi.fn(),
-  mockPromoteBelief: vi.fn(),
-  mockRelateBeliefs: vi.fn(),
-  mockUnrelateBeliefs: vi.fn(),
-  mockListBeliefRelations: vi.fn(),
-  mockListBeliefPromotions: vi.fn(),
-  mockArchiveBelief: vi.fn(),
-  mockRestoreBelief: vi.fn(),
-  mockPurgeBelief: vi.fn(),
-}));
-
-vi.mock('@connectrpc/connect-web', () => ({
-  createConnectTransport: vi.fn(() => ({})),
-}));
-vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn(() => ({
-    recordBelief: mockRecordBelief,
-    getBelief: mockGetBelief,
-    listBeliefs: mockListBeliefs,
-    searchBeliefs: mockSearchBeliefs,
-    updateBelief: mockUpdateBelief,
-    supersedeBelief: mockSupersedeBelief,
-    promoteBelief: mockPromoteBelief,
-    relateBeliefs: mockRelateBeliefs,
-    unrelateBeliefs: mockUnrelateBeliefs,
-    listBeliefRelations: mockListBeliefRelations,
-    listBeliefPromotions: mockListBeliefPromotions,
-    archiveBelief: mockArchiveBelief,
-    restoreBelief: mockRestoreBelief,
-    purgeBelief: mockPurgeBelief,
-  })),
-}));
-
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  MemoryService: { name: 'MemoryService' },
-}));
 
 let mockActiveOrgId = 'org-1';
 let mockActiveProjectId = 'proj-1';
@@ -94,28 +49,33 @@ async function searchFor(text: string) {
   await screen.findByText(text === 'Tests' ? 'Tests must pass before merge' : text, { exact: false });
 }
 
+/** Registers one RPC and returns an array that fills with every request it receives. */
+function withRpc(method: string, response: object | ((body: any) => object)) {
+  const requests: any[] = [];
+  mockRpc(MemoryService, method, (body) => {
+    requests.push(body);
+    return typeof response === 'function' ? response(body) : response;
+  });
+  return requests;
+}
+
 describe('MemoryExplorer', () => {
   beforeEach(() => {
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
-    for (const m of [
-      mockRecordBelief, mockGetBelief, mockListBeliefs, mockSearchBeliefs, mockUpdateBelief,
-      mockSupersedeBelief, mockPromoteBelief, mockRelateBeliefs, mockUnrelateBeliefs,
-      mockListBeliefRelations, mockListBeliefPromotions, mockArchiveBelief, mockRestoreBelief, mockPurgeBelief,
-    ]) m.mockReset();
-
-    mockSearchBeliefs.mockResolvedValue({ beliefs: BELIEFS });
-    mockListBeliefs.mockResolvedValue({ beliefs: BELIEFS, page: {} });
-    mockListBeliefRelations.mockResolvedValue({ relations: [] });
-    mockListBeliefPromotions.mockResolvedValue({ promotions: [] });
-    mockGetBelief.mockResolvedValue({ belief: BELIEFS[0] });
+    withRpc('SearchBeliefs', { beliefs: BELIEFS });
+    withRpc('ListBeliefs', { beliefs: BELIEFS, page: {} });
+    withRpc('ListBeliefRelations', { relations: [] });
+    withRpc('ListBeliefPromotions', { promotions: [] });
+    withRpc('GetBelief', { belief: BELIEFS[0] });
   });
 
   it('prompts for a project when none is selected', () => {
     mockActiveProjectId = '';
+    const requests = withRpc('SearchBeliefs', { beliefs: BELIEFS });
     renderPage();
     expect(screen.getByText(/Select a project/)).toBeInTheDocument();
-    expect(mockSearchBeliefs).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('prompts for an organization when none is selected', () => {
@@ -125,11 +85,12 @@ describe('MemoryExplorer', () => {
   });
 
   it('finds matching beliefs as the caller types, scoped to the active project', async () => {
+    const requests = withRpc('SearchBeliefs', { beliefs: BELIEFS });
     renderPage();
     fireEvent.change(screen.getByLabelText('Search beliefs'), { target: { value: 'Tests' } });
     await screen.findByText('Tests must pass before merge');
 
-    await waitFor(() => expect(mockSearchBeliefs).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ scopeType: 'project', scopeId: 'proj-1', query: 'Tests' }),
     ));
   });
@@ -155,19 +116,19 @@ describe('MemoryExplorer', () => {
   });
 
   it('records a new belief at the current scope', async () => {
-    mockRecordBelief.mockResolvedValue({ belief: BELIEFS[0] });
+    const requests = withRpc('RecordBelief', { belief: BELIEFS[0] });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: /Record belief/ }));
     fireEvent.change(await screen.findByLabelText('Statement'), { target: { value: 'New fact' } });
     fireEvent.click(screen.getByRole('button', { name: 'Record belief' }));
 
-    await waitFor(() => expect(mockRecordBelief).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ orgId: 'org-1', scopeType: 'project', scopeId: 'proj-1', statement: 'New fact', confidence: 'medium' }),
     ));
   });
 
   it('edits a belief’s statement and confidence inline', async () => {
-    mockUpdateBelief.mockResolvedValue({ belief: { ...BELIEFS[0], statement: 'Updated', confidence: 'low' } });
+    const requests = withRpc('UpdateBelief', { belief: { ...BELIEFS[0], statement: 'Updated', confidence: 'low' } });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -178,11 +139,11 @@ describe('MemoryExplorer', () => {
     fireEvent.change(screen.getByLabelText('Confidence'), { target: { value: 'low' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    await waitFor(() => expect(mockUpdateBelief).toHaveBeenCalledWith({ id: 'blf-1', statement: 'Updated', confidence: 'low' }));
+    await waitFor(() => expect(requests).toContainEqual({ id: 'blf-1', statement: 'Updated', confidence: 'low' }));
   });
 
   it('supersedes a belief and selects the replacement', async () => {
-    mockSupersedeBelief.mockResolvedValue({ belief: { ...BELIEFS[0], id: 'blf-3', statement: 'Corrected statement' } });
+    const requests = withRpc('SupersedeBelief', { belief: { ...BELIEFS[0], id: 'blf-3', statement: 'Corrected statement' } });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -193,13 +154,13 @@ describe('MemoryExplorer', () => {
     fireEvent.change(textarea, { target: { value: 'Corrected statement' } });
     fireEvent.click(screen.getByRole('button', { name: 'Supersede' }));
 
-    await waitFor(() => expect(mockSupersedeBelief).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ id: 'blf-1', statement: 'Corrected statement' }),
     ));
   });
 
   it('promotes a project-scoped belief to organization scope after confirmation', async () => {
-    mockPromoteBelief.mockResolvedValue({ belief: { ...BELIEFS[0], scopeType: 'organization', scopeId: 'org-1' }, promotion: { id: 'promo-1' } });
+    const requests = withRpc('PromoteBelief', { belief: { ...BELIEFS[0], scopeType: 'organization', scopeId: 'org-1' }, promotion: { id: 'promo-1' } });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -209,12 +170,13 @@ describe('MemoryExplorer', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Promote' }));
     await confirmAction();
 
-    await waitFor(() => expect(mockPromoteBelief).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ id: 'blf-1', toScopeType: 'organization', toScopeId: 'org-1' }),
     ));
   });
 
   it('does not promote when confirmation is cancelled', async () => {
+    const requests = withRpc('PromoteBelief', {});
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -224,7 +186,7 @@ describe('MemoryExplorer', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Promote' }));
     await cancelAction();
 
-    expect(mockPromoteBelief).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('relates a belief found via the inline picker', async () => {
@@ -232,36 +194,35 @@ describe('MemoryExplorer', () => {
     // default, a query-aware mock so blf-2 isn't already on screen (from the
     // main search) by the time the picker's own "CI" search resolves it,
     // which would make the click below select it instead of relating it.
-    mockSearchBeliefs.mockReset();
-    mockSearchBeliefs.mockResolvedValueOnce({ beliefs: [BELIEFS[0]] });
-    mockRelateBeliefs.mockResolvedValue({ relation: { id: 'rel-1', beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'relates_to', createdBy: 'user-1', createdAt: '' } });
+    withRpc('SearchBeliefs', (body: { query?: string }) =>
+      body.query === 'CI' ? { beliefs: [BELIEFS[1]] } : { beliefs: [BELIEFS[0]] });
+    const requests = withRpc('RelateBeliefs', { relation: { id: 'rel-1', beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'relates_to', createdBy: 'user-1', createdAt: '' } });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
     fireEvent.click(await screen.findByText('Relate another belief'));
-    mockSearchBeliefs.mockResolvedValueOnce({ beliefs: [BELIEFS[1]] });
     fireEvent.change(screen.getByLabelText('Search beliefs to relate'), { target: { value: 'CI' } });
     fireEvent.click(await screen.findByText('CI always runs migrations against MySQL'));
 
-    await waitFor(() => expect(mockRelateBeliefs).toHaveBeenCalledWith({ beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'relates_to' }));
+    await waitFor(() => expect(requests).toContainEqual({ beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'relates_to' }));
   });
 
   it('removes an existing relation', async () => {
-    mockListBeliefRelations.mockResolvedValue({
+    withRpc('ListBeliefRelations', {
       relations: [{ id: 'rel-1', beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'relates_to', createdBy: 'user-1', createdAt: '' }],
     });
-    mockUnrelateBeliefs.mockResolvedValue({ success: true });
+    const requests = withRpc('UnrelateBeliefs', { success: true });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove relation' }));
-    await waitFor(() => expect(mockUnrelateBeliefs).toHaveBeenCalledWith({ relationId: 'rel-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ relationId: 'rel-1' }));
   });
 
   it('shows the promotion history tab', async () => {
-    mockListBeliefPromotions.mockResolvedValue({
+    withRpc('ListBeliefPromotions', {
       promotions: [{ id: 'promo-1', beliefId: 'blf-1', fromScopeType: 'project', fromScopeId: 'proj-1', toScopeType: 'organization', toScopeId: 'org-1', promotedBy: 'user-1', promotedAt: '2026-01-03T00:00:00Z', note: 'widely useful' }],
     });
     renderPage();
@@ -279,7 +240,7 @@ describe('MemoryExplorer', () => {
   });
 
   it('archives a belief after confirmation', async () => {
-    mockArchiveBelief.mockResolvedValue({ success: true });
+    const requests = withRpc('ArchiveBelief', { success: true });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -288,14 +249,14 @@ describe('MemoryExplorer', () => {
     fireEvent.click(await screen.findByText('Archive'));
     await confirmAction();
 
-    await waitFor(() => expect(mockArchiveBelief).toHaveBeenCalledWith({ id: 'blf-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ id: 'blf-1' }));
   });
 
   it('restores an archived belief and can then purge it', async () => {
     const archived = { ...BELIEFS[0], deletedAt: '2026-01-04T00:00:00Z' };
-    mockSearchBeliefs.mockResolvedValue({ beliefs: [archived] });
-    mockRestoreBelief.mockResolvedValue({ success: true });
-    mockPurgeBelief.mockResolvedValue({ success: true });
+    withRpc('SearchBeliefs', { beliefs: [archived] });
+    withRpc('RestoreBelief', { success: true });
+    const purgeRequests = withRpc('PurgeBelief', { success: true });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -306,35 +267,37 @@ describe('MemoryExplorer', () => {
     fireEvent.click(screen.getByText('Delete permanently'));
     await confirmAction();
 
-    await waitFor(() => expect(mockPurgeBelief).toHaveBeenCalledWith({ id: 'blf-1' }));
+    await waitFor(() => expect(purgeRequests).toContainEqual({ id: 'blf-1' }));
   });
 
   it('switches to browse-all mode and pages through listBeliefs', async () => {
+    const requests = withRpc('ListBeliefs', { beliefs: BELIEFS, page: {} });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: 'Browse all' }));
 
-    await waitFor(() => expect(mockListBeliefs).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ scopeType: 'project', scopeId: 'proj-1' }),
     ));
     await screen.findByText('Tests must pass before merge');
   });
 
   it('switches to organization scope', async () => {
+    const requests = withRpc('SearchBeliefs', { beliefs: BELIEFS });
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'organization' }));
     fireEvent.change(screen.getByLabelText('Search beliefs'), { target: { value: 'Tests' } });
 
-    await waitFor(() => expect(mockSearchBeliefs).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ scopeType: 'organization', scopeId: 'org-1' }),
     ));
   });
 
   it('resolves a belief reached via a direct link', async () => {
-    mockGetBelief.mockResolvedValue({ belief: BELIEFS[1] });
+    const requests = withRpc('GetBelief', { belief: BELIEFS[1] });
     renderPage('/memory/blf-2');
 
     await screen.findByText('CI always runs migrations against MySQL');
-    expect(mockGetBelief).toHaveBeenCalledWith({ id: 'blf-2' });
+    expect(requests).toContainEqual({ id: 'blf-2' });
   });
 
   it('has no accessibility violations once populated', async () => {
@@ -347,7 +310,7 @@ describe('MemoryExplorer', () => {
   });
 
   it('shows a retracted badge and every kind of secondary source link', async () => {
-    mockSearchBeliefs.mockResolvedValue({
+    withRpc('SearchBeliefs', {
       beliefs: [{
         ...BELIEFS[1], status: 'retracted',
         sourceCommentId: 'cmt-1', sourceTaskNoteId: 'note-1', sourceArtifactId: 'art-1',
@@ -365,19 +328,20 @@ describe('MemoryExplorer', () => {
   });
 
   it('records a belief with a non-default confidence', async () => {
-    mockRecordBelief.mockResolvedValue({ belief: BELIEFS[0] });
+    const requests = withRpc('RecordBelief', { belief: BELIEFS[0] });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: /Record belief/ }));
     fireEvent.change(await screen.findByLabelText('Statement'), { target: { value: 'New fact' } });
     fireEvent.change(screen.getByLabelText('Confidence'), { target: { value: 'low' } });
     fireEvent.click(screen.getByRole('button', { name: 'Record belief' }));
 
-    await waitFor(() => expect(mockRecordBelief).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ confidence: 'low' }),
     ));
   });
 
   it('cancels an inline edit without saving', async () => {
+    const requests = withRpc('UpdateBelief', {});
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -386,29 +350,29 @@ describe('MemoryExplorer', () => {
     fireEvent.change(screen.getByLabelText('Statement'), { target: { value: 'Discarded' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    expect(mockUpdateBelief).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
     expect(screen.queryByText('Discarded')).not.toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Belief detail' })).getByText('Tests must pass before merge')).toBeInTheDocument();
   });
 
   it('picks a relation type other than the default', async () => {
-    mockSearchBeliefs.mockReset();
-    mockSearchBeliefs.mockResolvedValueOnce({ beliefs: [BELIEFS[0]] });
-    mockRelateBeliefs.mockResolvedValue({ relation: { id: 'rel-1', beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'contradicts', createdBy: 'user-1', createdAt: '' } });
+    withRpc('SearchBeliefs', (body: { query?: string }) =>
+      body.query === 'CI' ? { beliefs: [BELIEFS[1]] } : { beliefs: [BELIEFS[0]] });
+    const requests = withRpc('RelateBeliefs', { relation: { id: 'rel-1', beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'contradicts', createdBy: 'user-1', createdAt: '' } });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
     fireEvent.click(await screen.findByText('Relate another belief'));
-    mockSearchBeliefs.mockResolvedValueOnce({ beliefs: [BELIEFS[1]] });
     fireEvent.change(screen.getByLabelText('Search beliefs to relate'), { target: { value: 'CI' } });
     fireEvent.change(screen.getByLabelText('As'), { target: { value: 'contradicts' } });
     fireEvent.click(await screen.findByText('CI always runs migrations against MySQL'));
 
-    await waitFor(() => expect(mockRelateBeliefs).toHaveBeenCalledWith({ beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'contradicts' }));
+    await waitFor(() => expect(requests).toContainEqual({ beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'contradicts' }));
   });
 
   it('closes the relate picker via Done without picking anything', async () => {
+    const requests = withRpc('RelateBeliefs', {});
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -418,26 +382,26 @@ describe('MemoryExplorer', () => {
     fireEvent.click(screen.getByText('Done'));
 
     expect(screen.queryByLabelText('Search beliefs to relate')).not.toBeInTheDocument();
-    expect(mockRelateBeliefs).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('navigates to a related belief from the related list', async () => {
-    mockListBeliefRelations.mockResolvedValue({
+    withRpc('ListBeliefRelations', {
       relations: [{ id: 'rel-1', beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'relates_to', createdBy: 'user-1', createdAt: '' }],
     });
-    mockGetBelief.mockResolvedValue({ belief: BELIEFS[1] });
+    const requests = withRpc('GetBelief', { belief: BELIEFS[1] });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
     fireEvent.click(await screen.findByText('blf-2'));
-    await waitFor(() => expect(mockGetBelief).toHaveBeenCalledWith({ id: 'blf-2' }));
+    await waitFor(() => expect(requests).toContainEqual({ id: 'blf-2' }));
   });
 
   it('restores an archived belief', async () => {
     const archived = { ...BELIEFS[0], deletedAt: '2026-01-04T00:00:00Z' };
-    mockSearchBeliefs.mockResolvedValue({ beliefs: [archived] });
-    mockRestoreBelief.mockResolvedValue({ success: true });
+    withRpc('SearchBeliefs', { beliefs: [archived] });
+    const requests = withRpc('RestoreBelief', { success: true });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -445,11 +409,11 @@ describe('MemoryExplorer', () => {
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Restore'));
 
-    await waitFor(() => expect(mockRestoreBelief).toHaveBeenCalledWith({ id: 'blf-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ id: 'blf-1' }));
   });
 
   it('adds a note to a promotion', async () => {
-    mockPromoteBelief.mockResolvedValue({ belief: { ...BELIEFS[0], scopeType: 'organization' }, promotion: { id: 'promo-1' } });
+    const requests = withRpc('PromoteBelief', { belief: { ...BELIEFS[0], scopeType: 'organization' }, promotion: { id: 'promo-1' } });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -460,12 +424,13 @@ describe('MemoryExplorer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Promote' }));
     await confirmAction();
 
-    await waitFor(() => expect(mockPromoteBelief).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ note: 'Widely applicable' }),
     ));
   });
 
   it('filters by status and confidence in browse mode', async () => {
+    const requests = withRpc('ListBeliefs', { beliefs: BELIEFS, page: {} });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: 'Browse all' }));
     await screen.findByText('Tests must pass before merge');
@@ -473,14 +438,16 @@ describe('MemoryExplorer', () => {
     fireEvent.change(screen.getByLabelText('Filter by status'), { target: { value: 'superseded' } });
     fireEvent.change(screen.getByLabelText('Filter by confidence'), { target: { value: 'high' } });
 
-    await waitFor(() => expect(mockListBeliefs).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ status: 'superseded', confidence: 'high' }),
     ));
   });
 
   it('loads the next page of beliefs in browse mode', async () => {
-    mockListBeliefs.mockResolvedValueOnce({ beliefs: [BELIEFS[0]], page: { nextCursor: 'cursor-2' } });
-    mockListBeliefs.mockResolvedValueOnce({ beliefs: [BELIEFS[1]], page: {} });
+    withRpc('ListBeliefs', (body: { page?: { cursor?: string } }) =>
+      body.page?.cursor
+        ? { beliefs: [BELIEFS[1]], page: {} }
+        : { beliefs: [BELIEFS[0]], page: { nextCursor: 'cursor-2' } });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: 'Browse all' }));
     await screen.findByText('Tests must pass before merge');
@@ -491,29 +458,29 @@ describe('MemoryExplorer', () => {
   });
 
   it('retries a failed search', async () => {
-    mockSearchBeliefs.mockRejectedValueOnce(new Error('network down'));
+    mockRpcError(MemoryService, 'SearchBeliefs', 'unavailable', 'network down');
     renderPage();
     fireEvent.change(screen.getByLabelText('Search beliefs'), { target: { value: 'Tests' } });
     await screen.findByText(/network down/);
 
-    mockSearchBeliefs.mockResolvedValue({ beliefs: BELIEFS });
+    withRpc('SearchBeliefs', { beliefs: BELIEFS });
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     await screen.findByText('Tests must pass before merge');
   });
 
   it('surfaces a recordBelief mutation error', async () => {
-    mockRecordBelief.mockRejectedValue(new Error('boom'));
+    mockRpcError(MemoryService, 'RecordBelief', 'unknown', 'boom');
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: /Record belief/ }));
     fireEvent.change(await screen.findByLabelText('Statement'), { target: { value: 'New fact' } });
     fireEvent.click(screen.getByRole('button', { name: 'Record belief' }));
 
-    await screen.findByText(/Failed to record belief: boom/);
+    await screen.findByText(/Failed to record belief:.*boom/);
   });
 
   it('surfaces a supersedeBelief mutation error', async () => {
-    mockSupersedeBelief.mockRejectedValue(new Error('boom'));
+    mockRpcError(MemoryService, 'SupersedeBelief', 'unknown', 'boom');
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -522,79 +489,77 @@ describe('MemoryExplorer', () => {
     fireEvent.change(await screen.findByLabelText('New statement'), { target: { value: 'x' } });
     fireEvent.click(screen.getByRole('button', { name: 'Supersede' }));
 
-    await screen.findByText(/Failed to supersede: boom/);
+    await screen.findByText(/Failed to supersede:.*boom/);
   });
 
   it('surfaces a relateBeliefs mutation error', async () => {
-    mockSearchBeliefs.mockReset();
-    mockSearchBeliefs.mockResolvedValueOnce({ beliefs: [BELIEFS[0]] });
-    mockRelateBeliefs.mockRejectedValue(new Error('boom'));
+    withRpc('SearchBeliefs', (body: { query?: string }) =>
+      body.query === 'CI' ? { beliefs: [BELIEFS[1]] } : { beliefs: [BELIEFS[0]] });
+    mockRpcError(MemoryService, 'RelateBeliefs', 'unknown', 'boom');
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
     fireEvent.click(await screen.findByText('Relate another belief'));
-    mockSearchBeliefs.mockResolvedValueOnce({ beliefs: [BELIEFS[1]] });
     fireEvent.change(screen.getByLabelText('Search beliefs to relate'), { target: { value: 'CI' } });
     fireEvent.click(await screen.findByText('CI always runs migrations against MySQL'));
 
-    await screen.findByText(/Failed to relate: boom/);
+    await screen.findByText(/Failed to relate:.*boom/);
   });
 
   it('shows "No matching beliefs" when the relate picker finds nothing', async () => {
-    mockSearchBeliefs.mockReset();
-    mockSearchBeliefs.mockResolvedValueOnce({ beliefs: [BELIEFS[0]] });
+    withRpc('SearchBeliefs', (body: { query?: string }) =>
+      body.query === 'nothing' ? { beliefs: [] } : { beliefs: [BELIEFS[0]] });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
     fireEvent.click(await screen.findByText('Relate another belief'));
-    mockSearchBeliefs.mockResolvedValueOnce({ beliefs: [] });
     fireEvent.change(screen.getByLabelText('Search beliefs to relate'), { target: { value: 'nothing' } });
 
     await screen.findByText('No matching beliefs.');
   });
 
   it('surfaces an unrelateBeliefs mutation error', async () => {
-    mockListBeliefRelations.mockResolvedValue({
+    withRpc('ListBeliefRelations', {
       relations: [{ id: 'rel-1', beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'relates_to', createdBy: 'user-1', createdAt: '' }],
     });
-    mockUnrelateBeliefs.mockRejectedValue(new Error('boom'));
+    mockRpcError(MemoryService, 'UnrelateBeliefs', 'unknown', 'boom');
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
     fireEvent.click(await screen.findByRole('button', { name: 'Remove relation' }));
 
-    await screen.findByText(/Failed to remove relation: boom/);
+    await screen.findByText(/Failed to remove relation:.*boom/);
   });
 
   it('retries a failed related-beliefs load', async () => {
-    mockListBeliefRelations.mockRejectedValueOnce(new Error('down'));
+    mockRpcError(MemoryService, 'ListBeliefRelations', 'unavailable', 'down');
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
-    await screen.findByText(/Could not load this list: down/);
+    await screen.findByText(/Could not load this list: .*down/);
 
-    mockListBeliefRelations.mockResolvedValue({ relations: [] });
+    withRpc('ListBeliefRelations', { relations: [] });
     fireEvent.click(screen.getAllByRole('button', { name: 'Try again' })[0]);
 
     await screen.findByText('No related beliefs yet.');
   });
 
   it('retries a failed promotion history load', async () => {
-    mockListBeliefPromotions.mockRejectedValueOnce(new Error('down'));
+    mockRpcError(MemoryService, 'ListBeliefPromotions', 'unavailable', 'down');
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
     fireEvent.mouseDown(await screen.findByRole('tab', { name: /History/ }), { button: 0 });
-    await screen.findByText(/Could not load this list: down/);
+    await screen.findByText(/Could not load this list: .*down/);
 
-    mockListBeliefPromotions.mockResolvedValue({ promotions: [] });
+    withRpc('ListBeliefPromotions', { promotions: [] });
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     await screen.findByText('Never promoted.');
   });
 
   it('surfaces a promoteBelief mutation error', async () => {
-    mockPromoteBelief.mockRejectedValue(new Error('boom'));
+    mockRpcError(MemoryService, 'PromoteBelief', 'unknown', 'boom');
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -603,10 +568,11 @@ describe('MemoryExplorer', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Promote' }));
     await confirmAction();
 
-    await screen.findByText(/Failed to promote: boom/);
+    await screen.findByText(/Failed to promote:.*boom/);
   });
 
   it('does not archive when confirmation is cancelled', async () => {
+    const requests = withRpc('ArchiveBelief', {});
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -614,11 +580,11 @@ describe('MemoryExplorer', () => {
     fireEvent.click(await screen.findByText('Archive'));
     await cancelAction();
 
-    expect(mockArchiveBelief).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('surfaces an archiveBelief mutation error', async () => {
-    mockArchiveBelief.mockRejectedValue(new Error('boom'));
+    mockRpcError(MemoryService, 'ArchiveBelief', 'unknown', 'boom');
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -626,12 +592,13 @@ describe('MemoryExplorer', () => {
     fireEvent.click(await screen.findByText('Archive'));
     await confirmAction();
 
-    await screen.findByText(/Failed to archive: boom/);
+    await screen.findByText(/Failed to archive:.*boom/);
   });
 
   it('does not purge when confirmation is cancelled', async () => {
     const archived = { ...BELIEFS[0], deletedAt: '2026-01-04T00:00:00Z' };
-    mockSearchBeliefs.mockResolvedValue({ beliefs: [archived] });
+    withRpc('SearchBeliefs', { beliefs: [archived] });
+    const requests = withRpc('PurgeBelief', {});
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -639,13 +606,13 @@ describe('MemoryExplorer', () => {
     fireEvent.click(await screen.findByText('Delete permanently'));
     await cancelAction();
 
-    expect(mockPurgeBelief).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('surfaces a purgeBelief mutation error', async () => {
     const archived = { ...BELIEFS[0], deletedAt: '2026-01-04T00:00:00Z' };
-    mockSearchBeliefs.mockResolvedValue({ beliefs: [archived] });
-    mockPurgeBelief.mockRejectedValue(new Error('boom'));
+    withRpc('SearchBeliefs', { beliefs: [archived] });
+    mockRpcError(MemoryService, 'PurgeBelief', 'unknown', 'boom');
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -653,24 +620,24 @@ describe('MemoryExplorer', () => {
     fireEvent.click(await screen.findByText('Delete permanently'));
     await confirmAction();
 
-    await screen.findByText(/Failed to delete: boom/);
+    await screen.findByText(/Failed to delete:.*boom/);
   });
 
   it('surfaces a restoreBelief mutation error', async () => {
     const archived = { ...BELIEFS[0], deletedAt: '2026-01-04T00:00:00Z' };
-    mockSearchBeliefs.mockResolvedValue({ beliefs: [archived] });
-    mockRestoreBelief.mockRejectedValue(new Error('boom'));
+    withRpc('SearchBeliefs', { beliefs: [archived] });
+    mockRpcError(MemoryService, 'RestoreBelief', 'unknown', 'boom');
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Restore'));
 
-    await screen.findByText(/Failed to restore: boom/);
+    await screen.findByText(/Failed to restore:.*boom/);
   });
 
   it('changes confidence while superseding', async () => {
-    mockSupersedeBelief.mockResolvedValue({ belief: { ...BELIEFS[0], id: 'blf-3' } });
+    const requests = withRpc('SupersedeBelief', { belief: { ...BELIEFS[0], id: 'blf-3' } });
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -680,18 +647,18 @@ describe('MemoryExplorer', () => {
     fireEvent.change(screen.getByLabelText('Confidence'), { target: { value: 'low' } });
     fireEvent.click(screen.getByRole('button', { name: 'Supersede' }));
 
-    await waitFor(() => expect(mockSupersedeBelief).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ confidence: 'low' }),
     ));
   });
 
   it('retries a failed browse-all load', async () => {
-    mockListBeliefs.mockRejectedValueOnce(new Error('down'));
+    mockRpcError(MemoryService, 'ListBeliefs', 'unavailable', 'down');
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: 'Browse all' }));
-    await screen.findByText(/Could not load this list: down/);
+    await screen.findByText(/Could not load this list: .*down/);
 
-    mockListBeliefs.mockResolvedValue({ beliefs: BELIEFS, page: {} });
+    withRpc('ListBeliefs', { beliefs: BELIEFS, page: {} });
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     await screen.findByText('Tests must pass before merge');
