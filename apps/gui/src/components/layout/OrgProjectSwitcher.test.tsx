@@ -1,25 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-const { mockListOrgs, mockListProjects } = vi.hoisted(() => ({
-  mockListOrgs: vi.fn(),
-  mockListProjects: vi.fn(),
-}));
-
-vi.mock('@connectrpc/connect-web', () => ({
-  createConnectTransport: vi.fn(() => ({})),
-}));
-vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn((service: unknown) => {
-    if (service === 'ProjectService') return { listProjects: mockListProjects };
-    return { listOrgs: mockListOrgs };
-  }),
-}));
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  OrgService: 'OrgService',
-  ProjectService: 'ProjectService',
-}));
+import { OrgService, ProjectService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError } from '../../test/mockRpc';
 
 let mockActiveOrgId = '';
 let mockActiveProjectId = '';
@@ -46,19 +29,37 @@ function renderSwitcher() {
   return { ...utils, queryClient };
 }
 
+/** Registers ListOrgs and records every request it receives. */
+function withListOrgs(response: object | ((body: any) => object)) {
+  const requests: any[] = [];
+  mockRpc(OrgService, 'ListOrgs', (body) => {
+    requests.push(body);
+    return typeof response === 'function' ? response(body) : response;
+  });
+  return requests;
+}
+
+/** Registers ListProjects and records every request it receives. */
+function withListProjects(response: object | ((body: any) => object)) {
+  const requests: any[] = [];
+  mockRpc(ProjectService, 'ListProjects', (body) => {
+    requests.push(body);
+    return typeof response === 'function' ? response(body) : response;
+  });
+  return requests;
+}
+
 describe('OrgProjectSwitcher', () => {
   beforeEach(() => {
     mockActiveOrgId = '';
     mockActiveProjectId = '';
-    mockListOrgs.mockReset();
-    mockListProjects.mockReset();
     mockSetActiveOrgId.mockReset();
     mockSetActiveProjectId.mockReset();
   });
 
   it('auto-selects the first org when none is active', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }] });
-    mockListProjects.mockResolvedValue({ projects: [] });
+    withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }] });
+    withListProjects({ projects: [] });
 
     renderSwitcher();
 
@@ -67,8 +68,8 @@ describe('OrgProjectSwitcher', () => {
 
   it('auto-selects the first project once an org is active', async () => {
     mockActiveOrgId = 'org-1';
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }] });
-    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Project One' }] });
+    withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }] });
+    withListProjects({ projects: [{ id: 'proj-1', name: 'Project One' }] });
 
     renderSwitcher();
 
@@ -77,26 +78,26 @@ describe('OrgProjectSwitcher', () => {
 
   it('asks the server for one bounded page, not every page', async () => {
     mockActiveOrgId = 'org-1';
-    mockListOrgs.mockResolvedValue({
+    const requests = withListOrgs({
       organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }],
       page: { totalCount: 2000, nextCursor: 'cursor-2' },
     });
-    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Project One' }], page: { totalCount: 2000 } });
+    withListProjects({ projects: [{ id: 'proj-1', name: 'Project One' }], page: { totalCount: 2000 } });
 
     renderSwitcher();
 
     // The old switcher followed nextCursor until it ran out, so 2,000 projects
     // meant 200 requests before the primary navigation control was usable
     // (M06-T09). One page, and the rest reached by searching.
-    await waitFor(() => expect(mockListOrgs).toHaveBeenCalledTimes(1));
-    expect(mockListOrgs).toHaveBeenCalledWith({ page: { limit: 10, filter: undefined } });
-    expect(mockListOrgs).not.toHaveBeenCalledWith(expect.objectContaining({ page: expect.objectContaining({ cursor: 'cursor-2' }) }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests).toContainEqual({ page: { limit: 10 } });
+    expect(requests).not.toContainEqual(expect.objectContaining({ page: expect.objectContaining({ cursor: 'cursor-2' }) }));
   });
 
   it('searches the server as you type, rather than filtering the page it has', async () => {
     mockActiveOrgId = 'org-1';
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 2000 } });
-    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Project One' }], page: { totalCount: 2000 } });
+    withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 2000 } });
+    const requests = withListProjects({ projects: [{ id: 'proj-1', name: 'Project One' }], page: { totalCount: 2000 } });
 
     renderSwitcher();
     fireEvent.click(await screen.findByLabelText('Active project'));
@@ -104,7 +105,7 @@ describe('OrgProjectSwitcher', () => {
 
     // Filtering in the browser can only ever find what is already on the page —
     // ten of two thousand.
-    await waitFor(() => expect(mockListProjects).toHaveBeenCalledWith({
+    await waitFor(() => expect(requests).toContainEqual({
       orgId: 'org-1',
       page: { limit: 10, filter: 'Alpha' },
     }));
@@ -113,11 +114,11 @@ describe('OrgProjectSwitcher', () => {
   it('keeps a project chosen from a later page instead of snapping back', async () => {
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 1 } });
-    mockListProjects
-      .mockResolvedValueOnce({ projects: [{ id: 'proj-1', name: 'Project One' }], page: { totalCount: 2000 } })
-      .mockResolvedValueOnce({ projects: [{ id: 'proj-1234', name: 'Bulk Project 1234' }], page: { totalCount: 1 } })
-      .mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Project One' }], page: { totalCount: 2000 } });
+    withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 1 } });
+    withListProjects((body: { page?: { filter?: string } }) =>
+      body.page?.filter === 'Bulk'
+        ? { projects: [{ id: 'proj-1234', name: 'Bulk Project 1234' }], page: { totalCount: 1 } }
+        : { projects: [{ id: 'proj-1', name: 'Project One' }], page: { totalCount: 2000 } });
 
     renderSwitcher();
     fireEvent.click(await screen.findByLabelText('Active project'));
@@ -140,10 +141,15 @@ describe('OrgProjectSwitcher', () => {
   it('picks up a renamed project once its list query refetches', async () => {
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }] });
-    mockListProjects
-      .mockResolvedValueOnce({ projects: [{ id: 'proj-1', name: 'Old Project Name' }] })
-      .mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Renamed Project' }] });
+    withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }] });
+    let renamed = false;
+    withListProjects(() => {
+      const wasRenamed = renamed;
+      renamed = true;
+      return wasRenamed
+        ? { projects: [{ id: 'proj-1', name: 'Renamed Project' }] }
+        : { projects: [{ id: 'proj-1', name: 'Old Project Name' }] };
+    });
 
     const { queryClient } = renderSwitcher();
     await waitFor(() => expect(screen.getByLabelText('Active project')).toHaveTextContent('Old Project Name'));
@@ -155,10 +161,15 @@ describe('OrgProjectSwitcher', () => {
 
   it('picks up a renamed organization once its list query refetches', async () => {
     mockActiveOrgId = 'org-1';
-    mockListOrgs
-      .mockResolvedValueOnce({ organizations: [{ id: 'org-1', name: 'Old Org Name', slug: 'org-one' }] })
-      .mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Renamed Org', slug: 'org-one' }] });
-    mockListProjects.mockResolvedValue({ projects: [] });
+    let renamed = false;
+    withListOrgs(() => {
+      const wasRenamed = renamed;
+      renamed = true;
+      return wasRenamed
+        ? { organizations: [{ id: 'org-1', name: 'Renamed Org', slug: 'org-one' }] }
+        : { organizations: [{ id: 'org-1', name: 'Old Org Name', slug: 'org-one' }] };
+    });
+    withListProjects({ projects: [] });
 
     const { queryClient } = renderSwitcher();
     await waitFor(() => expect(screen.getByLabelText('Active organization')).toHaveTextContent('Old Org Name'));
@@ -170,8 +181,8 @@ describe('OrgProjectSwitcher', () => {
 
   it('says how many it is not showing', async () => {
     mockActiveOrgId = 'org-1';
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 1 } });
-    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-1', name: 'Project One' }], page: { totalCount: 2000 } });
+    withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 1 } });
+    withListProjects({ projects: [{ id: 'proj-1', name: 'Project One' }], page: { totalCount: 2000 } });
 
     renderSwitcher();
     fireEvent.click(await screen.findByLabelText('Active project'));
@@ -181,14 +192,14 @@ describe('OrgProjectSwitcher', () => {
 
   it('indents an organization under its parent', async () => {
     mockActiveOrgId = 'org-1';
-    mockListOrgs.mockResolvedValue({
+    withListOrgs({
       organizations: [
         { id: 'org-1', name: 'Root Co', slug: 'root' },
         { id: 'org-2', name: 'Sub Co', slug: 'sub', parentOrgId: 'org-1' },
       ],
       page: { totalCount: 2 },
     });
-    mockListProjects.mockResolvedValue({ projects: [] });
+    withListProjects({ projects: [] });
 
     renderSwitcher();
     fireEvent.click(await screen.findByLabelText('Active organization'));
@@ -202,13 +213,13 @@ describe('OrgProjectSwitcher', () => {
 
   it('lets the user switch the active organization', async () => {
     mockActiveOrgId = 'org-1';
-    mockListOrgs.mockResolvedValue({
+    withListOrgs({
       organizations: [
         { id: 'org-1', name: 'Org One', slug: 'org-one' },
         { id: 'org-2', name: 'Org Two', slug: 'org-two' },
       ],
     });
-    mockListProjects.mockResolvedValue({ projects: [] });
+    withListProjects({ projects: [] });
 
     renderSwitcher();
 
@@ -222,8 +233,8 @@ describe('OrgProjectSwitcher', () => {
   });
 
   it('shows a "No organizations" option once the query resolves with zero orgs, not a perpetual loading label', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListProjects.mockResolvedValue({ projects: [] });
+    withListOrgs({ organizations: [] });
+    withListProjects({ projects: [] });
 
     renderSwitcher();
 
@@ -234,8 +245,8 @@ describe('OrgProjectSwitcher', () => {
   it('lets the user switch the active project', async () => {
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }] });
-    mockListProjects.mockResolvedValue({
+    withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }] });
+    withListProjects({
       projects: [
         { id: 'proj-1', name: 'Project One' },
         { id: 'proj-2', name: 'Project Two' },
@@ -253,8 +264,8 @@ describe('OrgProjectSwitcher', () => {
   describe('keyboard and dismissal', () => {
     const openWithThree = async () => {
       mockActiveOrgId = 'org-1';
-      mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 1 } });
-      mockListProjects.mockResolvedValue({
+      withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 1 } });
+      withListProjects({
         projects: [
           { id: 'proj-1', name: 'Alpha' },
           { id: 'proj-2', name: 'Beta' },
@@ -309,8 +320,8 @@ describe('OrgProjectSwitcher', () => {
 
     it('ignores Enter when the search matched nothing', async () => {
       mockActiveOrgId = 'org-1';
-      mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 1 } });
-      mockListProjects.mockResolvedValue({ projects: [], page: { totalCount: 0 } });
+      withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 1 } });
+      withListProjects({ projects: [], page: { totalCount: 0 } });
       renderSwitcher();
       fireEvent.click(await screen.findByLabelText('Active project'));
 
@@ -340,10 +351,11 @@ describe('OrgProjectSwitcher', () => {
 
     it('says nothing matches, rather than showing an empty box', async () => {
       mockActiveOrgId = 'org-1';
-      mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 1 } });
-      mockListProjects
-        .mockResolvedValueOnce({ projects: [{ id: 'proj-1', name: 'Alpha' }], page: { totalCount: 1 } })
-        .mockResolvedValue({ projects: [], page: { totalCount: 0 } });
+      withListOrgs({ organizations: [{ id: 'org-1', name: 'Org One', slug: 'org-one' }], page: { totalCount: 1 } });
+      withListProjects((body: { page?: { filter?: string } }) =>
+        body.page?.filter
+          ? { projects: [], page: { totalCount: 0 } }
+          : { projects: [{ id: 'proj-1', name: 'Alpha' }], page: { totalCount: 1 } });
       renderSwitcher();
       fireEvent.click(await screen.findByLabelText('Active project'));
       fireEvent.change(await screen.findByLabelText('Search active project'), { target: { value: 'zzz' } });
@@ -355,8 +367,8 @@ describe('OrgProjectSwitcher', () => {
       // The switcher sits on every page, so this was the most persistent
       // instance of the M06-T11 defect: a failed `listOrgs` rendered
       // "No organizations", the same words as an account that has none.
-      mockListOrgs.mockRejectedValue(new Error('unavailable'));
-      mockListProjects.mockResolvedValue({ projects: [], page: { totalCount: 0 } });
+      mockRpcError(OrgService, 'ListOrgs', 'unavailable', 'unavailable');
+      withListProjects({ projects: [], page: { totalCount: 0 } });
       renderSwitcher();
 
       fireEvent.click(await screen.findByLabelText('Active organization'));
