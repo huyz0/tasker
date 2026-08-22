@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuditService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
-import { mockRpc, mockRpcError } from '../../test/mockRpc';
+import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 
 import { AuditTrail } from './AuditTrail';
 
@@ -139,6 +139,22 @@ describe('AuditTrail', () => {
     expect(requests[requests.length - 1]).toEqual(
       expect.objectContaining({ page: { cursor: 'cursor-2' } }),
     );
+  });
+
+  it('shows "Loading…" on the load-more control while the next page is in flight', async () => {
+    withListAuditEvents({
+      events: [event({ id: 'evt-1', subject: 'domain.task.created' })],
+      page: { nextCursor: 'cursor-2', totalCount: 2 },
+    });
+    renderPanel();
+    await waitFor(() => expect(screen.getByText('task · created')).toBeDefined());
+
+    const pending = mockRpcPending(AuditService, 'ListAuditEvents');
+    fireEvent.click(screen.getByRole('button', { name: /Load more/ }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /Loading/ })).toBeInTheDocument());
+    pending.resolve({ events: [event({ id: 'evt-2', subject: 'domain.task.deleted' })], page: { totalCount: 2 } });
+    await waitFor(() => expect(screen.getByText('task · deleted')).toBeDefined());
   });
 
   it('lets a failed load be retried instead of stranding the reader', async () => {
