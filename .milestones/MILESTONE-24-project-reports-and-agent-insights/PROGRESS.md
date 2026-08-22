@@ -28,3 +28,31 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   lead, trust-over-volume scorecard, no tabs, richer activity schema).
   Skipped a separate test plan: docs-only task, nothing executable.
 - **Next**: M24-T02 (contract).
+
+## M24-T02 — Contract: ReportService (getReportExceptions, getReportTrends)
+
+- **Status**: done
+- **Date**: 2026-08-22
+- **Approach**: Add the service + messages to `main.tsp` and mirror them by
+  hand into `health.proto` (buf generates from the proto; the two are kept
+  in sync manually), matching the Dashboard service's documented style.
+  Counts over precomputed percentages where possible; daily-rate points
+  carry `sampleSize` so the UI can dim sparse days; the trends response
+  names the collection-start date and which task type the CFD was scoped
+  to. Regenerate and let the descriptor-enumerated round-trip suite pick
+  the new messages up.
+- **Changed**: `packages/shared-contract/main.tsp` (+180),
+  `tasker/health/v1/health.proto` (+158, hand-mirrored), regenerated
+  `gen/ts` + `apps/cli/gen`, `apps/gui/scripts/rpc-coverage.mjs` (two
+  temporary EXCEPTIONS entries, removed in T09).
+- **Verified**: `moon run shared-contract:compile` clean; round-trip suite
+  840 pass (descriptor-enumerated, new messages picked up automatically);
+  `moon run gui:typecheck` + `apps/cli` `go build ./...` both clean (both
+  consumers compile against the generated code); `gui:rpc-coverage` red
+  without the exceptions, green with (proving the gate sees the new RPCs).
+- **Notes**: proto uses proto3 `optional` for optional fields (matching
+  PingResponse/User precedent — presence is meaningful); exception reason
+  text expanded past the gate's own 40-char minimum. Implemented via a
+  delegated subagent from a fully-pinned message spec; diff reviewed
+  before commit.
+- **Next**: M24-T03 (task_activity schema + migrations + backfill).

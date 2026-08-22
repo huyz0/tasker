@@ -1764,6 +1764,186 @@ interface DashboardService {
   getDashboard(request: GetDashboardRequest): GetDashboardResponse;
 }
 
+// ── Reports ─────────────────────────────────────────────────────────────────
+//
+// The project Reports screen: the on-the-loop monitoring surface, for humans
+// only. Where the Dashboard answers "what needs me right now", Reports answers
+// "how is work performed in this project, and are the agents carrying it?".
+//
+// Exception lists lead and trend charts follow, because agents fail discretely
+// — stuck, looping, or marking things done that aren't — not gradually the way
+// human teams slow down. And counts rather than precomputed rates, because
+// every number here has to survive the same test the Dashboard's did: "what
+// will you do differently because of this number?" — a count is something to
+// act on, a rate the server baked is something to shrug at.
+//
+// Two RPCs split by cost and cadence, not by panel group: exceptions are the
+// fast daily visit, trends the heavier cacheable weekly read. Both are backed
+// by the task_activity history table (ADR-0020).
+model GetReportExceptionsRequest {
+  @field(1) projectId: string;
+  @field(2) windowDays: int32;
+}
+
+// An agent-held task with no activity signal. `neverStarted` distinguishes
+// "no signal since the claim" (a broken runner) from "went quiet after
+// working" (a hard task). `claimedAt` is optional because claims that predate
+// activity collection have no recorded claim row.
+model StalledClaim {
+  @field(1) taskId: string;
+  @field(2) taskDisplayId: string;
+  @field(3) taskTitle: string;
+  @field(4) status: string;
+  @field(5) agentId: string;
+  @field(6) agentName: string;
+  @field(7) claimedAt?: string;
+  @field(8) lastSignalAt?: string;
+  @field(9) agentLastSeenAt?: string;
+  @field(10) neverStarted: boolean;
+}
+
+// A task nobody holds, waiting for pickup since `waitingSince`.
+model UnclaimedTask {
+  @field(1) taskId: string;
+  @field(2) taskDisplayId: string;
+  @field(3) taskTitle: string;
+  @field(4) status: string;
+  @field(5) waitingSince: string;
+}
+
+// A transition out of a terminal status — the agent-native reopened-bug
+// signal. `holderAgentId`/`holderAgentName` are the assignee at the time of
+// the regression event, when one was an agent.
+model StatusRegression {
+  @field(1) taskId: string;
+  @field(2) taskDisplayId: string;
+  @field(3) taskTitle: string;
+  @field(4) fromStatus: string;
+  @field(5) toStatus: string;
+  @field(6) occurredAt: string;
+  @field(7) actorType: string;
+  @field(8) actorName?: string;
+  @field(9) holderAgentId?: string;
+  @field(10) holderAgentName?: string;
+}
+
+// A task bouncing between agents. `claimHeld = true` means the last
+// handing-off agent still holds the claim, so no other agent can pick the
+// task up — agents cannot self-unassign; releasing it takes a human.
+model ChurningTask {
+  @field(1) taskId: string;
+  @field(2) taskDisplayId: string;
+  @field(3) taskTitle: string;
+  @field(4) handoffCount: int64;
+  @field(5) lastAgentId: string;
+  @field(6) lastAgentName: string;
+  @field(7) lastHandoffAt: string;
+  @field(8) claimHeld: boolean;
+}
+
+// One row of the fleet scorecard — per agent (`agentRows`) or per agent role
+// (`roleRows`). Columns are outcomes, not volume. `subjectName` falls back to
+// "(deleted agent)" when the agent has been purged.
+model FleetScorecardRow {
+  @field(1) subjectId: string;
+  @field(2) subjectName: string;
+  @field(3) claimed: int64;
+  @field(4) completed: int64;
+  @field(5) reopened: int64;
+  @field(6) handedOff: int64;
+  @field(7) takenAway: int64;
+  @field(8) autonomousCompleted: int64;
+  @field(9) openNow: int64;
+  @field(10) lastActiveAt?: string;
+}
+
+// Every list here is server-capped — like the Dashboard, this is a place to
+// notice something, not to work through it. The four completion counts power
+// the "Agents completed N% (M% prior window)" header stat as counts, not
+// precomputed rates, so the client can show the numerator and denominator.
+model GetReportExceptionsResponse {
+  @field(1) stalledClaims: StalledClaim[];
+  @field(2) unclaimed: UnclaimedTask[];
+  @field(3) regressions: StatusRegression[];
+  @field(4) churning: ChurningTask[];
+  @field(5) agentRows: FleetScorecardRow[];
+  @field(6) roleRows: FleetScorecardRow[];
+  @field(7) agentCompleted: int64;
+  @field(8) humanCompleted: int64;
+  @field(9) priorAgentCompleted: int64;
+  @field(10) priorHumanCompleted: int64;
+}
+
+model GetReportTrendsRequest {
+  @field(1) projectId: string;
+  @field(2) windowDays: int32;
+
+  // Scopes the CFD to one task type — merging status vocabularies across
+  // types makes band thickness change when someone adds a type. Absent, the
+  // server picks the project's most-used type. The literal value "untyped"
+  // selects the fixed todo/in-progress/done vocabulary of untyped tasks.
+  @field(3) taskTypeId?: string;
+}
+
+// `date` is a UTC YYYY-MM-DD bucket.
+model DailyCount {
+  @field(1) date: string;
+  @field(2) count: int64;
+}
+
+// `rate` is 0..1; `sampleSize` lets the UI dim days with too few completions
+// for the rate to mean anything.
+model DailyRate {
+  @field(1) date: string;
+  @field(2) rate: float64;
+  @field(3) sampleSize: int64;
+}
+
+// One status band of the cumulative flow diagram.
+model CfdBand {
+  @field(1) status: string;
+  @field(2) isTerminal: boolean;
+  @field(3) counts: DailyCount[];
+}
+
+model RecentCompletion {
+  @field(1) taskId: string;
+  @field(2) taskDisplayId: string;
+  @field(3) taskTitle: string;
+  @field(4) completedAt: string;
+  @field(5) byAgent: boolean;
+}
+
+model TaskTypeOption {
+  @field(1) id: string;
+  @field(2) name: string;
+  @field(3) taskCount: int64;
+}
+
+// `collectedSince` is the honest collection-start date (ADR-0020's truthful
+// backfill draws no false past) — the UI must label it rather than let a
+// chart imply history that was never recorded. `createdCumulative` /
+// `completedCumulative` are cumulative counts over the requested window; the
+// gap between the two lines is the read.
+model GetReportTrendsResponse {
+  @field(1) collectedSince: string;
+  @field(2) createdCumulative: DailyCount[];
+  @field(3) completedCumulative: DailyCount[];
+  @field(4) recentCompletions: RecentCompletion[];
+  @field(5) autonomyRate: DailyRate[];
+  @field(6) reworkRate: DailyRate[];
+  @field(7) cfdBands: CfdBand[];
+  @field(8) cfdTaskTypeId: string;
+  @field(9) taskTypeOptions: TaskTypeOption[];
+}
+
+interface ReportService {
+  getReportExceptions(
+    request: GetReportExceptionsRequest,
+  ): GetReportExceptionsResponse;
+  getReportTrends(request: GetReportTrendsRequest): GetReportTrendsResponse;
+}
+
 // ==== Teams (M10-T07, ADR-0013) ====
 
 model Team {

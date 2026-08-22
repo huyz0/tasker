@@ -51,6 +51,8 @@ const (
 	SearchServiceName = "tasker.health.v1.SearchService"
 	// DashboardServiceName is the fully-qualified name of the DashboardService service.
 	DashboardServiceName = "tasker.health.v1.DashboardService"
+	// ReportServiceName is the fully-qualified name of the ReportService service.
+	ReportServiceName = "tasker.health.v1.ReportService"
 	// TeamServiceName is the fully-qualified name of the TeamService service.
 	TeamServiceName = "tasker.health.v1.TeamService"
 	// RoleServiceName is the fully-qualified name of the RoleService service.
@@ -364,6 +366,12 @@ const (
 	// DashboardServiceGetDashboardProcedure is the fully-qualified name of the DashboardService's
 	// GetDashboard RPC.
 	DashboardServiceGetDashboardProcedure = "/tasker.health.v1.DashboardService/GetDashboard"
+	// ReportServiceGetReportExceptionsProcedure is the fully-qualified name of the ReportService's
+	// GetReportExceptions RPC.
+	ReportServiceGetReportExceptionsProcedure = "/tasker.health.v1.ReportService/GetReportExceptions"
+	// ReportServiceGetReportTrendsProcedure is the fully-qualified name of the ReportService's
+	// GetReportTrends RPC.
+	ReportServiceGetReportTrendsProcedure = "/tasker.health.v1.ReportService/GetReportTrends"
 	// TeamServiceCreateTeamProcedure is the fully-qualified name of the TeamService's CreateTeam RPC.
 	TeamServiceCreateTeamProcedure = "/tasker.health.v1.TeamService/CreateTeam"
 	// TeamServiceUpdateTeamProcedure is the fully-qualified name of the TeamService's UpdateTeam RPC.
@@ -571,6 +579,9 @@ var (
 	searchServiceUniversalSearchMethodDescriptor              = searchServiceServiceDescriptor.Methods().ByName("UniversalSearch")
 	dashboardServiceServiceDescriptor                         = v1.File_tasker_health_v1_health_proto.Services().ByName("DashboardService")
 	dashboardServiceGetDashboardMethodDescriptor              = dashboardServiceServiceDescriptor.Methods().ByName("GetDashboard")
+	reportServiceServiceDescriptor                            = v1.File_tasker_health_v1_health_proto.Services().ByName("ReportService")
+	reportServiceGetReportExceptionsMethodDescriptor          = reportServiceServiceDescriptor.Methods().ByName("GetReportExceptions")
+	reportServiceGetReportTrendsMethodDescriptor              = reportServiceServiceDescriptor.Methods().ByName("GetReportTrends")
 	teamServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("TeamService")
 	teamServiceCreateTeamMethodDescriptor                     = teamServiceServiceDescriptor.Methods().ByName("CreateTeam")
 	teamServiceUpdateTeamMethodDescriptor                     = teamServiceServiceDescriptor.Methods().ByName("UpdateTeam")
@@ -3969,6 +3980,100 @@ type UnimplementedDashboardServiceHandler struct{}
 
 func (UnimplementedDashboardServiceHandler) GetDashboard(context.Context, *connect.Request[v1.GetDashboardRequest]) (*connect.Response[v1.GetDashboardResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.DashboardService.GetDashboard is not implemented"))
+}
+
+// ReportServiceClient is a client for the tasker.health.v1.ReportService service.
+type ReportServiceClient interface {
+	GetReportExceptions(context.Context, *connect.Request[v1.GetReportExceptionsRequest]) (*connect.Response[v1.GetReportExceptionsResponse], error)
+	GetReportTrends(context.Context, *connect.Request[v1.GetReportTrendsRequest]) (*connect.Response[v1.GetReportTrendsResponse], error)
+}
+
+// NewReportServiceClient constructs a client for the tasker.health.v1.ReportService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewReportServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ReportServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &reportServiceClient{
+		getReportExceptions: connect.NewClient[v1.GetReportExceptionsRequest, v1.GetReportExceptionsResponse](
+			httpClient,
+			baseURL+ReportServiceGetReportExceptionsProcedure,
+			connect.WithSchema(reportServiceGetReportExceptionsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getReportTrends: connect.NewClient[v1.GetReportTrendsRequest, v1.GetReportTrendsResponse](
+			httpClient,
+			baseURL+ReportServiceGetReportTrendsProcedure,
+			connect.WithSchema(reportServiceGetReportTrendsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// reportServiceClient implements ReportServiceClient.
+type reportServiceClient struct {
+	getReportExceptions *connect.Client[v1.GetReportExceptionsRequest, v1.GetReportExceptionsResponse]
+	getReportTrends     *connect.Client[v1.GetReportTrendsRequest, v1.GetReportTrendsResponse]
+}
+
+// GetReportExceptions calls tasker.health.v1.ReportService.GetReportExceptions.
+func (c *reportServiceClient) GetReportExceptions(ctx context.Context, req *connect.Request[v1.GetReportExceptionsRequest]) (*connect.Response[v1.GetReportExceptionsResponse], error) {
+	return c.getReportExceptions.CallUnary(ctx, req)
+}
+
+// GetReportTrends calls tasker.health.v1.ReportService.GetReportTrends.
+func (c *reportServiceClient) GetReportTrends(ctx context.Context, req *connect.Request[v1.GetReportTrendsRequest]) (*connect.Response[v1.GetReportTrendsResponse], error) {
+	return c.getReportTrends.CallUnary(ctx, req)
+}
+
+// ReportServiceHandler is an implementation of the tasker.health.v1.ReportService service.
+type ReportServiceHandler interface {
+	GetReportExceptions(context.Context, *connect.Request[v1.GetReportExceptionsRequest]) (*connect.Response[v1.GetReportExceptionsResponse], error)
+	GetReportTrends(context.Context, *connect.Request[v1.GetReportTrendsRequest]) (*connect.Response[v1.GetReportTrendsResponse], error)
+}
+
+// NewReportServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewReportServiceHandler(svc ReportServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	reportServiceGetReportExceptionsHandler := connect.NewUnaryHandler(
+		ReportServiceGetReportExceptionsProcedure,
+		svc.GetReportExceptions,
+		connect.WithSchema(reportServiceGetReportExceptionsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	reportServiceGetReportTrendsHandler := connect.NewUnaryHandler(
+		ReportServiceGetReportTrendsProcedure,
+		svc.GetReportTrends,
+		connect.WithSchema(reportServiceGetReportTrendsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.ReportService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ReportServiceGetReportExceptionsProcedure:
+			reportServiceGetReportExceptionsHandler.ServeHTTP(w, r)
+		case ReportServiceGetReportTrendsProcedure:
+			reportServiceGetReportTrendsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedReportServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedReportServiceHandler struct{}
+
+func (UnimplementedReportServiceHandler) GetReportExceptions(context.Context, *connect.Request[v1.GetReportExceptionsRequest]) (*connect.Response[v1.GetReportExceptionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ReportService.GetReportExceptions is not implemented"))
+}
+
+func (UnimplementedReportServiceHandler) GetReportTrends(context.Context, *connect.Request[v1.GetReportTrendsRequest]) (*connect.Response[v1.GetReportTrendsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ReportService.GetReportTrends is not implemented"))
 }
 
 // TeamServiceClient is a client for the tasker.health.v1.TeamService service.

@@ -1550,6 +1550,164 @@ service DashboardService {
   rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
 }
 
+// ── Reports ─────────────────────────────────────────────────────────────────
+// The on-the-loop monitoring surface, humans only. Exception lists lead
+// because agents fail discretely; counts rather than rates because a chart
+// must answer "what will you do differently?". Backed by task_activity
+// (ADR-0020). Two RPCs split by cost and cadence: exceptions daily, trends
+// weekly.
+message GetReportExceptionsRequest {
+  string projectId = 1;
+  int32 windowDays = 2;
+}
+
+// An agent-held task with no activity signal. neverStarted distinguishes "no
+// signal since the claim" (broken runner) from "went quiet" (hard task);
+// claimedAt is absent for claims that predate activity collection.
+message StalledClaim {
+  string taskId = 1;
+  string taskDisplayId = 2;
+  string taskTitle = 3;
+  string status = 4;
+  string agentId = 5;
+  string agentName = 6;
+  optional string claimedAt = 7;
+  optional string lastSignalAt = 8;
+  optional string agentLastSeenAt = 9;
+  bool neverStarted = 10;
+}
+
+// A task nobody holds, waiting for pickup since waitingSince.
+message UnclaimedTask {
+  string taskId = 1;
+  string taskDisplayId = 2;
+  string taskTitle = 3;
+  string status = 4;
+  string waitingSince = 5;
+}
+
+// A transition out of a terminal status — the agent-native reopened-bug
+// signal. holder* is the assignee at the time of the regression event.
+message StatusRegression {
+  string taskId = 1;
+  string taskDisplayId = 2;
+  string taskTitle = 3;
+  string fromStatus = 4;
+  string toStatus = 5;
+  string occurredAt = 6;
+  string actorType = 7;
+  optional string actorName = 8;
+  optional string holderAgentId = 9;
+  optional string holderAgentName = 10;
+}
+
+// A task bouncing between agents. claimHeld=true: the last handing-off agent
+// still holds the claim, so no other agent can pick the task up (agents
+// cannot self-unassign).
+message ChurningTask {
+  string taskId = 1;
+  string taskDisplayId = 2;
+  string taskTitle = 3;
+  int64 handoffCount = 4;
+  string lastAgentId = 5;
+  string lastAgentName = 6;
+  string lastHandoffAt = 7;
+  bool claimHeld = 8;
+}
+
+// One fleet-scorecard row, per agent (agentRows) or per role (roleRows).
+// subjectName falls back to "(deleted agent)".
+message FleetScorecardRow {
+  string subjectId = 1;
+  string subjectName = 2;
+  int64 claimed = 3;
+  int64 completed = 4;
+  int64 reopened = 5;
+  int64 handedOff = 6;
+  int64 takenAway = 7;
+  int64 autonomousCompleted = 8;
+  int64 openNow = 9;
+  optional string lastActiveAt = 10;
+}
+
+// Every list is server-capped. The four completion counts power the "Agents
+// completed N% (M% prior window)" header stat as counts, not rates.
+message GetReportExceptionsResponse {
+  repeated StalledClaim stalledClaims = 1;
+  repeated UnclaimedTask unclaimed = 2;
+  repeated StatusRegression regressions = 3;
+  repeated ChurningTask churning = 4;
+  repeated FleetScorecardRow agentRows = 5;
+  repeated FleetScorecardRow roleRows = 6;
+  int64 agentCompleted = 7;
+  int64 humanCompleted = 8;
+  int64 priorAgentCompleted = 9;
+  int64 priorHumanCompleted = 10;
+}
+
+message GetReportTrendsRequest {
+  string projectId = 1;
+  int32 windowDays = 2;
+  // Scopes the CFD to one task type. Absent: the server picks the project's
+  // most-used type. "untyped" selects the fixed todo/in-progress/done
+  // vocabulary of untyped tasks.
+  optional string taskTypeId = 3;
+}
+
+// date is a UTC YYYY-MM-DD bucket.
+message DailyCount {
+  string date = 1;
+  int64 count = 2;
+}
+
+// rate is 0..1; sampleSize lets the UI dim days with few completions.
+message DailyRate {
+  string date = 1;
+  double rate = 2;
+  int64 sampleSize = 3;
+}
+
+// One status band of the cumulative flow diagram.
+message CfdBand {
+  string status = 1;
+  bool isTerminal = 2;
+  repeated DailyCount counts = 3;
+}
+
+message RecentCompletion {
+  string taskId = 1;
+  string taskDisplayId = 2;
+  string taskTitle = 3;
+  string completedAt = 4;
+  bool byAgent = 5;
+}
+
+message TaskTypeOption {
+  string id = 1;
+  string name = 2;
+  int64 taskCount = 3;
+}
+
+// collectedSince is the honest collection-start date the UI must label.
+// createdCumulative/completedCumulative are cumulative counts over the
+// requested window; the gap between them is the read.
+message GetReportTrendsResponse {
+  string collectedSince = 1;
+  repeated DailyCount createdCumulative = 2;
+  repeated DailyCount completedCumulative = 3;
+  repeated RecentCompletion recentCompletions = 4;
+  repeated DailyRate autonomyRate = 5;
+  repeated DailyRate reworkRate = 6;
+  repeated CfdBand cfdBands = 7;
+  string cfdTaskTypeId = 8;
+  repeated TaskTypeOption taskTypeOptions = 9;
+}
+
+service ReportService {
+  rpc GetReportExceptions(GetReportExceptionsRequest) returns (GetReportExceptionsResponse);
+  rpc GetReportTrends(GetReportTrendsRequest) returns (GetReportTrendsResponse);
+}
+
 // ==== Teams (M10-T07, ADR-0013) ====
 
 message Team {

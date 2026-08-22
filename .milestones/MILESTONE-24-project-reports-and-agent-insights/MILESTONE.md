@@ -140,7 +140,7 @@ users are agents, and reports are the humans-only monitoring surface).
         `.milestones/MILESTONE-24-project-reports-and-agent-insights/*`
       - Verify: all named files exist; `moon run tasker:docs-lint` passes.
 
-- [ ] **M24-T02** — Contract: `ReportService` in `main.tsp` **and**
+- [x] **M24-T02** — Contract: `ReportService` in `main.tsp` **and**
       `tasker/health/v1/health.proto` (kept in sync by hand), two methods —
       `getReportExceptions(projectId, windowDays)` returning stalled
       (claimed-silent split never-started/went-quiet + oldest-unclaimed,
