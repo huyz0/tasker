@@ -2,81 +2,14 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import {
+  TaskService, CommentService, LabelService, RepositoryService, TaskTypeService,
+  TaskNoteService, OrgService, AgentService, ArtifactService, SearchService, ProjectService,
+} from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError, mockRpcPending, server } from '../../test/mockRpc';
+import { http, HttpResponse } from 'msw';
+import { BACKEND_URL } from '../../lib/backendUrl';
 
-const { mockGetProject, mockListTasks, mockUpdateTaskStatus, mockDeleteTask, mockUpdateTask, mockCreateTask, mockListComments, mockListEntityLabels, mockListLabels, mockListPullRequests, mockGetTaskType, mockListTaskTypes, mockGetTask, mockListTaskNotes, mockUpdateTaskNote, mockDeleteTaskNote } = vi.hoisted(() => ({
-  mockGetProject: vi.fn(),
-  mockListTasks: vi.fn(),
-  mockGetTask: vi.fn(),
-  mockListTaskTypes: vi.fn(),
-  mockUpdateTaskStatus: vi.fn(),
-  mockDeleteTask: vi.fn(),
-  mockUpdateTask: vi.fn(),
-  mockCreateTask: vi.fn(),
-  mockListComments: vi.fn(),
-  mockListEntityLabels: vi.fn(),
-  mockListLabels: vi.fn(),
-  mockListPullRequests: vi.fn(),
-  mockGetTaskType: vi.fn(),
-  mockListTaskNotes: vi.fn(),
-  mockUpdateTaskNote: vi.fn(),
-  mockDeleteTaskNote: vi.fn(),
-}));
-
-vi.mock('@connectrpc/connect-web', () => ({
-  createConnectTransport: vi.fn(() => ({})),
-}));
-vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn((service: unknown) => {
-    if (service === 'CommentService') return { listComments: mockListComments, createComment: vi.fn() };
-    if (service === 'LabelService') return {
-      listEntityLabels: mockListEntityLabels,
-      listLabels: mockListLabels,
-      attachLabel: vi.fn(),
-      detachLabel: vi.fn(),
-      createLabel: vi.fn(),
-    };
-    if (service === 'RepositoryService') return { listPullRequests: mockListPullRequests };
-    if (service === 'TaskTypeService') return { getTaskType: mockGetTaskType, listTaskTypes: mockListTaskTypes };
-    if (service === 'TaskNoteService') return { listTaskNotes: mockListTaskNotes, updateTaskNote: mockUpdateTaskNote, deleteTaskNote: mockDeleteTaskNote };
-    if (service === 'OrgService') return { listOrgMembers: vi.fn().mockResolvedValue({ members: [], page: {} }) };
-    if (service === 'ProjectService') return { getProject: mockGetProject };
-    if (service === 'AgentService') return { listAgents: vi.fn().mockResolvedValue({ agents: [], page: {} }) };
-    return {
-      // `listTasks` as the server implements it. The board asks for one status
-      // at a time now (M07-T03), and every fixture in this file declares the
-      // tasks of a *project* — applying the facet here keeps them meaning what
-      // they say, instead of every card appearing in all three columns.
-      listTasks: async (req: any) => {
-        const res = await mockListTasks(req);
-        if (!req?.status) return res;
-        const tasks = (res?.tasks ?? []).filter((t: any) => (t.status || 'todo') === req.status);
-        // A fixture's own totalCount wins. The server's count is over the whole
-        // column, not the page — a test that says "20 loaded of 16,667" is
-        // describing exactly the case this design exists for, and deriving the
-        // count from the filtered rows would make that untestable.
-        const totalCount = res?.page?.totalCount ?? tasks.length;
-        return { ...res, tasks, page: { ...(res?.page ?? {}), totalCount } };
-      },
-      getTask: mockGetTask, updateTaskStatus: mockUpdateTaskStatus, deleteTask: mockDeleteTask, updateTask: mockUpdateTask, createTask: mockCreateTask, assignTask: vi.fn(), unassignTask: vi.fn(), listTaskReviewers: vi.fn().mockResolvedValue({ reviewers: [] }), addTaskReviewer: vi.fn(), removeTaskReviewer: vi.fn() };
-  }),
-}));
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  TaskService: {},
-  CommentService: 'CommentService',
-  LabelService: 'LabelService',
-  RepositoryService: 'RepositoryService',
-  TaskTypeService: 'TaskTypeService',
-  TaskNoteService: 'TaskNoteService',
-  // AssigneePicker (M05-T04) reads the member and agent catalogues to build its
-  // menu, so this module mock has to expose them too.
-  OrgService: 'OrgService',
-  AgentService: 'AgentService',
-  // TaskArtifactLinks (M05-T06) reads and searches from the task detail.
-  ArtifactService: 'ArtifactService',
-  SearchService: 'SearchService',
-  // The task breadcrumb resolves the project's name from its id (M06-T08).
-  ProjectService: 'ProjectService',
-}));
 let mockActiveProjectId = 'proj-1';
 let mockActiveOrgId = 'org-1';
 vi.mock('../../store/layout', () => ({
@@ -130,53 +63,64 @@ function renderPage(initialEntry = '/tasks') {
   );
 }
 
+/**
+ * Registers ListTasks and GetTask together from one fixture array, mirroring
+ * how the real server relates the two: ListTasks answers one status column
+ * at a time (the board asks one facet per column, M07-T03) and GetTask looks
+ * the id up directly - the deep-link/detail-panel path a loaded column need
+ * not cover (M07-T01).
+ */
+function withTasks(tasks: any[], page: object = {}) {
+  const listRequests: any[] = [];
+  mockRpc(TaskService, 'ListTasks', (body: { status?: string }) => {
+    listRequests.push(body);
+    if (!body.status) return { tasks, page };
+    const filtered = tasks.filter((t) => (t.status || 'todo') === body.status);
+    return { tasks: filtered, page: { totalCount: filtered.length, ...page } };
+  });
+  mockRpc(TaskService, 'GetTask', (body: { taskId: string }) => {
+    const match = tasks.find((t) => t.id === body.taskId);
+    return { task: match ?? { id: body.taskId, title: '', status: 'todo', description: '' } };
+  });
+  return listRequests;
+}
+
 describe('TasksWorkbench', () => {
   beforeEach(() => {
     mockActiveProjectId = 'proj-1';
     mockActiveOrgId = 'org-1';
-    mockListTasks.mockReset();
-    mockGetTask.mockReset();
-    mockListTaskTypes.mockReset();
     // Board columns for custom statuses come from the project's task types now,
     // not from scanning every task in the project (M07-T03). Default to none;
     // the tests that care declare their own.
-    mockListTaskTypes.mockResolvedValue({ taskTypes: [] });
-    // The board is paged per status and the detail view fetches its task by id
-    // (M07-T03), so a test that configures `mockListTasks` is also describing
-    // what `getTask` should answer. Resolve it from the same fixture, and
-    // honour the `status` facet the columns send.
-    mockGetTask.mockImplementation(async ({ taskId }: { taskId: string }) => {
-      const pages = await Promise.all(mockListTasks.mock.results.map((r: any) => r.value).filter(Boolean));
-      for (const page of pages) {
-        const match = (page?.tasks ?? []).find((t: any) => t.id === taskId);
-        if (match) return { task: match };
-      }
-      return { task: { id: taskId, title: '', status: 'todo', description: '' } };
-    });
-    mockGetProject.mockReset();
-    mockGetProject.mockResolvedValue({ project: { id: 'proj-1', name: 'Seed Project' } });
-    mockUpdateTaskStatus.mockReset();
-    mockDeleteTask.mockReset();
-    mockUpdateTask.mockReset();
-    mockCreateTask.mockReset();
-    mockUpdateTaskNote.mockReset();
-    mockDeleteTaskNote.mockReset();
-    mockListComments.mockReset();
-    mockListComments.mockResolvedValue({ comments: [] });
-    mockListEntityLabels.mockReset();
-    mockListEntityLabels.mockResolvedValue({ labels: [] });
-    mockListLabels.mockReset();
-    mockListLabels.mockResolvedValue({ labels: [] });
-    mockListPullRequests.mockReset();
-    mockListPullRequests.mockResolvedValue({ pullRequests: [] });
-    mockListTaskNotes.mockReset();
-    mockListTaskNotes.mockResolvedValue({ taskNotes: [] });
-    mockGetTaskType.mockReset();
+    mockRpc(TaskTypeService, 'ListTaskTypes', { taskTypes: [] });
+    mockRpc(ProjectService, 'GetProject', { project: { id: 'proj-1', name: 'Seed Project' } });
+    mockRpc(CommentService, 'ListComments', { comments: [] });
+    mockRpc(LabelService, 'ListEntityLabels', { labels: [] });
+    mockRpc(LabelService, 'ListLabels', { labels: [] });
+    mockRpc(RepositoryService, 'ListPullRequests', { pullRequests: [] });
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [] });
+    // AssigneePicker (M05-T04) reads the member/agent catalogues; ReviewerPicker
+    // reads the reviewer list. None of these are under test here.
+    mockRpc(OrgService, 'ListOrgMembers', { members: [], page: {} });
+    mockRpc(AgentService, 'ListAgents', { agents: [], page: {} });
+    mockRpc(TaskService, 'ListTaskReviewers', { reviewers: [] });
+    mockRpc(TaskService, 'AssignTask', {});
+    mockRpc(TaskService, 'UnassignTask', {});
+    mockRpc(TaskService, 'AddTaskReviewer', {});
+    mockRpc(TaskService, 'RemoveTaskReviewer', {});
+    // TaskArtifactLinks (M05-T06) renders inside the detail panel for every
+    // task it opens.
+    mockRpc(ArtifactService, 'ListTaskArtifactLinks', { links: [] });
+    mockRpc(SearchService, 'UniversalSearch', { results: [] });
   });
 
   it('updates a task status via the detail panel dropdown', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockUpdateTaskStatus.mockResolvedValue({ task: { id: 'task-1', title: 'Fix bug', status: 'in-progress', description: '' } });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    const requests: any[] = [];
+    mockRpc(TaskService, 'UpdateTaskStatus', (body) => {
+      requests.push(body);
+      return { task: { id: 'task-1', title: 'Fix bug', status: 'in-progress', description: '' } };
+    });
 
     renderPage();
 
@@ -186,7 +130,7 @@ describe('TasksWorkbench', () => {
     const select = await screen.findByDisplayValue('Todo');
     fireEvent.change(select, { target: { value: 'in-progress' } });
 
-    await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
+    await waitFor(() => expect(requests).toContainEqual({ taskId: 'task-1', status: 'in-progress' }));
   });
 
   // Native HTML5 drag-and-drop (no dnd-kit), added alongside the existing
@@ -203,8 +147,12 @@ describe('TasksWorkbench', () => {
   }
 
   it('moves a task to another column by dragging its card', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockUpdateTaskStatus.mockResolvedValue({ task: { id: 'task-1', title: 'Fix bug', status: 'in-progress', description: '' } });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    const requests: any[] = [];
+    mockRpc(TaskService, 'UpdateTaskStatus', (body) => {
+      requests.push(body);
+      return { task: { id: 'task-1', title: 'Fix bug', status: 'in-progress', description: '' } };
+    });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -224,12 +172,12 @@ describe('TasksWorkbench', () => {
     fireEvent.dragEnter(inProgressColumn, { dataTransfer });
     fireEvent.drop(inProgressColumn, { dataTransfer });
 
-    await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
+    await waitFor(() => expect(requests).toContainEqual({ taskId: 'task-1', status: 'in-progress' }));
   });
 
   it('shows an error if a drag-and-drop status move fails', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockUpdateTaskStatus.mockRejectedValue(new Error('transition not allowed'));
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpcError(TaskService, 'UpdateTaskStatus', 'unknown', 'transition not allowed');
 
     renderPage();
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -241,7 +189,20 @@ describe('TasksWorkbench', () => {
     fireEvent.dragStart(card, { dataTransfer });
     fireEvent.drop(doneColumn, { dataTransfer });
 
-    expect(await screen.findByText(/Failed to move task: transition not allowed/)).toBeInTheDocument();
+    expect(await screen.findByText(/Failed to move task:.*transition not allowed/)).toBeInTheDocument();
+  });
+
+  it('passes a task\'s existing assignees through to the picker in the detail panel', async () => {
+    withTasks([{
+      id: 'task-1', title: 'Fix bug', status: 'todo', description: '',
+      assignees: [{ userId: 'u-1', agentId: '', name: 'Ada Lovelace' }],
+    }]);
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
   });
 
   it('asks the server for one column at a time, rather than the whole project', async () => {
@@ -249,18 +210,15 @@ describe('TasksWorkbench', () => {
     // project was exhausted. That was the defect, not the contract: at the
     // 50,000-task scale target it is 500 sequential round trips before the
     // first column paints (M07-T03).
-    mockListTasks.mockResolvedValue({
-      tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }],
-      page: { totalCount: 1 },
-    });
+    const requests = withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }], { totalCount: 1 });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
 
-    const statusesAsked = mockListTasks.mock.calls.map(([req]: any[]) => req.status).filter(Boolean);
+    const statusesAsked = requests.map((req) => req.status).filter(Boolean);
     expect(statusesAsked).toEqual(expect.arrayContaining(['todo', 'in-progress', 'done']));
     // Every board request names a status and a bounded page.
-    for (const [req] of mockListTasks.mock.calls) {
+    for (const req of requests) {
       if (!req.status) continue;
       expect(req.page.limit).toBe(20);
     }
@@ -269,7 +227,7 @@ describe('TasksWorkbench', () => {
   it('offers Load more when a column has pages left, and appends them', async () => {
     // A column of 16,667 shows 20. The way to the rest is per column, because
     // the pages belong to the column rather than to the project (M07-T03).
-    mockListTasks.mockImplementation(async (req: any) => {
+    mockRpc(TaskService, 'ListTasks', (req: any) => {
       if (req.status !== 'todo') return { tasks: [], page: { totalCount: 0 } };
       return req.page?.cursor
         ? { tasks: [{ id: 'task-2', title: 'Second page task', status: 'todo' }], page: { totalCount: 2 } }
@@ -286,43 +244,47 @@ describe('TasksWorkbench', () => {
   });
 
   it('does not offer Load more when the column is fully loaded', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Only task', status: 'todo' }], page: {} });
+    withTasks([{ id: 'task-1', title: 'Only task', status: 'todo' }]);
     renderPage();
     await waitFor(() => expect(screen.getByText('Only task')).toBeDefined());
     expect(screen.queryByRole('button', { name: /Load more/ })).toBeNull();
   });
 
   it('surfaces a failed column without claiming the column is empty', async () => {
-    mockListTasks.mockImplementation(async (req: any) => {
-      if (req.status === 'todo') throw new Error('column unavailable');
-      return { tasks: [], page: { totalCount: 0 } };
-    });
+    server.use(
+      http.post(`${BACKEND_URL}/${TaskService.typeName}/ListTasks`, async ({ request }) => {
+        const body = await request.json().catch(() => ({})) as { status?: string };
+        if (body.status === 'todo') {
+          return HttpResponse.json({ code: 'unavailable', message: 'column unavailable' }, { status: 400 });
+        }
+        return HttpResponse.json({ tasks: [], page: { totalCount: 0 } });
+      }),
+    );
 
     renderPage();
     await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(0));
-    expect(screen.getAllByRole('alert')[0]).toHaveTextContent('column unavailable');
+    expect(screen.getAllByRole('alert')[0]).toHaveTextContent(/column unavailable/);
   });
 
   it('reads the open task by id, so a deep link works when its page is not loaded', async () => {
     // The board is paged now, so the task a URL names need not be in any loaded
     // column. `getTask` also carries `description`, which the list projects
     // away (M07-T01).
-    mockListTasks.mockResolvedValue({ tasks: [], page: { totalCount: 0 } });
-    mockGetTask.mockResolvedValue({
+    mockRpc(TaskService, 'ListTasks', { tasks: [], page: { totalCount: 0 } });
+    mockRpc(TaskService, 'GetTask', {
       task: { id: 'task-99', title: 'Deep linked task', status: 'todo', description: 'Body only getTask returns', displayId: 'ENG-99' },
     });
 
     renderPage('/tasks/task-99');
 
     await waitFor(() => expect(screen.getByText('Deep linked task')).toBeDefined());
-    expect(mockGetTask).toHaveBeenCalledWith({ taskId: 'task-99' });
     expect(screen.getByText('Body only getTask returns')).toBeDefined();
   });
 
   it('shows each column the count the server reports, not the number of cards loaded', async () => {
     // A page of 20 cards in a column of 16,667 must still say 16,667. Counting
     // the rendered cards is exactly what the whole-project fetch existed for.
-    mockListTasks.mockImplementation(async (req: any) => ({
+    mockRpc(TaskService, 'ListTasks', (req: any) => ({
       tasks: req.status === 'todo' ? [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] : [],
       page: { totalCount: req.status === 'todo' ? 16667 : 0 },
     }));
@@ -333,8 +295,8 @@ describe('TasksWorkbench', () => {
   });
 
   it('shows a pull request badge on a task it is linked to, using real data not a hardcoded placeholder', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
-    mockListPullRequests.mockResolvedValue({
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }]);
+    mockRpc(RepositoryService, 'ListPullRequests', {
       pullRequests: [{ id: 'pr-1', taskId: 'task-1', remotePrId: '42', title: 'ENG-1: fix bug', status: 'open', url: 'http://example.com/pr/42' }],
     });
 
@@ -344,8 +306,8 @@ describe('TasksWorkbench', () => {
   });
 
   it('shows an error message when the status update fails', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockUpdateTaskStatus.mockRejectedValue(new Error('not a member'));
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpcError(TaskService, 'UpdateTaskStatus', 'unknown', 'not a member');
 
     renderPage();
 
@@ -359,8 +321,12 @@ describe('TasksWorkbench', () => {
   });
 
   it('deletes a task after confirmation and closes the detail panel', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockDeleteTask.mockResolvedValue({ success: true });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    const requests: any[] = [];
+    mockRpc(TaskService, 'DeleteTask', (body) => {
+      requests.push(body);
+      return { success: true };
+    });
 
     renderPage();
 
@@ -371,12 +337,17 @@ describe('TasksWorkbench', () => {
     fireEvent.click(deleteButton);
     await confirmAction();
 
-    await waitFor(() => expect(mockDeleteTask).toHaveBeenCalledWith({ taskId: 'task-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ taskId: 'task-1' }));
     await waitFor(() => expect(screen.queryByText('Task Details')).toBeNull());
   });
 
   it('does not delete a task when the confirmation is dismissed', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    const requests: any[] = [];
+    mockRpc(TaskService, 'DeleteTask', (body) => {
+      requests.push(body);
+      return { success: true };
+    });
 
     renderPage();
 
@@ -387,18 +358,21 @@ describe('TasksWorkbench', () => {
     fireEvent.click(deleteButton);
     await cancelAction();
 
-    expect(mockDeleteTask).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('renders a task using a custom task-type status instead of hiding it', async () => {
-    mockListTasks.mockResolvedValue({
-      tasks: [{ id: 'task-1', title: 'Custom flow task', status: 'in-review', description: '', taskTypeId: 'tt-1' }],
-    });
-    mockListTaskTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Custom' }] });
-    mockGetTaskType.mockResolvedValue({
+    withTasks([{ id: 'task-1', title: 'Custom flow task', status: 'in-review', description: '', taskTypeId: 'tt-1' }]);
+    mockRpc(TaskTypeService, 'ListTaskTypes', { taskTypes: [{ id: 'tt-1', name: 'Custom' }] });
+    mockRpc(TaskTypeService, 'GetTaskType', {
       taskType: { id: 'tt-1' },
       statuses: [{ id: 's-1', name: 'backlog' }, { id: 's-2', name: 'in-review' }, { id: 's-3', name: 'shipped' }],
       transitions: [],
+    });
+    const requests: any[] = [];
+    mockRpc(TaskService, 'UpdateTaskStatus', (body) => {
+      requests.push(body);
+      return {};
     });
 
     renderPage();
@@ -412,12 +386,12 @@ describe('TasksWorkbench', () => {
     expect(screen.getByRole('option', { name: 'shipped' })).toBeDefined();
 
     fireEvent.change(select, { target: { value: 'shipped' } });
-    await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'shipped' }));
+    await waitFor(() => expect(requests).toContainEqual({ taskId: 'task-1', status: 'shipped' }));
   });
 
   it('shows an error message when task deletion fails', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockDeleteTask.mockRejectedValue(new Error('not an admin'));
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpcError(TaskService, 'DeleteTask', 'unknown', 'not an admin');
 
     renderPage();
 
@@ -432,7 +406,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('opens a task from the keyboard, via a real button rather than a div', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     renderPage();
 
     // The card used to be a `role="button"` div with a hand-written onKeyDown,
@@ -452,11 +426,9 @@ describe('TasksWorkbench', () => {
   });
 
   it('shows pending labels while deleting and while updating status', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: 'Some **markdown** body' } ] });
-    let resolveDelete: (v: any) => void = () => {};
-    mockDeleteTask.mockReturnValue(new Promise((resolve) => { resolveDelete = resolve; }));
-    let resolveUpdate: (v: any) => void = () => {};
-    mockUpdateTaskStatus.mockReturnValue(new Promise((resolve) => { resolveUpdate = resolve; }));
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: 'Some **markdown** body' }]);
+    const pendingDelete = mockRpcPending(TaskService, 'DeleteTask');
+    const pendingUpdate = mockRpcPending(TaskService, 'UpdateTaskStatus');
 
     renderPage();
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -465,18 +437,18 @@ describe('TasksWorkbench', () => {
     const select = await screen.findByDisplayValue('Todo');
     fireEvent.change(select, { target: { value: 'in-progress' } });
     await waitFor(() => expect(select).toBeDisabled());
-    resolveUpdate({ task: { id: 'task-1', title: 'Fix bug', status: 'in-progress', description: 'Some **markdown** body' } });
+    pendingUpdate.resolve({ task: { id: 'task-1', title: 'Fix bug', status: 'in-progress', description: 'Some **markdown** body' } });
 
     const deleteButton = await screen.findByRole('button', { name: 'Delete' });
     fireEvent.click(deleteButton);
     await confirmAction();
     await waitFor(() => expect(screen.getByText('Moving to bin...')).toBeInTheDocument());
-    resolveDelete({ success: true });
+    pendingDelete.resolve({ success: true });
   });
 
   it('defaults a task with no status to the todo column, both on the board and in the detail panel', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'No status task', description: '' }] });
-    mockListPullRequests.mockResolvedValue({
+    withTasks([{ id: 'task-1', title: 'No status task', description: '' }]);
+    mockRpc(RepositoryService, 'ListPullRequests', {
       pullRequests: [{ id: 'pr-1', taskId: '', remotePrId: '1', title: 'orphan pr', status: 'open', url: 'http://x' }],
     });
 
@@ -489,7 +461,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('ignores non-activation keys on a task card', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -499,7 +471,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('closes the detail panel via the close button', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -512,7 +484,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('closes the detail overlay when pressing Escape', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -525,7 +497,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('does not close on unrelated key presses while the overlay is open', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -538,7 +510,12 @@ describe('TasksWorkbench', () => {
   });
 
   it('shows a breadcrumb from the project to the task', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'SEED-1' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'SEED-1' }]);
+    const projectRequests: any[] = [];
+    mockRpc(ProjectService, 'GetProject', (body) => {
+      projectRequests.push(body);
+      return { project: { id: 'proj-1', name: 'Seed Project' } };
+    });
     renderPage('/tasks/task-1');
 
     const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
@@ -547,11 +524,11 @@ describe('TasksWorkbench', () => {
     // completely (M06-T08).
     await waitFor(() => expect(crumbs.textContent).toContain('Seed Project'));
     expect(crumbs.textContent).toContain('SEED-1');
-    expect(mockGetProject).toHaveBeenCalledWith({ id: 'proj-1' });
+    expect(projectRequests).toContainEqual({ id: 'proj-1' });
   });
 
   it('closes the detail overlay when clicking the backdrop', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -564,7 +541,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('does not close the overlay when clicking inside the panel', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -577,8 +554,12 @@ describe('TasksWorkbench', () => {
   });
 
   it('edits a task title and description through the GUI', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: 'Old desc' }] });
-    mockUpdateTask.mockResolvedValue({ task: { id: 'task-1', title: 'Fix the bug', status: 'todo', description: 'New desc' } });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: 'Old desc' }]);
+    const requests: any[] = [];
+    mockRpc(TaskService, 'UpdateTask', (body) => {
+      requests.push(body);
+      return { task: { id: 'task-1', title: 'Fix the bug', status: 'todo', description: 'New desc' } };
+    });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -595,11 +576,31 @@ describe('TasksWorkbench', () => {
     fireEvent.change(descriptionInput, { target: { value: 'New desc' } });
     fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(mockUpdateTask).toHaveBeenCalledWith({ taskId: 'task-1', title: 'Fix the bug', description: 'New desc' }));
+    await waitFor(() => expect(requests).toContainEqual({ taskId: 'task-1', title: 'Fix the bug', description: 'New desc' }));
+  });
+
+  it('shows a pending label while saving a task edit', async () => {
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    const pending = mockRpcPending(TaskService, 'UpdateTask');
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+    await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => expect(screen.getByText('Saving...')).toBeInTheDocument());
+    pending.resolve({ task: { id: 'task-1', title: 'Fix bug', status: 'todo', description: '' } });
   });
 
   it('cancels editing a task without saving', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    const requests: any[] = [];
+    mockRpc(TaskService, 'UpdateTask', (body) => {
+      requests.push(body);
+      return {};
+    });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -610,12 +611,12 @@ describe('TasksWorkbench', () => {
 
     fireEvent.click(screen.getByText('Cancel'));
     expect(screen.getAllByText('Fix bug').length).toBeGreaterThan(0);
-    expect(mockUpdateTask).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('shows an error message when updating a task fails', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockUpdateTask.mockRejectedValue(new Error('task not found'));
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpcError(TaskService, 'UpdateTask', 'unknown', 'task not found');
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -628,10 +629,10 @@ describe('TasksWorkbench', () => {
   });
 
   it('resets edit mode when a different task is expanded', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
+    withTasks([
       { id: 'task-1', title: 'Fix bug', status: 'todo', description: '' },
       { id: 'task-2', title: 'Write docs', status: 'todo', description: '' },
-    ] });
+    ]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -645,9 +646,13 @@ describe('TasksWorkbench', () => {
   });
 
   it('shows agent notes for a task and edits one', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
-    mockUpdateTaskNote.mockResolvedValue({ taskNote: { id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Updated finding' } });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    const requests: any[] = [];
+    mockRpc(TaskNoteService, 'UpdateTaskNote', (body) => {
+      requests.push(body);
+      return { taskNote: { id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Updated finding' } };
+    });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -661,13 +666,17 @@ describe('TasksWorkbench', () => {
     fireEvent.change(noteInput, { target: { value: 'Updated finding' } });
     fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(mockUpdateTaskNote).toHaveBeenCalledWith({ taskNoteId: 'note-1', content: 'Updated finding' }));
+    await waitFor(() => expect(requests).toContainEqual({ taskNoteId: 'note-1', content: 'Updated finding' }));
   });
 
   it('deletes an agent note after confirmation', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
-    mockDeleteTaskNote.mockResolvedValue({ success: true });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    const requests: any[] = [];
+    mockRpc(TaskNoteService, 'DeleteTaskNote', (body) => {
+      requests.push(body);
+      return { success: true };
+    });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -678,11 +687,11 @@ describe('TasksWorkbench', () => {
     fireEvent.click(within(noteCard).getByText('Delete'));
     await confirmAction();
 
-    await waitFor(() => expect(mockDeleteTaskNote).toHaveBeenCalledWith({ taskNoteId: 'note-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ taskNoteId: 'note-1' }));
   });
 
   it('shows "No agent notes yet." when a task has no notes', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -692,9 +701,9 @@ describe('TasksWorkbench', () => {
   });
 
   it('shows an error message when updating an agent note fails', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
-    mockUpdateTaskNote.mockRejectedValue(new Error('note not found'));
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    mockRpcError(TaskNoteService, 'UpdateTaskNote', 'unknown', 'note not found');
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -709,8 +718,13 @@ describe('TasksWorkbench', () => {
   });
 
   it('cancels editing an agent note without saving', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    const requests: any[] = [];
+    mockRpc(TaskNoteService, 'UpdateTaskNote', (body) => {
+      requests.push(body);
+      return {};
+    });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -723,13 +737,13 @@ describe('TasksWorkbench', () => {
 
     fireEvent.click(screen.getByText('Cancel'));
     expect(screen.getByText('Investigated root cause')).toBeInTheDocument();
-    expect(mockUpdateTaskNote).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('shows an error message when deleting an agent note fails', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
-    mockDeleteTaskNote.mockRejectedValue(new Error('note not found'));
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Investigated root cause' }] });
+    mockRpcError(TaskNoteService, 'DeleteTaskNote', 'unknown', 'note not found');
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -748,12 +762,12 @@ describe('TasksWorkbench', () => {
   // A compact summary block, separate from the Agent Notes panel above -
   // count, the last few (truncated), and a click-through to the dedicated
   // Handoffs screen. Shares the same ['taskNotes', taskId] query
-  // TaskNotesPanel already fetches, so these fixtures reuse mockListTaskNotes
+  // TaskNotesPanel already fetches, so these fixtures reuse ListTaskNotes
   // rather than a second mock.
 
   it('shows a Handoffs summary, separate from Agent Notes, when the task has a handoff note', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockListTaskNotes.mockResolvedValue({ taskNotes: [
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [
       { id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Just a comment', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'comment' },
       { id: 'note-2', taskId: 'task-1', agentId: 'agent-2', content: 'Blocked on review, next: rerun tests', createdAt: '2026-08-19T11:00:00.000Z', noteType: 'handoff' },
     ] });
@@ -774,8 +788,8 @@ describe('TasksWorkbench', () => {
   });
 
   it('shows no Handoffs summary at all when the task has no handoff note', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Just a comment', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'comment' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Just a comment', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'comment' }] });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -786,8 +800,8 @@ describe('TasksWorkbench', () => {
   });
 
   it('shows only the 3 most recent handoff notes in the summary', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockListTaskNotes.mockResolvedValue({ taskNotes: [
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [
       { id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Oldest handoff', createdAt: '2026-08-19T08:00:00.000Z', noteType: 'handoff' },
       { id: 'note-2', taskId: 'task-1', agentId: 'agent-1', content: 'Second handoff', createdAt: '2026-08-19T09:00:00.000Z', noteType: 'handoff' },
       { id: 'note-3', taskId: 'task-1', agentId: 'agent-1', content: 'Third handoff', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'handoff' },
@@ -810,8 +824,8 @@ describe('TasksWorkbench', () => {
   });
 
   it('navigates to /handoffs when "View all" is clicked', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }] });
-    mockListTaskNotes.mockResolvedValue({ taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Blocked', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'handoff' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{ id: 'note-1', taskId: 'task-1', agentId: 'agent-1', content: 'Blocked', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'handoff' }] });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -824,8 +838,12 @@ describe('TasksWorkbench', () => {
   });
 
   it('creates a task via the column\'s bottom Add button', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [] });
-    mockCreateTask.mockResolvedValue({ task: { id: 'task-new', title: 'New task', status: 'todo', description: '' } });
+    withTasks([]);
+    const requests: any[] = [];
+    mockRpc(TaskService, 'CreateTask', (body) => {
+      requests.push(body);
+      return { task: { id: 'task-new', title: 'New task', status: 'todo', description: '' } };
+    });
     renderPage();
 
     await waitFor(() => expect(screen.getAllByLabelText('Add task to Todo')[0]).toBeDefined());
@@ -836,11 +854,11 @@ describe('TasksWorkbench', () => {
     fireEvent.change(input, { target: { value: 'New task' } });
     fireEvent.submit(input.closest('form')!);
 
-    await waitFor(() => expect(mockCreateTask).toHaveBeenCalledWith({ projectId: 'proj-1', title: 'New task', status: 'todo' }));
+    await waitFor(() => expect(requests).toContainEqual({ projectId: 'proj-1', title: 'New task', status: 'todo' }));
   });
 
   it('cancels the inline task-create form on blur when empty', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [] });
+    withTasks([]);
     renderPage();
 
     await waitFor(() => expect(screen.getAllByLabelText('Add task to Todo')[0]).toBeDefined());
@@ -854,8 +872,8 @@ describe('TasksWorkbench', () => {
   });
 
   it('shows an error message when creating a task fails', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [] });
-    mockCreateTask.mockRejectedValue(new Error('title is required'));
+    withTasks([]);
+    mockRpcError(TaskService, 'CreateTask', 'unknown', 'title is required');
     renderPage();
 
     await waitFor(() => expect(screen.getAllByLabelText('Add task to Todo')[0]).toBeDefined());
@@ -870,7 +888,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('switches to table view and shows tasks as rows', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -881,11 +899,15 @@ describe('TasksWorkbench', () => {
   });
 
   it('bulk-changes the status of tasks selected in the table', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
+    withTasks([
       { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
       { id: 'task-2', title: 'Write docs', status: 'todo', description: '', displayId: 'ENG-2' },
-    ] });
-    mockUpdateTaskStatus.mockResolvedValue({ task: { id: 'task-1', status: 'in-progress' } });
+    ]);
+    const requests: any[] = [];
+    mockRpc(TaskService, 'UpdateTaskStatus', (body) => {
+      requests.push(body);
+      return { task: { id: body.taskId, status: 'in-progress' } };
+    });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -897,17 +919,17 @@ describe('TasksWorkbench', () => {
 
     fireEvent.change(screen.getByLabelText('Change status of selected tasks'), { target: { value: 'in-progress' } });
 
-    await waitFor(() => expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-1', status: 'in-progress' }));
-    expect(mockUpdateTaskStatus).toHaveBeenCalledWith({ taskId: 'task-2', status: 'in-progress' });
+    await waitFor(() => expect(requests).toContainEqual({ taskId: 'task-1', status: 'in-progress' }));
+    expect(requests).toContainEqual({ taskId: 'task-2', status: 'in-progress' });
     // Selection clears on full success - the toolbar disappears.
     await waitFor(() => expect(screen.queryByText('2 selected')).toBeNull());
   });
 
   it('selects every loaded task via the header checkbox', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
+    withTasks([
       { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
       { id: 'task-2', title: 'Write docs', status: 'todo', description: '', displayId: 'ENG-2' },
-    ] });
+    ]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -919,12 +941,28 @@ describe('TasksWorkbench', () => {
     expect(screen.getByLabelText('Select Write docs')).toBeChecked();
   });
 
-  it('shows a pending state while a bulk status change is in flight', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
+  it('unchecks every row when the header checkbox is unchecked', async () => {
+    withTasks([
       { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
-    ] });
-    let resolveUpdate: (v: any) => void = () => {};
-    mockUpdateTaskStatus.mockReturnValue(new Promise((resolve) => { resolveUpdate = resolve; }));
+      { id: 'task-2', title: 'Write docs', status: 'todo', description: '', displayId: 'ENG-2' },
+    ]);
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+    const headerCheckbox = screen.getByLabelText('Select all loaded tasks');
+    fireEvent.click(headerCheckbox);
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+
+    fireEvent.click(headerCheckbox);
+    expect(screen.queryByText('2 selected')).toBeNull();
+    expect(screen.getByLabelText('Select Fix bug')).not.toBeChecked();
+  });
+
+  it('shows a pending state while a bulk status change is in flight', async () => {
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }]);
+    const pending = mockRpcPending(TaskService, 'UpdateTaskStatus');
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -936,13 +974,11 @@ describe('TasksWorkbench', () => {
 
     await waitFor(() => expect(select).toBeDisabled());
     expect(screen.getByText('Updating…')).toBeInTheDocument();
-    resolveUpdate({ task: { id: 'task-1', status: 'in-progress' } });
+    pending.resolve({ task: { id: 'task-1', status: 'in-progress' } });
   });
 
   it('clears the bulk selection via the toolbar button', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
-      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
-    ] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -957,14 +993,21 @@ describe('TasksWorkbench', () => {
   });
 
   it('reports a partial failure in a bulk status change without discarding the selection', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
+    withTasks([
       { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
       { id: 'task-2', title: 'Write docs', status: 'todo', description: '', displayId: 'ENG-2' },
-    ] });
-    mockUpdateTaskStatus.mockImplementation(async ({ taskId }: any) => {
-      if (taskId === 'task-2') throw new Error('transition not allowed');
-      return { task: { id: taskId, status: 'in-progress' } };
-    });
+    ]);
+    // A per-request conditional error needs the raw handler, not `mockRpc` -
+    // task-2 fails, task-1 succeeds.
+    server.use(
+      http.post(`${BACKEND_URL}/${TaskService.typeName}/UpdateTaskStatus`, async ({ request }) => {
+        const body = await request.json().catch(() => ({})) as { taskId?: string };
+        if (body.taskId === 'task-2') {
+          return HttpResponse.json({ code: 'unknown', message: 'transition not allowed' }, { status: 400 });
+        }
+        return HttpResponse.json({ task: { id: body.taskId, status: 'in-progress' } });
+      }),
+    );
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -979,7 +1022,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('shows an empty state in table view when there are no tasks', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [] });
+    withTasks([]);
     renderPage();
 
     await waitFor(() => expect(screen.getAllByLabelText('Add task to Todo')[0]).toBeDefined());
@@ -989,10 +1032,8 @@ describe('TasksWorkbench', () => {
   });
 
   it('opens a task detail overlay from a table row, including via keyboard', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
-      { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
-    ] });
-    mockListPullRequests.mockResolvedValue({
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }]);
+    mockRpc(RepositoryService, 'ListPullRequests', {
       pullRequests: [{ id: 'pr-1', taskId: 'task-1', remotePrId: '42', title: 'ENG-1: fix bug', status: 'open', url: 'http://example.com/pr/42' }],
     });
     renderPage();
@@ -1006,7 +1047,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('opens a task detail overlay from a table row via mouse click', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -1017,7 +1058,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('opens a task detail overlay from a table row via keyboard space', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -1028,7 +1069,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('ignores non-activation keys on a table row', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -1039,7 +1080,7 @@ describe('TasksWorkbench', () => {
   });
 
   it('defaults a table row with no status to todo', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'No status task', description: '', displayId: 'ENG-1' }] });
+    withTasks([{ id: 'task-1', title: 'No status task', description: '', displayId: 'ENG-1' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('No status task')).toBeDefined());
@@ -1060,12 +1101,10 @@ describe('TasksWorkbench', () => {
     // custom task type is registered here to add another) never appears
     // there - table view has no such facet, so it is the only place this
     // status is ever reachable to render.
-    mockListTasks.mockResolvedValue({
-      tasks: [
-        { id: 'task-1', title: 'Orphaned status task', status: 'archived-elsewhere', description: '', displayId: 'ENG-1' },
-        { id: 'task-2', title: 'Normal task', status: 'todo', description: '', displayId: 'ENG-2' },
-      ],
-    });
+    withTasks([
+      { id: 'task-1', title: 'Orphaned status task', status: 'archived-elsewhere', description: '', displayId: 'ENG-1' },
+      { id: 'task-2', title: 'Normal task', status: 'todo', description: '', displayId: 'ENG-2' },
+    ]);
     renderPage();
 
     // Wait for the board to finish its initial render (a column heading
@@ -1082,10 +1121,10 @@ describe('TasksWorkbench', () => {
   });
 
   it('asks the server to sort, and cycles asc/desc/off', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
+    const requests = withTasks([
       { id: 'task-1', title: 'Zebra task', status: 'todo', description: '', displayId: 'ENG-1' },
       { id: 'task-2', title: 'Apple task', status: 'todo', description: '', displayId: 'ENG-2' },
-    ] });
+    ]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Zebra task')).toBeDefined());
@@ -1094,26 +1133,28 @@ describe('TasksWorkbench', () => {
     // Sorting one page of a paginated set in the browser sorts the page, not
     // the set — which is why this asserts on the request and not on the rows.
     fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
-    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ page: expect.objectContaining({ sort: 'title:asc' }) }),
     ));
 
     fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
-    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ page: expect.objectContaining({ sort: 'title:desc' }) }),
     ));
 
-    mockListTasks.mockClear();
+    requests.length = 0;
     fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
-    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ page: expect.objectContaining({ sort: undefined }) }),
-    ));
+    await waitFor(() => expect(requests.length).toBeGreaterThan(0));
+    // Off: the request carries no sort at all, rather than an empty string -
+    // an empty/unset `sort` is proto3's default, so the real JSON codec omits
+    // the key entirely.
+    for (const req of requests) expect(req.page?.sort).toBeUndefined();
   });
 
   it('sorts by creation time behind the ID header', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
+    const requests = withTasks([
       { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-2' },
-    ] });
+    ]);
     renderPage();
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Table' }));
@@ -1122,15 +1163,15 @@ describe('TasksWorkbench', () => {
     // displayId is a string, so sorting by it puts "ENG-100" before "ENG-99".
     // Ids are handed out in creation order, so createdAt is the same ordering
     // done correctly.
-    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ page: expect.objectContaining({ sort: 'createdAt:asc' }) }),
     ));
   });
 
   it('switching the sort column resets to ascending', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
+    const requests = withTasks([
       { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-2' },
-    ] });
+    ]);
     renderPage();
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Table' }));
@@ -1138,15 +1179,15 @@ describe('TasksWorkbench', () => {
     fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
     fireEvent.click(screen.getByRole('columnheader', { name: /Title/ }));
     fireEvent.click(screen.getByRole('columnheader', { name: /Status/ }));
-    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ page: expect.objectContaining({ sort: 'status:asc' }) }),
     ));
   });
 
   it('asks the server to filter, rather than filtering what it already has', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [
+    const requests = withTasks([
       { id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' },
-    ] });
+    ]);
     renderPage();
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
 
@@ -1154,31 +1195,31 @@ describe('TasksWorkbench', () => {
 
     // A project holds more tasks than one page; filtering in the browser hides
     // rows that were never fetched and calls the remainder the result.
-    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
+    await waitFor(() => expect(requests).toContainEqual(
       expect.objectContaining({ page: expect.objectContaining({ filter: 'bug' }) }),
     ));
   });
 
   it('sends no filter for an empty box', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [] });
+    const requests = withTasks([]);
     renderPage();
-    await waitFor(() => expect(mockListTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ page: expect.objectContaining({ filter: undefined }) }),
-    ));
+    await waitFor(() => expect(requests.length).toBeGreaterThan(0));
+    for (const req of requests) {
+      expect(req.page?.filter).toBeUndefined();
+    }
   });
 
   it('shows a loading state in table view', async () => {
-    let resolveList: (v: any) => void = () => {};
-    mockListTasks.mockReturnValue(new Promise((resolve) => { resolveList = resolve; }));
+    const pending = mockRpcPending(TaskService, 'ListTasks');
     renderPage();
 
     fireEvent.click(screen.getByRole('button', { name: 'Table' }));
     await waitFor(() => expect(screen.getByText('Loading tasks…')).toBeInTheDocument());
-    resolveList({ tasks: [] });
+    pending.resolve({ tasks: [] });
   });
 
   it('switches back to board view from table view', async () => {
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }] });
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '', displayId: 'ENG-1' }]);
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
@@ -1194,7 +1235,7 @@ describe('TasksWorkbench', () => {
     const task = { id: 'task-1', title: 'Fix bug', status: 'todo', description: 'A broken thing', displayId: 'ENG-1' };
 
     it('opens the detail overlay straight from /tasks/:taskId without any click', async () => {
-      mockListTasks.mockResolvedValue({ tasks: [task] });
+      withTasks([task]);
 
       renderPage('/tasks/task-1');
 
@@ -1204,7 +1245,7 @@ describe('TasksWorkbench', () => {
     });
 
     it('pushes the task id onto the URL when a card is opened', async () => {
-      mockListTasks.mockResolvedValue({ tasks: [task] });
+      withTasks([task]);
 
       renderPage();
 
@@ -1215,7 +1256,7 @@ describe('TasksWorkbench', () => {
     });
 
     it('returns to /tasks when the overlay is closed', async () => {
-      mockListTasks.mockResolvedValue({ tasks: [task] });
+      withTasks([task]);
 
       renderPage('/tasks/task-1');
 
@@ -1227,7 +1268,7 @@ describe('TasksWorkbench', () => {
     });
 
     it('leaves the overlay closed on a plain /tasks URL', async () => {
-      mockListTasks.mockResolvedValue({ tasks: [task] });
+      withTasks([task]);
 
       renderPage();
 
@@ -1241,7 +1282,7 @@ describe('TasksWorkbench', () => {
     // belongs to whatever project/org was active when the link was
     // followed, not the one the sidebar now shows.
     it('closes the detail overlay when the active project changes', async () => {
-      mockListTasks.mockResolvedValue({ tasks: [task] });
+      withTasks([task]);
 
       const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
       const { rerender } = render(
@@ -1263,7 +1304,7 @@ describe('TasksWorkbench', () => {
       // thing guarding this effect. The overlay was closed and the URL thrown
       // back to /tasks, so reloading a task link never stayed on the task.
       mockActiveProjectId = '';
-      mockListTasks.mockResolvedValue({ tasks: [task] });
+      withTasks([task]);
 
       const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
       const { rerender } = render(
@@ -1279,7 +1320,7 @@ describe('TasksWorkbench', () => {
     });
 
     it('closes the detail overlay when the active org changes', async () => {
-      mockListTasks.mockResolvedValue({ tasks: [task] });
+      withTasks([task]);
 
       const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
       const { rerender } = render(
@@ -1295,7 +1336,7 @@ describe('TasksWorkbench', () => {
     });
 
     it('does not close the overlay on an ordinary re-render - only when the project/org actually changes', async () => {
-      mockListTasks.mockResolvedValue({ tasks: [task] });
+      withTasks([task]);
 
       const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
       const { rerender } = render(
