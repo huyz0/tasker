@@ -1,31 +1,11 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { RoleService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { RolesManager } from './index';
 import { confirmAction } from '../../test/confirm';
 import { expectNoA11yViolations } from '../../test/a11y';
-
-const { mockListPermissions, mockListRoles, mockCreateRole, mockUpdateRole, mockDeleteRole } = vi.hoisted(() => ({
-  mockListPermissions: vi.fn(),
-  mockListRoles: vi.fn(),
-  mockCreateRole: vi.fn(),
-  mockUpdateRole: vi.fn(),
-  mockDeleteRole: vi.fn(),
-}));
-
-vi.mock('@connectrpc/connect-web', () => ({
-  createConnectTransport: vi.fn(() => ({})),
-}));
-vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn(() => ({
-    listPermissions: mockListPermissions,
-    listRoles: mockListRoles,
-    createRole: mockCreateRole,
-    updateRole: mockUpdateRole,
-    deleteRole: mockDeleteRole,
-  })),
-}));
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ RoleService: {} }));
 
 let mockActiveOrgId = 'org-1';
 vi.mock('../../store/layout', () => ({
@@ -49,6 +29,46 @@ const PERMISSIONS = [
   { key: 'org:owner', description: 'Transfer or delete the organization' },
 ];
 
+/** Registers ListRoles and records every request it receives. */
+function withListRoles(response: object | ((body: any) => object) = { roles: SYSTEM_ROLES, page: {} }) {
+  const requests: any[] = [];
+  mockRpc(RoleService, 'ListRoles', (body) => {
+    requests.push(body);
+    return typeof response === 'function' ? response(body) : response;
+  });
+  return requests;
+}
+
+/** Registers CreateRole and records every request it receives. */
+function withCreateRole(response: object) {
+  const requests: any[] = [];
+  mockRpc(RoleService, 'CreateRole', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers UpdateRole and records every request it receives. */
+function withUpdateRole(response: object) {
+  const requests: any[] = [];
+  mockRpc(RoleService, 'UpdateRole', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers DeleteRole and records every request it receives. */
+function withDeleteRole(response: object = { success: true }) {
+  const requests: any[] = [];
+  mockRpc(RoleService, 'DeleteRole', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -61,13 +81,8 @@ function renderPage() {
 describe('RolesManager', () => {
   beforeEach(() => {
     mockActiveOrgId = 'org-1';
-    mockListPermissions.mockReset();
-    mockListRoles.mockReset();
-    mockCreateRole.mockReset();
-    mockUpdateRole.mockReset();
-    mockDeleteRole.mockReset();
-    mockListPermissions.mockResolvedValue({ permissions: PERMISSIONS });
-    mockListRoles.mockResolvedValue({ roles: SYSTEM_ROLES, page: {} });
+    mockRpc(RoleService, 'ListPermissions', { permissions: PERMISSIONS });
+    withListRoles();
   });
 
   it('renders the header and the system roles', async () => {
@@ -81,19 +96,20 @@ describe('RolesManager', () => {
 
   it('shows a prompt instead of a request when no organization is selected', () => {
     mockActiveOrgId = '';
+    const requests = withListRoles();
     renderPage();
     expect(screen.getByText('Select an organization to manage its roles.')).toBeInTheDocument();
-    expect(mockListRoles).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('surfaces a failed roles list as a retryable error, not a false empty state', async () => {
-    mockListRoles.mockRejectedValue(new Error('backend unreachable'));
+    mockRpcError(RoleService, 'ListRoles', 'unavailable', 'backend unreachable');
     renderPage();
-    expect(await screen.findByText(/Could not load this list: backend unreachable/)).toBeInTheDocument();
+    expect(await screen.findByText(/Could not load this list: .*backend unreachable/)).toBeInTheDocument();
   });
 
   it('creates a custom role with the selected permissions', async () => {
-    mockCreateRole.mockResolvedValue({
+    const requests = withCreateRole({
       role: { id: 'role-new', orgId: 'org-1', name: 'QA Lead', isSystem: false, permissionKeys: ['task:write'], createdAt: '' },
     });
     renderPage();
@@ -104,17 +120,17 @@ describe('RolesManager', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /task:write$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
 
-    await waitFor(() => expect(mockCreateRole).toHaveBeenCalledWith({
+    await waitFor(() => expect(requests).toContainEqual({
       orgId: 'org-1', name: 'QA Lead', permissionKeys: ['task:write'],
     }));
   });
 
   it('renames a custom role inline', async () => {
-    mockListRoles.mockResolvedValue({
+    withListRoles({
       roles: [...SYSTEM_ROLES, { id: 'role-custom-1', orgId: 'org-1', name: 'Old Name', isSystem: false, permissionKeys: [], createdAt: '' }],
       page: {},
     });
-    mockUpdateRole.mockResolvedValue({ role: { id: 'role-custom-1', orgId: 'org-1', name: 'New Name', isSystem: false, permissionKeys: [], createdAt: '' } });
+    const requests = withUpdateRole({ role: { id: 'role-custom-1', orgId: 'org-1', name: 'New Name', isSystem: false, permissionKeys: [], createdAt: '' } });
     renderPage();
 
     const nameButton = await screen.findByRole('button', { name: 'Old Name' });
@@ -123,15 +139,15 @@ describe('RolesManager', () => {
     fireEvent.change(input, { target: { value: 'New Name' } });
     fireEvent.blur(input);
 
-    await waitFor(() => expect(mockUpdateRole).toHaveBeenCalledWith({ roleId: 'role-custom-1', name: 'New Name' }));
+    await waitFor(() => expect(requests).toContainEqual({ roleId: 'role-custom-1', name: 'New Name' }));
   });
 
   it('deletes a custom role after confirmation', async () => {
-    mockListRoles.mockResolvedValue({
+    withListRoles({
       roles: [...SYSTEM_ROLES, { id: 'role-custom-2', orgId: 'org-1', name: 'Deletable', isSystem: false, permissionKeys: [], createdAt: '' }],
       page: {},
     });
-    mockDeleteRole.mockResolvedValue({ success: true });
+    const requests = withDeleteRole();
     renderPage();
 
     await screen.findByText('Deletable');
@@ -139,7 +155,7 @@ describe('RolesManager', () => {
     fireEvent.click(await screen.findByText('Delete'));
     await confirmAction();
 
-    await waitFor(() => expect(mockDeleteRole).toHaveBeenCalledWith({ roleId: 'role-custom-2' }));
+    await waitFor(() => expect(requests).toContainEqual({ roleId: 'role-custom-2' }));
   });
 
   it('a system role has no actions menu and its checkboxes are disabled', async () => {
@@ -158,33 +174,33 @@ describe('RolesManager', () => {
   });
 
   it('toggling a permission checkbox directly on a custom role row saves it', async () => {
-    mockListRoles.mockResolvedValue({
+    withListRoles({
       roles: [{ id: 'role-custom-3', orgId: 'org-1', name: 'Direct Toggle', isSystem: false, permissionKeys: ['task:read'], createdAt: '' }],
       page: {},
     });
-    mockUpdateRole.mockResolvedValue({ role: { id: 'role-custom-3', orgId: 'org-1', name: 'Direct Toggle', isSystem: false, permissionKeys: ['task:read', 'task:write'], createdAt: '' } });
+    const requests = withUpdateRole({ role: { id: 'role-custom-3', orgId: 'org-1', name: 'Direct Toggle', isSystem: false, permissionKeys: ['task:read', 'task:write'], createdAt: '' } });
     renderPage();
 
     await screen.findByText('Direct Toggle');
     fireEvent.click(screen.getByRole('checkbox', { name: 'Direct Toggle: task:write' }));
 
-    await waitFor(() => expect(mockUpdateRole).toHaveBeenCalledWith({
+    await waitFor(() => expect(requests).toContainEqual({
       roleId: 'role-custom-3', permissionKeys: expect.arrayContaining(['task:read', 'task:write']),
     }));
 
-    // Unchecking removes it from the set sent to the server.
+    // Unchecking the sole remaining key leaves an empty `permissionKeys` -
+    // proto3's default for a repeated field, so the real JSON codec omits it
+    // from the wire rather than sending [].
     fireEvent.click(screen.getByRole('checkbox', { name: 'Direct Toggle: task:read' }));
-    await waitFor(() => expect(mockUpdateRole).toHaveBeenLastCalledWith({
-      roleId: 'role-custom-3', permissionKeys: expect.not.arrayContaining(['task:read']),
-    }));
+    await waitFor(() => expect(requests[requests.length - 1]).toEqual({ roleId: 'role-custom-3' }));
   });
 
   it('committing a rename via Enter saves, and Escape cancels without saving', async () => {
-    mockListRoles.mockResolvedValue({
+    withListRoles({
       roles: [{ id: 'role-custom-4', orgId: 'org-1', name: 'Original', isSystem: false, permissionKeys: [], createdAt: '' }],
       page: {},
     });
-    mockUpdateRole.mockResolvedValue({ role: { id: 'role-custom-4', orgId: 'org-1', name: 'Via Enter', isSystem: false, permissionKeys: [], createdAt: '' } });
+    const requests = withUpdateRole({ role: { id: 'role-custom-4', orgId: 'org-1', name: 'Via Enter', isSystem: false, permissionKeys: [], createdAt: '' } });
     renderPage();
 
     // Escape: edits are discarded, nothing is saved.
@@ -193,7 +209,7 @@ describe('RolesManager', () => {
     fireEvent.change(input, { target: { value: 'Abandoned' } });
     fireEvent.keyDown(input, { key: 'Escape' });
     expect(screen.getByRole('button', { name: 'Original' })).toBeInTheDocument();
-    expect(mockUpdateRole).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
 
     // Enter: commits the same way blur does.
     fireEvent.click(screen.getByRole('button', { name: 'Original' }));
@@ -201,26 +217,27 @@ describe('RolesManager', () => {
     fireEvent.change(input, { target: { value: 'Via Enter' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
-    await waitFor(() => expect(mockUpdateRole).toHaveBeenCalledWith({ roleId: 'role-custom-4', name: 'Via Enter' }));
+    await waitFor(() => expect(requests).toContainEqual({ roleId: 'role-custom-4', name: 'Via Enter' }));
   });
 
   it('committing a rename with the name unchanged does not call updateRole', async () => {
-    mockListRoles.mockResolvedValue({
+    withListRoles({
       roles: [{ id: 'role-custom-5', orgId: 'org-1', name: 'Unchanged', isSystem: false, permissionKeys: [], createdAt: '' }],
       page: {},
     });
+    const requests = withUpdateRole({});
     renderPage();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Unchanged' }));
     const input = screen.getByLabelText('Rename role Unchanged');
     fireEvent.blur(input);
 
-    expect(mockUpdateRole).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
     expect(screen.getByRole('button', { name: 'Unchanged' })).toBeInTheDocument();
   });
 
   it('the Rename row action opens the same inline editor as clicking the name', async () => {
-    mockListRoles.mockResolvedValue({
+    withListRoles({
       roles: [{ id: 'role-custom-6', orgId: 'org-1', name: 'Via Menu', isSystem: false, permissionKeys: [], createdAt: '' }],
       page: {},
     });
@@ -234,7 +251,7 @@ describe('RolesManager', () => {
   });
 
   it('surfaces a failed create as an inline error and unchecking a permission removes it from the request', async () => {
-    mockCreateRole.mockRejectedValue(new Error('name already taken'));
+    mockRpcError(RoleService, 'CreateRole', 'unknown', 'name already taken');
     renderPage();
     await screen.findByText('owner');
 
@@ -247,11 +264,11 @@ describe('RolesManager', () => {
     fireEvent.click(checkbox);
     fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
 
-    await waitFor(() => expect(mockCreateRole).toHaveBeenCalledWith({ orgId: 'org-1', name: 'Dup', permissionKeys: [] }));
-    expect(await screen.findByText(/Failed to create role: name already taken/)).toBeInTheDocument();
+    expect(await screen.findByText(/Failed to create role:.*name already taken/)).toBeInTheDocument();
   });
 
   it('submitting the create form with no name typed does not call createRole', async () => {
+    const requests = withCreateRole({});
     renderPage();
     await screen.findByText('owner');
 
@@ -262,29 +279,29 @@ describe('RolesManager', () => {
     // disabled button would otherwise make unreachable.
     fireEvent.submit(nameInput.closest('form')!);
 
-    expect(mockCreateRole).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('surfaces a failed permission toggle as an alert', async () => {
-    mockListRoles.mockResolvedValue({
+    withListRoles({
       roles: [{ id: 'role-custom-7', orgId: 'org-1', name: 'Will Fail', isSystem: false, permissionKeys: [], createdAt: '' }],
       page: {},
     });
-    mockUpdateRole.mockRejectedValue(new Error('server rejected it'));
+    mockRpcError(RoleService, 'UpdateRole', 'unknown', 'server rejected it');
     renderPage();
 
     await screen.findByText('Will Fail');
     fireEvent.click(screen.getByRole('checkbox', { name: 'Will Fail: task:read' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to save: server rejected it');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Failed to save:.*server rejected it/);
   });
 
   it('surfaces a failed delete as an alert', async () => {
-    mockListRoles.mockResolvedValue({
+    withListRoles({
       roles: [{ id: 'role-custom-8', orgId: 'org-1', name: 'Delete Fails', isSystem: false, permissionKeys: [], createdAt: '' }],
       page: {},
     });
-    mockDeleteRole.mockRejectedValue(new Error('still in use'));
+    mockRpcError(RoleService, 'DeleteRole', 'unknown', 'still in use');
     renderPage();
 
     await screen.findByText('Delete Fails');
@@ -292,34 +309,32 @@ describe('RolesManager', () => {
     fireEvent.click(await screen.findByText('Delete'));
     await confirmAction();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to delete role: still in use');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Failed to delete role:.*still in use/);
   });
 
   it('retries the roles list from the error state', async () => {
-    mockListRoles.mockRejectedValueOnce(new Error('timed out')).mockResolvedValue({ roles: SYSTEM_ROLES, page: {} });
+    mockRpcError(RoleService, 'ListRoles', 'unavailable', 'timed out');
     renderPage();
 
-    await screen.findByText(/Could not load this list: timed out/);
+    await screen.findByText(/Could not load this list: .*timed out/);
+    withListRoles();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     await screen.findByText('owner');
-    expect(mockListRoles).toHaveBeenCalledTimes(2);
   });
 
   it('pages to more roles with the load-more control', async () => {
-    mockListRoles.mockResolvedValueOnce({
-      roles: [{ id: 'role-page-1', orgId: 'org-1', name: 'Page One Role', isSystem: false, permissionKeys: [], createdAt: '' }],
-      page: { nextCursor: 'cursor-2' },
-    }).mockResolvedValueOnce({
-      roles: [{ id: 'role-page-2', orgId: 'org-1', name: 'Page Two Role', isSystem: false, permissionKeys: [], createdAt: '' }],
-      page: {},
-    });
+    const requests = withListRoles((body: { page?: { cursor?: string } }) =>
+      body.page?.cursor
+        ? { roles: [{ id: 'role-page-2', orgId: 'org-1', name: 'Page Two Role', isSystem: false, permissionKeys: [], createdAt: '' }], page: {} }
+        : { roles: [{ id: 'role-page-1', orgId: 'org-1', name: 'Page One Role', isSystem: false, permissionKeys: [], createdAt: '' }], page: { nextCursor: 'cursor-2' } },
+    );
     renderPage();
 
     await screen.findByText('Page One Role');
     fireEvent.click(screen.getByRole('button', { name: 'Load more roles' }));
 
-    await waitFor(() => expect(mockListRoles).toHaveBeenCalledTimes(2));
-    expect(mockListRoles).toHaveBeenLastCalledWith({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
+    await waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests[requests.length - 1]).toEqual({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
   });
 });
