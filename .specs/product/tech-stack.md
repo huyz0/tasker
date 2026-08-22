@@ -160,6 +160,7 @@ resolve through proto's shims, so these versions are what actually run.
 | `oxlint` | ^1.61.0 | Linting — replaces ESLint and Prettier |
 | `knip` | ^6.32.2 | Unused files, dependencies and exports |
 | `vitest`, `@vitest/coverage-v8`, `@vitest/browser-playwright` | ^4.1.4 | Unit and integration tests, 95% thresholds |
+| `msw` | ^2.15.0 | Network-level interception in GUI RPC tests (M12-T01) — intercepts the real `fetch` the real Connect transport makes, so a test exercises real request/response serialization instead of a hand-mocked client |
 | `playwright`, `@playwright/test` | ^1.59.1 | End-to-end and screenshot capture |
 | `@testing-library/react`, `@testing-library/dom`, `@testing-library/jest-dom` | ^16.3.2 / ^10.4.1 / ^6.9.1 | Component queries |
 | `jest-axe` | ^11.0.0 | Accessibility assertions per page |

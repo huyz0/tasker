@@ -26,6 +26,7 @@
   "devDependencies": {
     "@types/jest-axe": "^3.5.9",
     "axe-core": "^4.11.3",
-    "jest-axe": "^11.0.0"
+    "jest-axe": "^11.0.0",
+    "msw": "^2.15.0"
   }
 }

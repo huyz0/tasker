@@ -1,4 +1,15 @@
 import '@testing-library/jest-dom';
+import { beforeAll, afterEach, afterAll } from 'vitest';
+import { server } from './test/mockRpc';
+
+// M12-T01. One MSW server for the whole run, listening for real HTTP requests
+// the real Connect transport makes. `onUnhandledRequest: 'error'` fails a test
+// loudly the moment it exercises a call site nothing registered a response
+// for, rather than letting `fetch` hang or fall through to the real network —
+// the two failure modes a silent default would produce.
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 // jsdom has no ResizeObserver; @tanstack/react-virtual (used by the Tasks
 // table view) needs one to observe the scroll container's size.

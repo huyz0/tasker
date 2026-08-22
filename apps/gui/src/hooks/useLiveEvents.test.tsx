@@ -1,11 +1,18 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { EventService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpcStream } from '../test/mockRpc';
 import { useLiveEvents } from './useLiveEvents';
 
-vi.mock('@connectrpc/connect-web', () => ({ createConnectTransport: vi.fn(() => ({})) }));
-vi.mock('@connectrpc/connect', () => ({ createClient: vi.fn(() => ({ subscribeEvents: vi.fn() })) }));
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ EventService: 'EventService' }));
+// M12-T01. No mock of `@connectrpc/connect`/`health_pb` here — the hook's own
+// `client` option is the seam most of these tests use (it exists in the
+// hook's real API, for exactly this: exercising reconnect/backoff/
+// invalidation logic without a socket, the same way a component under test
+// takes real props). Constructing the hook's *default* client against the
+// real transport is now safe too, because MSW intercepts the fetch it makes —
+// see the last test below, which deliberately omits `client` to prove the
+// real Connect streaming envelope parses correctly end to end.
 
 // Module-scope so the hook's effect deps stay stable across renders. An inline
 // array would be a new identity every render and re-open the stream each time.
@@ -223,5 +230,27 @@ describe('useLiveEvents', () => {
     rerender({ orgId: 'org-2' });
     await waitFor(() => expect(client.subscribeEvents).toHaveBeenCalledTimes(2));
     expect(client.subscribeEvents.mock.calls[1][0]).toEqual({ orgId: 'org-2', projectId: undefined });
+  });
+
+  it('parses the real Connect streaming envelope, with no client override at all', async () => {
+    // Every other test in this file drives the hook through its own DI seam.
+    // This one does not — it lets the hook build its default client against
+    // the real transport, and MSW answers with the real length-delimited
+    // frame format Connect actually sends. `fakeStream()` above hands the
+    // hook JS objects directly; this proves the hook's *parsing* of real
+    // bytes off the wire is correct, which nothing else in this file can.
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(() => Promise.resolve());
+    mockRpcStream(EventService, 'SubscribeEvents', [
+      { subject: 'stream.ready', orgId: '', occurredAt: '2026-08-20T10:00:00.000Z' },
+      { subject: 'domain.task.created', orgId: 'org-1', occurredAt: '2026-08-20T10:00:00.000Z' },
+    ]);
+
+    const { result } = renderHook(() => useLiveEvents({ backoffMs: FAST_BACKOFF }), {
+      wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+    });
+
+    await waitFor(() => expect(result.current.status).toBe('live'));
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['tasks'] }));
   });
 });
