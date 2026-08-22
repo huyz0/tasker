@@ -69,19 +69,31 @@ jobs:
     # broker, and a broker is something CI can simply start. So it runs on
     # forks too, which is most of the value: the M08 chain is exactly the kind
     # of thing that only breaks when something real is on the other end.
-    services:
-      nats:
-        image: nats:2.10-alpine
-        ports:
-          - 4222:4222
-        options: >-
-          --health-cmd "wget -q -O- http://127.0.0.1:8222/healthz || exit 1"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-
+    #
+    # Not a `services:` block: that schema has no `command:` key, so there is
+    # no way to pass `-js` through it, and every run of this job silently
+    # started plain core NATS - `varz.jetstream` came back `{}` (confirmed by
+    # hand against the exact image below, with and without `-js`) instead of
+    # a populated config/stats object, and the durable consumer's first
+    # JetStream API call failed with "503 no responders" every single time,
+    # not intermittently. `docker-compose.yml`'s own `nats` service already
+    # gets this right (`command: ["-js", "-m", "8222"]`, with the comment
+    # explaining why JetStream specifically); this step now starts the same
+    # image the same way instead of taking the `services:` shortcut that
+    # can't express it.
     steps:
       - uses: actions/checkout@v4
+
+      - name: Start NATS (JetStream)
+        run: |
+          docker run -d --name nats \
+            -p 4222:4222 -p 8222:8222 \
+            nats:2.10-alpine -js -m 8222
+          for _ in $(seq 1 20); do
+            curl -sf -o /dev/null http://localhost:8222/healthz && exit 0
+            sleep 1
+          done
+          echo "nats did not come up in 20s"; docker logs nats; exit 1
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -104,3 +116,7 @@ jobs:
           # authz.ts picks its schema off this variable.
           STANDALONE: "true"
         run: moon run backend:test-integration-realtime
+
+      - name: Stop NATS
+        if: always()
+        run: docker rm -f nats
