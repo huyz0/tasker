@@ -653,3 +653,24 @@ export const taskActivity = mysqlTable("task_activity", {
     taskOccurredIdx: index("task_activity_task_occurred_idx").on(table.taskId, table.occurredAt),
   };
 });
+
+/**
+ * Dedup ledger for the stalled-claim alert sweep (M25-T02, ADR-0022
+ * Decision 3). See the SQLite counterpart for the full reasoning:
+ * `anchorAt` is `maxDate(claimed, assigned) ?? task.createdAt`, and it is
+ * NOT NULL by decision, not oversight - MySQL, like SQLite, treats NULLs in
+ * a UNIQUE index as mutually distinct, so a nullable anchor would let every
+ * claim predating activity collection dodge the unique index below and
+ * re-email on every sweep forever.
+ */
+export const stalledClaimAlerts = mysqlTable("stalled_claim_alerts", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
+  anchorAt: timestamp("anchor_at").notNull(),
+  alertedAt: timestamp("alerted_at").notNull(),
+}, (table) => {
+  return {
+    // The whole point of the table: one alert per (task, claim anchor) pair.
+    taskAnchorIdx: uniqueIndex("stalled_claim_alerts_task_id_anchor_at_idx").on(table.taskId, table.anchorAt),
+  };
+});

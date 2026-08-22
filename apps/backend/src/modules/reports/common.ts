@@ -46,9 +46,6 @@ export const iso = (v: Date | null | undefined): string | undefined =>
 export const fromSeconds = (v: unknown): Date | undefined =>
   v == null ? undefined : new Date(Number(v) * 1000);
 
-export const maxDate = (...ds: (Date | undefined)[]): Date | undefined =>
-  ds.reduce<Date | undefined>((m, d) => (d && (!m || d > m) ? d : m), undefined);
-
 /**
  * Assignee attribution for a completion row (ADR-0020): who HELD the task as
  * it completed, not who clicked. A completion with no assignee at all falls

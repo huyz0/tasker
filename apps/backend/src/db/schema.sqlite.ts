@@ -837,3 +837,35 @@ export const taskActivity = sqliteTable("task_activity", {
     taskOccurredIdx: index("task_activity_task_occurred_idx").on(table.taskId, table.occurredAt),
   };
 });
+
+/**
+ * Dedup ledger for the stalled-claim alert sweep (M25-T02, ADR-0022
+ * Decision 3). One row per digest email a task was actually itemized in -
+ * writing it is what stops the next sweep from re-alerting the same claim.
+ *
+ * `anchorAt` is `maxDate(claimed, assigned) ?? task.createdAt` - the
+ * claimed/assigned anchor, never the detector's wider `silentSince` chain
+ * (which also incorporates the most recent signal and would move on every
+ * new signal, re-alerting a still-genuinely-stalled claim). It is NOT NULL
+ * on purpose, and that is load-bearing, not incidental: SQLite and MySQL
+ * both treat NULLs in a UNIQUE index as mutually distinct from every other
+ * NULL, so a nullable anchor would let every claim predating activity
+ * collection (the exact case the `?? task.createdAt` fallback exists for)
+ * bypass the unique index entirely and re-email on every sweep forever -
+ * this codebase has already hit that identical gotcha once, on
+ * `folders_project_id_parent_id_name_idx`. Falling back to `createdAt`
+ * keeps the column always populated, which is what lets the unique index
+ * below actually do its job.
+ */
+export const stalledClaimAlerts = sqliteTable("stalled_claim_alerts", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull().references(() => tasks.id),
+  anchorAt: integer("anchor_at", { mode: "timestamp" }).notNull(),
+  alertedAt: integer("alerted_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    // The whole point of the table: one alert per (task, claim anchor) pair.
+    // A fresh claim (a new anchorAt) is eligible again once it stalls.
+    taskAnchorIdx: uniqueIndex("stalled_claim_alerts_task_id_anchor_at_idx").on(table.taskId, table.anchorAt),
+  };
+});

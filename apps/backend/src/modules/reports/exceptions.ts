@@ -2,9 +2,10 @@ import { and, desc, eq, gte, inArray, isNull, isNotNull, sql } from "drizzle-orm
 import * as schema from "../../db/schema.sqlite";
 import { notDeleted } from "../../db/query-builder";
 import { isTerminalStatus } from "../tasks/taskActivity";
+import { findStalledCandidates } from "../../lib/stalledClaims";
 import {
   PANEL_LIMIT, STALLED_AFTER_HOURS, UNCLAIMED_AFTER_HOURS, HOUR_MS, DAY_MS,
-  DELETED_AGENT, DELETED_USER, iso, fromSeconds, maxDate,
+  DELETED_AGENT, DELETED_USER, iso, fromSeconds,
 } from "./common";
 import { buildScorecard, buildCompletionHeadline } from "./scorecard";
 
@@ -22,7 +23,7 @@ export async function buildReportExceptions(
   isStandalone: boolean,
   args: { projectId: string; orgId: string; windowDays: number },
 ) {
-  const { tasks, taskAssignments, taskActivity, taskStatuses, agents, users, apiTokens } = schema;
+  const { tasks, taskAssignments, taskActivity, taskStatuses, agents, users } = schema;
   const { projectId, orgId, windowDays } = args;
 
   // One clock for the whole request - every window boundary and threshold
@@ -30,7 +31,6 @@ export async function buildReportExceptions(
   const now = new Date();
   const windowStart = new Date(now.getTime() - windowDays * DAY_MS);
   const priorStart = new Date(now.getTime() - 2 * windowDays * DAY_MS);
-  const stalledBefore = new Date(now.getTime() - STALLED_AFTER_HOURS * HOUR_MS);
   const unclaimedBefore = new Date(now.getTime() - UNCLAIMED_AFTER_HOURS * HOUR_MS);
 
   // ── current-terminality, batched ──────────────────────────────────────────
@@ -53,7 +53,7 @@ export async function buildReportExceptions(
     // path is a pure `status === 'done'` check inside the helper.
     isTerminalStatus(db, isStandalone, taskTypeId, status, taskTypeId ? statusesByType.get(taskTypeId) ?? [] : undefined);
 
-  // ── agent-held open tasks (stalled claims + openNow) ─────────────────────
+  // ── agent-held open tasks (openNow, for the scorecard) ───────────────────
   const heldRows = await db
     .select({
       id: tasks.id,
@@ -73,71 +73,13 @@ export async function buildReportExceptions(
     if (!(await isTerminalNow(t.taskTypeId ?? null, t.status))) openHeld.push(t);
   }
 
-  // Per-task signal times, one grouped query over the (task_id, occurred_at)
-  // index. Grouped by kind as well so one pass yields the last signal, the
-  // claim time and the claim/assign anchor.
-  const heldIds = openHeld.map((t) => t.id);
-  const lastByTaskKind = new Map<string, Map<string, Date>>();
-  if (heldIds.length > 0) {
-    const rows = await db
-      .select({
-        taskId: taskActivity.taskId,
-        kind: taskActivity.kind,
-        lastAt: sql<number | null>`max(${taskActivity.occurredAt})`,
-      })
-      .from(taskActivity)
-      .where(inArray(taskActivity.taskId, heldIds))
-      .groupBy(taskActivity.taskId, taskActivity.kind);
-    for (const r of rows) {
-      const at = fromSeconds(r.lastAt);
-      if (!at) continue;
-      if (!lastByTaskKind.has(r.taskId)) lastByTaskKind.set(r.taskId, new Map());
-      lastByTaskKind.get(r.taskId)!.set(r.kind, at);
-    }
-  }
-
-  const stalledCandidates = openHeld
-    .map((t) => {
-      const byKind = lastByTaskKind.get(t.id) ?? new Map<string, Date>();
-      // Last signal: the latest activity row from ANY actor except the
-      // 'created' row - a human comment also proves the task isn't silent.
-      let lastSignalAt: Date | undefined;
-      for (const [kind, at] of byKind) {
-        if (kind === "created") continue;
-        if (!lastSignalAt || at > lastSignalAt) lastSignalAt = at;
-      }
-      const claimedAt = byKind.get("claimed");
-      // The hold anchor: the moment the agent last took (or was given) the
-      // task. "Never started" means nothing happened after that moment -
-      // the claim itself is possession, not work.
-      const anchorAt = maxDate(byKind.get("claimed"), byKind.get("assigned"));
-      // Claims predating activity collection have no rows at all; the task's
-      // own createdAt is the honest fallback silence anchor.
-      const silentSince = lastSignalAt ?? claimedAt ?? t.createdAt;
-      const neverStarted = anchorAt ? !lastSignalAt || lastSignalAt <= anchorAt : !lastSignalAt;
-      return { t, lastSignalAt, claimedAt, silentSince, neverStarted };
-    })
-    .filter((c) => c.silentSince < stalledBefore)
-    // Most-silent first.
-    .sort((a, b) => a.silentSince.getTime() - b.silentSince.getTime())
-    .slice(0, PANEL_LIMIT);
-
-  // Per-agent liveness for the stalled rows: max(lastUsedAt) across the
-  // agent's unrevoked tokens, same join and same seconds-decode as the
-  // dashboard's agent panel.
-  const stalledAgentIds = [...new Set(stalledCandidates.map((c) => c.t.agentId as string))];
-  const lastSeenByAgent = new Map<string, Date>();
-  if (stalledAgentIds.length > 0) {
-    const rows = await db
-      .select({ agentId: apiTokens.agentId, lastUsedAt: sql<number | null>`max(${apiTokens.lastUsedAt})` })
-      .from(apiTokens)
-      .where(and(inArray(apiTokens.agentId, stalledAgentIds), isNull(apiTokens.revokedAt)))
-      .groupBy(apiTokens.agentId);
-    for (const r of rows) {
-      const at = fromSeconds(r.lastUsedAt);
-      if (at) lastSeenByAgent.set(r.agentId, at);
-    }
-  }
+  // ── stalled claims ────────────────────────────────────────────────────────
+  // M25-T03 (ADR-0022): shared with the M25-T04 alert sweep rather than
+  // recomputed here - this call is project-scoped and PANEL_LIMIT-capped,
+  // same as the inline computation it replaces.
+  const stalledCandidates = await findStalledCandidates(db, isStandalone, {
+    projectId, limit: PANEL_LIMIT, afterHours: STALLED_AFTER_HOURS,
+  });
 
   // ── unclaimed ─────────────────────────────────────────────────────────────
   const unheldRows = await db
@@ -288,16 +230,20 @@ export async function buildReportExceptions(
     (id && agentById.get(id)?.name) || DELETED_AGENT;
 
   return {
+    // Field names carried over 1:1 from the pre-extraction inline shape;
+    // `agentName` is resolved through this handler's own `agentById` map
+    // (below) rather than the candidate's own `agentName`, so a purged agent
+    // still falls back to the same DELETED_AGENT text every other panel uses.
     stalledClaims: stalledCandidates.map((c) => ({
-      taskId: c.t.id,
-      taskDisplayId: c.t.displayId,
-      taskTitle: c.t.title,
-      status: c.t.status,
-      agentId: c.t.agentId,
-      agentName: agentName(c.t.agentId),
+      taskId: c.taskId,
+      taskDisplayId: c.taskDisplayId,
+      taskTitle: c.taskTitle,
+      status: c.status,
+      agentId: c.agentId,
+      agentName: agentName(c.agentId),
       claimedAt: iso(c.claimedAt),
       lastSignalAt: iso(c.lastSignalAt),
-      agentLastSeenAt: iso(lastSeenByAgent.get(c.t.agentId)),
+      agentLastSeenAt: iso(c.agentLastSeenAt),
       neverStarted: c.neverStarted,
     })),
     unclaimed: unclaimed.map((c) => ({

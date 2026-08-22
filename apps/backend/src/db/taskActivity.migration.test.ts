@@ -28,15 +28,22 @@ function run(db: Database, sql: string) {
   for (const statement of splitStatements(sql)) db.run(statement);
 }
 
-/** A database at the moment the backfill runs: full chain applied except it. */
+/** A database at the moment the backfill runs: every migration strictly older than it, applied. */
 async function dbBeforeBackfill(): Promise<Database> {
   const db = new Database(':memory:');
   // setupDatabase creates the FTS table before migrating; 0025/0026 refer to it.
   db.run('CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(title, body, content="")');
-  const chain = EMBEDDED_SQLITE_MIGRATIONS.filter((m) => m.tag !== BACKFILL_TAG);
-  // The backfill must be the newest migration, or an existing database
-  // upgraded in place would order it before already-applied ones and skip it.
   const backfill = EMBEDDED_SQLITE_MIGRATIONS.find((m) => m.tag === BACKFILL_TAG)!;
+  // Filtered by `when`, not by excluding this one tag: migrations landed
+  // after M24-T03 (e.g. M25-T02's stalled_claim_alerts) are chronologically
+  // newer and must stay out of "the database as it looked when the backfill
+  // ran" - the original tag-exclusion filter stopped being correct the
+  // moment any migration after 0046 existed.
+  const chain = EMBEDDED_SQLITE_MIGRATIONS.filter((m) => m.when < backfill.when);
+  // The backfill must be the newest migration AS OF ITS OWN LANDING, or an
+  // existing database upgraded in place would order it before already-applied
+  // ones and skip it. (Migrations added afterwards are necessarily newer
+  // still - that's fine, and is exactly what this filter now excludes.)
   expect(Math.max(...chain.map((m) => m.when))).toBeLessThan(backfill.when);
   await applyEmbeddedMigrations(sqliteRunner(db), chain);
   return db;

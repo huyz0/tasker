@@ -1,7 +1,7 @@
 # Email
 
-Tasker sends one kind of message today: the organization invitation. This is how
-to make it go somewhere.
+Tasker sends two kinds of message today: the organization invitation, and the
+stalled-claim alert digest. This is how to make either go somewhere.
 
 **It is off unless configured.** With no `SMTP_HOST`, no transport is
 constructed, nothing is sent, and every send reports `skipped`. That is the same
@@ -88,6 +88,29 @@ anything — the recipient has to sign in as the invited address before it
 applies. A link that granted membership to whoever clicked it would be a real
 escalation path, and there is none to leak.
 
+## Stalled-claim alerts
+
+An hourly sweep (`runStalledClaimAlertSweep`, M25) finds agent-claimed tasks
+that have gone silent past `STALLED_ALERT_AFTER_HOURS` (default: the same
+threshold `/reports`'s own stalled-claims panel uses — the two are
+independently configurable, since 24h "wrong" in a pull report and 24h
+"wrong" in an unsolicited email carry different costs) and emails a single
+digest per affected recipient, never one email per task — the first sweep
+against an existing deployment must not flood every recipient with its whole
+backlog at once. Each digest itemizes every newly-stalled task the recipient
+is responsible for (capped, with a "+N more" line for overflow), states
+whether they got it because they review the task or because no reviewer
+exists and they administer the org, and points at unassigning or
+reassigning — not commenting, which is itself read as new activity and would
+clear the stalled condition it's reporting. Recipient resolution is
+`task_reviewers` first, falling back to the org's `owner`/`admin` members
+only when a task has no reviewers. See ADR-0022 for the full design and the
+alternatives it rejected.
+
+Same on/off switch as the invitation email above: no `SMTP_HOST`, no sweep
+query even runs. Locally, the same Mailpit setup shows a digest arriving at
+<http://localhost:8025>.
+
 ## When something does not arrive
 
 Every attempt is logged, whichever way it goes:
@@ -99,7 +122,8 @@ invite.email  { to, orgId, outcome: failed } the server refused or was unreachab
 mailer.send_failed { err, to }               why
 ```
 
-A failure never fails the invitation. If `invite.email` says `failed`, the
-invitation still exists and the person can still be told about it by other
-means; check `mailer.send_failed`'s error, and check Mailpit or your provider's
-own log before assuming the message was lost.
+A failure never fails the invitation (or a stalled-claim alert — the sweep
+isolates each recipient's send in its own try/catch, so one bad address
+never stops the rest of the digest run). If a `.email` log line says
+`failed`, check `mailer.send_failed`'s error, and check Mailpit or your
+provider's own log before assuming the message was lost.
