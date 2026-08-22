@@ -1,23 +1,10 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-const mockSetPassword = vi.fn();
-const mockListLinkedIdentities = vi.fn();
-const mockUnlinkIdentity = vi.fn();
-
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({ AuthService: 'AuthService' }));
-vi.mock('@connectrpc/connect', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@connectrpc/connect')>()),
-  createClient: () => ({
-    setPassword: (...a: unknown[]) => mockSetPassword(...a),
-    listLinkedIdentities: (...a: unknown[]) => mockListLinkedIdentities(...a),
-    unlinkIdentity: (...a: unknown[]) => mockUnlinkIdentity(...a),
-  }),
-}));
+import { AuthService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError } from '../../test/mockRpc';
 
 import { AccountSettings } from './AccountSettings';
-import { ConnectError, Code } from '@connectrpc/connect';
 import { expectNoA11yViolations } from '../../test/a11y';
 import { BACKEND_URL } from '../../lib/backendUrl';
 
@@ -32,10 +19,19 @@ function renderSettings() {
   );
 }
 
+/** Registers SetPassword and records every request it receives. */
+function withSetPassword(response: object = { success: true }) {
+  const requests: any[] = [];
+  mockRpc(AuthService, 'SetPassword', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
 describe('AccountSettings', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockListLinkedIdentities.mockResolvedValue({ identities: [], hasPassword: false });
+    mockRpc(AuthService, 'ListLinkedIdentities', { identities: [], hasPassword: false });
   });
 
   it('has no accessibility violations', async () => {
@@ -52,20 +48,22 @@ describe('AccountSettings', () => {
     });
 
     it('sets a password with an empty currentPassword — nothing to prove yet', async () => {
-      mockSetPassword.mockResolvedValue({ success: true });
+      const requests = withSetPassword();
       renderSettings();
       await screen.findByRole('button', { name: 'Set password' });
 
       fireEvent.change(screen.getByLabelText('Password'), { target: { value: VALID_PASSWORD } });
       fireEvent.click(screen.getByRole('button', { name: 'Set password' }));
 
-      await waitFor(() => expect(mockSetPassword).toHaveBeenCalledWith({ currentPassword: '', newPassword: VALID_PASSWORD }));
+      // An empty `currentPassword` is proto3's default for a string field, so
+      // the real JSON codec omits it from the wire rather than sending ''.
+      await waitFor(() => expect(requests).toContainEqual({ newPassword: VALID_PASSWORD }));
     });
   });
 
   describe('password section — existing password', () => {
     beforeEach(() => {
-      mockListLinkedIdentities.mockResolvedValue({ identities: [], hasPassword: true });
+      mockRpc(AuthService, 'ListLinkedIdentities', { identities: [], hasPassword: true });
     });
 
     it('offers "Change password" and requires the current password', async () => {
@@ -77,7 +75,7 @@ describe('AccountSettings', () => {
     });
 
     it('submits both currentPassword and newPassword', async () => {
-      mockSetPassword.mockResolvedValue({ success: true });
+      const requests = withSetPassword();
       renderSettings();
       await screen.findByRole('button', { name: 'Change password' });
 
@@ -85,13 +83,13 @@ describe('AccountSettings', () => {
       fireEvent.change(screen.getByLabelText('New password'), { target: { value: VALID_PASSWORD } });
       fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
 
-      await waitFor(() => expect(mockSetPassword).toHaveBeenCalledWith({
+      await waitFor(() => expect(requests).toContainEqual({
         currentPassword: 'the-old-password-1', newPassword: VALID_PASSWORD,
       }));
     });
 
     it('shows the server error on a wrong current password', async () => {
-      mockSetPassword.mockRejectedValue(new ConnectError('currentPassword is missing or incorrect', Code.PermissionDenied));
+      mockRpcError(AuthService, 'SetPassword', 'permission_denied', 'currentPassword is missing or incorrect');
       renderSettings();
       await screen.findByRole('button', { name: 'Change password' });
 
@@ -103,7 +101,7 @@ describe('AccountSettings', () => {
     });
 
     it('clears the fields and shows a success message after changing', async () => {
-      mockSetPassword.mockResolvedValue({ success: true });
+      withSetPassword();
       renderSettings();
       await screen.findByRole('button', { name: 'Change password' });
 
@@ -125,7 +123,7 @@ describe('AccountSettings', () => {
     });
 
     it('lists a linked Google identity and hides the link button once linked', async () => {
-      mockListLinkedIdentities.mockResolvedValue({
+      mockRpc(AuthService, 'ListLinkedIdentities', {
         identities: [{ provider: 'google', linkedAt: '2026-01-01T00:00:00Z' }],
         hasPassword: true,
       });
@@ -136,7 +134,7 @@ describe('AccountSettings', () => {
     });
 
     it('disables Unlink with a reason when it is the only remaining sign-in method', async () => {
-      mockListLinkedIdentities.mockResolvedValue({
+      mockRpc(AuthService, 'ListLinkedIdentities', {
         identities: [{ provider: 'google', linkedAt: '2026-01-01T00:00:00Z' }],
         hasPassword: false, // one identity, no password — the last method
       });
@@ -148,11 +146,15 @@ describe('AccountSettings', () => {
     });
 
     it('allows unlinking when a password also exists, after confirming', async () => {
-      mockListLinkedIdentities.mockResolvedValue({
+      mockRpc(AuthService, 'ListLinkedIdentities', {
         identities: [{ provider: 'google', linkedAt: '2026-01-01T00:00:00Z' }],
         hasPassword: true,
       });
-      mockUnlinkIdentity.mockResolvedValue({ success: true });
+      const requests: any[] = [];
+      mockRpc(AuthService, 'UnlinkIdentity', (body) => {
+        requests.push(body);
+        return { success: true };
+      });
       renderSettings();
 
       const unlinkButton = await screen.findByRole('button', { name: 'Unlink' });
@@ -162,16 +164,16 @@ describe('AccountSettings', () => {
       const dialog = await screen.findByTestId('confirm-dialog');
       fireEvent.click(within(dialog).getByRole('button', { name: 'Unlink' }));
 
-      await waitFor(() => expect(mockUnlinkIdentity).toHaveBeenCalledWith({ provider: 'google' }));
+      await waitFor(() => expect(requests).toContainEqual({ provider: 'google' }));
     });
 
     it('renders the query error when listLinkedIdentities fails, with a working retry', async () => {
-      mockListLinkedIdentities.mockRejectedValueOnce(new Error('network down'));
+      mockRpcError(AuthService, 'ListLinkedIdentities', 'unknown', 'network down');
       renderSettings();
 
       expect(await screen.findByRole('alert')).toHaveTextContent('network down');
 
-      mockListLinkedIdentities.mockResolvedValue({ identities: [], hasPassword: false });
+      mockRpc(AuthService, 'ListLinkedIdentities', { identities: [], hasPassword: false });
       fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
       expect(await screen.findByText('No linked accounts.')).toBeDefined();
