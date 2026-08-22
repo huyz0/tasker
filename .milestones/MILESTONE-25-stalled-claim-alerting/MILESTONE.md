@@ -160,7 +160,7 @@ by construction).
         (task_id, anchor_at) pair — proving NOT NULL closes the dedup
         hole); live MySQL migration check via docker compose.
 
-- [ ] **M25-T03** — Extract `findStalledCandidates` into `lib/` (dialect-
+- [x] **M25-T03** — Extract `findStalledCandidates` into `lib/` (dialect-
       branched via `STANDALONE === 'true'`, not the reports module's
       sqlite-only shortcut), parameterized by optional `projectId`/`limit`,
       `afterHours`, returning `orgId` per candidate; the global (no

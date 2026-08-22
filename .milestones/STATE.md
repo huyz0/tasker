@@ -1,6 +1,6 @@
 ---
 active_milestone: M25
-active_task: M25-T03
+active_task: M25-T04
 last_updated: 2026-08-23
 last_commit: 8329130
 blocked: false
@@ -1384,7 +1384,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M22 | Task Handoff & Continuity       | done   | —          | 8     | 8    |
 | M23 | Rich Markdown Editor            | done   | —          | 5     | 5    |
 | M24 | Project Reports & Agent Insights | done   | —          | 10    | 10   |
-| M25 | Proactive Alerting for Stalled Claims | in-progress | — | 5     | 2    |
+| M25 | Proactive Alerting for Stalled Claims | in-progress | — | 5     | 3    |
 
 **Total: 207 tasks across 19 milestones — 159 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5, M24 10).**
 

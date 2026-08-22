@@ -77,3 +77,31 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   Journal `when` hand-bumped to 1788300000000 (drizzle-kit's own stamp was
   smaller than the existing max, same gotcha M24-T03 already documented).
 - **Next**: M25-T03 (extract findStalledCandidates into lib/).
+
+## M25-T03 — Extract findStalledCandidates into lib/, global-scale-safe
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: new `lib/stalledClaims.ts` (`findStalledCandidates` +
+  exported `buildHeldTaskQuery` query builder, isStandalone-parameterized
+  matching `taskActivity.ts`'s convention) + `.test.ts` (11 tests, 100%
+  coverage); `reports/exceptions.ts` rewired onto it — the inline
+  computation replaced by one call, wire mapping unchanged.
+- **Verified**: `reports.test.ts` — the regression guard — passes with
+  **zero edits** (24 tests, all 6 in the stalledClaims block unchanged);
+  backend:test 1745 pass; `moon check backend` green. Scale proof measured
+  directly: the global query's built SQL has **0 bound parameters**
+  (project-scoped: 1) regardless of held-task count — proven against a
+  505-task fixture across 5 projects, plus an `EXPLAIN QUERY PLAN`
+  assertion confirming no `SCAN task_activity`.
+- **Notes**: global path is one join (task_assignments → tasks → projects,
+  left-joined to task_activity) with conditional aggregation
+  (`MAX(CASE WHEN kind != 'created' THEN ...)` for last-signal,
+  `MAX(CASE WHEN kind IN ('claimed','assigned') THEN ...)` for the anchor)
+  in a single GROUP BY — never a driver-side IN-list of held task ids.
+  Terminality preload batches by distinct *task type* (small, config-
+  bounded), not by task. `openHeld`/`openNow` stays its own query in
+  `exceptions.ts` (the detector was never meant to serve the scorecard's
+  concerns) — one small accepted redundancy in exchange for a clean,
+  zero-behavior-change extraction.
+- **Next**: M25-T04 (recipient resolution, email, sweep, wiring).
