@@ -149,3 +149,76 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   already null-safes `nc` internally; the sweep's own try/catch around it
   is defense-in-depth, not load-bearing.
 - **Next**: M25-T05 (live verification, docs, closeout).
+
+## M25-T05 — Live verification, docs, closeout
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Approach**: docker compose --profile full up (mailpit + NATS +
+  consumers), an aged-claim fixture, confirm the digest at localhost:8025
+  and the domain.task.stalled row in audit_log with actorType='system';
+  docs/email.md gets a short section; full moon check --all; re-verify
+  every exit criterion; close the milestone.
+- **Changed**: `docs/email.md` gains a "Stalled-claim alerts" section
+  (trigger, digest behavior, `STALLED_ALERT_AFTER_HOURS` + default,
+  one-sentence recipient chain, pointer to ADR-0022).
+- **Verified live**, against the `full` compose profile (mailpit + real
+  MySQL + NATS + the consumers process, STANDALONE unset so a real broker
+  exists): a hand-built fixture (two tasks, one with a reviewer, one
+  without) produced two real digest emails at localhost:8025 — the
+  reviewer-tier and admin-fallback-tier copy both observed correctly, each
+  stating why the recipient got it and the unassign/reassign guidance; a
+  second immediate sweep sent zero further emails (dedup holds live); the
+  `domain.task.stalled` row was observed directly in `audit_log` with
+  `actor_type: 'system'`, `actor_id: NULL` — both halves of exit criterion
+  8 now proven, the live half being the thing no unit test could reach.
+  All 10 originally-planned exit criteria re-verified individually, each
+  named as automated-test-proven or live-observed. `moon check --all`
+  clean (32 tasks).
+- **Found live, not fixed here**: real emails reported "silent for 11
+  hours" against a true ~2h fixture age. Root cause: MySQL's conditional
+  `MAX(CASE WHEN ...)` aggregation (introduced by T03's query unification
+  — a regression this milestone shipped, not an M24 carry-over) returns a
+  plain datetime string with no timezone marker from mysql2; decoding it
+  with `new Date(v)` reads it as the host process's LOCAL time, silently
+  wrong by the host's UTC offset everywhere except a UTC-hosted
+  deployment. Invisible to every existing unit test, which mocks
+  `db.select` rather than exercising mysql2's real aggregate-column
+  return shape. Affects both this sweep's `hoursSilent` (user-visible in
+  every email) and M24's `/reports` screen (same shared detector). Added
+  a new exit criterion and M25-T06 to fix it rather than closing with a
+  known, live-confirmed correctness defect in code this milestone wrote.
+- **Next**: M25-T06 (fix the MySQL timezone decode bug; close the milestone).
+
+## M25-T06 — Fix the MySQL timezone-unsafe aggregate decode
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Approach**: confirmed root cause against a real MySQL 8 container —
+  drizzle-orm's own mysql2 driver forces every TIMESTAMP/DATETIME field to
+  return as a plain string via `field.string()`, so a raw `sql<unknown>`
+  computed column (never schema-mapped) stays a bare `"YYYY-MM-DD
+  HH:MM:SS"` string with no timezone marker; `new Date(v)` on that string
+  is parsed by V8 as the host's LOCAL timezone, not UTC — silently
+  reintroducing the host's UTC offset into every `hoursSilent`/`anchorAt`/
+  `silentSince`. No prior MySQL-aggregate-decode precedent existed
+  anywhere in this codebase to lean on (the only existing gotcha comment,
+  in `dashboard.handler.ts`, covers SQLite's seconds encoding only).
+- **Changed**: `lib/stalledClaims.ts` — new `decodeMysqlUtcDatetime`
+  (regex-parses the string's components, reconstructs via `Date.UTC(...)`,
+  handling optional fractional seconds — deliberately not a `+ 'Z'`-suffix
+  trick, which would depend on mysql2 never changing separator/precision);
+  `decodeAggregate`'s MySQL branch now calls it. SQLite branch untouched
+  (its integer-seconds representation was already correct).
+- **Verified**: a TZ-manipulation regression test (`TZ=Australia/Sydney`,
+  restored after) asserts the decoded UTC epoch directly — proven to
+  actually catch the bug by temporarily reverting just the MySQL branch
+  and observing the test fail by exactly the 10-hour Sydney offset
+  (1787407730000 expected vs 1787371730000 received), then restoring the
+  fix. **Live re-verification ran for real**: real MySQL container,
+  `TZ=Australia/Sydney` on the process, a genuine ~2h-old claim →
+  `hoursSilent: "2.00"`, correct. `stalledClaims.ts` at 100% coverage;
+  targeted suite 58 pass; full `backend:test` 1788 pass; `moon check
+  backend` green.
+- **Notes**: this closes the last open item from T05's live verification.
+  No further known defects. Ready to close the milestone.

@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { sql } from "drizzle-orm";
 import { setupIntegrationTest } from "../test/setup";
 import * as schema from "../db/schema.sqlite";
-import { findStalledCandidates, buildHeldTaskQuery } from "./stalledClaims";
+import { findStalledCandidates, buildHeldTaskQuery, decodeAggregate } from "./stalledClaims";
 
 /**
  * M25-T03 (ADR-0022). This is a `lib/` unit test, not a handler test - every
@@ -330,6 +330,76 @@ describe("findStalledCandidates - global-scale query shape (exit criterion 6)", 
 
     const { params: scopedParams } = buildHeldTaskQuery(db, true, { projectId: projectIds[0]! }).toSQL();
     expect(scopedParams.length).toBeLessThan(10);
+  });
+});
+
+describe("decodeAggregate - MySQL raw aggregate datetime decode (M25-T06 regression)", () => {
+  /**
+   * Live-verification finding from M25-T05: against a real MySQL server, the
+   * `MAX(CASE WHEN … THEN occurredAt END)` expressions in
+   * `buildHeldTaskQuery` come back through drizzle-orm's own mysql2
+   * `typeCast` (`mysql2/session.js`) as a plain `"YYYY-MM-DD HH:MM:SS"`
+   * string - no timezone marker, no fractional seconds - never as a `Date`
+   * object, confirmed directly against a real MySQL 8 container in this
+   * task. MySQL's TIMESTAMP type stores/returns that text as UTC wall-clock,
+   * but the old `decodeAggregate` did `new Date(v)` on it, which V8 parses
+   * as the *host process's local* timezone. On a UTC+10 host that silently
+   * added 10 hours to every `hoursSilent` - the exact "silent for 11 hours"
+   * against a true ~2h-old claim M25-T05 observed live in a real email.
+   *
+   * This test does not require a live MySQL server - it feeds the module's
+   * own decode path a string shaped exactly like the confirmed real mysql2
+   * return value. It also does not merely assert "correct in this host's
+   * timezone": it pins the process to a non-UTC zone (Australia/Sydney,
+   * chosen because it's the exact zone M25-T05's live host used) and asserts
+   * the resulting Date's UTC epoch value directly, restoring TZ afterward so
+   * no other test is affected. Under the old `new Date(v)` behavior this
+   * assertion fails by exactly the host's UTC offset in *every* timezone
+   * except UTC itself - it is not a coincidence of Sydney specifically, and
+   * running this suite under `TZ=UTC` would not have caught the bug, which
+   * is exactly why the offset is asserted explicitly rather than implicitly
+   * relying on whatever zone the CI runner happens to default to.
+   */
+  it("decodes a mysql2 CASE-aggregate datetime string as UTC, independent of the host's TZ", () => {
+    const originalTz = process.env.TZ;
+    try {
+      process.env.TZ = "Australia/Sydney"; // UTC+10 - matches M25-T05's live host exactly.
+      const mysqlRaw = "2026-08-22 14:08:50"; // Confirmed real mysql2 shape - see block comment.
+      const decoded = decodeAggregate(mysqlRaw, false);
+      expect(decoded).toBeInstanceOf(Date);
+      expect(decoded!.getTime()).toBe(Date.UTC(2026, 7, 22, 14, 8, 50));
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
+  });
+
+  it("decodes fractional-second mysql2 output too, in case a column ever declares fsp", () => {
+    const originalTz = process.env.TZ;
+    try {
+      process.env.TZ = "Australia/Sydney";
+      const decoded = decodeAggregate("2026-08-22 14:08:50.500", false);
+      expect(decoded!.getTime()).toBe(Date.UTC(2026, 7, 22, 14, 8, 50, 500));
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
+  });
+
+  it("passes a real Date instance through unchanged (defensive - not the observed real shape)", () => {
+    const d = new Date("2026-08-22T14:08:50.000Z");
+    expect(decodeAggregate(d, false)).toBe(d);
+  });
+
+  it("still decodes the SQLite integer-seconds aggregate correctly - untouched by the MySQL fix", () => {
+    const seconds = Math.floor(Date.UTC(2026, 7, 22, 14, 8, 50) / 1000);
+    const decoded = decodeAggregate(seconds, true);
+    expect(decoded!.getTime()).toBe(seconds * 1000);
+  });
+
+  it("returns undefined for null/undefined on both dialects", () => {
+    expect(decodeAggregate(null, false)).toBeUndefined();
+    expect(decodeAggregate(undefined, true)).toBeUndefined();
   });
 });
 

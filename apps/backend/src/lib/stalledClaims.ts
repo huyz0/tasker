@@ -33,19 +33,58 @@ const HOUR_MS = 3600_000;
 
 /**
  * `MAX(CASE WHEN … THEN occurredAt END)` bypasses drizzle's own timestamp
- * decoding, the same gotcha `reports/common.ts`'s `fromSeconds` documents:
- * SQLite's `timestamp`-mode integer column stores epoch **seconds**, so the
- * raw aggregate needs multiplying back up or every value reads as 1970.
- * MySQL's native `timestamp` column already comes back as a `Date` via
- * mysql2, so this only ever multiplies on the SQLite side. Reimplemented
- * locally rather than imported from `reports/common.ts`: `lib/` sits below
- * `modules/`, so importing a `modules/reports` helper here would point the
- * dependency the wrong way.
+ * decoding, the same gotcha `reports/common.ts`'s `fromSeconds` documents for
+ * the SQLite side: SQLite's `timestamp`-mode integer column stores epoch
+ * **seconds**, so the raw aggregate needs multiplying back up or every value
+ * reads as 1970.
+ *
+ * The MySQL side has its OWN, worse gotcha (found live in M25-T05, fixed in
+ * M25-T06) that this comment used to get wrong: MySQL's native `timestamp`
+ * column does **not** come back as a `Date` here. drizzle-orm's own mysql2
+ * driver (`mysql2/session.js`) installs a `typeCast` that forces every
+ * TIMESTAMP/DATETIME/DATE field to be returned as `field.string()` - a plain
+ * `"YYYY-MM-DD HH:MM:SS"` string with no timezone marker and no fractional
+ * seconds (unless the column declares fsp) - rather than a `Date` object;
+ * drizzle then re-hydrates that string into a `Date` itself for columns it
+ * recognizes from the schema, but a raw `sql<unknown>` computed column like
+ * this one has no such mapping and stays a bare string all the way out.
+ * Confirmed directly against a real MySQL 8 server: `SELECT MAX(CASE WHEN
+ * …)` through a connection carrying drizzle's exact `typeCast` returns
+ * `"2026-08-22 14:08:50"` as a JS string, never a `Date`.
+ *
+ * MySQL's TIMESTAMP type stores and returns that text as UTC wall-clock (this
+ * deployment's server `time_zone` is UTC) - so the *string* is unambiguous,
+ * but `new Date(v)` on a separator-space (non-ISO) string with no `Z`/offset
+ * suffix is parsed by V8 as the **host process's local** timezone, not UTC.
+ * That silently reintroduced the host's UTC offset into every `hoursSilent`
+ * (live-observed in M25-T05: a real ~2h-old claim reported as "silent for 11
+ * hours" on a UTC+10 host). `decodeMysqlUtcDatetime` below parses the
+ * string's components by hand and reconstructs the instant via `Date.UTC(…)`
+ * - deliberately not a `+ 'Z'` suffix trick, so it doesn't depend on mysql2
+ * never changing its separator or always/never including fractional seconds.
+ *
+ * Reimplemented locally rather than imported from `reports/common.ts`:
+ * `lib/` sits below `modules/`, so importing a `modules/reports` helper here
+ * would point the dependency the wrong way.
  */
-function decodeAggregate(v: unknown, isStandalone: boolean): Date | undefined {
+const MYSQL_DATETIME_RE = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/;
+
+function decodeMysqlUtcDatetime(v: string): Date {
+  const m = MYSQL_DATETIME_RE.exec(v);
+  if (!m) return new Date(v); // Unrecognized shape - best effort; should not happen in practice.
+  const [, y, mo, d, h, mi, s, frac] = m as unknown as string[];
+  const ms = frac ? Math.round(Number(`0.${frac}`) * 1000) : 0;
+  return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s), ms));
+}
+
+// Exported for `stalledClaims.test.ts`'s M25-T06 regression test only: it
+// needs to feed a real mysql2-shaped raw string through the exact decode
+// path without standing up a real MySQL server for every CI run.
+export function decodeAggregate(v: unknown, isStandalone: boolean): Date | undefined {
   if (v == null) return undefined;
   if (v instanceof Date) return v;
-  return isStandalone ? new Date(Number(v) * 1000) : new Date(v as any);
+  if (isStandalone) return new Date(Number(v) * 1000);
+  return decodeMysqlUtcDatetime(String(v));
 }
 
 function maxDate(...ds: (Date | undefined)[]): Date | undefined {

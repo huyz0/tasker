@@ -104,6 +104,13 @@ task breakdown below.
 - [ ] `moon check --all` clean; a real local Mailpit run (`docker compose
       --profile mail up -d mailpit`) shows an actual digest email arriving
       with the right subject, recipient, and itemized task list.
+- [ ] `findStalledCandidates`'s reported `hoursSilent`/`anchorAt`/
+      `silentSince` are correct against a **real, non-UTC-hosted MySQL
+      server** — not just against SQLite or a mocked `db.select` — proven
+      by a unit test that reproduces mysql2's actual return shape for a
+      conditional `MAX(CASE WHEN ...)` aggregate (a plain datetime string
+      with no timezone marker) and a live re-run against a real MySQL
+      instance with the host process in a non-UTC timezone.
 
 ## 4. Scope
 
@@ -217,7 +224,7 @@ by construction).
         (exit criterion 10) — all via an injected `MailTransport`, no real
         socket.
 
-- [ ] **M25-T05** — Verification, docs, closeout: a real local run against
+- [x] **M25-T05** — Verification, docs, closeout: a real local run against
       the `full` compose profile (`docker compose --profile full up -d`
       — brings up mailpit **and** NATS/the consumers process together,
       needed because the domain-event half of exit criterion 8 can only be
@@ -232,6 +239,34 @@ by construction).
       - Files: `docs/email.md`, `.milestones/*`
       - Verify: `moon check --all` clean; both the Mailpit arrival and the
         `audit_log` row observed directly, not inferred from passing tests.
+        **Found live, not fixed here (see M25-T06)**: real emails reported
+        "silent for 11 hours" against a true ~2h age — a timezone bug in
+        MySQL's conditional-aggregation decode, invisible to every unit
+        test because they mock `db.select` rather than exercising mysql2's
+        real string-return shape.
+
+- [x] **M25-T06** — Fix the MySQL timezone-unsafe aggregate decode T05's
+      live verification found: `lib/stalledClaims.ts`'s `buildHeldTaskQuery`
+      uses `MAX(CASE WHEN ... THEN occurredAt END)` conditional aggregation
+      for both the project-scoped and global paths (introduced by M25-T03's
+      unification — a regression this milestone shipped, not an M24
+      carry-over), and mysql2 returns that aggregate as a plain datetime
+      string with no timezone marker; decoding it with `new Date(v)`
+      interprets it as the **host process's local time**, silently wrong by
+      the host's UTC offset on every non-UTC deployment. Affects both this
+      sweep's `hoursSilent` (user-visible in every email) and M24's
+      `/reports` screen (same shared detector) — fix the decode to treat
+      the value as UTC explicitly, add a regression test that reproduces
+      mysql2's exact return shape without needing a live database for every
+      run, and re-confirm live against a real MySQL server with the host
+      in a non-UTC timezone.
+      - Files: `apps/backend/src/lib/stalledClaims.ts` (+ `.test.ts`)
+      - Verify: a unit test asserting correct decoding of a raw
+        `"YYYY-MM-DD HH:MM:SS"` MySQL string (mysql2's real shape) as UTC,
+        regardless of host timezone; a live re-run against real MySQL
+        confirming `hoursSilent` matches the fixture's true age; full
+        `moon check --all` clean; every exit criterion re-verified as
+        actually held, not re-worded; then close the milestone.
 
 ## 6. Verification
 

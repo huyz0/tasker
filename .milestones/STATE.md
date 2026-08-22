@@ -1,6 +1,6 @@
 ---
 active_milestone: M25
-active_task: M25-T05
+active_task: M25-T06
 last_updated: 2026-08-23
 last_commit: 8329130
 blocked: false
@@ -15,8 +15,7 @@ blocker: null
 
 ## Now
 
-**2026-08-23 — M25 (Proactive Alerting for Stalled Claims) planned;
-delivery starts at M25-T01.** Raised via `/goal` immediately after a
+**2026-08-23 — M25 planned; delivery started at M25-T01.** Raised via `/goal` immediately after a
 conversation comparing `/reports` (M24) to Linear and Monday — the gap
 named there (pull-based dashboard vs. proactive alerting) became the next
 milestone in the same session. Design was drafted, then reviewed once by a
@@ -1384,9 +1383,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M22 | Task Handoff & Continuity       | done   | —          | 8     | 8    |
 | M23 | Rich Markdown Editor            | done   | —          | 5     | 5    |
 | M24 | Project Reports & Agent Insights | done   | —          | 10    | 10   |
-| M25 | Proactive Alerting for Stalled Claims | in-progress | — | 5     | 4    |
+| M25 | Proactive Alerting for Stalled Claims | done   | —          | 6     | 6    |
 
-**Total: 207 tasks across 19 milestones — 159 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5, M24 10).**
+**Total: 208 tasks across 19 milestones — 159 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5, M24 10).**
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
