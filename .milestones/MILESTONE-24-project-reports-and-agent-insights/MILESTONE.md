@@ -245,7 +245,7 @@ users are agents, and reports are the humans-only monitoring surface).
         stack); `bun run seed -- --scale large && bun run measure:latency`
         inside budget.
 
-- [ ] **M24-T07** — Chart kit: `apps/gui/src/components/charts/` —
+- [x] **M24-T07** — Chart kit: `apps/gui/src/components/charts/` —
       `LineChart.tsx` (multi-series, cumulative-friendly),
       `StackedAreaChart.tsx`, pure helpers `scale.ts` (domains, nice ticks,
       degenerate single-point/empty cases), shared `ChartShell` (role="img"

@@ -189,3 +189,32 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   dateBucket.ts (buckets are UTC exactly when both processes run UTC, as
   the compose deployment does).
 - **Next**: M24-T07 (SVG chart kit + tokens).
+
+## M24-T07 — SVG chart kit + chart tokens
+
+- **Status**: done
+- **Date**: 2026-08-22
+- **Approach**: `components/charts/` per ADR-0021 — pure scale/tick/path
+  helpers under full unit test, a ChartShell carrying the a11y contract
+  (role=img + aria-label + sr-only data table as the queryable truth +
+  hover/focus readout), LineChart + StackedAreaChart on top, `--chart-1..6`
+  tokens in index.css for both themes, stories for every state.
+- **Changed**: new `components/charts/` — `scale.ts` (pure helpers incl.
+  chartColor cycling, tick sparsification, nearest-index readout math),
+  `ChartShell.tsx` (figure → overflow-x-auto → role=img wrapper; sr-only
+  table with caption/scoped headers as THE test surface; aria-live output
+  readout; ChartLegend swatch+text), `LineChart.tsx`,
+  `StackedAreaChart.tsx`; `--chart-1..6` HSL tokens (both themes) in
+  index.css with an ADR-0021 no-foreground-pairs comment; 6 stories.
+- **Verified**: 69 chart tests (red-first TDD), all role/accessible-name
+  queries, expectNoA11yViolations on populated+empty; chart files at
+  100/100/100/100 coverage, aggregate 98.47/95.22/97.4/98.8; gui:test,
+  gui:lint, gui:typecheck, gui:design-lint (0 findings), knip all green.
+- **Notes**: hues anchored to the existing palette (violet brand, info
+  blue, success green) and machine-validated for adjacent-pair colorblind
+  separation in both themes; keyboard/hover readout lives on the named
+  role=img wrapper (the svg itself is aria-hidden decoration) so the
+  focusable element is the announced one; single-point series render dots/
+  bars (a one-day path is invisible); empty state says "No data for this
+  period yet."
+- **Next**: M24-T08 (Reports screen — exception cards).
