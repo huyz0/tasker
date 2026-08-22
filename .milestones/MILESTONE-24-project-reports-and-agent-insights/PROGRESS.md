@@ -154,3 +154,38 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   already pinned by T03's HOT_QUERIES (EXPLAIN-checked, no new entries
   needed).
 - **Next**: M24-T06 (trends handler + seed + latency measurement).
+
+## M24-T06 — Trends report handler + seed + latency measurement
+
+- **Status**: done
+- **Date**: 2026-08-22
+- **Approach**: `trends.ts` sibling implementing getReportTrends (dialect-
+  split UTC date-bucket helper; CFD as one SQL daily-delta pass + JS
+  prefix-sum; created/completed cumulative clipped to collection start;
+  autonomy & rework daily rates with sampleSize), task_activity seeding in
+  scripts/seed.ts, both RPCs in measure-latency.ts, named 300ms rows in
+  api-standard §6. TDD; CFD balance test is the load-bearing one.
+- **Changed**: new `trends.ts` (CFD single-scan daily-delta + JS prefix-sum;
+  created/completed cumulative; autonomy & rework daily rates), new
+  `dateBucket.ts` (+ tests — the repo's first dialect-split date SQL, both
+  shapes unit-tested plus a live sqlite round-trip), `reports.handler.ts`
+  wired, shared `isAutonomousCompletion` extracted, seed.ts now seeds
+  task_activity (~2.3× tasks; created-at spread widened to ~180 days so a
+  90-day window has a real baseline), measure-latency.ts + api-standard §6
+  rows ("ten measured").
+- **Verified**: reports module 45 pass (17 trends red-first); backend suite
+  green; `moon check backend` green. **Measured at the 50k-task scale
+  target: getReportExceptions p95 240.6 ms, getReportTrends p95 274.7 ms —
+  both inside their named 300 ms budgets.** First measurements were 548/494
+  ms; fixed by algorithm (CASE-form single-scan CFD, integer epoch-day
+  bucketing on the hot path, scalar baselines, completed-task-driven
+  anchor joins, IN-list removal), not by raising the budget. CFD balance
+  test: replayed history's final-day stack equals a live GROUP BY, exact at
+  50k (16667/16667/16666).
+- **Notes**: created-directly-into-terminal counts as a completion
+  (tested); cumulative counts keep archived tasks' completions; unknown
+  taskTypeId → NotFound after assertCan; config-removed statuses render
+  after configured ones, never terminal; MySQL UTC honesty documented in
+  dateBucket.ts (buckets are UTC exactly when both processes run UTC, as
+  the compose deployment does).
+- **Next**: M24-T07 (SVG chart kit + tokens).

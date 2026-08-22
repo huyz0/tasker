@@ -225,7 +225,7 @@ users are agents, and reports are the humans-only monitoring surface).
         rows against handler-driven fixtures, cross-tenant denial, agent
         denial.
 
-- [ ] **M24-T06** — Trends report handler + measurement: shared
+- [x] **M24-T06** — Trends report handler + measurement: shared
       dialect-split UTC date-bucket helper (`strftime(..., 'unixepoch')` vs
       `DATE_FORMAT`, unit-tested on both shapes); CFD as one SQL daily-delta
       pass over full project history (+1 `to_status` / −1 `from_status`,

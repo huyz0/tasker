@@ -147,10 +147,8 @@ describe("Reports Handler - getReportExceptions", () => {
         .rejects.toMatchObject({ code: Code.InvalidArgument });
     });
 
-    it("getReportTrends is an unimplemented stub for humans (M24-T06)", async () => {
-      await expect(impl.getReportTrends({ projectId, windowDays: 7 }, ctx))
-        .rejects.toMatchObject({ code: Code.Unimplemented });
-    });
+    // getReportTrends' own authz/validation mirror lives in trends.test.ts
+    // (M24-T06); the agent-refusal test above still covers both methods.
   });
 
   // ── stalled claims ──────────────────────────────────────────────────────

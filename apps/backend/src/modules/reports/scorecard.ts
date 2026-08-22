@@ -1,6 +1,6 @@
-import { and, eq, gte, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import * as schema from "../../db/schema.sqlite";
-import { PANEL_LIMIT, DELETED_AGENT, iso } from "./common";
+import { PANEL_LIMIT, DELETED_AGENT, completionByAgent, fromSeconds, iso } from "./common";
 
 /**
  * The fleet scorecard half of the exceptions report (M24-T05): per-agent and
@@ -41,12 +41,51 @@ const byOutcome = (a: { name: string; score: Score }, b: { name: string; score: 
 
 /**
  * Every scorecard column is a JS aggregation over one window-bounded fetch.
- * The kind list names exactly what the scorecard reads; it also keeps the
- * query on the (project_id, kind, occurred_at) index shape the T03 gate
- * already covers. archived/restored are deliberately absent - they are bin
- * administration, not fleet work.
+ * The kind list names exactly what the scorecard reads row-by-row; it also
+ * keeps the query on the (project_id, kind, occurred_at) index shape the T03
+ * gate already covers. archived/restored are deliberately absent - they are
+ * bin administration, not fleet work. `created` is absent too, but for cost,
+ * not meaning (M24-T06): creations are the largest kind in the table and the
+ * scorecard needs nothing from them row-by-row - their only contribution
+ * (an agent's creations count as activity for `lastActiveAt`) is aggregated
+ * SQL-side below. The one semantic edge accepted: a task's `created` row no
+ * longer counts as a "user touch" for autonomy - it predates any visible
+ * claim/assign anchor anyway, so it could only matter for a completion with
+ * no anchor at all.
  */
-const SCORECARD_KINDS = ["created", "claimed", "assigned", "unassigned", "status_changed", "handoff", "note", "comment"];
+const SCORECARD_KINDS = ["claimed", "assigned", "unassigned", "status_changed", "handoff", "note", "comment"];
+
+/**
+ * Autonomy (milestone: "agent-held completions with zero user-actor rows"):
+ * the completing actor is an agent, and between the last claimed/assigned
+ * anchor and the completion no user-actor row touched the task. `taskRows`
+ * is whatever slice of the task's activity the caller fetched, so the
+ * judgement is bounded by that fetch (the scorecard and the trends series
+ * both pass window-bounded rows - an anchor or a human touch that predates
+ * the window is invisible, the honest cost of one bounded fetch).
+ * `fallbackAnchor` is the fetch's own start, used when no anchor is visible.
+ * Shared with trends.ts (M24-T06) rather than duplicated.
+ */
+export function isAutonomousCompletion(
+  completion: { id: string; taskId: string; occurredAt: Date; actorType: string },
+  taskRows: { id: string; kind: string; occurredAt: Date; actorType: string }[],
+  fallbackAnchor: Date,
+): boolean {
+  if (completion.actorType !== "agent") return false;
+  let anchorAt: Date | undefined;
+  for (const r of taskRows) {
+    if ((r.kind === "claimed" || r.kind === "assigned") && r.occurredAt <= completion.occurredAt) {
+      if (!anchorAt || r.occurredAt > anchorAt) anchorAt = r.occurredAt;
+    }
+  }
+  const from = anchorAt ?? fallbackAnchor;
+  return !taskRows.some((r) =>
+    r.actorType === "user" &&
+    r.id !== completion.id &&
+    r.occurredAt >= from &&
+    r.occurredAt < completion.occurredAt,
+  );
+}
 
 export async function buildScorecard(
   db: any,
@@ -81,6 +120,25 @@ export async function buildScorecard(
       inArray(taskActivity.kind, SCORECARD_KINDS),
       gte(taskActivity.occurredAt, windowStart),
     ));
+
+  // Agent task-creations, aggregated in SQL (see the SCORECARD_KINDS note):
+  // one row per creating agent, feeding lastActiveAt and the mention set.
+  const createdAggRows = await db
+    .select({ actorId: taskActivity.actorId, lastAt: sql<number | null>`max(${taskActivity.occurredAt})` })
+    .from(taskActivity)
+    .where(and(
+      eq(taskActivity.projectId, projectId),
+      eq(taskActivity.kind, "created"),
+      eq(taskActivity.actorType, "agent"),
+      gte(taskActivity.occurredAt, windowStart),
+    ))
+    .groupBy(taskActivity.actorId);
+  const createdLastByAgent = new Map<string, Date>();
+  for (const r of createdAggRows) {
+    // max() bypasses drizzle's timestamp decode - sqlite seconds arrive raw.
+    const at = fromSeconds(r.lastAt);
+    if (r.actorId && at) createdLastByAgent.set(r.actorId, at);
+  }
 
   const rowsByTask = new Map<string, any[]>();
   for (const r of windowRows) {
@@ -131,7 +189,7 @@ export async function buildScorecard(
   // archived included so their history still renders a real name, then add
   // synthetic "(deleted agent)" rows for purged ids the window still mentions.
   const agentById = new Map<string, any>(orgAgents.map((a: any) => [a.id, a]));
-  const mentionedAgentIds = new Set<string>();
+  const mentionedAgentIds = new Set<string>(createdLastByAgent.keys());
   for (const r of windowRows) {
     if (r.actorType === "agent" && r.actorId) mentionedAgentIds.add(r.actorId);
     if (r.assigneeAgentId) mentionedAgentIds.add(r.assigneeAgentId);
@@ -148,35 +206,9 @@ export async function buildScorecard(
     openNowByAgent.set(t.agentId, (openNowByAgent.get(t.agentId) ?? 0) + 1);
   }
 
-  /**
-   * Autonomy (milestone: "agent-held completions with zero user-actor
-   * rows"): the completing actor is an agent, and between the last
-   * claimed/assigned anchor and the completion no user-actor row touched
-   * the task. Window-bounded approximation, documented: an anchor or a
-   * human touch that predates the window is invisible here - the honest
-   * cost of one bounded fetch, acceptable for a per-window scorecard.
-   */
-  const isAutonomous = (completion: any): boolean => {
-    if (completion.actorType !== "agent") return false;
-    const rows = rowsByTask.get(completion.taskId) ?? [];
-    let anchorAt: Date | undefined;
-    for (const r of rows) {
-      if ((r.kind === "claimed" || r.kind === "assigned") && r.occurredAt <= completion.occurredAt) {
-        if (!anchorAt || r.occurredAt > anchorAt) anchorAt = r.occurredAt;
-      }
-    }
-    const from = anchorAt ?? windowStart;
-    return !rows.some((r: any) =>
-      r.actorType === "user" &&
-      r.id !== completion.id &&
-      r.occurredAt >= from &&
-      r.occurredAt < completion.occurredAt,
-    );
-  };
-
   const scoreFor = (agentId: string): Score => {
     let claimed = 0, completed = 0, handedOff = 0, takenAway = 0, autonomousCompleted = 0;
-    let lastActiveAt: Date | undefined;
+    let lastActiveAt: Date | undefined = createdLastByAgent.get(agentId);
     for (const r of windowRows) {
       if (r.actorType === "agent" && r.actorId === agentId) {
         if (!lastActiveAt || r.occurredAt > lastActiveAt) lastActiveAt = r.occurredAt;
@@ -186,7 +218,7 @@ export async function buildScorecard(
       if (r.kind === "unassigned" && r.assigneeAgentId === agentId && r.actorType === "user") takenAway++;
       if (r.kind === "status_changed" && r.toIsTerminal && r.assigneeAgentId === agentId) {
         completed++;
-        if (isAutonomous(r)) autonomousCompleted++;
+        if (isAutonomousCompletion(r, rowsByTask.get(r.taskId) ?? [], windowStart)) autonomousCompleted++;
       }
     }
     return {
@@ -266,10 +298,7 @@ export async function buildCompletionHeadline(
 
   let agentCompleted = 0, humanCompleted = 0, priorAgentCompleted = 0, priorHumanCompleted = 0;
   for (const r of completionRows) {
-    // Assignee attribution (ADR-0020): who HELD the task as it completed,
-    // not who clicked. A completion with no assignee at all falls back to
-    // the actor's kind - there is nobody else to credit.
-    const byAgent = r.assigneeAgentId ? true : r.assigneeUserId ? false : r.actorType === "agent";
+    const byAgent = completionByAgent(r);
     if (r.occurredAt >= args.windowStart) {
       if (byAgent) agentCompleted++;
       else humanCompleted++;

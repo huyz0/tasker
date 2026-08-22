@@ -158,12 +158,17 @@ export async function buildReportExceptions(
     if (!(await isTerminalNow(t.taskTypeId ?? null, t.status))) openUnheld.push(t);
   }
 
+  // Grouped over the project's `unassigned` rows (the (project_id, kind,
+  // occurred_at) index shape) rather than an IN-list of every open unheld
+  // task: at the 50k-task scale target that list is tens of thousands of
+  // parameters, and unassignments are far rarer than unclaimed tasks
+  // (M24-T06's measurement found this the hard way).
   const lastUnassignedByTask = new Map<string, Date>();
   if (openUnheld.length > 0) {
     const rows = await db
       .select({ taskId: taskActivity.taskId, lastAt: sql<number | null>`max(${taskActivity.occurredAt})` })
       .from(taskActivity)
-      .where(and(inArray(taskActivity.taskId, openUnheld.map((t) => t.id)), eq(taskActivity.kind, "unassigned")))
+      .where(and(eq(taskActivity.projectId, projectId), eq(taskActivity.kind, "unassigned")))
       .groupBy(taskActivity.taskId);
     for (const r of rows) {
       const at = fromSeconds(r.lastAt);

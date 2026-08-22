@@ -106,12 +106,14 @@ update.
 | *every `list*` method* | 150 ms | the default |
 | `universalSearch` | 300 ms | ranks its whole match set on every page (ADR-0010) |
 | `getDashboard` | 300 ms | answers four questions in one round trip instead of four |
+| `getReportExceptions` | 300 ms | five exception panels plus the fleet scorecard in one round trip (M24) |
+| `getReportTrends` | 300 ms | the CFD aggregates the project's entire activity history, not just the window (M24) |
 
-The eight measured at the scale target are `listTasks` (both the project list
+The ten measured at the scale target are `listTasks` (both the project list
 and one board column), `listArtifacts`, `listProjects`, `listAgents`,
-`listOrgMembers`, `universalSearch` and `getDashboard` — the endpoints a user
-waits on before a screen paints. The rest inherit the default and are measured
-when they become hot enough to matter.
+`listOrgMembers`, `universalSearch`, `getDashboard` and both Report RPCs — the
+endpoints a user waits on before a screen paints. The rest inherit the default
+and are measured when they become hot enough to matter.
 
 150 ms is the default because the browser still has to render what it gets, and
 the bar it has to clear is a screen painted within a second.
