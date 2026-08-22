@@ -15,6 +15,46 @@ blocker: null
 
 ## Now
 
+**2026-08-22 — the GUI CI job went from 24m to 9m54s** (commit `2e48247`),
+by parallelising the two Storybook browser gates. Worth recording for the
+method as much as the result: the first hypothesis was wrong, and measuring
+is what caught it.
+
+Step timings showed the 24 minutes was **22m05s in a single step** — the
+`Storybook a11y + mobile overflow` gate. Lint, typecheck, the whole vitest
+suite with coverage, and the vite build together were under two minutes, so
+there was exactly one thing to fix.
+
+`waitUntil: 'networkidle'` looked like the obvious culprit (Playwright's own
+docs discourage it). An A/B over 15 stories put it at **1.1x** — 7.6s vs
+7.0s per story. Changing it would have been a no-op dressed up as a fix. The
+real cost is ~7s of CPU per story: loading Storybook's runtime plus the
+story's own chunk, then running axe. 94 stories × 2 gates × 7s is 22 minutes
+almost exactly. So `networkidle` was deliberately left alone — it is nearly
+free, and it is the safest wait for the one code-split story
+(`LazyRichMarkdownEditor`), whose Suspense fallback would otherwise satisfy
+the render check while the real chunk was still downloading.
+
+The fix is the one the measurement supports: both gates drive several pages
+off a single browser, pulling from a shared cursor rather than fixed slices
+(story cost varies by an order of magnitude between a Badge and a Dashboard).
+Findings are sorted before reporting, since pages now finish out of order.
+
+**Verified in the order that matters**: 5m52s locally at CI's concurrency
+with identical findings; then that the gates still *fail* rather than merely
+still finish — a story deliberately violating both got a11y exit 1 on
+`color-contrast` (the rule the gate exists for, and the one needing a real
+browser) and overflow exit 1 naming the 916px element; then all 14 config
+tests guarding these gates, unchanged.
+
+Each gate now prints the page count it chose, which turned an assumption into
+a fact: CI reported **3 pages**, so `availableParallelism()` sees 4 vCPU and
+the `- 1` headroom margin leaves one core spare. 3 workers gave 2.88x — 96%
+scaling efficiency — so dropping the `- 1` would likely recover ~2 more
+minutes. Left at 3 deliberately: the remaining gain is small and
+oversubscribing a shared runner trades wall-clock for timeout flakiness,
+which costs more than it saves.
+
 **2026-08-22 — CI investigation: three real bugs found and fixed behind two
 red GitHub Actions workflows** (commits `970f0a4`, `eb0639b`, `5ceb4fb`).
 Prompted by "check ci" after M12-T01 landed; both `CI Pipeline` and `Real
