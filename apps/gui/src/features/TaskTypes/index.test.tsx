@@ -1,39 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { TaskTypeService, ProjectTemplateService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { TaskTypesEditor } from './index';
 
-const mockListTypes = vi.fn();
-const mockGetType = vi.fn();
-const mockCreateType = vi.fn();
-const mockUpdateType = vi.fn();
-const mockCreateStatus = vi.fn();
-const mockReorder = vi.fn();
-const mockCreateTransition = vi.fn();
-const mockDeleteTransition = vi.fn();
-const mockListTemplates = vi.fn();
-const mockUpdateTemplate = vi.fn();
-
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  TaskTypeService: 'TaskTypeService',
-  ProjectTemplateService: 'ProjectTemplateService',
-}));
-vi.mock('@connectrpc/connect', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@connectrpc/connect')>()),
-  createClient: (service: unknown) =>
-    service === 'ProjectTemplateService'
-      ? { listTemplates: (...a: unknown[]) => mockListTemplates(...a), updateTemplate: (...a: unknown[]) => mockUpdateTemplate(...a) }
-      : {
-          listTaskTypes: (...a: unknown[]) => mockListTypes(...a),
-          getTaskType: (...a: unknown[]) => mockGetType(...a),
-          createTaskType: (...a: unknown[]) => mockCreateType(...a),
-          updateTaskType: (...a: unknown[]) => mockUpdateType(...a),
-          createTaskStatus: (...a: unknown[]) => mockCreateStatus(...a),
-          reorderTaskStatuses: (...a: unknown[]) => mockReorder(...a),
-          createTaskStatusTransition: (...a: unknown[]) => mockCreateTransition(...a),
-          deleteTaskStatusTransition: (...a: unknown[]) => mockDeleteTransition(...a),
-        },
-}));
 let mockActiveOrgId = 'org-1';
 vi.mock('../../store/layout', () => ({
   useLayoutStore: vi.fn((selector) => selector({
@@ -41,6 +12,12 @@ vi.mock('../../store/layout', () => ({
     setActivePageTitle: vi.fn(),
   })),
 }));
+
+const statuses = [
+  { id: 'st-1', taskTypeId: 'tt-1', name: 'todo', position: 0 },
+  { id: 'st-2', taskTypeId: 'tt-1', name: 'in progress', position: 1 },
+  { id: 'st-3', taskTypeId: 'tt-1', name: 'done', position: 2 },
+];
 
 const renderEditor = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -51,33 +28,116 @@ const renderEditor = () => {
   );
 };
 
-const statuses = [
-  { id: 'st-1', taskTypeId: 'tt-1', name: 'todo', position: 0 },
-  { id: 'st-2', taskTypeId: 'tt-1', name: 'in progress', position: 1 },
-  { id: 'st-3', taskTypeId: 'tt-1', name: 'done', position: 2 },
-];
-
 const openBug = async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Bug' }));
   return screen.findByText('Statuses');
 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockActiveOrgId = 'org-1';
-  mockListTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Bug' }] });
-  mockGetType.mockResolvedValue({ taskType: { id: 'tt-1', name: 'Bug' }, statuses, transitions: [] });
-  mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Default Template', rootTaskTypeId: '' }] });
-  mockCreateType.mockResolvedValue({ taskType: { id: 'tt-2', name: 'Story' } });
-  mockUpdateType.mockResolvedValue({ taskType: { id: 'tt-1', name: 'Defect' } });
-  mockCreateStatus.mockResolvedValue({ status: { id: 'st-9' } });
-  mockReorder.mockResolvedValue({ statuses });
-  mockCreateTransition.mockResolvedValue({ transition: { id: 'tr-1' } });
-  mockDeleteTransition.mockResolvedValue({ success: true });
-  mockUpdateTemplate.mockResolvedValue({ template: {} });
-});
+/** Registers ListTaskTypes and records every request it receives. */
+function withListTypes(response: object = { taskTypes: [{ id: 'tt-1', name: 'Bug' }] }) {
+  const requests: any[] = [];
+  mockRpc(TaskTypeService, 'ListTaskTypes', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers GetTaskType and records every request it receives. */
+function withGetType(response: object | ((body: any) => object) = { taskType: { id: 'tt-1', name: 'Bug' }, statuses, transitions: [] }) {
+  const requests: any[] = [];
+  mockRpc(TaskTypeService, 'GetTaskType', (body) => {
+    requests.push(body);
+    return typeof response === 'function' ? response(body) : response;
+  });
+  return requests;
+}
+
+/** Registers CreateTaskType and records every request it receives. */
+function withCreateType(response: object = { taskType: { id: 'tt-2', name: 'Story' } }) {
+  const requests: any[] = [];
+  mockRpc(TaskTypeService, 'CreateTaskType', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers UpdateTaskType and records every request it receives. */
+function withUpdateType(response: object = { taskType: { id: 'tt-1', name: 'Defect' } }) {
+  const requests: any[] = [];
+  mockRpc(TaskTypeService, 'UpdateTaskType', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers CreateTaskStatus and records every request it receives. */
+function withCreateStatus(response: object = { status: { id: 'st-9' } }) {
+  const requests: any[] = [];
+  mockRpc(TaskTypeService, 'CreateTaskStatus', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers ReorderTaskStatuses and records every request it receives. */
+function withReorder(response: object = { statuses }) {
+  const requests: any[] = [];
+  mockRpc(TaskTypeService, 'ReorderTaskStatuses', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers CreateTaskStatusTransition and records every request it receives. */
+function withCreateTransition(response: object = { transition: { id: 'tr-1' } }) {
+  const requests: any[] = [];
+  mockRpc(TaskTypeService, 'CreateTaskStatusTransition', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers DeleteTaskStatusTransition and records every request it receives. */
+function withDeleteTransition(response: object = { success: true }) {
+  const requests: any[] = [];
+  mockRpc(TaskTypeService, 'DeleteTaskStatusTransition', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
+/** Registers UpdateTemplate and records every request it receives. */
+function withUpdateTemplate(response: object = { template: {} }) {
+  const requests: any[] = [];
+  mockRpc(ProjectTemplateService, 'UpdateTemplate', (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
 
 describe('TaskTypesEditor', () => {
+  beforeEach(() => {
+    mockActiveOrgId = 'org-1';
+    withListTypes();
+    withGetType();
+    mockRpc(ProjectTemplateService, 'ListTemplates', { templates: [{ id: 'tpl-1', name: 'Default Template', rootTaskTypeId: '' }] });
+    withCreateType();
+    withUpdateType();
+    withCreateStatus();
+    withReorder();
+    withCreateTransition();
+    withDeleteTransition();
+    withUpdateTemplate();
+  });
+
   it('lists the statuses in their configured order', async () => {
     renderEditor();
     await openBug();
@@ -90,7 +150,7 @@ describe('TaskTypesEditor', () => {
   });
 
   it('explains the fallback when a type has no statuses', async () => {
-    mockGetType.mockResolvedValue({ taskType: { id: 'tt-1', name: 'Bug' }, statuses: [], transitions: [] });
+    withGetType({ taskType: { id: 'tt-1', name: 'Bug' }, statuses: [], transitions: [] });
     renderEditor();
     await openBug();
     // The fallback is real, invisible and surprising; an empty list hides it.
@@ -107,6 +167,7 @@ describe('TaskTypesEditor', () => {
   // M14-T09: rename moved here from the Projects screen, which used to offer
   // it with no view of the statuses/transitions being renamed alongside it.
   it('renames the selected task type', async () => {
+    const requests = withUpdateType();
     renderEditor();
     await openBug();
 
@@ -115,10 +176,11 @@ describe('TaskTypesEditor', () => {
     fireEvent.change(nameInput, { target: { value: 'Defect' } });
     fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(mockUpdateType).toHaveBeenCalledWith({ id: 'tt-1', name: 'Defect' }));
+    await waitFor(() => expect(requests).toContainEqual({ id: 'tt-1', name: 'Defect' }));
   });
 
   it('cancels a rename without saving', async () => {
+    const requests = withUpdateType();
     renderEditor();
     await openBug();
 
@@ -128,11 +190,11 @@ describe('TaskTypesEditor', () => {
 
     expect(screen.getByRole('heading', { name: 'Bug' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Task type name')).toBeNull();
-    expect(mockUpdateType).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('shows an error message when renaming fails', async () => {
-    mockUpdateType.mockRejectedValue(new Error('name already exists'));
+    mockRpcError(TaskTypeService, 'UpdateTaskType', 'unknown', 'name already exists');
     renderEditor();
     await openBug();
 
@@ -144,9 +206,9 @@ describe('TaskTypesEditor', () => {
   });
 
   it('closing and reopening a different type does not leave the rename form open', async () => {
-    mockListTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-1', name: 'Bug' }, { id: 'tt-2', name: 'Story' }] });
-    mockGetType.mockImplementation(async ({ id }: { id: string }) =>
-      id === 'tt-1'
+    withListTypes({ taskTypes: [{ id: 'tt-1', name: 'Bug' }, { id: 'tt-2', name: 'Story' }] });
+    withGetType((body: { id: string }) =>
+      body.id === 'tt-1'
         ? { taskType: { id: 'tt-1', name: 'Bug' }, statuses, transitions: [] }
         : { taskType: { id: 'tt-2', name: 'Story' }, statuses: [], transitions: [] });
     renderEditor();
@@ -160,29 +222,31 @@ describe('TaskTypesEditor', () => {
   });
 
   it('sends the whole new order when a status moves up', async () => {
+    const requests = withReorder();
     renderEditor();
     await openBug();
     fireEvent.click(await screen.findByLabelText('Move done up'));
-    await waitFor(() => expect(mockReorder).toHaveBeenCalledWith({
+    await waitFor(() => expect(requests).toContainEqual({
       taskTypeId: 'tt-1',
       statusIds: ['st-1', 'st-3', 'st-2'],
     }));
   });
 
   it('sends the whole new order when a status moves down', async () => {
+    const requests = withReorder();
     renderEditor();
     await openBug();
     fireEvent.click(await screen.findByLabelText('Move todo down'));
     // Down is not up with a sign flipped in the test: the swap is written once
     // and gets the pair wrong in exactly one direction if it is wrong at all.
-    await waitFor(() => expect(mockReorder).toHaveBeenCalledWith({
+    await waitFor(() => expect(requests).toContainEqual({
       taskTypeId: 'tt-1',
       statusIds: ['st-2', 'st-1', 'st-3'],
     }));
   });
 
   it('falls back to the id for a transition naming a status it cannot see', async () => {
-    mockGetType.mockResolvedValue({
+    withGetType({
       taskType: { id: 'tt-1', name: 'Bug' },
       statuses,
       transitions: [{ id: 'tr-9', taskTypeId: 'tt-1', fromStatusId: 'st-1', toStatusId: 'st-gone' }],
@@ -202,34 +266,37 @@ describe('TaskTypesEditor', () => {
   });
 
   it('adds a status', async () => {
+    const requests = withCreateStatus();
     renderEditor();
     await openBug();
     fireEvent.change(screen.getByLabelText('New status name'), { target: { value: 'blocked' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add status' }));
-    await waitFor(() => expect(mockCreateStatus).toHaveBeenCalledWith({ taskTypeId: 'tt-1', name: 'blocked' }));
+    await waitFor(() => expect(requests).toContainEqual({ taskTypeId: 'tt-1', name: 'blocked' }));
   });
 
   it('will not add a blank status', async () => {
+    const requests = withCreateStatus();
     renderEditor();
     await openBug();
     fireEvent.change(screen.getByLabelText('New status name'), { target: { value: '   ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add status' }));
-    expect(mockCreateStatus).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('defines a transition between two statuses', async () => {
+    const requests = withCreateTransition();
     renderEditor();
     await openBug();
     fireEvent.change(await screen.findByLabelText('From status'), { target: { value: 'st-1' } });
     fireEvent.change(screen.getByLabelText('To status'), { target: { value: 'st-2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Allow' }));
-    await waitFor(() => expect(mockCreateTransition).toHaveBeenCalledWith({
+    await waitFor(() => expect(requests).toContainEqual({
       taskTypeId: 'tt-1', fromStatusId: 'st-1', toStatusId: 'st-2',
     }));
   });
 
   it('will not offer a transition form with only one status', async () => {
-    mockGetType.mockResolvedValue({ taskType: { id: 'tt-1', name: 'Bug' }, statuses: [statuses[0]], transitions: [] });
+    withGetType({ taskType: { id: 'tt-1', name: 'Bug' }, statuses: [statuses[0]], transitions: [] });
     renderEditor();
     await openBug();
     expect(await screen.findByText('A transition needs two statuses.')).toBeInTheDocument();
@@ -237,11 +304,12 @@ describe('TaskTypesEditor', () => {
   });
 
   it('names the transition by status, not by id, and removes it with its type', async () => {
-    mockGetType.mockResolvedValue({
+    withGetType({
       taskType: { id: 'tt-1', name: 'Bug' },
       statuses,
       transitions: [{ id: 'tr-1', taskTypeId: 'tt-1', fromStatusId: 'st-1', toStatusId: 'st-2' }],
     });
+    const requests = withDeleteTransition();
     renderEditor();
     await openBug();
     expect(await screen.findByText('todo → in progress')).toBeInTheDocument();
@@ -249,60 +317,67 @@ describe('TaskTypesEditor', () => {
     fireEvent.click(screen.getByLabelText('Remove the transition from todo to in progress'));
     // The type travels with the id so the server can authorize the request even
     // when the edge is already gone.
-    await waitFor(() => expect(mockDeleteTransition).toHaveBeenCalledWith({ transitionId: 'tr-1', taskTypeId: 'tt-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ transitionId: 'tr-1', taskTypeId: 'tt-1' }));
   });
 
   it('creates a task type and selects it', async () => {
+    const createRequests = withCreateType();
+    const getRequests = withGetType();
     renderEditor();
     await screen.findByRole('button', { name: 'Bug' });
     fireEvent.change(screen.getByLabelText('New task type name'), { target: { value: 'Story' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add type' }));
-    await waitFor(() => expect(mockCreateType).toHaveBeenCalledWith({ orgId: 'org-1', projectId: '', name: 'Story' }));
+    // An empty `projectId` is proto3's default for a string field, so the
+    // real JSON codec omits it from the wire rather than sending ''.
+    await waitFor(() => expect(createRequests).toContainEqual({ orgId: 'org-1', name: 'Story' }));
     // Landing on the new type is the point of creating one.
-    await waitFor(() => expect(mockGetType).toHaveBeenCalledWith({ id: 'tt-2' }));
+    await waitFor(() => expect(getRequests).toContainEqual({ id: 'tt-2' }));
   });
 
   it('will not create a type with a blank name', async () => {
+    const requests = withCreateType();
     renderEditor();
     await screen.findByRole('button', { name: 'Bug' });
     fireEvent.change(screen.getByLabelText('New task type name'), { target: { value: '  ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add type' }));
-    expect(mockCreateType).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('ignores the placeholder option in the root-type select', async () => {
+    const requests = withUpdateTemplate();
     renderEditor();
     await openBug();
     const select = await screen.findByLabelText('Template to set this as the root type of');
     fireEvent.change(select, { target: { value: '' } });
     // Choosing "Set as root type of…" is not a choice.
-    expect(mockUpdateTemplate).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('sets the type as a template root', async () => {
+    const requests = withUpdateTemplate();
     renderEditor();
     await openBug();
     fireEvent.change(await screen.findByLabelText('Template to set this as the root type of'), { target: { value: 'tpl-1' } });
-    await waitFor(() => expect(mockUpdateTemplate).toHaveBeenCalledWith({ id: 'tpl-1', rootTaskTypeId: 'tt-1' }));
+    await waitFor(() => expect(requests).toContainEqual({ id: 'tpl-1', rootTaskTypeId: 'tt-1' }));
   });
 
   it('says which templates already use it as their root', async () => {
-    mockListTemplates.mockResolvedValue({ templates: [{ id: 'tpl-1', name: 'Default Template', rootTaskTypeId: 'tt-1' }] });
+    mockRpc(ProjectTemplateService, 'ListTemplates', { templates: [{ id: 'tpl-1', name: 'Default Template', rootTaskTypeId: 'tt-1' }] });
     renderEditor();
     await openBug();
     expect(await screen.findByText('Root type of: Default Template')).toBeInTheDocument();
   });
 
   it('reports a failed reorder', async () => {
-    mockReorder.mockRejectedValue(new Error('permission denied'));
+    mockRpcError(TaskTypeService, 'ReorderTaskStatuses', 'permission_denied', 'permission denied');
     renderEditor();
     await openBug();
     fireEvent.click(await screen.findByLabelText('Move done up'));
-    expect(await screen.findByText(/Failed to reorder: permission denied/)).toBeInTheDocument();
+    expect(await screen.findByText(/Failed to reorder:.*permission denied/)).toBeInTheDocument();
   });
 
   it('reports a failed status add', async () => {
-    mockCreateStatus.mockRejectedValue(new Error('a status with this name already exists'));
+    mockRpcError(TaskTypeService, 'CreateTaskStatus', 'unknown', 'a status with this name already exists');
     renderEditor();
     await openBug();
     fireEvent.change(screen.getByLabelText('New status name'), { target: { value: 'todo' } });
@@ -311,7 +386,7 @@ describe('TaskTypesEditor', () => {
   });
 
   it('reports a failed transition add', async () => {
-    mockCreateTransition.mockRejectedValue(new Error('that edge already exists'));
+    mockRpcError(TaskTypeService, 'CreateTaskStatusTransition', 'unknown', 'that edge already exists');
     renderEditor();
     await openBug();
     fireEvent.change(screen.getByLabelText('From status'), { target: { value: 'st-1' } });
@@ -321,12 +396,12 @@ describe('TaskTypesEditor', () => {
   });
 
   it('reports a failed transition removal', async () => {
-    mockGetType.mockResolvedValue({
+    withGetType({
       taskType: { id: 'tt-1', name: 'Bug' },
       statuses,
       transitions: [{ id: 'tr-1', taskTypeId: 'tt-1', fromStatusId: 'st-1', toStatusId: 'st-2' }],
     });
-    mockDeleteTransition.mockRejectedValue(new Error('not found'));
+    mockRpcError(TaskTypeService, 'DeleteTaskStatusTransition', 'unknown', 'not found');
     renderEditor();
     await openBug();
     fireEvent.click(screen.getByLabelText(/Remove the transition from/));
@@ -334,7 +409,7 @@ describe('TaskTypesEditor', () => {
   });
 
   it('reports a failed root-type change', async () => {
-    mockUpdateTemplate.mockRejectedValue(new Error('template not found'));
+    mockRpcError(ProjectTemplateService, 'UpdateTemplate', 'unknown', 'template not found');
     renderEditor();
     await openBug();
     fireEvent.change(screen.getByLabelText('Template to set this as the root type of'), { target: { value: 'tpl-1' } });
@@ -347,32 +422,32 @@ describe('TaskTypesEditor', () => {
   });
 
   it('says so when the organization has no task types', async () => {
-    mockListTypes.mockResolvedValue({ taskTypes: [] });
+    withListTypes({ taskTypes: [] });
     renderEditor();
     expect(await screen.findByText('No task types yet.')).toBeInTheDocument();
   });
 
   it('retries fetching the task type list after a failure', async () => {
-    mockListTypes.mockRejectedValue(new Error('boom'));
+    mockRpcError(TaskTypeService, 'ListTaskTypes', 'unavailable', 'boom');
     renderEditor();
 
     const tryAgain = await screen.findByText('Try again');
-    mockListTypes.mockClear();
+    withListTypes();
     fireEvent.click(tryAgain);
 
-    await waitFor(() => expect(mockListTypes).toHaveBeenCalled());
+    await screen.findByRole('button', { name: 'Bug' });
   });
 
   it('retries fetching the selected type\'s detail after a failure', async () => {
-    mockGetType.mockRejectedValue(new Error('boom'));
+    mockRpcError(TaskTypeService, 'GetTaskType', 'unavailable', 'boom');
     renderEditor();
     fireEvent.click(await screen.findByRole('button', { name: 'Bug' }));
 
     const tryAgain = await screen.findByText('Try again');
-    mockGetType.mockClear();
+    withGetType();
     fireEvent.click(tryAgain);
 
-    await waitFor(() => expect(mockGetType).toHaveBeenCalled());
+    await screen.findByText('Statuses');
   });
 
   // M19-T05: switching the active org left `selectedId` pointing at the
@@ -387,7 +462,7 @@ describe('TaskTypesEditor', () => {
     await openBug();
 
     mockActiveOrgId = 'org-2';
-    mockListTypes.mockResolvedValue({ taskTypes: [{ id: 'tt-9', name: 'Feature' }] });
+    withListTypes({ taskTypes: [{ id: 'tt-9', name: 'Feature' }] });
     rerender(<QueryClientProvider client={client}><TaskTypesEditor /></QueryClientProvider>);
 
     await screen.findByRole('button', { name: 'Feature' });
