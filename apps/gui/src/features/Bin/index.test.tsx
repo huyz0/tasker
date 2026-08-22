@@ -1,62 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { OrgService, TeamService, ProjectService, TaskService, AgentService, ArtifactService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcError } from '../../test/mockRpc';
 
-const {
-  mockListOrgs, mockRestoreOrg, mockPurgeOrg,
-  mockListTeams, mockRestoreTeam,
-  mockListProjects, mockRestoreProject, mockPurgeProject,
-  mockListTasks, mockRestoreTask, mockPurgeTask,
-  mockListAgents, mockRestoreAgent, mockPurgeAgent,
-  mockListFolders, mockRestoreFolder, mockPurgeFolder,
-  mockListArtifacts, mockRestoreArtifact, mockPurgeArtifact,
-} = vi.hoisted(() => ({
-  mockListOrgs: vi.fn(),
-  mockRestoreOrg: vi.fn(),
-  mockPurgeOrg: vi.fn(),
-  mockListTeams: vi.fn(),
-  mockRestoreTeam: vi.fn(),
-  mockListProjects: vi.fn(),
-  mockRestoreProject: vi.fn(),
-  mockPurgeProject: vi.fn(),
-  mockListTasks: vi.fn(),
-  mockRestoreTask: vi.fn(),
-  mockPurgeTask: vi.fn(),
-  mockListAgents: vi.fn(),
-  mockRestoreAgent: vi.fn(),
-  mockPurgeAgent: vi.fn(),
-  mockListFolders: vi.fn(),
-  mockRestoreFolder: vi.fn(),
-  mockPurgeFolder: vi.fn(),
-  mockListArtifacts: vi.fn(),
-  mockRestoreArtifact: vi.fn(),
-  mockPurgeArtifact: vi.fn(),
-}));
-
-vi.mock('@connectrpc/connect-web', () => ({
-  createConnectTransport: vi.fn(() => ({})),
-}));
-vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn((service: unknown) => {
-    switch (service) {
-      case 'OrgService': return { listOrgs: mockListOrgs, restoreOrg: mockRestoreOrg, purgeOrg: mockPurgeOrg };
-      case 'TeamService': return { listTeams: mockListTeams, restoreTeam: mockRestoreTeam };
-      case 'ProjectService': return { listProjects: mockListProjects, restoreProject: mockRestoreProject, purgeProject: mockPurgeProject };
-      case 'TaskService': return { listTasks: mockListTasks, restoreTask: mockRestoreTask, purgeTask: mockPurgeTask };
-      case 'AgentService': return { listAgents: mockListAgents, restoreAgent: mockRestoreAgent, purgeAgent: mockPurgeAgent };
-      case 'ArtifactService': return { listFolders: mockListFolders, restoreFolder: mockRestoreFolder, purgeFolder: mockPurgeFolder, listArtifacts: mockListArtifacts, restoreArtifact: mockRestoreArtifact, purgeArtifact: mockPurgeArtifact };
-      default: return {};
-    }
-  }),
-}));
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  OrgService: 'OrgService',
-  TeamService: 'TeamService',
-  ProjectService: 'ProjectService',
-  TaskService: 'TaskService',
-  AgentService: 'AgentService',
-  ArtifactService: 'ArtifactService',
-}));
 let mockActiveOrgId: string | undefined = 'org-1';
 let mockActiveProjectId: string | undefined = 'proj-1';
 vi.mock('../../store/layout', () => ({
@@ -80,71 +27,74 @@ function renderPage() {
   return { ...utils, queryClient };
 }
 
+/** Registers one RPC on `service` and returns an array of every request it receives. */
+function withRpc(service: { typeName: string }, method: string, response: object) {
+  const requests: any[] = [];
+  mockRpc(service, method, (body) => {
+    requests.push(body);
+    return response;
+  });
+  return requests;
+}
+
 describe('BinDashboard', () => {
   beforeEach(() => {
-    for (const m of [
-      mockListOrgs, mockRestoreOrg, mockPurgeOrg,
-      mockListTeams, mockRestoreTeam,
-      mockListProjects, mockRestoreProject, mockPurgeProject,
-      mockListTasks, mockRestoreTask, mockPurgeTask,
-      mockListAgents, mockRestoreAgent, mockPurgeAgent,
-      mockListFolders, mockRestoreFolder, mockPurgeFolder,
-      mockListArtifacts, mockRestoreArtifact, mockPurgeArtifact,
-    ]) {
-      m.mockReset();
-    }
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
   });
 
   it('lists archived organizations and restores one', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
-    mockRestoreOrg.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
+    const requests = withRpc(OrgService, 'RestoreOrg', { success: true });
 
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
 
-    await waitFor(() => expect(mockRestoreOrg).toHaveBeenCalledWith({ orgId: 'org-2' }));
+    await waitFor(() => expect(requests).toContainEqual({ orgId: 'org-2' }));
   });
 
   it('issues one request per bin section on mount, and pages the rest on request', async () => {
-    mockListOrgs
-      .mockResolvedValueOnce({ organizations: [{ id: 'org-2', name: 'Page One Org', deletedAt: new Date().toISOString() }], page: { nextCursor: 'cursor-2', totalCount: 2 } })
-      .mockResolvedValueOnce({ organizations: [{ id: 'org-3', name: 'Page Two Org', deletedAt: new Date().toISOString() }], page: { totalCount: 2 } });
+    const requests: any[] = [];
+    mockRpc(OrgService, 'ListOrgs', (body: { page?: { cursor?: string } }) => {
+      requests.push(body);
+      return body.page?.cursor
+        ? { organizations: [{ id: 'org-3', name: 'Page Two Org', deletedAt: new Date().toISOString() }], page: { totalCount: 2 } }
+        : { organizations: [{ id: 'org-2', name: 'Page One Org', deletedAt: new Date().toISOString() }], page: { nextCursor: 'cursor-2', totalCount: 2 } };
+    });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('Page One Org')).toBeDefined());
-    expect(mockListOrgs).toHaveBeenCalledTimes(1);
+    expect(requests).toHaveLength(1);
 
     fireEvent.click(screen.getByRole('button', { name: /Load more/ }));
     await waitFor(() => expect(screen.getByText('Page Two Org')).toBeDefined());
-    expect(mockListOrgs).toHaveBeenCalledWith({ onlyDeleted: true, page: { cursor: 'cursor-2' } });
+    expect(requests[requests.length - 1]).toEqual({ onlyDeleted: true, page: { cursor: 'cursor-2' } });
   });
 
   it('shows an empty message when there is nothing archived', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
   });
 
   it('switches tabs and lists archived tasks', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Archived Task', deletedAt: new Date().toISOString() }] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const requests = withRpc(TaskService, 'ListTasks', { tasks: [{ id: 'task-1', title: 'Archived Task', deletedAt: new Date().toISOString() }] });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Tasks' }));
     await waitFor(() => expect(screen.getByText('Archived Task')).toBeDefined());
-    expect(mockListTasks).toHaveBeenCalledWith({ projectId: 'proj-1', onlyDeleted: true, page: { cursor: undefined } });
+    expect(requests).toContainEqual({ projectId: 'proj-1', onlyDeleted: true, page: {} });
   });
 
   it('permanently deletes an item after confirmation', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
-    mockPurgeOrg.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
+    const requests = withRpc(OrgService, 'PurgeOrg', { success: true });
 
     renderPage();
 
@@ -152,11 +102,12 @@ describe('BinDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
     await confirmAction();
 
-    await waitFor(() => expect(mockPurgeOrg).toHaveBeenCalledWith({ orgId: 'org-2' }));
+    await waitFor(() => expect(requests).toContainEqual({ orgId: 'org-2' }));
   });
 
   it('does not purge when the confirmation is dismissed', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
+    const requests = withRpc(OrgService, 'PurgeOrg', {});
 
     renderPage();
 
@@ -164,12 +115,12 @@ describe('BinDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
     await cancelAction();
 
-    expect(mockPurgeOrg).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('shows an error message when purging fails', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
-    mockPurgeOrg.mockRejectedValue(new Error('organization still has projects'));
+    withRpc(OrgService, 'ListOrgs', { organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
+    mockRpcError(OrgService, 'PurgeOrg', 'unknown', 'organization still has projects');
 
     renderPage();
 
@@ -181,8 +132,8 @@ describe('BinDashboard', () => {
   });
 
   it('shows an error message when restoring fails', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
-    mockRestoreOrg.mockRejectedValue(new Error('parent organization is archived'));
+    withRpc(OrgService, 'ListOrgs', { organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }] });
+    mockRpcError(OrgService, 'RestoreOrg', 'unknown', 'parent organization is archived');
 
     renderPage();
 
@@ -193,9 +144,9 @@ describe('BinDashboard', () => {
   });
 
   it('switches to the Projects tab and lists/restores an archived project', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-2', name: 'Archived Project', deletedAt: new Date().toISOString() }] });
-    mockRestoreProject.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const listRequests = withRpc(ProjectService, 'ListProjects', { projects: [{ id: 'proj-2', name: 'Archived Project', deletedAt: new Date().toISOString() }] });
+    const restoreRequests = withRpc(ProjectService, 'RestoreProject', { success: true });
 
     const { queryClient } = renderPage();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
@@ -203,10 +154,10 @@ describe('BinDashboard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Projects' }));
     await waitFor(() => expect(screen.getByText('Archived Project')).toBeDefined());
-    expect(mockListProjects).toHaveBeenCalledWith({ orgId: 'org-1', onlyDeleted: true, page: { cursor: undefined } });
+    expect(listRequests).toContainEqual({ orgId: 'org-1', onlyDeleted: true, page: {} });
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
-    await waitFor(() => expect(mockRestoreProject).toHaveBeenCalledWith({ projectId: 'proj-2' }));
+    await waitFor(() => expect(restoreRequests).toContainEqual({ projectId: 'proj-2' }));
     // M20-T05: this used to invalidate three separate keys, one of them
     // (`['projects', 'org-1']`) matching no query in the app, and none of
     // them the sidebar switcher's own `['projects', 'switcher', ...]` key -
@@ -216,50 +167,50 @@ describe('BinDashboard', () => {
   });
 
   it('switches to the Agents tab and lists/purges an archived agent', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-2', name: 'Archived Agent', deletedAt: new Date().toISOString() }] });
-    mockPurgeAgent.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const listRequests = withRpc(AgentService, 'ListAgents', { agents: [{ id: 'agent-2', name: 'Archived Agent', deletedAt: new Date().toISOString() }] });
+    const purgeRequests = withRpc(AgentService, 'PurgeAgent', { success: true });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Agents' }));
     await waitFor(() => expect(screen.getByText('Archived Agent')).toBeDefined());
-    expect(mockListAgents).toHaveBeenCalledWith({ orgId: 'org-1', onlyDeleted: true, page: { cursor: undefined } });
+    expect(listRequests).toContainEqual({ orgId: 'org-1', onlyDeleted: true, page: {} });
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
     await confirmAction();
-    await waitFor(() => expect(mockPurgeAgent).toHaveBeenCalledWith({ agentId: 'agent-2' }));
+    await waitFor(() => expect(purgeRequests).toContainEqual({ agentId: 'agent-2' }));
   });
 
   it('switches to the Folders tab and lists/restores an archived folder', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-2', name: 'Archived Folder', deletedAt: new Date().toISOString() }] });
-    mockRestoreFolder.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const listRequests = withRpc(ArtifactService, 'ListFolders', { folders: [{ id: 'fld-2', name: 'Archived Folder', deletedAt: new Date().toISOString() }] });
+    const restoreRequests = withRpc(ArtifactService, 'RestoreFolder', { success: true });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Folders' }));
     await waitFor(() => expect(screen.getByText('Archived Folder')).toBeDefined());
-    expect(mockListFolders).toHaveBeenCalledWith({ projectId: 'proj-1', onlyDeleted: true, page: { cursor: undefined } });
+    expect(listRequests).toContainEqual({ projectId: 'proj-1', onlyDeleted: true, page: {} });
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
-    await waitFor(() => expect(mockRestoreFolder).toHaveBeenCalledWith({ folderId: 'fld-2' }));
+    await waitFor(() => expect(restoreRequests).toContainEqual({ folderId: 'fld-2' }));
   });
 
   it('switches to the Artifacts tab and lists the project\'s archived artifacts in one request', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
     // ArtifactsBin asks the server for the project's archived artifacts in one
     // request. It used to list every folder and then fan out one request per
     // folder, which is what `projectId` on listArtifacts removed (M07-T04).
-    mockListArtifacts.mockResolvedValue({
+    withRpc(ArtifactService, 'ListArtifacts', {
       artifacts: [
         { id: 'art-1', name: 'Archived Artifact A', deletedAt: new Date().toISOString() },
         { id: 'art-2', name: 'Archived Artifact B', deletedAt: new Date().toISOString() },
       ],
     });
-    mockPurgeArtifact.mockResolvedValue({ success: true });
+    const purgeRequests = withRpc(ArtifactService, 'PurgeArtifact', { success: true });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
@@ -270,15 +221,15 @@ describe('BinDashboard', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete Forever' })[0]!);
     await confirmAction();
-    await waitFor(() => expect(mockPurgeArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
+    await waitFor(() => expect(purgeRequests).toContainEqual({ artifactId: 'art-1' }));
   });
 
   it("distinguishes an organization with no archived projects from no organization at all", async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
     // Set before rendering. It used to be set after the tab click, so the first
     // call rejected on an unstubbed mock and the pane rendered its empty state
     // anyway — the failure was invisible, which is the defect M06-T11 removed.
-    mockListProjects.mockResolvedValue({ projects: [] });
+    withRpc(ProjectService, 'ListProjects', { projects: [] });
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
@@ -290,10 +241,10 @@ describe('BinDashboard', () => {
   });
 
   it('restores an archived artifact', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-a' }] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-1', name: 'Archived Artifact', deletedAt: new Date().toISOString() }] });
-    mockRestoreArtifact.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    withRpc(ArtifactService, 'ListFolders', { folders: [{ id: 'fld-a' }] });
+    withRpc(ArtifactService, 'ListArtifacts', { artifacts: [{ id: 'art-1', name: 'Archived Artifact', deletedAt: new Date().toISOString() }] });
+    const restoreRequests = withRpc(ArtifactService, 'RestoreArtifact', { success: true });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
@@ -302,33 +253,35 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('Archived Artifact')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
-    await waitFor(() => expect(mockRestoreArtifact).toHaveBeenCalledWith({ artifactId: 'art-1' }));
+    await waitFor(() => expect(restoreRequests).toContainEqual({ artifactId: 'art-1' }));
   });
 
   it("shows the Tasks tab's empty message when no project is active", async () => {
     mockActiveProjectId = undefined;
-    mockListOrgs.mockResolvedValue({ organizations: [] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const requests = withRpc(TaskService, 'ListTasks', {});
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Tasks' }));
     await waitFor(() => expect(screen.getByText('Select a project to see its archived tasks.')).toBeDefined());
-    expect(mockListTasks).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it("shows the Agents tab's empty message when no org is active", async () => {
     mockActiveOrgId = undefined;
-    mockListOrgs.mockResolvedValue({ organizations: [] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const requests = withRpc(AgentService, 'ListAgents', {});
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Agents' }));
     await waitFor(() => expect(screen.getByText('Select an organization to see its archived agents.')).toBeDefined());
-    expect(mockListAgents).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('falls back to the item id and omits the deleted timestamp when they are missing', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [{ id: 'org-no-name' }] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [{ id: 'org-no-name' }] });
     renderPage();
 
     await waitFor(() => expect(screen.getByText('org-no-name')).toBeDefined());
@@ -339,26 +292,26 @@ describe('BinDashboard', () => {
     // Replaces two tests that asserted each section looped its cursor to
     // exhaustion. That is the behaviour M07-T04 removed; what matters now is
     // that opening a tab costs one request (the milestone's verify line).
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-a', name: 'Proj Page One' }], page: { nextCursor: 'c2', totalCount: 2 } });
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-a', title: 'Task Page One' }], page: {} });
-    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-a', name: 'Agent Page One' }], page: {} });
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-a', name: 'Folder Page One' }], page: {} });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-a', name: 'Art Page One' }], page: {} });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const projectRequests = withRpc(ProjectService, 'ListProjects', { projects: [{ id: 'proj-a', name: 'Proj Page One' }], page: { nextCursor: 'c2', totalCount: 2 } });
+    const taskRequests = withRpc(TaskService, 'ListTasks', { tasks: [{ id: 'task-a', title: 'Task Page One' }], page: {} });
+    const agentRequests = withRpc(AgentService, 'ListAgents', { agents: [{ id: 'agent-a', name: 'Agent Page One' }], page: {} });
+    const folderRequests = withRpc(ArtifactService, 'ListFolders', { folders: [{ id: 'fld-a', name: 'Folder Page One' }], page: {} });
+    const artifactRequests = withRpc(ArtifactService, 'ListArtifacts', { artifacts: [{ id: 'art-a', name: 'Art Page One' }], page: {} });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
-    for (const [tab, text, mock] of [
-      ['Projects', 'Proj Page One', mockListProjects],
-      ['Tasks', 'Task Page One', mockListTasks],
-      ['Agents', 'Agent Page One', mockListAgents],
-      ['Folders', 'Folder Page One', mockListFolders],
-      ['Artifacts', 'Art Page One', mockListArtifacts],
+    for (const [tab, text, requests] of [
+      ['Projects', 'Proj Page One', projectRequests],
+      ['Tasks', 'Task Page One', taskRequests],
+      ['Agents', 'Agent Page One', agentRequests],
+      ['Folders', 'Folder Page One', folderRequests],
+      ['Artifacts', 'Art Page One', artifactRequests],
     ] as const) {
       fireEvent.click(screen.getByRole('button', { name: tab }));
       await waitFor(() => expect(screen.getByText(text)).toBeDefined());
-      expect(mock).toHaveBeenCalledTimes(1);
+      expect(requests).toHaveLength(1);
     }
 
     // The one section with a next page offers a way to it, and nothing else does.
@@ -368,23 +321,24 @@ describe('BinDashboard', () => {
   });
 
   it('asks for the archived artifacts of the project directly, not folder by folder', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListArtifacts.mockResolvedValue({ artifacts: [{ id: 'art-a', name: 'Art Page One' }], page: {} });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const artifactRequests = withRpc(ArtifactService, 'ListArtifacts', { artifacts: [{ id: 'art-a', name: 'Art Page One' }], page: {} });
+    const folderRequests = withRpc(ArtifactService, 'ListFolders', {});
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Artifacts' }));
     await waitFor(() => expect(screen.getByText('Art Page One')).toBeDefined());
 
-    expect(mockListArtifacts).toHaveBeenCalledWith({ projectId: 'proj-1', onlyDeleted: true, page: { cursor: undefined } });
+    expect(artifactRequests).toContainEqual({ projectId: 'proj-1', onlyDeleted: true, page: {} });
     // The folder listing is not involved at all any more.
-    expect(mockListFolders).not.toHaveBeenCalled();
+    expect(folderRequests).toHaveLength(0);
   });
 
   it('purges an archived project', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-2', name: 'Archived Project', deletedAt: new Date().toISOString() }] });
-    mockPurgeProject.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    withRpc(ProjectService, 'ListProjects', { projects: [{ id: 'proj-2', name: 'Archived Project', deletedAt: new Date().toISOString() }] });
+    const purgeRequests = withRpc(ProjectService, 'PurgeProject', { success: true });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
@@ -393,14 +347,14 @@ describe('BinDashboard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
     await confirmAction();
-    await waitFor(() => expect(mockPurgeProject).toHaveBeenCalledWith({ projectId: 'proj-2' }));
+    await waitFor(() => expect(purgeRequests).toContainEqual({ projectId: 'proj-2' }));
   });
 
   it('restores and purges an archived task', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListTasks.mockResolvedValue({ tasks: [{ id: 'task-1', title: 'Archived Task', deletedAt: new Date().toISOString() }] });
-    mockRestoreTask.mockResolvedValue({ success: true });
-    mockPurgeTask.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    withRpc(TaskService, 'ListTasks', { tasks: [{ id: 'task-1', title: 'Archived Task', deletedAt: new Date().toISOString() }] });
+    const restoreRequests = withRpc(TaskService, 'RestoreTask', { success: true });
+    const purgeRequests = withRpc(TaskService, 'PurgeTask', { success: true });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
@@ -408,17 +362,17 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('Archived Task')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
-    await waitFor(() => expect(mockRestoreTask).toHaveBeenCalledWith({ taskId: 'task-1' }));
+    await waitFor(() => expect(restoreRequests).toContainEqual({ taskId: 'task-1' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
     await confirmAction();
-    await waitFor(() => expect(mockPurgeTask).toHaveBeenCalledWith({ taskId: 'task-1' }));
+    await waitFor(() => expect(purgeRequests).toContainEqual({ taskId: 'task-1' }));
   });
 
   it('restores an archived agent', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListAgents.mockResolvedValue({ agents: [{ id: 'agent-2', name: 'Archived Agent', deletedAt: new Date().toISOString() }] });
-    mockRestoreAgent.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    withRpc(AgentService, 'ListAgents', { agents: [{ id: 'agent-2', name: 'Archived Agent', deletedAt: new Date().toISOString() }] });
+    const requests = withRpc(AgentService, 'RestoreAgent', { success: true });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
@@ -426,13 +380,13 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('Archived Agent')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
-    await waitFor(() => expect(mockRestoreAgent).toHaveBeenCalledWith({ agentId: 'agent-2' }));
+    await waitFor(() => expect(requests).toContainEqual({ agentId: 'agent-2' }));
   });
 
   it('purges an archived folder', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListFolders.mockResolvedValue({ folders: [{ id: 'fld-2', name: 'Archived Folder', deletedAt: new Date().toISOString() }] });
-    mockPurgeFolder.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    withRpc(ArtifactService, 'ListFolders', { folders: [{ id: 'fld-2', name: 'Archived Folder', deletedAt: new Date().toISOString() }] });
+    const requests = withRpc(ArtifactService, 'PurgeFolder', { success: true });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
@@ -441,53 +395,55 @@ describe('BinDashboard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
     await confirmAction();
-    await waitFor(() => expect(mockPurgeFolder).toHaveBeenCalledWith({ folderId: 'fld-2' }));
+    await waitFor(() => expect(requests).toContainEqual({ folderId: 'fld-2' }));
   });
 
   it("shows the Folders tab's empty message when no project is active", async () => {
     mockActiveProjectId = undefined;
-    mockListOrgs.mockResolvedValue({ organizations: [] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const requests = withRpc(ArtifactService, 'ListFolders', {});
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Folders' }));
     await waitFor(() => expect(screen.getByText('Select a project to see its archived folders.')).toBeDefined());
-    expect(mockListFolders).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('switches to the Teams tab and lists/restores an archived team, with no Delete Forever button', async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListTeams.mockResolvedValue({ teams: [{ id: 'team-2', name: 'Archived Team', deletedAt: new Date().toISOString() }] });
-    mockRestoreTeam.mockResolvedValue({ success: true });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const listRequests = withRpc(TeamService, 'ListTeams', { teams: [{ id: 'team-2', name: 'Archived Team', deletedAt: new Date().toISOString() }] });
+    const restoreRequests = withRpc(TeamService, 'RestoreTeam', { success: true });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Teams' }));
     await waitFor(() => expect(screen.getByText('Archived Team')).toBeDefined());
-    expect(mockListTeams).toHaveBeenCalledWith({ orgId: 'org-1', onlyDeleted: true, page: { cursor: undefined } });
+    expect(listRequests).toContainEqual({ orgId: 'org-1', onlyDeleted: true, page: {} });
 
     // TeamService has no purgeTeam RPC - the row offers Restore only.
     expect(screen.queryByRole('button', { name: 'Delete Forever' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
-    await waitFor(() => expect(mockRestoreTeam).toHaveBeenCalledWith({ teamId: 'team-2' }));
+    await waitFor(() => expect(restoreRequests).toContainEqual({ teamId: 'team-2' }));
   });
 
   it("shows the Teams tab's empty message when no org is active", async () => {
     mockActiveOrgId = undefined;
-    mockListOrgs.mockResolvedValue({ organizations: [] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    const requests = withRpc(TeamService, 'ListTeams', {});
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
 
     fireEvent.click(screen.getByRole('button', { name: 'Teams' }));
     await waitFor(() => expect(screen.getByText('Select an organization to see its archived teams.')).toBeDefined());
-    expect(mockListTeams).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it("shows a project's key as its bin row detail", async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListProjects.mockResolvedValue({ projects: [{ id: 'proj-2', name: 'Archived Project', key: 'PROJ', deletedAt: new Date().toISOString() }] });
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    withRpc(ProjectService, 'ListProjects', { projects: [{ id: 'proj-2', name: 'Archived Project', key: 'PROJ', deletedAt: new Date().toISOString() }] });
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No archived organizations.')).toBeDefined());
@@ -497,8 +453,8 @@ describe('BinDashboard', () => {
   });
 
   it("shows a task's status and assignees as its bin row detail", async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListTasks.mockResolvedValue({
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    withRpc(TaskService, 'ListTasks', {
       tasks: [{
         id: 'task-1', title: 'Archived Task', status: 'done',
         assignees: [{ userId: 'u1', agentId: '', name: 'Ada' }, { userId: 'u2', agentId: '', name: 'Grace' }],
@@ -514,8 +470,8 @@ describe('BinDashboard', () => {
   });
 
   it("omits the detail line for a task with no assignees, showing just its status", async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListTasks.mockResolvedValue({
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    withRpc(TaskService, 'ListTasks', {
       tasks: [{ id: 'task-1', title: 'Archived Task', status: 'todo', assignees: [], deletedAt: new Date().toISOString() }],
     });
 
@@ -527,10 +483,10 @@ describe('BinDashboard', () => {
   });
 
   it("shows an artifact's content type and size as its bin row detail", async () => {
-    mockListOrgs.mockResolvedValue({ organizations: [] });
-    mockListArtifacts.mockResolvedValue({
+    withRpc(OrgService, 'ListOrgs', { organizations: [] });
+    withRpc(ArtifactService, 'ListArtifacts', {
       artifacts: [{
-        id: 'art-1', name: 'Archived Artifact', contentType: 'image/png', sizeBytes: 2048n,
+        id: 'art-1', name: 'Archived Artifact', contentType: 'image/png', sizeBytes: '2048',
         deletedAt: new Date().toISOString(),
       }],
     });

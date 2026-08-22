@@ -446,7 +446,10 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
         <div key={item.id} className="p-3 text-sm flex justify-between items-center">
           <div>
             <div>
-              <span className="font-medium">{item[labelKey] ?? item.id}</span>
+              {/* `||`, not `??` (M12-T01): a plain (non-optional) proto3
+                  scalar decodes a missing name to '', not undefined, so
+                  nullish coalescing never falls back to the id. */}
+              <span className="font-medium">{item[labelKey] || item.id}</span>
               {item.deletedAt && (
                 <span className="text-xs text-muted-foreground ml-2">Deleted {new Date(item.deletedAt).toLocaleString()}</span>
               )}
@@ -465,7 +468,7 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
               <button
                 onClick={async () => {
                   if (await confirm({
-                    title: `Permanently delete "${item[labelKey] ?? item.id}"?`,
+                    title: `Permanently delete "${item[labelKey] || item.id}"?`,
                     consequence: 'It is removed from the database immediately.',
                     undo: null,
                     confirmLabel: 'Delete forever',
