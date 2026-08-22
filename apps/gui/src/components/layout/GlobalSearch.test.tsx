@@ -2,20 +2,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
+import { SearchService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { mockRpc, mockRpcPending } from '../../test/mockRpc';
 import { expectNoA11yViolations } from '../../test/a11y';
 
-const { mockUniversalSearch, mockNavigate } = vi.hoisted(() => ({
-  mockUniversalSearch: vi.fn(),
-  mockNavigate: vi.fn(),
-}));
+const { mockNavigate } = vi.hoisted(() => ({ mockNavigate: vi.fn() }));
 
-vi.mock('@connectrpc/connect', () => ({
-  createClient: vi.fn(() => ({ universalSearch: mockUniversalSearch })),
-}));
-vi.mock('shared-contract/gen/ts/tasker/health/v1/health_pb', () => ({
-  SearchService: 'SearchService',
-}));
-vi.mock('../../lib/connectTransport', () => ({ transport: {} }));
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return { ...actual, useNavigate: () => mockNavigate };
@@ -56,9 +48,8 @@ const clickTrigger = () => fireEvent.click(screen.getAllByText('Search tasks, ar
 
 describe('GlobalSearch', () => {
   beforeEach(() => {
-    mockUniversalSearch.mockReset();
     mockNavigate.mockReset();
-    mockUniversalSearch.mockResolvedValue({ results: [] });
+    mockRpc(SearchService, 'UniversalSearch', { results: [] });
     useLayoutStore.setState({ activeOrgId: 'org-1', searchOpen: false });
   });
 
@@ -117,19 +108,18 @@ describe('GlobalSearch', () => {
   });
 
   it('shows a loading state while the search request is in flight', async () => {
-    let resolveSearch: (v: any) => void = () => {};
-    mockUniversalSearch.mockReturnValue(new Promise((resolve) => { resolveSearch = resolve; }));
+    const pending = mockRpcPending(SearchService, 'UniversalSearch');
     renderSearch();
 
     clickTrigger();
     fireEvent.change(screen.getByPlaceholderText('Search tasks, artifacts, projects, agents…'), { target: { value: 'foo' } });
 
     await waitFor(() => expect(screen.getByText('Searching...')).toBeInTheDocument());
-    resolveSearch({ results: [] });
+    pending.resolve({ results: [] });
   });
 
   it('shows "No results found" when the search returns nothing for a non-empty query', async () => {
-    mockUniversalSearch.mockResolvedValue({ results: [] });
+    mockRpc(SearchService, 'UniversalSearch', { results: [] });
     renderSearch();
 
     clickTrigger();
@@ -139,7 +129,7 @@ describe('GlobalSearch', () => {
   });
 
   it('renders task and artifact results with their snippet', async () => {
-    mockUniversalSearch.mockResolvedValue({
+    mockRpc(SearchService, 'UniversalSearch', {
       results: [
         { id: 'tsk-1', type: 'task', title: 'Fix login bug', snippet: 'login flow' },
         { id: 'art-1', type: 'artifact', title: 'Design doc', snippet: '' },
@@ -156,7 +146,7 @@ describe('GlobalSearch', () => {
   });
 
   it('groups results by type with a count per section and a total', async () => {
-    mockUniversalSearch.mockResolvedValue({
+    mockRpc(SearchService, 'UniversalSearch', {
       results: [
         { id: 'tsk-1', type: 'task', title: 'Fix login bug', snippet: '' },
         { id: 'tsk-2', type: 'task', title: 'Fix logout bug', snippet: '' },
@@ -177,7 +167,7 @@ describe('GlobalSearch', () => {
   });
 
   it('says "1 result", not "1 results"', async () => {
-    mockUniversalSearch.mockResolvedValue({
+    mockRpc(SearchService, 'UniversalSearch', {
       results: [{ id: 'tsk-1', type: 'task', title: 'Fix login bug', snippet: '' }],
     });
     renderSearch();
@@ -189,7 +179,7 @@ describe('GlobalSearch', () => {
   });
 
   it('moves the highlight with ArrowDown/ArrowUp and opens the highlighted result on Enter', async () => {
-    mockUniversalSearch.mockResolvedValue({
+    mockRpc(SearchService, 'UniversalSearch', {
       results: [
         { id: 'tsk-1', type: 'task', title: 'First result', snippet: '' },
         { id: 'tsk-2', type: 'task', title: 'Second result', snippet: '' },
@@ -225,7 +215,7 @@ describe('GlobalSearch', () => {
   });
 
   it('moves the highlight to whatever the mouse hovers, sharing one source of truth with the keyboard', async () => {
-    mockUniversalSearch.mockResolvedValue({
+    mockRpc(SearchService, 'UniversalSearch', {
       results: [
         { id: 'tsk-1', type: 'task', title: 'First result', snippet: '' },
         { id: 'tsk-2', type: 'task', title: 'Second result', snippet: '' },
@@ -243,7 +233,7 @@ describe('GlobalSearch', () => {
   });
 
   it('passes the a11y audit with grouped results open', async () => {
-    mockUniversalSearch.mockResolvedValue({
+    mockRpc(SearchService, 'UniversalSearch', {
       results: [
         { id: 'tsk-1', type: 'task', title: 'Fix login bug', snippet: 'login flow' },
         { id: 'art-1', type: 'artifact', title: 'Design doc', snippet: '' },
@@ -259,7 +249,7 @@ describe('GlobalSearch', () => {
   });
 
   it('navigates to a task result and closes the dialog on click', async () => {
-    mockUniversalSearch.mockResolvedValue({
+    mockRpc(SearchService, 'UniversalSearch', {
       results: [{ id: 'tsk-1', type: 'task', title: 'Fix login bug', snippet: 'login flow' }],
     });
     renderSearch();
@@ -275,7 +265,7 @@ describe('GlobalSearch', () => {
   });
 
   it('hides a result whose type this build has no route for, instead of offering a dead click', async () => {
-    mockUniversalSearch.mockResolvedValue({
+    mockRpc(SearchService, 'UniversalSearch', {
       results: [
         { id: 'tsk-1', type: 'task', title: 'Fix login bug', snippet: '' },
         { id: 'xyz-1', type: 'workflow', title: 'Some future type', snippet: '' },
@@ -356,7 +346,7 @@ describe('GlobalSearch', () => {
   });
 
   it('navigates to an artifact result on click', async () => {
-    mockUniversalSearch.mockResolvedValue({
+    mockRpc(SearchService, 'UniversalSearch', {
       results: [{ id: 'art-1', type: 'artifact', title: 'Design doc', snippet: '' }],
     });
     renderSearch();
@@ -382,13 +372,18 @@ describe('GlobalSearch', () => {
   });
 
   it('does not call universalSearch while the query is empty', () => {
+    const requests: unknown[] = [];
+    mockRpc(SearchService, 'UniversalSearch', (body) => {
+      requests.push(body);
+      return { results: [] };
+    });
     renderSearch();
     clickTrigger();
-    expect(mockUniversalSearch).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
   });
 
   it('ignores ArrowDown/ArrowUp/Enter before there is anything to navigate', async () => {
-    mockUniversalSearch.mockResolvedValue({ results: [] });
+    mockRpc(SearchService, 'UniversalSearch', { results: [] });
     renderSearch();
     clickTrigger();
     const input = screen.getByPlaceholderText('Search tasks, artifacts, projects, agents…');
