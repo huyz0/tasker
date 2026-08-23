@@ -84,8 +84,9 @@ milestone's `PROGRESS.md` rather than quietly fixed.
 | **M23** | [Rich Markdown Editor](../../.milestones/MILESTONE-23-rich-markdown-editor/MILESTONE.md) | Markdown surfaces are edited WYSIWYG while the wire contract stays plain markdown. | — |
 | **M24** | [Project Reports & Agent Insights](../../.milestones/MILESTONE-24-project-reports-and-agent-insights/MILESTONE.md) | A project-scoped Reports screen shows where work is stuck, which agents need attention, and how work flows over time — every panel feeding an intervention decision. | — |
 | **M25** | [Proactive Alerting for Stalled Claims](../../.milestones/MILESTONE-25-stalled-claim-alerting/MILESTONE.md) | A human responsible for a task is emailed when its agent claim goes stalled, without waiting for anyone to open Reports. | — |
+| **M26** | [Gate Integrity](../../.milestones/MILESTONE-26-gate-integrity/MILESTONE.md) | Every quality gate covers what its own documentation says it covers — the agent-scope sweep, the migration ledger, and backend typechecking. | — |
 
-M21–M25 are sequenced by explicit user priority (like M13 before M10) and
+M21–M26 are sequenced by explicit user priority (like M13 before M10) and
 carry no dependency edge; every numbered milestone before them is done.
 
 ## Sequencing rationale
