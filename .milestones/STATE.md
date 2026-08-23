@@ -15,6 +15,56 @@ blocker: null
 
 ## Now
 
+**2026-08-23 — M27 (Documentation Truth) complete: 6/6 tasks, 6/6 exit
+criteria.** The three documents `AGENTS.md` tells every session to trust
+described a product roughly eight milestones behind the code. They now
+describe the one that exists, and a gate fails when they stop.
+
+Sixteen false statements corrected. `README.md` said the GUI **is not
+real-time**, teams have **no table in the schema yet**, and a portable single
+binary **is M09** — while the same file told you to run `./tasker`.
+`architecture.md`, whose own rule is that everything under **Built** is
+present-tense-true and citable, said agent identity **is not separate from
+human identity**, search **is `LIKE`-based** with an index nothing writes to,
+**there is no subscriber anywhere in the repository**, and telemetry is **not
+OpenTelemetry** — three of those contradicted by later sections of the same
+file. `NAVIGATION.md` asserted **"Teams does not exist at all"** and listed 15
+of the application's 22 routes.
+
+**Things a next session should know that the code will not say:**
+
+- **`moon run :doc-drift` is the new gate** (ADR-0024). It fails when
+  `README.md`, `architecture.md`, `mission.md` or `NAVIGATION.md` say a
+  *closed* milestone still owns unbuilt work. It was demonstrated against
+  real history rather than a fixture: run over those documents as they stood
+  at `b43b48c`, it produces **22 findings** — every claim M27 fixed.
+- **It deliberately does not catch everything, and the ADR says so.** A false
+  claim citing no milestone is invisible to it. `NAVIGATION.md`'s "there is
+  **no breadcrumb component in the repository** — `grep -i breadcrumb`
+  returns nothing" was exactly that shape: a checkable claim that had simply
+  stopped being true (the component exists, with a test and a story, mounted
+  by Artifacts and Tasks). Only a human running the grep it invited found it.
+  A green gate is not a true document.
+- **Historical attribution must keep working**, or the gate gets switched
+  off. `Delivered by M08`, `(M09-T02/T03)`, `M08's streaming endpoint`,
+  `whose "until M11" this discharges` are all legitimate and all pass; nine
+  test cases pin exactly those forms, taken verbatim from the corrected
+  files.
+- **The scope vocabulary is now eleven**, not eight and not ten. This
+  milestone's own spec said "ten" from memory and was wrong, because M26 had
+  added `events:read` four commits earlier. Three hand-maintained copies of
+  that vocabulary exist — `lib/scopes.ts`, the GUI token picker, and
+  `docs/agent-integration.md` — and nothing gates them against each other.
+- **`architecture.md`'s Planned section now names no owner for anything**,
+  because every milestone is closed. Writing that down surfaced three gaps
+  worth having in one place: **signed binaries** (deferred identically by M09
+  and M12 for want of certificates), **measured concurrency** (the largest
+  gap between what the product claims and what it can evidence — data scale
+  is measured and within budget, concurrency has never been simulated at
+  all), and the fact that **ADR-0003's own deferral condition is unmeasurable
+  today**, since the measurement that would trigger a separate read store is
+  the concurrency nothing measures.
+
 **2026-08-23 — M26 (Gate Integrity) complete: 6/6 tasks, 8/8 exit criteria.**
 Three gates were trusted, cited as evidence, and did not cover what they
 claimed. All three now do, and each fix shipped with the guard that would
@@ -1507,8 +1557,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M24 | Project Reports & Agent Insights | done   | —          | 10    | 10   |
 | M25 | Proactive Alerting for Stalled Claims | done   | —          | 6     | 6    |
 | M26 | Gate Integrity                  | done   | —          | 6     | 6    |
+| M27 | Documentation Truth             | done   | —          | 6     | 6    |
 
-**Total: 214 tasks across 20 milestones — 213 done.** Every milestone is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have).
+**Total: 220 tasks across 21 milestones — 219 done.** Every milestone is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have).
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;

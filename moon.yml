@@ -60,6 +60,23 @@ tasks:
   # against the "In Use" tables of tech-stack.md, in both directions. Its own
   # suite runs first — the rules that decide whether the specs are honest have to
   # be provably capable of failing, same as `skills-check`.
+  # Fails when README.md, architecture.md, mission.md or NAVIGATION.md say a
+  # closed milestone still owes work (M27, ADR-0024). Same shape as
+  # `spec-drift` and for the same reason: `tech-stack.md` was the only one of
+  # the ground-truth documents that stayed honest, and the only one with a
+  # gate. Its own suite runs first — a rule that cannot be made to fail
+  # enforces nothing.
+  doc-drift:
+    command: 'bash -c "bun test scripts/doc-drift.test.ts && bun run scripts/doc-drift.ts"'
+    inputs:
+      - '/scripts/doc-drift.ts'
+      - '/scripts/doc-drift.test.ts'
+      - '/README.md'
+      - '/.specs/product/architecture.md'
+      - '/.specs/product/mission.md'
+      - '/.specs/design/NAVIGATION.md'
+      - '/.milestones/STATE.md'
+
   spec-drift:
     deps:
       - 'shared-contract:install-deps'
