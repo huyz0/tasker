@@ -1,13 +1,13 @@
 ---
 id: M26
 title: Gate Integrity
-status: in-progress
+status: done
 goal: Every quality gate this repository relies on actually covers what its own documentation says it covers — the agent-scope sweep enumerates every registered service, the migration ledger cannot apply out of order, and the backend's types are checked by `moon check --all` the way the GUI's already are.
 depends_on: []
 surfaces: [backend, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-23
-completed_at: null
+completed_at: 2026-08-23
 ---
 
 # M26 — Gate Integrity
@@ -60,30 +60,30 @@ Sequenced by explicit user priority, the same way M21–M25 were.
 
 ## 3. Exit Criteria
 
-- [ ] An agent token cannot open the live event feed unless it holds the
+- [x] An agent token cannot open the live event feed unless it holds the
       scope that grants it — proven by a test asserting a token without that
       scope is refused, and one holding it is admitted.
-- [ ] An agent subscribed to the feed receives an event only if its scopes
+- [x] An agent subscribed to the feed receives an event only if its scopes
       would have let it read that entity through an ordinary RPC — proven by
       a test that subscribes with a narrow scope set and asserts the
       out-of-scope subjects never arrive.
-- [ ] `agent-scope-sweep.test.ts` fails if a service registered in
+- [x] `agent-scope-sweep.test.ts` fails if a service registered in
       `index.ts` is absent from its handler map — proven by temporarily
       removing one entry and observing the failure, then restoring it. All
       twenty-one registered services are covered.
-- [ ] Every journal entry's `when` is strictly greater than that of the entry
+- [x] Every journal entry's `when` is strictly greater than that of the entry
       before it, in both dialects — enforced by a test that fails on
       inversion, demonstrated by reverting the fix and watching it fail.
-- [ ] A database migrated only as far as `0043`/`0030` applies `audit_log`
+- [x] A database migrated only as far as `0043`/`0030` applies `audit_log`
       when it next boots — proven directly, not inferred from the journal.
-- [ ] A database that **already** skipped `audit_log` and went on to apply
+- [x] A database that **already** skipped `audit_log` and went on to apply
       `0045`–`0047` recovers it. Correcting the `when` alone cannot do this:
       that database's watermark is now `0047`'s, which is past the corrected
       slot, so the fix is invisible to it. Proven by building exactly that
       database, booting it, and finding `audit_log` present.
-- [ ] `moon run backend:typecheck` exists, runs in `moon check --all` and in
+- [x] `moon run backend:typecheck` exists, runs in `moon check --all` and in
       CI, and passes with zero errors.
-- [ ] `moon check --all` clean, and the full backend suite still green.
+- [x] `moon check --all` clean, and the full backend suite still green.
 
 ## 4. Scope
 
@@ -177,7 +177,7 @@ that SMTP exists; claim TTL/auto-expiry, now that M25 built the detector).
       - Verify: `moon run backend:typecheck` exits zero; `moon check --all`
         includes it.
 
-- [ ] **M26-T06** — Full verification and closeout: re-verify every exit
+- [x] **M26-T06** — Full verification and closeout: re-verify every exit
       criterion, `moon check --all`, and close the milestone.
       - Files: `.milestones/*`
       - Verify: `moon check --all` clean; each criterion stated as

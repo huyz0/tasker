@@ -208,3 +208,37 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   message had been silently dead. The gRPC code is unchanged and both tests
   covering it assert on the code, not the message.
 - **Next**: M26-T06 (verification and closeout).
+
+## M26-T06 — Verification and closeout
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Verified**: `moon check --all` clean — **33 tasks**, up from 32, the new
+  one being `backend:typecheck`. Backend suite 1812 pass / 0 fail; GUI 1087
+  pass. Every exit criterion re-verified individually:
+  1. Feed refuses a token without `events:read` — `events.handler.test.ts`,
+     four cases including a principal carrying no `scopes` field at all.
+  2. Agent receives only in-scope subjects — `eventScope.test.ts` (8 cases)
+     plus a handler-level test proving an artifact event is withheld from a
+     `tasks:read` token while the task event arrives.
+  3. Sweep fails when a registered service is absent — **demonstrated**:
+     removing the `events` entry produced *"registered in index.ts but absent
+     from this sweep: Events"*, then restored.
+  4. Journal strictly increasing — **demonstrated**: restoring the original
+     `when` reproduced the named inversion, then restored.
+  5. A database stopped at `0043` gains `audit_log` — real SQLite test.
+  6. A database that already skipped it and moved on recovers — real SQLite
+     test that reproduces the defect first (exactly 3 migrations apply,
+     `audit_log` absent) and a fourth test proving the repaired DDL and index
+     set are identical to a healthy database's. MySQL verified live.
+  7. `backend:typecheck` exists, is in `moon check --all` and in CI's backend
+     job, and exits zero — **demonstrated** to bite on an injected error.
+  8. `moon check --all` clean and the suite green — above.
+- **Notes**: the milestone found two defects it was not looking for, both of
+  the same species it was chartered to remove — a gate that did not cover
+  what it claimed. The GUI's token-scope picker had never gained M21's
+  `memory:read`/`memory:write`, so those scopes were ungrantable from the UI
+  for five milestones; and `listRoles`/`listGrants` were bypassing the
+  `select` allowlist that exists precisely because omitting it once shipped
+  2 MB of base64 to render 50 filenames. Neither was reachable by any
+  existing gate. Both fixed.
