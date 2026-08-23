@@ -22,6 +22,15 @@ const SCOPES = [
   'projects:read',
   'agents:read',
   'repos:read',
+  // M21 added the memory scopes to the backend vocabulary and never here, so
+  // until M26 an operator could not grant them from this screen at all. The
+  // list is a hand-maintained mirror of `scopes.ts`'s AGENT_SCOPES; keep them
+  // in step.
+  'memory:read',
+  'memory:write',
+  // M26-T02 (ADR-0023): opens the live event feed. What the token then
+  // *receives* is still narrowed by the read scopes above it.
+  'events:read',
 ];
 
 const relativeDays = (iso: string): string => {

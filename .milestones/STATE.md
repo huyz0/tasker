@@ -1,6 +1,6 @@
 ---
 active_milestone: M26
-active_task: M26-T02
+active_task: M26-T03
 last_updated: 2026-08-23
 last_commit: 8329130
 blocked: false
@@ -1445,7 +1445,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M23 | Rich Markdown Editor            | done   | —          | 5     | 5    |
 | M24 | Project Reports & Agent Insights | done   | —          | 10    | 10   |
 | M25 | Proactive Alerting for Stalled Claims | done   | —          | 6     | 6    |
-| M26 | Gate Integrity                  | in-progress | —     | 6     | 1    |
+| M26 | Gate Integrity                  | in-progress | —     | 6     | 2    |
 
 **Total: 214 tasks across 20 milestones — 207 done.** Every milestone is closed except M26 (in flight) and M12's single deferred task (signed binaries, blocked on certificates this project does not have).
 

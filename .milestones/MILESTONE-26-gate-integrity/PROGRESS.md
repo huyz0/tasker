@@ -66,3 +66,37 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   review has caught a fix that would have closed a milestone with its own
   stated finding still live. Worth the pass every time.
 - **Next**: M26-T02 (events:read scope + per-subject filtering).
+
+## M26-T02 — events:read scope and per-subject filtering
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: `events:read` added to `AGENT_SCOPES` and an `events` entry to
+  `AGENT_RPC_SCOPES`; `subscribeEvents` now refuses an agent token that does
+  not hold it, **ahead of** the broker probe; `eventScope.ts` gains an
+  optional `agentScopes` on `SubscriptionScope`, a `SUBJECT_FAMILY_SCOPE` map
+  derived from the existing read RPCs, an `AGENT_NEVER_DELIVERED` carve-out
+  for `domain.agent.token_*`, and `agentMayReceive` applied as a fourth rule
+  in `shouldDeliver`. Also brought two hand-maintained mirrors of the scope
+  vocabulary back in step: the GUI token picker and `docs/agent-integration.md`.
+- **Verified**: red first — 5 of the 8 new `eventScope` tests failed before
+  the filter existed. Full backend suite 1802 pass / 0 fail; GUI 1087 pass.
+  The pre-existing `eventScope` tests pass untouched, which is the guard that
+  a human session's feed is unchanged.
+- **Notes**: three things worth carrying forward.
+  1. The existing handler test "resolves an agent's org from its token"
+     built a principal with **no `scopes` field at all**, so the first
+     version of the check crashed on `undefined.includes` rather than
+     denying. Made the check `?.`-safe — a malformed principal must be
+     refused, not produce a 500 — and covered it with its own test rather
+     than only fixing the fixture.
+  2. Placement of the scope check ahead of the broker probe is load-bearing,
+     not stylistic: the agent-scope sweep builds handlers with a null
+     connection, so a check after it would surface `Unavailable` where the
+     sweep expects `PermissionDenied` — and T03 depends on that.
+  3. **A third instance of this milestone's own theme, found while working:**
+     the GUI's `SCOPES` array had never gained `memory:read`/`memory:write`
+     from M21, so an operator could not grant the memory scopes from the
+     Agents screen at all — the backend vocabulary and its GUI mirror had
+     silently drifted for five milestones. Fixed alongside `events:read`.
+- **Next**: M26-T03 (make the sweep self-covering).

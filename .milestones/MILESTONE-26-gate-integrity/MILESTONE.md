@@ -119,7 +119,7 @@ that SMTP exists; claim TTL/auto-expiry, now that M25 built the detector).
         `.milestones/MILESTONE-26-gate-integrity/*`, `.milestones/STATE.md`
       - Verify: files exist; `moon run tasker:docs-lint` passes.
 
-- [ ] **M26-T02** — Close the event-feed scope bypass: add the feed's scope
+- [x] **M26-T02** — Close the event-feed scope bypass: add the feed's scope
       to `AGENT_SCOPES`, require it in `subscribeEvents`, and filter delivery
       per subject in `eventScope.ts`'s existing `shouldDeliver` choke point so
       an agent sees an event only where its scopes would have permitted the
