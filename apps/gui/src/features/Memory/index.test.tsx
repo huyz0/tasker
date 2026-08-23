@@ -1,6 +1,6 @@
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MemoryService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { MemoryService, ProjectService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { MemoryExplorer } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
@@ -72,6 +72,10 @@ describe('MemoryExplorer', () => {
     withRpc('ListBeliefRelations', { relations: [] });
     withRpc('ListBeliefPromotions', { promotions: [] });
     withRpc('GetBelief', { belief: BELIEFS[0] });
+    // M28-T07: the belief trail names the project, so every case that opens a
+    // belief now resolves its name (`onUnhandledRequest: 'error'` would fail
+    // them otherwise).
+    mockRpc(ProjectService, 'GetProject', { project: { id: 'proj-1', name: 'Seed Project' } });
   });
 
   it('prompts for a project when none is selected', () => {
@@ -676,6 +680,20 @@ describe('MemoryExplorer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back to search' }));
 
     expect(screen.getByLabelText('Search beliefs')).toBeInTheDocument();
+  });
+
+  // M28-T07. A pasted `/memory/:beliefId` link opened a detail view whose only
+  // exit was the browser's Back button, which on a fresh tab leaves the app.
+  it('shows a breadcrumb from the project through Memory to the open belief', async () => {
+    const { location } = renderPage('/memory/blf-1?org=org-1&project=proj-1');
+
+    const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
+    await waitFor(() => expect(within(crumbs).getByRole('link', { name: 'Seed Project' })).toBeInTheDocument());
+    // Deep-linked: nothing was clicked to get here, so this trail is the only
+    // way back to the list.
+    fireEvent.click(within(crumbs).getByRole('link', { name: 'Memory' }));
+    expect(location.pathname).toBe('/memory');
+    expect(location.search).toContain('project=proj-1');
   });
 
   // M28-T05. Which scope you are reading — the project's memory or the whole

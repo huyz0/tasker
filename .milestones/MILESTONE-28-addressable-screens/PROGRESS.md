@@ -209,3 +209,48 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   built from the query string as it stood before the first and puts the old
   tier back.
 - **Next**: M28-T07 (breadcrumbs).
+
+## M28-T07 — Breadcrumbs on every deep-linkable detail view
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: new `hooks/useScopeLabels.ts` (resolves the project name via
+  `getProject`, sharing `Tasks`' existing `['project', id]` cache entry);
+  `Tasks` refactored onto it, so there is one implementation rather than an
+  inline query added "purely for the breadcrumb"; new
+  `Memory/BeliefCrumbs.tsx` and `TaskTypes/TaskTypeHeader.tsx`; 9 stories
+  across 3 files including the first-ever `BeliefDetail` story, covering the
+  foreign-scope banner T06 added. Suite 1134 → 1150.
+- **Verified**: `moon check --all` clean (34); `gui:storybook-test` green —
+  **116 stories, 0 axe violations, nothing wider than 375px**; coverage
+  98.53/95.47/97.54/98.87.
+- **Notes**: four things worth carrying.
+  1. **No trail names an organization, deliberately.** There is no
+     `getOrg`-by-id RPC — only `getProject` — so an org's name is not
+     resolvable from an id anywhere in the GUI (the switcher only has a label
+     because it syncs one from whatever `listOrgs` page happened to contain
+     it). Adding the RPC is a contract change and outside this milestone. The
+     reasoning lives in `useScopeLabels`' docblock, which is the one resolver
+     every trail passes through.
+  2. **Task Types gets no project crumb.** Task types are org-scoped —
+     `listTaskTypes` takes an `orgId` and one type is shared across every
+     project in it — so a project crumb would name a parent the type does not
+     have and link where the type is not. The honest parent is the
+     organization, which is exactly the unresolvable name.
+  3. **The Memory crumb re-states `?scope=`.** `useScopedTo` carries only
+     org and project by design, so the back-link from an organization-tier
+     belief would otherwise land in the *project* list. Same distinction T05
+     surfaced: leaving a screen carries scope, moving within one carries the
+     screen's own parameters too.
+  4. The refactor found **the last shell link still dropping scope** —
+     `Tasks`' own breadcrumb pointed at a bare `/projects`. T04's invariant
+     test covers rendered nav links, not crumbs built inside a screen.
+  `TaskTypes/index.tsx` went 400 → **350** lines: the extraction took the
+  whole identity strip, and the header now remounts on `key={selectedId}`,
+  which is what resets an in-flight rename when you switch types.
+  **Carried forward, unresolved**: two early `gui:test` runs reported one
+  failure without the name being captured, unreproducible in 12 subsequent
+  runs (1150/1150 each). It matches the machine-contention flake this repo
+  has recorded before rather than anything here, but it is unidentified —
+  worth watching in CI rather than assuming.
+- **Next**: M28-T08 (end-to-end proof, NAVIGATION.md, closeout).

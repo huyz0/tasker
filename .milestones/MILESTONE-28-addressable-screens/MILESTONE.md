@@ -168,7 +168,7 @@ deep-linkable detail views; `NAVIGATION.md`; ADR-0025.
       - Files: `features/{Artifacts,Memory}/index.tsx` (+ tests)
       - Verify: `moon run gui:test` — each bug reproduced red before the fix.
 
-- [ ] **M28-T07** — Breadcrumbs: a `useScopeLabels()` resolver for the org
+- [x] **M28-T07** — Breadcrumbs: a `useScopeLabels()` resolver for the org
       and project names every scoped trail needs (the switcher computes both
       and throws them away today), then crumbs on Memory and Task Types to
       match Tasks and Artifacts. Stories for each new trail.

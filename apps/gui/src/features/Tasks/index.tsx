@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useScopedTo } from '../../hooks/useScope';
+import { useScopeLabels } from '../../hooks/useScopeLabels';
 import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
 import { useQuery, useQueries, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { TaskService, RepositoryService, TaskTypeService, TaskNoteService, ProjectService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { TaskService, RepositoryService, TaskTypeService, TaskNoteService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
@@ -27,7 +28,6 @@ const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
 const taskTypeClient = createClient(TaskTypeService, transport);
 const taskNoteClient = createClient(TaskNoteService, transport);
-const projectClient = createClient(ProjectService, transport);
 
 
 function TaskNotesPanel({ taskId }: { taskId: string }) {
@@ -500,14 +500,10 @@ export function TasksWorkbench() {
   });
   const expandedTask = expandedTaskQuery.data ?? null;
 
-  // The project's own name, for the breadcrumb. `getProject` is the right call
-  // when all you hold is an id — the alternative is listing every project to
-  // find one.
-  const { data: projectData } = useQuery({
-    queryKey: ['project', activeProjectId],
-    enabled: !!activeProjectId,
-    queryFn: async () => (await projectClient.getProject({ id: activeProjectId })).project,
-  });
+  // The project's own name, for the breadcrumb. Resolved by `useScopeLabels`,
+  // which is where this query moved (M28-T07) once Memory needed the same
+  // name for the same reason — one resolver, one fallback, one cache entry.
+  const { projectName } = useScopeLabels();
 
   useEffect(() => setIsEditingTask(false), [expandedTaskId]);
 
@@ -979,7 +975,7 @@ export function TasksWorkbench() {
            <Breadcrumbs
              className="px-4 pt-3 shrink-0"
              items={[
-               { label: projectData?.name ?? 'Project', to: '/projects' },
+               { label: projectName, to: scopedTo('/projects') },
                { label: 'Tasks', to: '/tasks' },
                { label: expandedTask.displayId || expandedTask.title },
              ]}

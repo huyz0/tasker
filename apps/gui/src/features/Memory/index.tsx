@@ -9,6 +9,7 @@ import { MemoryService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb
 import { useUrlEnum } from '../../hooks/useUrlEnum';
 import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../../components/ui/ListState';
+import { BeliefCrumbs } from './BeliefCrumbs';
 import { VirtualList } from '../../components/ui/VirtualList';
 import { RowActionsMenu } from '../../components/ui/RowActionsMenu';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -321,7 +322,7 @@ function RelateBeliefPicker({ belief, existingRelatedIds, scopeType, scopeId }: 
  * belief with a long promotion trail would otherwise push Related off
  * screen for no reason.
  */
-function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (id: string) => void }) {
+export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (id: string) => void }) {
   const queryClient = useQueryClient();
   const { confirm, confirmDialog } = useConfirm();
   // M28-T06: every identity this panel acts under comes off the belief, not
@@ -832,7 +833,10 @@ export function MemoryExplorer() {
 
       <div className="min-w-0 flex-1">
         {selectedBelief ? (
-          <BeliefDetail belief={selectedBelief} onSelect={selectBelief} />
+          <>
+            <BeliefCrumbs scopeType={scopeType} statement={selectedBelief.statement} />
+            <BeliefDetail belief={selectedBelief} onSelect={selectBelief} />
+          </>
         ) : (
           <p className="p-4 text-sm text-muted-foreground">Select a belief to see its details, related beliefs, and history.</p>
         )}

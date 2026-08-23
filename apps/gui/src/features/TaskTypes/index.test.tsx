@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { TaskTypeService, ProjectTemplateService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { TaskTypesEditor } from './index';
@@ -144,7 +144,10 @@ describe('TaskTypesEditor', () => {
     // Wait for the detail query, not just the heading — the heading renders
     // first and the list is empty until the statuses arrive.
     await screen.findByLabelText('Move done up');
-    const items = screen.getAllByRole('listitem').map((li) => li.textContent);
+    // Scoped to the statuses list: the detail pane's breadcrumb trail is a
+    // list too, and it comes first in the document (M28-T07).
+    const items = within(screen.getByRole('list', { name: 'Statuses' }))
+      .getAllByRole('listitem').map((li) => li.textContent);
     expect(items[0]).toContain('todo');
     expect(items[2]).toContain('done');
   });
@@ -469,6 +472,18 @@ describe('TaskTypesEditor', () => {
     await waitFor(() => expect(location.pathname).toBe('/task-types'));
     expect(screen.queryByText('Statuses')).toBeNull();
     expect(screen.getByText('Choose a task type on the left to configure its statuses and transitions.')).toBeInTheDocument();
+  });
+
+  // M28-T07. A deep-linked type had no path back to the list it belongs to.
+  it('shows a breadcrumb from the task type list to the open type', async () => {
+    const { location } = renderEditor('/task-types/tt-1?org=org-1&project=proj-1');
+    await screen.findByText('Statuses');
+
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumbs).getByText('Bug')).toHaveAttribute('aria-current', 'page');
+    fireEvent.click(within(crumbs).getByRole('link', { name: 'Task Types' }));
+
+    expect(location.url).toBe('/task-types?org=org-1&project=proj-1');
   });
 
   // M28-T05. `selectedId` was `useState`, so the configured state machine a
