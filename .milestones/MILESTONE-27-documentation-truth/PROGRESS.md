@@ -185,3 +185,30 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   this milestone is about, reproduced inside the milestone about it, and it
   was caught only because the task's own rule was to verify every claim at
   the source rather than carry it forward.
+
+## M27 follow-up — knip cache invalidation (post-merge fix)
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Why**: `CI Pipeline` went red on the M27 merge while
+  `moon check --all` was green locally. Two causes, both real:
+  1. `scripts/doc-drift.ts` exported its `Finding` type; nothing imports it,
+     so knip failed. `spec-drift.ts` deliberately keeps the same type
+     module-private and exports only `Result` — the precedent was there and
+     was not followed.
+  2. **The reason it passed locally**: `tasker:knip`'s moon inputs listed
+     `apps/**` and `packages/**` but not `scripts/**`, while knip itself
+     analyses `scripts/`. Adding a script therefore never invalidated the
+     task's cache, so every local run was served a stale green result. CI has
+     no cache, ran it for real, and caught what local could not.
+- **Changed**: `Finding` made module-private; `scripts/**/*.ts` added to
+  `tasker:knip`'s inputs with a comment recording why.
+- **Verified**: `bunx knip` exits 0; touching a script now re-runs the task
+  instead of serving cache; `moon check --all` clean; doc-drift 27 tests and
+  the gate itself still green.
+- **Notes**: worth carrying forward — this is the same species as M26's
+  findings, one layer down. The gate was correct and the *cache key* was
+  wrong, which is strictly harder to notice: a stale-but-green cache is
+  indistinguishable from a real pass at the point of use. Any moon task
+  whose command reads files outside its declared `inputs` has this defect
+  latently.

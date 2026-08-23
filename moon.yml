@@ -35,6 +35,12 @@ tasks:
       - 'apps/**/*.{ts,tsx}'
       - 'apps/**/package.json'
       - 'packages/**/package.json'
+      # knip analyses `scripts/` too, so a change there has to invalidate this
+      # task's cache. Without this line the cache went stale the moment a
+      # script was added: `moon check --all` was green locally off a cached
+      # result while CI, which has no cache, ran it for real and failed
+      # (M27 follow-up).
+      - 'scripts/**/*.ts'
 
   # Deterministic gate on the agent harness itself: skill structure, tier-0/1
   # budgets, dead path references, host-adapter parity, standards-index drift.
