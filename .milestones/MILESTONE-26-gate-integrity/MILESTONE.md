@@ -150,7 +150,7 @@ that SMTP exists; claim TTL/auto-expiry, now that M25 built the detector).
       - Verify: `moon run backend:test`; the deliberate-break check recorded
         in the journal.
 
-- [ ] **M26-T04** — Fix the migration `when` inversion in both dialects, add
+- [x] **M26-T04** — Fix the migration `when` inversion in both dialects, add
       a guard test asserting each journal is strictly increasing by `when`,
       and add a repair migration at the head of each journal that creates
       `audit_log` if it is missing. The repair is what reaches the database

@@ -262,3 +262,37 @@ describe('mysqlRunner', () => {
     expect(executed.some((s) => s.includes('insert into `__drizzle_migrations`'))).toBe(true);
   });
 });
+
+// ── M26-T04: the journal must be strictly increasing by `when` ──────────────
+
+describe('journal ordering (M26-T04)', () => {
+  // `applyEmbeddedMigrations` selects pending work with `m.when > lastAppliedAt`
+  // (see the filter in embeddedMigrations.ts). A migration whose `when` is
+  // lower than one already applied is therefore invisible to any database that
+  // got that far — it is skipped in silence, and only surfaces later as a
+  // missing table at runtime. That is exactly what happened to `audit_log`:
+  // 0044/0031 were stamped nine days *before* their own predecessors.
+  //
+  // Ordering by `when` is not cosmetic here; it is the selection key.
+  for (const [dialect, migrations] of [
+    ['sqlite', EMBEDDED_SQLITE_MIGRATIONS],
+    ['mysql', EMBEDDED_MYSQL_MIGRATIONS],
+  ] as const) {
+    it(`${dialect}: every entry's when is greater than the one before it`, () => {
+      // Array order is journal order — the generated file is emitted straight
+      // from `meta/_journal.json`, and the "carries every journalled migration"
+      // test above pins that correspondence tag for tag. So consecutive
+      // elements here are consecutive journal entries; there is no `idx` field
+      // to sort on and none is needed.
+      const inversions = migrations
+        .map((m, i) => (i > 0 && m.when <= migrations[i - 1]!.when
+          ? `${m.tag} (when=${m.when}) <= ${migrations[i - 1]!.tag} (when=${migrations[i - 1]!.when})`
+          : null))
+        .filter(Boolean);
+      expect(
+        inversions,
+        `a migration stamped at or before its predecessor is skipped by every database that already passed that point: ${inversions.join('; ')}`,
+      ).toEqual([]);
+    });
+  }
+});

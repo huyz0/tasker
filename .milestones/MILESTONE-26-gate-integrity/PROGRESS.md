@@ -131,3 +131,42 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   way. `index.ts` is read as text because it runs at module scope; importing
   it would start a server.
 - **Next**: M26-T04 (migration `when` inversion + repair migration).
+
+## M26-T04 — Migration `when` inversion, repair migration, monotonicity guard
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: corrected `0044_audit_log` (sqlite) and `0031_audit_log`
+  (mysql) from `1787232705138`/`…139` to `1788050000000`, between their real
+  neighbours; added `0048_repair_audit_log.sql` / `0035_repair_audit_log.sql`
+  at the head of each journal; regenerated the embedded index (49 sqlite / 36
+  mysql); a monotonicity guard in `embeddedMigrations.test.ts`; and a new
+  `auditLogRepair.migration.test.ts` that builds the damaged databases for
+  real.
+- **Verified**: red first — the guard named both inversions before the fix.
+  Full backend suite 1812 pass / 0 fail. The recovery tests reproduce the
+  original defect end to end against real SQLite: reach 0043, upgrade to the
+  code as it shipped before M26, and exactly **3** migrations apply
+  (0045–0047) while `audit_log` is silently skipped; then upgrade to this
+  task's code and the repair lands it. A fourth test asserts the repaired
+  database's `audit_log` DDL and index set are byte-identical to a healthy
+  one's. Live MySQL: full chain applies to a fresh database; dropping
+  `audit_log` and running the repair alone recreates it with all four indexes
+  and the FK; a second run is a clean no-op.
+- **Notes**: two things worth carrying forward.
+  1. **The correction alone would have fixed nothing already broken.** A
+     database that skipped 0044 went on to apply 0045–0047, so its watermark
+     is `1788300000000` — past any slot 0044 can legally occupy, since the
+     correction must place it *below* 0045. This is why the repair migration
+     exists, and it is the finding a docs review caught before the code was
+     written rather than after.
+  2. **My own first version of the guard passed by accident.** It sorted on
+     `m.idx`, and `EmbeddedMigration` has no such field — every comparison
+     was `NaN`, the sort was a no-op, and it happened to compare array order,
+     which is journal order. It caught the real inversions anyway, which is
+     exactly how a broken guard survives review. Rewritten to compare
+     consecutive array elements deliberately, with a comment saying why that
+     is journal order and citing the test above it that pins the
+     correspondence. The same bad assumption had silently made
+     `through(43)` select *zero* migrations, which is what surfaced it.
+- **Next**: M26-T05 (backend typecheck gate).
