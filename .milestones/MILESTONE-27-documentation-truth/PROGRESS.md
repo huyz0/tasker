@@ -121,3 +121,36 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   found it. ADR-0024 says so explicitly rather than letting a green gate
   imply otherwise.
 - **Next**: M27-T05 (the doc-drift gate).
+
+## M27-T05 — The doc-drift gate
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: `scripts/doc-drift.ts` (four pending-ownership patterns, the
+  ledger read from `STATE.md`, exit 0/1/2 mirroring `spec-drift`),
+  `scripts/doc-drift.test.ts` (27 tests), a `doc-drift` task in `moon.yml`
+  with its own suite running first, and `moon run :spec-drift :doc-drift` in
+  CI's specification-drift step.
+- **Verified**: **against real history, not a fixture** — reconstructed the
+  four documents as they stood at `b43b48c` (the M26 merge, before any
+  correction in this milestone) and ran the gate over them: **22 findings**,
+  naming every stale claim T02–T04 fixed, across all three documents, with
+  the correct line and pattern for each. On the corrected documents it passes.
+  The wired task was then shown to fail by appending one stale sentence to
+  `README.md`, then restored. `moon check --all` clean at 34 tasks (was 33).
+- **Notes**: the test suite pins **both** directions, and the second is the
+  one that decides whether this gate survives. Nine "must pass" cases are
+  real forms taken from the corrected documents — `Delivered by M08`,
+  `(M08-T02/T03)`, `M08's streaming endpoint`, `whose "until M08" this
+  discharges`, `### Observability and deployment (M08)`. Historical
+  attribution is legitimate and frequent in these files; a checker that
+  flagged it would be switched off within a week and would then be protecting
+  nothing.
+  Two deliberate refusals in the script worth carrying forward: the checked
+  set is a **hand-written list, not a glob**, because `.specs/` is full of
+  ADRs and journals that correctly describe the past; and
+  `readClosedMilestones` **throws rather than returning empty** when the
+  ledger is unreadable, because a silently-empty closed set would make every
+  document pass forever — the worst failure available to a gate, and the one
+  M26 spent a milestone removing elsewhere.
+- **Next**: M27-T06 (verification and closeout).

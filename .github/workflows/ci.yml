@@ -55,7 +55,7 @@ jobs:
       - name: Agent harness contract
         run: moon run :skills-check :docs-lint
       - name: Specification drift
-        run: moon run :spec-drift
+        run: moon run :spec-drift :doc-drift
 
   gui:
     name: GUI (React/Vite)

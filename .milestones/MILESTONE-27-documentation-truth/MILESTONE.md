@@ -135,7 +135,7 @@ check and belongs with a GUI round.
       - Verify: every route in `App.tsx` appears in the route table;
         `docs-lint` (which validates the mermaid block) passes.
 
-- [ ] **M27-T05** — Build the `doc-drift` gate: `scripts/doc-drift.ts` plus
+- [x] **M27-T05** — Build the `doc-drift` gate: `scripts/doc-drift.ts` plus
       `scripts/doc-drift.test.ts`, mirroring `spec-drift`'s shape (own suite
       first, then the check; exit 0 agreement / 1 drift / 2 could not run),
       wired into `moon.yml` and CI. Demonstrate it against the pre-M27 text
