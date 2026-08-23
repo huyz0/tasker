@@ -1,6 +1,6 @@
 ---
-active_milestone: null
-active_task: null
+active_milestone: M27
+active_task: M27-T02
 last_updated: 2026-08-23
 last_commit: 8329130
 blocked: false
@@ -1507,8 +1507,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M24 | Project Reports & Agent Insights | done   | —          | 10    | 10   |
 | M25 | Proactive Alerting for Stalled Claims | done   | —          | 6     | 6    |
 | M26 | Gate Integrity                  | done   | —          | 6     | 6    |
+| M27 | Documentation Truth             | in-progress | —     | 6     | 1    |
 
-**Total: 214 tasks across 20 milestones — 213 done.** Every milestone is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have).
+**Total: 220 tasks across 21 milestones — 213 done.** Every milestone is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have).
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
