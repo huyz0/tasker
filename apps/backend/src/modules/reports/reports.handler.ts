@@ -31,7 +31,7 @@ const GetReportExceptionsSchema = z.object({
   // clamped: an unknown window is a caller bug, and silently answering a
   // different question than asked is worse than saying no.
   windowDays: z.union([z.literal(7), z.literal(30), z.literal(90)], {
-    errorMap: () => ({ message: "windowDays must be one of 7, 30, 90" }),
+    error: () => ({ message: "windowDays must be one of 7, 30, 90" }),
   }),
 });
 

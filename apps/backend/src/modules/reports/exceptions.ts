@@ -215,7 +215,7 @@ export async function buildReportExceptions(
   ]);
 
   // ── name resolution for the exception panels ─────────────────────────────
-  const neededUserIds = [...new Set(
+  const neededUserIds = [...new Set<string>(
     regressionPanelRows.filter((r: any) => r.actorType === "user" && r.actorId).map((r: any) => r.actorId as string),
   )];
   const userNameById = new Map<string, string>();

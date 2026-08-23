@@ -168,7 +168,7 @@ jobs:
           cd packages/shared-contract && bun install && cd ../..
           cd apps/backend && bun install
       - name: Build & Test (Cached)
-        run: moon run backend:test
+        run: moon run backend:typecheck backend:test
 
   audit:
     name: Dependency vulnerabilities

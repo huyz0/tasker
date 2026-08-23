@@ -170,3 +170,41 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
      correspondence. The same bad assumption had silently made
      `through(43)` select *zero* migrations, which is what surfaced it.
 - **Next**: M26-T05 (backend typecheck gate).
+
+## M26-T05 — Backend typecheck gate
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: new `src/types/sql-modules.d.ts` declaring the `*.sql` modules
+  the generated migration index imports with Bun's `{ type: 'file' }`
+  attribute; 47 real type fixes across 11 files; a `typecheck` task in
+  `apps/backend/moon.yml` mirroring `gui:typecheck`; and
+  `moon run backend:typecheck backend:test` in CI's backend job.
+- **Verified**: `bunx tsc --noEmit` **0 errors**, down from 130. Full backend
+  suite still 1812 pass / 0 fail — no fix changed behaviour. The gate proven
+  to bite: appending `const x: number = 'not a number'` to `lib/logger.ts`
+  made `moon run backend:typecheck` fail naming the line; restored, green.
+  `moon query tasks` classifies it `type=test, runInCI=true`, which is what
+  puts it inside `moon check --all` and the pre-commit hook, not just CI.
+- **Notes**: the distribution was the story — **83 of the original 130 errors
+  were one `.d.ts` away**, all `TS2307` on the migration index's `*.sql`
+  imports, which `tsc` cannot resolve because the import attribute is a
+  Bun-ism. That is not type debt at all, and it is most of why this gate
+  looked expensive enough to keep deferring since M08.
+  **The gate found a real defect within minutes of existing**, which is this
+  milestone's whole thesis: `listRoles` and `listGrants` were calling
+  `executePaginatedQuery` *without* the required `select`. That property is
+  required deliberately — `query-builder.ts`'s own docblock records that when
+  it was optional, omitting it meant `SELECT *`, and `SELECT *` on
+  `artifacts` shipped the base64 content of every row (2,008 KB to render 50
+  file names, M07-T01). Both handlers had been silently bypassing that
+  allowlist because nothing type-checked them. Fixed runtime-equivalently:
+  every column of `roles` and of `grants` enumerated, verified complete and
+  identical across both dialect schemas, so the rows returned are byte-for-
+  byte what the `SELECT *` produced. Narrowing them further is a real
+  behaviour change and deliberately left for its own commit.
+  Also live-again rather than changed: `reports.handler.ts` passed Zod an
+  `errorMap` key that Zod v4 renamed to `error`, so a custom validation
+  message had been silently dead. The gRPC code is unchanged and both tests
+  covering it assert on the code, not the message.
+- **Next**: M26-T06 (verification and closeout).

@@ -166,7 +166,7 @@ that SMTP exists; claim TTL/auto-expiry, now that M25 built the detector).
         the un-fixed journal; both the stopped-at-`0043` case and the
         already-skipped-and-moved-on case built and booted for real.
 
-- [ ] **M26-T05** — Give the backend a `typecheck` gate: declare the `*.sql`
+- [x] **M26-T05** — Give the backend a `typecheck` gate: declare the `*.sql`
       module shape the generated migration index imports (83 of the 130
       errors), fix the rest, add the `typecheck` task to
       `apps/backend/moon.yml`, and run it in CI's backend job (where

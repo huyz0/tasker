@@ -322,7 +322,7 @@ beforeAll(async () => {
     roles: createRolesHandler(db, nc),
     repositories: createRepositoriesHandler(db, nc),
     health: createHealthHandler(db, nc),
-    auth: createAuthHandler(db, nc),
+    auth: createAuthHandler(db),
     // These two register onto a ConnectRouter rather than returning their
     // methods, so they were invisible to this sweep entirely — a read-only
     // sweep that cannot see a handler cannot vouch for it. Recovered from a

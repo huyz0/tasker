@@ -277,7 +277,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       const nextCursor = startIndex + limit < deduped.length ? encodeIndexCursor(startIndex + limit) : undefined;
 
       return {
-        entries: page.map((row) => ({
+        entries: page.map((row: any) => ({
           note: {
             ...row.note,
             createdAt: row.note.createdAt instanceof Date ? row.note.createdAt.toISOString() : row.note.createdAt,

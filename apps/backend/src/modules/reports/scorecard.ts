@@ -166,7 +166,7 @@ export async function buildScorecard(
       })
       .from(taskActivity)
       .where(and(
-        inArray(taskActivity.taskId, [...new Set(regressionRows.map((r: any) => r.taskId))]),
+        inArray(taskActivity.taskId, [...new Set<string>(regressionRows.map((r: any) => r.taskId))]),
         eq(taskActivity.kind, "status_changed"),
         eq(taskActivity.toIsTerminal, true),
       ));

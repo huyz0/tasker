@@ -55,7 +55,7 @@ describe('Auth session status', () => {
     const res = await authRoutes.handle(new Request('http://localhost/api/auth/session', {
       headers: { cookie: `session=${token}` },
     }));
-    expect((await res.json()).mustChangePassword).toBe(false);
+    expect((await res.json() as any).mustChangePassword).toBe(false);
   });
 });
 
@@ -581,7 +581,7 @@ describe('Auth Routes (local password)', () => {
   it('registers a user with only a username and password — no email, no Google identity at all', async () => {
     const res = await register({ username: 'no-email-user', password: 'a-strong-password-123' });
     expect(res.status).toBe(201);
-    const { userId } = await res.json();
+    const { userId } = await res.json() as any;
 
     const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.id, userId));
     expect(rows).toHaveLength(1);
@@ -616,12 +616,12 @@ describe('Auth Routes (local password)', () => {
   it('reports mustChangePassword: false on an ordinary login', async () => {
     await register({ username: 'no-must-change-user', password: 'a-strong-password-123' });
     const res = await login({ username: 'no-must-change-user', password: 'a-strong-password-123' });
-    expect((await res.json()).mustChangePassword).toBe(false);
+    expect((await res.json() as any).mustChangePassword).toBe(false);
   });
 
   /** M13-T10. */
   it('reports mustChangePassword: true after an admin reset, still logging in successfully', async () => {
-    const { userId } = await (await register({ username: 'must-change-user', password: 'the-original-password-1' })).json();
+    const { userId } = await (await register({ username: 'must-change-user', password: 'the-original-password-1' })).json() as any;
     await db.update(schemaSqlite.passwordCredentials)
       .set({ mustChangePassword: true })
       .where(eq(schemaSqlite.passwordCredentials.userId, userId));
@@ -629,7 +629,7 @@ describe('Auth Routes (local password)', () => {
     const res = await login({ username: 'must-change-user', password: 'the-original-password-1' });
     expect(res.status).toBe(200); // login itself still succeeds
     expect(res.headers.get('set-cookie')).toContain('HttpOnly'); // and a session is still issued
-    expect((await res.json()).mustChangePassword).toBe(true);
+    expect((await res.json() as any).mustChangePassword).toBe(true);
   });
 
   it('rejects the wrong password with a generic message, not "wrong password" specifically', async () => {
@@ -645,7 +645,7 @@ describe('Auth Routes (local password)', () => {
       await register({ username: 'known-user', password: 'a-strong-password-123' });
       return login({ username: 'known-user', password: 'wrong-one-entirely' });
     })();
-    const [a, b] = await Promise.all([wrongPw.json(), wrongUser.json()]);
+    const [a, b]: [any, any] = await Promise.all([wrongPw.json(), wrongUser.json()]);
     expect(a.title).toBe(b.title);
     expect(wrongPw.status).toBe(401);
     expect(wrongUser.status).toBe(401);
@@ -679,7 +679,7 @@ describe('Auth Routes (local password)', () => {
   it('accepts an optional email on registration and stores it', async () => {
     const res = await register({ username: 'has-email-user', password: 'a-strong-password-123', email: 'has-email@example.com' });
     expect(res.status).toBe(201);
-    const { userId } = await res.json();
+    const { userId } = await res.json() as any;
     const rows = await db.select().from(schemaSqlite.users).where(eq(schemaSqlite.users.id, userId));
     expect(rows[0].email).toBe('has-email@example.com');
   });
@@ -704,7 +704,7 @@ describe('Auth Routes (local password)', () => {
     // The attacker: registers first, typing the real invitee's email - no
     // proof of ownership is possible or required by the endpoint itself.
     const res = await register({ username: 'attacker-user', password: 'a-strong-password-123', email: 'invitee-local@example.com' });
-    const { userId } = await res.json();
+    const { userId } = await res.json() as any;
 
     const membership = await db.select().from(schemaSqlite.organizationMembers)
       .where(eq(schemaSqlite.organizationMembers.userId, userId));
@@ -759,7 +759,7 @@ describe('Auth Routes (local password)', () => {
     });
 
     const res = await register({ username: 'invited-handle', password: 'a-strong-password-123' });
-    const { userId } = await res.json();
+    const { userId } = await res.json() as any;
 
     const membership = await db.select().from(schemaSqlite.organizationMembers)
       .where(eq(schemaSqlite.organizationMembers.userId, userId));
@@ -779,7 +779,7 @@ describe('Auth Routes (local password)', () => {
     });
 
     const res = await register({ username: 'a-completely-different-user', password: 'a-strong-password-123' });
-    const { userId } = await res.json();
+    const { userId } = await res.json() as any;
     const membership = await db.select().from(schemaSqlite.organizationMembers)
       .where(eq(schemaSqlite.organizationMembers.userId, userId));
     expect(membership).toHaveLength(0);
@@ -847,7 +847,7 @@ describe('Auth Routes (local password)', () => {
       const res = await login({ username: 'lockout-user', password: 'wrong' });
       expect(res.status).toBe(429);
       expect(res.headers.get('Retry-After')).toBeTruthy();
-      const body = await res.json();
+      const body: any = await res.json();
       expect(body.title).toBe('Account temporarily locked');
     });
 
@@ -1001,8 +1001,8 @@ describe('Auth Routes (link/unlink Google)', () => {
 
   const registerAndGetSession = async (username: string) => {
     const res = await register({ username, password: 'a-strong-password-123' });
-    const cookie = res.headers.get('set-cookie')!.split(';')[0];
-    const { userId } = await res.json();
+    const cookie = res.headers.get('set-cookie')!.split(';')[0]!;
+    const { userId } = await res.json() as any;
     return { cookie, userId };
   };
 
@@ -1242,7 +1242,7 @@ describe('M13-T15: exhaustive auth-path matrix (generated)', () => {
       name: 'both-linked: registers locally, links Google, and either credential logs in afterward',
       run: async () => {
         const reg = await registerJSON({ username: 'matrix-both-linked', password: 'a-strong-password-123' });
-        const sessionCookie = reg.headers.get('set-cookie')!.split(';')[0];
+        const sessionCookie = reg.headers.get('set-cookie')!.split(';')[0]!;
 
         const linkRes = await linkGoogle(sessionCookie, { id: 'matrix-both-linked-google-id', email: 'matrix-both-linked@example.com' });
         expect(linkRes.status).toBe(302);
@@ -1252,7 +1252,7 @@ describe('M13-T15: exhaustive auth-path matrix (generated)', () => {
 
         const googleLogin = await loginViaGoogle({ id: 'matrix-both-linked-google-id', email: 'matrix-both-linked@example.com' });
         expect(googleLogin.status).toBe(302);
-        const { userId: passwordUserId } = await (await loginJSON({ username: 'matrix-both-linked', password: 'a-strong-password-123' })).json();
+        const { userId: passwordUserId } = await (await loginJSON({ username: 'matrix-both-linked', password: 'a-strong-password-123' })).json() as any;
         const googleSession = verifySessionToken(parseSessionCookie(googleLogin.headers.get('set-cookie'))!);
         expect(googleSession?.userId).toBe(passwordUserId); // same account either way, not two
       },
@@ -1267,7 +1267,7 @@ describe('M13-T15: exhaustive auth-path matrix (generated)', () => {
         });
 
         const reg = await registerJSON({ username: 'matrix-invited-user', password: 'a-strong-password-123' });
-        const { userId } = await reg.json();
+        const { userId } = await reg.json() as any;
         const membership = await db.select().from(schemaSqlite.organizationMembers).where(eq(schemaSqlite.organizationMembers.userId, userId));
         expect(membership).toEqual([expect.objectContaining({ orgId: 'matrix-org-username', role: 'member' })]);
       },
@@ -1307,7 +1307,7 @@ describe('M13-T15: exhaustive auth-path matrix (generated)', () => {
       name: 'admin reset: issues a temporary password that logs in with mustChangePassword: true, invalidating the old one',
       run: async () => {
         const reg = await registerJSON({ username: 'matrix-admin-reset', password: 'the-original-password-1' });
-        const { userId: memberId } = await reg.json();
+        const { userId: memberId } = await reg.json() as any;
 
         const orgId = 'matrix-org-reset';
         const adminId = 'matrix-reset-admin';
@@ -1331,7 +1331,7 @@ describe('M13-T15: exhaustive auth-path matrix (generated)', () => {
 
         const tempPasswordAttempt = await loginJSON({ username: 'matrix-admin-reset', password: resetResult.temporaryPassword });
         expect(tempPasswordAttempt.status).toBe(200);
-        expect((await tempPasswordAttempt.json()).mustChangePassword).toBe(true);
+        expect((await tempPasswordAttempt.json() as any).mustChangePassword).toBe(true);
       },
     },
   ];
@@ -1397,7 +1397,7 @@ describe('sign-in methods this deployment has (M09-T06)', () => {
     // redirects with an empty client_id takes the person to a Google error
     // page and leaves them there, so the sign-in screen asks first.
     const res = await authRoutes.handle(new Request('http://localhost/api/auth/providers'));
-    const body = await res.json();
+    const body: any = await res.json();
 
     expect(res.status).toBe(200);
     expect(body.password).toBe(true);
@@ -1414,7 +1414,7 @@ describe('sign-in methods this deployment has (M09-T06)', () => {
     try {
       const res = await authRoutes.handle(new Request('http://localhost/api/auth/google/login'));
       expect(res.status).toBe(501);
-      const body = await res.json();
+      const body: any = await res.json();
       expect(body.detail).toContain('username and password');
     } finally {
       (config as any).googleClientId = originalId;
@@ -1429,7 +1429,7 @@ describe('sign-in methods this deployment has (M09-T06)', () => {
     (config as any).googleRedirectUri = '';
     try {
       const res = await authRoutes.handle(new Request('http://localhost/api/auth/providers'));
-      expect((await res.json()).google).toBe(false);
+      expect((await res.json() as any).google).toBe(false);
     } finally {
       (config as any).googleRedirectUri = originalRedirect;
     }
@@ -1448,7 +1448,7 @@ describe('first-run starter workspace (M09-T06)', () => {
     );
 
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body: any = await res.json();
     expect(body.orgId).toBeTruthy();
     expect(body.projectId).toBeTruthy();
   });
@@ -1463,7 +1463,7 @@ describe('first-run starter workspace (M09-T06)', () => {
       }),
     );
 
-    const body = await res.json();
+    const body: any = await res.json();
     expect(body.userId).toBeTruthy();
     expect(body.orgId).toBeUndefined();
   });
@@ -1480,7 +1480,7 @@ describe('first-run starter workspace (M09-T06)', () => {
       );
 
     await register('owneruser');
-    const second = await (await register('seconduser')).json();
+    const second = await (await register('seconduser')).json() as any;
     expect(second.orgId).toBeUndefined();
   });
 });

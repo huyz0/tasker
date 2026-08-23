@@ -71,3 +71,16 @@ tasks:
     inputs:
       - 'src/**/*'
       - 'package.json'
+
+  # The compiler as a gate, mirroring `gui:typecheck`. `bun test` transpiles
+  # per-file and never type-checks, so nothing here caught a type error until
+  # this task existed - the generated contract is an input because a regenerated
+  # RPC signature is exactly the change this is meant to catch.
+  typecheck:
+    deps:
+      - 'shared-contract:install-deps'
+    command: 'bunx tsc --noEmit'
+    inputs:
+      - 'src/**/*'
+      - 'tsconfig.json'
+      - '/packages/shared-contract/gen/**/*'
