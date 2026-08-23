@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useScopedTo } from '../../hooks/useScope';
 import { useLayoutStore } from '../../store/layout';
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +31,7 @@ export function ArtifactsBrowser() {
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const scopedTo = useScopedTo();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Artifacts'), [setActivePageTitle]);
 
@@ -72,7 +74,7 @@ export function ArtifactsBrowser() {
     setSelectedFolderId(null);
     setExpandedFolderIds(new Set());
     setIsEditingContent(false);
-    if (artifactId) navigate('/artifacts');
+    if (artifactId) navigate(scopedTo('/artifacts'));
     // Deliberately only activeProjectId/activeOrgId: this resets the
     // selection when the *scope* changes, not on every ordinary navigation
     // within it (which would fight the very selection the user just made).
@@ -175,7 +177,7 @@ export function ArtifactsBrowser() {
       onSuccess: () => {
         if (!wasOpen) return;
         setSelectedFolderId(null);
-        if (artifactId) navigate('/artifacts');
+        if (artifactId) navigate(scopedTo('/artifacts'));
       },
     });
   };
@@ -212,7 +214,7 @@ export function ArtifactsBrowser() {
     const wasOpen = artifactId === targetArtifactId;
     archiveArtifactMutation.mutate(targetArtifactId, {
       onSuccess: () => {
-        if (wasOpen) navigate('/artifacts');
+        if (wasOpen) navigate(scopedTo('/artifacts'));
       },
     });
   };
@@ -281,7 +283,7 @@ export function ArtifactsBrowser() {
 
   const selectArtifact = (artifact: { id: string }) => {
     setIsEditingContent(false);
-    navigate(`/artifacts/${artifact.id}`);
+    navigate(scopedTo(`/artifacts/${artifact.id}`));
   };
 
   const toggleFolder = (folderId: string) => {
@@ -297,7 +299,7 @@ export function ArtifactsBrowser() {
     setAddingSubfolderTo(null);
     // Collapsing the folder holding the open artifact closes the artifact too;
     // otherwise the deep-link lookup would immediately re-expand the folder.
-    if (collapsing && artifactId) navigate('/artifacts');
+    if (collapsing && artifactId) navigate(scopedTo('/artifacts'));
   };
 
   const rootFolders = foldersData?.filter(f => !f.parentId) || [];

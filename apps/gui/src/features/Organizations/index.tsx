@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { useScope, useSetScope } from '../../hooks/useScope';
 import { useLayoutStore } from '../../store/layout';
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
@@ -93,8 +94,9 @@ type Section = 'organizations' | 'members' | 'audit';
 export function OrganizationsDashboard() {
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
+  const setScope = useSetScope();
+  const { orgId: urlOrgId } = useScope();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
-  const setActiveOrgId = useLayoutStore((s) => s.setActiveOrgId);
   const [section, setSection] = useState<Section>('organizations');
   const [newOrgName, setNewOrgName] = useState('');
   const [newOrgParentId, setNewOrgParentId] = useState('');
@@ -156,10 +158,19 @@ export function OrganizationsDashboard() {
   // points at something that exists instead of a placeholder ID.
   useEffect(() => {
     if (!orgsData || orgsData.length === 0) return;
-    if (!orgsData.some((o) => o.id === activeOrgId)) {
-      setActiveOrgId(orgsData[0].id);
+    if (orgsData.some((o) => o.id === activeOrgId)) return;
+    // M28-T03: don't re-issue a correction the URL already carries. `orgsData`
+    // is rebuilt from its pages on every render, so this effect runs on every
+    // render; without this guard it re-navigates until the store catches up,
+    // which is a loop bounded only by how fast the sync happens to be.
+    if (urlOrgId === orgsData[0].id) return;
+    {
+      // M28-T03: a correction the user did not ask for, so it replaces rather
+      // than pushes — Back should not return to a scope that pointed at
+      // nothing.
+      setScope({ orgId: orgsData[0].id }, { replace: true });
     }
-  }, [orgsData, activeOrgId, setActiveOrgId]);
+  }, [orgsData, activeOrgId, urlOrgId, setScope]);
 
   const createOrgMutation = useMutation({
     mutationFn: async (variables: { name: string; parentOrgId?: string }) => {
@@ -168,7 +179,7 @@ export function OrganizationsDashboard() {
     },
     onSuccess: (org) => {
       queryClient.invalidateQueries({ queryKey: ['orgs'] });
-      if (org) setActiveOrgId(org.id);
+      if (org) setScope({ orgId: org.id });
       setNewOrgName('');
       setNewOrgParentId('');
       setShowNewOrgForm(false);
@@ -436,7 +447,7 @@ export function OrganizationsDashboard() {
             )}
             <span className="w-6 h-6 rounded-full bg-primary-subtle text-primary-subtle-foreground flex items-center justify-center font-bold shrink-0">{org.name.charAt(0).toUpperCase()}</span>
             <button
-              onClick={() => setActiveOrgId(org.id)}
+              onClick={() => setScope({ orgId: org.id, projectId: '' })}
               aria-current={activeOrgId === org.id ? 'true' : undefined}
               className="truncate text-left hover:underline underline-offset-2 rounded outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             >

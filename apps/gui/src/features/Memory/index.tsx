@@ -6,6 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import * as Tabs from '@radix-ui/react-tabs';
 import { transport } from '../../lib/connectTransport';
 import { MemoryService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { useScopedTo } from '../../hooks/useScope';
 import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../../components/ui/ListState';
 import { VirtualList } from '../../components/ui/VirtualList';
@@ -615,6 +616,7 @@ function PromoteBeliefDialog({ open, onClose, belief, orgId }: { open: boolean; 
 }
 
 export function MemoryExplorer() {
+  const scopedTo = useScopedTo();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const { beliefId: routeBeliefId } = useParams<{ beliefId?: string }>();
@@ -678,7 +680,7 @@ export function MemoryExplorer() {
 
   const selectBelief = (id: string) => {
     setSelectedBeliefId(id);
-    navigate(`/memory/${id}`, { replace: true });
+    navigate(scopedTo(`/memory/${id}`), { replace: true });
   };
 
   if (!activeOrgId) {

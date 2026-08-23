@@ -129,7 +129,7 @@ deep-linkable detail views; `NAVIGATION.md`; ADR-0025.
       - Verify: `moon run gui:test` — those three suites pass through the
         helper with unchanged assertions.
 
-- [ ] **M28-T03** — Scope in the URL: a `useScope()` reader and a single
+- [x] **M28-T03** — Scope in the URL: a `useScope()` reader and a single
       sync point writing `?org`/`?project` into the store; the switcher and
       the two other scope correctors (`Organizations`' snap-to-first,
       `Projects`' archive-clears-active) write the URL instead of the store;

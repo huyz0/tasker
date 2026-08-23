@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useScopedTo } from '../../hooks/useScope';
 import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
 import { useQuery, useQueries, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -158,6 +159,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
  */
 function HandoffsSummary({ taskId }: { taskId: string }) {
   const navigate = useNavigate();
+  const scopedTo = useScopedTo();
   const queryKey = ['taskNotes', taskId];
   const { data: notesData } = useQuery({
     queryKey,
@@ -187,7 +189,7 @@ function HandoffsSummary({ taskId }: { taskId: string }) {
         <h3 className="text-sm font-semibold tracking-tight">
           Handoffs <span className="text-muted-foreground font-normal">({handoffs.length})</span>
         </h3>
-        <button onClick={() => navigate('/handoffs')} className="text-xs text-primary hover:underline">
+        <button onClick={() => navigate(scopedTo('/handoffs'))} className="text-xs text-primary hover:underline">
           View all
         </button>
       </div>
@@ -407,6 +409,7 @@ export function TasksWorkbench() {
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const scopedTo = useScopedTo();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Tasks Workbench'), [setActivePageTitle]);
 
@@ -415,7 +418,7 @@ export function TasksWorkbench() {
   // the same detail view instead of an empty board.
   const { taskId: expandedTaskId = null } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
-  const setExpandedTaskId = (id: string | null) => navigate(id ? `/tasks/${id}` : '/tasks');
+  const setExpandedTaskId = (id: string | null) => navigate(scopedTo(id ? `/tasks/${id}` : '/tasks'));
 
   const [addingToColumnId, setAddingToColumnId] = useState<string | null>(null);
   const [isEditingTask, setIsEditingTask] = useState(false);
@@ -538,7 +541,7 @@ export function TasksWorkbench() {
     // Nothing to compare against yet, or the scope was still empty — this is
     // hydration, not navigation.
     if (previous === null || !previous.split('/')[1]) return;
-    if (previous !== scope && expandedTaskId) navigate('/tasks');
+    if (previous !== scope && expandedTaskId) navigate(scopedTo('/tasks'));
     // Deliberately only activeProjectId/activeOrgId: this resets the panel
     // when the *scope* changes, not on every ordinary navigation within it
     // (which would fight the very task the user just opened).
