@@ -30,3 +30,33 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   into `useState` and written with `replace: true`, so Back never steps
   through visited beliefs). Each gets T06 and a regression test it lacks.
 - **Next**: M28-T02 (the shared test render helper).
+
+## M28-T02 — The shared test render helper
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: new `src/test/renderScoped.tsx` (router + query client +
+  location probe, returning `{location, queryClient, rerender}`) and
+  `renderScoped.test.tsx` (9 tests); adopted in `Tasks`, `Artifacts` and
+  `Memory` by reimplementing each file's own `renderPage(entry)` on top of
+  it, so all ~170 existing call sites are untouched. Net **−112 lines** of
+  duplicated harness across the three.
+- **Verified**: full GUI suite 1096 pass / 73 files. Test counts per file
+  unchanged (Tasks 73, Artifacts 55, Memory 46) and **no assertion edited** —
+  the constraint that makes this a refactor rather than a rewrite.
+- **Notes**: the helper shipped with a real bug and the catch is worth
+  recording. `rerender()` handed React **the same element object**, so React
+  bailed out in `beginWork` and re-rendered *nothing*. The three
+  "scope changed → overlay closes" tests drive their change from outside the
+  tree (a mocked store), so they failed immediately and correctly.
+  What matters is that **my own helper test could not have caught it**: it
+  asserted that component state *survives* a rerender, which a no-op
+  satisfies perfectly. The old per-file harness worked only by accident — its
+  `page()` factory minted a fresh element every call. Fixed with
+  `cloneElement` (new props object, so React reconciles; same type and
+  position, so state survives rather than remounting), and pinned by a new
+  test that drives a change from outside the tree. That test was then proven
+  to bite: reverting the clone fails exactly it and nothing else.
+  Same lesson as M26's two near-broken guards, now three milestones running —
+  a test written to pass is not yet a test.
+- **Next**: M28-T03 (scope in the URL).

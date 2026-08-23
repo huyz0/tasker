@@ -1,7 +1,5 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import {
   TaskService, CommentService, LabelService, RepositoryService, TaskTypeService,
   TaskNoteService, OrgService, AgentService, ArtifactService, SearchService, ProjectService,
@@ -33,34 +31,20 @@ vi.mock('../../components/ui/RichMarkdownEditor', () => ({
 
 import { TasksWorkbench } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
+import { renderScoped, type LocationRef } from '../../test/renderScoped';
 
 // The open task is a route param, so every render needs the same `/tasks` and
 // `/tasks/:taskId` pair the app mounts. `initialEntry` lets a test start on a
-// deep link; `locationRef` lets it assert where a click navigated to.
-const locationRef = { current: '' };
-
-function LocationProbe() {
-  locationRef.current = useLocation().pathname;
-  return null;
-}
-
-function page(initialEntry = '/tasks') {
-  return (
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <LocationProbe />
-      <Routes>
-        <Route path="/tasks" element={<TasksWorkbench />} />
-        <Route path="/tasks/:taskId" element={<TasksWorkbench />} />
-      </Routes>
-    </MemoryRouter>
-  );
-}
+// deep link; `lastLocation` lets it assert where a click navigated to.
+let lastLocation: LocationRef;
 
 function renderPage(initialEntry = '/tasks') {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>{page(initialEntry)}</QueryClientProvider>
-  );
+  const result = renderScoped(<TasksWorkbench />, {
+    paths: ['/tasks', '/tasks/:taskId'],
+    initialEntry,
+  });
+  lastLocation = result.location;
+  return result;
 }
 
 /**
@@ -834,7 +818,7 @@ describe('TasksWorkbench', () => {
     await waitFor(() => expect(screen.getByText((_, el) => el?.textContent === 'Handoffs (1)')).toBeInTheDocument());
     fireEvent.click(screen.getByText('View all'));
 
-    await waitFor(() => expect(locationRef.current).toBe('/handoffs'));
+    await waitFor(() => expect(lastLocation.pathname).toBe('/handoffs'));
   });
 
   it('creates a task via the column\'s bottom Add button', async () => {
@@ -1252,7 +1236,7 @@ describe('TasksWorkbench', () => {
       await waitFor(() => expect(screen.getByText('Fix bug')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Fix bug'));
 
-      await waitFor(() => expect(locationRef.current).toBe('/tasks/task-1'));
+      await waitFor(() => expect(lastLocation.pathname).toBe('/tasks/task-1'));
     });
 
     it('returns to /tasks when the overlay is closed', async () => {
@@ -1263,7 +1247,7 @@ describe('TasksWorkbench', () => {
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
       fireEvent.click(screen.getByRole('button', { name: 'Close task details' }));
 
-      await waitFor(() => expect(locationRef.current).toBe('/tasks'));
+      await waitFor(() => expect(lastLocation.pathname).toBe('/tasks'));
       expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
     });
 
@@ -1284,16 +1268,13 @@ describe('TasksWorkbench', () => {
     it('closes the detail overlay when the active project changes', async () => {
       withTasks([task]);
 
-      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-      const { rerender } = render(
-        <QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>,
-      );
+      const { rerender } = renderPage('/tasks/task-1');
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
 
       mockActiveProjectId = 'proj-2';
-      rerender(<QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>);
+      rerender();
 
-      await waitFor(() => expect(locationRef.current).toBe('/tasks'));
+      await waitFor(() => expect(lastLocation.pathname).toBe('/tasks'));
       expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
     });
 
@@ -1306,48 +1287,39 @@ describe('TasksWorkbench', () => {
       mockActiveProjectId = '';
       withTasks([task]);
 
-      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-      const { rerender } = render(
-        <QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>,
-      );
+      const { rerender } = renderPage('/tasks/task-1');
 
       // The store hydrates: '' -> a real project id.
       mockActiveProjectId = 'proj-1';
-      rerender(<QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>);
+      rerender();
 
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
-      expect(locationRef.current).toBe('/tasks/task-1');
+      expect(lastLocation.pathname).toBe('/tasks/task-1');
     });
 
     it('closes the detail overlay when the active org changes', async () => {
       withTasks([task]);
 
-      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-      const { rerender } = render(
-        <QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>,
-      );
+      const { rerender } = renderPage('/tasks/task-1');
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
 
       mockActiveOrgId = 'org-2';
-      rerender(<QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>);
+      rerender();
 
-      await waitFor(() => expect(locationRef.current).toBe('/tasks'));
+      await waitFor(() => expect(lastLocation.pathname).toBe('/tasks'));
       expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
     });
 
     it('does not close the overlay on an ordinary re-render - only when the project/org actually changes', async () => {
       withTasks([task]);
 
-      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-      const { rerender } = render(
-        <QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>,
-      );
+      const { rerender } = renderPage('/tasks/task-1');
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
 
       // Same project/org, just a re-render (e.g. an unrelated store update).
-      rerender(<QueryClientProvider client={queryClient}>{page('/tasks/task-1')}</QueryClientProvider>);
+      rerender();
 
-      expect(locationRef.current).toBe('/tasks/task-1');
+      expect(lastLocation.pathname).toBe('/tasks/task-1');
       expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument();
     });
   });

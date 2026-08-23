@@ -1,7 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ArtifactService, LabelService, SearchService, CommentService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 
@@ -29,36 +27,19 @@ vi.mock('../../components/ui/LazyRichMarkdownEditor', () => ({
 
 import { ArtifactsBrowser } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
+import { renderScoped, type LocationRef } from '../../test/renderScoped';
 
 // The open artifact is a route param, so every render needs the same
 // `/artifacts` and `/artifacts/:artifactId` pair the app mounts.
-const locationRef = { current: '' };
-
-function LocationProbe() {
-  locationRef.current = useLocation().pathname;
-  return null;
-}
-
-function page(initialEntry = '/artifacts') {
-  return (
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <LocationProbe />
-      <Routes>
-        <Route path="/artifacts" element={<ArtifactsBrowser />} />
-        <Route path="/artifacts/:artifactId" element={<ArtifactsBrowser />} />
-      </Routes>
-    </MemoryRouter>
-  );
-}
+let lastLocation: LocationRef;
 
 function renderPage(initialEntry = '/artifacts') {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const utils = render(
-    <QueryClientProvider client={queryClient}>
-      {page(initialEntry)}
-    </QueryClientProvider>
-  );
-  return { ...utils, queryClient };
+  const result = renderScoped(<ArtifactsBrowser />, {
+    paths: ['/artifacts', '/artifacts/:artifactId'],
+    initialEntry,
+  });
+  lastLocation = result.location;
+  return result;
 }
 
 /**
@@ -682,7 +663,7 @@ describe('ArtifactsBrowser', () => {
       await waitFor(() => expect(screen.getByText('readme.md')).toBeInTheDocument());
       fireEvent.click(screen.getByText('readme.md'));
 
-      await waitFor(() => expect(locationRef.current).toBe('/artifacts/art-1'));
+      await waitFor(() => expect(lastLocation.pathname).toBe('/artifacts/art-1'));
     });
 
     it('reads the comments belonging to the artifact, not to a task', async () => {
@@ -908,7 +889,7 @@ describe('ArtifactsBrowser', () => {
       await confirmAction();
 
       await waitFor(() => expect(requests).toContainEqual({ folderId: 'fld-1' }));
-      await waitFor(() => expect(locationRef.current).toBe('/artifacts'));
+      await waitFor(() => expect(lastLocation.pathname).toBe('/artifacts'));
     });
 
     it('closes the open artifact when its folder is collapsed', async () => {
@@ -927,7 +908,7 @@ describe('ArtifactsBrowser', () => {
       // The explorer's copy, not the breadcrumb's.
       fireEvent.click(screen.getAllByText('docs')[0]);
 
-      await waitFor(() => expect(locationRef.current).toBe('/artifacts'));
+      await waitFor(() => expect(lastLocation.pathname).toBe('/artifacts'));
       expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
     });
   });
@@ -1108,16 +1089,13 @@ describe('ArtifactsBrowser', () => {
       [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
     );
 
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const { rerender } = render(
-      <QueryClientProvider client={queryClient}>{page('/artifacts/art-1')}</QueryClientProvider>,
-    );
+    const { rerender } = renderPage('/artifacts/art-1');
     await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
 
     mockActiveProjectId = 'proj-2';
-    rerender(<QueryClientProvider client={queryClient}>{page('/artifacts/art-1')}</QueryClientProvider>);
+    rerender();
 
-    await waitFor(() => expect(locationRef.current).toBe('/artifacts'));
+    await waitFor(() => expect(lastLocation.pathname).toBe('/artifacts'));
     expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
   });
 
@@ -1127,16 +1105,13 @@ describe('ArtifactsBrowser', () => {
       [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
     );
 
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const { rerender } = render(
-      <QueryClientProvider client={queryClient}>{page('/artifacts/art-1')}</QueryClientProvider>,
-    );
+    const { rerender } = renderPage('/artifacts/art-1');
     await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
 
     // Same project/org, just a re-render (e.g. an unrelated store update).
-    rerender(<QueryClientProvider client={queryClient}>{page('/artifacts/art-1')}</QueryClientProvider>);
+    rerender();
 
-    expect(locationRef.current).toBe('/artifacts/art-1');
+    expect(lastLocation.pathname).toBe('/artifacts/art-1');
     expect(screen.getByText('Hello world')).toBeInTheDocument();
   });
 });

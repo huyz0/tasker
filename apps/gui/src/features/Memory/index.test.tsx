@@ -1,12 +1,11 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MemoryService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { MemoryExplorer } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
 import { expectNoA11yViolations } from '../../test/a11y';
+import { renderScoped } from '../../test/renderScoped';
 
 let mockActiveOrgId = 'org-1';
 let mockActiveProjectId = 'proj-1';
@@ -31,17 +30,10 @@ const BELIEFS = [
 ];
 
 function renderPage(initialEntry = '/memory') {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialEntry]}>
-        <Routes>
-          <Route path="/memory" element={<MemoryExplorer />} />
-          <Route path="/memory/:beliefId" element={<MemoryExplorer />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
-  );
+  return renderScoped(<MemoryExplorer />, {
+    paths: ['/memory', '/memory/:beliefId'],
+    initialEntry,
+  });
 }
 
 async function searchFor(text: string) {

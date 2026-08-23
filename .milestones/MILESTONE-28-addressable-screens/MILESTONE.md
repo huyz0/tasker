@@ -118,7 +118,7 @@ deep-linkable detail views; `NAVIGATION.md`; ADR-0025.
         `.milestones/MILESTONE-28-addressable-screens/*`, `.milestones/STATE.md`
       - Verify: files exist; `moon run tasker:docs-lint` passes.
 
-- [ ] **M28-T02** — The shared test render helper, first, because every task
+- [x] **M28-T02** — The shared test render helper, first, because every task
       after this one multiplies across ~30 hand-rolled `MemoryRouter` +
       `QueryClientProvider` setups otherwise. `src/test/renderScoped.tsx`:
       render at a given URL, with a scope, returning a location probe.
