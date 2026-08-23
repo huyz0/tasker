@@ -126,7 +126,7 @@ check and belongs with a GUI round.
       - Verify: no claim in **Built** contradicted elsewhere in the file;
         every cited path exists.
 
-- [ ] **M27-T04** — Correct `.specs/design/NAVIGATION.md`: the mermaid map
+- [x] **M27-T04** — Correct `.specs/design/NAVIGATION.md`: the mermaid map
       and route table gain the seven missing routes; the "Teams does not
       exist", orphaned-`/settings` and no-breadcrumb claims go; the
       "Required, not built — M06 owns these" section is resolved against what

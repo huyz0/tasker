@@ -93,3 +93,31 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   unmeasurable today** — it defers a read store pending measurement, and the
   measurement that would trigger it is the concurrency nothing measures.
 - **Next**: M27-T04 (correct NAVIGATION.md).
+
+## M27-T04 — Correct .specs/design/NAVIGATION.md
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: the route map and route table gained the seven missing routes
+  (`/register`, `/handoffs`, `/memory`, `/memory/:beliefId`, `/roles`,
+  `/task-types`, `/teams`); "Teams does not exist at all" and the orphaned
+  `/settings` claim are gone; §4's breadcrumb rule moved from "required, not
+  built" to "enforced today"; the file's own preamble no longer promises that
+  unbuilt rules name an owning milestone, since none can.
+- **Verified**: route parity checked mechanically — every `path=` in
+  `App.tsx` appears in the table and vice versa, zero difference in both
+  directions. All seven cited components exist. `docs-lint` (which validates
+  the mermaid block) clean.
+- **Notes**: three claims were false in a way worth distinguishing. "Teams
+  does not exist at all" and "`/settings` renders `GenericPlaceholder`,
+  nothing links to it" were **stale** — both shipped (M10; `/settings` routes
+  to `SystemHealthPage` and sits in the Configuration group). But "there is
+  **no breadcrumb component in the repository** — `grep -i breadcrumb
+  apps/gui/src` returns nothing" was a *checkable* claim that had simply
+  stopped being true: `Breadcrumbs.tsx` exists with a test and a story, and
+  is mounted by both `features/Artifacts` and `features/Tasks`. It is the
+  clearest example of what the T05 gate cannot catch — it cites no milestone,
+  so nothing mechanical would flag it, and only running the grep it invited
+  found it. ADR-0024 says so explicitly rather than letting a green gate
+  imply otherwise.
+- **Next**: M27-T05 (the doc-drift gate).
