@@ -62,15 +62,26 @@ export function ArtifactsBrowser() {
   // whatever folder/artifact id was selected under the old one, resolved
   // against whatever happened to still be in the query cache.
   //
-  // Skipped on the very first run: a deep link (`/artifacts/:artifactId`)
-  // has to survive mounting into whatever the active project/org happens to
-  // already be, not get redirected away from before it has ever rendered.
-  const isFirstRender = useRef(true);
+  // Skipped while the scope is still arriving: a deep link
+  // (`/artifacts/:artifactId`) has to survive mounting into whatever the
+  // active project/org turns out to be, not get redirected away before it has
+  // ever rendered.
+  //
+  // Guarding only the first render was not enough, which is the bug M28-T06
+  // replaces here — `Tasks` abandoned that guard in M23 for the same reason.
+  // On a hard reload the store starts empty and hydrates a tick later, so the
+  // scope changes from '' to the real project *after* the first-render flag
+  // has been spent: the effect fired, saw an artifact open, and threw the deep
+  // link away. Comparing against the previous scope tells the two apart —
+  // hydrating from "nothing selected yet" is not a switch, moving between two
+  // projects is.
+  const previousScope = useRef<string | null>(null);
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
+    const scope = `${activeOrgId}/${activeProjectId}`;
+    const previous = previousScope.current;
+    previousScope.current = scope;
+    if (previous === null || !previous.split('/')[1] || previous === scope) return;
+
     setSelectedFolderId(null);
     setExpandedFolderIds(new Set());
     setIsEditingContent(false);

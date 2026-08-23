@@ -173,3 +173,39 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   `TaskTypes/index.tsx` is now at exactly 400 lines — at the cap, with no
   headroom for the next change.
 - **Next**: M28-T06 (the three latent bugs).
+
+## M28-T06 — The three latent bugs
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: `Artifacts` now uses `Tasks`' `previousScope` discriminator
+  instead of the `isFirstRender` guard `Tasks` abandoned; `Memory` renders a
+  foreign-scope belief under **its own** org/project with a `role="status"`
+  banner saying so; `Memory`'s `selectedBeliefId` is the route param alone
+  (the mirrored `useState` and its sync effect are gone) and selection
+  pushes rather than replaces. 7 new tests; suite 1127 → 1134.
+- **Verified**: every fix reproduced red first, with the failure recorded.
+  `moon check --all` clean (34); GUI 1134 pass; coverage 98.52/95.37/97.53/
+  98.86; design-lint 230 files, 0 findings. **No existing assertion was
+  changed** — the only edit to existing test code was adding a Back probe.
+- **Notes**: bug 2 was materially worse than "renders under the wrong
+  heading". `BeliefDetail` took `orgId` from the *active* scope, and that id
+  was passed to `PromoteBeliefDialog` — so promoting a belief opened by deep
+  link from another organization would have moved it **into the reader's
+  organization**. That is data integrity, not presentation. Fixed at the
+  source: `BeliefDetail` no longer takes `orgId`/`scopeType` as props at all,
+  so there is nothing left to mis-wire; both come off the belief. `canPromote`
+  was likewise testing the screen's toggle rather than a fact about the
+  belief. Verified by mutation — pointing the dialog back at `activeOrgId`
+  fails exactly the promote test.
+  The banner is a deliberate third option between the two the task offered:
+  refusing to render would break the deep link this milestone exists to
+  build, and rendering silently would leave the reader unable to tell the
+  panel is not from the list beside it. It is shown, acted on under its own
+  scope, and says so.
+  Also worth recording: the scope toggle had to become a *single*
+  navigation. It previously set the tier and cleared the selection in two
+  calls; with the selection in the path, two calls race — the second is
+  built from the query string as it stood before the first and puts the old
+  tier back.
+- **Next**: M28-T07 (breadcrumbs).

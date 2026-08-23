@@ -1099,6 +1099,44 @@ describe('ArtifactsBrowser', () => {
     expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
   });
 
+  // M28-T06. The hard-reload case, and the one `isFirstRender` could not
+  // express: on a fresh load of /artifacts/:artifactId the layout store starts
+  // with no project and fills one in a tick later, so the scope changes
+  // *after* the first-render flag has already been spent. The reset fired, saw
+  // an artifact open, and threw the deep link away — every reload of an
+  // artifact link bounced to the empty-editor placeholder.
+  it('keeps a deep-linked artifact open while the active project hydrates from empty', async () => {
+    mockActiveProjectId = '';
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+    );
+
+    const { rerender } = renderPage('/artifacts/art-1');
+
+    // The store hydrates: '' -> a real project id.
+    mockActiveProjectId = 'proj-1';
+    rerender();
+
+    await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+    expect(lastLocation.pathname).toBe('/artifacts/art-1');
+  });
+
+  it('closes the open artifact when the active org changes', async () => {
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
+    );
+
+    const { rerender } = renderPage('/artifacts/art-1');
+    await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
+
+    mockActiveOrgId = 'org-2';
+    rerender();
+
+    await waitFor(() => expect(lastLocation.pathname).toBe('/artifacts'));
+  });
+
   it('does not reset the selection on an ordinary render - only when the project/org actually changes', async () => {
     withProject(
       [{ id: 'fld-1', name: 'docs', parentId: '' }],

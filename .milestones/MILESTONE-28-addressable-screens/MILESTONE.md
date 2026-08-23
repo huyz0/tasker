@@ -158,7 +158,7 @@ deep-linkable detail views; `NAVIGATION.md`; ADR-0025.
         `App.tsx` (the new route)
       - Verify: `moon run gui:test` — one reload-survives test per screen.
 
-- [ ] **M28-T06** — The three latent bugs the audit found, each with the
+- [x] **M28-T06** — The three latent bugs the audit found, each with the
       regression test it lacks: `Artifacts`' `isFirstRender` guard replaced
       with `Tasks`' `previousScope` discriminator; Memory's mirrored
       `useState` collapsed onto the route param and its `replace: true`
