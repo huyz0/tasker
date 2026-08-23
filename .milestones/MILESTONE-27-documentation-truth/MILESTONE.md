@@ -116,7 +116,7 @@ check and belongs with a GUI round.
       - Verify: every corrected claim checked against the code that
         implements it, cited in the journal.
 
-- [ ] **M27-T03** — Correct `.specs/product/architecture.md`: the six false
+- [x] **M27-T03** — Correct `.specs/product/architecture.md`: the six false
       **Built** claims (agent identity, search, event consumers, streaming,
       OpenTelemetry, rate limiting), the module and service counts, and the
       **Planned Architecture** section, whose seven subsections all describe

@@ -60,3 +60,36 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
      callers). A reader now gets a sharper claim than the original, not a
      quieter one.
 - **Next**: M27-T03 (correct architecture.md).
+
+## M27-T03 — Correct .specs/product/architecture.md
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: eight corrections in **Built** — agent identity (now the
+  first-class principal it has been since M04, citing `agentToken.ts`,
+  `scopes.ts`, `authz.ts` and the sweep), search (real FTS5/`FULLTEXT`, not
+  `LIKE`), event consumers (the two deliberately-different subscribers, and
+  the feed's authorization incl. ADR-0023's agent filtering), streaming (one
+  server-streaming RPC, not "all unary"), OpenTelemetry (installed, exporter
+  only when configured), rate limiting (exists, and is per-instance — stated
+  as the limitation it is), and both counts (21 services not fourteen, 19
+  modules not twelve). The **Planned Architecture** section was rewritten:
+  four of its seven entries had shipped and moved to Built.
+- **Verified**: all twelve newly-cited paths exist. Every milestone reference
+  remaining in the file is historical attribution ("Delivered by M04",
+  "(M21-T06)", "M08's streaming endpoint") — none claims pending ownership.
+  The three surviving "there is no X" claims in Built were each re-checked
+  and are true (server-side rendering, in-process transport per ADR-0019,
+  and an OTLP collector when unconfigured). `docs-lint` clean.
+- **Notes**: the section header used to read "Each entry names its owning
+  milestone" — which cannot be honest now that every milestone is closed. It
+  says so explicitly instead: nothing there has an owner, so each entry is
+  genuinely unscheduled rather than queued. Writing that down surfaced three
+  gaps worth naming rather than losing — **signed binaries** (deferred
+  identically by M09 and M12 for want of certificates, which otherwise makes
+  "portable single binary" read as complete), **measured concurrency** (the
+  largest gap between claim and evidence in the product, and nobody's
+  milestone), and the fact that **ADR-0003's own deferral condition is
+  unmeasurable today** — it defers a read store pending measurement, and the
+  measurement that would trigger it is the concurrency nothing measures.
+- **Next**: M27-T04 (correct NAVIGATION.md).

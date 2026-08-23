@@ -26,9 +26,15 @@ consumed by a React SPA (`apps/gui/`) and a Go CLI (`apps/cli/`).
 - **Human identity** is Google OAuth 2.1 — `apps/backend/src/modules/auth/auth.ts`
   for the routes, `modules/auth/session.ts` for cookie/bearer session
   resolution, `lib/sessionRevocation.ts` for revocation checks.
-- **Agent identity** is not separate from human identity yet. Agents are rows in
-  the agent tables (`modules/agents/agents.handler.ts`); there is no M2M token
-  issuance. That is **M04**.
+- **Agent identity** is a first-class principal, separate from human identity.
+  An agent holds its own scoped, revocable, rate-limited M2M token
+  (`lib/agentToken.ts` issues and verifies; `lib/scopes.ts` declares the closed
+  scope vocabulary and the per-RPC scope map; `lib/authz.ts`'s
+  `authorizePrincipal` is the agent branch of every authorization check).
+  Absence from `AGENT_RPC_SCOPES` denies, and `lib/agent-scope-sweep.test.ts`
+  fails the build for any handler method that is neither mapped nor refusing
+  agents — including a check that its own handler map covers every service
+  registered in `index.ts`. Delivered by M04; ADR-0008.
 - **External runtimes** integrate by calling the same Connect-RPC contract. There
   is no separate agent-execution protocol.
 
@@ -38,14 +44,17 @@ One process serves everything (`apps/backend/src/index.ts`):
 
 - A `node:http` server on port 8080 is the listener (`index.ts:157`).
 - Connect-RPC handlers are mounted through `connectNodeAdapter` from
-  `@connectrpc/connect-node`. Fourteen services are registered from the
-  generated contract (`index.ts:3`).
+  `@connectrpc/connect-node`. Twenty-one services are registered from the
+  generated contract (`index.ts:3`) — eighteen through `router.service(...)`
+  plus `search`, `dashboard` and `reports`, which take the router and register
+  themselves.
 - **Elysia handles two route groups only**, not the whole surface:
   `/api/auth/*` (`modules/auth/auth.ts`) and `/api/client-errors` + `/api/debug/*`
   (`modules/telemetry/telemetry.ts`). `index.ts:113-145` dispatches to them by
   URL prefix and caps request bodies at 256 KiB before any handler runs.
-- **All RPCs are unary.** The TypeSpec contract declares no streaming methods,
-  so nothing in the system is bi-directionally streaming today.
+- **All RPCs are unary except one.** `EventService.SubscribeEvents` is
+  server-streaming (`modules/events/events.handler.ts`); nothing is
+  bi-directionally streaming.
 
 Cross-cutting behaviour is implemented as Connect interceptors in `index.ts`:
 session resolution, request logging (`lib/requestLogging.ts`) and per-method
@@ -53,11 +62,12 @@ latency capture (`lib/rpcMetrics.ts`).
 
 ### Bounded contexts
 
-The backend is a **modular monolith**. Twelve modules under
+The backend is a **modular monolith**. Nineteen modules under
 `apps/backend/src/modules/` own their own handlers and schema access:
 
-`agents`, `artifacts`, `auth`, `comments`, `health`, `labels`, `orgs`,
-`projects`, `repositories`, `search`, `tasks`, `telemetry`.
+`agents`, `artifacts`, `audit`, `auth`, `comments`, `dashboard`, `events`,
+`health`, `labels`, `memory`, `orgs`, `projects`, `reports`, `repositories`,
+`roles`, `search`, `tasks`, `teams`, `telemetry`.
 
 Each exports a `create*Handler(router, db, nc)` factory registered in
 `index.ts`. Modules do not import one another's handlers; shared behaviour lives
@@ -82,13 +92,15 @@ in `src/lib/`.
 
 ### Search
 
-**Search is `LIKE`-based.** `modules/search/search.handler.ts:35` builds
-`column LIKE ? ESCAPE '\'` with caller input escaped for `%`, `_` and `\`.
+**Search is served by a real index**, not a scan. `modules/search/search.handler.ts`
+queries SQLite's contentless FTS5 table joined on `rowid` and ranks with
+`bm25()`; the MySQL dialect uses a `FULLTEXT` index over the same columns.
+Six entity kinds are searchable, beliefs among them (M21-T06).
 
-An FTS5 virtual table named `search_index` is created in `db/db.ts:27` and is
-read only by the health probe. **Nothing writes to it.** It is scaffolding, not
-an index. A real search path is **M07**. Decision:
-[ADR-0002](../adr/ADR-0002-like-scanning-instead-of-full-text-search.md).
+Delivered by M07, which supersedes
+[ADR-0002](../adr/ADR-0002-like-scanning-instead-of-full-text-search.md)'s
+choice of `LIKE` scanning — the ADR stands as the record of why that was
+right at the time and what changed.
 
 ### Events
 
@@ -102,9 +114,16 @@ The backend **publishes** domain events to NATS and consumes none.
   plus `modules/tasks/task_notes.handler.ts`. Subjects follow
   `domain.<entity>.<verb>` — e.g. `domain.task.status_updated`
   (`modules/tasks/tasks.handler.ts:576`).
-- **There is no subscriber anywhere in the repository.** No audit trail is
-  derived from these events and no client is updated by them. Consumers are
-  **M08**.
+- **Two consumers read these events**, deliberately different in kind. A
+  durable JetStream projector (`consumers/auditProjector.ts`, run as its own
+  entry point — see Deployment below) derives the audit trail and must never
+  lose an event. An ephemeral per-connection subscriber
+  (`modules/events/events.handler.ts`) feeds the live GUI and would rather
+  drop than block, because a browser tab that fell behind wants current state
+  rather than a backlog. Authorization for the feed lives in
+  `modules/events/eventScope.ts`: org membership is the ceiling for a human,
+  and an agent additionally receives only the subjects its token's scopes
+  could have read (ADR-0023). Delivered by M08.
 
 ### Configuration
 
@@ -117,8 +136,12 @@ at startup, with `config.test.ts` covering it.
 
 ### Observability
 
-**Telemetry is in-process counters over Pino, not OpenTelemetry.** No
-`@opentelemetry` package is installed.
+**Telemetry is OpenTelemetry over Pino, with the in-process counters kept.**
+The SDK is always installed, but an exporter is created *only* when
+`OTEL_EXPORTER_OTLP_ENDPOINT` is set (`lib/telemetry/otel.ts`) — without one,
+spans still exist, `traceparent` still propagates and every log line still
+carries a trace id, all in process, with nothing reaching for a collector that
+is not there. That is what the standalone binary requires.
 
 - `lib/logger.ts` — structured JSON logging.
 - `lib/rpcMetrics.ts`, `lib/businessEvents.ts`, `lib/httpMetrics.ts` — counters
@@ -129,8 +152,12 @@ at startup, with `config.test.ts` covering it.
 - `modules/telemetry/telemetry.ts` exposes these over `/api/debug/*`.
 - `lib/problemDetails.ts` shapes error responses as `application/problem+json`.
 
-Distributed tracing and OTLP export are **M11**. Decision:
-[ADR-0004](../adr/ADR-0004-in-process-counters-instead-of-opentelemetry.md).
+The counters below are a *view* of the same data, not a parallel system;
+`/metrics` exposes them in Prometheus format (`lib/prometheus.ts`). Delivered
+by M11, which discharges rather than reverses
+[ADR-0004](../adr/ADR-0004-in-process-counters-instead-of-opentelemetry.md) —
+that ADR deferred OTLP on two grounds, and both were answered rather than
+overruled.
 
 ### Frontend
 
@@ -221,78 +248,82 @@ load test, benchmark or profiling run is committed.
 | Latency | `lib/rpcMetrics.ts` records per-method P50/P95 and logs a summary every five minutes. No target is asserted or enforced. |
 | Scalability | The backend is stateless apart from in-memory counters, so it can run behind a load balancer. This has never been run multi-instance. |
 | Reliability | NATS failure degrades to no-publish (`lib/natsCorrelation.ts:45`); config failure is fatal at boot. |
-| Security | OAuth 2.1 sessions with revocation, org-membership checks on every handler, 256 KiB body cap, `ESCAPE`-hardened `LIKE` input. No rate limiting or per-key quota exists. |
+| Security | Sessions with revocation, policy-based authorization on every handler, 256 KiB body cap. Rate limiting exists (`lib/rateLimit.ts`, `lib/loginRateLimiter.ts`) and is **per-instance**, so N replicas multiply the effective limit by N — a shared store is the fix and needs a decision about which store. |
 
-Measured numbers are owed by **M07** (read-path scale), **M11**
-(observability) and **M12** (test depth and release).
+**What is measured, and what is not.** *Data* scale is measured:
+`scripts/measure-latency.ts` drives the hot read paths against a seeded
+fixture at the scale targets (2,000 projects, 50,000 tasks in one project,
+100,000 artifacts in one folder, 100,002 organization members) and every
+endpoint is inside the per-endpoint p95 budget declared in `api-standard.md`
+§6. *Concurrency* is not: there is no load test in this repository, nothing
+has been run multi-instance, and the cost of N simultaneous event-feed
+subscribers is unmeasured. The figures above describe data volume, not
+simultaneous callers.
 
 ---
 
 ## Planned Architecture
 
-Not built. Each entry names its owning milestone. Do not write code against any
-of it.
+Not built. **Nothing here has an owning milestone**: every numbered milestone
+in the ledger is closed, so each entry below is genuinely unscheduled rather
+than waiting its turn. Do not write code against any of it.
 
-### CQRS with a separate read store — **M07**
+Entries that used to live here — event consumers and live updates, the single
+portable binary, OpenTelemetry, agent identity and quotas — were delivered by
+M08, M09, M11 and M04/M10 respectively and now appear under **Built**, with
+citations.
+
+### CQRS with a separate read store — unowned
 
 The intent is asymmetric handling: writes commit to MySQL and emit an event;
-reads serve from a materialised view so agent write bursts cannot degrade human
-dashboard queries.
+reads serve from a materialised view so agent write bursts cannot degrade
+human dashboard queries.
 
-Today there is **one path**. Reads and writes both hit the transactional
-database, and search scans with `LIKE`. M07 decides between populating the
-existing FTS5 table and introducing a dedicated index; **OpenSearch is not
-installed and no milestone commits to it** — it is one candidate, to be chosen
-against measured need. Decision:
-[ADR-0003](../adr/ADR-0003-no-separate-read-store-before-measurement.md).
+Today there is still **one path**: reads and writes both hit the transactional
+database. What has changed since this entry was written is that search is no
+longer the argument for it — M07 answered that with a real FTS5 / `FULLTEXT`
+index rather than a separate store.
+[ADR-0003](../adr/ADR-0003-no-separate-read-store-before-measurement.md)
+therefore stands unchanged, including its own honest caveat: it defers the
+decision pending measurement, and the measurement that would trigger it is
+concurrency, which nothing measures yet (see Non-functional characteristics).
+**OpenSearch is not installed and nothing commits to it** — one candidate,
+to be chosen against measured need.
 
-### Event consumers, audit trail and live updates — **M08**
+### Graphical state-machine editing — unowned
 
-Publishing exists; consumption does not. M08 adds subscribers that derive an
-audit trail from `domain.*` events and push changes to the GUI so the interface
-updates without polling.
+Task state machines are configured through the API and from the Task Types
+screen (`apps/gui/src/features/TaskTypes/`), which is a list-and-detail
+editor. A *visual* editor — a canvas of statuses and transitions — is not
+built and the library is an open choice. React Flow was named in an earlier
+draft of this document and is not a commitment;
+[tech-stack.md](./tech-stack.md)'s Dropped table records why.
 
-### Single portable binary — **M09**
-
-Delivered. The SPA and the SQLite migrations are both embedded in the compiled
-binary, which starts against `bun:sqlite` with FTS5 from an empty directory and
-reads `--port` / `--db` / `--open` / `--seed` layered over the environment.
-
-The one piece deliberately *not* delivered is the in-process transport, which
-**ADR-0019** records as declined rather than deferred: the GUI is a browser
-application, so its RPCs cross a real socket whatever the server does
-internally, and a second entry point into the handlers would duplicate the
-interceptor ordering that authenticates and throttles every caller.
-
-### Graphical state-machine editing — **M05**
-
-Task state machines are configured through the API today
-(`modules/tasks/tasks.handler.ts`). A visual editor is an M05 capability; the
-library is an open choice. React Flow was named in an earlier draft of this
-document and is not a commitment.
-
-### OpenTelemetry — **M11**
-
-Distributed tracing and metrics over OTLP, exporting to a standard backend, with
-graceful degradation to stdout in standalone. Replaces the in-process counters
-described under Built, or sits alongside them.
-
-### Agent identity and quotas — **M04**, **M10**
-
-M2M tokens with their own lifecycle (M04), and policy-based RBAC over teams
-(M10). Until then, agents authenticate as the user that created them and
-authorisation is the four org roles in `lib/authz.ts`.
-
-### Agent-facing CLI ergonomics — **M05**
+### Agent-facing CLI ergonomics — unowned
 
 Field masks (`--fields`), NDJSON pagination (`--page-all`) and schema
-introspection (`cli schema <cmd>`) exist as intent only. An MCP server mode and
-a TUI are named in no milestone; see the Dropped table in
-[tech-stack.md](./tech-stack.md).
+introspection (`cli schema <cmd>`) exist as intent only — none appears in
+`apps/cli/cmd/`. An MCP server mode and a TUI are named in no milestone; see
+the Dropped table in [tech-stack.md](./tech-stack.md).
+
+### Signed release binaries — unowned
+
+The release binaries are versioned and cross-platform and **not signed**.
+M09 and M12 both deferred this for the same reason: signing needs
+certificates this project does not have. Recorded here rather than left
+implied, because "portable single binary" otherwise reads as complete.
+
+### Measured concurrency — unowned
+
+The Mission Scale targets 20,000 concurrent agents and 20,000 concurrent
+users. Data scale is measured and within budget; **concurrency has never been
+simulated at all**, there is no load test in this repository, and nothing has
+run multi-instance. This is the largest gap between what the product claims
+and what it has evidence for, and it is nobody's milestone.
 
 ### Not planned by anyone
 
 Server-side rendering and React Flow appeared in earlier revisions of this
-document as present-tense descriptions. Neither is built, and no milestone owns
-either. They are recorded in the Dropped table of
+document as present-tense descriptions. Neither is built, and no milestone
+owns either. They are recorded in the Dropped table of
 [tech-stack.md](./tech-stack.md) so they are not reintroduced by accident.
