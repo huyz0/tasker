@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { useDebounce } from 'use-debounce';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import * as Tabs from '@radix-ui/react-tabs';
 import { transport } from '../../lib/connectTransport';
 import { MemoryService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { useUrlEnum } from '../../hooks/useUrlEnum';
 import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../../components/ui/ListState';
+import { BeliefCrumbs } from './BeliefCrumbs';
 import { VirtualList } from '../../components/ui/VirtualList';
 import { RowActionsMenu } from '../../components/ui/RowActionsMenu';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -320,9 +322,19 @@ function RelateBeliefPicker({ belief, existingRelatedIds, scopeType, scopeId }: 
  * belief with a long promotion trail would otherwise push Related off
  * screen for no reason.
  */
-function BeliefDetail({ belief, orgId, scopeType, onSelect }: { belief: Belief; orgId: string; scopeType: ScopeType; onSelect: (id: string) => void }) {
+export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (id: string) => void }) {
   const queryClient = useQueryClient();
   const { confirm, confirmDialog } = useConfirm();
+  // M28-T06: every identity this panel acts under comes off the belief, not
+  // off the screen around it. `getBelief` answers by id alone, so a
+  // `/memory/:beliefId` link resolves beliefs from other projects and other
+  // organizations; this used to be handed the *active* org id and the *active*
+  // scope toggle, which attributed such a belief to an organization it does
+  // not belong to and pointed "Promote" at the reader's organization instead
+  // of its own. Taking both from `belief` removes the wiring that could be
+  // wrong.
+  const activeOrgId = useLayoutStore((s) => s.activeOrgId);
+  const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const [tab, setTab] = useState<'related' | 'history'>('related');
   const [editing, setEditing] = useState(false);
   const [draftStatement, setDraftStatement] = useState(belief.statement);
@@ -397,11 +409,25 @@ function BeliefDetail({ belief, orgId, scopeType, onSelect }: { belief: Belief; 
   const otherIdOf = (r: BeliefRelation) => (r.beliefAId === belief.id ? r.beliefBId : r.beliefAId);
   const existingRelatedIds = useMemo(() => new Set((relations ?? []).map(otherIdOf)), [relations]);
 
-  const canPromote = belief.scopeType === 'project' && scopeType === 'project';
+  const canPromote = belief.scopeType === 'project';
   const [promoteOpen, setPromoteOpen] = useState(false);
+
+  // Named, not hidden: a belief reached from elsewhere is still worth reading,
+  // and refusing to render it would break the links this milestone exists to
+  // make work. What it must never do is pass for one of *this* project's.
+  const foreignScope = belief.orgId !== activeOrgId
+    ? { tier: 'organization', id: belief.orgId }
+    : belief.scopeType === 'project' && belief.scopeId !== activeProjectId
+      ? { tier: 'project', id: belief.scopeId }
+      : null;
 
   return (
     <section aria-label="Belief detail" className="flex flex-col gap-4">
+      {foreignScope && (
+        <p role="status" className="rounded-md bg-warning-subtle px-3 py-2 text-xs text-warning-subtle-foreground">
+          This belief belongs to a different {foreignScope.tier} ({foreignScope.id}), not the one you are browsing. It is shown, and acted on, under its own scope.
+        </p>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
@@ -551,7 +577,7 @@ function BeliefDetail({ belief, orgId, scopeType, onSelect }: { belief: Belief; 
 
       <SupersedeBeliefDialog open={supersedeOpen} onClose={() => setSupersedeOpen(false)} belief={belief} onSuperseded={onSelect} />
       {canPromote && (
-        <PromoteBeliefDialog open={promoteOpen} onClose={() => setPromoteOpen(false)} belief={belief} orgId={orgId} />
+        <PromoteBeliefDialog open={promoteOpen} onClose={() => setPromoteOpen(false)} belief={belief} orgId={belief.orgId} />
       )}
       {confirmDialog}
     </section>
@@ -619,15 +645,27 @@ export function MemoryExplorer() {
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const { beliefId: routeBeliefId } = useParams<{ beliefId?: string }>();
   const navigate = useNavigate();
+  const { search } = useLocation();
 
-  const [scopeType, setScopeType] = useState<ScopeType>('project');
+  // In the URL (M28-T05). Which memory you are reading — this project's or the
+  // whole organization's — decided the query key and therefore the entire
+  // list, so a reload used to show a different set of beliefs under the same
+  // URL without saying so.
+  const [scopeType] = useUrlEnum<ScopeType>('scope', SCOPE_TYPES, 'project');
   const [mode, setMode] = useState<'search' | 'browse'>('search');
   const [query, setQuery] = useState('');
   const [debouncedQuery] = useDebounce(query, 300);
   const [statusFilter, setStatusFilter] = useState('');
   const [confidenceFilter, setConfidenceFilter] = useState('');
-  const [selectedBeliefId, setSelectedBeliefId] = useState<string | null>(routeBeliefId ?? null);
   const [recordOpen, setRecordOpen] = useState(false);
+
+  // The route param *is* the selection (M28-T06). It used to be copied into a
+  // `useState` and kept in step by an effect, which bought nothing and cost
+  // two things: a second copy that could disagree with the URL, and — because
+  // the copy carried the value anyway — a navigation written with
+  // `replace: true`. Replacing meant history never grew, so Back skipped every
+  // belief the reader had opened and left the screen entirely.
+  const selectedBeliefId = routeBeliefId ?? null;
 
   const scopeId = scopeType === 'project' ? activeProjectId : activeOrgId;
 
@@ -640,10 +678,6 @@ export function MemoryExplorer() {
     queryFn: () => memoryClient.getBelief({ id: routeBeliefId! }).then((r) => r.belief as Belief),
     enabled: !!routeBeliefId,
   });
-
-  useEffect(() => {
-    if (routeBeliefId) setSelectedBeliefId(routeBeliefId);
-  }, [routeBeliefId]);
 
   const searchQuery = useQuery({
     queryKey: ['memoryBeliefs', 'search', scopeType, scopeId, debouncedQuery, statusFilter, confidenceFilter],
@@ -676,9 +710,28 @@ export function MemoryExplorer() {
 
   const selectedBelief = beliefs.find((b) => b.id === selectedBeliefId) ?? (directBeliefQuery.data?.id === selectedBeliefId ? directBeliefQuery.data : undefined);
 
+  // The whole query string, not `useScopedTo`: this is navigation *within* the
+  // screen, so it keeps the screen's own `?scope=` as well as the scope the
+  // helper would carry (M28-T05). Dropping `?scope=` here would flip the list
+  // back to project memory with an organization belief open beside it.
+  //
+  // A push, so Back returns to the belief read before this one. Re-selecting
+  // the belief already open is not a move and gets no entry — otherwise Back
+  // would spend a press going nowhere visible.
   const selectBelief = (id: string) => {
-    setSelectedBeliefId(id);
-    navigate(`/memory/${id}`, { replace: true });
+    if (id === selectedBeliefId) return;
+    navigate({ pathname: `/memory/${id}`, search });
+  };
+
+  // Changing tier closes the open belief, and both halves live in the URL —
+  // the tier in `?scope=`, the belief in the path — so they move together, in
+  // one navigation. Two (`setScopeType`, then a navigate to `/memory`) would
+  // race: the second is built from the query string as it stood before the
+  // first, and would put the old tier back.
+  const selectScopeType = (next: ScopeType) => {
+    const params = new URLSearchParams(search);
+    params.set('scope', next);
+    navigate({ pathname: '/memory', search: params.toString() });
   };
 
   if (!activeOrgId) {
@@ -700,7 +753,7 @@ export function MemoryExplorer() {
           {SCOPE_TYPES.map((s) => (
             <button
               key={s}
-              onClick={() => { setScopeType(s); setSelectedBeliefId(null); }}
+              onClick={() => selectScopeType(s)}
               aria-pressed={scopeType === s}
               className={`rounded-full px-2.5 py-1 font-medium capitalize ${scopeType === s ? 'bg-primary-subtle text-primary-subtle-foreground' : 'text-muted-foreground hover:bg-muted'}`}
             >
@@ -780,7 +833,10 @@ export function MemoryExplorer() {
 
       <div className="min-w-0 flex-1">
         {selectedBelief ? (
-          <BeliefDetail belief={selectedBelief} orgId={activeOrgId} scopeType={scopeType} onSelect={selectBelief} />
+          <>
+            <BeliefCrumbs scopeType={scopeType} statement={selectedBelief.statement} />
+            <BeliefDetail belief={selectedBelief} onSelect={selectBelief} />
+          </>
         ) : (
           <p className="p-4 text-sm text-muted-foreground">Select a belief to see its details, related beliefs, and history.</p>
         )}

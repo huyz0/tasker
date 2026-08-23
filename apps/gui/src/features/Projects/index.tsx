@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSetScope } from '../../hooks/useScope';
 import { useLayoutStore } from '../../store/layout';
 import { RepositoryIntegrationConfig } from '../../components/ui/repositories/RepositoryIntegrationConfig';
 import { useAuthSession } from '../../hooks/useAuthSession';
@@ -302,9 +303,9 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
 export function ProjectsWizard() {
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
+  const setScope = useSetScope();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
-  const setActiveProjectId = useLayoutStore((s) => s.setActiveProjectId);
   const { userId: activeOwnerId } = useAuthSession();
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
@@ -451,7 +452,7 @@ export function ProjectsWizard() {
       // auto-select-fallback never fires on its own since the id is still
       // non-empty. Clearing it here lets that same fallback pick a
       // survivor once the switcher's project list refetches.
-      if (projectId === activeProjectId) setActiveProjectId('');
+      if (projectId === activeProjectId) setScope({ projectId: '' }, { replace: true });
     },
   });
 

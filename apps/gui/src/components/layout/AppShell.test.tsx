@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderScoped } from '../../test/renderScoped';
 import { expect, test, vi, describe, beforeEach } from 'vitest';
 import { AppShell } from './AppShell';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
@@ -128,4 +129,34 @@ describe('live connection indicator (M08-T10)', () => {
       expect(indicator.getAttribute('data-status')).toBe('connecting');
     }
   });
+});
+
+test('every sidebar link carries the active scope, so following one does not lose the project', async () => {
+  // M28-T04. A missed call site does not error — it silently drops you into
+  // another project, or none. So this asserts the invariant over the whole
+  // nav rather than trusting an audit of the individual links.
+  renderScoped(<AppShell><div /></AppShell>, {
+    paths: ['/tasks'],
+    initialEntry: '/tasks?org=org-1&project=proj-1',
+  });
+
+  const links = screen.getAllByRole('link');
+  expect(links.length).toBeGreaterThan(5);
+
+  const dropped = links
+    .map((link) => link.getAttribute('href') ?? '')
+    // The logout control leaves the shell for /login, where a scope would be
+    // meaningless; it is a button, not a link, so nothing here should match.
+    .filter((href) => href.startsWith('/'))
+    .filter((href) => !(href.includes('org=org-1') && href.includes('project=proj-1')));
+
+  expect(dropped, `these shell links drop the scope: ${dropped.join(', ')}`).toEqual([]);
+});
+
+test('a link built without the helper is caught by that invariant', () => {
+  // Proving the guard above can fail: an unscoped href is exactly what a
+  // forgotten `scopedTo` produces, and it must not pass.
+  const hrefs = ['/tasks?org=org-1&project=proj-1', '/reports'];
+  const dropped = hrefs.filter((h) => !(h.includes('org=org-1') && h.includes('project=proj-1')));
+  expect(dropped).toEqual(['/reports']);
 });

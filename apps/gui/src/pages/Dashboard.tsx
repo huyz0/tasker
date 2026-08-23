@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { useScopedTo } from '../hooks/useScope';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
@@ -46,9 +47,10 @@ function Panel({ title, subtitle, action, children }: {
 }
 
 function TaskRow({ task, children }: { task: any; children?: ReactNode }) {
+  const scopedTo = useScopedTo();
   return (
     <Link
-      to={`/tasks/${task.id}`}
+      to={scopedTo(`/tasks/${task.id}`)}
       className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
     >
       <span className="font-mono text-xs text-muted-foreground shrink-0 pt-0.5">{task.displayId}</span>
@@ -61,6 +63,7 @@ function TaskRow({ task, children }: { task: any; children?: ReactNode }) {
 }
 
 export function Dashboard() {
+  const scopedTo = useScopedTo();
   const setActivePageTitle = useLayoutStore((s: LayoutState) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s: LayoutState) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s: LayoutState) => s.activeProjectId);
@@ -98,7 +101,7 @@ export function Dashboard() {
             performed", this screen answers "what needs me" — and per the header
             comment above, no count survives "what will you do differently?". */}
         {activeProjectId && (
-          <Link to="/reports" className="shrink-0 text-sm text-primary hover:underline">
+          <Link to={scopedTo('/reports')} className="shrink-0 text-sm text-primary hover:underline">
             View project reports →
           </Link>
         )}
@@ -169,14 +172,14 @@ export function Dashboard() {
               error={null}
               isEmpty={data.agents.length === 0}
               emptyMessage="No agents in this organization."
-              emptyAction={<Link to="/agents" className="text-xs text-primary hover:underline">Deploy one</Link>}
+              emptyAction={<Link to={scopedTo('/agents')} className="text-xs text-primary hover:underline">Deploy one</Link>}
             >
               {data.agents.map((a: any) => {
                 const since = sinceLabel(a.lastUsedAt);
                 return (
                   <Link
                     key={a.id}
-                    to="/agents"
+                    to={scopedTo('/agents')}
                     className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   >
                     <span className="flex-1 min-w-0 truncate text-sm">{a.name}</span>
@@ -211,7 +214,7 @@ export function Dashboard() {
               {data.recentActivity.map((a: any, i: number) => (
                 <Link
                   key={`${a.taskId}-${a.createdAt}-${i}`}
-                  to={`/tasks/${a.taskId}`}
+                  to={scopedTo(`/tasks/${a.taskId}`)}
                   className="block p-2 rounded-md hover:bg-muted/50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
                   <span className="flex items-baseline gap-2 text-xs text-muted-foreground">

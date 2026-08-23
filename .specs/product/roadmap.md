@@ -86,8 +86,9 @@ milestone's `PROGRESS.md` rather than quietly fixed.
 | **M25** | [Proactive Alerting for Stalled Claims](../../.milestones/MILESTONE-25-stalled-claim-alerting/MILESTONE.md) | A human responsible for a task is emailed when its agent claim goes stalled, without waiting for anyone to open Reports. | — |
 | **M26** | [Gate Integrity](../../.milestones/MILESTONE-26-gate-integrity/MILESTONE.md) | Every quality gate covers what its own documentation says it covers — the agent-scope sweep, the migration ledger, and backend typechecking. | — |
 | **M27** | [Documentation Truth](../../.milestones/MILESTONE-27-documentation-truth/MILESTONE.md) | The documents an agent session is told to treat as ground truth describe the product that exists, and a gate fails when they stop doing so. | — |
+| **M28** | [Addressable Screens](../../.milestones/MILESTONE-28-addressable-screens/MILESTONE.md) | A URL carries its own scope, reopens the same thing for whoever pastes it, and every deep-linkable detail view shows a path back. | — |
 
-M21–M27 are sequenced by explicit user priority (like M13 before M10) and
+M21–M28 are sequenced by explicit user priority (like M13 before M10) and
 carry no dependency edge; every numbered milestone before them is done.
 
 ## Sequencing rationale

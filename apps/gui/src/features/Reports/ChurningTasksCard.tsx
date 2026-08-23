@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useScopedTo } from '../../hooks/useScope';
 import { ReportPanel, TaskLink } from './ReportPanel';
 import { agoLabel } from './useReportsQueries';
 
@@ -21,12 +22,13 @@ export type ChurningRow = {
  * self-unassign).
  */
 export function ChurningTasksCard({ churning }: { churning: ChurningRow[] }) {
+  const scopedTo = useScopedTo();
   return (
     <ReportPanel
       title="Churning tasks"
       subtitle="Tasks handed between agents repeatedly — which ones need a human decision"
       action={
-        <Link to="/handoffs" className="shrink-0 text-xs text-primary hover:underline">
+        <Link to={scopedTo('/handoffs')} className="shrink-0 text-xs text-primary hover:underline">
           View handoff notes
         </Link>
       }

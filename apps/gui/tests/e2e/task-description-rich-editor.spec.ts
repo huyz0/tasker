@@ -18,7 +18,10 @@ test.describe('Rich markdown editor E2E', () => {
     await taskTitle.click();
 
     await expect(page.getByRole('heading', { name: 'Task Details' })).toBeVisible();
-    const taskId = page.url().split('/tasks/')[1];
+    // From the *path*, not the whole URL: since M28-T03 a task URL carries
+    // `?org=…&project=…`, and splitting the raw string handed the id and the
+    // entire query string to `getTask`, which then answered for no task at all.
+    const taskId = new URL(page.url()).pathname.split('/tasks/')[1];
     // Scoped to the dialog's own header row (the "Task Details" heading's
     // parent, which also holds this Edit button as a sibling) rather than
     // page-wide: this task may already have comments from a previous run of

@@ -69,6 +69,9 @@ function App() {
                     <Route path="/artifacts" element={<ArtifactsBrowser />} />
                     <Route path="/artifacts/:artifactId" element={<ArtifactsBrowser />} />
                     <Route path="/task-types" element={<TaskTypesEditor />} />
+                    {/* Same reason as /tasks/:taskId: the type being configured
+                        is in the URL, and it already resolves by id. */}
+                    <Route path="/task-types/:typeId" element={<TaskTypesEditor />} />
                     <Route path="/labels" element={<LabelsManager />} />
                     <Route path="/roles" element={<RolesManager />} />
                     <Route path="/teams" element={<TeamsManager />} />

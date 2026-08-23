@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useScopedTo } from '../hooks/useScope';
 import { Link, useLocation } from 'react-router-dom';
 import { Compass } from 'lucide-react';
 import { useLayoutStore, type LayoutState } from '../store/layout';
@@ -9,6 +10,7 @@ import { useLayoutStore, type LayoutState } from '../store/layout';
  * rather than a wrong address.
  */
 export function NotFound() {
+  const scopedTo = useScopedTo();
   const setActivePageTitle = useLayoutStore((s: LayoutState) => s.setActivePageTitle);
   const { pathname } = useLocation();
   useEffect(() => setActivePageTitle('Not Found'), [setActivePageTitle]);
@@ -23,7 +25,7 @@ export function NotFound() {
         </p>
       </div>
       <Link
-        to="/"
+        to={scopedTo('/')}
         className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium"
       >
         Back to dashboard

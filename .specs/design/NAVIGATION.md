@@ -12,6 +12,17 @@ diagram, because a map whose nodes are not addresses is not a map.
 implements yet. Every numbered milestone is now closed, so an unbuilt
 requirement names no owner — it is unscheduled, not queued.
 
+**Every route below is scoped by query parameter.** The active organization
+and project travel in the URL as `?org=…&project=…` (M28, ADR-0025), so a
+link carries the scope it was taken in and reopens the same thing for whoever
+follows it. The layout store still holds the scope for screens to read; the
+URL is what fills it, in one direction. Screens that keep their own
+navigational state put it alongside — Bin's `?tab=`, Organizations'
+`?section=`, Memory's `?scope=`. Transient editing state is deliberately
+*not* in the URL: an open inline-edit form is paired with unsaved draft text
+the URL does not carry, so restoring the id without the draft is worse than
+not restoring it.
+
 ## 1. Route map
 
 ```mermaid
@@ -86,6 +97,7 @@ declared there appears here.
 | `/memory/:beliefId` | `features/Memory` | clicking a belief, or a direct link |
 | `/handoffs` | `features/Handoffs` | sidebar (Workspace) — cross-task handoff notes (M22) |
 | `/task-types` | `features/TaskTypes` | sidebar (Configuration) |
+| `/task-types/:typeId` | `features/TaskTypes` | clicking a task type, or a direct link |
 | `/labels` | `features/Labels` | sidebar (Configuration) |
 | `/organizations` | `features/Organizations` | sidebar (Configuration) |
 | `/teams` | `features/Teams` | sidebar (Configuration) — teams below the organization (M10) |
@@ -129,10 +141,20 @@ reload returns to the parent's default state.
 3. **Deep links resolve.** `/tasks/:taskId`, `/artifacts/:artifactId` and
    `/memory/:beliefId` open their detail view from a cold load; the open
    entity is in the URL rather than in component state.
-4. **Breadcrumbs on detail views.** `components/layout/Breadcrumbs.tsx` is
-   mounted by `features/Artifacts` and `features/Tasks`, so a deep-linked
-   entity shows a path back to its parent rather than only the sidebar.
-   Delivered by M06; this was listed as unbuilt in an earlier revision.
+4. **Breadcrumbs on every deep-linkable detail view.**
+   `components/layout/Breadcrumbs.tsx` is mounted by all four screens that
+   have one — Tasks, Artifacts, Memory and Task Types — so an entity reached
+   by a cold link shows a path back rather than only the sidebar. Every
+   ancestor link in a trail carries the scope (M28); a crumb that dropped it
+   would land you in whichever project the switcher auto-selects, which is
+   the bug M28-T08 found and fixed.
+   No trail names an *organization*: there is no `getOrg`-by-id RPC, so an
+   org's name is not resolvable from an id anywhere in the GUI. See
+   `hooks/useScopeLabels.ts`.
+5. **A URL is portable.** Copying one out of the address bar and opening it
+   in a different session shows the same scope and the same content, rather
+   than resolving against the recipient's last-used project. Proven by
+   `tests/e2e/addressable.spec.ts` across two browser contexts.
 
 ### Required, not built — unowned
 

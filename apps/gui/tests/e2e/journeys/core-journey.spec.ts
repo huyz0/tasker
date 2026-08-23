@@ -162,7 +162,14 @@ test.describe('the core journey', () => {
     await expect(card).toBeVisible({ timeout: 15_000 });
     await card.click();
 
-    await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    // Scoped to the detail dialog's own header row (the "Task Details"
+    // heading's parent, which holds this Delete as a sibling), the same way
+    // task-description-rich-editor.spec.ts scopes its Edit: the previous step
+    // left a comment on this task, and a comment of your own carries its own
+    // "Delete" — so a page-wide match is a strict-mode violation rather than a
+    // click.
+    const detailHeader = page.getByRole('heading', { name: 'Task Details' }).locator('..');
+    await detailHeader.getByRole('button', { name: 'Delete', exact: true }).click();
     // The confirmation says "Move to bin", not "Delete" — archiving here is
     // reversible, and the dialog says so. Matching on /delete/i would have hit
     // the button *behind* the dialog and left the task exactly where it was.

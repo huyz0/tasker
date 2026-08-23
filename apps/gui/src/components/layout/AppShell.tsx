@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useScopeSync, useScopedTo } from '../../hooks/useScope';
 import { useLayoutStore } from '../../store/layout';
 import { GlobalSearch, GlobalSearchTrigger } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
@@ -72,6 +73,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLElement | null>(null);
+  // M28-T03 (ADR-0025): the single point where the URL's scope becomes the
+  // store's. One direction only — anything that *changes* scope writes the
+  // URL and lets it flow back through here. AppShell is the right host: it is
+  // the only component mounted for the whole session, and it already holds
+  // the app-wide event subscription that depends on scope.
+  useScopeSync();
+  const scopedTo = useScopedTo();
+
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
 
@@ -177,7 +186,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     return (
                       <Link
                         key={item.name}
-                        to={item.path}
+                        to={scopedTo(item.path)}
                         // On the click as well as on the path change: tapping the link
                         // for the page you are already on navigates nowhere, so the
                         // pathname effect never fires and the drawer stayed open over

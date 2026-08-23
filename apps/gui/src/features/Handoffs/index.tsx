@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useScopedTo } from '../../hooks/useScope';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { useNavigate } from 'react-router-dom';
@@ -58,6 +59,7 @@ function HandoffRow({ entry, onSelect }: { entry: HandoffEntry; onSelect: (taskI
  * task detail view already covers browsing a single task's own notes.
  */
 export function HandoffsScreen() {
+  const scopedTo = useScopedTo();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const navigate = useNavigate();
@@ -108,7 +110,7 @@ export function HandoffsScreen() {
             rowHeight={ROW_HEIGHT}
             className="max-h-[70vh] overflow-y-auto"
             renderRow={(entry) => (
-              <HandoffRow key={entry.note.id} entry={entry} onSelect={(taskId) => navigate(`/tasks/${taskId}`)} />
+              <HandoffRow key={entry.note.id} entry={entry} onSelect={(taskId) => navigate(scopedTo(`/tasks/${taskId}`))} />
             )}
           />
           {hasNextPage && (

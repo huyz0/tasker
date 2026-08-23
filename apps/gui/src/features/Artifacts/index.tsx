@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useScopedTo } from '../../hooks/useScope';
 import { useLayoutStore } from '../../store/layout';
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +31,7 @@ export function ArtifactsBrowser() {
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const scopedTo = useScopedTo();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Artifacts'), [setActivePageTitle]);
 
@@ -60,19 +62,30 @@ export function ArtifactsBrowser() {
   // whatever folder/artifact id was selected under the old one, resolved
   // against whatever happened to still be in the query cache.
   //
-  // Skipped on the very first run: a deep link (`/artifacts/:artifactId`)
-  // has to survive mounting into whatever the active project/org happens to
-  // already be, not get redirected away from before it has ever rendered.
-  const isFirstRender = useRef(true);
+  // Skipped while the scope is still arriving: a deep link
+  // (`/artifacts/:artifactId`) has to survive mounting into whatever the
+  // active project/org turns out to be, not get redirected away before it has
+  // ever rendered.
+  //
+  // Guarding only the first render was not enough, which is the bug M28-T06
+  // replaces here — `Tasks` abandoned that guard in M23 for the same reason.
+  // On a hard reload the store starts empty and hydrates a tick later, so the
+  // scope changes from '' to the real project *after* the first-render flag
+  // has been spent: the effect fired, saw an artifact open, and threw the deep
+  // link away. Comparing against the previous scope tells the two apart —
+  // hydrating from "nothing selected yet" is not a switch, moving between two
+  // projects is.
+  const previousScope = useRef<string | null>(null);
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
+    const scope = `${activeOrgId}/${activeProjectId}`;
+    const previous = previousScope.current;
+    previousScope.current = scope;
+    if (previous === null || !previous.split('/')[1] || previous === scope) return;
+
     setSelectedFolderId(null);
     setExpandedFolderIds(new Set());
     setIsEditingContent(false);
-    if (artifactId) navigate('/artifacts');
+    if (artifactId) navigate(scopedTo('/artifacts'));
     // Deliberately only activeProjectId/activeOrgId: this resets the
     // selection when the *scope* changes, not on every ordinary navigation
     // within it (which would fight the very selection the user just made).
@@ -175,7 +188,7 @@ export function ArtifactsBrowser() {
       onSuccess: () => {
         if (!wasOpen) return;
         setSelectedFolderId(null);
-        if (artifactId) navigate('/artifacts');
+        if (artifactId) navigate(scopedTo('/artifacts'));
       },
     });
   };
@@ -212,7 +225,7 @@ export function ArtifactsBrowser() {
     const wasOpen = artifactId === targetArtifactId;
     archiveArtifactMutation.mutate(targetArtifactId, {
       onSuccess: () => {
-        if (wasOpen) navigate('/artifacts');
+        if (wasOpen) navigate(scopedTo('/artifacts'));
       },
     });
   };
@@ -281,7 +294,7 @@ export function ArtifactsBrowser() {
 
   const selectArtifact = (artifact: { id: string }) => {
     setIsEditingContent(false);
-    navigate(`/artifacts/${artifact.id}`);
+    navigate(scopedTo(`/artifacts/${artifact.id}`));
   };
 
   const toggleFolder = (folderId: string) => {
@@ -297,7 +310,7 @@ export function ArtifactsBrowser() {
     setAddingSubfolderTo(null);
     // Collapsing the folder holding the open artifact closes the artifact too;
     // otherwise the deep-link lookup would immediately re-expand the folder.
-    if (collapsing && artifactId) navigate('/artifacts');
+    if (collapsing && artifactId) navigate(scopedTo('/artifacts'));
   };
 
   const rootFolders = foldersData?.filter(f => !f.parentId) || [];
@@ -337,7 +350,9 @@ export function ArtifactsBrowser() {
       cursor = cursor.parentId ? byId.get(cursor.parentId) : null;
     }
     return [
-      { label: 'Artifacts', to: '/artifacts' },
+      // Scoped, for the reason `Tasks`' trail is: a bare path here sends the
+      // explorer to whichever project the switcher auto-selects (M28-T08).
+      { label: 'Artifacts', to: scopedTo('/artifacts') },
       ...path.map((f: any) => ({ label: f.name })),
       { label: selectedArtifact.name },
     ];

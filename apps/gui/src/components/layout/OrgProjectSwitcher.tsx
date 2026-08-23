@@ -5,6 +5,7 @@ import { useDebounce } from 'use-debounce';
 import { ChevronsUpDown } from 'lucide-react';
 import { transport } from '../../lib/connectTransport';
 import { OrgService, ProjectService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { useSetScope } from '../../hooks/useScope';
 import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../ui/ListState';
 
@@ -168,10 +169,9 @@ function SearchSelect({
 }
 
 export function OrgProjectSwitcher() {
+  const setScope = useSetScope();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
-  const setActiveOrgId = useLayoutStore((s) => s.setActiveOrgId);
-  const setActiveProjectId = useLayoutStore((s) => s.setActiveProjectId);
 
   const [orgLabel, setOrgLabel] = useState('');
   const [projectLabel, setProjectLabel] = useState('');
@@ -208,7 +208,9 @@ export function OrgProjectSwitcher() {
   useEffect(() => {
     if (orgs.length === 0) return;
     if (!activeOrgId) {
-      setActiveOrgId(orgs[0].id);
+      // `replace`: a scope the user never chose should not leave the
+      // scopeless URL in history for Back to return to (M28-T03).
+      setScope({ orgId: orgs[0].id }, { replace: true });
       setOrgLabel(orgs[0].name);
       return;
     }
@@ -222,7 +224,7 @@ export function OrgProjectSwitcher() {
     // that don't happen to include it.
     const found = orgs.find((o: any) => o.id === activeOrgId);
     if (found) setOrgLabel(found.name);
-  }, [orgs, activeOrgId, setActiveOrgId]);
+  }, [orgs, activeOrgId, setScope]);
 
   useEffect(() => {
     if (projects.length === 0) return;
@@ -233,7 +235,7 @@ export function OrgProjectSwitcher() {
     // user just made. Picking project 1234 of 2000 put the switcher back on
     // project 0999 (M06-T09).
     if (!activeProjectId) {
-      setActiveProjectId(projects[0].id);
+      setScope({ projectId: projects[0].id }, { replace: true });
       setProjectLabel(projects[0].name);
       return;
     }
@@ -274,11 +276,11 @@ export function OrgProjectSwitcher() {
         search={orgSearch}
         onSearch={setOrgSearch}
         onPick={(choice) => {
-          setActiveOrgId(choice.id);
-          setOrgLabel(choice.label);
+          // M28-T03: writes the URL; the store follows via useScopeSync.
           // The projects of the old organization are not the projects of this
           // one, and keeping the stale id would leave every list empty.
-          setActiveProjectId('');
+          setScope({ orgId: choice.id, projectId: '' });
+          setOrgLabel(choice.label);
           setProjectLabel('');
         }}
         emptyMessage={orgsQuery.isLoading ? 'Loading organizations…' : 'No organizations'}
@@ -294,7 +296,7 @@ export function OrgProjectSwitcher() {
         onRetry={() => projectsQuery.refetch()}
         search={projectSearch}
         onSearch={setProjectSearch}
-        onPick={(choice) => { setActiveProjectId(choice.id); setProjectLabel(choice.label); }}
+        onPick={(choice) => { setScope({ projectId: choice.id }); setProjectLabel(choice.label); }}
         emptyMessage="No projects"
       />
     </div>

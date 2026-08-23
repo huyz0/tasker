@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
 import { TaskTypeService, ProjectTemplateService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore } from '../../store/layout';
+import { useScopedTo } from '../../hooks/useScope';
 import { ListState } from '../../components/ui/ListState';
+import { TaskTypeHeader } from './TaskTypeHeader';
 
 const typeClient = createClient(TaskTypeService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
@@ -22,22 +25,37 @@ export function TaskTypesEditor() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const scopedTo = useScopedTo();
+  // The open type is the route, not local state (M28-T05): `detail` fetches by
+  // id, so `/task-types/:typeId` resolves without the list.
+  const { typeId } = useParams<{ typeId?: string }>();
+  const selectedId = typeId ?? null;
   const [newStatus, setNewStatus] = useState('');
   const [newType, setNewType] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
 
   useEffect(() => { setActivePageTitle('Task Types'); }, [setActivePageTitle]);
 
-  // M19-T05: switching the active org left `selectedId` pointing at the
-  // previous org's task type - `detail` (keyed only on `selectedId`) kept
-  // querying it under the new org's identity, either failing authorization
-  // or, worse, briefly showing one org's type tree as if it belonged to
-  // another while the type list itself had already repainted for the switch.
-  useEffect(() => { setSelectedId(null); }, [activeOrgId]);
+  // M19-T05: switching the active org left `selectedId` pointing at the previous
+  // org's task type - `detail` (keyed only on `selectedId`) kept querying it under
+  // the new org's identity, either failing authorization or, worse, briefly showing
+  // one org's type tree as if it belonged to another. With the id in the URL that
+  // correction has to navigate, not just forget a variable — and it must tell a real
+  // switch from the store hydrating out of '' a tick after mount, or every deep link
+  // would bounce back to the list (the M23 bug in a new place). Same discriminator
+  // `Tasks` uses: an empty previous org is hydration. `replace` because the entry it
+  // leaves is the cross-org state this exists to remove, and the one behind it carries
+  // the old org in its own query string.
+  const previousOrgId = useRef('');
+  useEffect(() => {
+    const previous = previousOrgId.current;
+    previousOrgId.current = activeOrgId;
+    if (previous && previous !== activeOrgId && typeId) {
+      navigate(scopedTo('/task-types'), { replace: true });
+    }
+  }, [activeOrgId, typeId, navigate, scopedTo]);
 
   const typesQuery = useQuery({
     queryKey: ['taskTypes', activeOrgId],
@@ -64,18 +82,7 @@ export function TaskTypesEditor() {
     onSuccess: (res: any) => {
       setNewType('');
       queryClient.invalidateQueries({ queryKey: ['taskTypes', activeOrgId] });
-      setSelectedId(res.taskType.id);
-    },
-  });
-
-  // M14-T09: rename lives here now, next to the statuses/transitions it
-  // renames alongside — the Projects screen used to offer a second,
-  // partial copy of this same edit with no visibility into either.
-  const updateType = useMutation({
-    mutationFn: async (name: string) => await typeClient.updateTaskType({ id: selectedId!, name }),
-    onSuccess: () => {
-      setIsRenaming(false);
-      queryClient.invalidateQueries({ queryKey: ['taskTypes', activeOrgId] });
+      navigate(scopedTo(`/task-types/${res.taskType.id}`));
     },
   });
 
@@ -113,10 +120,7 @@ export function TaskTypesEditor() {
   const transitions = detail.data?.transitions ?? [];
   const nameOf = (id: string) => statuses.find((s: any) => s.id === id)?.name ?? id;
 
-  const selectType = (id: string) => {
-    setSelectedId(id);
-    setIsRenaming(false);
-  };
+  const selectType = (id: string) => navigate(scopedTo(`/task-types/${id}`));
 
   const move = (index: number, delta: number) => {
     const ids = statuses.map((s: any) => s.id);
@@ -199,42 +203,7 @@ export function TaskTypesEditor() {
             />
           ) : (
             <div className="flex flex-col gap-8">
-              <section>
-                {isRenaming ? (
-                  <form
-                    className="flex items-center gap-2"
-                    onSubmit={(e) => { e.preventDefault(); if (renameValue.trim()) updateType.mutate(renameValue.trim()); }}
-                  >
-                    <label className="sr-only" htmlFor="rename-task-type">Task type name</label>
-                    <input
-                      id="rename-task-type"
-                      autoFocus
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      className="text-lg font-semibold tracking-tight bg-transparent border-b outline-none focus:border-primary"
-                    />
-                    <button type="submit" disabled={!renameValue.trim() || updateType.isPending} className="text-sm text-primary disabled:opacity-50">
-                      {updateType.isPending ? 'Saving…' : 'Save'}
-                    </button>
-                    <button type="button" onClick={() => setIsRenaming(false)} className="text-sm text-muted-foreground hover:text-foreground">
-                      Cancel
-                    </button>
-                  </form>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-semibold tracking-tight">{selectedType?.name}</h2>
-                    <button
-                      onClick={() => { setIsRenaming(true); setRenameValue(selectedType?.name ?? ''); }}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      Rename
-                    </button>
-                  </div>
-                )}
-                {updateType.isError && (
-                  <p className="text-sm text-destructive mt-1">Failed to rename: {(updateType.error as Error).message}</p>
-                )}
-              </section>
+              <TaskTypeHeader key={selectedId} typeId={selectedId} name={selectedType?.name ?? ''} />
 
               {/* Statuses and transitions side by side on anything wide enough -
                   they're two related but distinct lists, and stacking them full-width
@@ -249,7 +218,7 @@ export function TaskTypesEditor() {
                       This type has no statuses, so its tasks fall back to todo / in progress / done.
                     </p>
                   ) : (
-                    <ol className="flex flex-col gap-1">
+                    <ol aria-label="Statuses" className="flex flex-col gap-1">
                       {statuses.map((s: any, i: number) => (
                         <li key={s.id} className="flex items-center gap-2 text-sm">
                           <span className="w-6 text-muted-foreground">{i + 1}.</span>

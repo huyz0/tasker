@@ -15,6 +15,59 @@ blocker: null
 
 ## Now
 
+**2026-08-23 — M28 (Addressable Screens) complete: 8/8 tasks, 8/8 exit
+criteria.** A URL is now portable: it carries the scope it was taken in and
+reopens the same thing for whoever pastes it, and every deep-linkable detail
+view shows a path back.
+
+Before this, three of fifteen screens put what you were looking at in the
+URL, and none of them recorded *which project* — scope lived in a store that
+was neither persisted nor addressable, so a task link saved from project A
+could open under project B. Now scope travels as `?org=…&project=…`
+(ADR-0025), Bin / Organizations / Memory / Task Types keep their view in the
+URL too, and breadcrumbs render on all four detail views.
+
+**Things a next session should know that the code will not say:**
+
+1. **The URL is the source of truth; the store is the read surface.** Twenty
+   component sites still read `activeOrgId`/`activeProjectId` from the layout
+   store and were deliberately untouched — rewriting them would have changed
+   every query key in the app for no user-visible gain. `useScopeSync` in
+   `AppShell` is the single place the two meet, and it flows one way only.
+   Anything that *changes* scope writes the URL.
+2. **That one-tick delay is load-bearing, not an inefficiency.** `Tasks`'
+   `previousScope` guard tells hydration from a real project switch by the
+   previous project being empty — which is only true while the store starts
+   empty and the URL fills it after the first render. Making the sync
+   synchronous would silently reopen the M23 bug (reloading a task URL drops
+   you to the list). `useScopeSync`'s own test pins this so the "optimisation"
+   fails loudly.
+3. **Two kinds of link, and the difference matters.** Leaving a screen
+   carries scope only (`useScopedTo`). Moving *within* a screen carries the
+   whole query string, because the screen's own parameters — Memory's
+   `?scope=`, Bin's `?tab=` — are not scope and `useScopedTo` deliberately
+   drops them. Getting this wrong is silent: M28-T05 found Memory flipping
+   its own tier back on every belief click, and M28-T08 found breadcrumb
+   ancestors landing you in a different project.
+4. **`gui:e2e` is `type: 'run'` and therefore NOT in `moon check --all`.**
+   T03 and T04 each broke an existing browser spec while every local gate
+   stayed green. If you change routing or URLs, run `bunx playwright test`
+   yourself — and locally use `--workers=1`, since the default fans out into
+   dynamic-import and renderer crashes on this machine.
+5. **No breadcrumb names an organization**, because there is no
+   `getOrg`-by-id RPC — an org's name is not resolvable from an id anywhere
+   in the GUI. Adding one is a contract change. `hooks/useScopeLabels.ts`
+   carries the reasoning.
+6. **Deliberately still local, with reasons in the milestone's Out of
+   Scope**: Teams' and Roles' selection (both find the row inside the loaded
+   page, so a deep link past page one resolves to nothing — needs
+   `getTeam`/`getRole` by id); Artifacts' folder selection (derived from the
+   artifact on a deep link, so it needs a write-back on resolve, and its
+   folder crumbs stay unlinked until then); all inline-edit state (paired
+   with unsaved drafts the URL would not carry); and scope-aware Global
+   Search (results are org-scoped and may name entities in another project,
+   which the backend does not report).
+
 **2026-08-23 — M27 (Documentation Truth) complete: 6/6 tasks, 6/6 exit
 criteria.** The three documents `AGENTS.md` tells every session to trust
 described a product roughly eight milestones behind the code. They now
@@ -1558,8 +1611,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M25 | Proactive Alerting for Stalled Claims | done   | —          | 6     | 6    |
 | M26 | Gate Integrity                  | done   | —          | 6     | 6    |
 | M27 | Documentation Truth             | done   | —          | 6     | 6    |
+| M28 | Addressable Screens             | done   | —          | 8     | 8    |
 
-**Total: 220 tasks across 21 milestones — 219 done.** Every milestone is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have).
+**Total: 228 tasks across 22 milestones — 227 done.** Every milestone is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have).
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;

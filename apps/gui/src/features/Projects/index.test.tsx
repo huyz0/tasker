@@ -1,6 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProjectService, ProjectTemplateService, TaskService, RoleService, OrgService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 
@@ -26,18 +25,17 @@ vi.mock('../../store/layout', () => ({
 }));
 
 import { ProjectsWizard } from './index';
+import { renderScoped } from '../../test/renderScoped';
 import { confirmAction, cancelAction } from '../../test/confirm';
 
 function page() {
   return <ProjectsWizard />;
 }
 
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const utils = render(
-    <QueryClientProvider client={queryClient}>{page()}</QueryClientProvider>
-  );
-  return { ...utils, queryClient };
+// M28-T03: archiving the active project now clears it from the URL, so this
+// screen needs a router.
+function renderPage(initialEntry = '/projects?org=org-1&project=proj-1') {
+  return renderScoped(page(), { paths: ['/projects'], initialEntry });
 }
 
 /** Registers ListTemplates, tracking every request it receives. */
@@ -182,13 +180,14 @@ describe('ProjectsWizard', () => {
     withTemplates([]);
     withProjects([{ id: 'proj-1', name: 'Active Project' }]);
     mockRpc(ProjectService, 'ArchiveProject', {});
-    renderPage();
+    const { location } = renderPage();
 
     await waitFor(() => expect(screen.getByText('Active Project')).toBeDefined());
     fireEvent.click(screen.getByText('Delete'));
     await confirmAction();
 
-    await waitFor(() => expect(mockSetActiveProjectId).toHaveBeenCalledWith(''));
+    // M28-T03: cleared from the URL — an absent param, not an empty one.
+    await waitFor(() => expect(location.search).not.toContain('project='));
   });
 
   it('leaves activeProjectId untouched when archiving a different project', async () => {
@@ -223,7 +222,7 @@ describe('ProjectsWizard', () => {
     expect(screen.getByPlaceholderText('Template name')).toBeInTheDocument();
 
     mockActiveOrgId = 'org-2';
-    rerender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{page()}</QueryClientProvider>);
+    rerender();
 
     await waitFor(() => expect(screen.getByPlaceholderText('New project name')).toHaveValue(''));
     expect(screen.queryByPlaceholderText('Template name')).toBeNull();

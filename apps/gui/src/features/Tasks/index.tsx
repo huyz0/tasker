@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useScopedTo } from '../../hooks/useScope';
+import { useScopeLabels } from '../../hooks/useScopeLabels';
 import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
 import { useQuery, useQueries, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { TaskService, RepositoryService, TaskTypeService, TaskNoteService, ProjectService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { TaskService, RepositoryService, TaskTypeService, TaskNoteService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
@@ -26,7 +28,6 @@ const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
 const taskTypeClient = createClient(TaskTypeService, transport);
 const taskNoteClient = createClient(TaskNoteService, transport);
-const projectClient = createClient(ProjectService, transport);
 
 
 function TaskNotesPanel({ taskId }: { taskId: string }) {
@@ -158,6 +159,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
  */
 function HandoffsSummary({ taskId }: { taskId: string }) {
   const navigate = useNavigate();
+  const scopedTo = useScopedTo();
   const queryKey = ['taskNotes', taskId];
   const { data: notesData } = useQuery({
     queryKey,
@@ -187,7 +189,7 @@ function HandoffsSummary({ taskId }: { taskId: string }) {
         <h3 className="text-sm font-semibold tracking-tight">
           Handoffs <span className="text-muted-foreground font-normal">({handoffs.length})</span>
         </h3>
-        <button onClick={() => navigate('/handoffs')} className="text-xs text-primary hover:underline">
+        <button onClick={() => navigate(scopedTo('/handoffs'))} className="text-xs text-primary hover:underline">
           View all
         </button>
       </div>
@@ -407,6 +409,7 @@ export function TasksWorkbench() {
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const scopedTo = useScopedTo();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Tasks Workbench'), [setActivePageTitle]);
 
@@ -415,7 +418,7 @@ export function TasksWorkbench() {
   // the same detail view instead of an empty board.
   const { taskId: expandedTaskId = null } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
-  const setExpandedTaskId = (id: string | null) => navigate(id ? `/tasks/${id}` : '/tasks');
+  const setExpandedTaskId = (id: string | null) => navigate(scopedTo(id ? `/tasks/${id}` : '/tasks'));
 
   const [addingToColumnId, setAddingToColumnId] = useState<string | null>(null);
   const [isEditingTask, setIsEditingTask] = useState(false);
@@ -497,14 +500,10 @@ export function TasksWorkbench() {
   });
   const expandedTask = expandedTaskQuery.data ?? null;
 
-  // The project's own name, for the breadcrumb. `getProject` is the right call
-  // when all you hold is an id — the alternative is listing every project to
-  // find one.
-  const { data: projectData } = useQuery({
-    queryKey: ['project', activeProjectId],
-    enabled: !!activeProjectId,
-    queryFn: async () => (await projectClient.getProject({ id: activeProjectId })).project,
-  });
+  // The project's own name, for the breadcrumb. Resolved by `useScopeLabels`,
+  // which is where this query moved (M28-T07) once Memory needed the same
+  // name for the same reason — one resolver, one fallback, one cache entry.
+  const { projectName } = useScopeLabels();
 
   useEffect(() => setIsEditingTask(false), [expandedTaskId]);
 
@@ -538,7 +537,7 @@ export function TasksWorkbench() {
     // Nothing to compare against yet, or the scope was still empty — this is
     // hydration, not navigation.
     if (previous === null || !previous.split('/')[1]) return;
-    if (previous !== scope && expandedTaskId) navigate('/tasks');
+    if (previous !== scope && expandedTaskId) navigate(scopedTo('/tasks'));
     // Deliberately only activeProjectId/activeOrgId: this resets the panel
     // when the *scope* changes, not on every ordinary navigation within it
     // (which would fight the very task the user just opened).
@@ -976,8 +975,14 @@ export function TasksWorkbench() {
            <Breadcrumbs
              className="px-4 pt-3 shrink-0"
              items={[
-               { label: projectData?.name ?? 'Project', to: '/projects' },
-               { label: 'Tasks', to: '/tasks' },
+               { label: projectName, to: scopedTo('/projects') },
+               // `scopedTo`, not a bare '/tasks': a crumb is an in-app link
+               // like any other, and an unscoped one drops you back to the
+               // board of whichever project the switcher auto-selects — the
+               // exact "a task link saved from project A opens under project
+               // B" failure ADR-0025 exists to remove, arrived at from the
+               // other direction. Caught by addressable.spec.ts (M28-T08).
+               { label: 'Tasks', to: scopedTo('/tasks') },
                { label: expandedTask.displayId || expandedTask.title },
              ]}
            />

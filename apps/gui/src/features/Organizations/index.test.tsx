@@ -1,9 +1,11 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OrgService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 import { OrganizationsDashboard } from './index';
+import { renderScoped } from '../../test/renderScoped';
+import { useScopeSync } from '../../hooks/useScope';
+import { useLayoutStore } from '../../store/layout';
 import { confirmAction, cancelAction } from '../../test/confirm';
 
 // The audit panel is a sibling tab with its own query; these tests are about
@@ -14,23 +16,17 @@ vi.mock('./AuditTrail', () => ({
   AuditTrail: ({ orgId }: { orgId: string }) => <div data-testid="audit-trail">audit for {orgId}</div>,
 }));
 
-let mockActiveOrgId = 'org-1';
-const mockSetActiveOrgId = vi.fn((id: string) => { mockActiveOrgId = id; });
-vi.mock('../../store/layout', () => ({
-  useLayoutStore: vi.fn((selector) => selector({
-    setActivePageTitle: vi.fn(),
-    get activeOrgId() { return mockActiveOrgId; },
-    setActiveOrgId: mockSetActiveOrgId,
-  })),
-}));
+// M28-T03: scope comes from the URL now, so this renders the real store with
+// the real URL→store sync rather than a frozen mock. Without the sync the
+// screen never learns that its correction landed, and re-corrects forever —
+// which is exactly the loop this arrangement is here to keep honest.
+function ScopeSync() {
+  useScopeSync();
+  return null;
+}
 
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <OrganizationsDashboard />
-    </QueryClientProvider>
-  );
+function renderPage(initialEntry = '/organizations?org=org-1') {
+  return renderScoped(<><ScopeSync /><OrganizationsDashboard /></>, { paths: ['/organizations'], initialEntry });
 }
 
 /** Registers one RPC and returns an array of every request it receives. */
@@ -45,8 +41,7 @@ function withRpc(method: string, response: object | ((body: any) => object)) {
 
 describe('OrganizationsDashboard', () => {
   beforeEach(() => {
-    mockActiveOrgId = 'org-1';
-    mockSetActiveOrgId.mockReset();
+    useLayoutStore.setState({ activeOrgId: '', activeProjectId: '' });
     withRpc('ListInvitations', { invitations: [] });
     withRpc('InviteUser', { success: true });
     withRpc('RevokeInvitation', { success: true });
@@ -86,33 +81,34 @@ describe('OrganizationsDashboard', () => {
     withRpc('ListOrgs', {
       organizations: [{ id: 'org-real-1', name: 'Real Org', slug: 'real-org' }],
     });
-    renderPage();
+    const { location } = renderPage();
 
-    await waitFor(() => expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-real-1'));
+    // M28-T03: the correction lands in the URL, which is the scope's home.
+    await waitFor(() => expect(location.search).toContain('org=org-real-1'));
   });
 
   it('does not re-select when the current org already exists in the list', async () => {
-    mockActiveOrgId = 'org-real-1';
     withRpc('ListOrgs', {
       organizations: [{ id: 'org-real-1', name: 'Real Org', slug: 'real-org' }],
     });
-    renderPage();
+    const { location } = renderPage('/organizations?org=org-real-1');
 
     await waitFor(() => expect(screen.getByText('Real Org')).toBeDefined());
-    expect(mockSetActiveOrgId).not.toHaveBeenCalled();
+    // Already pointing at a real org, so nothing corrects it.
+    expect(location.search).toContain('org=org-real-1');
   });
 
   it('creates a new organization via the form and selects it', async () => {
     withRpc('ListOrgs', { organizations: [] });
     const requests = withRpc('SeedOrg', { organization: { id: 'org-new', name: 'New Co', slug: 'new-co' } });
-    renderPage();
+    const { location } = renderPage();
 
     fireEvent.click(screen.getByRole('button', { name: 'New Organization' }));
     fireEvent.change(screen.getByPlaceholderText('Organization name'), { target: { value: 'New Co' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     await waitFor(() => expect(requests).toContainEqual({ name: 'New Co', slug: 'new-co' }));
-    await waitFor(() => expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-new'));
+    await waitFor(() => expect(location.search).toContain('org=org-new'));
   });
 
   it('shows an error message when organization creation fails', async () => {
@@ -157,12 +153,11 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('loads the next page of organizations when Load More is clicked', async () => {
-    mockActiveOrgId = 'org-1';
     const requests = withRpc('ListOrgs', (body: { page?: { cursor?: string } }) =>
       body.page?.cursor
         ? { organizations: [{ id: 'org-2', name: 'Page Two Org', slug: 'page-two' }], page: {} }
         : { organizations: [{ id: 'org-1', name: 'Page One Org', slug: 'page-one' }], page: { nextCursor: 'cursor-2' } });
-    renderPage();
+    renderPage('/organizations?org=org-1');
 
     await waitFor(() => expect(screen.getByText('Page One Org')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'Load More' }));
@@ -173,12 +168,11 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('auto-loads later pages so a root org past the first page is selectable as a new org\'s parent', async () => {
-    mockActiveOrgId = 'org-1';
     withRpc('ListOrgs', (body: { page?: { cursor?: string } }) =>
       body.page?.cursor
         ? { organizations: [{ id: 'org-2', name: 'Page Two Root', slug: 'page-two' }], page: {} }
         : { organizations: [{ id: 'org-1', name: 'Page One Root', slug: 'page-one' }], page: { nextCursor: 'cursor-2' } });
-    renderPage();
+    renderPage('/organizations?org=org-1');
 
     await waitFor(() => expect(screen.getByText('Page One Root')).toBeDefined());
     fireEvent.click(screen.getByRole('button', { name: 'New Organization' }));
@@ -188,11 +182,10 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('shows and saves bin retention for the active org', async () => {
-    mockActiveOrgId = 'org-1';
     withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Active Org', slug: 'active-org', binRetentionDays: 45 }] });
     const requests = withRpc('SetOrgRetentionDays', { success: true });
 
-    renderPage();
+    renderPage('/organizations?org=org-1');
 
     const input = await screen.findByDisplayValue('45');
     fireEvent.change(input, { target: { value: '10' } });
@@ -202,11 +195,10 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('shows a pending label while saving retention', async () => {
-    mockActiveOrgId = 'org-1';
     withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Active Org', slug: 'active-org', binRetentionDays: 45 }] });
     const pending = mockRpcPending(OrgService, 'SetOrgRetentionDays');
 
-    renderPage();
+    renderPage('/organizations?org=org-1');
 
     const input = await screen.findByDisplayValue('45');
     fireEvent.change(input, { target: { value: '10' } });
@@ -217,11 +209,10 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('shows an error message when updating retention fails', async () => {
-    mockActiveOrgId = 'org-1';
     withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Active Org', slug: 'active-org' }] });
     mockRpcError(OrgService, 'SetOrgRetentionDays', 'permission_denied', 'not an admin');
 
-    renderPage();
+    renderPage('/organizations?org=org-1');
 
     const input = await screen.findByDisplayValue('30');
     fireEvent.change(input, { target: { value: '15' } });
@@ -231,11 +222,10 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('shows validation feedback instead of silently no-opping on an invalid retention value', async () => {
-    mockActiveOrgId = 'org-1';
     withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Active Org', slug: 'active-org', binRetentionDays: 30 }] });
     const requests = withRpc('SetOrgRetentionDays', {});
 
-    renderPage();
+    renderPage('/organizations?org=org-1');
 
     const input = await screen.findByDisplayValue('30');
     fireEvent.change(input, { target: { value: '0' } });
@@ -356,14 +346,23 @@ describe('OrganizationsDashboard', () => {
         { id: 'org-other', name: 'Other Co', slug: 'other-co' },
       ],
     });
-    renderPage();
+    // Start on an org that exists: this test is about choosing one, and the
+    // snap-to-first correction would otherwise be racing the click.
+    const { location } = renderPage('/organizations?org=org-root');
 
     await waitFor(() => expect(screen.getByText('Other Co')).toBeDefined());
     fireEvent.click(screen.getByText('Other Co'));
-    expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-other');
+    // M28-T03: selecting an org writes the URL, and clears the project with it.
+    await waitFor(() => expect(location.search).toContain('org=org-other'));
 
-    fireEvent.keyDown(screen.getByText('Root Co'), { key: 'Enter' });
-    expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-root');
+    // The keyboard half is a *structural* guarantee, not an event one: the
+    // name is a real <button>, so a browser fires click on Enter and Space
+    // natively. jsdom does not synthesise that, so firing keyDown here would
+    // assert nothing — which is precisely what the previous version of this
+    // test did, and it passed only because `toHaveBeenCalledWith` matches any
+    // historical call and the mount-time scope correction had already called
+    // the setter with this very id.
+    expect(screen.getByText('Root Co').tagName).toBe('BUTTON');
   });
 
   it('falls back to a generated slug when the org name has no alphanumeric characters', async () => {
@@ -393,21 +392,21 @@ describe('OrganizationsDashboard', () => {
   });
 
   it('does not select an org when an unrelated key is pressed', async () => {
-    mockActiveOrgId = 'org-root';
     withRpc('ListOrgs', {
       organizations: [
         { id: 'org-root', name: 'Root Co', slug: 'root-co' },
         { id: 'org-child', name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' },
       ],
     });
-    renderPage();
+    const { location } = renderPage('/organizations?org=org-root');
 
     await waitFor(() => expect(screen.getByText('Child Co')).toBeDefined());
-    mockSetActiveOrgId.mockClear();
+    const before = location.search;
     fireEvent.keyDown(screen.getByText('Root Co'), { key: 'Tab' });
     fireEvent.keyDown(screen.getByText('Child Co'), { key: 'Tab' });
 
-    expect(mockSetActiveOrgId).not.toHaveBeenCalled();
+    // Tab moves focus; it does not choose.
+    expect(location.search).toBe(before);
   });
 
   it('does not create an organization when the form is submitted with a blank name', async () => {
@@ -431,18 +430,18 @@ describe('OrganizationsDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     await waitFor(() => expect(requests.length).toBeGreaterThan(0));
-    expect(mockSetActiveOrgId).not.toHaveBeenCalled();
+    // The create failed, so nothing became active.
+    expect(location.search).not.toContain('org=');
   });
 
   it('highlights the active root and child org with an "Active" badge', async () => {
-    mockActiveOrgId = 'org-child';
     withRpc('ListOrgs', {
       organizations: [
         { id: 'org-root', name: 'Root Co', slug: 'root-co' },
         { id: 'org-child', name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' },
       ],
     });
-    renderPage();
+    renderPage('/organizations?org=org-child');
 
     await waitFor(() => expect(screen.getAllByText('Active')).toHaveLength(1));
   });
@@ -454,7 +453,7 @@ describe('OrganizationsDashboard', () => {
         { id: 'org-child', name: 'Child Co', slug: 'child-co', parentOrgId: 'org-root' },
       ],
     });
-    renderPage();
+    const { location } = renderPage();
 
     // The row used to be `role="button"` with Expand/Edit/Delete buttons inside
     // it, which is `nested-interactive` and had undefined activation behaviour.
@@ -462,7 +461,8 @@ describe('OrganizationsDashboard', () => {
     // rather than a hand-written keydown handler (M06-T14).
     const child = await screen.findByRole('button', { name: 'Child Co' });
     fireEvent.click(child);
-    expect(mockSetActiveOrgId).toHaveBeenCalledWith('org-child');
+    // M28-T03: selecting an org writes the URL, and clears the project with it.
+    await waitFor(() => expect(location.search).toContain('org=org-child'));
   });
 
   it('does not nest the row action inside another button', async () => {
@@ -947,5 +947,41 @@ describe('OrganizationsDashboard', () => {
     fireEvent.change(screen.getByLabelText('Role for Alice'), { target: { value: 'viewer' } });
 
     await waitFor(() => expect(screen.getByText(/Failed to update role/)).toBeInTheDocument());
+  });
+
+  // M28-T05. The section was `useState`, so a reload dropped whoever was
+  // reading the audit trail back onto the org tree.
+  describe('the open section is in the URL', () => {
+    it('survives a reload of the URL the screen produced', async () => {
+      withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
+
+      const first = renderPage();
+      await waitFor(() => expect(screen.getByText('Root Co')).toBeInTheDocument());
+      fireEvent.mouseDown(screen.getByText('Audit Trail'), { button: 0 });
+      await waitFor(() => expect(screen.getByTestId('audit-trail')).toBeInTheDocument());
+
+      expect(first.location.search).toContain('section=audit');
+      // The section rides alongside scope rather than replacing it.
+      expect(first.location.search).toContain('org=org-1');
+
+      first.unmount();
+      renderPage(first.location.url);
+
+      await waitFor(() => expect(screen.getByTestId('audit-trail')).toBeInTheDocument());
+      expect(screen.queryByText('Your Organizations')).toBeNull();
+    });
+
+    it('falls back to Organizations when the section is absent or unrecognised', async () => {
+      withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
+
+      const absent = renderPage('/organizations?org=org-1');
+      await waitFor(() => expect(screen.getByText('Your Organizations')).toBeInTheDocument());
+      absent.unmount();
+
+      // Radix renders no panel at all for a value none of its triggers own, so
+      // an unrecognised section would be a blank screen rather than a default.
+      renderPage('/organizations?org=org-1&section=nonsense');
+      await waitFor(() => expect(screen.getByText('Your Organizations')).toBeInTheDocument());
+    });
   });
 });

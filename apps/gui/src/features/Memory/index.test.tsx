@@ -1,12 +1,12 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { MemoryService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { MemoryService, ProjectService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { MemoryExplorer } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
 import { expectNoA11yViolations } from '../../test/a11y';
+import { useNavigate } from 'react-router-dom';
+import { renderScoped } from '../../test/renderScoped';
 
 let mockActiveOrgId = 'org-1';
 let mockActiveProjectId = 'proj-1';
@@ -30,18 +30,22 @@ const BELIEFS = [
   },
 ];
 
+/**
+ * The browser's Back button, as a thing a test can click. `renderScoped` uses
+ * a `MemoryRouter`, whose history is reachable only from inside the tree —
+ * `ui-testing-standard` rules out reading it off the component, so this walks
+ * it the way a person does.
+ */
+function BackProbe() {
+  const navigate = useNavigate();
+  return <button onClick={() => navigate(-1)}>Go back</button>;
+}
+
 function renderPage(initialEntry = '/memory') {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialEntry]}>
-        <Routes>
-          <Route path="/memory" element={<MemoryExplorer />} />
-          <Route path="/memory/:beliefId" element={<MemoryExplorer />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
-  );
+  return renderScoped(<><MemoryExplorer /><BackProbe /></>, {
+    paths: ['/memory', '/memory/:beliefId'],
+    initialEntry,
+  });
 }
 
 async function searchFor(text: string) {
@@ -68,6 +72,10 @@ describe('MemoryExplorer', () => {
     withRpc('ListBeliefRelations', { relations: [] });
     withRpc('ListBeliefPromotions', { promotions: [] });
     withRpc('GetBelief', { belief: BELIEFS[0] });
+    // M28-T07: the belief trail names the project, so every case that opens a
+    // belief now resolves its name (`onUnhandledRequest: 'error'` would fail
+    // them otherwise).
+    mockRpc(ProjectService, 'GetProject', { project: { id: 'proj-1', name: 'Seed Project' } });
   });
 
   it('prompts for a project when none is selected', () => {
@@ -672,5 +680,136 @@ describe('MemoryExplorer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back to search' }));
 
     expect(screen.getByLabelText('Search beliefs')).toBeInTheDocument();
+  });
+
+  // M28-T07. A pasted `/memory/:beliefId` link opened a detail view whose only
+  // exit was the browser's Back button, which on a fresh tab leaves the app.
+  it('shows a breadcrumb from the project through Memory to the open belief', async () => {
+    const { location } = renderPage('/memory/blf-1?org=org-1&project=proj-1');
+
+    const crumbs = await screen.findByRole('navigation', { name: 'Breadcrumb' });
+    await waitFor(() => expect(within(crumbs).getByRole('link', { name: 'Seed Project' })).toBeInTheDocument());
+    // Deep-linked: nothing was clicked to get here, so this trail is the only
+    // way back to the list.
+    fireEvent.click(within(crumbs).getByRole('link', { name: 'Memory' }));
+    expect(location.pathname).toBe('/memory');
+    expect(location.search).toContain('project=proj-1');
+  });
+
+  // M28-T05. Which scope you are reading — the project's memory or the whole
+  // organization's — was `useState`, so a reload silently put you back in the
+  // project and showed a different set of beliefs under the same URL.
+  describe('the scope toggle is in the URL', () => {
+    it('survives a reload of the URL the screen produced', async () => {
+      const requests = withRpc('SearchBeliefs', { beliefs: BELIEFS });
+
+      const first = renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'organization' }));
+      expect(first.location.url).toBe('/memory?scope=organization');
+      first.unmount();
+
+      renderPage('/memory?scope=organization');
+      expect(screen.getByRole('button', { name: 'organization' })).toHaveAttribute('aria-pressed', 'true');
+      // Pressed is the visible half; the query it drives is the half that
+      // decides which beliefs come back.
+      fireEvent.change(screen.getByLabelText('Search beliefs'), { target: { value: 'Tests' } });
+      await waitFor(() => expect(requests).toContainEqual(
+        expect.objectContaining({ scopeType: 'organization', scopeId: 'org-1' }),
+      ));
+    });
+
+    it('keeps the scope when a belief is opened', async () => {
+      // Selecting a belief navigates, and the navigation must not quietly
+      // drop the reader back into project scope while an org belief is open.
+      const { location } = renderPage('/memory?scope=organization');
+      fireEvent.change(screen.getByLabelText('Search beliefs'), { target: { value: 'Tests' } });
+      fireEvent.click(await screen.findByText('Tests must pass before merge'));
+
+      await waitFor(() => expect(location.pathname).toBe('/memory/blf-1'));
+      expect(location.search).toContain('scope=organization');
+    });
+
+    it('falls back to project scope when it is absent or unrecognised', async () => {
+      const absent = renderPage('/memory');
+      expect(screen.getByRole('button', { name: 'project' })).toHaveAttribute('aria-pressed', 'true');
+      absent.unmount();
+
+      renderPage('/memory?scope=nonsense');
+      expect(screen.getByRole('button', { name: 'project' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'organization' })).toHaveAttribute('aria-pressed', 'false');
+    });
+  });
+
+  // M28-T06. `getBelief` answers by id alone, so a `/memory/:beliefId` link
+  // resolves a belief that may live in another project, or another
+  // organization entirely. The detail panel was handed the *active* org id
+  // regardless, so such a belief rendered under an identity that was not its
+  // own — and "Promote" would have moved it into the reader's organization.
+  describe('a belief from outside the active scope', () => {
+    const FOREIGN_ORG_BELIEF = {
+      id: 'blf-9', orgId: 'org-2', scopeType: 'project', scopeId: 'proj-9',
+      statement: 'Deploys are frozen on Fridays', confidence: 'high', status: 'active',
+      sourceKind: 'user', sourceUserId: 'user-2', createdAt: '2026-01-05T00:00:00Z',
+    };
+    const FOREIGN_PROJECT_BELIEF = { ...FOREIGN_ORG_BELIEF, id: 'blf-8', orgId: 'org-1', scopeId: 'proj-9' };
+
+    it('says so rather than rendering it under the active organization', async () => {
+      withRpc('GetBelief', { belief: FOREIGN_ORG_BELIEF });
+      renderPage('/memory/blf-9');
+
+      const detail = within(await screen.findByRole('region', { name: 'Belief detail' }));
+      expect(detail.getByText(/different organization/i)).toBeInTheDocument();
+      // Labelled with the organization it actually belongs to, not org-1.
+      expect(detail.getByText(/org-2/)).toBeInTheDocument();
+    });
+
+    it('says so when only the project differs', async () => {
+      withRpc('GetBelief', { belief: FOREIGN_PROJECT_BELIEF });
+      renderPage('/memory/blf-8');
+
+      const detail = within(await screen.findByRole('region', { name: 'Belief detail' }));
+      expect(detail.getByText(/different project/i)).toBeInTheDocument();
+      expect(detail.getByText(/proj-9/)).toBeInTheDocument();
+    });
+
+    it('promotes it into its own organization, never the active one', async () => {
+      withRpc('GetBelief', { belief: FOREIGN_ORG_BELIEF });
+      const requests = withRpc('PromoteBelief', { belief: FOREIGN_ORG_BELIEF, promotion: { id: 'promo-1' } });
+      renderPage('/memory/blf-9');
+      await screen.findByRole('region', { name: 'Belief detail' });
+
+      fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+      fireEvent.click(await screen.findByText('Promote'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Promote' }));
+      await confirmAction();
+
+      await waitFor(() => expect(requests).toContainEqual(
+        expect.objectContaining({ id: 'blf-9', toScopeType: 'organization', toScopeId: 'org-2' }),
+      ));
+    });
+
+    it('leaves a belief in the active scope unremarked', async () => {
+      renderPage('/memory/blf-1');
+
+      const detail = within(await screen.findByRole('region', { name: 'Belief detail' }));
+      expect(detail.queryByText(/belongs to a different/i)).not.toBeInTheDocument();
+    });
+  });
+
+  // M28-T06. The open belief was mirrored from the route param into
+  // `useState` and written back with `replace: true`, so history never grew:
+  // Back skipped every belief the reader had visited and left the screen.
+  it('steps back through visited beliefs', async () => {
+    const { location } = renderPage();
+    await searchFor('Tests');
+
+    fireEvent.click(screen.getByText('Tests must pass before merge'));
+    await waitFor(() => expect(location.pathname).toBe('/memory/blf-1'));
+
+    fireEvent.click(screen.getByText('CI always runs migrations against MySQL'));
+    await waitFor(() => expect(location.pathname).toBe('/memory/blf-2'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go back' }));
+    await waitFor(() => expect(location.pathname).toBe('/memory/blf-1'));
   });
 });
