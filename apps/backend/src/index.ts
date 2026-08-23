@@ -189,7 +189,7 @@ const handler = connectNodeAdapter({
   routes: (router) => {
     router.service(HealthService as any, createHealthHandler(db, nc));
     router.service(TaskTypeService as any, createTasksHandler(db, nc));
-    router.service(AuthService as any, createAuthHandler(db));
+    router.service(AuthService as any, createAuthHandler(db) as any);
     router.service(OrgService as any, createOrgsHandler(db, nc, mailer));
     router.service(ProjectTemplateService as any, createProjectTemplatesHandler(db, nc));
     router.service(ProjectService as any, createProjectsHandler(db, nc));

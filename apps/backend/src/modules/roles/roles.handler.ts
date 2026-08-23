@@ -151,6 +151,16 @@ export const createRolesHandler = (db: any, nc: any = null) => {
         {
           filterColumn: (roles as any).name,
           sortableColumns: { name: (roles as any).name, createdAt: (roles as any).createdAt },
+          // Every column of `roles` — this list is merged with `systemRoles`
+          // above, which is a plain `SELECT *`, so the two halves have to
+          // carry the same shape for `toWireRole` to read either one.
+          select: {
+            id: (roles as any).id,
+            orgId: (roles as any).orgId,
+            name: (roles as any).name,
+            isSystem: (roles as any).isSystem,
+            createdAt: (roles as any).createdAt,
+          },
         },
       );
 
@@ -327,7 +337,21 @@ export const createRolesHandler = (db: any, nc: any = null) => {
         db, grantsTable(),
         and(eq((grantsTable() as any).scopeType, parsed.scopeType), eq((grantsTable() as any).scopeId, parsed.scopeId)),
         parsed.page,
-        { sortableColumns: { createdAt: (grantsTable() as any).createdAt }, defaultSort: { field: "createdAt", column: (grantsTable() as any).createdAt } },
+        {
+          sortableColumns: { createdAt: (grantsTable() as any).createdAt },
+          defaultSort: { field: "createdAt", column: (grantsTable() as any).createdAt },
+          // Every column of `grants`, matching the `SELECT *` this call
+          // previously fell back to when `select` was omitted.
+          select: {
+            id: (grantsTable() as any).id,
+            subjectType: (grantsTable() as any).subjectType,
+            subjectId: (grantsTable() as any).subjectId,
+            scopeType: (grantsTable() as any).scopeType,
+            scopeId: (grantsTable() as any).scopeId,
+            roleId: (grantsTable() as any).roleId,
+            createdAt: (grantsTable() as any).createdAt,
+          },
+        },
       );
 
       const roleIds = [...new Set(items.map((g: any) => g.roleId))];

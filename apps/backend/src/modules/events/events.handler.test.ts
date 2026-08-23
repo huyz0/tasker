@@ -173,7 +173,7 @@ describe('subscribeEvents', () => {
     // for an agent to find, so querying would deny every agent.
     const db = fakeDb();
     const handler = createEventsHandler(db, fakeNats(sub));
-    const { ctx } = ctxFor({ kind: 'agent', agentId: 'agt-1', orgId: 'org-1' });
+    const { ctx } = ctxFor({ kind: 'agent', agentId: 'agt-1', orgId: 'org-1', scopes: ['events:read', 'tasks:read'] });
     const iter = handler.subscribeEvents({}, ctx);
 
     sub.push('domain.task.created', { orgId: 'org-1' });
@@ -329,5 +329,61 @@ describe('subscribeEvents', () => {
     sub.push('domain.task.created', { orgId: 'org-1', occurredAt: '2026-08-20T10:00:00.000Z' });
     const [msg] = await collect(iter, 1, sub);
     expect(msg.occurredAt).toBe('2026-08-20T10:00:00.000Z');
+  });
+});
+
+// ── M26-T02 (ADR-0023): the feed is scope-gated for agents ──────────────────
+
+describe('subscribeEvents agent scope gate (M26-T02)', () => {
+  let sub: any;
+  beforeEach(() => { sub = fakeSubscription(); });
+
+  const openAs = (principal: any, nats: any = fakeNats(sub)) => {
+    const handler = createEventsHandler(fakeDb(), nats);
+    const { ctx } = ctxFor(principal);
+    return handler.subscribeEvents({}, ctx);
+  };
+
+  it('refuses an agent token without events:read', async () => {
+    const iter = openAs({ kind: 'agent', agentId: 'agt-1', orgId: 'org-1', scopes: ['tasks:read'] });
+    await expect(iter.next()).rejects.toThrow(/events:read/);
+  });
+
+  it('refuses a token carrying no scopes at all rather than crashing on it', async () => {
+    // A malformed principal must be denied, not produce a 500.
+    const iter = openAs({ kind: 'agent', agentId: 'agt-1', orgId: 'org-1' });
+    await expect(iter.next()).rejects.toThrow(/events:read/);
+  });
+
+  it('admits an agent token holding events:read', async () => {
+    const iter = openAs({ kind: 'agent', agentId: 'agt-1', orgId: 'org-1', scopes: ['events:read', 'tasks:read'] });
+    sub.push('domain.task.created', { orgId: 'org-1' });
+    const [msg] = await collect(iter, 1, sub);
+    expect(msg.orgId).toBe('org-1');
+  });
+
+  it('refuses before consulting the broker, so a missing broker cannot mask a denial', async () => {
+    // The agent-scope sweep builds handlers with a null connection; a check
+    // placed after the broker probe would report Unavailable there instead.
+    const iter = openAs({ kind: 'agent', agentId: 'agt-1', orgId: 'org-1', scopes: ['tasks:read'] }, null);
+    await expect(iter.next()).rejects.toThrow(/events:read/);
+  });
+
+  it('delivers to an agent only the subjects its other scopes could read', async () => {
+    const iter = openAs({ kind: 'agent', agentId: 'agt-1', orgId: 'org-1', scopes: ['events:read', 'tasks:read'] });
+    sub.push('domain.artifact.created', { orgId: 'org-1' });  // artifacts:read — not held
+    sub.push('domain.agent.token_created', { orgId: 'org-1' }); // never, for anyone
+    sub.push('domain.task.created', { orgId: 'org-1' });      // tasks:read — held
+    const [msg] = await collect(iter, 1, sub);
+    expect(msg.subject).toBe('domain.task.created');
+  });
+
+  it('leaves a human session unfiltered', async () => {
+    const handler = createEventsHandler(fakeDb(['org-1']), fakeNats(sub));
+    const { ctx } = ctxFor({ kind: 'user', userId: 'usr-1' });
+    const iter = handler.subscribeEvents({}, ctx);
+    sub.push('domain.artifact.created', { orgId: 'org-1' });
+    const [msg] = await collect(iter, 1, sub);
+    expect(msg.subject).toBe('domain.artifact.created');
   });
 });

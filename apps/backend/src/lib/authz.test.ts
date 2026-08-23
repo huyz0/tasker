@@ -289,7 +289,7 @@ describe("assertNotLastSignInMethod", () => {
 });
 
 describe("authorizePrincipal records the acting organization (M08-T07)", () => {
-  const agent = { kind: "agent" as const, agentId: "agt-1", orgId: "org-1", scopes: ["task:write"] };
+  const agent = { kind: "agent" as const, agentId: "agt-1", orgId: "org-1", tokenId: "tok-1", scopes: ["task:write"] };
 
   it("records the org for an agent, which can() never reaches", async () => {
     // `can()` refuses an agent outright and returns before it resolves any

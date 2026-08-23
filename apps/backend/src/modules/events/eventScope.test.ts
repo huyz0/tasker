@@ -102,3 +102,82 @@ describe('toEnvelope', () => {
     expect(toEnvelope('domain.task.created', null)).toBeNull();
   });
 });
+
+// ── M26-T02 (ADR-0023): per-subject filtering for agent principals ──────────
+//
+// The governing rule: an agent may see an event only where its scopes would
+// have permitted the equivalent read through an ordinary RPC. A human
+// session is unaffected — `agentScopes` is absent and nothing is filtered.
+
+describe('agent scope filtering (M26-T02)', () => {
+  const orgs = new Set(['org-1']);
+  const deliver = (subject: string, scopes?: string[]) =>
+    shouldDeliver(
+      { subject, orgId: 'org-1', projectId: 'proj-1' },
+      { authorizedOrgIds: orgs, ...(scopes ? { agentScopes: new Set(scopes) } : {}) },
+    );
+
+  it('does not filter a human subscriber — no agentScopes, nothing dropped', () => {
+    expect(deliver('domain.task.created')).toBe(true);
+    expect(deliver('domain.org.member_added')).toBe(true);
+    expect(deliver('domain.agent.token_created')).toBe(true);
+  });
+
+  it('delivers a subject the token could have read through an RPC', () => {
+    expect(deliver('domain.task.created', ['tasks:read'])).toBe(true);
+    expect(deliver('domain.artifact.created', ['artifacts:read'])).toBe(true);
+    expect(deliver('domain.belief.recorded', ['memory:read'])).toBe(true);
+  });
+
+  it('drops a subject the token could not have read', () => {
+    expect(deliver('domain.task.created', ['agents:read'])).toBe(false);
+    expect(deliver('domain.artifact.created', ['tasks:read'])).toBe(false);
+    expect(deliver('domain.belief.recorded', ['tasks:read'])).toBe(false);
+  });
+
+  it('mirrors the read path: comments and notes ride tasks:read, as listComments does', () => {
+    expect(deliver('domain.comment.created', ['tasks:read'])).toBe(true);
+    expect(deliver('domain.tasknote.created', ['tasks:read'])).toBe(true);
+    // comments:write is the *write* scope; it grants no reads anywhere else
+    // either, so it must not open the feed on its own.
+    expect(deliver('domain.comment.created', ['comments:write'])).toBe(false);
+  });
+
+  it('never delivers administration families — no agent read scope exists for them', () => {
+    for (const subject of [
+      'domain.org.member_added',
+      'domain.team.created',
+      'domain.role.updated',
+      'domain.grant.created',
+      'domain.retention.swept',
+    ]) {
+      // Not even with every scope an agent can hold.
+      expect(deliver(subject, [
+        'tasks:read', 'tasks:write', 'comments:write', 'artifacts:read',
+        'artifacts:write', 'projects:read', 'agents:read', 'repos:read',
+        'memory:read', 'memory:write', 'events:read',
+      ])).toBe(false);
+    }
+  });
+
+  it('never delivers token issuance, even to agents:read', () => {
+    // listAgentTokens is categorically absent from AGENT_RPC_SCOPES, so the
+    // feed must not grant through the back door what the request path
+    // refuses at the front (ADR-0023).
+    expect(deliver('domain.agent.token_created', ['agents:read'])).toBe(false);
+    expect(deliver('domain.agent.token_revoked', ['agents:read'])).toBe(false);
+    // The rest of the agent family is still readable.
+    expect(deliver('domain.agent.created', ['agents:read'])).toBe(true);
+  });
+
+  it('drops an unknown subject family rather than defaulting it open', () => {
+    expect(deliver('domain.something_new.created', ['tasks:read'])).toBe(false);
+  });
+
+  it('still applies the org and project rules underneath', () => {
+    expect(shouldDeliver(
+      { subject: 'domain.task.created', orgId: 'other-org', projectId: 'p' },
+      { authorizedOrgIds: orgs, agentScopes: new Set(['tasks:read']) },
+    )).toBe(false);
+  });
+});

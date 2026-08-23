@@ -222,7 +222,7 @@ describe("Reports Handler - getReportTrends", () => {
       for (const row of live) {
         expect(countOn(band(res, row.status), dstr(0))).toBe(Number(row.n));
       }
-      const liveByStatus = new Map(live.map((r: any) => [r.status, Number(r.n)]));
+      const liveByStatus = new Map<string, number>(live.map((r: any) => [r.status, Number(r.n)]));
       for (const b of res.cfdBands) {
         expect(countOn(b, dstr(0))).toBe(liveByStatus.get(b.status) ?? 0);
       }

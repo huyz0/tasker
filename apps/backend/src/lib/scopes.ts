@@ -26,6 +26,13 @@ export const AGENT_SCOPES = [
   // administration and token issuance.
   'memory:read',
   'memory:write',
+  // M26-T02 (ADR-0023). Opening the live event feed at all. Deliberately its
+  // own scope rather than a reuse of tasks:read, because the feed carries
+  // every subject family the org emits and a scope whose name misdescribes
+  // what it grants is worse than a coarse one. What an agent then *receives*
+  // on that feed is narrowed further, per subject, by the read scopes it
+  // already holds — see eventScope.ts's SUBJECT_FAMILY_SCOPE.
+  'events:read',
 ] as const;
 
 // A type alias and an isAgentScope guard belong here too, but M04-T07 is what
@@ -138,6 +145,14 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
   // archiveArtifact/restoreArtifact/purgeArtifact, deleteTask/restoreTask/
   // purgeTask are none of them agent-reachable either), not a narrower
   // carve-out unique to belief promotion and purge.
+  // M26-T02 (ADR-0023). subscribeEvents accepted an agent principal from M08
+  // onward and consulted no scope at all — the feed was open to any valid
+  // token. It was absent from this map and from the sweep's handler map,
+  // which is how it stayed that way; M26-T03 makes that omission impossible
+  // to repeat.
+  events: {
+    subscribeEvents: 'events:read',
+  },
   memory: {
     getBelief: 'memory:read',
     listBeliefs: 'memory:read',

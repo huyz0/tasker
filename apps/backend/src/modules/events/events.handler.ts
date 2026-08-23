@@ -113,6 +113,16 @@ export function createEventsHandler(db: any, nc: any, opts: { heartbeatMs?: numb
     async *subscribeEvents(req: any, ctx: any) {
       const principal = requirePrincipal(ctx?.values);
 
+      // M26-T02 (ADR-0023): an agent must hold events:read to open the feed
+      // at all. Deliberately ahead of the broker check below — a token that
+      // may not subscribe should be told so whether or not a broker happens
+      // to be reachable, and the agent-scope sweep builds handlers with a
+      // null connection, so a check placed after it would report Unavailable
+      // where the sweep (rightly) expects PermissionDenied.
+      if (principal.kind === "agent" && !principal.scopes?.includes("events:read")) {
+        throw new ConnectError("this token lacks the events:read scope", Code.PermissionDenied);
+      }
+
       if (!nc || nc.isClosed?.()) {
         // Unavailable, not Internal: the client's backoff should retry this,
         // and a broker that is down comes back.
@@ -123,6 +133,9 @@ export function createEventsHandler(db: any, nc: any, opts: { heartbeatMs?: numb
         authorizedOrgIds: await resolveAuthorizedOrgIds(db, principal),
         requestedOrgId: req?.orgId || undefined,
         requestedProjectId: req?.projectId || undefined,
+        // Absent for a human session, which is what leaves their feed
+        // unfiltered (M26-T02).
+        ...(principal.kind === "agent" ? { agentScopes: new Set(principal.scopes) } : {}),
       };
 
       const sub = nc.subscribe(FEED_SUBJECT);

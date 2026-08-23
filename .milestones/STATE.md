@@ -15,6 +15,67 @@ blocker: null
 
 ## Now
 
+**2026-08-23 — M26 (Gate Integrity) complete: 6/6 tasks, 8/8 exit criteria.**
+Three gates were trusted, cited as evidence, and did not cover what they
+claimed. All three now do, and each fix shipped with the guard that would
+have caught it.
+
+1. **The agent-scope sweep's completeness guarantee was false.** `scopes.ts`
+   says "absence means denial… the sweep enumerates every method on every
+   handler"; it enumerated every method on every **listed** handler, and its
+   list was hand-maintained and missing four of twenty-one services. Three
+   were harmless. The fourth was `EventService.subscribeEvents`, which
+   accepted any agent token and returned the whole organization's live feed
+   with **no scope consulted**. It now requires `events:read` and delivers an
+   event only where the token's other scopes would have permitted the
+   equivalent read (ADR-0023). The sweep now asserts its own coverage against
+   `index.ts`.
+2. **The migration ledger could silently skip a migration.** `0044`/`0031`
+   were stamped nine days before their own predecessors, and pending work is
+   selected with `when > lastAppliedAt` — so any database past `0043` never
+   created `audit_log`, then applied `0045`–`0047` and moved its watermark
+   *past* the corrected slot. Correcting the stamp therefore fixes the future
+   and reaches nothing already broken; an idempotent repair migration does
+   that, and a monotonicity guard stops the class returning.
+3. **The backend had no `typecheck` task**, so `moon check --all` could not
+   see 130 type errors. It has one now, at zero.
+
+**Things a next session should know that the code will not say:**
+
+- **83 of those 130 type errors were one `.d.ts` away** — `tsc` cannot resolve
+  the migration index's Bun `{ type: 'file' }` imports. That is why this gate
+  looked expensive enough to defer since M08, and it never was.
+- **The gate found a real defect within minutes of existing**, which is the
+  whole argument for it: `listRoles`/`listGrants` were calling
+  `executePaginatedQuery` without the required `select`, silently degrading to
+  the `SELECT *` that M07-T01 made required-on-purpose after it shipped 2 MB
+  of base64 to render 50 filenames. Fixed runtime-equivalently (every column
+  enumerated, verified identical in both dialect schemas); narrowing them
+  further is a deliberate behaviour change and was left for its own commit.
+- **Two guards in this milestone were nearly broken themselves.** The sweep
+  would have reported a *false* red on `subscribeEvents` because an async
+  generator returns without running its body — the natural response to which
+  is "exclude this handler", reinstating the hole. And the journal guard's
+  first version sorted on an `idx` field that does not exist, so every
+  comparison was `NaN` and it passed by accident. Both were caught by
+  deliberately breaking them; a guard nobody has watched fail is not yet a
+  guard.
+- **The GUI's token-scope picker had drifted for five milestones** — it never
+  gained M21's `memory:read`/`memory:write`, so those were ungrantable from
+  the UI. Same species as everything above, found in passing. It, `scopes.ts`
+  and `docs/agent-integration.md` are three hand-maintained copies of one
+  vocabulary and will drift again; nothing gates them.
+- **Explicitly not done, and verified as real:** documentation drift.
+  `README.md` still says the GUI is not real-time, teams have no table, and
+  the single binary is future work — all three shipped milestones ago.
+  `architecture.md`'s "Built" section contradicts itself in three places, and
+  `NAVIGATION.md` asserts "Teams does not exist at all". That is a natural
+  next round. Also unmeasured: the 20,000-concurrent-agent claim — data scale
+  is measured and within budget, concurrency has never been simulated at all.
+  A ~60-item deferral inventory from the same review is in this session's
+  history; the two whose blockers have since cleared are self-service password
+  reset (SMTP now exists) and claim TTL/auto-expiry (M25 built the detector).
+
 **2026-08-23 — M25 (Proactive Alerting for Stalled Claims) complete: 6/6
 tasks, 12/12 exit criteria, on `feature/m25-stalled-claim-alerting`.** A
 human with a `task_reviewers` role (falling back to an org owner/admin)
@@ -1445,8 +1506,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M23 | Rich Markdown Editor            | done   | —          | 5     | 5    |
 | M24 | Project Reports & Agent Insights | done   | —          | 10    | 10   |
 | M25 | Proactive Alerting for Stalled Claims | done   | —          | 6     | 6    |
+| M26 | Gate Integrity                  | done   | —          | 6     | 6    |
 
-**Total: 208 tasks across 19 milestones — 165 done (M01 14, M02 7, M03 16, M04 12, M05 12, M06 14, M07 14, M10 13, M13 15, M14 9, M21 10, M22 8, M23 5, M24 10, M25 6).**
+**Total: 214 tasks across 20 milestones — 213 done.** Every milestone is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have).
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;

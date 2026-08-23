@@ -94,6 +94,14 @@ granting nothing.
 | `repos:read` | read repository links, builds and deployments |
 | `memory:read` | search and read shared beliefs (§9) |
 | `memory:write` | record, update, supersede and relate beliefs (§9) |
+| `events:read` | open the live event feed for the token's organization |
+
+`events:read` opens the feed; it does not widen what you can see on it. A
+subscriber receives an event only where its *other* scopes would have let it
+read the same entity through an ordinary call — so `events:read` plus
+`tasks:read` streams task activity and nothing else. Organization, team, role
+and grant events are never delivered to a token at all, matching the
+categorical refusals below (ADR-0023).
 
 Ask for the fewest that let your worker do its job. A missing scope is an
 explicit refusal naming what is missing, so it is cheap to discover and add:

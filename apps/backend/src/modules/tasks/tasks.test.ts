@@ -524,12 +524,12 @@ describe("Tasks Handler Integration Tests", () => {
     const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
     expect(fulfilled.length).toBe(1);
     expect(rejected.length).toBe(1);
-    expect(rejected[0].reason).toMatchObject({ code: Code.Aborted });
+    expect(rejected[0]!.reason).toMatchObject({ code: Code.Aborted });
 
     // The persisted status matches the winner's own response, not "whoever
     // committed last, regardless of what either caller was told".
     const finalTask = await handler.getTask({ taskId: taskResp.task.id }, ctx);
-    expect(finalTask.task.status).toBe(fulfilled[0].value.task.status);
+    expect(finalTask.task.status).toBe(fulfilled[0]!.value.task.status);
   });
 
   test("deleteTask soft-deletes, hides from listTasks, and can be restored; requires org admin", async () => {
