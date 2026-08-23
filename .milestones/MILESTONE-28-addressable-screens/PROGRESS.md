@@ -104,3 +104,33 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
      observable outcome and the setter was an implementation detail. The
      switcher's suite was mutation-tested to confirm the new assertions bite.
 - **Next**: M28-T04 (every in-app link preserves scope).
+
+## M28-T04 — Every in-app link preserves scope
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: `useScopedTo` applied to every navigation that stays inside the
+  shell — all 15 sidebar links, the Dashboard's task rows / recent activity /
+  reports and agents links, Reports' shared `TaskLink` and the churn card's
+  handoffs link, the Agents screen's dashboard link, `NotFound`'s way back,
+  and Handoffs' task selection.
+- **Deliberately left unscoped**: the auth boundary. `Login ⇄ Register`,
+  post-login `/`, the OAuth callback's `/projects` and the logout button's
+  `/login` all leave or precede the shell, where a scope is meaningless or
+  belongs to the session that just ended.
+- **Verified**: full GUI suite 1111 pass; `moon check --all` clean (34).
+  The exit criterion asked for enforcement rather than inspection, so
+  `AppShell.test.tsx` now asserts the invariant over *every* rendered shell
+  link at once, and it was proven to bite: unscoping the single nav `to=`
+  fails it naming all fifteen links.
+- **Notes**: the same mistake recurred three times and is worth naming — the
+  hook was declared in one component of a file and used in another
+  (`Tasks`' `HandoffsSummary`, `Dashboard`'s `Dashboard` vs `TaskRow`,
+  `ChurningTasksCard`). Each surfaced only as a runtime `ReferenceError` in a
+  test, never at typecheck, because the identifier resolves lexically to
+  nothing until it runs. A `<ScopedLink>` component would make that
+  impossible by construction; it was not built here because
+  `frontend-standard` requires a story per component and the hook keeps the
+  scope explicit at the call site. Recorded as the trade rather than a
+  discovery.
+- **Next**: M28-T05 (navigational state into the URL).

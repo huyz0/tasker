@@ -140,7 +140,7 @@ deep-linkable detail views; `NAVIGATION.md`; ADR-0025.
       - Verify: `moon run gui:test`; the M23 four-case `previousScope` suite
         green, hydrate-from-empty included.
 
-- [ ] **M28-T04** — Every in-app link preserves scope: a `useScopedTo`
+- [x] **M28-T04** — Every in-app link preserves scope: a `useScopedTo`
       helper, applied to `NAV_GROUPS` and to the ~10 link/navigate sites
       (Dashboard, Reports panels, Agents, Tasks' handoffs link, NotFound).
       A test asserts the helper preserves scope and that no shell nav link

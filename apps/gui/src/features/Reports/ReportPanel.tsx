@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useScopedTo } from '../../hooks/useScope';
 import { Link } from 'react-router-dom';
 
 /**
@@ -33,9 +34,10 @@ export function ReportPanel({ title, subtitle, action, children }: {
  * `/tasks/:id`, which auto-opens the detail view on that route.
  */
 export function TaskLink({ taskId, displayId, title }: { taskId: string; displayId: string; title: string }) {
+  const scopedTo = useScopedTo();
   return (
     <Link
-      to={`/tasks/${taskId}`}
+      to={scopedTo(`/tasks/${taskId}`)}
       className="flex items-baseline gap-2 min-w-0 rounded-md outline-none hover:underline focus-visible:ring-2 focus-visible:ring-primary/50"
     >
       <span className="font-mono text-xs text-muted-foreground shrink-0">{displayId}</span>

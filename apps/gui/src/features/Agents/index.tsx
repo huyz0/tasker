@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useScopedTo } from '../../hooks/useScope';
 import { Link } from 'react-router-dom';
 import { useLayoutStore } from '../../store/layout';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +38,7 @@ const agentClient = createClient(AgentService, transport);
 const dashboardClient = createClient(DashboardService, transport);
 
 export function AgentsDashboard() {
+  const scopedTo = useScopedTo();
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
@@ -413,7 +415,7 @@ export function AgentsDashboard() {
           {agentTotal > agentActivity.length && (
             <p className="text-xs text-muted-foreground mt-3">
               Showing the {agentActivity.length} quietest of {agentTotal}. See the{' '}
-              <Link to="/" className="text-primary hover:underline">Dashboard</Link> for the full picture alongside review and PR status.
+              <Link to={scopedTo('/')} className="text-primary hover:underline">Dashboard</Link> for the full picture alongside review and PR status.
             </p>
           )}
         </div>
