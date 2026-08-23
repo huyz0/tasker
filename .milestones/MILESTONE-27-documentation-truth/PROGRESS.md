@@ -154,3 +154,34 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   document pass forever — the worst failure available to a gate, and the one
   M26 spent a milestone removing elsewhere.
 - **Next**: M27-T06 (verification and closeout).
+
+## M27-T06 — Verification and closeout
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Verified**: `moon check --all` clean at **34 tasks**, up from 33, the new
+  one being `tasker:doc-drift`. `docs-lint` clean. Every exit criterion
+  re-verified individually:
+  1. False statements corrected — enumerated in `shape.md`, each with the
+     code that disproves it; corrections landed in T02 (README, five), T03
+     (architecture.md, eight plus the Planned section) and T04
+     (NAVIGATION.md, three plus seven missing routes).
+  2. No **Built** claim contradicted elsewhere in `architecture.md` — the
+     three surviving "there is no X" statements were each re-checked and are
+     true (server-side rendering, in-process transport per ADR-0019, and an
+     OTLP collector when unconfigured).
+  3. The gate exists, runs in `moon check --all` and in CI's
+     specification-drift step.
+  4. **Demonstrated against real history**: 22 findings over the documents as
+     they stood at `b43b48c`, naming every claim this milestone fixed.
+  5. Own suite, 27 tests, each rule shown catchable and each historical form
+     shown to pass.
+  6. `moon check --all` and `docs-lint` both clean.
+- **Notes**: the milestone corrected 16 false statements in the three
+  documents an agent session is told to trust, and the correction that
+  mattered most was the smallest — the README's scope count, which my own
+  spec asserted as "ten" from memory of a document and which is eleven,
+  because M26 added `events:read` four commits earlier. That is the failure
+  this milestone is about, reproduced inside the milestone about it, and it
+  was caught only because the task's own rule was to verify every claim at
+  the source rather than carry it forward.

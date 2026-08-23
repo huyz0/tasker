@@ -1,13 +1,13 @@
 ---
 id: M27
 title: Documentation Truth
-status: in-progress
+status: done
 goal: The documents an agent session is told to treat as ground truth describe the product that exists, and a gate fails when they stop doing so.
 depends_on: []
 surfaces: [specs, infra]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-23
-completed_at: null
+completed_at: 2026-08-23
 ---
 
 # M27 — Documentation Truth
@@ -57,22 +57,22 @@ truth by `AGENTS.md`, and nothing checks them.
 
 ## 3. Exit Criteria
 
-- [ ] Every statement in `README.md`, `.specs/product/architecture.md` and
+- [x] Every statement in `README.md`, `.specs/product/architecture.md` and
       `.specs/design/NAVIGATION.md` that describes shipped work as unbuilt is
       corrected — enumerated in the spec, each with the evidence that it
       shipped.
-- [ ] `.specs/product/architecture.md`'s **Built** section contains no claim
+- [x] `.specs/product/architecture.md`'s **Built** section contains no claim
       contradicted by a later section of the same file.
-- [ ] A `doc-drift` gate exists, runs in `moon check --all` and in CI, and
+- [x] A `doc-drift` gate exists, runs in `moon check --all` and in CI, and
       fails when a document designated as ground truth cites a `done`
       milestone as owning unbuilt work.
-- [ ] The gate is demonstrated to catch the **real** historical drift, not a
+- [x] The gate is demonstrated to catch the **real** historical drift, not a
       synthetic fixture: run against the pre-M27 text of each document from
       git history, it names the stale claims this milestone fixes.
-- [ ] The gate has its own test suite proving each rule is capable of
+- [x] The gate has its own test suite proving each rule is capable of
       failing, mirroring `spec-drift.test.ts`'s convention of running before
       the check it guards.
-- [ ] `moon check --all` clean, `moon run tasker:docs-lint` clean.
+- [x] `moon check --all` clean, `moon run tasker:docs-lint` clean.
 
 ## 4. Scope
 
@@ -146,7 +146,7 @@ check and belongs with a GUI round.
       - Verify: `moon run :doc-drift` exits zero on the corrected docs and
         non-zero on the originals; its own suite proves each rule can fail.
 
-- [ ] **M27-T06** — Verification and closeout: re-verify every exit
+- [x] **M27-T06** — Verification and closeout: re-verify every exit
       criterion, `moon check --all`, close the milestone.
       - Files: `.milestones/*`
       - Verify: `moon check --all` clean; each criterion stated as
