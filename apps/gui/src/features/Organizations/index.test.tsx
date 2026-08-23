@@ -948,4 +948,40 @@ describe('OrganizationsDashboard', () => {
 
     await waitFor(() => expect(screen.getByText(/Failed to update role/)).toBeInTheDocument());
   });
+
+  // M28-T05. The section was `useState`, so a reload dropped whoever was
+  // reading the audit trail back onto the org tree.
+  describe('the open section is in the URL', () => {
+    it('survives a reload of the URL the screen produced', async () => {
+      withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
+
+      const first = renderPage();
+      await waitFor(() => expect(screen.getByText('Root Co')).toBeInTheDocument());
+      fireEvent.mouseDown(screen.getByText('Audit Trail'), { button: 0 });
+      await waitFor(() => expect(screen.getByTestId('audit-trail')).toBeInTheDocument());
+
+      expect(first.location.search).toContain('section=audit');
+      // The section rides alongside scope rather than replacing it.
+      expect(first.location.search).toContain('org=org-1');
+
+      first.unmount();
+      renderPage(first.location.url);
+
+      await waitFor(() => expect(screen.getByTestId('audit-trail')).toBeInTheDocument());
+      expect(screen.queryByText('Your Organizations')).toBeNull();
+    });
+
+    it('falls back to Organizations when the section is absent or unrecognised', async () => {
+      withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
+
+      const absent = renderPage('/organizations?org=org-1');
+      await waitFor(() => expect(screen.getByText('Your Organizations')).toBeInTheDocument());
+      absent.unmount();
+
+      // Radix renders no panel at all for a value none of its triggers own, so
+      // an unrecognised section would be a blank screen rather than a default.
+      renderPage('/organizations?org=org-1&section=nonsense');
+      await waitFor(() => expect(screen.getByText('Your Organizations')).toBeInTheDocument());
+    });
+  });
 });

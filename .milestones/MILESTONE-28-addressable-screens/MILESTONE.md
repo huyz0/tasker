@@ -149,7 +149,7 @@ deep-linkable detail views; `NAVIGATION.md`; ADR-0025.
         `components/layout/AppShell.tsx`, the link call sites
       - Verify: `moon run gui:test`; `gui:design-lint` (nav is a WIG surface).
 
-- [ ] **M28-T05** — Navigational state into the URL: Bin `?tab=`,
+- [x] **M28-T05** — Navigational state into the URL: Bin `?tab=`,
       Organizations `?section=`, Memory's scope toggle, and Task Types as
       `/task-types/:typeId` (it already fetches by id, so the deep link is
       nearly free). Each validated against its known values, each falling

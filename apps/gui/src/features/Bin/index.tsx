@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useLayoutStore } from '../../store/layout';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
@@ -11,6 +11,7 @@ import {
   ArtifactService,
   TeamService,
 } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { useUrlEnum } from '../../hooks/useUrlEnum';
 import { VirtualList } from '../../components/ui/VirtualList';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ListState } from '../../components/ui/ListState';
@@ -34,6 +35,11 @@ const TABS: { id: EntityKind; label: string }[] = [
   { id: 'folders', label: 'Folders' },
   { id: 'artifacts', label: 'Artifacts' },
 ];
+
+// Validated against the tabs that exist rather than cast: `?tab=` is typed,
+// edited and bookmarked, and an unknown value must open the default tab, not
+// an empty panel.
+const TAB_IDS = TABS.map((tab) => tab.id);
 
 function OrganizationsBin() {
   const queryClient = useQueryClient();
@@ -513,7 +519,9 @@ export function BinDashboard() {
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   useEffect(() => setActivePageTitle('Bin'), [setActivePageTitle]);
 
-  const [activeTab, setActiveTab] = useState<EntityKind>('organizations');
+  // In the URL (M28-T05): a bin link now says which kind of archived thing it
+  // is about, and a reload stays on it.
+  const [activeTab, setActiveTab] = useUrlEnum<EntityKind>('tab', TAB_IDS, 'organizations');
 
   return (
     <div className="flex flex-col gap-6">

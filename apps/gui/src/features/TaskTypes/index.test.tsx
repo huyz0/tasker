@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { TaskTypeService, ProjectTemplateService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { TaskTypesEditor } from './index';
+import { renderScoped } from '../../test/renderScoped';
 
 let mockActiveOrgId = 'org-1';
 vi.mock('../../store/layout', () => ({
@@ -19,14 +19,14 @@ const statuses = [
   { id: 'st-3', taskTypeId: 'tt-1', name: 'done', position: 2 },
 ];
 
-const renderEditor = () => {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={client}>
-      <TaskTypesEditor />
-    </QueryClientProvider>,
-  );
-};
+// M28-T05: the selected type is a route param now, so the screen is mounted at
+// the two paths the application mounts it at and every case runs through the
+// real route matching.
+const renderEditor = (initialEntry = '/task-types') =>
+  renderScoped(<TaskTypesEditor />, {
+    paths: ['/task-types', '/task-types/:typeId'],
+    initialEntry,
+  });
 
 const openBug = async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Bug' }));
@@ -455,18 +455,61 @@ describe('TaskTypesEditor', () => {
   // querying it under the new org's identity even after the type *list*
   // itself had already repainted for the switch.
   it('deselects the open task type when the active org changes', async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const { rerender } = render(
-      <QueryClientProvider client={client}><TaskTypesEditor /></QueryClientProvider>,
-    );
+    const { location, rerender } = renderEditor();
     await openBug();
+    expect(location.pathname).toBe('/task-types/tt-1');
 
     mockActiveOrgId = 'org-2';
     withListTypes({ taskTypes: [{ id: 'tt-9', name: 'Feature' }] });
-    rerender(<QueryClientProvider client={client}><TaskTypesEditor /></QueryClientProvider>);
+    rerender();
 
     await screen.findByRole('button', { name: 'Feature' });
+    // The id lives in the URL now, so clearing the selection means leaving the
+    // detail route — not just forgetting a variable.
+    await waitFor(() => expect(location.pathname).toBe('/task-types'));
     expect(screen.queryByText('Statuses')).toBeNull();
     expect(screen.getByText('Choose a task type on the left to configure its statuses and transitions.')).toBeInTheDocument();
+  });
+
+  // M28-T05. `selectedId` was `useState`, so the configured state machine a
+  // reader was looking at could not be linked to or reloaded.
+  describe('the selected type is in the URL', () => {
+    it('survives a reload of the URL the screen produced', async () => {
+      const first = renderEditor();
+      await openBug();
+      expect(first.location.pathname).toBe('/task-types/tt-1');
+      first.unmount();
+
+      // The rail comes back empty on the reload deliberately: the detail is
+      // fetched by id, so the deep link must not depend on the type being in
+      // whichever page of the list happens to have loaded.
+      withListTypes({ taskTypes: [] });
+      renderEditor(first.location.pathname);
+
+      await screen.findByText('Statuses');
+      expect(screen.getByText('No task types yet.')).toBeInTheDocument();
+    });
+
+    it('carries the active scope onto the type it opens', async () => {
+      const { location } = renderEditor('/task-types?org=org-1&project=proj-1');
+      await openBug();
+      expect(location.url).toBe('/task-types/tt-1?org=org-1&project=proj-1');
+    });
+
+    it('asks for a type when the URL names none', async () => {
+      renderEditor('/task-types');
+      expect(await screen.findByText(/Choose a task type on the left to configure/)).toBeInTheDocument();
+    });
+
+    it('reports an id it cannot resolve rather than rendering an empty editor', async () => {
+      // A route param has no known-values list to validate against, so the
+      // fallback for an id that no longer exists is the read-failed state —
+      // never the two empty-state explanations for a configuration nobody has.
+      mockRpcError(TaskTypeService, 'GetTaskType', 'not_found', 'no such task type');
+      renderEditor('/task-types/tt-gone');
+
+      expect(await screen.findByText('Try again')).toBeInTheDocument();
+      expect(screen.queryByText('Statuses')).toBeNull();
+    });
   });
 });

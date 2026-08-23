@@ -134,3 +134,42 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   scope explicit at the call site. Recorded as the trade rather than a
   discovery.
 - **Next**: M28-T05 (navigational state into the URL).
+
+## M28-T05 — Navigational state into the URL
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: Bin `?tab=`, Organizations `?section=`, Memory `?scope=`, and
+  Task Types as `/task-types/:typeId` (it already fetched by id, so the deep
+  link resolves without the list). The three query params share one new
+  `hooks/useUrlEnum.ts` — validate-or-fall-back on read, and a setter that
+  copies existing params through the functional updater so `?org`/`?project`
+  are never clobbered — rather than three copies inside three files already
+  at the 400-line cap. 16 new tests; suite 1111 → 1127.
+- **Verified**: `moon check --all` clean (34); GUI 1127 pass; coverage 98.5%.
+  Each screen has a genuine reload test — interact, assert the URL the app
+  produced, then re-render fresh at exactly that URL and assert the same
+  view — plus an absent/unrecognised fallback case. TaskTypes' reload test
+  returns an *empty* type list on the second render, so it proves the deep
+  link resolves by id rather than by finding the row in a loaded page.
+- **Notes**: two findings, one of them a bug this milestone would otherwise
+  have shipped.
+  1. **`useScopedTo` was the wrong helper for same-screen navigation.**
+     Memory's `selectBelief` used it, and it carries *only* scope by design —
+     so opening a belief while in organization scope dropped `?scope=` and
+     flipped the list back to project memory with an org belief open beside
+     it. Same-screen navigation now carries the whole query string, which is
+     a superset. Covered by a test. The general rule this surfaces: leaving a
+     screen carries scope; moving within one carries everything.
+  2. **The M23 bug had a fresh place to reappear.** TaskTypes resets its
+     selection on org change (M19-T05), and with the id now in the URL that
+     reset is a *navigation* — so an unguarded effect would have thrown away
+     every deep link on first render, because the store hydrates from `''` a
+     tick after mount. It uses the same discriminator `Tasks` does (an empty
+     previous org is hydration, not a switch), with `replace` rather than a
+     push since the entry being left is the cross-org state the correction
+     exists to remove. Proven load-bearing: removing the guard fails exactly
+     the two deep-link tests.
+  `TaskTypes/index.tsx` is now at exactly 400 lines — at the cap, with no
+  headroom for the next change.
+- **Next**: M28-T06 (the three latent bugs).

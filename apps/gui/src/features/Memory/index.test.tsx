@@ -665,4 +665,48 @@ describe('MemoryExplorer', () => {
 
     expect(screen.getByLabelText('Search beliefs')).toBeInTheDocument();
   });
+
+  // M28-T05. Which scope you are reading — the project's memory or the whole
+  // organization's — was `useState`, so a reload silently put you back in the
+  // project and showed a different set of beliefs under the same URL.
+  describe('the scope toggle is in the URL', () => {
+    it('survives a reload of the URL the screen produced', async () => {
+      const requests = withRpc('SearchBeliefs', { beliefs: BELIEFS });
+
+      const first = renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'organization' }));
+      expect(first.location.url).toBe('/memory?scope=organization');
+      first.unmount();
+
+      renderPage('/memory?scope=organization');
+      expect(screen.getByRole('button', { name: 'organization' })).toHaveAttribute('aria-pressed', 'true');
+      // Pressed is the visible half; the query it drives is the half that
+      // decides which beliefs come back.
+      fireEvent.change(screen.getByLabelText('Search beliefs'), { target: { value: 'Tests' } });
+      await waitFor(() => expect(requests).toContainEqual(
+        expect.objectContaining({ scopeType: 'organization', scopeId: 'org-1' }),
+      ));
+    });
+
+    it('keeps the scope when a belief is opened', async () => {
+      // Selecting a belief navigates, and the navigation must not quietly
+      // drop the reader back into project scope while an org belief is open.
+      const { location } = renderPage('/memory?scope=organization');
+      fireEvent.change(screen.getByLabelText('Search beliefs'), { target: { value: 'Tests' } });
+      fireEvent.click(await screen.findByText('Tests must pass before merge'));
+
+      await waitFor(() => expect(location.pathname).toBe('/memory/blf-1'));
+      expect(location.search).toContain('scope=organization');
+    });
+
+    it('falls back to project scope when it is absent or unrecognised', async () => {
+      const absent = renderPage('/memory');
+      expect(screen.getByRole('button', { name: 'project' })).toHaveAttribute('aria-pressed', 'true');
+      absent.unmount();
+
+      renderPage('/memory?scope=nonsense');
+      expect(screen.getByRole('button', { name: 'project' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'organization' })).toHaveAttribute('aria-pressed', 'false');
+    });
+  });
 });

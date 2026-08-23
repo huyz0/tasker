@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { useDebounce } from 'use-debounce';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import * as Tabs from '@radix-ui/react-tabs';
 import { transport } from '../../lib/connectTransport';
 import { MemoryService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
-import { useScopedTo } from '../../hooks/useScope';
+import { useUrlEnum } from '../../hooks/useUrlEnum';
 import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../../components/ui/ListState';
 import { VirtualList } from '../../components/ui/VirtualList';
@@ -616,13 +616,17 @@ function PromoteBeliefDialog({ open, onClose, belief, orgId }: { open: boolean; 
 }
 
 export function MemoryExplorer() {
-  const scopedTo = useScopedTo();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const { beliefId: routeBeliefId } = useParams<{ beliefId?: string }>();
   const navigate = useNavigate();
+  const { search } = useLocation();
 
-  const [scopeType, setScopeType] = useState<ScopeType>('project');
+  // In the URL (M28-T05). Which memory you are reading — this project's or the
+  // whole organization's — decided the query key and therefore the entire
+  // list, so a reload used to show a different set of beliefs under the same
+  // URL without saying so.
+  const [scopeType, setScopeType] = useUrlEnum<ScopeType>('scope', SCOPE_TYPES, 'project');
   const [mode, setMode] = useState<'search' | 'browse'>('search');
   const [query, setQuery] = useState('');
   const [debouncedQuery] = useDebounce(query, 300);
@@ -680,7 +684,11 @@ export function MemoryExplorer() {
 
   const selectBelief = (id: string) => {
     setSelectedBeliefId(id);
-    navigate(scopedTo(`/memory/${id}`), { replace: true });
+    // The whole query string, not `useScopedTo`: this is navigation *within*
+    // the screen, so it keeps the screen's own `?scope=` as well as the scope
+    // the helper would carry. Dropping `?scope=` here would flip the list back
+    // to project memory with an organization belief open beside it.
+    navigate({ pathname: `/memory/${id}`, search }, { replace: true });
   };
 
   if (!activeOrgId) {

@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useScope, useSetScope } from '../../hooks/useScope';
+import { useUrlEnum } from '../../hooks/useUrlEnum';
 import { useLayoutStore } from '../../store/layout';
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
@@ -89,7 +90,11 @@ function slugify(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `org-${Date.now()}`;
 }
 
-type Section = 'organizations' | 'members' | 'audit';
+// A list rather than a bare union so `?section=` can be validated against it —
+// Radix renders no panel at all for a value none of its triggers own, so an
+// unrecognised section would be a blank screen.
+const SECTIONS = ['organizations', 'members', 'audit'] as const;
+type Section = (typeof SECTIONS)[number];
 
 export function OrganizationsDashboard() {
   const { confirm, confirmDialog } = useConfirm();
@@ -97,7 +102,9 @@ export function OrganizationsDashboard() {
   const setScope = useSetScope();
   const { orgId: urlOrgId } = useScope();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
-  const [section, setSection] = useState<Section>('organizations');
+  // In the URL (M28-T05): the audit trail and the roles table are each worth
+  // linking to, and a reload no longer drops the reader back on the org tree.
+  const [section, setSection] = useUrlEnum<Section>('section', SECTIONS, 'organizations');
   const [newOrgName, setNewOrgName] = useState('');
   const [newOrgParentId, setNewOrgParentId] = useState('');
   const [showNewOrgForm, setShowNewOrgForm] = useState(false);

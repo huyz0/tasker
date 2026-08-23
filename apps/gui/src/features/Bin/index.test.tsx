@@ -1,8 +1,8 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OrgService, TeamService, ProjectService, TaskService, AgentService, ArtifactService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError } from '../../test/mockRpc';
+import { renderScoped } from '../../test/renderScoped';
 
 let mockActiveOrgId: string | undefined = 'org-1';
 let mockActiveProjectId: string | undefined = 'proj-1';
@@ -17,14 +17,11 @@ vi.mock('../../store/layout', () => ({
 import { BinDashboard } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
 
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const utils = render(
-    <QueryClientProvider client={queryClient}>
-      <BinDashboard />
-    </QueryClientProvider>
-  );
-  return { ...utils, queryClient };
+// M28-T05: the open tab is a query parameter now, so every case here needs a
+// router. `renderScoped` is the one the other suites use, and it hands back the
+// location so a test can read the URL the screen produced.
+function renderPage(initialEntry = '/bin') {
+  return renderScoped(<BinDashboard />, { paths: ['/bin'], initialEntry });
 }
 
 /** Registers one RPC on `service` and returns an array of every request it receives. */
@@ -496,5 +493,43 @@ describe('BinDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Artifacts' }));
 
     await waitFor(() => expect(screen.getByText('image/png · 2.0 KB')).toBeDefined());
+  });
+
+  // M28-T05. The tab was `useState`, so a reload — or a link sent to someone
+  // else — always landed back on Organizations no matter what was being looked
+  // at.
+  describe('the open tab is in the URL', () => {
+    it('survives a reload of the URL the screen produced', async () => {
+      withRpc(OrgService, 'ListOrgs', { organizations: [] });
+      withRpc(TaskService, 'ListTasks', {
+        tasks: [{ id: 'task-1', title: 'Archived Task', deletedAt: new Date().toISOString() }],
+      });
+
+      const first = renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Tasks' }));
+      await waitFor(() => expect(screen.getByText('Archived Task')).toBeDefined());
+      expect(first.location.url).toBe('/bin?tab=tasks');
+
+      // The reload: a fresh render at exactly the URL the click produced.
+      first.unmount();
+      renderPage(first.location.url);
+
+      await waitFor(() => expect(screen.getByText('Archived Task')).toBeDefined());
+      expect(screen.queryByText('No archived organizations.')).toBeNull();
+    });
+
+    it('falls back to Organizations when the tab is absent or unrecognised', async () => {
+      withRpc(OrgService, 'ListOrgs', {
+        organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt: new Date().toISOString() }],
+      });
+
+      const absent = renderPage('/bin');
+      await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
+      absent.unmount();
+
+      // A hand-edited or stale `?tab=` must not leave the panel blank.
+      renderPage('/bin?tab=nonsense');
+      await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
+    });
   });
 });

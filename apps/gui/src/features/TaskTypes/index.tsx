@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
 import { TaskTypeService, ProjectTemplateService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore } from '../../store/layout';
+import { useScopedTo } from '../../hooks/useScope';
 import { ListState } from '../../components/ui/ListState';
 
 const typeClient = createClient(TaskTypeService, transport);
@@ -22,7 +24,12 @@ export function TaskTypesEditor() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const scopedTo = useScopedTo();
+  // The open type is the route, not local state (M28-T05): `detail` fetches by
+  // id, so `/task-types/:typeId` resolves without the list.
+  const { typeId } = useParams<{ typeId?: string }>();
+  const selectedId = typeId ?? null;
   const [newStatus, setNewStatus] = useState('');
   const [newType, setNewType] = useState('');
   const [from, setFrom] = useState('');
@@ -32,12 +39,24 @@ export function TaskTypesEditor() {
 
   useEffect(() => { setActivePageTitle('Task Types'); }, [setActivePageTitle]);
 
-  // M19-T05: switching the active org left `selectedId` pointing at the
-  // previous org's task type - `detail` (keyed only on `selectedId`) kept
-  // querying it under the new org's identity, either failing authorization
-  // or, worse, briefly showing one org's type tree as if it belonged to
-  // another while the type list itself had already repainted for the switch.
-  useEffect(() => { setSelectedId(null); }, [activeOrgId]);
+  // M19-T05: switching the active org left `selectedId` pointing at the previous
+  // org's task type - `detail` (keyed only on `selectedId`) kept querying it under
+  // the new org's identity, either failing authorization or, worse, briefly showing
+  // one org's type tree as if it belonged to another. With the id in the URL that
+  // correction has to navigate, not just forget a variable — and it must tell a real
+  // switch from the store hydrating out of '' a tick after mount, or every deep link
+  // would bounce back to the list (the M23 bug in a new place). Same discriminator
+  // `Tasks` uses: an empty previous org is hydration. `replace` because the entry it
+  // leaves is the cross-org state this exists to remove, and the one behind it carries
+  // the old org in its own query string.
+  const previousOrgId = useRef('');
+  useEffect(() => {
+    const previous = previousOrgId.current;
+    previousOrgId.current = activeOrgId;
+    if (previous && previous !== activeOrgId && typeId) {
+      navigate(scopedTo('/task-types'), { replace: true });
+    }
+  }, [activeOrgId, typeId, navigate, scopedTo]);
 
   const typesQuery = useQuery({
     queryKey: ['taskTypes', activeOrgId],
@@ -64,7 +83,7 @@ export function TaskTypesEditor() {
     onSuccess: (res: any) => {
       setNewType('');
       queryClient.invalidateQueries({ queryKey: ['taskTypes', activeOrgId] });
-      setSelectedId(res.taskType.id);
+      navigate(scopedTo(`/task-types/${res.taskType.id}`));
     },
   });
 
@@ -114,7 +133,7 @@ export function TaskTypesEditor() {
   const nameOf = (id: string) => statuses.find((s: any) => s.id === id)?.name ?? id;
 
   const selectType = (id: string) => {
-    setSelectedId(id);
+    navigate(scopedTo(`/task-types/${id}`));
     setIsRenaming(false);
   };
 
