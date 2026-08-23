@@ -350,7 +350,9 @@ export function ArtifactsBrowser() {
       cursor = cursor.parentId ? byId.get(cursor.parentId) : null;
     }
     return [
-      { label: 'Artifacts', to: '/artifacts' },
+      // Scoped, for the reason `Tasks`' trail is: a bare path here sends the
+      // explorer to whichever project the switcher auto-selects (M28-T08).
+      { label: 'Artifacts', to: scopedTo('/artifacts') },
       ...path.map((f: any) => ({ label: f.name })),
       { label: selectedArtifact.name },
     ];

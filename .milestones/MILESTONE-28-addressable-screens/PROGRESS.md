@@ -254,3 +254,48 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   has recorded before rather than anything here, but it is unidentified —
   worth watching in CI rather than assuming.
 - **Next**: M28-T08 (end-to-end proof, NAVIGATION.md, closeout).
+
+## M28-T08 — End-to-end proof, NAVIGATION.md, closeout
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: new `tests/e2e/addressable.spec.ts` (6 tests);
+  `NAVIGATION.md` documents the scope convention, gains
+  `/task-types/:typeId`, and its breadcrumb rule is now **true as filed** —
+  four screens, every ancestor link scoped, and the no-organization-crumb
+  constraint stated with its reason.
+- **Verified**: the headline claim proven across **two real browser
+  contexts** — context A pins `Bulk Project 00001` (deliberately *not* the
+  newest project, which is what a cold load auto-selects, so a URL copied
+  from the default would prove nothing), creates a uniquely-named task in
+  it, and copies the URL; context B is a fresh `browser.newContext()` whose
+  own auto-selected project is asserted to differ, and `goto(urlFromA)`
+  shows A's task, A's project in the breadcrumb, and A's scope unchanged by
+  the auto-select. Also: a deep-linked task survives `page.reload()` (M23 at
+  browser level), `?section=` and `?tab=` survive reloads, and a cold-linked
+  task shows a trail whose every link carries scope. Full e2e **44/44, run
+  twice**; `moon check --all` clean; route parity between `App.tsx` and the
+  route table re-checked mechanically; `:doc-drift` clean.
+- **Notes**: two findings, and the second is about this milestone's own
+  process.
+  1. **Breadcrumb ancestors were dropping scope** — exit criterion 6's exact
+     wording ("no navigation within the shell silently drops `?org`/
+     `?project`") was false for crumbs. Clicking "Tasks" out of a deep-linked
+     task in project A landed on bare `/tasks`, where the switcher
+     auto-selects `projects[0]` — so the way *out* of a task took you into a
+     different project. T04's invariant test covers rendered nav links, not
+     trails built inside a screen. Reproduced red by the new e2e, fixed in
+     `Tasks` and `Artifacts`.
+  2. **`gui:e2e` is `type: 'run'`, so it is not in `moon check --all`.**
+     T03 and T04 each broke an existing spec — `reports.spec.ts`'s
+     `toHaveURL(/\\/reports$/)` once nav links gained a query string, and the
+     rich-editor spec's `url.split('/tasks/')[1]` once the URL carried one —
+     and every local gate stayed green through both. A third failure
+     (`core-journey`'s strict-mode `Delete`) predated M28. All three fixed;
+     baseline was measured with the work stashed (35/38) to be sure none was
+     mine. The lesson is the M26 one again from a new angle: a green
+     `moon check --all` does not mean the browser suite passes, and nothing
+     says so at the point of use.
+     Also worth carrying: run e2e with `--workers=1` locally; the default 10
+     produced dynamic-import and renderer crashes across *pre-existing*
+     specs on this machine. CI already uses 1.

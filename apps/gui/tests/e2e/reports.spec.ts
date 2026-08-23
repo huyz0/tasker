@@ -63,7 +63,10 @@ test.describe('Reports', () => {
 
     // By click, not by URL — the nav entry existing is part of what T08 shipped.
     await page.getByRole('link', { name: 'Reports' }).click();
-    await expect(page).toHaveURL(/\/reports$/);
+    // `(\?|$)`, not `$`: since M28-T04 every shell link carries the active
+    // scope, so following one lands on `/reports?org=…&project=…`. The path is
+    // what this assertion is about; the query string is the scope working.
+    await expect(page).toHaveURL(/\/reports(\?|$)/);
     await expect(page.getByRole('heading', { name: 'Reports', level: 1 })).toBeVisible({ timeout: 15_000 });
 
     // Both RPCs answered 200 — reached AND authorized, not merely attempted.

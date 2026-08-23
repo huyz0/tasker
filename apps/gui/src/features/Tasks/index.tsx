@@ -976,7 +976,13 @@ export function TasksWorkbench() {
              className="px-4 pt-3 shrink-0"
              items={[
                { label: projectName, to: scopedTo('/projects') },
-               { label: 'Tasks', to: '/tasks' },
+               // `scopedTo`, not a bare '/tasks': a crumb is an in-app link
+               // like any other, and an unscoped one drops you back to the
+               // board of whichever project the switcher auto-selects — the
+               // exact "a task link saved from project A opens under project
+               // B" failure ADR-0025 exists to remove, arrived at from the
+               // other direction. Caught by addressable.spec.ts (M28-T08).
+               { label: 'Tasks', to: scopedTo('/tasks') },
                { label: expandedTask.displayId || expandedTask.title },
              ]}
            />
