@@ -10,23 +10,31 @@ We are building Tasker to serve as the foundational task-and-knowledge infrastru
 
 By design, humans are shifted **"off the loop"**, empowered instead by a dedicated CLI and a web GUI, so managers step **"on the loop"** (monitoring and feedback) or **"in the loop"** (approvals) only when necessary.
 
-> **Today the GUI is not real-time.** It refreshes on navigation and after your
-> own mutations — there is no polling, no WebSocket and no server-sent events in
-> `apps/gui/`. The backend already publishes domain events to NATS and nothing
-> consumes them; live updates are **M08**.
+> **The GUI is live.** A server-streaming `EventService.SubscribeEvents`
+> (`apps/backend/src/modules/events/`) carries domain events from NATS to the
+> browser, where `apps/gui/src/hooks/useLiveEvents.ts` turns each one into a
+> targeted cache invalidation; it reconnects with backoff, falls back to
+> polling, and reports its own state in the header. Delivered by M08, which
+> also added the durable audit projector reading the same subjects.
 
 **The Mission Scale**
-These are the design targets the architecture is aimed at. **None has been
-measured** — there is no load test or benchmark in the repository, and no
-deployment to measure. Read them as intent:
+These are the design targets the architecture is aimed at:
 
 - **20,000+ AI Agents** running concurrent tasks.
 - **20,000+ Human Users and Managers** providing oversight.
 - **20,000 teams** (up to 100 members each), delivering **2,000 projects**
-  concurrently. Teams have **no table in the schema yet** — they are **M10**.
+  concurrently.
 
-Read-path scale is **M07**; the numbers become claims when something measures
-them, which is **M12**.
+**How much of that is measured, precisely.** *Data* scale is: a seeded
+fixture of 2,000 projects, 50,000 tasks in one project, 100,000 artifacts in
+one folder and 100,002 organization members is measured by
+`apps/backend/scripts/measure-latency.ts` against per-endpoint p95 budgets
+declared in `api-standard.md` §6, and every endpoint is inside its budget.
+*Concurrency* is not: there is no load test in the repository, and 20,000
+simultaneous callers have never been simulated. The largest principal count
+ever exercised is 100,002 rows, not 100,002 clients. Read the first three
+bullets as intent, the data-scale figures as evidence, and the concurrency
+targets as still unproven.
 
 ---
 
@@ -67,7 +75,7 @@ every remaining capability to the milestone that owns it.
 ### Integrating an agent
 
 [**Authenticating an agent**](docs/agent-integration.md) — how an autonomous
-worker gets a token, what the eight scopes grant, what no token can do, and how
+worker gets a token, what the eleven scopes grant, what no token can do, and how
 to rotate without downtime. Start here if you are wiring a worker to Tasker
 rather than developing Tasker itself.
 
@@ -208,11 +216,13 @@ This tails both processes' logs in one terminal, prefixed `[backend]` /
 `[gui]`; Ctrl-C stops both. The backend listens on `:8080`, the GUI dev
 server on `:5173`.
 
-> **`STANDALONE=true` is not the single-binary product.** It selects the SQLite
-> dialect for a normally-run backend. `bun run build:standalone` does compile a
-> binary, but it bundles the backend only — a `GET /` on it returns a
-> placeholder page, not the GUI, and the in-process transport is an unused stub.
-> A genuinely portable single binary is **M09**; see
+> **`STANDALONE=true` and the single binary are two different things.**
+> The variable selects the SQLite dialect for a normally-run backend.
+> `bun run build:standalone` compiles the portable executable — one file
+> carrying the GUI (`scripts/bundle-gui.ts`), both dialects' migrations
+> (`src/db/embeddedMigrations.ts`) and FTS5, serving the SPA with history
+> fallback from `src/lib/staticServer.ts`. Delivered by M09 and verified from
+> an empty directory under `env -i`; see
 > [architecture.md](.specs/product/architecture.md).
 
 To change any of that - point at MySQL, configure real Google/GitHub OAuth,

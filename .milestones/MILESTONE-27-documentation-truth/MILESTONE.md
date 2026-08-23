@@ -106,7 +106,7 @@ check and belongs with a GUI round.
         `.milestones/MILESTONE-27-documentation-truth/*`, `.milestones/STATE.md`
       - Verify: files exist; `moon run tasker:docs-lint` passes.
 
-- [ ] **M27-T02** — Correct `README.md`: the real-time callout, the teams
+- [x] **M27-T02** — Correct `README.md`: the real-time callout, the teams
       claim, the single-binary callout, the read-path/measurement sentence,
       and the scope count (it says eight; there are now ten). The Mission
       Scale wording becomes honest rather than deleted — data scale *is*

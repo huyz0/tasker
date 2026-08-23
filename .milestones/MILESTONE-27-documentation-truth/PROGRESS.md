@@ -27,3 +27,36 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
   `moon check --all` red; T05's demonstration against the pre-M27 text from
   git history is what supplies the red-phase evidence instead.
 - **Next**: M27-T02 (correct README.md).
+
+## M27-T02 — Correct README.md
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: five corrections. The real-time callout now describes the feed
+  that exists (`modules/events/`, `hooks/useLiveEvents.ts`, backoff, polling
+  fallback, header indicator). The teams claim is gone. The single-binary
+  callout describes what `build:standalone` actually produces, citing
+  `bundle-gui.ts`, `embeddedMigrations.ts` and `staticServer.ts`. The
+  read-path/measurement sentence is replaced by a precise account of what is
+  and is not measured. Scope count corrected.
+- **Verified**: every path cited in the new text checked to exist (six of
+  six). Milestone references in the file are now two, both historical
+  attribution ("Delivered by M08", "Delivered by M09") rather than pending
+  ownership. `docs-lint` clean.
+- **Notes**: two things worth recording.
+  1. **The scope count was wrong in my own plan.** The spec said "ten"
+     (the original eight plus M21's memory pair); counting
+     `AGENT_SCOPES` directly gives **eleven**, because M26 added
+     `events:read` four commits ago. Corrected to eleven, and
+     `docs/agent-integration.md`'s table verified to list all eleven. This
+     is the exact failure this milestone is about — a count asserted from
+     memory of a document rather than from the code — caught only because
+     the task's own rule is to verify every claim at the source.
+  2. The "none has been measured" sentence was **half** false, and the half
+     that was false flattered the project. Rather than delete it, the
+     replacement states precisely which axis is measured (data scale, with
+     the fixture sizes and the budget file named) and which never has been
+     (concurrency — no load test exists, and 100,002 rows is not 100,002
+     callers). A reader now gets a sharper claim than the original, not a
+     quieter one.
+- **Next**: M27-T03 (correct architecture.md).
