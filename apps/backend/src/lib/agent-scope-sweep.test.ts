@@ -20,6 +20,14 @@ import { createAuthHandler } from '../modules/auth/auth.handler';
 import createSearchHandler from '../modules/search/search.handler';
 import createDashboardHandler from '../modules/dashboard/dashboard.handler';
 import createReportsHandler from '../modules/reports/reports.handler';
+// M26-T03: these four were absent from the map below, so the sweep's stated
+// guarantee ("every method on every handler") silently excluded them. Three
+// were safe by construction; EventService.subscribeEvents was not — see
+// ADR-0023.
+import { createEventsHandler } from '../modules/events/events.handler';
+import { createTeamsHandler } from '../modules/teams/teams.handler';
+import { createRolesHandler } from '../modules/roles/roles.handler';
+import { createAuditHandler } from '../modules/audit/audit.handler';
 
 /**
  * Deny-by-default for agent tokens, the sibling of `viewer-denial.test.ts`.
@@ -37,7 +45,7 @@ import createReportsHandler from '../modules/reports/reports.handler';
  */
 
 /** Handlers agents may never reach at all, whatever scopes they hold. */
-const NO_AGENT_ACCESS = ['orgs', 'auth', 'search'];
+const NO_AGENT_ACCESS = ['orgs', 'auth', 'search', 'teams', 'roles', 'audit'];
 
 /** Unauthenticated, so there is no principal for a scope to apply to. */
 const PUBLIC: Record<string, string[]> = { health: ['ping'] };
@@ -66,6 +74,34 @@ const ids = {
 
 /** One sample request per method, enough to reach the authorization check. */
 const REQUESTS: Record<string, Record<string, unknown>> = {
+  // M26-T03. Every method refuses an agent before it reads its request, so
+  // these shapes only need to be plausible, not valid.
+  events: {
+    subscribeEvents: {},
+  },
+  teams: {
+    createTeam: { orgId: ids.org, name: 'T' },
+    updateTeam: { teamId: 'team-x', name: 'T' },
+    archiveTeam: { teamId: 'team-x' },
+    restoreTeam: { teamId: 'team-x' },
+    listTeams: { orgId: ids.org },
+    addTeamMember: { teamId: 'team-x', userId: ids.user },
+    removeTeamMember: { teamId: 'team-x', userId: ids.user },
+    listTeamMembers: { teamId: 'team-x' },
+  },
+  roles: {
+    listPermissions: {},
+    listRoles: { orgId: ids.org },
+    createRole: { orgId: ids.org, name: 'R' },
+    updateRole: { roleId: 'role-x', name: 'R' },
+    deleteRole: { roleId: 'role-x' },
+    grantRole: { roleId: 'role-x', subjectType: 'user', subjectId: ids.user, scopeType: 'organization', scopeId: ids.org },
+    revokeGrant: { grantId: 'grant-x' },
+    listGrants: { scopeType: 'organization', scopeId: ids.org },
+  },
+  audit: {
+    listAuditEvents: { orgId: ids.org },
+  },
   orgs: {
     listOrgs: {},
     seedOrg: { name: 'X', slug: 'x-scope-sweep' },
@@ -270,6 +306,13 @@ beforeAll(async () => {
   await db.insert(schema.beliefRelations).values({ id: ids.beliefRelation, beliefAId: ids.belief, beliefBId: ids.belief2, relationType: 'relates_to', createdBy: ids.user, createdAt: now });
 
   handlers = {
+    // M26-T03. `events` is mapped (events:read, ADR-0023); the other three
+    // refuse agents outright through requireUser, which is why they belong
+    // in NO_AGENT_ACCESS rather than in AGENT_RPC_SCOPES.
+    events: createEventsHandler(db, null),
+    teams: createTeamsHandler(db, null),
+    roles: createRolesHandler(db, null),
+    audit: createAuditHandler(db),
     orgs: createOrgsHandler(db, null),
     auth: createAuthHandler(db),
     projects: createProjectsHandler(db, null),
@@ -306,6 +349,25 @@ beforeAll(async () => {
 
 const methodsOf = (h: any) => Object.keys(h).filter((k) => typeof h[k] === 'function');
 
+/**
+ * Call a handler method and surface whatever it throws.
+ *
+ * M26-T03: an **async generator** returns its generator object immediately and
+ * runs none of its body, so `await handler[method](req, ctx)` on a streaming
+ * method asserts precisely nothing — it neither throws nor resolves to a
+ * value the suites inspect. `subscribeEvents` is the first such method, and
+ * without this every assertion below would have quietly passed over it. A
+ * generator is discriminated from a promise by having `next` as well as
+ * `Symbol.asyncIterator`.
+ */
+async function invoke(handler: any, method: string, req: unknown, ctx: unknown): Promise<unknown> {
+  const result = handler[method](req, ctx);
+  if (result && typeof result.next === 'function' && typeof result[Symbol.asyncIterator] === 'function') {
+    return await result.next();
+  }
+  return await result;
+}
+
 describe('agents are denied by default across every handler', () => {
   it('covers every handler method — no method is silently unclassified', () => {
     const missing: string[] = [];
@@ -320,6 +382,32 @@ describe('agents are denied by default across every handler', () => {
       }
     }
     expect(missing, `unclassified: ${missing.join(', ')} — add a sample request (denied) or an AGENT_RPC_SCOPES entry (allowed)`).toEqual([]);
+  });
+
+  it('the handler map covers every service registered in index.ts', async () => {
+    // M26-T03. The guarantee in this file's header says "every method on
+    // every handler". It could only ever mean "every handler someone
+    // remembered to list here" — and four of twenty-one were missing, one of
+    // them a genuine hole (ADR-0023). Matching on the createXHandler factory
+    // identifier rather than the service name is deliberate: service names do
+    // not map 1:1 onto the keys above (TaskService -> taskManagement,
+    // TaskTypeService -> tasks), so a name table would itself be a
+    // hand-maintained list that could drift the same way. index.ts is read as
+    // text because it runs at module scope — importing it would start a
+    // server.
+    const factoriesIn = async (relativePath: string): Promise<Set<string>> => {
+      const source = await Bun.file(new URL(relativePath, import.meta.url).pathname).text();
+      return new Set([...source.matchAll(/\bcreate([A-Za-z]+)Handler\s*\(/g)].map((m) => m[1]!));
+    };
+    const registered = await factoriesIn('../index.ts');
+    const swept = await factoriesIn('./agent-scope-sweep.test.ts');
+
+    expect(registered.size).toBeGreaterThan(15); // the regex found something real
+    const unswept = [...registered].filter((f) => !swept.has(f)).sort();
+    expect(
+      unswept,
+      `registered in index.ts but absent from this sweep: ${unswept.join(', ')} — add the handler to the map above, or this file's guarantee is not true`,
+    ).toEqual([]);
   });
 
   it('every scope in AGENT_RPC_SCOPES is one the vocabulary defines', () => {
@@ -339,7 +427,7 @@ describe('agents are denied by default across every handler', () => {
       const survivors: string[] = [];
       for (const [method, req] of Object.entries(REQUESTS[handlerName] ?? {})) {
         try {
-          await handlers[handlerName][method](req, ctxFor(allScopes()));
+          await invoke(handlers[handlerName], method, req, ctxFor(allScopes()));
           survivors.push(method);
         } catch (e) {
           if (!(e instanceof ConnectError) || e.code !== Code.PermissionDenied) survivors.push(`${method} (${(e as Error).message})`);
@@ -360,7 +448,7 @@ describe('unmapped methods refuse an agent even with every scope', () => {
         const req = REQUESTS[name]?.[method];
         if (req === undefined) continue; // reported by the completeness test
         try {
-          await handler[method](req, ctxFor(allScopes()));
+          await invoke(handler, method, req, ctxFor(allScopes()));
           survivors.push(`${name}.${method}`);
         } catch {
           // Any rejection is acceptable here: the method is closed to agents,
@@ -384,7 +472,7 @@ describe('a mapped method checks the specific scope it names', () => {
           scopes: AGENT_SCOPES.filter((s) => s !== required),
         } as Principal;
         try {
-          await handlers[name][method](req, ctxFor(principal));
+          await invoke(handlers[name], method, req, ctxFor(principal));
           failures.push(`${name}.${method} allowed without ${required}`);
         } catch (e) {
           if (e instanceof ConnectError && e.code !== Code.PermissionDenied) {

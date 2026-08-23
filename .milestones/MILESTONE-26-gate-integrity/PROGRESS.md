@@ -100,3 +100,34 @@ Append-only. Newest entry at the bottom. One entry per task attempt.
      Agents screen at all — the backend vocabulary and its GUI mirror had
      silently drifted for five milestones. Fixed alongside `events:read`.
 - **Next**: M26-T03 (make the sweep self-covering).
+
+## M26-T03 — Make the agent-scope sweep self-covering
+
+- **Status**: done
+- **Date**: 2026-08-23
+- **Changed**: `agent-scope-sweep.test.ts` — added `events`, `teams`, `roles`
+  and `audit` to the handler map (the last three into `NO_AGENT_ACCESS`,
+  since `requireUser` refuses agents outright with `PermissionDenied`, which
+  is the strictest classification available and therefore the honest one);
+  sample requests for all four; a new `invoke()` helper that drives async
+  generators; and the self-coverage assertion.
+- **Verified**: 11 pass; full backend suite 1806 pass / 0 fail. Both new
+  guards proven to bite by deliberate break, not assumed:
+  - removing the `events` entry → *"registered in index.ts but absent from
+    this sweep: Events"*, then restored.
+  - reverting `invoke()` to the pre-M26 `await handler[method](...)` →
+    *"events.subscribeEvents allowed without events:read"*, then restored.
+- **Notes**: the second break is the one worth recording. An async generator
+  returns its generator object and runs **no body**, so the old call form
+  asserted nothing at all about any streaming method. Had T03 shipped without
+  `invoke()`, the sweep would have produced exactly that false red on the
+  method M26-T02 had just secured — and the natural reading of a red like
+  that is "the sweep can't handle this handler, exclude it", which would have
+  reinstated the hole this milestone exists to close.
+  The self-coverage assertion keys on the `createXHandler` factory identifier
+  rather than the service name, because service names do not map 1:1 onto the
+  map's keys (`TaskService` → `taskManagement`, `TaskTypeService` → `tasks`)
+  — a name table would be another hand-maintained list free to drift the same
+  way. `index.ts` is read as text because it runs at module scope; importing
+  it would start a server.
+- **Next**: M26-T04 (migration `when` inversion + repair migration).

@@ -130,7 +130,7 @@ that SMTP exists; claim TTL/auto-expiry, now that M25 built the detector).
       - Verify: `moon run backend:test` — a scopeless token refused, a
         scoped token admitted, and out-of-scope subjects never delivered.
 
-- [ ] **M26-T03** — Make the sweep self-covering: add `events`, `teams`,
+- [x] **M26-T03** — Make the sweep self-covering: add `events`, `teams`,
       `roles` and `audit` to the handler map, and add an assertion that the
       map covers every service registered in `index.ts`, so the next handler
       cannot be silently unswept. Prove the assertion bites by removing an
