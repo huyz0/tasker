@@ -1,13 +1,13 @@
 ---
 id: M28
 title: Addressable Screens
-status: in-progress
+status: done
 goal: A URL copied out of the browser reopens the same thing for whoever pastes it — carrying its own scope — and every deep-linkable detail view shows a path back to its parent.
 depends_on: []
 surfaces: [gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-23
-completed_at: null
+completed_at: 2026-08-23
 ---
 
 # M28 — Addressable Screens
@@ -43,33 +43,33 @@ it.
 
 ## 3. Exit Criteria
 
-- [ ] A URL copied from any scoped screen and opened in a fresh session
+- [x] A URL copied from any scoped screen and opened in a fresh session
       (different last-used project, cold load) shows the same scope and the
       same content — proven by a Playwright test that reads a URL from one
       context and opens it in another.
-- [ ] Bin's tab, Organizations' section, Memory's scope toggle and Task
+- [x] Bin's tab, Organizations' section, Memory's scope toggle and Task
       Types' selection survive a reload — each proven by a test that
       navigates, reloads, and asserts the same view.
-- [ ] Switching project from a task detail view does not leave a stale task
+- [x] Switching project from a task detail view does not leave a stale task
       open, and a **hard reload of a task URL keeps it open** — the M23
       regression, which the URL change is most likely to reintroduce.
       `Tasks/index.test.tsx`'s four `previousScope` cases pass, including
       hydrate-from-empty.
-- [ ] `Artifacts` uses the same hydration discriminator as `Tasks` rather
+- [x] `Artifacts` uses the same hydration discriminator as `Tasks` rather
       than the `isFirstRender` guard `Tasks` abandoned, with a
       hydrate-from-empty test it currently lacks.
-- [ ] Opening `/memory/:beliefId` for a belief outside the active scope
+- [x] Opening `/memory/:beliefId` for a belief outside the active scope
       resolves against the belief's own scope rather than rendering it under
       the wrong org — with a test.
-- [ ] Every in-app link preserves scope: no navigation within the shell
+- [x] Every in-app link preserves scope: no navigation within the shell
       silently drops `?org`/`?project` — enforced by a test over the link
       helper, not by inspection.
-- [ ] Breadcrumbs render on every deep-linkable detail view — Tasks,
+- [x] Breadcrumbs render on every deep-linkable detail view — Tasks,
       Artifacts, Memory and Task Types — each ending in the entity and each
       intermediate crumb a working link.
-- [ ] `NAVIGATION.md` documents the scope convention and its breadcrumb rule
+- [x] `NAVIGATION.md` documents the scope convention and its breadcrumb rule
       is true as filed; `moon run :doc-drift` and `docs-lint` pass.
-- [ ] `moon check --all` clean, including the 95% GUI coverage gate and the
+- [x] `moon check --all` clean, including the 95% GUI coverage gate and the
       Storybook a11y/375px gates.
 
 ## 4. Scope
@@ -176,7 +176,7 @@ deep-linkable detail views; `NAVIGATION.md`; ADR-0025.
         `features/{Memory,TaskTypes}/index.tsx` (+ tests, + stories)
       - Verify: `moon run gui:test`; `moon run gui:storybook-test`.
 
-- [ ] **M28-T08** — Prove it end to end and close: a Playwright test that
+- [x] **M28-T08** — Prove it end to end and close: a Playwright test that
       copies a URL from one browser context and opens it in a second with a
       different last-used project, asserting identical scope and content;
       `NAVIGATION.md` documents the scope convention and its breadcrumb rule
