@@ -61,7 +61,7 @@ const PENDING_PATTERNS: { name: string; re: RegExp }[] = [
   { name: 'heading — <milestone>', re: /^#{1,6}\s.*[—-]\s*\*{0,2}(M\d{2})\*{0,2}\s*(?:,\s*\*{0,2}M\d{2}\*{0,2}\s*)*$/gm },
 ];
 
-export type Finding = {
+type Finding = {
   doc: string;
   line: number;
   milestone: string;
