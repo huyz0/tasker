@@ -1,13 +1,13 @@
 ---
 id: M29
 title: In-App Notifications
-status: in-progress
+status: done
 goal: A human sees their stalled-claim alerts inside the product, on any deployment, without waiting for an email — and the surface that shows them is generic enough that the next alert type registers against it instead of building its own.
 depends_on: []
 surfaces: [backend, gui, contract, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-08-24
-completed_at: null
+completed_at: 2026-08-24
 ---
 
 # M29 — In-App Notifications
@@ -57,28 +57,28 @@ it, and which decide the first two tasks:**
 
 ## 3. Exit Criteria
 
-- [ ] A signed-in user with an unread stalled-claim alert sees a bell with a
+- [x] A signed-in user with an unread stalled-claim alert sees a bell with a
       non-zero badge in the app shell; opening it lists the alert with the task
       title and how long the claim has been silent.
-- [ ] Clicking an alert navigates to that task's detail view, scoped correctly
+- [x] Clicking an alert navigates to that task's detail view, scoped correctly
       per ADR-0025, and marks that alert read.
-- [ ] The badge clears to zero after "mark all read" and stays cleared across a
+- [x] The badge clears to zero after "mark all read" and stays cleared across a
       full page reload.
-- [ ] A stalled claim is detected, recorded and published with **SMTP
+- [x] A stalled claim is detected, recorded and published with **SMTP
       unconfigured** — verified by a test that runs the sweep with a disabled
       mailer and asserts a `domain.task.stalled` publish plus a persisted
       notification.
-- [ ] A task reviewer **with no email address** receives an in-app notification —
+- [x] A task reviewer **with no email address** receives an in-app notification —
       verified by a test using a local account created without an email.
-- [ ] A user cannot read another user's notifications: a request for a
+- [x] A user cannot read another user's notifications: a request for a
       notification belonging to another user returns not-found/permission-denied,
       pinned by a test.
-- [ ] An agent token cannot read notifications at all — the agent-scope sweep
+- [x] An agent token cannot read notifications at all — the agent-scope sweep
       passes with the new service registered and human-only.
-- [ ] Adding a second notification type requires no change to the bell component
+- [x] Adding a second notification type requires no change to the bell component
       or the notification handler — demonstrated by registering a second event
       type in the registry with a test, without editing either file.
-- [ ] `moon check --all` passes, and `bunx playwright test --workers=1` passes.
+- [x] `moon check --all` passes, and `bunx playwright test --workers=1` passes.
 
 ## 4. Scope
 
@@ -179,7 +179,7 @@ it, and which decide the first two tasks:**
   - **Files**: `apps/gui/e2e/notifications.spec.ts`
   - **Verify**: `bunx playwright test --workers=1 notifications.spec.ts`
 
-- [ ] **M29-T09** — Documentation states the notification surface truthfully and
+- [x] **M29-T09** — Documentation states the notification surface truthfully and
       the milestone closes.
   - **Files**: `.specs/product/architecture.md`, `.specs/design/NAVIGATION.md`,
     `README.md`, `.milestones/STATE.md`

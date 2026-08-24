@@ -1,6 +1,6 @@
 ---
-active_milestone: M29
-active_task: M29-T09
+active_milestone: null
+active_task: null
 last_updated: 2026-08-24
 last_commit: db170cc
 blocked: false
@@ -15,7 +15,73 @@ blocker: null
 
 ## Now
 
-**2026-08-24 — M29 (In-App Notifications) planned, not started.** COUNCIL-0001
+**2026-08-24 — M29 (In-App Notifications) complete: 9/9 tasks, 9/9 exit
+criteria.** A human now sees their stalled-claim alerts inside the product,
+on any deployment, and the surface showing them does not know what a stalled
+claim is.
+
+**Two live defects were found while planning, and they became the first two
+tasks — the feature does not work without them:**
+
+1. **The alert pipeline was gated on SMTP.** `runStalledClaimAlertSweep`
+   returned at `stalledClaimAlerts.ts:65` when `!mailer.enabled`, *before any
+   query*. A deployment without SMTP did no stalled-claim detection at all:
+   nothing recorded, `domain.task.stalled` never published. ADR-0026 splits
+   detection from delivery. **This changes behaviour on those deployments** —
+   they now run the detector hourly where they ran nothing — and it changes
+   ADR-0022 Decision 2: every detected task is recorded when first seen, so
+   the digest caps itemization and reports overflow as a count rather than
+   itemizing it in a later sweep. The full list is in the bell, which has no
+   reason to cap.
+2. **Recipients resolved by email, dropping users who have none.** M13 made
+   email optional deliberately, so a local-account reviewer could not be
+   alerted at all. Resolution now returns people; the mail step skips the ones
+   it cannot address. The same file had a *second* bug: the reviewer-vs-admin
+   tier check ran after the email filter, so a task whose only reviewer had no
+   email looked reviewer-less and its alert went to every org owner/admin — a
+   disclosure to people ADR-0022 Decision 1 excludes.
+
+**Things a next session should know that the code will not say:**
+
+- **The registry is the milestone.** `lib/notificationRegistry.ts` renders
+  title/body/target-path server-side; `writeNotifications`, the handler and
+  `NotificationBell` are all type-agnostic. Two tests pin this — one registers
+  a `test.fake` type on the backend, one renders a `task.handoff` in the GUI.
+  An `if (type === …)` in any of those three files fails the milestone's own
+  acceptance test. Adding the handoff/review-request types M25 named should
+  mean writing a renderer and nothing else.
+- **`domain.task.stalled` is a per-subject exception in `eventQueryKeys.ts`,
+  not an entity entry.** Putting the bell's queries on the `task` entity
+  refetches them on every task create, edit and archive in the app;
+  `eventQueryKeys.test.ts` rejected exactly that by pinning the key set.
+- **Adding migration 0049 broke two M26 tests, and the bug was theirs.**
+  `auditLogRepair.migration.test.ts` built its "journal before M26" fixture
+  from every migration except the repair — true only while 0048 was newest.
+  Any later migration joined that fixture and pushed the simulated watermark
+  past the repair's slot. Now bounded at `LAST_TAG_BEFORE_M26`. It was a
+  time-bomb for whoever added the next migration, whatever it was.
+- **Every E2E spec needs `ENABLE_TEST_LOGIN=true` on the backend**, set only
+  in `.github/workflows/ci.yml`. Without it every spec fails at
+  `selectSeededOrg` on a missing "Seed Org" option, which reads like a seeding
+  problem and is not one. Now documented in `selectSeededOrg.ts`. Also:
+  `notifications.spec.ts` consumes its fixture (its last test marks everything
+  read), so a local re-run needs a re-seed — the same contract
+  `reports.spec.ts` carries.
+- **The M26 agent-scope sweep caught `NotificationService` on its first run.**
+  It is registered in `NO_AGENT_ACCESS`: every method resolves the recipient
+  from the session, so an agent token has nothing to resolve. An agent has the
+  event feed for the same facts.
+- **Still open, from COUNCIL-0001 and unrelated to this milestone**: the M08
+  frontmatter drift has a twin in M10 drifting the *opposite* way (M08 says
+  `todo` over 17/17 checked tasks; M10 says `exit_criteria_met: true` over 8
+  unchecked criteria), and `moon.yml`'s `doc-drift` inputs do not cover
+  `MILESTONE.md` frontmatter at all. Scope it as all 23 milestone files plus
+  the gate. Also still true: `.specs/standards/testing-standard.md` §3 says
+  "**MSW is not installed**; do not reach for it" while `msw ^2.15.0` has been
+  load-bearing since M12-T01 — it was read as binding context for M29-T01.
+  That is COUNCIL-0001's candidate 7, unscheduled.
+
+**2026-08-24 — M29 (In-App Notifications) planned.** COUNCIL-0001
 scored 16 candidates across 8 advisors in 2 rounds and recommended this at
 3.58, on a 0.01 tie-break against Agent-Facing CLI Ergonomics decided by
 downstream unblocking. The report is the evidence; read it before re-opening
@@ -1642,9 +1708,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M26 | Gate Integrity                  | done   | —          | 6     | 6    |
 | M27 | Documentation Truth             | done   | —          | 6     | 6    |
 | M28 | Addressable Screens             | done   | —          | 8     | 8    |
-| M29 | In-App Notifications            | in-progress | —     | 9     | 8    |
+| M29 | In-App Notifications            | done   | —          | 9     | 9    |
 
-**Total: 237 tasks across 23 milestones — 235 done.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is planned and not started.
+**Total: 237 tasks across 23 milestones — 236 done.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;

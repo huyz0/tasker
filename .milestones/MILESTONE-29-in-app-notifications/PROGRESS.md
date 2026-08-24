@@ -311,3 +311,27 @@ Append-only. Newest entry at the bottom.
   intermediate full-suite run: that was consumed state from my earlier
   isolated runs, not the sidebar change, and it passes on a fresh seed.
 - **Next**: M29-T09
+
+## M29-T09 — documentation and close
+
+- **Status**: done
+- **Date**: 2026-08-24
+- **Approach**: State the notification surface truthfully in the three
+  documents `AGENTS.md` tells every session to trust, and record the two
+  behaviour changes a deployment would feel: SMTP-less deployments now scan
+  hourly, and the email digest no longer itemizes overflow in a later sweep.
+- **Artifacts**: None.
+
+## Milestone closed
+
+- **Date**: 2026-08-24
+- **Exit criteria**: 9/9 met, each against a run rather than an inference. The
+  two that could only be shown in a browser — scoped navigation from a
+  notification, and read state surviving a hard reload — are the T08 specs,
+  which passed inside a full 47-test suite on a fresh seed against a live
+  `STANDALONE=true ENABLE_TEST_LOGIN=true` backend.
+- **Not done, deliberately**: notification preferences and per-type opt-out;
+  the handoff and review-request notification *types* (the registry that
+  receives them is built and proven by a test registering a second type, but
+  their alert semantics are their own work); web push; and backfilling
+  notifications for claims that stalled before this shipped.

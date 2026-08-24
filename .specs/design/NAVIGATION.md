@@ -128,6 +128,13 @@ reload returns to the parent's default state.
   built and is not planned.
 - **Agent configuration.** No `/agents/:agentId` route. Agent role and prompt
   editing happens inside `features/Agents`.
+- **Notifications.** The bell (`components/layout/NotificationBell.tsx`, M29)
+  is a dropdown in the shell, not a screen — there is no `/notifications`
+  route and opening it does not change the URL. Each notification *links* to a
+  route, carrying its own `?org=`/`?project=` (ADR-0025), so the destination is
+  addressable even though the list is not. It is mounted twice, in the
+  `md:hidden` header and in the desktop sidebar block, because the two are
+  never visible together.
 
 ## 4. Navigational rules
 
