@@ -145,7 +145,7 @@ it, and which decide the first two tasks:**
   - **Verify**: `moon run backend:test` — a test registers a second, fake event
     type and asserts it renders and persists without any edit to the write path.
 
-- [ ] **M29-T05** — `NotificationService` lists a caller's own notifications,
+- [x] **M29-T05** — `NotificationService` lists a caller's own notifications,
       reports an unread count, and marks one or all read; every query is
       predicated on the caller's `userId` and org membership.
   - **Files**: `packages/shared-contract/main.tsp`,

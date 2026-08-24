@@ -154,3 +154,45 @@ Append-only. Newest entry at the bottom.
   asserts it persists through the same path, and `afterEach` unregisters it so
   the fixture cannot leak into another test's `notificationTypes()`.
 - **Next**: M29-T05
+
+## M29-T05 — NotificationService
+
+- **Status**: done
+- **Date**: 2026-08-24
+- **Approach**: list / unread-count / mark-read / mark-all-read, every query
+  predicated on the caller's own userId as well as org membership. Human-only:
+  registered in the agent-scope map as denied so the M26 sweep passes and an
+  agent token cannot reach it.
+- **Artifacts**: No ADR — the authorization shape is `eventScope.ts`'s, reused
+  rather than re-derived. No UX pass (T06 owns the component), no test plan.
+- **Changed**: `packages/shared-contract/main.tsp`,
+  `packages/shared-contract/tasker/health/v1/health.proto`,
+  `apps/backend/src/modules/notifications/notifications.handler.ts` (new),
+  `apps/backend/src/modules/notifications/notifications.test.ts` (new),
+  `apps/backend/src/index.ts`, `apps/backend/src/lib/agent-scope-sweep.test.ts`
+- **Verified**: `moon run shared-contract:compile` clean; `bun test` in
+  `apps/backend` — 1847 pass, 28 skip, 0 fail; typecheck and knip clean.
+  All 13 handler tests passed first run, so each isolation predicate was
+  deliberately broken: dropping `userId` from the list predicate fails 1 test,
+  from the mark-read lookup fails 1, from mark-all fails 2. The isolation is
+  genuinely covered rather than incidentally true.
+- **Notes**: **The M26 agent-scope sweep caught the new service immediately** —
+  "registered in index.ts but absent from this sweep: Notification". That is
+  exactly the guarantee M26-T01 rebuilt working on a service it never saw:
+  closed to agents until someone writes it down. Registered in
+  `NO_AGENT_ACCESS`, since every method resolves the recipient through
+  `requireUser` and an agent token has nothing to resolve.
+
+  `markNotificationRead` matches on id **and** userId together, so another
+  user's id 404s rather than 403s. A permission error would confirm the
+  notification exists, which is the same reasoning `SubscribeEventsRequest`
+  already applies to an org the caller does not belong to.
+
+  Marking read is idempotent and keeps the *first* read timestamp, so a double
+  click does not overwrite "when did they first see it".
+  `gui:rpc-coverage` refused the commit: four RPCs in the contract with no
+  GUI caller. Added as **temporary** exceptions naming M29-T06 as the task
+  that removes them — and that gate reports an exception for an RPC the GUI
+  *does* call as stale, so it will demand their removal rather than let them
+  rot quietly.
+- **Next**: M29-T06

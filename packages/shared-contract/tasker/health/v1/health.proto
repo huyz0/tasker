@@ -2146,6 +2146,76 @@ service AuditService {
   rpc ListAuditEvents(ListAuditEventsRequest) returns (ListAuditEventsResponse);
 }
 
+// ==== In-app notifications (M29) ====
+
+// One notification, as the bell renders it. title/body/targetPath are
+// rendered server-side by lib/notificationRegistry.ts — that is what lets a
+// new notification type reach the bell without the component learning its
+// shape. A typed payload per type would make every new type both a contract
+// change and a GUI change, which is the fragmentation M29 exists to avoid.
+message Notification {
+  string id = 1;
+  // "task.stalled", and whatever registers alongside it later.
+  string type = 2;
+  string title = 3;
+  string body = 4;
+  // Where clicking goes, scope query string included (ADR-0025).
+  optional string targetPath = 5;
+  string orgId = 6;
+  optional string projectId = 7;
+  string createdAt = 8;
+  // Absent while unread. A timestamp rather than a flag, so "when did they
+  // see it" survives.
+  optional string readAt = 9;
+}
+
+message ListNotificationsRequest {
+  // The caller's own id is never a parameter — it comes from the session, so
+  // one user cannot ask for another's.
+  string orgId = 1;
+  optional PageRequest page = 2;
+  optional bool unreadOnly = 3;
+}
+
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  optional PageResponse page = 2;
+}
+
+message GetUnreadNotificationCountRequest {
+  string orgId = 1;
+}
+
+message GetUnreadNotificationCountResponse {
+  int32 count = 1;
+}
+
+message MarkNotificationReadRequest {
+  string id = 1;
+}
+
+message MarkNotificationReadResponse {
+  Notification notification = 1;
+}
+
+message MarkAllNotificationsReadRequest {
+  string orgId = 1;
+}
+
+message MarkAllNotificationsReadResponse {
+  int32 markedCount = 1;
+}
+
+// A human's own notifications. Human-only by construction: every method
+// resolves the recipient from the session rather than the request, and the
+// agent-scope map denies the whole service.
+service NotificationService {
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc GetUnreadNotificationCount(GetUnreadNotificationCountRequest) returns (GetUnreadNotificationCountResponse);
+  rpc MarkNotificationRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse);
+  rpc MarkAllNotificationsRead(MarkAllNotificationsReadRequest) returns (MarkAllNotificationsReadResponse);
+}
+
 // ==== Live events (M08-T07) ====
 
 // One event pushed to a subscribed client. Deliberately thinner than

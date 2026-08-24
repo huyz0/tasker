@@ -1,6 +1,6 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService, EventService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService, NotificationService, EventService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
@@ -24,6 +24,7 @@ import { createTeamsHandler } from "./modules/teams/teams.handler";
 import { createRolesHandler } from "./modules/roles/roles.handler";
 import { createMemoryHandler } from "./modules/memory/memory.handler";
 import { createAuditHandler } from "./modules/audit/audit.handler";
+import { createNotificationHandler } from "./modules/notifications/notifications.handler";
 import { createEventsHandler } from "./modules/events/events.handler";
 import { createRepositoriesHandler } from "./modules/repositories/repositories.handler";
 import createSearchHandler from "./modules/search/search.handler";
@@ -203,6 +204,7 @@ const handler = connectNodeAdapter({
     router.service(RoleService as any, createRolesHandler(db, nc));
     router.service(MemoryService as any, createMemoryHandler(db, nc));
     router.service(AuditService as any, createAuditHandler(db));
+    router.service(NotificationService as any, createNotificationHandler(db));
     router.service(EventService as any, createEventsHandler(db, nc));
     router.service(RepositoryService as any, createRepositoriesHandler(db, nc));
     createSearchHandler(router, db);

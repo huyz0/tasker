@@ -25,6 +25,22 @@ export const GUI_SRC = process.env.RPC_COVERAGE_SRC ?? join(HERE, '../src');
  * visible in review.
  */
 export const EXCEPTIONS = {
+  // ── M29-T05, temporary by construction ────────────────────────────────
+  // The contract and handler landed before their consumer; M29-T06 builds
+  // the bell that calls all four, and M29-T07 mounts it. These four entries
+  // are removed there — and this gate flags an exception for an RPC the GUI
+  // does call as stale, so it will demand their removal rather than let
+  // them rot.
+  'NotificationService.listNotifications':
+    'Wired by M29-T06 (components/layout/NotificationBell.tsx). Remove this ' +
+    'exception there.',
+  'NotificationService.getUnreadNotificationCount':
+    'Wired by M29-T06 (the bell badge). Remove this exception there.',
+  'NotificationService.markNotificationRead':
+    'Wired by M29-T06 (clicking a notification). Remove this exception there.',
+  'NotificationService.markAllNotificationsRead':
+    'Wired by M29-T06 (the "mark all read" action). Remove this exception ' +
+    'there.',
   'TaskNoteService.createTaskNote':
     'Agent-only by design. task_notes.agent_id is NOT NULL, so a note has no ' +
     'human author; M04 made the handler refuse a user principal outright, ' +

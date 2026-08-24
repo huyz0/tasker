@@ -2435,6 +2435,102 @@ interface AuditService {
   listAuditEvents(request: ListAuditEventsRequest): ListAuditEventsResponse;
 }
 
+// ==== In-app notifications (M29) ====
+
+/**
+ * One notification, as the bell renders it.
+ *
+ * `title`/`body`/`targetPath` are rendered server-side by
+ * `lib/notificationRegistry.ts`. That is deliberate: it is what lets a new
+ * notification type reach the bell without the component learning its shape.
+ * A typed payload per type would make every new type a contract change and a
+ * GUI change, which is the fragmentation M29 exists to avoid.
+ */
+model Notification {
+  @field(1) id: string;
+
+  /** `task.stalled`, and whatever registers alongside it later. */
+  @field(2) type: string;
+
+  @field(3) title: string;
+  @field(4) body: string;
+
+  /** Where clicking goes, scope query string included (ADR-0025). */
+  @field(5) targetPath?: string;
+
+  @field(6) orgId: string;
+  @field(7) projectId?: string;
+  @field(8) createdAt: string;
+
+  /** Absent while unread. A timestamp rather than a flag, so "when did they
+   * see it" survives. */
+  @field(9) readAt?: string;
+}
+
+model ListNotificationsRequest {
+  /** Scopes the list to one org. The caller's own id is never a parameter —
+   * it comes from the session, so one user cannot ask for another's. */
+  @field(1) orgId: string;
+
+  @field(2) page?: PageRequest;
+
+  /** True to return only unread. */
+  @field(3) unreadOnly?: boolean;
+}
+
+model ListNotificationsResponse {
+  @field(1) notifications: Notification[];
+  @field(2) page?: PageResponse;
+}
+
+model GetUnreadNotificationCountRequest {
+  @field(1) orgId: string;
+}
+
+model GetUnreadNotificationCountResponse {
+  @field(1) count: int32;
+}
+
+model MarkNotificationReadRequest {
+  @field(1) id: string;
+}
+
+model MarkNotificationReadResponse {
+  @field(1) notification: Notification;
+}
+
+model MarkAllNotificationsReadRequest {
+  @field(1) orgId: string;
+}
+
+model MarkAllNotificationsReadResponse {
+  /** How many were unread and now are not. */
+  @field(1) markedCount: int32;
+}
+
+/**
+ * A human's own notifications.
+ *
+ * Human-only by construction: every method resolves the recipient from the
+ * session rather than from the request, and the agent-scope map denies the
+ * whole service. An agent has the event feed for the same information and no
+ * business reading a person's read state.
+ */
+interface NotificationService {
+  listNotifications(
+    request: ListNotificationsRequest,
+  ): ListNotificationsResponse;
+  getUnreadNotificationCount(
+    request: GetUnreadNotificationCountRequest,
+  ): GetUnreadNotificationCountResponse;
+  markNotificationRead(
+    request: MarkNotificationReadRequest,
+  ): MarkNotificationReadResponse;
+  markAllNotificationsRead(
+    request: MarkAllNotificationsReadRequest,
+  ): MarkAllNotificationsReadResponse;
+}
+
 /**
  * One live domain event (M08-T07).
  *
