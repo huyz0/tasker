@@ -373,6 +373,12 @@ describe("runStalledClaimAlertSweep - recipients without an email", () => {
     // channel consumes. Before M29-T02 this person was excluded entirely.
     expect(await alertRowsFor(db, taskId)).toHaveLength(1);
     expect(nc.publishedMessages.filter((m: any) => m.subject === "domain.task.stalled")).toHaveLength(1);
+
+    // M29 exit criterion: a reviewer with no email address is notified.
+    const notes = await db.select().from(schema.notifications).where(eq(schema.notifications.userId, rev));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]!.type).toBe("task.stalled");
+    expect(notes[0]!.targetPath).toContain(`/tasks/${taskId}`);
   });
 
   it("still emails the addressable reviewer when a task has one of each", async () => {

@@ -122,3 +122,35 @@ Append-only. Newest entry at the bottom.
   `varchar(512)` rather than the sqlite side's `text` because it participates
   in a unique index and MySQL cannot index an unbounded TEXT without a prefix.
 - **Next**: M29-T04
+
+## M29-T04 — notification registry and the generic write path
+
+- **Status**: done
+- **Date**: 2026-08-24
+- **Approach**: A registry keyed by event type, each entry rendering title,
+  body, target path and dedupe key from a typed payload. The write path takes
+  a type plus recipients and knows nothing about stalled claims. The sweep
+  becomes one caller.
+- **Artifacts**: No ADR — this is the shape M29's exit criteria already
+  mandate; the alternative (a switch in the writer) is the thing they forbid.
+- **Changed**: `apps/backend/src/lib/notificationRegistry.ts` (new),
+  `apps/backend/src/lib/notificationRegistry.test.ts` (new),
+  `apps/backend/src/lib/stalledClaimAlerts.ts`,
+  `apps/backend/src/lib/stalledClaimAlerts.test.ts`
+- **Verified**: `bun test` in `apps/backend` — 1833 pass, 28 skip, 0 fail;
+  `moon run backend:typecheck` clean. All nine registry tests passed on the
+  first run, so the deliberate-break check was run rather than trusted:
+  making `writeNotifications` read the registry at a hardcoded key failed the
+  unregistered-type and second-type tests; making the stalled renderer emit a
+  constant dedupe key failed the new-anchor test. Both are real coverage.
+- **Notes**: Recipient resolution moved above both channels and is now done
+  once per task into a map, rather than inside the email grouping loop. Both
+  channels need it and it is two queries per task; resolving it twice would
+  have doubled that for no reason.
+
+  The generic-ness is load-bearing, not stylistic: `writeNotifications` never
+  names a stalled claim, and `notificationRegistry.ts` never imports anything
+  from the sweep. The exit criterion's test registers a `test.fake` type and
+  asserts it persists through the same path, and `afterEach` unregisters it so
+  the fixture cannot leak into another test's `notificationTypes()`.
+- **Next**: M29-T05

@@ -136,7 +136,7 @@ it, and which decide the first two tasks:**
   - **Verify**: `moon run backend:test` — the migration-ledger monotonicity
     guard (M26) passes and a round-trip insert/select works in both dialects.
 
-- [ ] **M29-T04** — A notification registry maps an event type to its rendered
+- [x] **M29-T04** — A notification registry maps an event type to its rendered
       title, body and target link, and the sweep writes notifications through it
       rather than knowing about stalled claims specifically.
   - **Files**: `apps/backend/src/lib/notificationRegistry.ts`,
