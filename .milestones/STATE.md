@@ -1,8 +1,8 @@
 ---
-active_milestone: null
-active_task: null
-last_updated: 2026-08-23
-last_commit: 8329130
+active_milestone: M29
+active_task: M29-T01
+last_updated: 2026-08-24
+last_commit: db170cc
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,36 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-08-24 — M29 (In-App Notifications) planned, not started.** COUNCIL-0001
+scored 16 candidates across 8 advisors in 2 rounds and recommended this at
+3.58, on a 0.01 tie-break against Agent-Facing CLI Ergonomics decided by
+downstream unblocking. The report is the evidence; read it before re-opening
+the choice.
+
+**Two defects found while planning that the council did not have, and that
+decide M29-T01 and M29-T02:**
+
+1. `runStalledClaimAlertSweep` returns at `stalledClaimAlerts.ts:65` when
+   `!mailer.enabled` — *before any query*. On a deployment without SMTP,
+   stalled claims are never detected, never recorded, and
+   `domain.task.stalled` is never published. A bell built on today's pipeline
+   would be permanently empty there. Detection has to be decoupled from
+   delivery, and that is a behaviour change on those deployments: they will
+   begin scanning hourly where they did nothing before.
+2. `resolveTaskAlertRecipients.ts` resolves recipients by `users.email` and
+   filters `.filter(r => r.email)` at both tiers. M13 made email optional on
+   purpose, so a local-account reviewer with no email is not alerted today and
+   *cannot be*. That is a live M13/M25 interaction bug, not a new requirement.
+
+**Also carried forward from the council, unscheduled:** the M08 frontmatter
+drift has a twin in M10, and the two drift in *opposite* directions — M08 says
+`todo` over 17/17 checked tasks, M10 says `exit_criteria_met: true` over 8
+unchecked criteria. M10 is the more dangerous: nothing in the repository can
+tell whether those criteria were met and left unticked or never verified.
+`moon.yml`'s `doc-drift` inputs do not cover `MILESTONE.md` frontmatter at all,
+so nothing gates this class of file. Whenever it is scheduled, scope it as all
+22 milestone files plus the gate — the gate is the durable half.
 
 **2026-08-23 — M28 (Addressable Screens) complete: 8/8 tasks, 8/8 exit
 criteria.** A URL is now portable: it carries the scope it was taken in and
@@ -1612,14 +1642,17 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M26 | Gate Integrity                  | done   | —          | 6     | 6    |
 | M27 | Documentation Truth             | done   | —          | 6     | 6    |
 | M28 | Addressable Screens             | done   | —          | 8     | 8    |
+| M29 | In-App Notifications            | todo   | —          | 9     | 0    |
 
-**Total: 228 tasks across 22 milestones — 227 done.** Every milestone is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have).
+**Total: 237 tasks across 23 milestones — 227 done.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is planned and not started.
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
-see `PROGRESS.md`/git history for each. M21, M22, M23 and M24 are sequenced
+see `PROGRESS.md`/git history for each. M21 through M28 are sequenced
 by explicit user priority (like M13 before M10), with no `depends_on`
-edge to anything still `todo`.
+edge to anything still `todo`. M29 follows the same pattern but was chosen
+by evidence rather than intuition — see
+`.milestones/council/COUNCIL-0001-2026-08-24T09-00-18.md`.
 
 ## Dependency graph
 

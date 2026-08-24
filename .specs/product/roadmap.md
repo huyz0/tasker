@@ -87,9 +87,12 @@ milestone's `PROGRESS.md` rather than quietly fixed.
 | **M26** | [Gate Integrity](../../.milestones/MILESTONE-26-gate-integrity/MILESTONE.md) | Every quality gate covers what its own documentation says it covers — the agent-scope sweep, the migration ledger, and backend typechecking. | — |
 | **M27** | [Documentation Truth](../../.milestones/MILESTONE-27-documentation-truth/MILESTONE.md) | The documents an agent session is told to treat as ground truth describe the product that exists, and a gate fails when they stop doing so. | — |
 | **M28** | [Addressable Screens](../../.milestones/MILESTONE-28-addressable-screens/MILESTONE.md) | A URL carries its own scope, reopens the same thing for whoever pastes it, and every deep-linkable detail view shows a path back. | — |
+| **M29** | [In-App Notifications](../../.milestones/MILESTONE-29-in-app-notifications/MILESTONE.md) | A human sees their stalled-claim alerts inside the product, on any deployment, and the surface showing them is generic enough that the next alert type registers against it. | — |
 
-M21–M28 are sequenced by explicit user priority (like M13 before M10) and
-carry no dependency edge; every numbered milestone before them is done.
+M21–M29 are sequenced by explicit user priority (like M13 before M10) and
+carry no dependency edge; every numbered milestone before M29 is done. M29
+differs only in how it was chosen: by an 8-advisor council over 16 candidates
+(`.milestones/council/COUNCIL-0001-2026-08-24T09-00-18.md`), not by intuition.
 
 ## Sequencing rationale
 
