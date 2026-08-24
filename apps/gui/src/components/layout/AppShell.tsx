@@ -28,6 +28,7 @@ import { useFocusTrap } from '../ui/useFocusTrap';
 import { CurrentUser } from './CurrentUser';
 import { OrgProjectSwitcher } from './OrgProjectSwitcher';
 import { LiveStatusIndicator } from './LiveStatusIndicator';
+import { NotificationBell } from './NotificationBell';
 import { useLiveEvents } from '../../hooks/useLiveEvents';
 import { logout } from '../../lib/authSession';
 
@@ -128,6 +129,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2 min-w-0">
           <LiveStatusIndicator status={liveStatus} />
           <GlobalSearchTrigger compact />
+          <NotificationBell orgId={activeOrgId} />
           <ThemeToggle />
           <CurrentUser />
         </div>
@@ -165,7 +167,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="hidden md:flex flex-col gap-3 px-4 py-3 border-b">
             <GlobalSearchTrigger />
-            <LiveStatusIndicator status={liveStatus} />
+            <div className="flex items-center justify-between gap-2">
+              <LiveStatusIndicator status={liveStatus} />
+              {/* Same reasoning as ThemeToggle below: the header that carries
+                  the bell on mobile is `md:hidden`, so without this a desktop
+                  user has no bell at all. */}
+              <NotificationBell orgId={activeOrgId} />
+            </div>
             {/* The header above is `md:hidden`, so a desktop user would never
                 have seen the toggle if it only lived there. */}
             <ThemeToggle />

@@ -166,7 +166,7 @@ it, and which decide the first two tasks:**
   - **Verify**: `moon run gui:test gui:storybook-test` — the component's own
     test covers empty, unread-count and mark-read states.
 
-- [ ] **M29-T07** — The bell is mounted in the app shell and each notification
+- [x] **M29-T07** — The bell is mounted in the app shell and each notification
       navigates to its task carrying scope, per ADR-0025.
   - **Files**: `apps/gui/src/components/layout/AppShell.tsx`,
     `apps/gui/src/components/layout/AppShell.test.tsx`

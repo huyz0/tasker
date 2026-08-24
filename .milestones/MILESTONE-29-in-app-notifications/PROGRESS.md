@@ -241,3 +241,32 @@ Append-only. Newest entry at the bottom.
   notification it has never heard of and asserts it displays normally, which
   is M29's exit criterion seen from the GUI side.
 - **Next**: M29-T07
+
+## M29-T07 — mount the bell in the shell
+
+- **Status**: done
+- **Date**: 2026-08-24
+- **Approach**: Mount beside `LiveStatusIndicator` in both header regions —
+  the mobile header (`md:hidden`) and the desktop sidebar block — since the
+  two are never visible at once and putting it in only one hides it from half
+  the users, the exact bug the sidebar's own `ThemeToggle` comment records.
+- **Artifacts**: None. The component and its states landed in T06.
+- **Changed**: `apps/gui/src/components/layout/AppShell.tsx`,
+  `apps/gui/src/components/layout/AppShell.test.tsx`
+- **Verified**: `moon run gui:test gui:typecheck gui:lint gui:design-lint` —
+  79 files, 1168 tests, all pass.
+- **Notes**: The first version of the shell test set `activeOrgId` so the
+  badge would populate, and that woke `ListProjects`, `GetIdentity` and the
+  event subscription — MSW's `onUnhandledRequest: 'error'` failed the test on
+  requests that have nothing to do with notifications. Rather than mock half
+  the application to assert something already covered elsewhere, the shell
+  test now asserts **mounting** only, with no active org so the bell's queries
+  stay disabled. Badge, list, mark-read and scoped navigation are tested
+  against the real transport in `NotificationBell.test.tsx`, and end-to-end in
+  T08.
+
+  Mounted in *both* header regions. The mobile header is `md:hidden` and the
+  sidebar block is `hidden md:flex`, so they are never visible together and
+  mounting one only would hide the bell from half the users — which the
+  sidebar's own `ThemeToggle` comment records having already happened once.
+- **Next**: M29-T08
