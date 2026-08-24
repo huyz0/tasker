@@ -1,6 +1,6 @@
 ---
 active_milestone: M29
-active_task: M29-T01
+active_task: M29-T02
 last_updated: 2026-08-24
 last_commit: db170cc
 blocked: false
@@ -1642,9 +1642,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M26 | Gate Integrity                  | done   | —          | 6     | 6    |
 | M27 | Documentation Truth             | done   | —          | 6     | 6    |
 | M28 | Addressable Screens             | done   | —          | 8     | 8    |
-| M29 | In-App Notifications            | todo   | —          | 9     | 0    |
+| M29 | In-App Notifications            | in-progress | —     | 9     | 1    |
 
-**Total: 237 tasks across 23 milestones — 227 done.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is planned and not started.
+**Total: 237 tasks across 23 milestones — 228 done.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is planned and not started.
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;

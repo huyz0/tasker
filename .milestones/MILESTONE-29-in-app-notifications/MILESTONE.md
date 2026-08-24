@@ -1,12 +1,12 @@
 ---
 id: M29
 title: In-App Notifications
-status: todo
+status: in-progress
 goal: A human sees their stalled-claim alerts inside the product, on any deployment, without waiting for an email — and the surface that shows them is generic enough that the next alert type registers against it instead of building its own.
 depends_on: []
 surfaces: [backend, gui, contract, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-08-24
 completed_at: null
 ---
 
@@ -109,7 +109,7 @@ it, and which decide the first two tasks:**
 
 ## 5. Task Breakdown
 
-- [ ] **M29-T01** — The stalled-claim sweep detects, records and publishes
+- [x] **M29-T01** — The stalled-claim sweep detects, records and publishes
       regardless of whether SMTP is configured; only the email send stays gated.
   - **Files**: `apps/backend/src/lib/stalledClaimAlerts.ts`,
     `apps/backend/src/lib/stalledClaimAlerts.test.ts`

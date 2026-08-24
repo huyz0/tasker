@@ -60,10 +60,11 @@ export async function runStalledClaimAlertSweep(
   mailer: Mailer,
   nc: { publish: (subject: string, data?: any) => void } | null,
 ): Promise<void> {
-  // Decision 5: the common no-SMTP deployment pays nothing for a scan whose
-  // result would be discarded anyway - checked before any query runs.
-  if (!mailer.enabled) return;
-
+  // ADR-0026: detection is no longer downstream of delivery. ADR-0022
+  // Decision 5 skipped the whole scan when SMTP was unconfigured, on the
+  // reasoning that its result "would be discarded anyway" - true while email
+  // was the only channel, false now that the in-app bell (M29) consumes the
+  // same detection. The mailer gate moved down to the send itself.
   const schema = isStandalone ? schemaSqlite : schemaMysql;
 
   const candidates = await findStalledCandidates(db, isStandalone, { afterHours: getStalledAlertAfterHours() });
@@ -80,6 +81,48 @@ export async function runStalledClaimAlertSweep(
   const alreadyAlerted = new Set(existingAlerts.map((r: any) => alertKey(r.taskId, r.anchorAt as Date)));
   const unalerted = candidates.filter((c) => !alreadyAlerted.has(alertKey(c.taskId, c.anchorAt)));
   if (unalerted.length === 0) return;
+
+  // Record and publish every newly-detected candidate exactly once, before
+  // any delivery is attempted (ADR-0026). This runs whether or not a mailer
+  // is configured, and a failed send no longer suppresses the domain event.
+  //
+  // Doing it here rather than inside the per-recipient loop also fixes a
+  // latent duplicate: a task with two reviewers landed in two groups and
+  // was inserted into `stalled_claim_alerts` twice.
+  const now = Date.now();
+  for (const c of unalerted) {
+    try {
+      await db.insert(schema.stalledClaimAlerts).values({
+        id: randomUUID(),
+        taskId: c.taskId,
+        anchorAt: c.anchorAt,
+        alertedAt: new Date(),
+      });
+    } catch (err) {
+      logger.error({ err, taskId: c.taskId }, 'stalled_claim_alerts.record_failed');
+    }
+
+    try {
+      // Decision 4: an explicit orgId (left untouched by the correlation
+      // Proxy precisely because it is present), and the claimed agent as
+      // `stalledAgentId` - never `agentId`, which `auditProjector.ts`'s
+      // `extractActor` would read first and misattribute to the agent
+      // instead of 'system'.
+      publishDomainEvent(nc, 'domain.task.stalled', {
+        orgId: c.orgId,
+        projectId: c.projectId,
+        taskId: c.taskId,
+        stalledAgentId: c.agentId,
+        hoursSilent: hoursSilent(c, now),
+      });
+    } catch (err) {
+      logger.error({ err, taskId: c.taskId }, 'stalled_claim_alerts.publish_failed');
+    }
+  }
+
+  // Everything below this line is the email channel, and only the email
+  // channel. A deployment without SMTP has already done its useful work.
+  if (!mailer.enabled) return;
 
   // Group by resolved recipient email. A task can land in more than one
   // recipient's digest (multiple task_reviewers rows); a candidate that
@@ -113,8 +156,6 @@ export async function runStalledClaimAlertSweep(
     return name;
   }
 
-  const now = Date.now();
-
   for (const [email, group] of groups) {
     // Per-recipient isolation (mirrors retentionSweep.ts's per-row
     // isolation): one recipient's failure must not stop the rest of the sweep.
@@ -142,41 +183,7 @@ export async function runStalledClaimAlertSweep(
         appUrl: mailer.appUrl,
       });
 
-      const outcome = await mailer.send({ to: email, subject: rendered.subject, text: rendered.text, html: rendered.html });
-      // Only a task actually itemized in a SENT digest is ever recorded as
-      // alerted or published - overflow stays eligible, and a 'skipped'/
-      // 'failed' send must not mark anything (Decision 2).
-      if (outcome !== 'sent') continue;
-
-      for (const c of itemized) {
-        try {
-          await db.insert(schema.stalledClaimAlerts).values({
-            id: randomUUID(),
-            taskId: c.taskId,
-            anchorAt: c.anchorAt,
-            alertedAt: new Date(),
-          });
-        } catch (err) {
-          logger.error({ err, taskId: c.taskId }, 'stalled_claim_alerts.record_failed');
-        }
-
-        try {
-          // Decision 4: publish now, with an explicit orgId (left untouched by
-          // the correlation Proxy precisely because it is present), and the
-          // claimed agent as `stalledAgentId` - never `agentId`, which
-          // `auditProjector.ts`'s `extractActor` would read first and
-          // misattribute this to the agent instead of 'system'.
-          publishDomainEvent(nc, 'domain.task.stalled', {
-            orgId: c.orgId,
-            projectId: c.projectId,
-            taskId: c.taskId,
-            stalledAgentId: c.agentId,
-            hoursSilent: hoursSilent(c, now),
-          });
-        } catch (err) {
-          logger.error({ err, taskId: c.taskId }, 'stalled_claim_alerts.publish_failed');
-        }
-      }
+      await mailer.send({ to: email, subject: rendered.subject, text: rendered.text, html: rendered.html });
     } catch (err) {
       logger.error({ err, email }, 'stalled_claim_alerts.recipient_group_failed');
     }
