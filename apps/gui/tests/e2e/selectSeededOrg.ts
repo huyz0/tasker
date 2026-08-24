@@ -19,6 +19,18 @@ import { expect, type Page } from '@playwright/test';
  * org (`Seed Org ${runId}` - the suffix is random per seed run, so this
  * can't match on an exact name) rather than a fixed id, since the id isn't
  * known at spec-write time either.
+ *
+ * **The backend must be started with `ENABLE_TEST_LOGIN=true`.** Without it
+ * the browser has no session, `listOrgs` returns nothing, and every spec in
+ * this suite fails *here* — on a missing "Seed Org" option — which reads like
+ * a seeding problem and is not one. CI sets it
+ * (`.github/workflows/ci.yml`, the "Seed the database and start the backend"
+ * step); nothing local does, so a local run needs it passed by hand:
+ *
+ * ```
+ * cd apps/backend && bun run seed
+ * STANDALONE=true ENABLE_TEST_LOGIN=true bun run src/index.ts
+ * ```
  */
 export async function selectSeededOrg(page: Page): Promise<void> {
   await page.goto('/tasks');

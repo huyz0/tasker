@@ -58,7 +58,7 @@ describe("resolveTaskAlertRecipients", () => {
     await seedReviewer(db, taskId, reviewer);
 
     const recipients = await resolveTaskAlertRecipients(db, true, { taskId, orgId });
-    expect(recipients).toEqual([{ email: "reviewer@test.local", name: "Reviewer One", reason: "reviewer" }]);
+    expect(recipients).toEqual([{ userId: reviewer, email: "reviewer@test.local", name: "Reviewer One", reason: "reviewer" }]);
   });
 
   it("falls back to org owner/admin members only when the task has no reviewers", async () => {
@@ -95,7 +95,16 @@ describe("resolveTaskAlertRecipients", () => {
     expect(recipients[0]!.reason).toBe("reviewer");
   });
 
-  it("filters out a reviewer/admin with no email configured (M13 local accounts)", async () => {
+  // ── M29-T02: recipients are people, not addresses ──────────────────────
+  //
+  // M25 filtered this list to non-null email throughout, because email was
+  // the only channel and "a person with no email has nowhere for this alert
+  // to go" was true. M13 made email optional on purpose, so that filter
+  // silently excluded local-account users from alerting entirely. The in-app
+  // channel has no address to filter on, so resolution now returns the
+  // person and the email channel filters at the point of sending.
+
+  it("includes a reviewer with no email configured (M13 local accounts)", async () => {
     const { db } = await setupIntegrationTest();
     const orgId = await seedOrg(db, "r4");
     const owner = await seedUser(db, "r4-owner", { email: null });
@@ -106,7 +115,57 @@ describe("resolveTaskAlertRecipients", () => {
     await seedReviewer(db, taskId, noEmailReviewer);
 
     const recipients = await resolveTaskAlertRecipients(db, true, { taskId, orgId });
-    expect(recipients).toEqual([]);
+    expect(recipients).toHaveLength(1);
+    expect(recipients[0]!.userId).toBe(noEmailReviewer);
+    expect(recipients[0]!.email).toBeNull();
+    expect(recipients[0]!.reason).toBe("reviewer");
+  });
+
+  it("names an email-less reviewer by their name rather than an address", async () => {
+    const { db } = await setupIntegrationTest();
+    const orgId = await seedOrg(db, "r4b");
+    const owner = await seedUser(db, "r4b-owner", { email: "owner4b@test.local" });
+    await seedMember(db, orgId, owner, "owner");
+    const projectId = await seedProject(db, orgId, "r4b", owner);
+    const taskId = await seedTask(db, projectId, "r4b");
+    const rev = await seedUser(db, "r4b-rev", { email: null, name: "Local Only" });
+    await seedReviewer(db, taskId, rev);
+
+    const recipients = await resolveTaskAlertRecipients(db, true, { taskId, orgId });
+    expect(recipients[0]!.name).toBe("Local Only");
+  });
+
+  it("does NOT fall back to org admins when the only reviewer has no email", async () => {
+    // The tier check used to run after the email filter, so an email-less
+    // reviewer made the task look reviewer-less and the alert was routed to
+    // every org owner/admin instead - both a missed notification and a
+    // disclosure to people ADR-0022 Decision 1 says should not receive it.
+    const { db } = await setupIntegrationTest();
+    const orgId = await seedOrg(db, "r4c");
+    const admin = await seedUser(db, "r4c-admin", { email: "admin4c@test.local" });
+    await seedMember(db, orgId, admin, "owner");
+    const projectId = await seedProject(db, orgId, "r4c", admin);
+    const taskId = await seedTask(db, projectId, "r4c");
+    const rev = await seedUser(db, "r4c-rev", { email: null });
+    await seedReviewer(db, taskId, rev);
+
+    const recipients = await resolveTaskAlertRecipients(db, true, { taskId, orgId });
+    expect(recipients.map((r) => r.reason)).toEqual(["reviewer"]);
+    expect(recipients.map((r) => r.userId)).toEqual([rev]);
+  });
+
+  it("includes an org admin with no email in the fallback tier", async () => {
+    const { db } = await setupIntegrationTest();
+    const orgId = await seedOrg(db, "r4d");
+    const owner = await seedUser(db, "r4d-owner", { email: null });
+    await seedMember(db, orgId, owner, "owner");
+    const projectId = await seedProject(db, orgId, "r4d", owner);
+    const taskId = await seedTask(db, projectId, "r4d");
+
+    const recipients = await resolveTaskAlertRecipients(db, true, { taskId, orgId });
+    expect(recipients).toHaveLength(1);
+    expect(recipients[0]!.userId).toBe(owner);
+    expect(recipients[0]!.reason).toBe("admin");
   });
 
   it("resolves zero recipients gracefully when a task has neither reviewers nor org owners/admins", async () => {

@@ -3,8 +3,10 @@
 Tasker sends two kinds of message today: the organization invitation, and the
 stalled-claim alert digest. This is how to make either go somewhere.
 
-**It is off unless configured.** With no `SMTP_HOST`, no transport is
-constructed, nothing is sent, and every send reports `skipped`. That is the same
+**Mail is off unless configured.** With no `SMTP_HOST`, no transport is
+constructed, nothing is sent, and every send reports `skipped`. Note this is
+about *sending*: since M29 the stalled-claim sweep still runs and still fills
+the in-app notification bell without a mailer — see below. That is the same
 rule the OTLP exporter follows, and for the same reason — the standalone binary
 must not try to reach a service that is not there.
 
@@ -107,8 +109,27 @@ clear the stalled condition it's reporting. Recipient resolution is
 only when a task has no reviewers. See ADR-0022 for the full design and the
 alternatives it rejected.
 
-Same on/off switch as the invitation email above: no `SMTP_HOST`, no sweep
-query even runs. Locally, the same Mailpit setup shows a digest arriving at
+**The sweep itself is no longer gated on mail** (M29, ADR-0026). It used to
+return before any query when `SMTP_HOST` was unset, which meant a deployment
+without mail did no stalled-claim detection at all — and the in-app
+notification bell it now feeds would have been permanently empty there.
+Detection, the `stalled_claim_alerts` ledger and the `domain.task.stalled`
+event all run on every sweep; only the send below is gated. Two consequences
+worth knowing before you turn mail off:
+
+- A deployment with no `SMTP_HOST` now runs the detector hourly where it
+  previously ran nothing. The query is bounded and indexed, but it is not free.
+- The digest's `+N more` overflow is no longer itemized in a later sweep. Every
+  detected task is recorded when first seen, so the mail caps at
+  `DIGEST_TASK_LIMIT` items and reports the rest as a count — the full list is
+  in the notification bell, which has no reason to cap.
+
+A recipient with **no email address** is still notified in-app. Resolution
+returns people rather than addresses; the mail step skips the ones it cannot
+address. Before M29 such a person — an M13 local account with no email — was
+filtered out of alerting entirely.
+
+Locally, the same Mailpit setup shows a digest arriving at
 <http://localhost:8025>.
 
 ## When something does not arrive

@@ -160,3 +160,31 @@ test('a link built without the helper is caught by that invariant', () => {
   const dropped = hrefs.filter((h) => !(h.includes('org=org-1') && h.includes('project=proj-1')));
   expect(dropped).toEqual(['/reports']);
 });
+
+
+// ── M29-T07: the bell is mounted, in both header regions ───────────────────
+
+describe('notification bell (M29-T07)', () => {
+  test('renders in both header regions, so neither breakpoint loses it', async () => {
+    // Deliberately no active org: the bell renders regardless and its queries
+    // stay disabled, which keeps this test about *mounting*. Setting an org
+    // here would wake ListProjects, GetIdentity and the event subscription,
+    // and the test would be half a mock of the whole app.
+    //
+    // The bell's own behaviour - badge, list, mark-read, navigation with
+    // scope - is covered against the real transport in
+    // NotificationBell.test.tsx, and end to end in the T08 browser spec.
+    renderShell();
+
+    // The mobile header is `md:hidden` and the sidebar block is `hidden
+    // md:flex`; they are never both visible, so mounting only one hides the
+    // bell from half the users. That is the bug the sidebar's own ThemeToggle
+    // comment records having already happened once.
+    await waitFor(() => expect(screen.getAllByTestId('notification-bell')).toHaveLength(2));
+  });
+
+  test('is reachable by name for a screen reader', async () => {
+    renderShell();
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Notifications' })).toHaveLength(2));
+  });
+});

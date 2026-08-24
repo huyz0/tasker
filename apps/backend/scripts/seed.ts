@@ -9,8 +9,10 @@
 // the DB layer (bypassing HTTP/auth) since this is a dev-only tool, not a
 // user-facing feature. Prints a ready-to-use session token for the seeded
 // user at the end.
+import { eq } from "drizzle-orm";
 import { setupDatabase } from "../src/db/db";
 import * as schema from "../src/db/schema.sqlite";
+import { writeNotifications, TASK_STALLED } from "../src/lib/notificationRegistry";
 import { createSessionToken } from "../src/modules/auth/session";
 
 /**
@@ -364,6 +366,35 @@ async function main() {
   const labelNames = ["bug", "feature", "urgent", "needs-review", "blocked"];
   for (const name of labelNames) {
     await db.insert(schema.labels).values({ id: `lbl-seed-${crypto.randomUUID()}`, orgId, name, color: "#888888", createdAt: now });
+  }
+
+  // M29-T08: notifications for the GUI dev user, so the bell has something in
+  // it the moment the seeded database is opened. The real writer is the hourly
+  // stalled-claim sweep (lib/stalledClaimAlerts.ts); a browser test cannot
+  // wait an hour for it, and triggering the sweep from a spec would test the
+  // sweep rather than the bell.
+  //
+  // Written through the same registry the sweep uses, not by hand-building
+  // rows, so a change to how a stalled notification renders shows up here too
+  // instead of leaving the fixture quietly describing an older shape.
+  const notifiedTasks = (await db.select({ id: schema.tasks.id, displayId: schema.tasks.displayId, title: schema.tasks.title })
+    .from(schema.tasks)
+    .where(eq(schema.tasks.projectId, projectId))
+    .limit(3)) as { id: string; displayId: string; title: string }[];
+
+  for (const [i, t] of notifiedTasks.entries()) {
+    await writeNotifications(db, true, TASK_STALLED, {
+      orgId,
+      projectId,
+      taskId: t.id,
+      taskDisplayId: t.displayId,
+      taskTitle: t.title,
+      agentName: "Seed Agent",
+      hoursSilent: 26 + i * 7,
+      // Distinct per task, so re-running the seed against the same database
+      // does not collide on the dedupe index and silently write nothing.
+      anchorAt: now.getTime() - (i + 1) * 3_600_000,
+    }, [{ userId: GUI_DEV_USER_ID }, { userId }]);
   }
 
   const token = createSessionToken(userId);

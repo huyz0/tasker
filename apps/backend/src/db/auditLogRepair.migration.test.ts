@@ -31,10 +31,27 @@ const freshSqlite = () => {
 const hasAuditLog = (sqlite: Database) =>
   Boolean(sqlite.query("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log'").get());
 
-/** The journal exactly as it stood before this task: 0044 misstamped, no repair. */
+/**
+ * The last migration that existed when M26-T04 shipped. Anything numbered
+ * above this is later work and must not appear in a fixture claiming to be
+ * "the journal as it stood before M26".
+ */
+const LAST_TAG_BEFORE_M26 = 47;
+
+/**
+ * The journal exactly as it stood before this task: 0044 misstamped, no repair.
+ *
+ * Bounded at `LAST_TAG_BEFORE_M26` (M29-T03). This previously took every
+ * migration except the repair, which was correct only while 0048 was the
+ * newest one in the tree. The next migration added after it — any migration,
+ * for any reason — joined this fixture, carried a later `when` than the
+ * repair, and pushed the simulated watermark past the repair's own slot, so
+ * step 3 below found nothing to apply and both tests failed. The harness was
+ * reproducing a *different* bug than the one it describes.
+ */
 const asShippedBeforeM26 = (): EmbeddedMigration[] =>
   EMBEDDED_SQLITE_MIGRATIONS
-    .filter((m) => m.tag !== REPAIR_TAG)
+    .filter((m) => m.tag !== REPAIR_TAG && Number(m.tag.slice(0, 4)) <= LAST_TAG_BEFORE_M26)
     .map((m) => (m.tag === AUDIT_TAG ? { ...m, when: BROKEN_AUDIT_WHEN } : m));
 
 /**

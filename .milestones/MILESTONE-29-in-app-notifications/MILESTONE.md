@@ -1,13 +1,13 @@
 ---
 id: M29
 title: In-App Notifications
-status: todo
+status: done
 goal: A human sees their stalled-claim alerts inside the product, on any deployment, without waiting for an email — and the surface that shows them is generic enough that the next alert type registers against it instead of building its own.
 depends_on: []
 surfaces: [backend, gui, contract, specs]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+exit_criteria_met: true
+started_at: 2026-08-24
+completed_at: 2026-08-24
 ---
 
 # M29 — In-App Notifications
@@ -57,28 +57,28 @@ it, and which decide the first two tasks:**
 
 ## 3. Exit Criteria
 
-- [ ] A signed-in user with an unread stalled-claim alert sees a bell with a
+- [x] A signed-in user with an unread stalled-claim alert sees a bell with a
       non-zero badge in the app shell; opening it lists the alert with the task
       title and how long the claim has been silent.
-- [ ] Clicking an alert navigates to that task's detail view, scoped correctly
+- [x] Clicking an alert navigates to that task's detail view, scoped correctly
       per ADR-0025, and marks that alert read.
-- [ ] The badge clears to zero after "mark all read" and stays cleared across a
+- [x] The badge clears to zero after "mark all read" and stays cleared across a
       full page reload.
-- [ ] A stalled claim is detected, recorded and published with **SMTP
+- [x] A stalled claim is detected, recorded and published with **SMTP
       unconfigured** — verified by a test that runs the sweep with a disabled
       mailer and asserts a `domain.task.stalled` publish plus a persisted
       notification.
-- [ ] A task reviewer **with no email address** receives an in-app notification —
+- [x] A task reviewer **with no email address** receives an in-app notification —
       verified by a test using a local account created without an email.
-- [ ] A user cannot read another user's notifications: a request for a
+- [x] A user cannot read another user's notifications: a request for a
       notification belonging to another user returns not-found/permission-denied,
       pinned by a test.
-- [ ] An agent token cannot read notifications at all — the agent-scope sweep
+- [x] An agent token cannot read notifications at all — the agent-scope sweep
       passes with the new service registered and human-only.
-- [ ] Adding a second notification type requires no change to the bell component
+- [x] Adding a second notification type requires no change to the bell component
       or the notification handler — demonstrated by registering a second event
       type in the registry with a test, without editing either file.
-- [ ] `moon check --all` passes, and `bunx playwright test --workers=1` passes.
+- [x] `moon check --all` passes, and `bunx playwright test --workers=1` passes.
 
 ## 4. Scope
 
@@ -109,7 +109,7 @@ it, and which decide the first two tasks:**
 
 ## 5. Task Breakdown
 
-- [ ] **M29-T01** — The stalled-claim sweep detects, records and publishes
+- [x] **M29-T01** — The stalled-claim sweep detects, records and publishes
       regardless of whether SMTP is configured; only the email send stays gated.
   - **Files**: `apps/backend/src/lib/stalledClaimAlerts.ts`,
     `apps/backend/src/lib/stalledClaimAlerts.test.ts`
@@ -117,7 +117,7 @@ it, and which decide the first two tasks:**
     `mailer.enabled === false` and asserts both a `stalled_claim_alerts` row and
     a `domain.task.stalled` publish; existing SMTP-enabled tests still pass.
 
-- [ ] **M29-T02** — Alert recipients resolve by `userId`, so a reviewer with no
+- [x] **M29-T02** — Alert recipients resolve by `userId`, so a reviewer with no
       email address is still a recipient, and the email path keeps its behaviour
       by filtering for an address at the point of sending.
   - **Files**: `apps/backend/src/lib/resolveTaskAlertRecipients.ts`,
@@ -127,7 +127,7 @@ it, and which decide the first two tasks:**
     without an email asserts the user is returned as a recipient, and that the
     email grouping still skips them without erroring.
 
-- [ ] **M29-T03** — A `notifications` table exists in both dialects, keyed by
+- [x] **M29-T03** — A `notifications` table exists in both dialects, keyed by
       recipient user, carrying type, payload, org/project scope and read state.
   - **Files**: `apps/backend/src/db/schema.sqlite.ts`,
     `apps/backend/src/db/schema.mysql.ts`,
@@ -136,7 +136,7 @@ it, and which decide the first two tasks:**
   - **Verify**: `moon run backend:test` — the migration-ledger monotonicity
     guard (M26) passes and a round-trip insert/select works in both dialects.
 
-- [ ] **M29-T04** — A notification registry maps an event type to its rendered
+- [x] **M29-T04** — A notification registry maps an event type to its rendered
       title, body and target link, and the sweep writes notifications through it
       rather than knowing about stalled claims specifically.
   - **Files**: `apps/backend/src/lib/notificationRegistry.ts`,
@@ -145,7 +145,7 @@ it, and which decide the first two tasks:**
   - **Verify**: `moon run backend:test` — a test registers a second, fake event
     type and asserts it renders and persists without any edit to the write path.
 
-- [ ] **M29-T05** — `NotificationService` lists a caller's own notifications,
+- [x] **M29-T05** — `NotificationService` lists a caller's own notifications,
       reports an unread count, and marks one or all read; every query is
       predicated on the caller's `userId` and org membership.
   - **Files**: `packages/shared-contract/main.tsp`,
@@ -156,7 +156,7 @@ it, and which decide the first two tasks:**
     test asserts another user's notification id returns not-found, and the
     agent-scope sweep passes with the service registered human-only.
 
-- [ ] **M29-T06** — A `NotificationBell` component renders the badge and the
+- [x] **M29-T06** — A `NotificationBell` component renders the badge and the
       list, updates live from the existing event feed, and takes its content
       entirely from the server's rendered fields.
   - **Files**: `apps/gui/src/components/layout/NotificationBell.tsx`,
@@ -166,20 +166,20 @@ it, and which decide the first two tasks:**
   - **Verify**: `moon run gui:test gui:storybook-test` — the component's own
     test covers empty, unread-count and mark-read states.
 
-- [ ] **M29-T07** — The bell is mounted in the app shell and each notification
+- [x] **M29-T07** — The bell is mounted in the app shell and each notification
       navigates to its task carrying scope, per ADR-0025.
   - **Files**: `apps/gui/src/components/layout/AppShell.tsx`,
     `apps/gui/src/components/layout/AppShell.test.tsx`
   - **Verify**: `moon run gui:test` — a test asserts clicking a notification
     routes to the task URL with `?org=…&project=…` present.
 
-- [ ] **M29-T08** — A browser test proves the whole path: a stalled claim
+- [x] **M29-T08** — A browser test proves the whole path: a stalled claim
       becomes a badge, opens to a list, links to the task, and stays read
       across a reload.
   - **Files**: `apps/gui/e2e/notifications.spec.ts`
   - **Verify**: `bunx playwright test --workers=1 notifications.spec.ts`
 
-- [ ] **M29-T09** — Documentation states the notification surface truthfully and
+- [x] **M29-T09** — Documentation states the notification surface truthfully and
       the milestone closes.
   - **Files**: `.specs/product/architecture.md`, `.specs/design/NAVIGATION.md`,
     `README.md`, `.milestones/STATE.md`

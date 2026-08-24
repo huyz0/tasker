@@ -165,7 +165,7 @@ describe("runStalledClaimAlertSweep - digest assembly", () => {
     expect(sent.map((m) => m.to).sort()).toEqual(["a2@test.local", "b2@test.local"]);
   });
 
-  it(`caps a recipient's digest at DIGEST_TASK_LIMIT (${DIGEST_TASK_LIMIT}) with an accurate "+N more" overflow, and only records/publishes the itemized tasks`, async () => {
+  it(`caps a recipient's digest at DIGEST_TASK_LIMIT (${DIGEST_TASK_LIMIT}) with an accurate "+N more" overflow, while recording every detected task`, async () => {
     const { db, nc } = await setupIntegrationTest();
     const base = await seedOrg(db, "d3");
     const projectId = await seedProject(db, base, "d3");
@@ -186,10 +186,17 @@ describe("runStalledClaimAlertSweep - digest assembly", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]!.text).toContain("3 more");
 
-    // Only what was actually itemized is recorded as alerted - overflow
-    // stays eligible for a later sweep (ADR-0022 Decision 2).
+    // ADR-0026 changed this deliberately. ADR-0022 Decision 2 recorded only
+    // the itemized tasks, leaving overflow eligible for itemization in a
+    // later digest. Detection is no longer downstream of the email, so every
+    // detected task is recorded and published on the sweep that first sees
+    // it - the email still reports the overflow as a count, and the bell
+    // itemizes it without a cap.
     const allAlertRows = await db.select().from(schema.stalledClaimAlerts);
-    expect(allAlertRows).toHaveLength(DIGEST_TASK_LIMIT);
+    expect(allAlertRows).toHaveLength(total);
+
+    const published = nc.publishedMessages.filter((m: any) => m.subject === "domain.task.stalled");
+    expect(published).toHaveLength(total);
   });
 });
 
@@ -329,21 +336,140 @@ describe("runStalledClaimAlertSweep - recipient resolution", () => {
     await expect(runStalledClaimAlertSweep(db, true, mailer, nc)).resolves.toBeUndefined();
 
     expect(sent).toHaveLength(0);
-    // Nothing was sent, so nothing may be marked alerted either.
+
+    // ADR-0026: the task is still recorded and published. Under ADR-0022 it
+    // was left unmarked because nothing had been sent, which meant a task
+    // nobody could be notified about was re-detected and re-resolved on
+    // every sweep, forever. "This claim is stalled" is true regardless of
+    // whether anyone is listening, and marking it once stops the audit trail
+    // collecting an identical event every hour.
     const rows = await alertRowsFor(db, taskId);
-    expect(rows).toHaveLength(0);
+    expect(rows).toHaveLength(1);
+    expect(nc.publishedMessages.filter((m: any) => m.subject === "domain.task.stalled")).toHaveLength(1);
   });
 });
 
-// ── exit criterion 5: !mailer.enabled short-circuits before any query ──────
+// ── M29-T02: an email-less recipient is notified, but not emailed ──────────
+
+describe("runStalledClaimAlertSweep - recipients without an email", () => {
+  it("records and publishes for an email-less reviewer without attempting a send", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const base = await seedOrg(db, "noemail");
+    const projectId = await seedProject(db, base, "noemail");
+    const agentId = await seedAgent(db, base, "noemail");
+    const rev = await seedUser(db, "noemail-rev", { email: null, name: "Local Only" });
+    const taskId = await seedTask(db, projectId, "noemail");
+    await seedHold(db, taskId, agentId);
+    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
+    await seedReviewer(db, taskId, rev);
+
+    const { mailer, sent } = fakeMailer();
+    await runStalledClaimAlertSweep(db, true, mailer, nc);
+
+    // Nothing to address, so nothing is sent - and crucially no send is
+    // attempted with `to: null`.
+    expect(sent).toHaveLength(0);
+    // But the task is detected and published, which is what the in-app
+    // channel consumes. Before M29-T02 this person was excluded entirely.
+    expect(await alertRowsFor(db, taskId)).toHaveLength(1);
+    expect(nc.publishedMessages.filter((m: any) => m.subject === "domain.task.stalled")).toHaveLength(1);
+
+    // M29 exit criterion: a reviewer with no email address is notified.
+    const notes = await db.select().from(schema.notifications).where(eq(schema.notifications.userId, rev));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]!.type).toBe("task.stalled");
+    expect(notes[0]!.targetPath).toContain(`/tasks/${taskId}`);
+  });
+
+  it("still emails the addressable reviewer when a task has one of each", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const base = await seedOrg(db, "mixed");
+    const projectId = await seedProject(db, base, "mixed");
+    const agentId = await seedAgent(db, base, "mixed");
+    const withEmail = await seedUser(db, "mixed-a", { email: "mixed-a@test.local" });
+    const withoutEmail = await seedUser(db, "mixed-b", { email: null });
+    const taskId = await seedTask(db, projectId, "mixed");
+    await seedHold(db, taskId, agentId);
+    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
+    await seedReviewer(db, taskId, withEmail);
+    await seedReviewer(db, taskId, withoutEmail);
+
+    const { mailer, sent } = fakeMailer();
+    await runStalledClaimAlertSweep(db, true, mailer, nc);
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.to).toBe("mixed-a@test.local");
+    expect(await alertRowsFor(db, taskId)).toHaveLength(1);
+  });
+});
+
+// ── M29-T01 / ADR-0026: detection runs whether or not SMTP is configured ───
+//
+// M25's exit criterion 5 asserted the inverse here - that a disabled mailer
+// short-circuited before any query, on ADR-0022 Decision 5's reasoning that
+// "the common no-SMTP deployment pays nothing for a scan whose result would
+// be discarded anyway". That was correct while email was the only channel.
+// M29 adds a second one, so the result is no longer discarded: ADR-0026
+// retires that rationale and this suite pins the replacement behaviour.
 
 describe("runStalledClaimAlertSweep - disabled mailer", () => {
-  it("never touches the database when mailer.enabled is false", async () => {
-    const throwingDb: any = new Proxy(
-      {},
-      { get() { throw new Error("db must not be queried when the mailer is disabled"); } },
-    );
-    await expect(runStalledClaimAlertSweep(throwingDb, true, disabledMailer(), null)).resolves.toBeUndefined();
+  it("still detects, records and publishes when mailer.enabled is false", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const base = await seedOrg(db, "nosmtp");
+    const projectId = await seedProject(db, base, "nosmtp");
+    const agentId = await seedAgent(db, base, "nosmtp");
+    const rev = await seedUser(db, "nosmtp-rev", { email: "nosmtp@test.local" });
+    const taskId = await seedTask(db, projectId, "nosmtp");
+    await seedHold(db, taskId, agentId);
+    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
+    await seedReviewer(db, taskId, rev);
+
+    await runStalledClaimAlertSweep(db, true, disabledMailer(), nc);
+
+    expect(await alertRowsFor(db, taskId)).toHaveLength(1);
+    const published = nc.publishedMessages.filter((m: any) => m.subject === "domain.task.stalled");
+    expect(published).toHaveLength(1);
+    expect((published[0]!.data as any).taskId).toBe(taskId);
+  });
+
+  it("sends no email when mailer.enabled is false", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const base = await seedOrg(db, "nosmtp2");
+    const projectId = await seedProject(db, base, "nosmtp2");
+    const agentId = await seedAgent(db, base, "nosmtp2");
+    const rev = await seedUser(db, "nosmtp2-rev", { email: "nosmtp2@test.local" });
+    const taskId = await seedTask(db, projectId, "nosmtp2");
+    await seedHold(db, taskId, agentId);
+    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
+    await seedReviewer(db, taskId, rev);
+
+    const sent: MailMessage[] = [];
+    const mailer: Mailer = {
+      enabled: false,
+      appUrl: "https://tasker.example.com",
+      send: async (m: MailMessage) => { sent.push(m); return "skipped" as SendOutcome; },
+    };
+    await runStalledClaimAlertSweep(db, true, mailer, nc);
+
+    expect(sent).toHaveLength(0);
+  });
+
+  it("does not re-publish on a second sweep - the dedup ledger holds without email", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const base = await seedOrg(db, "nosmtp3");
+    const projectId = await seedProject(db, base, "nosmtp3");
+    const agentId = await seedAgent(db, base, "nosmtp3");
+    const rev = await seedUser(db, "nosmtp3-rev", { email: "nosmtp3@test.local" });
+    const taskId = await seedTask(db, projectId, "nosmtp3");
+    await seedHold(db, taskId, agentId);
+    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
+    await seedReviewer(db, taskId, rev);
+
+    await runStalledClaimAlertSweep(db, true, disabledMailer(), nc);
+    await runStalledClaimAlertSweep(db, true, disabledMailer(), nc);
+
+    expect(await alertRowsFor(db, taskId)).toHaveLength(1);
+    expect(nc.publishedMessages.filter((m: any) => m.subject === "domain.task.stalled")).toHaveLength(1);
   });
 });
 

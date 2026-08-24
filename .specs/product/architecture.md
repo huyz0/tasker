@@ -125,6 +125,35 @@ The backend **publishes** domain events to NATS and consumes none.
   and an agent additionally receives only the subjects its token's scopes
   could have read (ADR-0023). Delivered by M08.
 
+### In-app notifications
+
+A person's notifications are rows, not a projection of the event stream: read
+state is per recipient, so the same event reaching three people is three rows
+in `notifications` (M29).
+
+- **Written through a registry**, `lib/notificationRegistry.ts`. An event type
+  registers a renderer producing title, body, target path and a dedupe key;
+  `writeNotifications` persists one row per recipient and never learns what any
+  particular type means. `modules/notifications/notifications.handler.ts` and
+  the GUI's `NotificationBell` are equally type-agnostic — a new type reaches
+  the bell without either changing. `task.stalled` is the only type registered
+  today; the handoff and review-request types M25 named are unbuilt.
+- **Detection is independent of delivery** (ADR-0026). `runStalledClaimAlertSweep`
+  used to return before any query when SMTP was unconfigured, so a deployment
+  without a mailer did no stalled-claim detection at all. It now detects,
+  records and publishes on every sweep, and email is one channel gated below
+  that. Two consequences a deployment feels: an SMTP-less deployment now runs
+  the detector hourly where it ran nothing, and the email digest still caps
+  itemization at `DIGEST_TASK_LIMIT` but no longer itemizes the overflow in a
+  later sweep — the overflow is a count in the mail and a full list in the bell.
+- **Recipients are people, not addresses.** `resolveTaskAlertRecipients`
+  returns a `userId` with a nullable email; the email channel skips the ones it
+  cannot address. Before M29 it filtered on email throughout, which silently
+  excluded every M13 local account with no address from alerting.
+- Reads are predicated on the session's `userId` as well as org membership, and
+  `NotificationService` is refused to agent principals categorically — an agent
+  has the event feed for the same facts.
+
 ### Configuration
 
 `apps/backend/src/config.ts` implements a hierarchical loader validated by Zod

@@ -28,6 +28,7 @@ import { createEventsHandler } from '../modules/events/events.handler';
 import { createTeamsHandler } from '../modules/teams/teams.handler';
 import { createRolesHandler } from '../modules/roles/roles.handler';
 import { createAuditHandler } from '../modules/audit/audit.handler';
+import { createNotificationHandler } from '../modules/notifications/notifications.handler';
 
 /**
  * Deny-by-default for agent tokens, the sibling of `viewer-denial.test.ts`.
@@ -45,7 +46,7 @@ import { createAuditHandler } from '../modules/audit/audit.handler';
  */
 
 /** Handlers agents may never reach at all, whatever scopes they hold. */
-const NO_AGENT_ACCESS = ['orgs', 'auth', 'search', 'teams', 'roles', 'audit'];
+const NO_AGENT_ACCESS = ['orgs', 'auth', 'search', 'teams', 'roles', 'audit', 'notifications'];
 
 /** Unauthenticated, so there is no principal for a scope to apply to. */
 const PUBLIC: Record<string, string[]> = { health: ['ping'] };
@@ -101,6 +102,12 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
   },
   audit: {
     listAuditEvents: { orgId: ids.org },
+  },
+  notifications: {
+    listNotifications: { orgId: ids.org },
+    getUnreadNotificationCount: { orgId: ids.org },
+    markNotificationRead: { id: 'ntf-x' },
+    markAllNotificationsRead: { orgId: ids.org },
   },
   orgs: {
     listOrgs: {},
@@ -313,6 +320,9 @@ beforeAll(async () => {
     teams: createTeamsHandler(db, null),
     roles: createRolesHandler(db, null),
     audit: createAuditHandler(db),
+    // M29-T05. Human-only: every method resolves the recipient from the
+    // session via requireUser, so an agent token has nothing to resolve.
+    notifications: createNotificationHandler(db),
     orgs: createOrgsHandler(db, null),
     auth: createAuthHandler(db),
     projects: createProjectsHandler(db, null),
