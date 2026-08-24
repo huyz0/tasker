@@ -270,3 +270,44 @@ Append-only. Newest entry at the bottom.
   mounting one only would hide the bell from half the users — which the
   sidebar's own `ThemeToggle` comment records having already happened once.
 - **Next**: M29-T08
+
+## M29-T08 — browser test of the whole path
+
+- **Status**: done
+- **Date**: 2026-08-24
+- **Approach**: Three specs against a real backend: the badge shows what the
+  backend wrote, clicking a notification opens its task carrying scope, and
+  read state survives a hard reload. The seed writes three stalled-claim
+  notifications through the same registry the sweep uses, because a browser
+  cannot wait an hour for the hourly sweep and triggering it from a spec would
+  be testing the sweep.
+- **Artifacts**: None.
+- **Changed**: `apps/gui/tests/e2e/notifications.spec.ts` (new),
+  `apps/backend/scripts/seed.ts`
+- **Verified**: `bunx playwright test --workers=1` — **47 passed**, the whole
+  browser suite, against a live `STANDALONE=true ENABLE_TEST_LOGIN=true`
+  backend on a freshly seeded database.
+- **Notes**: **Three things went wrong before this passed, and each was worth
+  the browser.**
+
+  1. The spec's own `bell()` helper used `.first()`, which at desktop width
+     resolves to the `md:hidden` mobile copy — so every assertion waited on an
+     element that is never shown. The badge was rendering "3" correctly the
+     whole time. Fixed with `locator('visible=true')`. A component test could
+     not have caught this: jsdom applies no media queries.
+  2. `ENABLE_TEST_LOGIN=true` is required and is set only in CI's workflow, not
+     in any local script. Without it every spec in the repository fails at
+     `selectSeededOrg` — I confirmed `reports.spec.ts` failed 5/5 the same way
+     before I set it, which is how I knew the environment was wrong rather
+     than my spec.
+  3. A stale backend was already listening on :8080 with ~47 hours of uptime,
+     answering 404 for the new service. `curl`ing the new RPC is what
+     distinguished "my code is broken" from "I am talking to old code".
+
+  **This file consumes its fixture.** The last test marks everything read, so a
+  second run against the same database fails the badge tests until re-seeded —
+  the same contract `reports.spec.ts` documents for Unassign, now written into
+  this file's header. It also explains a `dashboard.spec.ts` failure in an
+  intermediate full-suite run: that was consumed state from my earlier
+  isolated runs, not the sidebar change, and it passes on a fresh seed.
+- **Next**: M29-T09

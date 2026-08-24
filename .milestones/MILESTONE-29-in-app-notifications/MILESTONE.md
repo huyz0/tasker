@@ -173,7 +173,7 @@ it, and which decide the first two tasks:**
   - **Verify**: `moon run gui:test` — a test asserts clicking a notification
     routes to the task URL with `?org=…&project=…` present.
 
-- [ ] **M29-T08** — A browser test proves the whole path: a stalled claim
+- [x] **M29-T08** — A browser test proves the whole path: a stalled claim
       becomes a badge, opens to a list, links to the task, and stays read
       across a reload.
   - **Files**: `apps/gui/e2e/notifications.spec.ts`
