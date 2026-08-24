@@ -117,7 +117,7 @@ it, and which decide the first two tasks:**
     `mailer.enabled === false` and asserts both a `stalled_claim_alerts` row and
     a `domain.task.stalled` publish; existing SMTP-enabled tests still pass.
 
-- [ ] **M29-T02** — Alert recipients resolve by `userId`, so a reviewer with no
+- [x] **M29-T02** — Alert recipients resolve by `userId`, so a reviewer with no
       email address is still a recipient, and the email path keeps its behaviour
       by filtering for an address at the point of sending.
   - **Files**: `apps/backend/src/lib/resolveTaskAlertRecipients.ts`,

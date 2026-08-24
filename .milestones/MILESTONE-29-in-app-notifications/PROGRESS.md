@@ -45,3 +45,38 @@ Append-only. Newest entry at the bottom.
   installed**; do not reach for it" while `msw ^2.15.0` has been load-bearing
   since M12-T01. It was read as binding context for this very task.
 - **Next**: M29-T02
+
+## M29-T02 — Resolve alert recipients by userId
+
+- **Status**: done
+- **Date**: 2026-08-24
+- **Approach**: Return `userId` on every recipient and stop filtering the list
+  by email; the email channel filters for an address at the point of sending.
+  Also fix the tier check, which currently tests reviewer count *after* the
+  email filter, so a task whose only reviewer has no email silently falls
+  through to org admins — a violation of ADR-0022 Decision 1 the email-only
+  design could not expose.
+- **Artifacts**: No ADR — ADR-0026 already records the decoupling this
+  completes, and no alternative exists here: in-app delivery has no address to
+  filter on. No UX pass, no test plan.
+- **Changed**: `apps/backend/src/lib/resolveTaskAlertRecipients.ts`,
+  `apps/backend/src/lib/resolveTaskAlertRecipients.test.ts`,
+  `apps/backend/src/lib/stalledClaimAlerts.ts`,
+  `apps/backend/src/lib/stalledClaimAlerts.test.ts`
+- **Verified**: `bun test` in `apps/backend` — 1819 pass, 28 skip, 0 fail;
+  `moon run backend:typecheck` clean. Four resolver tests and two sweep tests
+  were red before the change.
+- **Notes**: The task named one bug and the file contained two. The second:
+  the reviewer-vs-admin tier check ran *after* the email filter, so a task
+  whose only reviewer had no email looked reviewer-less and the alert was
+  routed to every org owner/admin. That is both a missed notification and a
+  disclosure to people ADR-0022 Decision 1 says should not receive it — and
+  it was unreachable as a bug until email stopped being the only channel.
+
+  `dedupeByEmail` became `dedupeByUser` for a related reason: two email-less
+  users both deduped to the key `null`, so one of them silently vanished.
+
+  The email channel now drops un-addressable recipients at the point of
+  sending; without that guard the group map keys on `null` and the send is
+  attempted with `to: null`.
+- **Next**: M29-T03

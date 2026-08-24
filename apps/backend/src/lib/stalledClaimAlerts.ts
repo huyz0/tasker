@@ -137,6 +137,11 @@ export async function runStalledClaimAlertSweep(
       continue;
     }
     for (const recipient of recipients) {
+      // M29-T02: resolution returns people, so this is where the email
+      // channel drops the ones it cannot address. Without this guard a
+      // local account with no email keys the group map on `null` and the
+      // send is attempted with `to: null`.
+      if (!recipient.email) continue;
       let group = groups.get(recipient.email);
       if (!group) {
         group = { name: recipient.name, reason: recipient.reason, candidates: [] };

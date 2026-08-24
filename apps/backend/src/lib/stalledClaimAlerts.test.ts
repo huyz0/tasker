@@ -349,6 +349,54 @@ describe("runStalledClaimAlertSweep - recipient resolution", () => {
   });
 });
 
+// ── M29-T02: an email-less recipient is notified, but not emailed ──────────
+
+describe("runStalledClaimAlertSweep - recipients without an email", () => {
+  it("records and publishes for an email-less reviewer without attempting a send", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const base = await seedOrg(db, "noemail");
+    const projectId = await seedProject(db, base, "noemail");
+    const agentId = await seedAgent(db, base, "noemail");
+    const rev = await seedUser(db, "noemail-rev", { email: null, name: "Local Only" });
+    const taskId = await seedTask(db, projectId, "noemail");
+    await seedHold(db, taskId, agentId);
+    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
+    await seedReviewer(db, taskId, rev);
+
+    const { mailer, sent } = fakeMailer();
+    await runStalledClaimAlertSweep(db, true, mailer, nc);
+
+    // Nothing to address, so nothing is sent - and crucially no send is
+    // attempted with `to: null`.
+    expect(sent).toHaveLength(0);
+    // But the task is detected and published, which is what the in-app
+    // channel consumes. Before M29-T02 this person was excluded entirely.
+    expect(await alertRowsFor(db, taskId)).toHaveLength(1);
+    expect(nc.publishedMessages.filter((m: any) => m.subject === "domain.task.stalled")).toHaveLength(1);
+  });
+
+  it("still emails the addressable reviewer when a task has one of each", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const base = await seedOrg(db, "mixed");
+    const projectId = await seedProject(db, base, "mixed");
+    const agentId = await seedAgent(db, base, "mixed");
+    const withEmail = await seedUser(db, "mixed-a", { email: "mixed-a@test.local" });
+    const withoutEmail = await seedUser(db, "mixed-b", { email: null });
+    const taskId = await seedTask(db, projectId, "mixed");
+    await seedHold(db, taskId, agentId);
+    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
+    await seedReviewer(db, taskId, withEmail);
+    await seedReviewer(db, taskId, withoutEmail);
+
+    const { mailer, sent } = fakeMailer();
+    await runStalledClaimAlertSweep(db, true, mailer, nc);
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.to).toBe("mixed-a@test.local");
+    expect(await alertRowsFor(db, taskId)).toHaveLength(1);
+  });
+});
+
 // ── M29-T01 / ADR-0026: detection runs whether or not SMTP is configured ───
 //
 // M25's exit criterion 5 asserted the inverse here - that a disabled mailer
