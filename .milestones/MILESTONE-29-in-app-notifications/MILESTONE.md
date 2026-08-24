@@ -156,7 +156,7 @@ it, and which decide the first two tasks:**
     test asserts another user's notification id returns not-found, and the
     agent-scope sweep passes with the service registered human-only.
 
-- [ ] **M29-T06** — A `NotificationBell` component renders the badge and the
+- [x] **M29-T06** — A `NotificationBell` component renders the badge and the
       list, updates live from the existing event feed, and takes its content
       entirely from the server's rendered fields.
   - **Files**: `apps/gui/src/components/layout/NotificationBell.tsx`,

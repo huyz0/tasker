@@ -75,3 +75,24 @@ describe('isControlFrame', () => {
     expect(isControlFrame('domain.task.created')).toBe(false);
   });
 });
+
+describe('domain.task.stalled (M29)', () => {
+  it('refreshes the notification bell as well as the task queries', () => {
+    const keys = queryKeysForSubject('domain.task.stalled')!.map((k) => k[0]);
+    expect(keys).toContain('notifications');
+    expect(keys).toContain('notificationCount');
+    // Still a task event, so it keeps everything the entity already invalidated.
+    expect(keys).toContain('tasks');
+  });
+
+  it('leaves every other task subject out of the bell', () => {
+    // The reason this is a per-subject exception rather than an entry on the
+    // `task` entity: otherwise every task edit, create and archive in the app
+    // refetches two notification queries nobody asked for.
+    for (const subject of ['domain.task.created', 'domain.task.updated', 'domain.task.archived']) {
+      const keys = queryKeysForSubject(subject)!.map((k) => k[0]);
+      expect(keys).not.toContain('notifications');
+      expect(keys).not.toContain('notificationCount');
+    }
+  });
+});

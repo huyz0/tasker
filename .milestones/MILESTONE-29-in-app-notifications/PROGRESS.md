@@ -196,3 +196,48 @@ Append-only. Newest entry at the bottom.
   *does* call as stale, so it will demand their removal rather than let them
   rot quietly.
 - **Next**: M29-T06
+
+## M29-T06 — NotificationBell component
+
+- **Status**: done
+- **Date**: 2026-08-24
+- **Approach**: A `Popover`-free dropdown following `LiveStatusIndicator`'s
+  precedent (presentational, fed by props/hooks the shell owns). Badge from
+  `getUnreadNotificationCount`, list from `listNotifications`, both invalidated
+  by the existing live feed via a new `notification` entity in
+  `eventQueryKeys.ts`. All content comes from the server's rendered fields, so
+  the component never branches on `type`.
+- **Artifacts**: No ADR. A UX pass is warranted by the heavy-task rule (it adds
+  an affordance a user must learn), and its four states — empty, loading,
+  error, and the permission case — are covered by the component's own tests
+  and story rather than a separate document, since the surface is one dropdown
+  in an existing shell rather than a screen.
+- **Changed**: `apps/gui/src/components/layout/NotificationBell.tsx` (new),
+  `NotificationBell.test.tsx` (new), `NotificationBell.stories.tsx` (new),
+  `apps/gui/src/lib/eventQueryKeys.ts`, `eventQueryKeys.test.ts`,
+  `apps/gui/scripts/rpc-coverage.mjs`
+- **Verified**: `moon run gui:test gui:typecheck gui:lint gui:design-lint` —
+  79 files, 1166 tests, all pass. `moon run gui:rpc-coverage` back to
+  "139 of 143 reached, 4 excepted", i.e. the four temporary M29-T05
+  exceptions are gone and the count is the original.
+- **Notes**: **The `task` entity was the wrong home for the bell's queries.**
+  First attempt added `notifications`/`notificationCount` to
+  `KEYS_BY_ENTITY.task`, which `eventQueryKeys.test.ts` rejected by pinning
+  the exact key set — correctly, because that would refetch two notification
+  queries on every task create, edit and archive in the app. Added
+  `EXTRA_KEYS_BY_SUBJECT` instead, a per-subject overlay holding exactly
+  `domain.task.stalled`, with a test pinning that the other task subjects
+  stay out of the bell.
+
+  The list query is `enabled` only while the panel is open. The bell renders
+  on every screen; fetching a page of notifications nobody opened would be a
+  request per navigation.
+
+  `@testing-library/user-event` is not a dependency here — the codebase uses
+  `fireEvent`, so the tests do too rather than adding a package for
+  convenience.
+
+  The component never branches on `type`: one test renders a `task.handoff`
+  notification it has never heard of and asserts it displays normally, which
+  is M29's exit criterion seen from the GUI side.
+- **Next**: M29-T07
