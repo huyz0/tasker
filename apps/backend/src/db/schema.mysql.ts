@@ -1,4 +1,4 @@
-import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, bigint, boolean, mediumtext, longtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
+import { varchar, timestamp, mysqlTable, mysqlEnum, primaryKey, index, uniqueIndex, int, bigint, boolean, text, mediumtext, longtext, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const testSchema = mysqlTable("schema_migrations_test", {
   id: varchar("id", { length: 256 }).primaryKey(),
@@ -663,6 +663,30 @@ export const taskActivity = mysqlTable("task_activity", {
  * claim predating activity collection dodge the unique index below and
  * re-email on every sweep forever.
  */
+/** In-app notifications (M29-T03). See schema.sqlite.ts for the reasoning;
+ * the two are hand-kept in parallel. */
+export const notifications = mysqlTable("notifications", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  userId: varchar("user_id", { length: 256 }).notNull().references(() => users.id),
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  projectId: varchar("project_id", { length: 256 }),
+  type: varchar("type", { length: 128 }).notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  targetPath: text("target_path"),
+  /** Bounded, unlike the sqlite side: it is part of a unique index, and
+   * MySQL cannot index an unbounded TEXT column without a prefix length. */
+  dedupeKey: varchar("dedupe_key", { length: 512 }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
+  readAt: timestamp("read_at"),
+}, (table) => {
+  return {
+    dedupeIdx: uniqueIndex("notifications_user_id_type_dedupe_key_idx").on(table.userId, table.type, table.dedupeKey),
+    userCreatedIdx: index("notifications_user_id_created_at_idx").on(table.userId, table.createdAt),
+    userReadIdx: index("notifications_user_id_read_at_idx").on(table.userId, table.readAt),
+  };
+});
+
 export const stalledClaimAlerts = mysqlTable("stalled_claim_alerts", {
   id: varchar("id", { length: 256 }).primaryKey(),
   taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),

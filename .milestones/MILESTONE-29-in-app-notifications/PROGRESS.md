@@ -80,3 +80,45 @@ Append-only. Newest entry at the bottom.
   sending; without that guard the group map keys on `null` and the send is
   attempted with `to: null`.
 - **Next**: M29-T03
+
+## M29-T03 — notifications table in both dialects
+
+- **Status**: done
+- **Date**: 2026-08-24
+- **Approach**: One row per (recipient, notification). Carries the event type,
+  server-rendered title/body, a target link, org/project scope for filtering,
+  and `readAt`. Dedup key is (userId, type, dedupeKey) so a re-published event
+  cannot double-notify. Follows the two-dialect discipline and the M26
+  monotonicity guard's `when` ordering.
+- **Artifacts**: No ADR — the shape follows `stalled_claim_alerts` and
+  `audit_log` precedent, and no alternative was weighed. No UX, no test plan.
+- **Changed**: `apps/backend/src/db/schema.sqlite.ts`,
+  `apps/backend/src/db/schema.mysql.ts`,
+  `apps/backend/drizzle-sqlite/0049_notifications.sql`,
+  `apps/backend/drizzle-mysql/0036_notifications.sql`, both `meta/_journal.json`,
+  `apps/backend/src/db/embeddedMigrations.generated.ts` (regenerated),
+  `apps/backend/src/db/notifications.schema.test.ts` (new),
+  `apps/backend/src/db/auditLogRepair.migration.test.ts`
+- **Verified**: `bun test` in `apps/backend` — 1824 pass, 28 skip, 0 fail;
+  `moon run backend:typecheck` clean. Five round-trip tests run against a
+  really-migrated database, not against the schema object, because the
+  migration and the drizzle definition are hand-kept in parallel and can
+  disagree.
+- **Notes**: **Adding this migration broke two M26 tests, and the bug was
+  theirs, not mine.** `auditLogRepair.migration.test.ts`'s
+  `asShippedBeforeM26()` built its "journal as it stood before M26" fixture by
+  taking *every* migration except the repair. That was correct only while 0048
+  was the newest migration in the tree. Any migration added after it — any
+  one, for any reason — joined that fixture, carried a later `when` than the
+  repair, and pushed the simulated watermark past the repair's own slot, so
+  the repair never applied and the test reproduced a different bug than the
+  one it describes. Now bounded at `LAST_TAG_BEFORE_M26 = 47`.
+
+  This was a time-bomb for whoever added migration 0049, whatever it turned
+  out to be. Worth remembering that M26's whole subject was gates that do not
+  cover what they claim.
+
+  `text` was not imported in `schema.mysql.ts`; added. MySQL's `dedupe_key` is
+  `varchar(512)` rather than the sqlite side's `text` because it participates
+  in a unique index and MySQL cannot index an unbounded TEXT without a prefix.
+- **Next**: M29-T04

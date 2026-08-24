@@ -857,6 +857,49 @@ export const taskActivity = sqliteTable("task_activity", {
  * keeps the column always populated, which is what lets the unique index
  * below actually do its job.
  */
+/**
+ * In-app notifications (M29-T03). One row per recipient per notification -
+ * the same event reaching three people is three rows, because read state is
+ * per person.
+ *
+ * `title`/`body`/`targetPath` are rendered server-side by
+ * `lib/notificationRegistry.ts` rather than stored as a payload the GUI
+ * interprets. That is what keeps the bell generic: adding a notification type
+ * means registering a renderer, not teaching the component a new shape.
+ */
+export const notifications = sqliteTable("notifications", {
+  id: text("id").primaryKey(),
+  /** The recipient. Every read of this table is predicated on it. */
+  userId: text("user_id").notNull().references(() => users.id),
+  /** Scope, so the bell can be filtered to the org the user is looking at. */
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  /** Nullable: not every notification is about something inside a project. */
+  projectId: text("project_id"),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  /** Where clicking it goes, scope query string included (ADR-0025). */
+  targetPath: text("target_path"),
+  /**
+   * Per-type idempotency. The writer sets this to whatever makes "the same
+   * notification" for that type - for a stalled claim, task id + claim
+   * anchor. A redelivered or re-published event then collides here instead
+   * of showing the same alert twice.
+   */
+  dedupeKey: text("dedupe_key").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  /** Null until read. Not a boolean, so "when did they see it" survives. */
+  readAt: integer("read_at", { mode: "timestamp" }),
+}, (table) => {
+  return {
+    dedupeIdx: uniqueIndex("notifications_user_id_type_dedupe_key_idx").on(table.userId, table.type, table.dedupeKey),
+    // The bell's own query: this user's notifications, newest first.
+    userCreatedIdx: index("notifications_user_id_created_at_idx").on(table.userId, table.createdAt),
+    // The badge's query: this user's unread count.
+    userReadIdx: index("notifications_user_id_read_at_idx").on(table.userId, table.readAt),
+  };
+});
+
 export const stalledClaimAlerts = sqliteTable("stalled_claim_alerts", {
   id: text("id").primaryKey(),
   taskId: text("task_id").notNull().references(() => tasks.id),

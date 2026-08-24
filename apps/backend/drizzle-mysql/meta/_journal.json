@@ -253,6 +253,13 @@
       "when": 1788400000000,
       "tag": "0035_repair_audit_log",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1788500000000,
+      "tag": "0036_notifications",
+      "breakpoints": true
     }
   ]
 }

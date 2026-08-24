@@ -127,7 +127,7 @@ it, and which decide the first two tasks:**
     without an email asserts the user is returned as a recipient, and that the
     email grouping still skips them without erroring.
 
-- [ ] **M29-T03** — A `notifications` table exists in both dialects, keyed by
+- [x] **M29-T03** — A `notifications` table exists in both dialects, keyed by
       recipient user, carrying type, payload, org/project scope and read state.
   - **Files**: `apps/backend/src/db/schema.sqlite.ts`,
     `apps/backend/src/db/schema.mysql.ts`,
