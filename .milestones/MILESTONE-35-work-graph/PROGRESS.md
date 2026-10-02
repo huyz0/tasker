@@ -20,3 +20,22 @@
   in this sandbox (buf's remote plugins are unreachable); generated with the
   local plugins, as in M33.
 - **Next**: M35-T02
+
+## M35-T02 — Priority
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/tasks/{tasks.handler.ts,taskGraph.ts}`
+  (+ `workGraph.test.ts`), `apps/backend/src/db/query-builder.ts`
+- **Verified**: backend `bun test` 1889 pass; the cross-page sort test failed
+  first with a bun:sqlite binding error.
+- **Notes**: Create/update/get/list carry `priority`; `ListTasks` filters it
+  and sorts `priority:asc` urgent-first with "none" last, through a rank
+  expression. That exposed a paginator bug no existing list could hit: the
+  cursor decoder turned *every* number into a `Date`, so a numeric sort key
+  could not page. It now converts only for date columns (`dataType ===
+  "date"`), and the new `cursorFields` option names the row key a cursor reads
+  when the sort key is not the visible value. Task responses now go through
+  one `toWireTask`, which also replaces six copies of the `createdAt` ISO
+  conversion. `ListMyTasks` sorts by priority too.
+- **Next**: M35-T03

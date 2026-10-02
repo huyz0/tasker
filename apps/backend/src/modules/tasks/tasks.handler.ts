@@ -11,6 +11,7 @@ import { withIdempotency } from "../../lib/idempotency";
 import { getLatestHandoffNote, recordTaskNote } from "./task_notes.handler";
 import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal, terminalStatusSql } from "./taskActivity";
 import { purgeTaskCascade } from "../../lib/cascadePurge";
+import { MAX_PRIORITY, priorityRankSql } from "./taskGraph";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // Distinguishes a real DB-level unique-constraint violation (a concurrent
@@ -66,7 +67,40 @@ const CreateTaskSchema = z.object({
   // idempotency requested", not "replay whatever the empty string mapped to
   // last time".
   idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
+  // M35 (ADR-0028). 0 none, 1 urgent .. 4 low.
+  priority: z.number().int().min(0).max(MAX_PRIORITY).optional().default(0),
 });
+
+/** M35: the columns every task list returns - description stays out (M07-T01). */
+function taskListSelect(tasks: any) {
+  return {
+    id: tasks.id,
+    projectId: tasks.projectId,
+    displayId: tasks.displayId,
+    taskTypeId: tasks.taskTypeId,
+    createdBy: tasks.createdBy,
+    title: tasks.title,
+    status: tasks.status,
+    createdAt: tasks.createdAt,
+    deletedAt: tasks.deletedAt,
+    priority: tasks.priority,
+    parentTaskId: tasks.parentTaskId,
+    // Not on the wire: the sort key for `sort: "priority"`, where "none" ranks
+    // after "low". Stripped before the response leaves (see toWireTask).
+    priorityRank: priorityRankSql(tasks),
+  };
+}
+
+/** A task row as the wire `Task` carries it. */
+function toWireTask(t: any, extra: Record<string, unknown> = {}) {
+  const { priorityRank: _rank, ...rest } = t;
+  return {
+    ...rest,
+    parentTaskId: rest.parentTaskId ?? undefined,
+    createdAt: rest.createdAt instanceof Date ? rest.createdAt.toISOString() : rest.createdAt,
+    ...extra,
+  };
+}
 
 const CreateTaskStatusSchema = z.object({
   taskTypeId: z.string().min(1, "taskTypeId is required"),
@@ -181,6 +215,8 @@ const UpdateTaskSchema = z.object({
   // that would make clearing a description a silent no-op (M14-T01).
   description: z.string().max(4096).optional(),
   taskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().nullable().optional()),
+  // M35. Proto3 `optional`, so 0 ("none") is a real value, not "unset".
+  priority: z.number().int().min(0).max(MAX_PRIORITY).optional(),
 });
 
 const DeleteTaskSchema = z.object({
@@ -205,6 +241,8 @@ const ListTasksSchema = z.object({
   onlyDeleted: z.boolean().optional(),
   status: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
   assigneeFilter: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  // M35.
+  priority: z.number().int().min(0).max(MAX_PRIORITY).optional(),
 });
 
 // --- Handler Factories ---
@@ -623,7 +661,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     // context matters most - the new claimant sees it in the same round trip.
     const latestHandoffNote = await getLatestHandoffNote(db, taskId, isStandalone);
     return {
-      task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt },
+      task: toWireTask(task),
       ...(latestHandoffNote ? { latestHandoffNote } : {}),
     };
   }
@@ -769,6 +807,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           status: parsed.status,
           description: parsed.description,
           createdAt: new Date(),
+          priority: parsed.priority,
         };
 
         await insertRecord(db, tasks, payload, isStandalone, false);
@@ -813,11 +852,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // task is inspected, without a separate listTaskNotes call.
       const latestHandoffNote = await getLatestHandoffNote(db, t.id, isStandalone);
       return {
-        task: {
-          ...t,
-          createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
-          assignees: assignees.get(t.id) ?? [],
-        },
+        task: toWireTask(t, { assignees: assignees.get(t.id) ?? [] }),
         ...(latestHandoffNote ? { latestHandoffNote } : {}),
       };
     },
@@ -858,30 +893,28 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const conditions = [eq((tasks as any).projectId, parsed.projectId), deletedFilter];
       if (statusFacet) conditions.push(statusFacet);
       if (assigneeFacet) conditions.push(assigneeFacet);
+      if (parsed.priority !== undefined) conditions.push(eq((tasks as any).priority, parsed.priority));
       const scope = and(...conditions);
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, scope, parsed.page, {
         filterColumn: (tasks as any).title,
-        sortableColumns: { title: (tasks as any).title, status: (tasks as any).status, createdAt: (tasks as any).createdAt },
-        // `description` is free text with no length bound and the list renders
-        // only the title. It is read back by `getTask` on the detail view.
-        select: {
-          id: (tasks as any).id,
-          projectId: (tasks as any).projectId,
-          displayId: (tasks as any).displayId,
-          taskTypeId: (tasks as any).taskTypeId,
-          createdBy: (tasks as any).createdBy,
+        sortableColumns: {
           title: (tasks as any).title,
           status: (tasks as any).status,
           createdAt: (tasks as any).createdAt,
-          deletedAt: (tasks as any).deletedAt,
+          // M35: urgent first, "none" last - `priority:asc` is claim order.
+          priority: priorityRankSql(tasks),
         },
+        cursorFields: { priority: "priorityRank" },
+        // `description` is free text with no length bound and the list renders
+        // only the title. It is read back by `getTask` on the detail view.
+        select: taskListSelect(tasks),
         // M19-T03: status/assigneeFilter/onlyDeleted all narrow `scope`
         // (baseCondition) just as much as the free-text filter does, but
         // executePaginatedQuery's cached-totalCount guard only ever compared
         // against `filter` - a cursor minted while paging with status="todo"
         // and then reused against a request for status="done" would report
         // "todo"'s count under "done"'s results.
-        extraCacheKey: [parsed.onlyDeleted ? "1" : "0", parsed.status ?? "", parsed.assigneeFilter ?? ""].join("|"),
+        extraCacheKey: [parsed.onlyDeleted ? "1" : "0", parsed.status ?? "", parsed.assigneeFilter ?? "", parsed.priority ?? ""].join("|"),
       });
       // Sorting by displayId is deliberately not offered: it is a string, so
       // "SEED-100" sorts before "SEED-99". Ids are assigned in creation order,
@@ -890,11 +923,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const assignees = await assigneesByTask(items.map((t: any) => t.id));
 
       return {
-        tasks: items.map((t: any) => ({
-          ...t,
-          createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
-          assignees: assignees.get(t.id) ?? [],
-        })),
+        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [] })),
         page: { nextCursor, totalCount },
       };
     },
@@ -923,27 +952,14 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         parsed.includeTerminal ? undefined : not(terminalStatusSql(tasks, isStandalone)),
       );
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, scope, parsed.page, {
-        sortableColumns: { createdAt: (tasks as any).createdAt, status: (tasks as any).status },
-        select: {
-          id: (tasks as any).id,
-          projectId: (tasks as any).projectId,
-          displayId: (tasks as any).displayId,
-          taskTypeId: (tasks as any).taskTypeId,
-          createdBy: (tasks as any).createdBy,
-          title: (tasks as any).title,
-          status: (tasks as any).status,
-          createdAt: (tasks as any).createdAt,
-          deletedAt: (tasks as any).deletedAt,
-        },
+        sortableColumns: { createdAt: (tasks as any).createdAt, status: (tasks as any).status, priority: priorityRankSql(tasks) },
+        cursorFields: { priority: "priorityRank" },
+        select: taskListSelect(tasks),
         extraCacheKey: [orgId, selfId, parsed.includeTerminal ? "1" : "0"].join("|"),
       });
       const assignees = await assigneesByTask(items.map((t: any) => t.id));
       return {
-        tasks: items.map((t: any) => ({
-          ...t,
-          createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
-          assignees: assignees.get(t.id) ?? [],
-        })),
+        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [] })),
         page: { nextCursor, totalCount },
       };
     },
@@ -1304,6 +1320,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       if (parsed.title !== undefined) updates.title = parsed.title;
       if (parsed.description !== undefined) updates.description = parsed.description;
       if (parsed.taskTypeId !== undefined) updates.taskTypeId = parsed.taskTypeId;
+      if (parsed.priority !== undefined) updates.priority = parsed.priority;
 
       await db.update(tasks).set(updates).where(eq((tasks as any).id, parsed.taskId));
 
@@ -1311,7 +1328,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       const task = result[0];
 
       publishDomainEvent(nc, "domain.task.updated", task);
-      return { task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt } };
+      return { task: toWireTask(task) };
     },
     async updateTaskStatus(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
@@ -1367,7 +1384,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       });
 
       publishDomainEvent(nc, "domain.task.status_updated", task);
-      return { task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt } };
+      return { task: toWireTask(task) };
     },
     async deleteTask(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);

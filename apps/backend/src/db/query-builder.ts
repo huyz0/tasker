@@ -79,7 +79,10 @@ function buildCursorPaginationWhere(
 ): SQL | undefined {
   if (!cursor || cursor.field !== sortField) return undefined;
   const op = direction === "desc" ? lt : gt;
-  const value = typeof cursor.value === "number" ? new Date(cursor.value) : cursor.value;
+  // Dates ride in the cursor as epoch ms. Only a date column gets one back: a
+  // numeric sort key (M35's priority rank) is a number on both sides.
+  const isDateColumn = (sortCol as any)?.dataType === "date";
+  const value = typeof cursor.value === "number" && isDateColumn ? new Date(cursor.value) : cursor.value;
   return or(
     op(sortCol, value as any),
     and(
@@ -192,6 +195,13 @@ export interface PaginatedQueryOptions {
   /** Whitelist of `field -> column` the caller's `sort` may name. */
   sortableColumns?: Record<string, any>;
   /**
+   * Sort field -> the key in `select` holding the value that field sorts by,
+   * when it is not the field's own name. For a sort on an expression (M35:
+   * priority, where "none" ranks last), the row's visible value is not the
+   * sort key, and a cursor minted from the visible value would skip rows.
+   */
+  cursorFields?: Record<string, string>;
+  /**
    * The columns this list returns. **Required**, and required on purpose.
    *
    * When this was optional, omitting it meant `SELECT *`, and `SELECT *` on
@@ -291,7 +301,7 @@ export async function executePaginatedQuery(
 
   const lastItem = result[result.length - 1];
   const nextCursor = lastItem && result.length === limit
-    ? encodeCursor(extractCursorValue(lastItem, sortField), lastItem[idField], sortField, totalCount, currentFilter)
+    ? encodeCursor(extractCursorValue(lastItem, opts.cursorFields?.[sortField] ?? sortField), lastItem[idField], sortField, totalCount, currentFilter)
     : undefined;
 
   return { items: result, nextCursor, totalCount };

@@ -74,7 +74,7 @@ impossible.
 - [x] **M35-T01** — ADR-0028; contract and schema: `priority`, `parent_task_id`, `task_links`.
   - **Files**: `.specs/adr/ADR-0028-*.md`, `packages/shared-contract/*`,
     `apps/backend/src/db/schema.*.ts`, migrations
-- [ ] **M35-T02** — Priority: create, update, list filter and sort.
+- [x] **M35-T02** — Priority: create, update, list filter and sort.
   - **Files**: `apps/backend/src/modules/tasks/tasks.handler.ts` (+ test)
 - [ ] **M35-T03** — Links: add, remove, list; parent; cycle and tenancy checks.
   - **Files**: `apps/backend/src/modules/tasks/taskLinks.ts` (+ test), handler
