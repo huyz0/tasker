@@ -1617,6 +1617,7 @@ describe('TasksWorkbench', () => {
 
     it('shows the agent\'s plan and flags a task waiting on a person (M38)', async () => {
       withTasks([{ id: 't-1', displayId: 'T-1', title: 'Fix bug', status: 'todo', openInputRequestCount: 1, pendingApprovalCount: 1,
+        summary: { text: 'Fixed by pinning the driver.', authorName: 'Closer', updatedAt: '2026-10-02T10:00:00Z' },
         plan: [{ title: 'Reproduce', status: 'done' }, { title: 'Patch', status: 'in_progress' }] }]);
       renderPage();
       const card = (await screen.findByText('Fix bug')).closest('[draggable]') as HTMLElement;
@@ -1624,6 +1625,7 @@ describe('TasksWorkbench', () => {
       expect(within(card).getByText('Awaiting approval')).toBeInTheDocument();
       fireEvent.click(screen.getByText('Fix bug'));
       expect(await screen.findByRole('progressbar', { name: 'Plan progress' })).toHaveAttribute('aria-valuenow', '1');
+      expect(screen.getByText('Fixed by pinning the driver.')).toBeInTheDocument();
       expect(screen.getByText('Patch')).toBeInTheDocument();
     });
 

@@ -5,6 +5,7 @@ import { useScopedTo } from '../../hooks/useScope';
 import { PriorityBadge, BlockedBadge, NeedsInputBadge, AwaitingApprovalBadge } from './PriorityBadge';
 import { TaskPlan } from './TaskPlan';
 import { TaskUsage } from './TaskUsage';
+import { TaskSummaryPanel } from './TaskSummary';
 import { TaskInputRequests, QuestionsQueue } from './InputRequests';
 import { TaskApprovals, ApprovalsQueue } from './Approvals';
 import { PRIORITY_OPTIONS } from './priority';
@@ -1229,6 +1230,10 @@ export function TasksWorkbench() {
                   )}
                </div>
              )}
+             <div className="mt-8">
+               <h3 className="text-lg font-semibold tracking-tight mb-3">Summary</h3>
+               <TaskSummaryPanel key={expandedTask.id} taskId={expandedTask.id} summary={expandedTask.summary} />
+             </div>
              <div className="mt-8">
                <h3 className="text-lg font-semibold tracking-tight mb-3">Agent plan</h3>
                <TaskPlan steps={expandedTask.plan ?? []} />

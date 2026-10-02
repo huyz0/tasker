@@ -1,8 +1,8 @@
 ---
 active_milestone: M41
-active_task: M41-T04
+active_task: M41-T05
 last_updated: 2026-10-02
-last_commit: 2575907
+last_commit: e5d86fd
 blocked: false
 blocker: null
 ---
@@ -1806,9 +1806,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M38 | Agent Plan and Input Requests   | done   | M35        | 6     | 6    |
 | M39 | Approval Gates on Agent Transitions | done | M38 | 5 | 5 |
 | M40 | Agent Usage and Cost            | done   | M35        | 5     | 5    |
-| M41 | Task Digests                    | in-progress | M38, M40 | 5   | 3    |
+| M41 | Task Digests                    | in-progress | M38, M40 | 5   | 4    |
 
-**Total: 313 tasks across 35 milestones — 310 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 313 tasks across 35 milestones — 311 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

@@ -49,7 +49,7 @@ summaries server-side (Tasker has no model; agents write them).
 - [x] **M41-T01** — Contract and schema.
 - [x] **M41-T02** — Summary, digest and candidates RPCs.
 - [x] **M41-T03** — CLI and MCP.
-- [ ] **M41-T04** — GUI.
+- [x] **M41-T04** — GUI.
 - [ ] **M41-T05** — Docs and close.
 
 ## 6. Verification

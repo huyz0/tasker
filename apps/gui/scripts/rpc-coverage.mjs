@@ -25,6 +25,12 @@ export const GUI_SRC = process.env.RPC_COVERAGE_SRC ?? join(HERE, '../src');
  * visible in review.
  */
 export const EXCEPTIONS = {
+  'TaskService.getTaskDigest':
+    'An agent\'s one-read context for a task (M41, ADR-0034). The task dialog ' +
+    'already shows every part of it, each from its own read.',
+  'TaskService.listCompactionCandidates':
+    "A maintenance agent's work list of finished, unsummarized tasks (M41). " +
+    'People write summaries from the task dialog, one task at a time.',
   'TaskService.reportUsage':
     'Agents report what their own work cost (M40, ADR-0033); a person in the ' +
     'GUI has no model call to report.',

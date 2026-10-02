@@ -62,3 +62,22 @@
   to `summary clear`, which says what it does. The digest's text view says
   on stderr when a list was capped and where to read all of it.
 - **Next**: M41-T04
+
+## M41-T04 — GUI
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `features/Tasks/TaskSummary.tsx` (new: the Summary section of
+  the task dialog - rendered Markdown with author and time; write, edit,
+  clear with a 4,000-character counter), tests and stories;
+  `features/Tasks/index.tsx`; `index.test.tsx` (summary shown in the
+  dialog); `scripts/rpc-coverage.mjs` exceptions for `getTaskDigest` and
+  `listCompactionCandidates`.
+- **Verified**: `gui:test` 1291 pass (coverage thresholds held);
+  `gui:typecheck`, `gui:lint`, `gui:design-lint`, `gui:rpc-coverage`,
+  `gui:query-error-coverage` green.
+- **Notes**: The summary sits above the plan: on an old task it is the first
+  thing worth reading. The panel is keyed by task so a draft never leaks
+  into the next task opened. The digest and the candidate list are agent
+  reads; the dialog already shows every part of a digest.
+- **Next**: M41-T05
