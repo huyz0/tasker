@@ -58,6 +58,11 @@ One process serves everything (`apps/backend/src/index.ts`):
   `domain.>` subscription: each event is decoded once and offered to every
   client, which keeps what its scope allows in a 1,000-entry queue that drops
   the oldest when the client falls behind (M30-T08).
+- **The agent work queue is three RPCs on `TaskService`** (M33):
+  `ClaimNextTask` (atomic take-the-oldest-open-task), `ReleaseTask` (give back
+  your own claim, optionally with a handoff note) and `ListMyTasks` (what the
+  caller holds across the org). Release is limited to claims by
+  `task_assignments.source` (ADR-0027).
 
 Cross-cutting behaviour is implemented as Connect interceptors in `index.ts`:
 session resolution, request logging (`lib/requestLogging.ts`) and per-method

@@ -46,14 +46,26 @@ you can't resolve this session); you are intentionally pausing on a task
 with real partial progress worth preserving. Finished the task and
 closed it out cleanly? Skip this skill - there's nothing to hand off.
 
-## Step 2: Write the handoff note
+## Step 2: Hand off — and release, if the claim is yours
+
+If you hold the task by **your own claim** (`tasker tasks claim` or
+`claim-next`), one call records the note and gives the task back, so the next
+agent's claim succeeds (M33, ADR-0027):
 
 ```bash
-tasker tasks note-add <task-id> --type handoff --content "\
+tasker tasks release <task-id> --handoff "\
 Current understanding: <what you now believe is true about this task>. \
 Tried: <what you attempted and why it didn't fully work>. \
 Blocked on: <the specific obstacle, or 'nothing - just out of time'>. \
 Next step: <the concrete action the next claimant should take first>."
+```
+
+If a **person assigned** the task to you, release is refused (exit 3) — the
+assignment is theirs to change. Record the note on its own and say in a
+comment that you are stepping away:
+
+```bash
+tasker tasks note-add <task-id> --type handoff --content "<the same four parts>"
 ```
 
 Name the specific thing at each point - "the migration fails against
@@ -62,20 +74,17 @@ correctly; "ran into some issues" does not. If a relevant belief already
 exists (or one is worth recording from what you just learned), cite its
 id or run `capture-belief` alongside this.
 
-## Step 3: Leave your claim, if you still hold it
+## Step 3: Check what you still hold
 
-A handoff note does not itself release your claim. If you are stepping
-away rather than being reassigned, say so in a task comment
-(`tasker tasks comment-add`) or use `tasker tasks unassign` if a human
-should pick the next claimant - `unassignTask` is human-only by design
-(ADR-0008), so an agent names this in a comment rather than doing it
-itself.
+`tasker tasks mine` lists every open task you hold across the organization.
+Anything on it you are not going to finish this session needs Step 2.
 
 ## Step 4: Never do this as an agent
 
-Reassigning the task to someone specific, or forcing a particular next
-claimant, is a human decision - `assignTask`/`unassignTask` have no
-agent-token form. Say what should happen next in the note or a comment;
+Reassigning the task to someone specific, forcing a particular next
+claimant, or dropping an assignment a person gave you is a human decision -
+`assignTask`/`unassignTask` have no agent-token form, and `release` only
+gives back your own claims. Say what should happen next in the note or a comment;
 don't attempt to route around the refusal.
 
 # Output Format

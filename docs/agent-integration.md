@@ -349,34 +349,50 @@ apply to a human in the first place.
 
 ## 11. Claiming work and retrying safely
 
-**Finding work.** `tasker tasks list --project <id> --assignee-filter
-unassigned` (`ListTasks` with `assigneeFilter: "unassigned"`) returns open
-tasks nobody holds. A task in its type's terminal status — the last status of
-its pipeline, or `done` for an untyped task — is not work, and is never
-returned.
-
-**Taking it.** `tasker tasks claim <task-id>` (`ClaimTask`) assigns the task to
-the caller in a single statement, so of several agents racing one task exactly
-one wins; the others get `FailedPrecondition` — exit code 5 from the CLI, so a
-script can move on to the next task without parsing the message. Claiming a
-task in a terminal status is refused the same way.
+The whole loop an unattended agent runs (M33):
 
 ```bash
-for id in $(tasker tasks list --project "$P" --assignee-filter unassigned --page-all | jq -r .id); do
-  tasker tasks claim "$id" --json > claim.json && break   # exit 5: someone else won; try the next
-done
+tasker auth whoami                                   # which agent, which org, which scopes
+tasker tasks claim-next --project "$P" --json        # take the oldest open task, or nothing
+#   ... work on it ...
+tasker tasks update-status <task-id> --status done   # finish it, or:
+tasker tasks release <task-id> --handoff "Tried … Blocked on … Next: …"
+tasker tasks mine                                    # what you still hold, across the org
 ```
+
+**Taking work.** `tasker tasks claim-next --project <id>` (`ClaimNextTask`)
+claims the oldest open, unassigned task in the project in one call, optionally
+`--type <task-type-id>`. There is no list-then-claim race to lose: concurrent
+agents are spread across the oldest candidates and each gets a different task.
+With nothing open the response carries no task and the command exits 0
+(`--json` prints `{}`); in the rare case every candidate went to another agent
+first it exits 5 — retry. A task in its type's terminal status (the last status
+of its pipeline, or `done` for an untyped task) is never work.
+
+`tasker tasks claim <task-id>` (`ClaimTask`) takes one named task the same
+atomic way: of several agents racing it exactly one wins, and the others get
+`FailedPrecondition` — exit 5 — and can move on.
+
+**Giving work back.** `tasker tasks release <task-id>` (`ReleaseTask`) gives
+back a task you hold **by your own claim**; `--handoff` records a handoff note
+first (needs `comments:write`), and the next claimant receives it. A task a
+person assigned to you is theirs to change: release is refused with exit 3,
+so record a handoff note and say so in a comment instead (ADR-0027).
+
+**Seeing what you hold.** `tasker tasks mine` (`ListMyTasks`) lists your open
+tasks across every project of your token's organization, with the usual
+`--cursor` / `--page-all`; `--include-done` adds finished ones.
+
+**Retrying.** `CreateTask`, `ClaimTask` and `ClaimNextTask` accept an
+`idempotencyKey` (`--idempotency-key`). Send the same key when you retry a call
+whose response you never saw, and you get the original response back instead
+of a second task or a second claim. A key is bound to the request it was first
+used with: the same key with *different* arguments is refused with
+`InvalidArgument` rather than answered with the first request's result, so
+never reuse a key for a new request. Keys are kept for 24 hours.
 
 Every exit code, the `--json` shape and `--page-all` are in the
 [CLI reference](cli-reference.md#output-errors-and-exit-codes).
-
-**Retrying.** `CreateTask` and `ClaimTask` accept an `idempotencyKey`. Send the
-same key when you retry a call whose response you never saw, and you get the
-original response back instead of a second task or a lost claim. A key is
-bound to the request it was first used with: the same key with *different*
-arguments is refused with `InvalidArgument` rather than answered with the
-first request's result, so never reuse a key for a new request. Keys are kept
-for 24 hours, which is far longer than any retry should take.
 
 ## See also
 
@@ -387,6 +403,8 @@ for 24 hours, which is far longer than any retry should take.
   form, and why retrieval is lexical by default.
 - `ADR-0017` in `.specs/adr/` — why handoff notes are a typed distinction on
   the existing `TaskNote`, not a new entity.
+- `ADR-0027` in `.specs/adr/` — why an agent may release a claim it took but
+  never an assignment a person gave it.
 - `.agents/skills/capture-belief/SKILL.md` — the same §9 guidance, written
   as a skill for a harness that supports invoking one.
 - `.agents/skills/handoff-task/SKILL.md` — the same §10 guidance, written

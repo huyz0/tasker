@@ -1,13 +1,13 @@
 ---
 id: M33
 title: Agent Work Queue
-status: in-progress
+status: done
 goal: An agent can take the next piece of work in one call, give back work it claimed (with a handoff note) without a human, see everything it holds across the organization, and ask who it is — so a fleet can run the claim/work/handoff loop unattended.
 depends_on: [M30, M31]
 surfaces: [backend, contract, cli, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M33 — Agent Work Queue
@@ -53,7 +53,7 @@ scriptable; both are prerequisites.
   scopes.
 - [x] `tasker tasks claim-next`, `tasker tasks release`, `tasker tasks mine`
   exist; `tasker auth whoami` works with an agent token.
-- [ ] The agent-scope sweep covers the new methods; docs describe the loop;
+- [x] The agent-scope sweep covers the new methods; docs describe the loop;
   CI green on `main`.
 
 ## 4. Scope
@@ -82,7 +82,7 @@ scriptable; both are prerequisites.
   - **Files**: `apps/backend/src/modules/auth/auth.handler.ts`, `lib/scopes.ts`
 - [x] **M33-T06** — CLI: `claim-next`, `release`, `mine`, agent `whoami`.
   - **Files**: `apps/cli/cmd/{tasks,auth}.go`, `docs/cli-reference.md`
-- [ ] **M33-T07** — Documentation, skill and close.
+- [x] **M33-T07** — Documentation, skill and close.
   - **Files**: `docs/agent-integration.md`, `.agents/skills/handoff-task/SKILL.md`,
     `.specs/product/architecture.md`, `.milestones/STATE.md`
 

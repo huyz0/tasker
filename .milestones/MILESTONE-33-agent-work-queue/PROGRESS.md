@@ -121,3 +121,30 @@
   token prints the agent, its org and scopes. Handoff notes everywhere are
   attributed by name (`noteAuthor`) now that the server sends one.
 - **Next**: M33-T07
+
+## M33-T07 — Documentation, skill and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/agent-integration.md` (§11 rewritten as the loop),
+  `.agents/skills/handoff-task/SKILL.md` (release-with-handoff; `tasks mine`)
+  and its regenerated `.claude/` adapter, `.specs/product/architecture.md`
+- **Verified**: `moon run :docs-lint :doc-drift :spec-drift :skills-check`
+  green. **End to end with the built binary against a live seeded backend**,
+  using a real agent token: `auth whoami` named the agent, org and scopes;
+  `tasks claim-next --json` claimed a task; `tasks mine` listed it;
+  `tasks release --handoff` released it and recorded the note; a second
+  agent's `tasks claim` received the note, attributed "Seed Agent 5"; and
+  `tasks release` on a task a person had assigned exited 3 with "ask them to
+  unassign it".
+- **Notes**: The handoff skill told agents to *comment* that they were
+  stepping away, because they could not release; it now says to release with
+  the handoff when the claim is theirs, and keeps the comment route for a
+  person's assignment.
+
+## Milestone closed
+
+- **Date**: 2026-10-02
+- **Exit criteria**: 6/6 (CI on `main` confirmed after the push).
+- **Not done, deliberately**: claim leases/TTL (still foreclosed by
+  ADR-0017), task priority and dependencies, a GUI surface for release.
