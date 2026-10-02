@@ -47,6 +47,8 @@ const KEYS_BY_ENTITY: Record<string, string[]> = {
   grant: ['grants', 'teamGrants'],
   belief: ['memoryBeliefs', 'memoryBelief', 'memoryBeliefRelations', 'memoryBeliefPromotions'],
   repository: ['repositoryLinks', 'pullRequests', 'builds', 'deployments'],
+  // M37: webhook management events (create, update, delete, rotate).
+  webhook: ['webhooks', 'webhookDeliveries'],
   // M29: for a future publisher that names a notification entity directly.
   // `domain.task.stalled` does not come through here - see
   // EXTRA_KEYS_BY_SUBJECT below for why it is handled per-subject.

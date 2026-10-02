@@ -14,6 +14,7 @@ import { ListState } from '../../components/ui/ListState';
 import { RowActionsMenu } from '../../components/ui/RowActionsMenu';
 import * as Tabs from '@radix-ui/react-tabs';
 import { AuditTrail } from './AuditTrail';
+import { Webhooks } from './Webhooks';
 import { PageHeader } from '../../components/ui/PageHeader';
 
 const orgClient = createClient(OrgService, transport);
@@ -94,7 +95,7 @@ function slugify(name: string): string {
 // A list rather than a bare union so `?section=` can be validated against it —
 // Radix renders no panel at all for a value none of its triggers own, so an
 // unrecognised section would be a blank screen.
-const SECTIONS = ['organizations', 'members', 'audit'] as const;
+const SECTIONS = ['organizations', 'members', 'audit', 'webhooks'] as const;
 type Section = (typeof SECTIONS)[number];
 
 export function OrganizationsDashboard() {
@@ -540,6 +541,12 @@ export function OrganizationsDashboard() {
           >
             Audit trail
           </Tabs.Trigger>
+          <Tabs.Trigger
+            value="webhooks"
+            className="w-full text-left p-2 rounded text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50 data-[state=active]:font-medium data-[state=active]:bg-muted data-[state=inactive]:hover:bg-muted/50"
+          >
+            Webhooks
+          </Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="organizations" className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
             <>
@@ -889,6 +896,10 @@ export function OrganizationsDashboard() {
           {/* Scoped to the active org: the trail names who did what inside
               one organization, and the handler refuses any other. */}
           <AuditTrail orgId={activeOrgId} />
+        </Tabs.Content>
+        <Tabs.Content value="webhooks" className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
+          {/* M37: the active org's webhooks - admin-only, and the panel says so to anyone else. */}
+          <Webhooks orgId={activeOrgId} />
         </Tabs.Content>
       </Tabs.Root>
       {confirmDialog}

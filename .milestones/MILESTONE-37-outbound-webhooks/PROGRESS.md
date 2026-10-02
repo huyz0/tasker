@@ -117,3 +117,27 @@
   6 together); `deliveries` pages like every list (`--cursor`, `--page-all`,
   `--json`).
 - **Next**: M37-T06
+
+## M37-T06 — GUI
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/gui/src/features/Organizations/{Webhooks.tsx,index.tsx}`
+  (+ `Webhooks.test.tsx`, `Webhooks.stories.tsx`), `apps/gui/src/lib/eventQueryKeys.ts`
+- **Verified**: `moon run gui:lint gui:design-lint gui:typecheck gui:test
+  gui:build` green - 1260 tests, 98.4% statements / 95.3% branches.
+  `gui:storybook-test` was still running at commit time; its result is
+  recorded under T07.
+- **Notes**: Organizations → Webhooks (`?section=webhooks`, where the
+  `webhook.disabled` notification links). Add form: URL, description, event
+  groups (every / task / agent-note) and every specific type behind a
+  disclosure; submit is disabled with a reason when no event is chosen. The
+  secret appears once in a status callout saying so, with copy and dismiss.
+  Each webhook shows scope, filter, state (active / paused / disabled with
+  the reason), consecutive failures and last delivery, with ping (disabled
+  when inactive; opens the delivery list), pause/enable, rotate (confirmed;
+  shows the new secret), delete (confirmed) and recent deliveries with
+  outcome, attempts, HTTP status and error. A non-admin sees "Only
+  organization admins can manage webhooks" and no add button.
+  `webhook` joins the live-event key map.
+- **Next**: M37-T07
