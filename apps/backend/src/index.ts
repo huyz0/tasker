@@ -36,6 +36,7 @@ import { logger } from "./lib/logger";
 import { requestLoggingInterceptor } from "./lib/requestLogging";
 import { reportError } from "./lib/errorReporter";
 import { runRetentionSweep } from "./lib/retentionSweep";
+import { purgeExpiredIdempotencyKeys } from "./lib/idempotency";
 import { runStalledClaimAlertSweep } from "./lib/stalledClaimAlerts";
 import { config } from "./config";
 import { withRequestCorrelation } from "./lib/natsCorrelation";
@@ -416,6 +417,8 @@ process.on("SIGINT", () => void shutdown("SIGINT"));
 const RETENTION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 setInterval(() => {
   runRetentionSweep(db).catch((err) => reportError({ message: "retention_sweep.failed", err, severity: "error" }));
+  purgeExpiredIdempotencyKeys(db, isStandalone).catch((err) =>
+    reportError({ message: "idempotency_expiry.failed", err, severity: "error" }));
 }, RETENTION_SWEEP_INTERVAL_MS);
 
 // Periodic latency summary, so "is this endpoint slow" is answerable from

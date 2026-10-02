@@ -147,3 +147,37 @@
   also remove the decode-and-offer work per process, but they change every
   publisher and the audit projector — out of scope, recorded in §4.
 - **Next**: M30-T09
+
+## M30-T09 — Idempotency bound to its request; one purge cascade; dashboard by terminal status
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/lib/idempotency.ts` (+ new test),
+  `drizzle-sqlite/0050_idempotency_request_hash.sql`,
+  `drizzle-mysql/0037_idempotency_request_hash.sql`, both journals,
+  `db/schema.{sqlite,mysql}.ts`, `db/embeddedMigrations.generated.ts`,
+  `src/index.ts`, `modules/tasks/tasks.handler.ts`,
+  `modules/dashboard/dashboard.handler.ts`, their tests
+- **Verified**: `bun test` — 1859 pass, 0 fail. Each new test failed first.
+- **Notes**:
+  - **Idempotency.** A key now stores a sha256 of its request (keys sorted
+    at every depth, the key itself excluded); reusing it with a different
+    request is `InvalidArgument` and does not run, instead of replaying an
+    unrelated response. Rows stored before have no hash and keep replaying.
+    Keys expire after 24h, deleted hourly beside the retention sweep, through
+    a new `created_at` index. Migrations are hand-written with journal
+    entries, as 0048/0049 were — the drizzle snapshots stop at 0047, so
+    `drizzle-kit generate` would re-emit two migrations.
+  - **purgeTask** carried its own copy of the task cascade, and it had
+    drifted: M25's `stalled_claim_alerts` was added to `purgeTaskCascade`
+    only, so purging a task from the Bin orphaned its alert rows. It now
+    calls the shared cascade — in a transaction on MySQL; on SQLite (whose
+    drizzle transactions must be synchronous) it relies on the cascade being
+    idempotent with the task row deleted last, so a failed purge is retried,
+    not half-applied and lost.
+  - **Dashboard.** Held-work counts are one grouped query instead of one per
+    agent. Held work, the review queue, and "claimed done, PR still open" all
+    used the literal `"done"`, which is wrong for any custom pipeline — a
+    reviewer's queue never drained on a type ending in "shipped". All three
+    use `terminalStatusSql` now.
+- **Next**: M30-T10

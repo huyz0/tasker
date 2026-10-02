@@ -118,6 +118,35 @@ describe("Dashboard Handler", () => {
     expect(Number(scout.openTaskCount)).toBe(1);
   });
 
+  it("counts held work and drains reviews by the task type's own terminal status, not the word done (M30-T09)", async () => {
+    // A pipeline whose last status is "shipped": "done" is a middle step here,
+    // so a task in it is still held work, and a shipped one is not.
+    const typeId = `type-${crypto.randomUUID()}`;
+    await db.insert(schema.taskTypes).values({ id: typeId, orgId, name: "Pipeline", createdAt: new Date() });
+    await db.insert(schema.taskStatuses).values([
+      { id: `${typeId}-a`, taskTypeId: typeId, name: "done", position: 0 },
+      { id: `${typeId}-b`, taskTypeId: typeId, name: "shipped", position: 1 },
+    ]);
+    for (const [id, status] of [["t-mid", "done"], ["t-mid2", "done"], ["t-end", "shipped"]] as const) {
+      await db.insert(schema.tasks).values({ id, projectId, displayId: id.toUpperCase(), title: "T", status, taskTypeId: typeId, createdAt: new Date() });
+    }
+    await db.insert(schema.taskAssignments).values([
+      { id: "as-mid", taskId: "t-mid", agentId },
+      { id: "as-mid2", taskId: "t-mid2", agentId },
+      { id: "as-end", taskId: "t-end", agentId },
+    ]);
+
+    await db.insert(schema.taskReviewers).values([
+      { id: "rv-mid", taskId: "t-mid", userId },
+      { id: "rv-end", taskId: "t-end", userId },
+    ]);
+
+    const res = await impl.getDashboard({ orgId }, ctx);
+    expect(Number(res.agents.find((a: any) => a.id === agentId).openTaskCount)).toBe(2);
+    // The review queue drains on the same rule.
+    expect(res.awaitingReview.map((t: any) => t.id)).toEqual(["t-mid"]);
+  });
+
   it("surfaces an agent that has never called at all", async () => {
     // A deployment that never started is a different failure from one that
     // stopped, and both belong at the top of the list rather than hidden.

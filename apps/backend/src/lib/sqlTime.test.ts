@@ -60,7 +60,7 @@ describe("raw timestamp aggregates", () => {
       const text = await Bun.file(file).text();
       const re = /sql<number[^>]*>`(?:max|min)\(\$\{\w+\.(\w+)\}\)`/g;
       for (const m of text.matchAll(re)) {
-        if (/At$/.test(m[1]!)) offenders.push(`${file}: ${m[0]}`);
+        if (m[1]!.endsWith("At")) offenders.push(`${file}: ${m[0]}`);
       }
     }
     expect(offenders).toEqual([]);

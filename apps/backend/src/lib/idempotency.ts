@@ -1,6 +1,8 @@
 import * as schemaMysql from "../db/schema.mysql";
 import * as schemaSqlite from "../db/schema.sqlite";
-import { eq, and } from "drizzle-orm";
+import { eq, and, lt } from "drizzle-orm";
+import { createHash } from "node:crypto";
+import { ConnectError, Code } from "@connectrpc/connect";
 import type { Principal } from "../modules/auth/session";
 
 function principalKeyFor(principal: Principal): string {
@@ -40,9 +42,11 @@ export async function withIdempotency<T>(
   principal: Principal,
   method: string,
   idempotencyKey: string | undefined | null,
+  request: unknown,
   fn: () => Promise<T>,
 ): Promise<T> {
   if (!idempotencyKey) return fn();
+  const requestHash = hashRequest(request);
 
   const table = isStandalone ? schemaSqlite.idempotencyKeys : schemaMysql.idempotencyKeys;
   const principalKey = principalKeyFor(principal);
@@ -54,6 +58,16 @@ export async function withIdempotency<T>(
 
   const existing = await db.select().from(table).where(condition).limit(1);
   if (existing.length > 0) {
+    // M30-T09: the same key on a different request is a client bug, and
+    // replaying the first response would tell it the second mutation
+    // happened. A row stored before hashing existed has no hash and replays.
+    const stored = existing[0].requestHash;
+    if (stored && stored !== requestHash) {
+      throw new ConnectError(
+        `idempotency key "${idempotencyKey}" was already used with a different ${method} request`,
+        Code.InvalidArgument,
+      );
+    }
     return JSON.parse(existing[0].responseJson) as T;
   }
 
@@ -66,6 +80,7 @@ export async function withIdempotency<T>(
       method,
       idempotencyKey,
       responseJson: JSON.stringify(result),
+      requestHash,
       createdAt: new Date(),
     });
   } catch {
@@ -76,4 +91,40 @@ export async function withIdempotency<T>(
   }
 
   return result;
+}
+
+/**
+ * A stable digest of a request: object keys sorted at every depth, so the
+ * same request serialised in a different field order hashes the same, and
+ * the idempotency key itself left out - it is the lookup, not the request.
+ */
+function hashRequest(request: unknown): string {
+  const canonical = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(canonical);
+    if (v && typeof v === "object") {
+      return Object.fromEntries(
+        Object.keys(v as object)
+          .filter((k) => k !== "idempotencyKey")
+          .sort()
+          .map((k) => [k, canonical((v as any)[k])]),
+      );
+    }
+    return typeof v === "bigint" ? v.toString() : v;
+  };
+  return createHash("sha256").update(JSON.stringify(canonical(request) ?? null)).digest("hex");
+}
+
+/**
+ * How long a key protects a retry. A retry comes seconds or minutes after the
+ * original; a day is generous, and without any expiry the table grew by one
+ * row per keyed mutation forever (M30-T09).
+ */
+export const IDEMPOTENCY_KEY_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Deletes expired keys; returns how many. Run hourly beside the retention sweep. */
+export async function purgeExpiredIdempotencyKeys(db: any, isStandalone: boolean, now: Date = new Date()): Promise<number> {
+  const table = isStandalone ? schemaSqlite.idempotencyKeys : schemaMysql.idempotencyKeys;
+  const cutoff = new Date(now.getTime() - IDEMPOTENCY_KEY_TTL_MS);
+  const result: any = await db.delete(table).where(lt((table as any).createdAt, cutoff));
+  return Number(isStandalone ? result?.changes ?? 0 : result?.[0]?.affectedRows ?? 0);
 }

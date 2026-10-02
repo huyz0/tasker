@@ -1,12 +1,13 @@
 import type { ConnectRouter } from "@connectrpc/connect";
 import { ConnectError, Code } from "@connectrpc/connect";
-import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, not, sql } from "drizzle-orm";
 import { DashboardService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import * as schema from "../../db/schema.sqlite";
 import { requireUser } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
 import { notDeleted } from "../../db/query-builder";
 import { decodeSqlTimestamp } from "../../lib/sqlTime";
+import { terminalStatusSql } from "../tasks/taskActivity";
 
 /**
  * The home screen's data, in one call.
@@ -60,7 +61,11 @@ export default (router: ConnectRouter, db: any) => {
       // condition. It gives a queue that empties, at the cost of not
       // distinguishing "approved" from "not looked at" — the follow-up is an
       // outcome column on `task_reviewers`.
-      const reviewWhere = and(inOrg, notDeleted(tasks), ne(tasks.status, "done"), eq(taskReviewers.userId, userId));
+      // "Done" is the task type's terminal status, not the literal word: a
+      // custom pipeline that ends in "shipped" never drained (M30-T09).
+      const isStandalone = process.env.STANDALONE === "true";
+      const isTerminal = terminalStatusSql(tasks, isStandalone);
+      const reviewWhere = and(inOrg, notDeleted(tasks), not(isTerminal), eq(taskReviewers.userId, userId));
       const reviewQuery = db
         .select(taskColumns)
         .from(taskReviewers)
@@ -75,7 +80,7 @@ export default (router: ConnectRouter, db: any) => {
       const disagreementWhere = and(
         inOrg,
         notDeleted(tasks),
-        eq(tasks.status, "done"),
+        isTerminal,
         inArray(remotePullRequests.status, ["open", "draft"]),
       );
       const disagreementQuery = db
@@ -170,6 +175,25 @@ export default (router: ConnectRouter, db: any) => {
             .limit(PANEL_LIMIT),
         ]);
 
+      // Held work per listed agent, in one grouped query rather than one per
+      // agent, and "open" by each task type's own terminal status rather than
+      // the literal "done" a custom pipeline may not use (M30-T09).
+      const openByAgent = new Map<string, number>();
+      const listedAgentIds = agentRows.map((a: any) => a.id);
+      if (listedAgentIds.length > 0) {
+        const counts = await db
+          .select({ agentId: taskAssignments.agentId, n: sql<number>`count(*)` })
+          .from(taskAssignments)
+          .innerJoin(tasks, eq(tasks.id, taskAssignments.taskId))
+          .where(and(
+            inArray(taskAssignments.agentId, listedAgentIds),
+            notDeleted(tasks),
+            not(isTerminal),
+          ))
+          .groupBy(taskAssignments.agentId);
+        for (const c of counts) openByAgent.set(c.agentId, Number(c.n));
+      }
+
       const recentActivity = [
         ...noteRows.map((r: any) => ({ ...r, kind: "note" })),
         ...commentRows.map((r: any) => ({ ...r, kind: "comment" })),
@@ -200,23 +224,14 @@ export default (router: ConnectRouter, db: any) => {
           pullRequestUrl: d.pullRequestUrl ?? "",
         })),
         disagreementCount: BigInt(disagreementCount),
-        agents: await Promise.all(
-          agentRows.map(async (a: any) => ({
-            id: a.id,
-            name: a.name,
-            // `max()` bypasses drizzle's timestamp decoding; the raw shape
-            // differs by dialect (lib/sqlTime.ts).
-            lastUsedAt: decodeSqlTimestamp(a.lastUsedAt)?.toISOString(),
-            openTaskCount: BigInt(
-              await db
-                .select({ count: sql<number>`count(*)` })
-                .from(taskAssignments)
-                .innerJoin(tasks, eq(tasks.id, taskAssignments.taskId))
-                .where(and(eq(taskAssignments.agentId, a.id), notDeleted(tasks), ne(tasks.status, "done")))
-                .then((r: any[]) => Number(r[0]?.count ?? 0)),
-            ),
-          })),
-        ),
+        agents: agentRows.map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          // `max()` bypasses drizzle's timestamp decoding; the raw shape
+          // differs by dialect (lib/sqlTime.ts).
+          lastUsedAt: decodeSqlTimestamp(a.lastUsedAt)?.toISOString(),
+          openTaskCount: BigInt(openByAgent.get(a.id) ?? 0),
+        })),
         recentActivity,
       };
     },

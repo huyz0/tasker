@@ -651,6 +651,9 @@ export const idempotencyKeys = sqliteTable("idempotency_keys", {
   method: text("method").notNull(),
   idempotencyKey: text("idempotency_key").notNull(),
   responseJson: text("response_json").notNull(),
+  // M30-T09: sha256 of the request (minus the key itself). Null on rows
+  // stored before it existed; those replay unconditionally until they expire.
+  requestHash: text("request_hash"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 }, (table) => {
   return {
@@ -659,6 +662,8 @@ export const idempotencyKeys = sqliteTable("idempotency_keys", {
     // stored responses for what it considers the same request.
     principalMethodKeyIdx: uniqueIndex("idempotency_keys_principal_method_key_idx")
       .on(table.principalKey, table.method, table.idempotencyKey),
+    // M30-T09: the hourly expiry deletes by age.
+    createdAtIdx: index("idempotency_keys_created_at_idx").on(table.createdAt),
   };
 });
 

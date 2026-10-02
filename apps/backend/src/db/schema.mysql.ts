@@ -517,6 +517,9 @@ export const idempotencyKeys = mysqlTable("idempotency_keys", {
   method: varchar("method", { length: 128 }).notNull(),
   idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
   responseJson: mediumtext("response_json").notNull(),
+  // M30-T09: sha256 of the request (minus the key itself). Null on rows
+  // stored before it existed; those replay unconditionally until they expire.
+  requestHash: varchar("request_hash", { length: 64 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => {
   return {
@@ -525,6 +528,8 @@ export const idempotencyKeys = mysqlTable("idempotency_keys", {
     // stored responses for what it considers the same request.
     principalMethodKeyIdx: uniqueIndex("idempotency_keys_principal_method_key_idx")
       .on(table.principalKey, table.method, table.idempotencyKey),
+    // M30-T09: the hourly expiry deletes by age.
+    createdAtIdx: index("idempotency_keys_created_at_idx").on(table.createdAt),
   };
 });
 

@@ -1,8 +1,8 @@
 ---
 active_milestone: M30
-active_task: M30-T09
+active_task: M30-T10
 last_updated: 2026-10-02
-last_commit: 4de7e7e
+last_commit: 689b862
 blocked: false
 blocker: null
 ---
@@ -1731,7 +1731,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M27 | Documentation Truth             | done   | —          | 6     | 6    |
 | M28 | Addressable Screens             | done   | —          | 8     | 8    |
 | M29 | In-App Notifications            | done   | —          | 9     | 9    |
-| M30 | Backend Correctness at Scale    | in-progress | —     | 10    | 8    |
+| M30 | Backend Correctness at Scale    | in-progress | —     | 10    | 9    |
 
 **Total: 247 tasks across 24 milestones — 237 done.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
 

@@ -620,6 +620,9 @@ describe("Tasks Handler Integration Tests", () => {
     const labelId = "lbl-purge-" + Date.now();
     await db.insert(schemaSqlite.labels).values({ id: labelId, orgId, name: "purge-label", createdAt: new Date() });
     await db.insert(schemaSqlite.entityLabels).values({ id: "el-del-" + Date.now(), entityId: taskId, entityType: "task", labelId, createdAt: new Date() });
+    // M30-T09: the handler kept its own copy of the cascade, which drifted -
+    // the alert dedup ledger (M25) was never added to it.
+    await db.insert(schemaSqlite.stalledClaimAlerts).values({ id: "sca-del-" + Date.now(), taskId, anchorAt: new Date(), alertedAt: new Date() });
 
     // Cannot purge a live (non-archived) task.
     await expect(handler.purgeTask({ taskId }, makeAuthContext(adminId))).rejects.toThrow();
@@ -652,6 +655,9 @@ describe("Tasks Handler Integration Tests", () => {
 
     const remainingEntityLabels = await db.select().from(schemaSqlite.entityLabels).where(and(eq(schemaSqlite.entityLabels.entityId, taskId), eq(schemaSqlite.entityLabels.entityType, "task")));
     expect(remainingEntityLabels.length).toBe(0);
+
+    const remainingAlerts = await db.select().from(schemaSqlite.stalledClaimAlerts).where(eq(schemaSqlite.stalledClaimAlerts.taskId, taskId));
+    expect(remainingAlerts.length).toBe(0);
 
     // Restoring/purging again fails since the row no longer exists.
     await expect(handler.restoreTask({ taskId }, makeAuthContext(adminId))).rejects.toThrow();

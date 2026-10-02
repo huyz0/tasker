@@ -112,7 +112,7 @@ for the list query every board load and agent poll runs.
 - [x] **M30-T08** — Event-feed clients share one NATS subscription and hold a bounded, drop-oldest queue.
   - **Files**: `modules/events/events.handler.ts`
   - **Verify**: events handler tests.
-- [ ] **M30-T09** — Idempotency keys bind to their request; `purgeTask` is atomic; dashboard open-task counts are one terminal-aware query.
+- [x] **M30-T09** — Idempotency keys bind to their request; `purgeTask` is atomic; dashboard open-task counts are one terminal-aware query.
   - **Files**: `lib/idempotency.ts`, `modules/tasks/tasks.handler.ts`, `modules/dashboard/dashboard.handler.ts`
   - **Verify**: respective tests.
 - [ ] **M30-T10** — Documentation and close.

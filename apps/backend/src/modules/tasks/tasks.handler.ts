@@ -9,6 +9,7 @@ import { assertCan } from "../../lib/policy";
 import { withIdempotency } from "../../lib/idempotency";
 import { getLatestHandoffNote } from "./task_notes.handler";
 import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal, terminalStatusSql } from "./taskActivity";
+import { purgeTaskCascade } from "../../lib/cascadePurge";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // Distinguishes a real DB-level unique-constraint violation (a concurrent
@@ -588,7 +589,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // claim below - only runs once per (principal, key). A replay skips
       // straight to the stored response, so a retried create cannot double
       // the project's task counter either.
-      return withIdempotency(db, isStandalone, principal, "createTask", parsed.idempotencyKey, async () => {
+      return withIdempotency(db, isStandalone, principal, "createTask", parsed.idempotencyKey, parsed, async () => {
         const orgId = await getProjectOrgId(db, parsed.projectId);
         await authorizePrincipal(db, principal, orgId, { scope: 'tasks:write', permission: 'task:write' });
 
@@ -950,7 +951,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // retry would otherwise get FailedPrecondition for a claim it already
       // won on the first attempt, which is exactly the "did my own retry
       // just fail?" confusion idempotency exists to remove.
-      return withIdempotency(db, isStandalone, principal, "claimTask", parsed.idempotencyKey, async () => {
+      return withIdempotency(db, isStandalone, principal, "claimTask", parsed.idempotencyKey, parsed, async () => {
         const orgId = await getTaskOrgId(db, parsed.taskId);
         await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
 
@@ -1266,26 +1267,14 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         throw new ConnectError("task must be archived before it can be purged", Code.FailedPrecondition);
       }
 
-      const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
-      const reviewers = isStandalone ? schemaSqlite.taskReviewers : schemaMysql.taskReviewers;
-      const artifactLinks = isStandalone ? schemaSqlite.taskArtifactLinks : schemaMysql.taskArtifactLinks;
-      const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
-      const comments = isStandalone ? schemaSqlite.comments : schemaMysql.comments;
-      const pullRequests = isStandalone ? schemaSqlite.remotePullRequests : schemaMysql.remotePullRequests;
-      const entityLabels = isStandalone ? schemaSqlite.entityLabels : schemaMysql.entityLabels;
-      const activity = isStandalone ? schemaSqlite.taskActivity : schemaMysql.taskActivity;
-
-      // M24-T04 (ADR-0020): no FK cascades exist anywhere in this codebase -
-      // purge deletes activity explicitly.
-      await db.delete(activity).where(eq((activity as any).taskId, parsed.taskId));
-      await db.delete(assignments).where(eq((assignments as any).taskId, parsed.taskId));
-      await db.delete(reviewers).where(eq((reviewers as any).taskId, parsed.taskId));
-      await db.delete(artifactLinks).where(eq((artifactLinks as any).taskId, parsed.taskId));
-      await db.delete(notes).where(eq((notes as any).taskId, parsed.taskId));
-      await db.delete(comments).where(and(eq((comments as any).entityId, parsed.taskId), eq((comments as any).entityType, "task")));
-      await db.delete(entityLabels).where(and(eq((entityLabels as any).entityId, parsed.taskId), eq((entityLabels as any).entityType, "task")));
-      await db.update(pullRequests).set({ taskId: null }).where(eq((pullRequests as any).taskId, parsed.taskId));
-      await db.delete(tasks).where(eq((tasks as any).id, parsed.taskId));
+      // M30-T09: one cascade, shared with the retention sweep. This handler
+      // used to carry its own copy, and it drifted: M25's alert ledger was
+      // added to the shared one only. On MySQL it runs in a transaction; on
+      // SQLite (whose drizzle transactions must be synchronous) it stays
+      // retry-safe - every step is idempotent and the task row goes last, so
+      // a purge that fails part-way leaves an archived task a retry finishes.
+      if (isStandalone) await purgeTaskCascade(db, parsed.taskId);
+      else await db.transaction(async (tx: any) => purgeTaskCascade(tx, parsed.taskId));
 
       publishDomainEvent(nc, "domain.task.purged", { taskId: parsed.taskId });
       return { success: true };
