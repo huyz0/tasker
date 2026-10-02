@@ -52,8 +52,11 @@ lock.
 - A task is **ready** when it is not deleted, not terminal, has no assignee,
   and every task blocking it is terminal or deleted. A deleted blocker no
   longer blocks: binning a task must not strand its dependents.
-- `ClaimNextTask` and `ListTasks(ready: true)` order by priority (1, 2, 3, 4,
-  then 0), then creation time, then id.
+- `ClaimNextTask` orders by priority (1, 2, 3, 4, then 0), then creation
+  time. Priority is strict; age is not: M33's candidate window (the 20 oldest
+  ready tasks) is shuffled *within* each priority so concurrent claimers
+  spread out instead of racing for one row. `ListTasks(ready: true)` filters
+  to the same set and sorts by priority on request (`sort: "priority:asc"`).
 - Links are written with `tasks:write` / `task:write`, read with
   `tasks:read` / `task:read`. Agents may link: recording discovered work and
   dependencies is exactly what an agent breaking down work does.

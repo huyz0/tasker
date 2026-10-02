@@ -1062,7 +1062,7 @@ model ListTasksRequest {
   @field(5) assigneeFilter?: string;
 
   // M35 (ADR-0028). Open, unassigned and with no unfinished blocker - exactly
-  // what ClaimNextTask would choose from - ordered as it would choose.
+  // what ClaimNextTask chooses from. Sort "priority:asc" for urgent first.
   @field(6) ready?: boolean;
   @field(7) priority?: int32;
   @field(8) labelId?: string;

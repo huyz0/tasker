@@ -59,3 +59,27 @@
   its links both ways and orphans its children; purging a project removes links
   that cross out of it. Agents may link (ADR-0028).
 - **Next**: M35-T04
+
+## M35-T04 — Ready work
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/tasks/{taskGraph.ts,tasks.handler.ts}`
+  (+ `workGraph.test.ts`, `taskGraph.sql.test.ts`), `assignment.test.ts`,
+  `.specs/adr/ADR-0028-*.md`, `packages/shared-contract/main.tsp` (comment)
+- **Verified**: backend `bun test` 1902 pass; knip, typecheck green.
+- **Notes**: `ClaimNextTask` takes only ready tasks (no unfinished, undeleted
+  blocker), by priority rank then age, optionally by label. Its M33 shuffle
+  now runs *within* each priority - shuffling the whole window would have let
+  a claimer take a low task over a free urgent one. Consequently "oldest
+  first" holds only approximately within a priority; the first test asserted
+  strict age and failed on exactly that, so the ADR, the exit criterion and
+  the test now say what is true. `ListTasks` gains `ready`, `labelId`,
+  `parentTaskId`; every task response carries `blockedByOpenCount` (one
+  grouped query per page - `assignment.test.ts`'s query bound +1, not per
+  task). Finishing a task, or binning a live one, publishes
+  `domain.task.unblocked` per dependent with no open blocker left. The first
+  version of the predicate passed a drizzle alias into a raw template, which
+  renders as the bare alias ("no such table: blocker"); SQLite's suite caught
+  it, and `taskGraph.sql.test.ts` now pins the MySQL text, which CI cannot run.
+- **Next**: M35-T05

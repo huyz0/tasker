@@ -11,7 +11,7 @@ import { withIdempotency } from "../../lib/idempotency";
 import { getLatestHandoffNote, recordTaskNote } from "./task_notes.handler";
 import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal, terminalStatusSql } from "./taskActivity";
 import { purgeTaskCascade } from "../../lib/cascadePurge";
-import { MAX_PRIORITY, priorityRankSql, LINK_KINDS, assertLinkAllowed, openBlockerCounts, assertParentAllowed, insertLink, deleteLink, listLinks } from "./taskGraph";
+import { MAX_PRIORITY, priorityRankSql, LINK_KINDS, assertLinkAllowed, openBlockerCounts, hasOpenBlockerSql, newlyUnblocked, assertParentAllowed, insertLink, deleteLink, listLinks } from "./taskGraph";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // Distinguishes a real DB-level unique-constraint violation (a concurrent
@@ -153,6 +153,7 @@ const ClaimNextTaskSchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
   taskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
   idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
+  labelId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
 });
 
 const ListMyTasksSchema = z.object({
@@ -183,6 +184,20 @@ function shuffle<T>(items: T[]): T[] {
     [out[i], out[j]] = [out[j]!, out[i]!];
   }
   return out;
+}
+
+/**
+ * M35 (ADR-0028): the window shuffled *within* each priority, never across -
+ * concurrent claimers still spread out, but no caller takes a low-priority
+ * task while an urgent one in its window is free.
+ */
+function shuffleWithinPriority<T extends { rank: unknown }>(items: T[]): T[] {
+  const groups = new Map<number, T[]>();
+  for (const it of items) {
+    const rank = Number(it.rank);
+    groups.set(rank, [...(groups.get(rank) ?? []), it]);
+  }
+  return [...groups.keys()].sort((a, b) => a - b).flatMap((rank) => shuffle(groups.get(rank)!));
 }
 
 const AddTaskReviewerSchema = z.object({
@@ -258,7 +273,16 @@ const ListTasksSchema = z.object({
   assigneeFilter: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
   // M35.
   priority: z.number().int().min(0).max(MAX_PRIORITY).optional(),
+  ready: z.boolean().optional(),
+  labelId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  parentTaskId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
 });
+
+/** M35: `EXISTS` the label on the task - label-based routing. */
+function hasLabelSql(tasks: any, isStandalone: boolean, labelId: string) {
+  const el = isStandalone ? schemaSqlite.entityLabels : schemaMysql.entityLabels;
+  return sql`EXISTS (SELECT 1 FROM ${el} WHERE ${(el as any).entityId} = ${tasks.id} AND ${(el as any).entityType} = 'task' AND ${(el as any).labelId} = ${labelId})`;
+}
 
 // --- Handler Factories ---
 
@@ -676,7 +700,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     // context matters most - the new claimant sees it in the same round trip.
     const latestHandoffNote = await getLatestHandoffNote(db, taskId, isStandalone);
     return {
-      task: toWireTask(task),
+      task: toWireTask(task, { blockedByOpenCount: (await openBlockerCounts(db, isStandalone, [taskId])).get(taskId) ?? 0 }),
       ...(latestHandoffNote ? { latestHandoffNote } : {}),
     };
   }
@@ -729,6 +753,23 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
   async function openBlockerCount(taskId: string): Promise<number> {
     return (await openBlockerCounts(db, isStandalone, [taskId])).get(taskId) ?? 0;
   }
+
+  /**
+   * M35 (ADR-0028): after `taskId` finished (or was binned), announce each
+   * task it was blocking that now has no unfinished blocker - the signal an
+   * idle agent or webhook consumer waits for. Cheap when nothing depends on
+   * the task: one indexed lookup.
+   */
+  async function announceUnblocked(taskId: string): Promise<void> {
+    const [row] = await db.select({ status: (taskTable as any).status, taskTypeId: (taskTable as any).taskTypeId, deletedAt: (taskTable as any).deletedAt })
+      .from(taskTable).where(eq((taskTable as any).id, taskId)).limit(1);
+    if (!row) return;
+    if (!row.deletedAt && !(await isTerminalStatus(db, isStandalone, row.taskTypeId ?? null, row.status))) return;
+    for (const id of await newlyUnblocked(db, isStandalone, taskId)) {
+      publishDomainEvent(nc, "domain.task.unblocked", { taskId: id, unblockedBy: taskId });
+    }
+  }
+  const taskTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
 
   return {
     async createTask(req: unknown, { values: contextValues }: { values: any }) {
@@ -884,7 +925,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // task is inspected, without a separate listTaskNotes call.
       const latestHandoffNote = await getLatestHandoffNote(db, t.id, isStandalone);
       return {
-        task: toWireTask(t, { assignees: assignees.get(t.id) ?? [] }),
+        task: toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: await openBlockerCount(t.id) }),
         ...(latestHandoffNote ? { latestHandoffNote } : {}),
       };
     },
@@ -926,6 +967,15 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       if (statusFacet) conditions.push(statusFacet);
       if (assigneeFacet) conditions.push(assigneeFacet);
       if (parsed.priority !== undefined) conditions.push(eq((tasks as any).priority, parsed.priority));
+      if (parsed.labelId) conditions.push(hasLabelSql(tasks, isStandalone, parsed.labelId));
+      if (parsed.parentTaskId) conditions.push(eq((tasks as any).parentTaskId, parsed.parentTaskId));
+      if (parsed.ready) {
+        // ADR-0028: exactly what ClaimNextTask chooses from.
+        const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+        conditions.push(sql`NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id})`);
+        conditions.push(not(terminalStatusSql(tasks, isStandalone)));
+        conditions.push(not(hasOpenBlockerSql(tasks, isStandalone)));
+      }
       const scope = and(...conditions);
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, scope, parsed.page, {
         filterColumn: (tasks as any).title,
@@ -946,16 +996,20 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         // against `filter` - a cursor minted while paging with status="todo"
         // and then reused against a request for status="done" would report
         // "todo"'s count under "done"'s results.
-        extraCacheKey: [parsed.onlyDeleted ? "1" : "0", parsed.status ?? "", parsed.assigneeFilter ?? "", parsed.priority ?? ""].join("|"),
+        extraCacheKey: [
+          parsed.onlyDeleted ? "1" : "0", parsed.status ?? "", parsed.assigneeFilter ?? "", parsed.priority ?? "",
+          parsed.ready ? "1" : "0", parsed.labelId ?? "", parsed.parentTaskId ?? "",
+        ].join("|"),
       });
       // Sorting by displayId is deliberately not offered: it is a string, so
       // "SEED-100" sorts before "SEED-99". Ids are assigned in creation order,
       // so createdAt is the same ordering done correctly (M05-T11).
 
       const assignees = await assigneesByTask(items.map((t: any) => t.id));
+      const blockers = await openBlockerCounts(db, isStandalone, items.map((t: any) => t.id));
 
       return {
-        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [] })),
+        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: blockers.get(t.id) ?? 0 })),
         page: { nextCursor, totalCount },
       };
     },
@@ -990,8 +1044,9 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         extraCacheKey: [orgId, selfId, parsed.includeTerminal ? "1" : "0"].join("|"),
       });
       const assignees = await assigneesByTask(items.map((t: any) => t.id));
+      const blockers = await openBlockerCounts(db, isStandalone, items.map((t: any) => t.id));
       return {
-        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [] })),
+        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: blockers.get(t.id) ?? 0 })),
         page: { nextCursor, totalCount },
       };
     },
@@ -1176,20 +1231,24 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
         const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
         for (let round = 0; round < CLAIM_NEXT_ROUNDS; round++) {
-          const candidates: { id: string }[] = await db
-            .select({ id: (tasks as any).id })
+          // M35 (ADR-0028): ready work only - no unfinished blocker - most
+          // important first, then oldest.
+          const candidates: { id: string; rank: unknown }[] = await db
+            .select({ id: (tasks as any).id, rank: priorityRankSql(tasks) })
             .from(tasks)
             .where(and(
               eq((tasks as any).projectId, parsed.projectId),
               notDeleted(tasks),
               parsed.taskTypeId ? eq((tasks as any).taskTypeId, parsed.taskTypeId) : undefined,
+              parsed.labelId ? hasLabelSql(tasks, isStandalone, parsed.labelId) : undefined,
               sql`NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id})`,
               not(terminalStatusSql(tasks, isStandalone)),
+              not(hasOpenBlockerSql(tasks, isStandalone)),
             ))
-            .orderBy(asc((tasks as any).createdAt), asc((tasks as any).id))
+            .orderBy(asc(priorityRankSql(tasks)), asc((tasks as any).createdAt), asc((tasks as any).id))
             .limit(CLAIM_NEXT_WINDOW);
           if (candidates.length === 0) return {};
-          for (const c of shuffle(candidates)) {
+          for (const c of shuffleWithinPriority(candidates)) {
             if (await insertClaim(c.id, principal)) return completeClaim(c.id, principal);
           }
         }
@@ -1456,6 +1515,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       });
 
       publishDomainEvent(nc, "domain.task.status_updated", task);
+      await announceUnblocked(parsed.taskId);
       return { task: toWireTask(task) };
     },
     async deleteTask(req: unknown, { values: contextValues }: { values: any }) {
@@ -1501,6 +1561,11 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       }
 
       publishDomainEvent(nc, "domain.task.deleted", { taskId: parsed.taskId });
+      // A binned blocker no longer blocks (ADR-0028). One that had already
+      // finished unblocked its dependents then - announce only a live one.
+      if (wasLive && !(await isTerminalStatus(db, isStandalone, existingRows[0].taskTypeId || null, existingRows[0].status))) {
+        await announceUnblocked(parsed.taskId);
+      }
       return { success: true };
     },
     async restoreTask(req: unknown, { values: contextValues }: { values: any }) {

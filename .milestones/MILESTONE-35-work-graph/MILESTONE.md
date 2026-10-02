@@ -38,8 +38,8 @@ impossible.
 ## 3. Exit Criteria
 
 - [ ] `ClaimNextTask` never claims a task with an unfinished blocker, and
-  among ready tasks claims by priority (urgent first, none last), then age —
-  proven by tests on both orderings.
+  among ready tasks claims strictly by priority (urgent first, none last),
+  choosing among the oldest of that priority — proven by tests on both.
 - [ ] A blocking link that would create a cycle, cross organizations or point
   at the task itself is `InvalidArgument`; a parent that would create a cycle
   or cross projects likewise.
@@ -78,7 +78,7 @@ impossible.
   - **Files**: `apps/backend/src/modules/tasks/tasks.handler.ts` (+ test)
 - [x] **M35-T03** — Links: add, remove, list; parent; cycle and tenancy checks.
   - **Files**: `apps/backend/src/modules/tasks/taskLinks.ts` (+ test), handler
-- [ ] **M35-T04** — Ready work: `blockedByOpenCount`, list filters, claim-next order, `domain.task.unblocked`.
+- [x] **M35-T04** — Ready work: `blockedByOpenCount`, list filters, claim-next order, `domain.task.unblocked`.
   - **Files**: as T02, `taskActivity.ts`
 - [ ] **M35-T05** — CLI.
   - **Files**: `apps/cli/cmd/tasks*.go`, `docs/cli-reference.md`

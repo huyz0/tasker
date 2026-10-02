@@ -37,6 +37,25 @@ const tables = (isStandalone: boolean) => ({
   links: isStandalone ? schemaSqlite.taskLinks : schemaMysql.taskLinks,
 });
 
+/**
+ * `EXISTS` an unfinished, undeleted task blocking `tasks.id`. A deleted blocker
+ * no longer blocks: binning a task must not strand its dependents (ADR-0028).
+ */
+export function hasOpenBlockerSql(tasks: any, isStandalone: boolean) {
+  const { links, tasks: tasksTable } = tables(isStandalone);
+  const blocker = isStandalone ? sqliteAlias(schemaSqlite.tasks, "blocker") : mysqlAlias(schemaMysql.tasks, "blocker");
+  // In a raw template an alias renders as its bare name, so the FROM item is
+  // spelled out; the alias's columns then render as "blocker"."col".
+  return sql`EXISTS (
+    SELECT 1 FROM ${links}
+    JOIN ${tasksTable} AS ${sql.identifier("blocker")} ON ${(blocker as any).id} = ${(links as any).linkedTaskId}
+    WHERE ${(links as any).taskId} = ${tasks.id}
+      AND ${(links as any).kind} = 'blocked_by'
+      AND ${(blocker as any).deletedAt} IS NULL
+      AND NOT ${terminalStatusSql(blocker, isStandalone)}
+  )`;
+}
+
 /** Open-blocker counts for a page of tasks, in one grouped query. */
 export async function openBlockerCounts(db: any, isStandalone: boolean, taskIds: string[]): Promise<Map<string, number>> {
   const counts = new Map<string, number>();
@@ -221,4 +240,19 @@ export async function listLinks(db: any, isStandalone: boolean, taskId: string) 
     ...(discoveredFrom ? { discoveredFrom } : {}),
     ...(parent ? { parent } : {}),
   };
+}
+
+/**
+ * The tasks `taskId` blocked that now have no unfinished blocker - called
+ * after `taskId` reaches a terminal status, to announce them (ADR-0028).
+ */
+export async function newlyUnblocked(db: any, isStandalone: boolean, taskId: string): Promise<string[]> {
+  const { tasks, links } = tables(isStandalone);
+  const rows: { id: string }[] = await db.select({ id: (tasks as any).id }).from(tasks)
+    .where(and(
+      sql`${(tasks as any).id} IN (SELECT ${(links as any).taskId} FROM ${links} WHERE ${(links as any).linkedTaskId} = ${taskId} AND ${(links as any).kind} = 'blocked_by')`,
+      isNull((tasks as any).deletedAt),
+      sql`NOT ${hasOpenBlockerSql(tasks, isStandalone)}`,
+    ));
+  return rows.map((r) => r.id);
 }

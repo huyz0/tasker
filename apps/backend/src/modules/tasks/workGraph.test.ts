@@ -185,6 +185,99 @@ describe("work graph (M35)", () => {
       expect(await db.select().from(schemaSqlite.taskLinks)).toEqual([]);
     });
   });
+
+  describe("ready work (M35-T04)", () => {
+    const block = (taskId: string, by: string) => handler.addTaskLink({ taskId, linkedTaskId: by, kind: "blocked_by" }, ctx);
+    const claimNext = (extra: Record<string, unknown> = {}, agent?: string) =>
+      handler.claimNextTask({ projectId, ...extra }, agentCtx(agent));
+
+    it("never hands out a task with an unfinished blocker, and does once it finishes", async () => {
+      const blocker = await task("blocker");
+      const blocked = await task("blocked", { priority: 1 });
+      await block(blocked.id, blocker.id);
+      await handler.claimTask({ taskId: blocker.id }, agentCtx(undefined));
+
+      expect((await claimNext({}, "agent-wg-" + stamp + "-2")).task).toBeUndefined();
+      expect((await handler.getTask({ taskId: blocked.id }, ctx)).task.blockedByOpenCount).toBe(1);
+
+      await handler.updateTaskStatus({ taskId: blocker.id, status: "done" }, ctx);
+      expect((await handler.getTask({ taskId: blocked.id }, ctx)).task.blockedByOpenCount).toBe(0);
+      expect((await claimNext({}, "agent-wg-" + stamp + "-2")).task.id).toBe(blocked.id);
+    });
+
+    it("treats a binned blocker as no blocker", async () => {
+      const blocker = await task("blocker");
+      const blocked = await task("blocked");
+      await block(blocked.id, blocker.id);
+      await handler.claimTask({ taskId: blocker.id }, agentCtx());
+      await handler.deleteTask({ taskId: blocker.id }, ctx);
+      expect((await claimNext({}, "agent-wg-" + stamp + "-2")).task.id).toBe(blocked.id);
+    });
+
+    it("claims strictly by priority - urgent, high, low, then none", async () => {
+      for (const [title, p] of [["none", 0], ["low", 4], ["urgent-1", 1], ["high", 2], ["urgent-2", 1]] as const) {
+        await task(title, { priority: p });
+      }
+      const claimed: string[] = [];
+      for (let i = 0; i < 5; i++) {
+        const res = await claimNext({}, i % 2 ? "agent-wg-" + stamp + "-2" : undefined);
+        claimed.push(res.task.title);
+      }
+      // Within one priority the order is shuffled across the oldest
+      // CLAIM_NEXT_WINDOW tasks, so concurrent claimers spread out (M33-T02).
+      expect(claimed.slice(0, 2).sort()).toEqual(["urgent-1", "urgent-2"]);
+      expect(claimed.slice(2)).toEqual(["high", "low", "none"]);
+    });
+
+    it("lists ready work and filters by label and parent", async () => {
+      const blocker = await task("blocker");
+      const blocked = await task("blocked");
+      await block(blocked.id, blocker.id);
+      const held = await task("held");
+      await handler.claimTask({ taskId: held.id }, agentCtx());
+      await task("finished", { status: "done" });
+
+      const ready = await handler.listTasks({ projectId, ready: true }, ctx);
+      expect(ready.tasks.map((t: any) => t.title)).toEqual(["blocker"]);
+      const all = await handler.listTasks({ projectId }, ctx);
+      expect(Object.fromEntries(all.tasks.map((t: any) => [t.title, t.blockedByOpenCount]))).toMatchObject({ blocked: 1, blocker: 0 });
+
+      await db.insert(schemaSqlite.labels).values({ id: "lbl-wg-" + stamp, orgId, name: "backend", createdAt: new Date() });
+      const labelled = await task("labelled");
+      await db.insert(schemaSqlite.entityLabels).values({ id: "el-wg-" + stamp, entityId: labelled.id, entityType: "task", labelId: "lbl-wg-" + stamp, createdAt: new Date() });
+      expect((await handler.listTasks({ projectId, labelId: "lbl-wg-" + stamp }, ctx)).tasks.map((t: any) => t.id)).toEqual([labelled.id]);
+      expect((await claimNext({ labelId: "lbl-wg-" + stamp })).task.id).toBe(labelled.id);
+
+      const child = await task("child", { parentTaskId: blocker.id });
+      expect((await handler.listTasks({ projectId, parentTaskId: blocker.id }, ctx)).tasks.map((t: any) => t.id)).toEqual([child.id]);
+    });
+
+    it("announces each dependent a finished task leaves with no open blocker", async () => {
+      const a = await task("a");
+      const b = await task("b");
+      const both = await task("needs a and b");
+      const onlyA = await task("needs a");
+      await block(both.id, a.id);
+      await block(both.id, b.id);
+      await block(onlyA.id, a.id);
+      nc.clear();
+
+      await handler.updateTaskStatus({ taskId: a.id, status: "done" }, ctx);
+      const unblocked = () => nc.publishedMessages.filter((m: any) => m.subject === "domain.task.unblocked").map((m: any) => JSON.stringify(m.data));
+      expect(unblocked()).toHaveLength(1);
+      expect(unblocked()[0]).toContain(onlyA.id);
+
+      nc.clear();
+      await handler.deleteTask({ taskId: b.id }, ctx);
+      expect(unblocked()).toHaveLength(1);
+      expect(unblocked()[0]).toContain(both.id);
+
+      // A task finishing with nothing depending on it announces nothing.
+      nc.clear();
+      await handler.updateTaskStatus({ taskId: onlyA.id, status: "done" }, ctx);
+      expect(unblocked()).toEqual([]);
+    });
+  });
 });
 
 /** Zod errors reach callers through an interceptor; handlers called directly throw them raw. */

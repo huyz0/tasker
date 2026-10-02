@@ -105,7 +105,9 @@ describe("assignees are readable", () => {
     // one more select per authorization check - resolving whether an org
     // has a parent at all costs a query even when the answer is no - same
     // class of bump T05 already made this test's siblings absorb.
-    expect(queries).toBeLessThan(11);
+    // M35-T04: plus one grouped query for every row's open-blocker count -
+    // still one for the page, not one per task.
+    expect(queries).toBeLessThan(12);
   });
 });
 
