@@ -724,3 +724,46 @@ export const stalledClaimAlerts = mysqlTable("stalled_claim_alerts", {
     taskAnchorIdx: uniqueIndex("stalled_claim_alerts_task_id_anchor_at_idx").on(table.taskId, table.anchorAt),
   };
 });
+
+// M37 (ADR-0030). See schema.sqlite.ts.
+export const webhooks = mysqlTable("webhooks", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).notNull().references(() => organizations.id),
+  projectId: varchar("project_id", { length: 256 }),
+  url: varchar("url", { length: 2048 }).notNull(),
+  secretEncrypted: text("secret_encrypted").notNull(),
+  events: text("events").notNull(),
+  description: varchar("description", { length: 512 }).notNull().default(""),
+  active: boolean("active").notNull().default(true),
+  consecutiveFailures: int("consecutive_failures").notNull().default(0),
+  disabledReason: text("disabled_reason"),
+  createdBy: varchar("created_by", { length: 256 }),
+  createdAt: timestamp("created_at").notNull(),
+  lastDeliveryAt: timestamp("last_delivery_at"),
+}, (table) => {
+  return {
+    orgIdx: index("webhooks_org_id_idx").on(table.orgId),
+  };
+});
+
+// M37 (ADR-0030). See schema.sqlite.ts.
+export const webhookDeliveries = mysqlTable("webhook_deliveries", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  webhookId: varchar("webhook_id", { length: 256 }).notNull(),
+  eventId: varchar("event_id", { length: 256 }).notNull(),
+  eventType: varchar("event_type", { length: 128 }).notNull(),
+  payload: mediumtext("payload").notNull(),
+  status: varchar("status", { length: 16 }).notNull().default("pending"),
+  attempts: int("attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at").notNull(),
+  claimedUntil: timestamp("claimed_until"),
+  lastStatusCode: int("last_status_code"),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").notNull(),
+  deliveredAt: timestamp("delivered_at"),
+}, (table) => {
+  return {
+    dueIdx: index("webhook_deliveries_status_next_attempt_idx").on(table.status, table.nextAttemptAt),
+    webhookIdx: index("webhook_deliveries_webhook_id_created_at_idx").on(table.webhookId, table.createdAt),
+  };
+});

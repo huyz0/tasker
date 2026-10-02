@@ -65,6 +65,8 @@ const (
 	NotificationServiceName = "tasker.health.v1.NotificationService"
 	// EventServiceName is the fully-qualified name of the EventService service.
 	EventServiceName = "tasker.health.v1.EventService"
+	// WebhookServiceName is the fully-qualified name of the WebhookService service.
+	WebhookServiceName = "tasker.health.v1.WebhookService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -484,6 +486,27 @@ const (
 	// EventServiceSubscribeEventsProcedure is the fully-qualified name of the EventService's
 	// SubscribeEvents RPC.
 	EventServiceSubscribeEventsProcedure = "/tasker.health.v1.EventService/SubscribeEvents"
+	// WebhookServiceCreateWebhookProcedure is the fully-qualified name of the WebhookService's
+	// CreateWebhook RPC.
+	WebhookServiceCreateWebhookProcedure = "/tasker.health.v1.WebhookService/CreateWebhook"
+	// WebhookServiceListWebhooksProcedure is the fully-qualified name of the WebhookService's
+	// ListWebhooks RPC.
+	WebhookServiceListWebhooksProcedure = "/tasker.health.v1.WebhookService/ListWebhooks"
+	// WebhookServiceUpdateWebhookProcedure is the fully-qualified name of the WebhookService's
+	// UpdateWebhook RPC.
+	WebhookServiceUpdateWebhookProcedure = "/tasker.health.v1.WebhookService/UpdateWebhook"
+	// WebhookServiceDeleteWebhookProcedure is the fully-qualified name of the WebhookService's
+	// DeleteWebhook RPC.
+	WebhookServiceDeleteWebhookProcedure = "/tasker.health.v1.WebhookService/DeleteWebhook"
+	// WebhookServiceRotateWebhookSecretProcedure is the fully-qualified name of the WebhookService's
+	// RotateWebhookSecret RPC.
+	WebhookServiceRotateWebhookSecretProcedure = "/tasker.health.v1.WebhookService/RotateWebhookSecret"
+	// WebhookServicePingWebhookProcedure is the fully-qualified name of the WebhookService's
+	// PingWebhook RPC.
+	WebhookServicePingWebhookProcedure = "/tasker.health.v1.WebhookService/PingWebhook"
+	// WebhookServiceListWebhookDeliveriesProcedure is the fully-qualified name of the WebhookService's
+	// ListWebhookDeliveries RPC.
+	WebhookServiceListWebhookDeliveriesProcedure = "/tasker.health.v1.WebhookService/ListWebhookDeliveries"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -659,6 +682,14 @@ var (
 	notificationServiceMarkAllNotificationsReadMethodDescriptor   = notificationServiceServiceDescriptor.Methods().ByName("MarkAllNotificationsRead")
 	eventServiceServiceDescriptor                                 = v1.File_tasker_health_v1_health_proto.Services().ByName("EventService")
 	eventServiceSubscribeEventsMethodDescriptor                   = eventServiceServiceDescriptor.Methods().ByName("SubscribeEvents")
+	webhookServiceServiceDescriptor                               = v1.File_tasker_health_v1_health_proto.Services().ByName("WebhookService")
+	webhookServiceCreateWebhookMethodDescriptor                   = webhookServiceServiceDescriptor.Methods().ByName("CreateWebhook")
+	webhookServiceListWebhooksMethodDescriptor                    = webhookServiceServiceDescriptor.Methods().ByName("ListWebhooks")
+	webhookServiceUpdateWebhookMethodDescriptor                   = webhookServiceServiceDescriptor.Methods().ByName("UpdateWebhook")
+	webhookServiceDeleteWebhookMethodDescriptor                   = webhookServiceServiceDescriptor.Methods().ByName("DeleteWebhook")
+	webhookServiceRotateWebhookSecretMethodDescriptor             = webhookServiceServiceDescriptor.Methods().ByName("RotateWebhookSecret")
+	webhookServicePingWebhookMethodDescriptor                     = webhookServiceServiceDescriptor.Methods().ByName("PingWebhook")
+	webhookServiceListWebhookDeliveriesMethodDescriptor           = webhookServiceServiceDescriptor.Methods().ByName("ListWebhookDeliveries")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -5459,4 +5490,228 @@ type UnimplementedEventServiceHandler struct{}
 
 func (UnimplementedEventServiceHandler) SubscribeEvents(context.Context, *connect.Request[v1.SubscribeEventsRequest], *connect.ServerStream[v1.DomainEventMessage]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.EventService.SubscribeEvents is not implemented"))
+}
+
+// WebhookServiceClient is a client for the tasker.health.v1.WebhookService service.
+type WebhookServiceClient interface {
+	CreateWebhook(context.Context, *connect.Request[v1.CreateWebhookRequest]) (*connect.Response[v1.CreateWebhookResponse], error)
+	ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error)
+	UpdateWebhook(context.Context, *connect.Request[v1.UpdateWebhookRequest]) (*connect.Response[v1.UpdateWebhookResponse], error)
+	DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error)
+	RotateWebhookSecret(context.Context, *connect.Request[v1.RotateWebhookSecretRequest]) (*connect.Response[v1.RotateWebhookSecretResponse], error)
+	PingWebhook(context.Context, *connect.Request[v1.PingWebhookRequest]) (*connect.Response[v1.PingWebhookResponse], error)
+	ListWebhookDeliveries(context.Context, *connect.Request[v1.ListWebhookDeliveriesRequest]) (*connect.Response[v1.ListWebhookDeliveriesResponse], error)
+}
+
+// NewWebhookServiceClient constructs a client for the tasker.health.v1.WebhookService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewWebhookServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) WebhookServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &webhookServiceClient{
+		createWebhook: connect.NewClient[v1.CreateWebhookRequest, v1.CreateWebhookResponse](
+			httpClient,
+			baseURL+WebhookServiceCreateWebhookProcedure,
+			connect.WithSchema(webhookServiceCreateWebhookMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listWebhooks: connect.NewClient[v1.ListWebhooksRequest, v1.ListWebhooksResponse](
+			httpClient,
+			baseURL+WebhookServiceListWebhooksProcedure,
+			connect.WithSchema(webhookServiceListWebhooksMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateWebhook: connect.NewClient[v1.UpdateWebhookRequest, v1.UpdateWebhookResponse](
+			httpClient,
+			baseURL+WebhookServiceUpdateWebhookProcedure,
+			connect.WithSchema(webhookServiceUpdateWebhookMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deleteWebhook: connect.NewClient[v1.DeleteWebhookRequest, v1.DeleteWebhookResponse](
+			httpClient,
+			baseURL+WebhookServiceDeleteWebhookProcedure,
+			connect.WithSchema(webhookServiceDeleteWebhookMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		rotateWebhookSecret: connect.NewClient[v1.RotateWebhookSecretRequest, v1.RotateWebhookSecretResponse](
+			httpClient,
+			baseURL+WebhookServiceRotateWebhookSecretProcedure,
+			connect.WithSchema(webhookServiceRotateWebhookSecretMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		pingWebhook: connect.NewClient[v1.PingWebhookRequest, v1.PingWebhookResponse](
+			httpClient,
+			baseURL+WebhookServicePingWebhookProcedure,
+			connect.WithSchema(webhookServicePingWebhookMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listWebhookDeliveries: connect.NewClient[v1.ListWebhookDeliveriesRequest, v1.ListWebhookDeliveriesResponse](
+			httpClient,
+			baseURL+WebhookServiceListWebhookDeliveriesProcedure,
+			connect.WithSchema(webhookServiceListWebhookDeliveriesMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// webhookServiceClient implements WebhookServiceClient.
+type webhookServiceClient struct {
+	createWebhook         *connect.Client[v1.CreateWebhookRequest, v1.CreateWebhookResponse]
+	listWebhooks          *connect.Client[v1.ListWebhooksRequest, v1.ListWebhooksResponse]
+	updateWebhook         *connect.Client[v1.UpdateWebhookRequest, v1.UpdateWebhookResponse]
+	deleteWebhook         *connect.Client[v1.DeleteWebhookRequest, v1.DeleteWebhookResponse]
+	rotateWebhookSecret   *connect.Client[v1.RotateWebhookSecretRequest, v1.RotateWebhookSecretResponse]
+	pingWebhook           *connect.Client[v1.PingWebhookRequest, v1.PingWebhookResponse]
+	listWebhookDeliveries *connect.Client[v1.ListWebhookDeliveriesRequest, v1.ListWebhookDeliveriesResponse]
+}
+
+// CreateWebhook calls tasker.health.v1.WebhookService.CreateWebhook.
+func (c *webhookServiceClient) CreateWebhook(ctx context.Context, req *connect.Request[v1.CreateWebhookRequest]) (*connect.Response[v1.CreateWebhookResponse], error) {
+	return c.createWebhook.CallUnary(ctx, req)
+}
+
+// ListWebhooks calls tasker.health.v1.WebhookService.ListWebhooks.
+func (c *webhookServiceClient) ListWebhooks(ctx context.Context, req *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error) {
+	return c.listWebhooks.CallUnary(ctx, req)
+}
+
+// UpdateWebhook calls tasker.health.v1.WebhookService.UpdateWebhook.
+func (c *webhookServiceClient) UpdateWebhook(ctx context.Context, req *connect.Request[v1.UpdateWebhookRequest]) (*connect.Response[v1.UpdateWebhookResponse], error) {
+	return c.updateWebhook.CallUnary(ctx, req)
+}
+
+// DeleteWebhook calls tasker.health.v1.WebhookService.DeleteWebhook.
+func (c *webhookServiceClient) DeleteWebhook(ctx context.Context, req *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error) {
+	return c.deleteWebhook.CallUnary(ctx, req)
+}
+
+// RotateWebhookSecret calls tasker.health.v1.WebhookService.RotateWebhookSecret.
+func (c *webhookServiceClient) RotateWebhookSecret(ctx context.Context, req *connect.Request[v1.RotateWebhookSecretRequest]) (*connect.Response[v1.RotateWebhookSecretResponse], error) {
+	return c.rotateWebhookSecret.CallUnary(ctx, req)
+}
+
+// PingWebhook calls tasker.health.v1.WebhookService.PingWebhook.
+func (c *webhookServiceClient) PingWebhook(ctx context.Context, req *connect.Request[v1.PingWebhookRequest]) (*connect.Response[v1.PingWebhookResponse], error) {
+	return c.pingWebhook.CallUnary(ctx, req)
+}
+
+// ListWebhookDeliveries calls tasker.health.v1.WebhookService.ListWebhookDeliveries.
+func (c *webhookServiceClient) ListWebhookDeliveries(ctx context.Context, req *connect.Request[v1.ListWebhookDeliveriesRequest]) (*connect.Response[v1.ListWebhookDeliveriesResponse], error) {
+	return c.listWebhookDeliveries.CallUnary(ctx, req)
+}
+
+// WebhookServiceHandler is an implementation of the tasker.health.v1.WebhookService service.
+type WebhookServiceHandler interface {
+	CreateWebhook(context.Context, *connect.Request[v1.CreateWebhookRequest]) (*connect.Response[v1.CreateWebhookResponse], error)
+	ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error)
+	UpdateWebhook(context.Context, *connect.Request[v1.UpdateWebhookRequest]) (*connect.Response[v1.UpdateWebhookResponse], error)
+	DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error)
+	RotateWebhookSecret(context.Context, *connect.Request[v1.RotateWebhookSecretRequest]) (*connect.Response[v1.RotateWebhookSecretResponse], error)
+	PingWebhook(context.Context, *connect.Request[v1.PingWebhookRequest]) (*connect.Response[v1.PingWebhookResponse], error)
+	ListWebhookDeliveries(context.Context, *connect.Request[v1.ListWebhookDeliveriesRequest]) (*connect.Response[v1.ListWebhookDeliveriesResponse], error)
+}
+
+// NewWebhookServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewWebhookServiceHandler(svc WebhookServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	webhookServiceCreateWebhookHandler := connect.NewUnaryHandler(
+		WebhookServiceCreateWebhookProcedure,
+		svc.CreateWebhook,
+		connect.WithSchema(webhookServiceCreateWebhookMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	webhookServiceListWebhooksHandler := connect.NewUnaryHandler(
+		WebhookServiceListWebhooksProcedure,
+		svc.ListWebhooks,
+		connect.WithSchema(webhookServiceListWebhooksMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	webhookServiceUpdateWebhookHandler := connect.NewUnaryHandler(
+		WebhookServiceUpdateWebhookProcedure,
+		svc.UpdateWebhook,
+		connect.WithSchema(webhookServiceUpdateWebhookMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	webhookServiceDeleteWebhookHandler := connect.NewUnaryHandler(
+		WebhookServiceDeleteWebhookProcedure,
+		svc.DeleteWebhook,
+		connect.WithSchema(webhookServiceDeleteWebhookMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	webhookServiceRotateWebhookSecretHandler := connect.NewUnaryHandler(
+		WebhookServiceRotateWebhookSecretProcedure,
+		svc.RotateWebhookSecret,
+		connect.WithSchema(webhookServiceRotateWebhookSecretMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	webhookServicePingWebhookHandler := connect.NewUnaryHandler(
+		WebhookServicePingWebhookProcedure,
+		svc.PingWebhook,
+		connect.WithSchema(webhookServicePingWebhookMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	webhookServiceListWebhookDeliveriesHandler := connect.NewUnaryHandler(
+		WebhookServiceListWebhookDeliveriesProcedure,
+		svc.ListWebhookDeliveries,
+		connect.WithSchema(webhookServiceListWebhookDeliveriesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.WebhookService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case WebhookServiceCreateWebhookProcedure:
+			webhookServiceCreateWebhookHandler.ServeHTTP(w, r)
+		case WebhookServiceListWebhooksProcedure:
+			webhookServiceListWebhooksHandler.ServeHTTP(w, r)
+		case WebhookServiceUpdateWebhookProcedure:
+			webhookServiceUpdateWebhookHandler.ServeHTTP(w, r)
+		case WebhookServiceDeleteWebhookProcedure:
+			webhookServiceDeleteWebhookHandler.ServeHTTP(w, r)
+		case WebhookServiceRotateWebhookSecretProcedure:
+			webhookServiceRotateWebhookSecretHandler.ServeHTTP(w, r)
+		case WebhookServicePingWebhookProcedure:
+			webhookServicePingWebhookHandler.ServeHTTP(w, r)
+		case WebhookServiceListWebhookDeliveriesProcedure:
+			webhookServiceListWebhookDeliveriesHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedWebhookServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedWebhookServiceHandler struct{}
+
+func (UnimplementedWebhookServiceHandler) CreateWebhook(context.Context, *connect.Request[v1.CreateWebhookRequest]) (*connect.Response[v1.CreateWebhookResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WebhookService.CreateWebhook is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WebhookService.ListWebhooks is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) UpdateWebhook(context.Context, *connect.Request[v1.UpdateWebhookRequest]) (*connect.Response[v1.UpdateWebhookResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WebhookService.UpdateWebhook is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WebhookService.DeleteWebhook is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) RotateWebhookSecret(context.Context, *connect.Request[v1.RotateWebhookSecretRequest]) (*connect.Response[v1.RotateWebhookSecretResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WebhookService.RotateWebhookSecret is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) PingWebhook(context.Context, *connect.Request[v1.PingWebhookRequest]) (*connect.Response[v1.PingWebhookResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WebhookService.PingWebhook is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) ListWebhookDeliveries(context.Context, *connect.Request[v1.ListWebhookDeliveriesRequest]) (*connect.Response[v1.ListWebhookDeliveriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WebhookService.ListWebhookDeliveries is not implemented"))
 }

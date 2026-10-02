@@ -2752,3 +2752,135 @@ model SubscribeEventsRequest {
 interface EventService {
   subscribeEvents(request: SubscribeEventsRequest): DomainEventMessage;
 }
+
+// ==== Webhooks (M37, ADR-0030) ====
+
+// An HTTPS endpoint an organization subscribes to its task events. The secret
+// that signs each delivery is never returned here - only once, on create and
+// rotate.
+model Webhook {
+  @field(1) id: string;
+  @field(2) orgId: string;
+
+  // Only this project's events when set; the whole organization's otherwise.
+  @field(3) projectId?: string;
+
+  @field(4) url: string;
+
+  // Event types ("task.created"), entity wildcards ("task.*") or "*".
+  @field(5) events: string[];
+
+  @field(6) description: string;
+
+  // False when an admin paused it or it was disabled for failing.
+  @field(7) active: boolean;
+
+  @field(8) consecutiveFailures: int32;
+
+  // Why it was disabled automatically, when it was.
+  @field(9) disabledReason?: string;
+
+  @field(10) createdAt: string;
+  @field(11) lastDeliveryAt?: string;
+}
+
+model WebhookDelivery {
+  @field(1) id: string;
+  @field(2) webhookId: string;
+
+  // The value of X-Tasker-Event, e.g. "task.unblocked" or "ping".
+  @field(3) eventType: string;
+
+  // "pending", "delivered" or "failed".
+  @field(4) status: string;
+
+  @field(5) attempts: int32;
+  @field(6) lastStatusCode?: int32;
+  @field(7) lastError?: string;
+  @field(8) createdAt: string;
+  @field(9) deliveredAt?: string;
+  @field(10) nextAttemptAt?: string;
+}
+
+model CreateWebhookRequest {
+  @field(1) orgId: string;
+  @field(2) projectId?: string;
+  @field(3) url: string;
+  @field(4) events: string[];
+  @field(5) description?: string;
+}
+model CreateWebhookResponse {
+  @field(1) webhook: Webhook;
+
+  // Shown once. Verify X-Tasker-Signature with it.
+  @field(2) secret: string;
+}
+
+model ListWebhooksRequest {
+  @field(1) orgId: string;
+}
+model ListWebhooksResponse {
+  @field(1) webhooks: Webhook[];
+}
+
+model UpdateWebhookRequest {
+  @field(1) id: string;
+  @field(2) url?: string;
+
+  // Replaces the filter when non-empty; an empty list leaves it unchanged.
+  @field(3) events?: string[];
+
+  @field(4) description?: string;
+
+  // true re-enables a disabled webhook and clears its failure count.
+  @field(5) active?: boolean;
+}
+model UpdateWebhookResponse {
+  @field(1) webhook: Webhook;
+}
+
+model DeleteWebhookRequest {
+  @field(1) id: string;
+}
+model DeleteWebhookResponse {
+  @field(1) success: boolean;
+}
+
+model RotateWebhookSecretRequest {
+  @field(1) id: string;
+}
+model RotateWebhookSecretResponse {
+  // Shown once; the old secret stops signing immediately.
+  @field(1) secret: string;
+}
+
+// Queues a "ping" delivery, to check the receiver end to end.
+model PingWebhookRequest {
+  @field(1) id: string;
+}
+model PingWebhookResponse {
+  @field(1) delivery: WebhookDelivery;
+}
+
+model ListWebhookDeliveriesRequest {
+  @field(1) webhookId: string;
+  @field(2) page?: PageRequest;
+}
+model ListWebhookDeliveriesResponse {
+  @field(1) deliveries: WebhookDelivery[];
+  @field(2) page: PageResponse;
+}
+
+interface WebhookService {
+  createWebhook(request: CreateWebhookRequest): CreateWebhookResponse;
+  listWebhooks(request: ListWebhooksRequest): ListWebhooksResponse;
+  updateWebhook(request: UpdateWebhookRequest): UpdateWebhookResponse;
+  deleteWebhook(request: DeleteWebhookRequest): DeleteWebhookResponse;
+  rotateWebhookSecret(
+    request: RotateWebhookSecretRequest,
+  ): RotateWebhookSecretResponse;
+  pingWebhook(request: PingWebhookRequest): PingWebhookResponse;
+  listWebhookDeliveries(
+    request: ListWebhookDeliveriesRequest,
+  ): ListWebhookDeliveriesResponse;
+}

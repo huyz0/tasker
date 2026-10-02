@@ -943,3 +943,50 @@ export const stalledClaimAlerts = sqliteTable("stalled_claim_alerts", {
     taskAnchorIdx: uniqueIndex("stalled_claim_alerts_task_id_anchor_at_idx").on(table.taskId, table.anchorAt),
   };
 });
+
+// M37 (ADR-0030). An organization's subscription to its task events. The
+// signing secret is stored encrypted (lib/crypto.ts) and never returned after
+// creation or rotation.
+export const webhooks = sqliteTable("webhooks", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull().references(() => organizations.id),
+  projectId: text("project_id"),
+  url: text("url").notNull(),
+  secretEncrypted: text("secret_encrypted").notNull(),
+  // JSON array of event filters: "task.created", "task.*", "*".
+  events: text("events").notNull(),
+  description: text("description").notNull().default(""),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+  disabledReason: text("disabled_reason"),
+  createdBy: text("created_by"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  lastDeliveryAt: integer("last_delivery_at", { mode: "timestamp" }),
+}, (table) => {
+  return {
+    orgIdx: index("webhooks_org_id_idx").on(table.orgId),
+  };
+});
+
+// M37 (ADR-0030). The outbox: one row per (event, webhook), delivered by the
+// sweep. `claimed_until` is the lease that keeps two replicas off one row.
+export const webhookDeliveries = sqliteTable("webhook_deliveries", {
+  id: text("id").primaryKey(),
+  webhookId: text("webhook_id").notNull(),
+  eventId: text("event_id").notNull(),
+  eventType: text("event_type").notNull(),
+  payload: text("payload").notNull(),
+  status: text("status").notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: integer("next_attempt_at", { mode: "timestamp" }).notNull(),
+  claimedUntil: integer("claimed_until", { mode: "timestamp" }),
+  lastStatusCode: integer("last_status_code"),
+  lastError: text("last_error"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  deliveredAt: integer("delivered_at", { mode: "timestamp" }),
+}, (table) => {
+  return {
+    dueIdx: index("webhook_deliveries_status_next_attempt_idx").on(table.status, table.nextAttemptAt),
+    webhookIdx: index("webhook_deliveries_webhook_id_created_at_idx").on(table.webhookId, table.createdAt),
+  };
+});
