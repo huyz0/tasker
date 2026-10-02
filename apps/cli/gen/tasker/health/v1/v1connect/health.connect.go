@@ -67,6 +67,8 @@ const (
 	EventServiceName = "tasker.health.v1.EventService"
 	// WebhookServiceName is the fully-qualified name of the WebhookService service.
 	WebhookServiceName = "tasker.health.v1.WebhookService"
+	// WorkflowServiceName is the fully-qualified name of the WorkflowService service.
+	WorkflowServiceName = "tasker.health.v1.WorkflowService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -553,6 +555,24 @@ const (
 	// WebhookServiceListWebhookDeliveriesProcedure is the fully-qualified name of the WebhookService's
 	// ListWebhookDeliveries RPC.
 	WebhookServiceListWebhookDeliveriesProcedure = "/tasker.health.v1.WebhookService/ListWebhookDeliveries"
+	// WorkflowServiceCreateWorkflowTemplateProcedure is the fully-qualified name of the
+	// WorkflowService's CreateWorkflowTemplate RPC.
+	WorkflowServiceCreateWorkflowTemplateProcedure = "/tasker.health.v1.WorkflowService/CreateWorkflowTemplate"
+	// WorkflowServiceUpdateWorkflowTemplateProcedure is the fully-qualified name of the
+	// WorkflowService's UpdateWorkflowTemplate RPC.
+	WorkflowServiceUpdateWorkflowTemplateProcedure = "/tasker.health.v1.WorkflowService/UpdateWorkflowTemplate"
+	// WorkflowServiceGetWorkflowTemplateProcedure is the fully-qualified name of the WorkflowService's
+	// GetWorkflowTemplate RPC.
+	WorkflowServiceGetWorkflowTemplateProcedure = "/tasker.health.v1.WorkflowService/GetWorkflowTemplate"
+	// WorkflowServiceListWorkflowTemplatesProcedure is the fully-qualified name of the
+	// WorkflowService's ListWorkflowTemplates RPC.
+	WorkflowServiceListWorkflowTemplatesProcedure = "/tasker.health.v1.WorkflowService/ListWorkflowTemplates"
+	// WorkflowServiceDeleteWorkflowTemplateProcedure is the fully-qualified name of the
+	// WorkflowService's DeleteWorkflowTemplate RPC.
+	WorkflowServiceDeleteWorkflowTemplateProcedure = "/tasker.health.v1.WorkflowService/DeleteWorkflowTemplate"
+	// WorkflowServiceInstantiateWorkflowProcedure is the fully-qualified name of the WorkflowService's
+	// InstantiateWorkflow RPC.
+	WorkflowServiceInstantiateWorkflowProcedure = "/tasker.health.v1.WorkflowService/InstantiateWorkflow"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -752,6 +772,13 @@ var (
 	webhookServiceRotateWebhookSecretMethodDescriptor             = webhookServiceServiceDescriptor.Methods().ByName("RotateWebhookSecret")
 	webhookServicePingWebhookMethodDescriptor                     = webhookServiceServiceDescriptor.Methods().ByName("PingWebhook")
 	webhookServiceListWebhookDeliveriesMethodDescriptor           = webhookServiceServiceDescriptor.Methods().ByName("ListWebhookDeliveries")
+	workflowServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("WorkflowService")
+	workflowServiceCreateWorkflowTemplateMethodDescriptor         = workflowServiceServiceDescriptor.Methods().ByName("CreateWorkflowTemplate")
+	workflowServiceUpdateWorkflowTemplateMethodDescriptor         = workflowServiceServiceDescriptor.Methods().ByName("UpdateWorkflowTemplate")
+	workflowServiceGetWorkflowTemplateMethodDescriptor            = workflowServiceServiceDescriptor.Methods().ByName("GetWorkflowTemplate")
+	workflowServiceListWorkflowTemplatesMethodDescriptor          = workflowServiceServiceDescriptor.Methods().ByName("ListWorkflowTemplates")
+	workflowServiceDeleteWorkflowTemplateMethodDescriptor         = workflowServiceServiceDescriptor.Methods().ByName("DeleteWorkflowTemplate")
+	workflowServiceInstantiateWorkflowMethodDescriptor            = workflowServiceServiceDescriptor.Methods().ByName("InstantiateWorkflow")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -6192,4 +6219,202 @@ func (UnimplementedWebhookServiceHandler) PingWebhook(context.Context, *connect.
 
 func (UnimplementedWebhookServiceHandler) ListWebhookDeliveries(context.Context, *connect.Request[v1.ListWebhookDeliveriesRequest]) (*connect.Response[v1.ListWebhookDeliveriesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WebhookService.ListWebhookDeliveries is not implemented"))
+}
+
+// WorkflowServiceClient is a client for the tasker.health.v1.WorkflowService service.
+type WorkflowServiceClient interface {
+	CreateWorkflowTemplate(context.Context, *connect.Request[v1.CreateWorkflowTemplateRequest]) (*connect.Response[v1.CreateWorkflowTemplateResponse], error)
+	UpdateWorkflowTemplate(context.Context, *connect.Request[v1.UpdateWorkflowTemplateRequest]) (*connect.Response[v1.UpdateWorkflowTemplateResponse], error)
+	GetWorkflowTemplate(context.Context, *connect.Request[v1.GetWorkflowTemplateRequest]) (*connect.Response[v1.GetWorkflowTemplateResponse], error)
+	ListWorkflowTemplates(context.Context, *connect.Request[v1.ListWorkflowTemplatesRequest]) (*connect.Response[v1.ListWorkflowTemplatesResponse], error)
+	DeleteWorkflowTemplate(context.Context, *connect.Request[v1.DeleteWorkflowTemplateRequest]) (*connect.Response[v1.DeleteWorkflowTemplateResponse], error)
+	InstantiateWorkflow(context.Context, *connect.Request[v1.InstantiateWorkflowRequest]) (*connect.Response[v1.InstantiateWorkflowResponse], error)
+}
+
+// NewWorkflowServiceClient constructs a client for the tasker.health.v1.WorkflowService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewWorkflowServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) WorkflowServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &workflowServiceClient{
+		createWorkflowTemplate: connect.NewClient[v1.CreateWorkflowTemplateRequest, v1.CreateWorkflowTemplateResponse](
+			httpClient,
+			baseURL+WorkflowServiceCreateWorkflowTemplateProcedure,
+			connect.WithSchema(workflowServiceCreateWorkflowTemplateMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateWorkflowTemplate: connect.NewClient[v1.UpdateWorkflowTemplateRequest, v1.UpdateWorkflowTemplateResponse](
+			httpClient,
+			baseURL+WorkflowServiceUpdateWorkflowTemplateProcedure,
+			connect.WithSchema(workflowServiceUpdateWorkflowTemplateMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getWorkflowTemplate: connect.NewClient[v1.GetWorkflowTemplateRequest, v1.GetWorkflowTemplateResponse](
+			httpClient,
+			baseURL+WorkflowServiceGetWorkflowTemplateProcedure,
+			connect.WithSchema(workflowServiceGetWorkflowTemplateMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listWorkflowTemplates: connect.NewClient[v1.ListWorkflowTemplatesRequest, v1.ListWorkflowTemplatesResponse](
+			httpClient,
+			baseURL+WorkflowServiceListWorkflowTemplatesProcedure,
+			connect.WithSchema(workflowServiceListWorkflowTemplatesMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deleteWorkflowTemplate: connect.NewClient[v1.DeleteWorkflowTemplateRequest, v1.DeleteWorkflowTemplateResponse](
+			httpClient,
+			baseURL+WorkflowServiceDeleteWorkflowTemplateProcedure,
+			connect.WithSchema(workflowServiceDeleteWorkflowTemplateMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		instantiateWorkflow: connect.NewClient[v1.InstantiateWorkflowRequest, v1.InstantiateWorkflowResponse](
+			httpClient,
+			baseURL+WorkflowServiceInstantiateWorkflowProcedure,
+			connect.WithSchema(workflowServiceInstantiateWorkflowMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// workflowServiceClient implements WorkflowServiceClient.
+type workflowServiceClient struct {
+	createWorkflowTemplate *connect.Client[v1.CreateWorkflowTemplateRequest, v1.CreateWorkflowTemplateResponse]
+	updateWorkflowTemplate *connect.Client[v1.UpdateWorkflowTemplateRequest, v1.UpdateWorkflowTemplateResponse]
+	getWorkflowTemplate    *connect.Client[v1.GetWorkflowTemplateRequest, v1.GetWorkflowTemplateResponse]
+	listWorkflowTemplates  *connect.Client[v1.ListWorkflowTemplatesRequest, v1.ListWorkflowTemplatesResponse]
+	deleteWorkflowTemplate *connect.Client[v1.DeleteWorkflowTemplateRequest, v1.DeleteWorkflowTemplateResponse]
+	instantiateWorkflow    *connect.Client[v1.InstantiateWorkflowRequest, v1.InstantiateWorkflowResponse]
+}
+
+// CreateWorkflowTemplate calls tasker.health.v1.WorkflowService.CreateWorkflowTemplate.
+func (c *workflowServiceClient) CreateWorkflowTemplate(ctx context.Context, req *connect.Request[v1.CreateWorkflowTemplateRequest]) (*connect.Response[v1.CreateWorkflowTemplateResponse], error) {
+	return c.createWorkflowTemplate.CallUnary(ctx, req)
+}
+
+// UpdateWorkflowTemplate calls tasker.health.v1.WorkflowService.UpdateWorkflowTemplate.
+func (c *workflowServiceClient) UpdateWorkflowTemplate(ctx context.Context, req *connect.Request[v1.UpdateWorkflowTemplateRequest]) (*connect.Response[v1.UpdateWorkflowTemplateResponse], error) {
+	return c.updateWorkflowTemplate.CallUnary(ctx, req)
+}
+
+// GetWorkflowTemplate calls tasker.health.v1.WorkflowService.GetWorkflowTemplate.
+func (c *workflowServiceClient) GetWorkflowTemplate(ctx context.Context, req *connect.Request[v1.GetWorkflowTemplateRequest]) (*connect.Response[v1.GetWorkflowTemplateResponse], error) {
+	return c.getWorkflowTemplate.CallUnary(ctx, req)
+}
+
+// ListWorkflowTemplates calls tasker.health.v1.WorkflowService.ListWorkflowTemplates.
+func (c *workflowServiceClient) ListWorkflowTemplates(ctx context.Context, req *connect.Request[v1.ListWorkflowTemplatesRequest]) (*connect.Response[v1.ListWorkflowTemplatesResponse], error) {
+	return c.listWorkflowTemplates.CallUnary(ctx, req)
+}
+
+// DeleteWorkflowTemplate calls tasker.health.v1.WorkflowService.DeleteWorkflowTemplate.
+func (c *workflowServiceClient) DeleteWorkflowTemplate(ctx context.Context, req *connect.Request[v1.DeleteWorkflowTemplateRequest]) (*connect.Response[v1.DeleteWorkflowTemplateResponse], error) {
+	return c.deleteWorkflowTemplate.CallUnary(ctx, req)
+}
+
+// InstantiateWorkflow calls tasker.health.v1.WorkflowService.InstantiateWorkflow.
+func (c *workflowServiceClient) InstantiateWorkflow(ctx context.Context, req *connect.Request[v1.InstantiateWorkflowRequest]) (*connect.Response[v1.InstantiateWorkflowResponse], error) {
+	return c.instantiateWorkflow.CallUnary(ctx, req)
+}
+
+// WorkflowServiceHandler is an implementation of the tasker.health.v1.WorkflowService service.
+type WorkflowServiceHandler interface {
+	CreateWorkflowTemplate(context.Context, *connect.Request[v1.CreateWorkflowTemplateRequest]) (*connect.Response[v1.CreateWorkflowTemplateResponse], error)
+	UpdateWorkflowTemplate(context.Context, *connect.Request[v1.UpdateWorkflowTemplateRequest]) (*connect.Response[v1.UpdateWorkflowTemplateResponse], error)
+	GetWorkflowTemplate(context.Context, *connect.Request[v1.GetWorkflowTemplateRequest]) (*connect.Response[v1.GetWorkflowTemplateResponse], error)
+	ListWorkflowTemplates(context.Context, *connect.Request[v1.ListWorkflowTemplatesRequest]) (*connect.Response[v1.ListWorkflowTemplatesResponse], error)
+	DeleteWorkflowTemplate(context.Context, *connect.Request[v1.DeleteWorkflowTemplateRequest]) (*connect.Response[v1.DeleteWorkflowTemplateResponse], error)
+	InstantiateWorkflow(context.Context, *connect.Request[v1.InstantiateWorkflowRequest]) (*connect.Response[v1.InstantiateWorkflowResponse], error)
+}
+
+// NewWorkflowServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewWorkflowServiceHandler(svc WorkflowServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	workflowServiceCreateWorkflowTemplateHandler := connect.NewUnaryHandler(
+		WorkflowServiceCreateWorkflowTemplateProcedure,
+		svc.CreateWorkflowTemplate,
+		connect.WithSchema(workflowServiceCreateWorkflowTemplateMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceUpdateWorkflowTemplateHandler := connect.NewUnaryHandler(
+		WorkflowServiceUpdateWorkflowTemplateProcedure,
+		svc.UpdateWorkflowTemplate,
+		connect.WithSchema(workflowServiceUpdateWorkflowTemplateMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceGetWorkflowTemplateHandler := connect.NewUnaryHandler(
+		WorkflowServiceGetWorkflowTemplateProcedure,
+		svc.GetWorkflowTemplate,
+		connect.WithSchema(workflowServiceGetWorkflowTemplateMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceListWorkflowTemplatesHandler := connect.NewUnaryHandler(
+		WorkflowServiceListWorkflowTemplatesProcedure,
+		svc.ListWorkflowTemplates,
+		connect.WithSchema(workflowServiceListWorkflowTemplatesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceDeleteWorkflowTemplateHandler := connect.NewUnaryHandler(
+		WorkflowServiceDeleteWorkflowTemplateProcedure,
+		svc.DeleteWorkflowTemplate,
+		connect.WithSchema(workflowServiceDeleteWorkflowTemplateMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceInstantiateWorkflowHandler := connect.NewUnaryHandler(
+		WorkflowServiceInstantiateWorkflowProcedure,
+		svc.InstantiateWorkflow,
+		connect.WithSchema(workflowServiceInstantiateWorkflowMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.WorkflowService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case WorkflowServiceCreateWorkflowTemplateProcedure:
+			workflowServiceCreateWorkflowTemplateHandler.ServeHTTP(w, r)
+		case WorkflowServiceUpdateWorkflowTemplateProcedure:
+			workflowServiceUpdateWorkflowTemplateHandler.ServeHTTP(w, r)
+		case WorkflowServiceGetWorkflowTemplateProcedure:
+			workflowServiceGetWorkflowTemplateHandler.ServeHTTP(w, r)
+		case WorkflowServiceListWorkflowTemplatesProcedure:
+			workflowServiceListWorkflowTemplatesHandler.ServeHTTP(w, r)
+		case WorkflowServiceDeleteWorkflowTemplateProcedure:
+			workflowServiceDeleteWorkflowTemplateHandler.ServeHTTP(w, r)
+		case WorkflowServiceInstantiateWorkflowProcedure:
+			workflowServiceInstantiateWorkflowHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedWorkflowServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedWorkflowServiceHandler struct{}
+
+func (UnimplementedWorkflowServiceHandler) CreateWorkflowTemplate(context.Context, *connect.Request[v1.CreateWorkflowTemplateRequest]) (*connect.Response[v1.CreateWorkflowTemplateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WorkflowService.CreateWorkflowTemplate is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) UpdateWorkflowTemplate(context.Context, *connect.Request[v1.UpdateWorkflowTemplateRequest]) (*connect.Response[v1.UpdateWorkflowTemplateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WorkflowService.UpdateWorkflowTemplate is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) GetWorkflowTemplate(context.Context, *connect.Request[v1.GetWorkflowTemplateRequest]) (*connect.Response[v1.GetWorkflowTemplateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WorkflowService.GetWorkflowTemplate is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) ListWorkflowTemplates(context.Context, *connect.Request[v1.ListWorkflowTemplatesRequest]) (*connect.Response[v1.ListWorkflowTemplatesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WorkflowService.ListWorkflowTemplates is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) DeleteWorkflowTemplate(context.Context, *connect.Request[v1.DeleteWorkflowTemplateRequest]) (*connect.Response[v1.DeleteWorkflowTemplateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WorkflowService.DeleteWorkflowTemplate is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) InstantiateWorkflow(context.Context, *connect.Request[v1.InstantiateWorkflowRequest]) (*connect.Response[v1.InstantiateWorkflowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WorkflowService.InstantiateWorkflow is not implemented"))
 }

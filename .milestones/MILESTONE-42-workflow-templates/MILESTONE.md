@@ -1,12 +1,12 @@
 ---
 id: M42
 title: Workflow Templates
-status: todo
+status: in-progress
 goal: A team defines a repeatable piece of work once - its steps and which step waits on which - and anyone, person or agent, stamps out a live copy in one call, so agents work through the steps in dependency order without anyone wiring blockers by hand.
 depends_on: [M35]
 surfaces: [contract, backend, cli, gui, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-10-02
 completed_at: null
 ---
 
@@ -47,7 +47,7 @@ instance is ordinary tasks once created).
 
 ## 5. Task Breakdown
 
-- [ ] **M42-T01** — ADR-0035, contract and schema.
+- [x] **M42-T01** — ADR-0035, contract and schema.
 - [ ] **M42-T02** — Template CRUD with graph validation.
 - [ ] **M42-T03** — InstantiateWorkflow.
 - [ ] **M42-T04** — CLI and MCP.

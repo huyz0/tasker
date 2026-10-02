@@ -842,3 +842,19 @@ export const usageRecords = mysqlTable("usage_records", {
     taskKeyIdx: uniqueIndex("usage_records_task_id_key_idx").on(table.taskId, table.idempotencyKey),
   };
 });
+
+// M42 (ADR-0035). See schema.sqlite.ts.
+export const workflowTemplates = mysqlTable("workflow_templates", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).notNull(),
+  projectId: varchar("project_id", { length: 256 }),
+  name: varchar("name", { length: 256 }).notNull(),
+  description: text("description").notNull(),
+  steps: mediumtext("steps").notNull(),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+}, (table) => {
+  return {
+    orgCreatedIdx: index("workflow_templates_org_id_created_idx").on(table.orgId, table.createdAt),
+  };
+});

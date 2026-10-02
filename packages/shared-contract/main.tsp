@@ -3218,3 +3218,117 @@ interface WebhookService {
     request: ListWebhookDeliveriesRequest,
   ): ListWebhookDeliveriesResponse;
 }
+
+// ==== Workflow templates (M42, ADR-0035) ====
+
+// One step of a workflow. `key` names it within the template (lowercase
+// letters, digits, "-" and "_"); `dependsOn` lists the keys of steps that
+// must finish first. Empty `status` means the task type's default ("todo"
+// for untyped steps).
+model WorkflowStep {
+  @field(1) key: string;
+  @field(2) title: string;
+  @field(3) description: string;
+  @field(4) priority: int32;
+  @field(5) taskTypeId?: string;
+  @field(6) status?: string;
+  @field(7) dependsOn: string[];
+}
+
+// A repeatable piece of work: up to 50 steps forming an acyclic graph.
+// `projectId` set means only that project may use it.
+model WorkflowTemplate {
+  @field(1) id: string;
+  @field(2) orgId: string;
+  @field(3) projectId?: string;
+  @field(4) name: string;
+  @field(5) description: string;
+  @field(6) steps: WorkflowStep[];
+  @field(7) createdAt: string;
+  @field(8) updatedAt: string;
+}
+
+model CreateWorkflowTemplateRequest {
+  @field(1) orgId: string;
+  @field(2) projectId?: string;
+  @field(3) name: string;
+  @field(4) description?: string;
+  @field(5) steps: WorkflowStep[];
+}
+model CreateWorkflowTemplateResponse {
+  @field(1) template: WorkflowTemplate;
+}
+
+// Replaces name, description and steps whole. Running instances are
+// ordinary tasks and are not touched.
+model UpdateWorkflowTemplateRequest {
+  @field(1) id: string;
+  @field(2) name: string;
+  @field(3) description?: string;
+  @field(4) steps: WorkflowStep[];
+}
+model UpdateWorkflowTemplateResponse {
+  @field(1) template: WorkflowTemplate;
+}
+
+model GetWorkflowTemplateRequest {
+  @field(1) id: string;
+}
+model GetWorkflowTemplateResponse {
+  @field(1) template: WorkflowTemplate;
+}
+
+// `projectId` lists the org-wide templates plus that project's own.
+model ListWorkflowTemplatesRequest {
+  @field(1) orgId?: string;
+  @field(2) projectId?: string;
+  @field(3) page?: PageRequest;
+}
+model ListWorkflowTemplatesResponse {
+  @field(1) templates: WorkflowTemplate[];
+  @field(2) page: PageResponse;
+}
+
+model DeleteWorkflowTemplateRequest {
+  @field(1) id: string;
+}
+model DeleteWorkflowTemplateResponse {
+  @field(1) success: boolean;
+}
+
+// Creates a parent task named `title` (default: the template's name) and one
+// subtask per step, each blocked by the steps it depends on - all or
+// nothing. Replaying an idempotencyKey returns the first instance.
+model InstantiateWorkflowRequest {
+  @field(1) templateId: string;
+  @field(2) projectId: string;
+  @field(3) title?: string;
+  @field(4) idempotencyKey?: string;
+}
+model InstantiateWorkflowResponse {
+  @field(1) parent: Task;
+
+  // In the template's step order.
+  @field(2) steps: Task[];
+}
+
+interface WorkflowService {
+  createWorkflowTemplate(
+    request: CreateWorkflowTemplateRequest,
+  ): CreateWorkflowTemplateResponse;
+  updateWorkflowTemplate(
+    request: UpdateWorkflowTemplateRequest,
+  ): UpdateWorkflowTemplateResponse;
+  getWorkflowTemplate(
+    request: GetWorkflowTemplateRequest,
+  ): GetWorkflowTemplateResponse;
+  listWorkflowTemplates(
+    request: ListWorkflowTemplatesRequest,
+  ): ListWorkflowTemplatesResponse;
+  deleteWorkflowTemplate(
+    request: DeleteWorkflowTemplateRequest,
+  ): DeleteWorkflowTemplateResponse;
+  instantiateWorkflow(
+    request: InstantiateWorkflowRequest,
+  ): InstantiateWorkflowResponse;
+}

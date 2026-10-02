@@ -1069,3 +1069,21 @@ export const usageRecords = sqliteTable("usage_records", {
     taskKeyIdx: uniqueIndex("usage_records_task_id_key_idx").on(table.taskId, table.idempotencyKey),
   };
 });
+
+// M42 (ADR-0035). A repeatable graph of steps; `steps` is a JSON array of
+// {key, title, description, priority, taskTypeId?, status?, dependsOn[]},
+// validated as a whole on every write.
+export const workflowTemplates = sqliteTable("workflow_templates", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull(),
+  projectId: text("project_id"),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  steps: text("steps").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    orgCreatedIdx: index("workflow_templates_org_id_created_idx").on(table.orgId, table.createdAt),
+  };
+});
