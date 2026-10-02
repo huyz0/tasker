@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -88,8 +87,9 @@ var memorySearchCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Beliefs)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 			return nil
 		}
 		if len(res.Msg.Beliefs) == 0 {
@@ -150,8 +150,9 @@ var memoryRecordCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Belief)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			printBelief(cmd, res.Msg.Belief)
 		}
@@ -173,8 +174,9 @@ var memoryGetCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Belief)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			printBelief(cmd, res.Msg.Belief)
 		}
@@ -214,8 +216,9 @@ var memoryListCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"beliefs": res.Msg.Beliefs, "page": res.Msg.Page})
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 			return nil
 		}
 		if len(res.Msg.Beliefs) == 0 {
@@ -264,8 +267,9 @@ var memoryUpdateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Belief)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			printBelief(cmd, res.Msg.Belief)
 		}
@@ -309,8 +313,9 @@ var memorySupersedeCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Belief)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Belief %s superseded by %s\n", args[0], res.Msg.Belief.Id)
 			printBelief(cmd, res.Msg.Belief)
@@ -348,8 +353,9 @@ var memoryPromoteCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"belief": res.Msg.Belief, "promotion": res.Msg.Promotion})
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Belief %s promoted to %s scope %s\n", args[0], toScopeType, toScopeId)
 			printBelief(cmd, res.Msg.Belief)
@@ -375,8 +381,9 @@ var memoryRelateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Relation)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Related %s -> %s as %s (relation id: %s)\n", args[0], args[1], relationType, res.Msg.Relation.Id)
 		}
@@ -390,9 +397,12 @@ var memoryUnrelateCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewMemoryServiceClient()
-		_, err := client.UnrelateBeliefs(context.Background(), connect.NewRequest(&healthv1.UnrelateBeliefsRequest{RelationId: args[0]}))
+		res, err := client.UnrelateBeliefs(context.Background(), connect.NewRequest(&healthv1.UnrelateBeliefsRequest{RelationId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to unrelate beliefs: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Relation %s removed\n", args[0])
 		return nil
@@ -413,8 +423,9 @@ var memoryListRelationsCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Relations)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 			return nil
 		}
 		if len(res.Msg.Relations) == 0 {
@@ -442,8 +453,9 @@ var memoryListPromotionsCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Promotions)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 			return nil
 		}
 		if len(res.Msg.Promotions) == 0 {
@@ -464,9 +476,12 @@ var memoryArchiveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewMemoryServiceClient()
-		_, err := client.ArchiveBelief(context.Background(), connect.NewRequest(&healthv1.ArchiveBeliefRequest{Id: args[0]}))
+		res, err := client.ArchiveBelief(context.Background(), connect.NewRequest(&healthv1.ArchiveBeliefRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to archive belief: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Belief %s archived\n", args[0])
 		return nil
@@ -479,9 +494,12 @@ var memoryRestoreCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewMemoryServiceClient()
-		_, err := client.RestoreBelief(context.Background(), connect.NewRequest(&healthv1.RestoreBeliefRequest{Id: args[0]}))
+		res, err := client.RestoreBelief(context.Background(), connect.NewRequest(&healthv1.RestoreBeliefRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to restore belief: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Belief %s restored\n", args[0])
 		return nil
@@ -494,9 +512,12 @@ var memoryPurgeCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewMemoryServiceClient()
-		_, err := client.PurgeBelief(context.Background(), connect.NewRequest(&healthv1.PurgeBeliefRequest{Id: args[0]}))
+		res, err := client.PurgeBelief(context.Background(), connect.NewRequest(&healthv1.PurgeBeliefRequest{Id: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to purge belief: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Belief %s permanently deleted\n", args[0])
 		return nil

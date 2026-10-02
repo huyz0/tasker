@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -33,8 +32,9 @@ var tasksCommentAddCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Comment)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Comment added to task %s (id: %s)\n", args[0], res.Msg.Comment.Id)
 		}
@@ -59,8 +59,9 @@ var tasksCommentsCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Comments)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Comments on task %s:\n", args[0])
 			for _, c := range res.Msg.Comments {

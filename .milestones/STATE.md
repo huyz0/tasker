@@ -1,8 +1,8 @@
 ---
 active_milestone: M31
-active_task: M31-T02
+active_task: M31-T03
 last_updated: 2026-10-02
-last_commit: 3f0cd52
+last_commit: a463afa
 blocked: false
 blocker: null
 ---
@@ -1735,9 +1735,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M28 | Addressable Screens             | done   | —          | 8     | 8    |
 | M29 | In-App Notifications            | done   | —          | 9     | 9    |
 | M30 | Backend Correctness at Scale    | done   | —          | 11    | 10   |
-| M31 | CLI Output Truth                | in-progress | —     | 6     | 1    |
+| M31 | CLI Output Truth                | in-progress | —     | 6     | 2    |
 
-**Total: 254 tasks across 25 milestones — 247 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
+**Total: 254 tasks across 25 milestones — 248 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;

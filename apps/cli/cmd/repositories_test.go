@@ -231,7 +231,7 @@ func TestRepoPrsCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := b.String()
-	if !strings.Contains(out, "remote_pr_id") {
+	if !strings.Contains(out, `"remotePrId":"123"`) {
 		t.Fatalf("expected JSON output containing PRs, got %s", out)
 	}
 }

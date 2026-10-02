@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -48,8 +47,9 @@ var taskTypesCreateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.TaskType)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task type created: %s (id: %s)\n", res.Msg.TaskType.Name, res.Msg.TaskType.Id)
 		}
@@ -84,8 +84,9 @@ var taskTypesListCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.TaskTypes)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			for _, t := range res.Msg.TaskTypes {
 				cmd.Printf("  - %s (id: %s)\n", t.Name, t.Id)
@@ -109,8 +110,9 @@ var taskTypesGetCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task type: %s (id: %s)\n", res.Msg.TaskType.Name, res.Msg.TaskType.Id)
 			if res.Msg.TaskType.ParentId != "" {
@@ -150,8 +152,9 @@ var taskTypesCreateStatusCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Status)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Status created: %s (id: %s)\n", res.Msg.Status.Name, res.Msg.Status.Id)
 		}
@@ -182,8 +185,9 @@ var taskTypesCreateTransitionCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Transition)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Transition allowed: %s -> %s\n", res.Msg.Transition.FromStatusId, res.Msg.Transition.ToStatusId)
 		}

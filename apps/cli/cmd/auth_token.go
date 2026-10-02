@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -48,8 +47,9 @@ var authTokenCreateCmd = &cobra.Command{
 		if isJSON {
 			// The plaintext is in this payload deliberately: a script has no
 			// other chance to capture it.
-			out, _ := json.Marshal(map[string]any{"token": res.Msg.Token, "plaintext": res.Msg.Plaintext})
-			cmd.Println(string(out))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -77,8 +77,9 @@ var authTokenListCmd = &cobra.Command{
 		}
 
 		if isJSON {
-			out, _ := json.Marshal(res.Msg.Tokens)
-			cmd.Println(string(out))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -118,8 +119,9 @@ var authTokenRevokeCmd = &cobra.Command{
 			return fmt.Errorf("failed to revoke token: %w", err)
 		}
 		if isJSON {
-			out, _ := json.Marshal(map[string]any{"success": true, "tokenId": args[0]})
-			cmd.Println(string(out))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "tokenId": args[0]}); err != nil {
+				return err
+			}
 			return nil
 		}
 		cmd.Printf("Token %s revoked.\n", args[0])

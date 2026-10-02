@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -38,8 +37,9 @@ var teamsListCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Teams)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -75,8 +75,9 @@ var teamsCreateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Team)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Team created: %s (id: %s)\n", res.Msg.Team.Name, res.Msg.Team.Id)
 		}
@@ -95,12 +96,15 @@ var teamsRenameCmd = &cobra.Command{
 		}
 
 		client := backend.NewTeamServiceClient()
-		_, err := client.UpdateTeam(context.Background(), connect.NewRequest(&healthv1.UpdateTeamRequest{
+		res, err := client.UpdateTeam(context.Background(), connect.NewRequest(&healthv1.UpdateTeamRequest{
 			TeamId: args[0],
 			Name:   name,
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to rename team: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Team %s renamed to %s\n", args[0], name)
 		return nil
@@ -113,9 +117,12 @@ var teamsDeleteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewTeamServiceClient()
-		_, err := client.ArchiveTeam(context.Background(), connect.NewRequest(&healthv1.ArchiveTeamRequest{TeamId: args[0]}))
+		res, err := client.ArchiveTeam(context.Background(), connect.NewRequest(&healthv1.ArchiveTeamRequest{TeamId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to delete team: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Team %s moved to bin\n", args[0])
 		return nil
@@ -128,9 +135,12 @@ var teamsRestoreCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewTeamServiceClient()
-		_, err := client.RestoreTeam(context.Background(), connect.NewRequest(&healthv1.RestoreTeamRequest{TeamId: args[0]}))
+		res, err := client.RestoreTeam(context.Background(), connect.NewRequest(&healthv1.RestoreTeamRequest{TeamId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to restore team: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Team %s restored\n", args[0])
 		return nil
@@ -143,12 +153,15 @@ var teamsAddMemberCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewTeamServiceClient()
-		_, err := client.AddTeamMember(context.Background(), connect.NewRequest(&healthv1.AddTeamMemberRequest{
+		res, err := client.AddTeamMember(context.Background(), connect.NewRequest(&healthv1.AddTeamMemberRequest{
 			TeamId: args[0],
 			UserId: args[1],
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to add team member: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Added %s to team %s\n", args[1], args[0])
 		return nil
@@ -161,12 +174,15 @@ var teamsRemoveMemberCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewTeamServiceClient()
-		_, err := client.RemoveTeamMember(context.Background(), connect.NewRequest(&healthv1.RemoveTeamMemberRequest{
+		res, err := client.RemoveTeamMember(context.Background(), connect.NewRequest(&healthv1.RemoveTeamMemberRequest{
 			TeamId: args[0],
 			UserId: args[1],
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to remove team member: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Removed %s from team %s\n", args[1], args[0])
 		return nil
@@ -192,8 +208,9 @@ var teamsListMembersCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Members)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 			return nil
 		}
 

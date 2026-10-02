@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -39,8 +38,9 @@ var searchCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"results": res.Msg.Results, "page": res.Msg.Page})
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			if len(res.Msg.Results) == 0 {
 				cmd.Println("No results found.")

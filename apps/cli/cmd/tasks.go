@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -52,8 +51,9 @@ var tasksListCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Tasks)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Println("Tasks Workbench:")
 			for _, task := range res.Msg.Tasks {
@@ -85,8 +85,9 @@ var tasksGetCmd = &cobra.Command{
 			// out at all. A breaking shape change from the bare-task object this
 			// printed before, made deliberately: inspecting a task is exactly
 			// the moment prior handoff context should arrive with it.
-			jsonString, _ := json.Marshal(res.Msg)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("%s [%s]: %s (id: %s)\n", res.Msg.Task.DisplayId, res.Msg.Task.Status, res.Msg.Task.Title, res.Msg.Task.Id)
 			if res.Msg.Task.Description != "" {
@@ -132,8 +133,9 @@ var tasksUpdateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Task)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task %s updated\n", res.Msg.Task.Id)
 		}
@@ -173,8 +175,9 @@ var tasksCreateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Task)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task created: %s [%s] (id: %s)\n", res.Msg.Task.Title, res.Msg.Task.DisplayId, res.Msg.Task.Id)
 		}
@@ -207,8 +210,9 @@ var tasksClaimCmd = &cobra.Command{
 			// M22-T04: same reasoning as `get`'s --json change above - the
 			// whole response, so latestHandoffNote (present only when one
 			// exists) is reachable at all.
-			jsonString, _ := json.Marshal(res.Msg)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task %s claimed\n", res.Msg.Task.Id)
 			if res.Msg.LatestHandoffNote != nil {
@@ -248,8 +252,9 @@ var tasksAssignCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "task_id": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": res.Msg.Success, "taskId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task %s assigned\n", args[0])
 		}
@@ -280,8 +285,9 @@ var tasksUnassignCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "task_id": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": res.Msg.Success, "taskId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task %s unassigned\n", args[0])
 		}
@@ -310,8 +316,9 @@ var tasksReviewerAddCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "task_id": args[0], "user_id": userID})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": res.Msg.Success, "taskId": args[0], "userId": userID}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Reviewer %s added to task %s\n", userID, args[0])
 		}
@@ -340,8 +347,9 @@ var tasksReviewerRemoveCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "task_id": args[0], "user_id": userID})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": res.Msg.Success, "taskId": args[0], "userId": userID}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Reviewer %s removed from task %s\n", userID, args[0])
 		}
@@ -365,8 +373,9 @@ var tasksReviewersCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Reviewers)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			for _, r := range res.Msg.Reviewers {
 				cmd.Printf("  - %s\n", r.UserId)
@@ -397,8 +406,9 @@ var tasksUpdateStatusCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Task)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task %s status updated to %s\n", res.Msg.Task.Id, res.Msg.Task.Status)
 		}
@@ -425,8 +435,9 @@ var tasksDeleteCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "task_id": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "taskId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task %s moved to bin\n", args[0])
 		}
@@ -453,8 +464,9 @@ var tasksRestoreCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "task_id": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "taskId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task %s restored\n", args[0])
 		}
@@ -481,8 +493,9 @@ var tasksPurgeCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "task_id": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "taskId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Task %s permanently deleted\n", args[0])
 		}

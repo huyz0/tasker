@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -45,8 +44,9 @@ var projectsListCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Projects)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Println("Projects:")
 			for _, p := range res.Msg.Projects {
@@ -71,8 +71,9 @@ var projectsGetCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Project)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Project %s: %s (org: %s, owner: %s)\n", res.Msg.Project.Id, res.Msg.Project.Name, res.Msg.Project.OrgId, res.Msg.Project.OwnerId)
 		}
@@ -118,8 +119,9 @@ var projectsCreateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Project)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Successfully created project '%s' [%s] (id: %s) from template '%s'\n", res.Msg.Project.Name, res.Msg.Project.Key, res.Msg.Project.Id, template)
 		}
@@ -161,8 +163,9 @@ var projectsUpdateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Project)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Project %s updated\n", res.Msg.Project.Id)
 		}
@@ -182,8 +185,9 @@ var projectsDeleteCmd = &cobra.Command{
 			return fmt.Errorf("failed to delete project: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "projectId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": res.Msg.Success, "projectId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Project %s moved to bin\n", args[0])
 		}
@@ -203,8 +207,9 @@ var projectsRestoreCmd = &cobra.Command{
 			return fmt.Errorf("failed to restore project: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "projectId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": res.Msg.Success, "projectId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Project %s restored\n", args[0])
 		}
@@ -224,8 +229,9 @@ var projectsPurgeCmd = &cobra.Command{
 			return fmt.Errorf("failed to purge project: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "projectId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": res.Msg.Success, "projectId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Project %s permanently deleted\n", args[0])
 		}

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -48,8 +47,9 @@ var projectTemplatesCreateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Template)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Project template created: %s (id: %s)\n", res.Msg.Template.Name, res.Msg.Template.Id)
 		}
@@ -71,8 +71,9 @@ var projectTemplatesGetCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Template)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Template: %s (id: %s)\n", res.Msg.Template.Name, res.Msg.Template.Id)
 			if res.Msg.Template.RootTaskTypeId != nil && *res.Msg.Template.RootTaskTypeId != "" {
@@ -116,8 +117,9 @@ var projectTemplatesUpdateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Template)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Project template %s updated\n", res.Msg.Template.Id)
 		}
@@ -152,8 +154,9 @@ var projectTemplatesListCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Templates)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			for _, t := range res.Msg.Templates {
 				cmd.Printf("  - %s (id: %s)\n", t.Name, t.Id)

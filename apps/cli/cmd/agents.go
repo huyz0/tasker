@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -46,8 +45,9 @@ var agentsListCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Agents)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Println("Available Agents:")
 			for _, a := range res.Msg.Agents {
@@ -84,8 +84,9 @@ var agentsCreateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Agent)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Spawned new agent '%s' (id: %s) with role %s\n", res.Msg.Agent.Name, res.Msg.Agent.Id, res.Msg.Agent.AgentRoleId)
 		}
@@ -120,8 +121,9 @@ var agentsUpdateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Agent)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Agent %s updated: '%s' [Role: %s]\n", res.Msg.Agent.Id, res.Msg.Agent.Name, res.Msg.Agent.AgentRoleId)
 		}
@@ -160,8 +162,9 @@ var agentsUpdateRoleCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Role)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Agent role %s updated: %s\n", res.Msg.Role.Id, res.Msg.Role.Name)
 		}
@@ -193,8 +196,9 @@ var agentsListRolesCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Roles)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Println("Agent Roles:")
 			for _, r := range res.Msg.Roles {
@@ -233,8 +237,9 @@ var agentsCreateRoleCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Role)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Agent role created: %s (id: %s)\n", res.Msg.Role.Name, res.Msg.Role.Id)
 		}
@@ -254,8 +259,9 @@ var agentsDeleteCmd = &cobra.Command{
 			return fmt.Errorf("failed to delete agent: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "agentId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "agentId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Agent %s moved to bin\n", args[0])
 		}
@@ -275,8 +281,9 @@ var agentsRestoreCmd = &cobra.Command{
 			return fmt.Errorf("failed to restore agent: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "agentId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "agentId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Agent %s restored\n", args[0])
 		}
@@ -296,8 +303,9 @@ var agentsPurgeCmd = &cobra.Command{
 			return fmt.Errorf("failed to purge agent: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "agentId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "agentId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Agent %s permanently deleted\n", args[0])
 		}

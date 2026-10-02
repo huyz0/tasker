@@ -38,6 +38,9 @@ var commentAddCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to add comment: %w", err)
 		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
+		}
 
 		cmd.Printf("Comment added successfully! ID: %s\n", res.Msg.Comment.Id)
 		return nil
@@ -61,6 +64,9 @@ var commentListCmd = &cobra.Command{
 		res, err := client.ListComments(context.Background(), req)
 		if err != nil {
 			return fmt.Errorf("failed to list comments: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 
 		if len(res.Msg.Comments) == 0 {
@@ -95,6 +101,9 @@ var commentUpdateCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to update comment: %w", err)
 		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
+		}
 
 		cmd.Printf("Comment %s updated\n", res.Msg.Comment.Id)
 		return nil
@@ -112,9 +121,12 @@ var commentDeleteCmd = &cobra.Command{
 			CommentId: args[0],
 		})
 
-		_, err := client.DeleteComment(context.Background(), req)
+		res, err := client.DeleteComment(context.Background(), req)
 		if err != nil {
 			return fmt.Errorf("failed to delete comment: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 
 		cmd.Printf("Comment %s deleted\n", args[0])

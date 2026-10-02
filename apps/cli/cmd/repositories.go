@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -42,8 +41,9 @@ var repoListCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Links)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Println("Repository Links:")
 			for _, l := range res.Msg.Links {
@@ -92,8 +92,9 @@ var repoLinkCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Link)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Successfully linked %s repository: %s (id: %s)\n", res.Msg.Link.Provider, res.Msg.Link.RemoteName, res.Msg.Link.Id)
 		}
@@ -121,8 +122,9 @@ var repoSyncCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": res.Msg.Success}); err != nil {
+				return err
+			}
 		} else if res.Msg.Success {
 			cmd.Println("Pull requests synchronized successfully.")
 		} else {
@@ -152,8 +154,9 @@ var repoPrsCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.PullRequests)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Println("Pull Requests:")
 			for _, pr := range res.Msg.PullRequests {
@@ -183,8 +186,9 @@ var repoBuildsCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Builds)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Println("Builds:")
 			for _, b := range res.Msg.Builds {
@@ -218,8 +222,9 @@ var repoDeploymentsCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Deployments)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Println("Deployments:")
 			for _, d := range res.Msg.Deployments {

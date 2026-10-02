@@ -54,7 +54,7 @@ not agent-first.
 - [x] A failing command prints exactly one `Error: …` line to stderr and exits
   with a documented code: 3 auth, 4 not found, 5 conflict/precondition,
   6 invalid argument, 7 unavailable or rate limited, 1 anything else.
-- [ ] Every command honours `--json`; JSON is `protojson` of the RPC response
+- [x] Every command honours `--json`; JSON is `protojson` of the RPC response
   (camelCase, zero values present), so every list carries `page`.
 - [ ] `--page-all` on list commands emits one JSON object per line for every
   item across every page.
@@ -81,7 +81,7 @@ not agent-first.
 - [x] **M31-T01** — Results go to stdout, one error line goes to stderr, and the exit code classifies the failure.
   - **Files**: `apps/cli/cmd/root.go`, every `cmd/*.go` error site
   - **Verify**: new `root_test.go` cases with real pipes; `go test ./...`.
-- [ ] **M31-T02** — One JSON writer: `protojson` of the whole response, used by every command.
+- [x] **M31-T02** — One JSON writer: `protojson` of the whole response, used by every command.
   - **Files**: `apps/cli/cmd/output.go` (new), every `cmd/*.go`
   - **Verify**: `output_test.go`; list JSON carries `page.nextCursor`.
 - [ ] **M31-T03** — Text output of a list names the next page.

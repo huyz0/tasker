@@ -272,12 +272,15 @@ var setPasswordCmd = &cobra.Command{
 		}
 
 		client := backend.NewAuthServiceClient()
-		_, err := client.SetPassword(context.Background(), connect.NewRequest(&healthv1.SetPasswordRequest{
+		res, err := client.SetPassword(context.Background(), connect.NewRequest(&healthv1.SetPasswordRequest{
 			CurrentPassword: currentPassword,
 			NewPassword:     newPassword,
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to set password: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Println("Password updated.")
 		return nil
@@ -290,6 +293,9 @@ var logoutCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := backend.ClearCredentials(); err != nil {
 			return fmt.Errorf("failed to log out: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSONValue(cmd, map[string]any{"success": true})
 		}
 		cmd.Println("Logged out.")
 		return nil
@@ -317,8 +323,9 @@ var whoamiCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.User)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Logged in as %s (%s)\n", res.Msg.User.Name, res.Msg.User.Email)
 		}

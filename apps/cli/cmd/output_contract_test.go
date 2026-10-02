@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -122,3 +123,93 @@ func TestAMissingFlagIsReportedOnceAndExitsNonZero(t *testing.T) {
 type errString string
 
 func (e errString) Error() string { return string(e) }
+
+// fakePagedTaskLister answers with one task and a next cursor.
+type fakePagedTaskLister struct {
+	v1connect.UnimplementedTaskServiceHandler
+}
+
+func (fakePagedTaskLister) ListTasks(
+	_ context.Context,
+	_ *connect.Request[healthv1.ListTasksRequest],
+) (*connect.Response[healthv1.ListTasksResponse], error) {
+	return connect.NewResponse(&healthv1.ListTasksResponse{
+		Tasks: []*healthv1.Task{{Id: "t1", ProjectId: "p1", Title: "One", Status: "todo"}},
+		Page:  &healthv1.PageResponse{NextCursor: "c2", TotalCount: 3},
+	}), nil
+}
+
+// M31-T02: a list's JSON is the whole response, so the cursor survives, in
+// protojson's names (camelCase, zero values present - not encoding/json's
+// struct-tag names with omitempty).
+func TestListJSONIsTheWholeResponseInProtoJSONShape(t *testing.T) {
+	resetAllFlags(t)
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(fakePagedTaskLister{}))
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	rootCmd.AddCommand(tasksCmd)
+
+	var stdout, stderr bytes.Buffer
+	if code := runCLI([]string{"tasks", "list", "--project", "p1", "--json"}, &stdout, &stderr); code != exitOK {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatalf("stdout is not one JSON document: %v\n%s", err, stdout.String())
+	}
+	page, _ := got["page"].(map[string]any)
+	if page["nextCursor"] != "c2" {
+		t.Errorf("expected page.nextCursor c2, got %v", got["page"])
+	}
+	task := got["tasks"].([]any)[0].(map[string]any)
+	if task["projectId"] != "p1" {
+		t.Errorf("expected camelCase projectId, got keys %v", task)
+	}
+	if _, present := task["description"]; !present {
+		t.Errorf("expected an empty field to be present, not omitted: %v", task)
+	}
+	if strings.Count(strings.TrimSpace(stdout.String()), "\n") != 0 {
+		t.Errorf("expected one compact line, got %q", stdout.String())
+	}
+}
+
+type fakeOrgLister struct {
+	v1connect.UnimplementedOrgServiceHandler
+}
+
+func (fakeOrgLister) ListOrgs(
+	_ context.Context,
+	_ *connect.Request[healthv1.ListOrgsRequest],
+) (*connect.Response[healthv1.ListOrgsResponse], error) {
+	return connect.NewResponse(&healthv1.ListOrgsResponse{
+		Organizations: []*healthv1.Organization{{Id: "org-1", Name: "Acme", Slug: "acme"}},
+	}), nil
+}
+
+// `orgs list` was one of ~25 commands that ignored --json - and its text
+// never printed the id either, so there was no way to script against it.
+func TestOrgsListHonoursJSONAndShowsIDs(t *testing.T) {
+	resetAllFlags(t)
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewOrgServiceHandler(fakeOrgLister{}))
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	rootCmd.AddCommand(orgsCmd)
+
+	var stdout, stderr bytes.Buffer
+	runCLI([]string{"orgs", "list", "--json"}, &stdout, &stderr)
+	if !strings.Contains(stdout.String(), `"id":"org-1"`) {
+		t.Errorf("expected JSON with the org id, got %q (stderr %q)", stdout.String(), stderr.String())
+	}
+
+	resetAllFlags(t)
+	stdout.Reset()
+	runCLI([]string{"orgs", "list"}, &stdout, &stderr)
+	if !strings.Contains(stdout.String(), "org-1") {
+		t.Errorf("expected the text listing to show the id, got %q", stdout.String())
+	}
+}

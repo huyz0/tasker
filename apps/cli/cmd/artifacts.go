@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -59,8 +58,9 @@ var artifactsListCmd = &cobra.Command{
 				return fmt.Errorf("failed to list artifacts: %w", err)
 			}
 			if isJson {
-				jsonString, _ := json.Marshal(res.Msg.Artifacts)
-				cmd.Println(string(jsonString))
+				if err := printJSON(cmd, res.Msg); err != nil {
+					return err
+				}
 			} else {
 				cmd.Printf("Artifacts in folder '%s':\n", folderID)
 				for _, a := range res.Msg.Artifacts {
@@ -82,8 +82,9 @@ var artifactsListCmd = &cobra.Command{
 			return fmt.Errorf("failed to list folders: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Folders)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Folders in project '%s':\n", projectID)
 			for _, f := range res.Msg.Folders {
@@ -121,7 +122,7 @@ var artifactsReadCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{
+			if err := printJSONValue(cmd, map[string]any{
 				"id":          meta.Msg.Artifact.Id,
 				"folderId":    meta.Msg.Artifact.FolderId,
 				"name":        meta.Msg.Artifact.Name,
@@ -129,8 +130,9 @@ var artifactsReadCmd = &cobra.Command{
 				"contentType": body.Msg.ContentType,
 				"content":     body.Msg.Content,
 				"sizeBytes":   body.Msg.SizeBytes,
-			})
-			cmd.Println(string(jsonString))
+			}); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -198,8 +200,9 @@ var artifactsCreateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Artifact)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Artifact created: %s (id: %s)\n", res.Msg.Artifact.Name, res.Msg.Artifact.Id)
 		}
@@ -233,8 +236,9 @@ var foldersCreateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Folder)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Folder created: %s (id: %s)\n", res.Msg.Folder.Name, res.Msg.Folder.Id)
 		}
@@ -286,8 +290,9 @@ var artifactsUpdateContentCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Artifact)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Artifact %s content updated\n", res.Msg.Artifact.Id)
 		}
@@ -320,8 +325,9 @@ var artifactsUpdateFolderCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Folder)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Folder %s renamed to '%s'\n", res.Msg.Folder.Id, res.Msg.Folder.Name)
 		}
@@ -357,8 +363,9 @@ var artifactsListTaskLinksCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Links)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else if len(res.Msg.Links) == 0 {
 			cmd.Println("No links found.")
 		} else {
@@ -382,8 +389,9 @@ var artifactsDeleteCmd = &cobra.Command{
 			return fmt.Errorf("failed to delete artifact: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "artifactId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "artifactId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Artifact %s moved to bin\n", args[0])
 		}
@@ -403,8 +411,9 @@ var artifactsRestoreCmd = &cobra.Command{
 			return fmt.Errorf("failed to restore artifact: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "artifactId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "artifactId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Artifact %s restored\n", args[0])
 		}
@@ -424,8 +433,9 @@ var foldersDeleteCmd = &cobra.Command{
 			return fmt.Errorf("failed to delete folder: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "folderId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "folderId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Folder %s moved to bin\n", args[0])
 		}
@@ -445,8 +455,9 @@ var foldersRestoreCmd = &cobra.Command{
 			return fmt.Errorf("failed to restore folder: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "folderId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "folderId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Folder %s restored\n", args[0])
 		}
@@ -466,8 +477,9 @@ var artifactsPurgeCmd = &cobra.Command{
 			return fmt.Errorf("failed to purge artifact: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "artifactId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "artifactId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Artifact %s permanently deleted\n", args[0])
 		}
@@ -499,8 +511,9 @@ var artifactsLinkTaskCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Link)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Linked artifact '%s' to task '%s'\n", res.Msg.Link.ArtifactName, res.Msg.Link.TaskTitle)
 		}
@@ -528,8 +541,9 @@ var artifactsUnlinkTaskCmd = &cobra.Command{
 			return fmt.Errorf("failed to unlink artifact from task: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "taskId": taskID, "artifactId": artifactID})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "taskId": taskID, "artifactId": artifactID}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Unlinked artifact %s from task %s\n", artifactID, taskID)
 		}
@@ -549,8 +563,9 @@ var foldersPurgeCmd = &cobra.Command{
 			return fmt.Errorf("failed to purge folder: %w", err)
 		}
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "folderId": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "folderId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Folder %s permanently deleted\n", args[0])
 		}

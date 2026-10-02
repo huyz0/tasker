@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -42,8 +41,9 @@ var labelsCreateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Label)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Label created: %s (id: %s)\n", res.Msg.Label.Name, res.Msg.Label.Id)
 		}
@@ -78,8 +78,9 @@ var labelsListCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Labels)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Println("Labels:")
 			for _, l := range res.Msg.Labels {
@@ -113,8 +114,9 @@ var labelsAttachCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": res.Msg.Success}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Label %s attached to %s %s\n", labelID, entityType, args[0])
 		}
@@ -145,8 +147,9 @@ var labelsDetachCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": res.Msg.Success}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Label %s detached from %s %s\n", labelID, entityType, args[0])
 		}
@@ -175,8 +178,9 @@ var labelsOnCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Labels)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Labels on %s %s:\n", entityType, args[0])
 			for _, l := range res.Msg.Labels {

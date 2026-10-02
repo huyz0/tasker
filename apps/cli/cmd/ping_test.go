@@ -63,7 +63,7 @@ func TestRunPingSuccess(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := runPing(&buf, factory, srv.Client(), srv.URL); err != nil {
+	if err := runPing(&buf, factory, srv.Client(), srv.URL, false); err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
@@ -100,7 +100,7 @@ func TestRunPingError(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := runPing(&buf, factory, errSrv.Client(), errSrv.URL)
+	err := runPing(&buf, factory, errSrv.Client(), errSrv.URL, false)
 	if err == nil {
 		t.Error("expected an error from a 500 server, got nil")
 	}

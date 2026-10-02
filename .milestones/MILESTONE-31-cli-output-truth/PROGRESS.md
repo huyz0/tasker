@@ -30,3 +30,29 @@
     `runCLI` does. The new contract tests use `runCLI` itself with separate
     stdout and stderr.
 - **Next**: M31-T02
+
+## M31-T02 — One JSON writer, honoured by every command
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/output.go` (new), every command file,
+  `cmd/output_contract_test.go`, `cmd/{ping,repositories}_test.go`
+- **Verified**: `moon run cli:format cli:vet cli:test cli:coverage-gate` green.
+- **Notes**:
+  - `printJSON` marshals the **whole** RPC response with `protojson`
+    (`EmitUnpopulated`), compacted to one line — protojson randomizes its
+    whitespace deliberately, and a CLI's output is diffed and grepped. 63
+    sites printed one field of the response (`res.Msg.Tasks`), which is
+    exactly what dropped `page.nextCursor`; they print `res.Msg` now.
+  - The shape changed, deliberately: camelCase names, zero values present,
+    64-bit integers as strings — the backend's own wire shape. One test had
+    pinned `remote_pr_id`, i.e. the unstable shape; it now pins
+    `remotePrId`. Small `{"success": …}` acknowledgements stay, with
+    camelCase keys (`task_id` → `taskId`).
+  - 27 commands ignored `--json` (comments, org/team/membership mutations,
+    memory archive/restore/purge/unrelate, set-password, logout, ping); each
+    now returns `printJSON(res.Msg)` right after its call succeeds. `orgs
+    list`'s text output now shows ids.
+  - The documented `jq -r .plaintext` token capture still works:
+    `CreateAgentTokenResponse` has a `plaintext` field under protojson too.
+- **Next**: M31-T03

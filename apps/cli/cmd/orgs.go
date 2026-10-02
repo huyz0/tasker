@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -35,9 +34,12 @@ var orgsListCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to list orgs: %w", err)
 		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
+		}
 
 		for _, org := range res.Msg.Organizations {
-			cmd.Printf("- %s (Slug: %s)\n", org.Name, org.Slug)
+			cmd.Printf("- %s (Slug: %s, id: %s)\n", org.Name, org.Slug, org.Id)
 		}
 		return nil
 	},
@@ -66,8 +68,9 @@ var orgsSeedCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Organization)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Organization seeded: %s (id: %s, slug: %s)\n", res.Msg.Organization.Name, res.Msg.Organization.Id, res.Msg.Organization.Slug)
 		}
@@ -102,9 +105,12 @@ var orgsInviteCmd = &cobra.Command{
 			req.Role = &role
 		}
 		client := backend.NewOrgServiceClient()
-		_, err := client.InviteUser(context.Background(), connect.NewRequest(req))
+		res, err := client.InviteUser(context.Background(), connect.NewRequest(req))
 		if err != nil {
 			return fmt.Errorf("failed to invite user: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Invited %s to organization %s\n", target, args[0])
 		return nil
@@ -130,6 +136,9 @@ var orgsSetMemberRoleCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to update member role: %w", err)
 		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
+		}
 		cmd.Printf("Set %s's role to %s in organization %s\n", args[1], res.Msg.Member.Role, args[0])
 		return nil
 	},
@@ -154,11 +163,15 @@ var orgsLeaveCmd = &cobra.Command{
 		}
 
 		client := backend.NewOrgServiceClient()
-		if _, err := client.RemoveOrgMember(context.Background(), connect.NewRequest(&healthv1.RemoveOrgMemberRequest{
+		res, err := client.RemoveOrgMember(context.Background(), connect.NewRequest(&healthv1.RemoveOrgMemberRequest{
 			OrgId:  args[0],
 			UserId: identity.Msg.User.Id,
-		})); err != nil {
+		}))
+		if err != nil {
 			return fmt.Errorf("failed to leave organization: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Left organization %s\n", args[0])
 		return nil
@@ -184,8 +197,9 @@ var orgsListInvitesCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Invitations)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -214,10 +228,14 @@ var orgsRevokeInviteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewOrgServiceClient()
-		if _, err := client.RevokeInvitation(context.Background(), connect.NewRequest(&healthv1.RevokeInvitationRequest{
+		res, err := client.RevokeInvitation(context.Background(), connect.NewRequest(&healthv1.RevokeInvitationRequest{
 			InvitationId: args[0],
-		})); err != nil {
+		}))
+		if err != nil {
 			return fmt.Errorf("failed to revoke invitation: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Revoked invitation %s\n", args[0])
 		return nil
@@ -230,9 +248,12 @@ var orgsDeleteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewOrgServiceClient()
-		_, err := client.ArchiveOrg(context.Background(), connect.NewRequest(&healthv1.ArchiveOrgRequest{OrgId: args[0]}))
+		res, err := client.ArchiveOrg(context.Background(), connect.NewRequest(&healthv1.ArchiveOrgRequest{OrgId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to delete organization: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Organization %s moved to bin\n", args[0])
 		return nil
@@ -245,9 +266,12 @@ var orgsRestoreCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewOrgServiceClient()
-		_, err := client.RestoreOrg(context.Background(), connect.NewRequest(&healthv1.RestoreOrgRequest{OrgId: args[0]}))
+		res, err := client.RestoreOrg(context.Background(), connect.NewRequest(&healthv1.RestoreOrgRequest{OrgId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to restore organization: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Organization %s restored\n", args[0])
 		return nil
@@ -260,9 +284,12 @@ var orgsPurgeCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := backend.NewOrgServiceClient()
-		_, err := client.PurgeOrg(context.Background(), connect.NewRequest(&healthv1.PurgeOrgRequest{OrgId: args[0]}))
+		res, err := client.PurgeOrg(context.Background(), connect.NewRequest(&healthv1.PurgeOrgRequest{OrgId: args[0]}))
 		if err != nil {
 			return fmt.Errorf("failed to purge organization: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Organization %s permanently deleted\n", args[0])
 		return nil
@@ -279,9 +306,12 @@ var orgsSetRetentionCmd = &cobra.Command{
 			return errors.New("--days must be at least 1")
 		}
 		client := backend.NewOrgServiceClient()
-		_, err := client.SetOrgRetentionDays(context.Background(), connect.NewRequest(&healthv1.SetOrgRetentionDaysRequest{OrgId: args[0], BinRetentionDays: days}))
+		res, err := client.SetOrgRetentionDays(context.Background(), connect.NewRequest(&healthv1.SetOrgRetentionDaysRequest{OrgId: args[0], BinRetentionDays: days}))
 		if err != nil {
 			return fmt.Errorf("failed to set retention: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
 		}
 		cmd.Printf("Organization %s bin retention set to %d days\n", args[0], days)
 		return nil

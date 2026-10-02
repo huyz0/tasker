@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -34,8 +33,9 @@ var tasksNoteAddCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.TaskNote)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Note added to task %s (id: %s)\n", args[0], res.Msg.TaskNote.Id)
 		}
@@ -59,8 +59,9 @@ var tasksNotesCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.TaskNotes)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Notes on task %s:\n", args[0])
 			for _, n := range res.Msg.TaskNotes {
@@ -102,8 +103,9 @@ var tasksNoteUpdateCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.TaskNote)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Note %s updated\n", res.Msg.TaskNote.Id)
 		}
@@ -127,8 +129,9 @@ var tasksNoteDeleteCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(map[string]any{"success": true, "task_note_id": args[0]})
-			cmd.Println(string(jsonString))
+			if err := printJSONValue(cmd, map[string]any{"success": true, "task_noteId": args[0]}); err != nil {
+				return err
+			}
 		} else {
 			cmd.Printf("Note %s deleted\n", args[0])
 		}
@@ -165,8 +168,9 @@ var tasksHandoffsCmd = &cobra.Command{
 		}
 
 		if isJson {
-			jsonString, _ := json.Marshal(res.Msg.Entries)
-			cmd.Println(string(jsonString))
+			if err := printJSON(cmd, res.Msg); err != nil {
+				return err
+			}
 		} else {
 			if len(res.Msg.Entries) == 0 {
 				cmd.Println("No tasks currently have a pending handoff note.")
