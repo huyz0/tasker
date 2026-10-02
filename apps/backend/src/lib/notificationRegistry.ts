@@ -134,6 +134,28 @@ registerNotificationType('task.input_requested', (p: InputRequestedPayload) => (
   projectId: p.projectId,
 }));
 
+export interface ApprovalRequestedPayload {
+  orgId: string;
+  projectId: string;
+  taskId: string;
+  approvalId: string;
+  taskDisplayId?: string;
+  fromStatus: string;
+  toStatus: string;
+  requestedByName: string;
+}
+
+// M39 (ADR-0032): an agent's move crossed a transition that needs a person's
+// yes. Same recipients as an input request.
+registerNotificationType('task.approval_requested', (p: ApprovalRequestedPayload) => ({
+  title: `${p.requestedByName} asks to move ${p.taskDisplayId ?? p.taskId} to ${p.toStatus}`,
+  body: `From "${p.fromStatus}" to "${p.toStatus}" - approve or reject it on the task.`,
+  targetPath: scoped(`/tasks/${p.taskId}`, p.orgId, p.projectId),
+  dedupeKey: p.approvalId,
+  orgId: p.orgId,
+  projectId: p.projectId,
+}));
+
 // ── The write path ─────────────────────────────────────────────────────────
 
 /**

@@ -41,6 +41,7 @@ tasker webhooks create --org "$ORG" \
 | `task.stalled` | A claim went silent (the stalled-claim detector) |
 | `task.plan_updated` | The working agent replaced its plan for the task |
 | `task.input_requested`, `task.input_answered`, `task.input_cancelled` | An agent asked a person a question on the task; a person answered it; it was withdrawn |
+| `task.approval_requested`, `task.approval_decided` | An agent's move crossed a transition that needs approval and is held; a person approved (the move is applied) or rejected it (`approved`, `reason`) |
 | `tasknote.created`, `tasknote.updated`, `tasknote.deleted` | An agent note or handoff changed |
 | `ping` | Sent by `webhooks ping`, to every webhook |
 

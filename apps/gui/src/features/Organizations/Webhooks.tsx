@@ -18,7 +18,7 @@ const EVENT_GROUPS: { value: string; label: string }[] = [
 ];
 const EVENT_TYPES = [
   'task.created', 'task.updated', 'task.status_updated', 'task.claimed', 'task.released', 'task.unblocked',
-  'task.linked', 'task.unlinked', 'task.plan_updated', 'task.input_requested', 'task.input_answered', 'task.input_cancelled', 'task.deleted', 'task.restored', 'task.purged', 'task.stalled',
+  'task.linked', 'task.unlinked', 'task.plan_updated', 'task.input_requested', 'task.input_answered', 'task.input_cancelled', 'task.approval_requested', 'task.approval_decided', 'task.deleted', 'task.restored', 'task.purged', 'task.stalled',
   'tasknote.created', 'tasknote.updated', 'tasknote.deleted',
 ];
 

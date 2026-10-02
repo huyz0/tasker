@@ -44,7 +44,7 @@ const READS: Record<string, string[]> = {
   projects: ['getProject', 'listProjects'],
   projectTemplates: ['getTemplate', 'listTemplates'],
   tasks: ['getTaskType', 'listTaskTypes'],
-  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks', 'listTaskLinks', 'getInputRequest', 'listInputRequests'],
+  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks', 'listTaskLinks', 'getInputRequest', 'listInputRequests', 'getTransitionApproval', 'listTransitionApprovals'],
   // Read-only supervision console; a viewer may look at it.
   dashboard: ['getDashboard'],
   // Same read-only reasoning as dashboard. getReportTrends is M24-T06's
@@ -102,6 +102,7 @@ const ids = {
   repoLink: 'repo-viewer-sweep',
   webhook: 'wh-viewer-sweep',
   inputRequest: 'ir-viewer-sweep',
+  approval: 'apr-viewer-sweep',
   invitation: 'inv-viewer-sweep',
   apiToken: 'tok-viewer-sweep',
   team: 'team-viewer-sweep',
@@ -150,6 +151,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     createTaskStatus: { taskTypeId: ids.taskType, name: 'open' },
     createTaskStatusTransition: { taskTypeId: ids.taskType, fromStatusId: ids.taskStatus, toStatusId: ids.taskStatus },
     deleteTaskStatusTransition: { transitionId: 'tstr-viewer-sweep', taskTypeId: ids.taskType },
+    setTransitionApproval: { taskTypeId: ids.taskType, transitionId: 'tstr-viewer-sweep', requiresApproval: true },
     reorderTaskStatuses: { taskTypeId: ids.taskType, statusIds: [ids.taskStatus] },
   },
   taskManagement: {
@@ -165,6 +167,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     requestInput: { taskId: ids.task, question: 'Which?' },
     answerInputRequest: { id: ids.inputRequest, answer: 'A' },
     cancelInputRequest: { id: ids.inputRequest },
+    decideTransitionApproval: { id: ids.approval, approve: true },
     addTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     removeTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     updateTask: { taskId: ids.task, title: 'T2' },
@@ -314,6 +317,10 @@ beforeAll(async () => {
   });
   await db.insert(schema.inputRequests).values({
     id: ids.inputRequest, taskId: ids.task, orgId: ids.org, projectId: ids.project, question: 'Which?', options: '[]', createdAt: now,
+  });
+  await db.insert(schema.transitionApprovals).values({
+    id: ids.approval, taskId: ids.task, orgId: ids.org, projectId: ids.project, fromStatus: 'todo', toStatus: 'done',
+    status: 'pending', requestedByAgentId: ids.agent, createdAt: now,
   });
   await db.insert(schema.webhooks).values({
     id: ids.webhook, orgId: ids.org, url: 'https://hooks.example.com/x', secretEncrypted: 'x', events: '["*"]', createdAt: now,

@@ -11,7 +11,8 @@ import { withIdempotency } from "../../lib/idempotency";
 import { getLatestHandoffNote, recordTaskNote } from "./task_notes.handler";
 import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal, terminalStatusSql } from "./taskActivity";
 import { purgeTaskCascade } from "../../lib/cascadePurge";
-import { createInputRequestHandlers, openInputRequestCounts } from "./inputRequests";
+import { createInputRequestHandlers, waitingOnPeopleCounts } from "./inputRequests";
+import { createApprovalHandlers, isGatedTransition } from "./approvals";
 import { MAX_PRIORITY, priorityRankSql, LINK_KINDS, assertLinkAllowed, openBlockerCounts, hasOpenBlockerSql, newlyUnblocked, assertParentAllowed, insertLink, deleteLink, listLinks } from "./taskGraph";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -235,6 +236,12 @@ const KNOWN_STATUSES = ["todo", "in-progress", "done"] as const;
 const UpdateTaskStatusSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   status: z.string().min(1, "status is required").max(256),
+});
+
+const SetTransitionApprovalSchema = z.object({
+  taskTypeId: z.string().min(1, "taskTypeId is required"),
+  transitionId: z.string().min(1, "transitionId is required"),
+  requiresApproval: z.boolean({ message: "requiresApproval is required" }),
 });
 
 const DeleteTaskStatusTransitionSchema = z.object({
@@ -566,6 +573,24 @@ export const createTasksHandler = (db: any, nc: any = null) => {
       publishDomainEvent(nc, "domain.task_status_transition.deleted", { id: parsed.transitionId });
       return { success: true };
     },
+    /** M39 (ADR-0032): flag an edge so an agent's move across it waits for a person. */
+    async setTransitionApproval(req: unknown, { values: contextValues }: { values: any }) {
+      const userId = requireUser(contextValues);
+      const parsed = SetTransitionApprovalSchema.parse(req);
+      const types = isStandalone ? schemaSqlite.taskTypes : schemaMysql.taskTypes;
+      const typeRows = await db.select().from(types).where(eq((types as any).id, parsed.taskTypeId)).limit(1);
+      if (!typeRows.length) throw new ConnectError("task type not found", Code.NotFound);
+      await assertCan(db, { kind: "user", userId }, { type: "organization", id: typeRows[0].orgId }, "tasktype:write");
+
+      const transitions = isStandalone ? schemaSqlite.taskStatusTransitions : schemaMysql.taskStatusTransitions;
+      const edge = and(eq((transitions as any).id, parsed.transitionId), eq((transitions as any).taskTypeId, parsed.taskTypeId));
+      const [row] = await db.select().from(transitions).where(edge).limit(1);
+      if (!row) throw new ConnectError("transition not found", Code.NotFound);
+      await db.update(transitions).set({ requiresApproval: parsed.requiresApproval }).where(edge);
+      const transition = { ...row, requiresApproval: parsed.requiresApproval };
+      publishDomainEvent(nc, "domain.task_status_transition.updated", transition);
+      return { transition };
+    },
     async reorderTaskStatuses(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = ReorderTaskStatusesSchema.parse(req);
@@ -784,9 +809,61 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
   }
   const taskTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
 
+  /**
+   * The one status write (M14-T02's compare-and-swap, M24's activity row, the
+   * event and M35's unblock announcement). Shared by UpdateTaskStatus and by a
+   * person approving an agent's gated move (M39), so both are the same change.
+   * Throws Aborted when the task moved since `currentTask` was read.
+   */
+  async function applyStatusChange(currentTask: any, newStatus: string, principal: Principal) {
+    // Compare-and-swap on the status just read, not an unconditional
+    // write: two callers can both read the same stale status, both pass
+    // validation against it, and without this WHERE clause both writes
+    // would "succeed" - whichever commits last wins with no error to
+    // either caller, and the loser's own response (the re-select below)
+    // would silently report the *winner's* status as if it were its own
+    // (M14-T02). If the status has genuinely not moved since the read
+    // above, this matches exactly one row, same as before.
+    const updateResult = await db.update(taskTable)
+      .set({ status: newStatus })
+      .where(and(eq((taskTable as any).id, currentTask.id), eq((taskTable as any).status, currentTask.status)));
+    const affected = isStandalone ? (updateResult as any).changes : (updateResult as any)[0]?.affectedRows;
+    if (!affected) {
+      throw new ConnectError("task status changed concurrently - refetch and retry", Code.Aborted);
+    }
+    const [task] = await db.select().from(taskTable).where(eq((taskTable as any).id, currentTask.id)).limit(1);
+
+    // M24-T04 (ADR-0020): after the CAS `affected` check - the single
+    // status choke point. fromStatus is the CAS-verified previous status
+    // (the WHERE clause proved it was still current when the write won),
+    // terminality is stamped from the type's status positions at write
+    // time, and the assignee is whoever holds the task as the status moves
+    // - a status change does not touch the assignment.
+    await recordTaskActivity(db, isStandalone, {
+      taskId: currentTask.id,
+      projectId: currentTask.projectId,
+      kind: "status_changed",
+      fromStatus: currentTask.status,
+      toStatus: newStatus,
+      fromIsTerminal: await isTerminalStatus(db, isStandalone, currentTask.taskTypeId || null, currentTask.status),
+      toIsTerminal: await isTerminalStatus(db, isStandalone, currentTask.taskTypeId || null, newStatus),
+      ...actorFromPrincipal(principal),
+      ...(await currentAssignee(db, isStandalone, currentTask.id)),
+    });
+
+    publishDomainEvent(nc, "domain.task.status_updated", task);
+    await announceUnblocked(currentTask.id);
+    return task;
+  }
+  const approvals = createApprovalHandlers(db, nc, isStandalone, applyStatusChange);
+
   return {
     // M38 (ADR-0031): questions an agent asks a person, on this same service.
     ...createInputRequestHandlers(db, nc, isStandalone),
+    // M39 (ADR-0032): agents' gated moves, decided by people.
+    decideTransitionApproval: approvals.decideTransitionApproval,
+    getTransitionApproval: approvals.getTransitionApproval,
+    listTransitionApprovals: approvals.listTransitionApprovals,
     async createTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = CreateTaskSchema.parse(req);
@@ -943,7 +1020,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         task: toWireTask(t, {
           assignees: assignees.get(t.id) ?? [],
           blockedByOpenCount: await openBlockerCount(t.id),
-          openInputRequestCount: (await openInputRequestCounts(db, isStandalone, [t.id])).get(t.id) ?? 0,
+          ...(await waitingOnPeopleCounts(db, isStandalone, [t.id])).get(t.id),
         }),
         ...(latestHandoffNote ? { latestHandoffNote } : {}),
       };
@@ -1026,10 +1103,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       const assignees = await assigneesByTask(items.map((t: any) => t.id));
       const blockers = await openBlockerCounts(db, isStandalone, items.map((t: any) => t.id));
-      const questions = await openInputRequestCounts(db, isStandalone, items.map((t: any) => t.id));
+      const waiting = await waitingOnPeopleCounts(db, isStandalone, items.map((t: any) => t.id));
 
       return {
-        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: blockers.get(t.id) ?? 0, openInputRequestCount: questions.get(t.id) ?? 0 })),
+        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: blockers.get(t.id) ?? 0, ...waiting.get(t.id) })),
         page: { nextCursor, totalCount },
       };
     },
@@ -1065,9 +1142,9 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       });
       const assignees = await assigneesByTask(items.map((t: any) => t.id));
       const blockers = await openBlockerCounts(db, isStandalone, items.map((t: any) => t.id));
-      const questions = await openInputRequestCounts(db, isStandalone, items.map((t: any) => t.id));
+      const waiting = await waitingOnPeopleCounts(db, isStandalone, items.map((t: any) => t.id));
       return {
-        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: blockers.get(t.id) ?? 0, openInputRequestCount: questions.get(t.id) ?? 0 })),
+        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: blockers.get(t.id) ?? 0, ...waiting.get(t.id) })),
         page: { nextCursor, totalCount },
       };
     },
@@ -1515,49 +1592,15 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       await validateStatusForTaskType(db, isStandalone, currentTask.taskTypeId || null, currentTask.status, parsed.status);
 
-      // Compare-and-swap on the status just read, not an unconditional
-      // write: two callers can both read the same stale status, both pass
-      // validation against it, and without this WHERE clause both writes
-      // would "succeed" - whichever commits last wins with no error to
-      // either caller, and the loser's own response (the re-select below)
-      // would silently report the *winner's* status as if it were its own
-      // (M14-T02). If the status has genuinely not moved since the read
-      // above, this matches exactly one row, same as before.
-      const updateResult = await db.update(tasks)
-        .set({ status: parsed.status })
-        .where(and(eq((tasks as any).id, parsed.taskId), eq((tasks as any).status, currentTask.status)));
-      const affected = isStandalone ? (updateResult as any).changes : (updateResult as any)[0]?.affectedRows;
-      if (!affected) {
-        throw new ConnectError(
-          "task status changed concurrently - refetch and retry",
-          Code.Aborted,
-        );
+      // M39 (ADR-0032): an agent's move across a gated edge waits for a
+      // person - nothing changes, and the response carries the approval.
+      if (principal.kind === "agent" && currentTask.taskTypeId &&
+        await isGatedTransition(db, isStandalone, currentTask.taskTypeId, currentTask.status, parsed.status)) {
+        const pendingApproval = await approvals.requestApproval(currentTask, orgId, parsed.status, principal.agentId);
+        return { task: toWireTask(currentTask), pendingApproval };
       }
 
-      const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
-      const task = result[0];
-
-      // M24-T04 (ADR-0020): after the CAS `affected` check - the single
-      // status choke point. fromStatus is the CAS-verified previous status
-      // (the WHERE clause proved it was still current when the write won),
-      // terminality is stamped from the type's status positions at write
-      // time, and the assignee is whoever holds the task as the status moves
-      // - a status change does not touch the assignment.
-      await recordTaskActivity(db, isStandalone, {
-        taskId: parsed.taskId,
-        projectId: currentTask.projectId,
-        kind: "status_changed",
-        fromStatus: currentTask.status,
-        toStatus: parsed.status,
-        fromIsTerminal: await isTerminalStatus(db, isStandalone, currentTask.taskTypeId || null, currentTask.status),
-        toIsTerminal: await isTerminalStatus(db, isStandalone, currentTask.taskTypeId || null, parsed.status),
-        ...actorFromPrincipal(principal),
-        ...(await currentAssignee(db, isStandalone, parsed.taskId)),
-      });
-
-      publishDomainEvent(nc, "domain.task.status_updated", task);
-      await announceUnblocked(parsed.taskId);
-      return { task: toWireTask(task) };
+      return { task: toWireTask(await applyStatusChange(currentTask, parsed.status, principal)) };
     },
     async deleteTask(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);

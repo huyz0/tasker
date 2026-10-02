@@ -19,3 +19,24 @@
   `TransitionApproval`, Decide/Get/ListTransitionApprovals,
   `Task.pendingApprovalCount`. Existing transitions migrate ungated.
 - **Next**: M39-T02
+
+## M39-T02 — Gated `UpdateTaskStatus`, decide/list RPCs, notifications, events
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `src/modules/tasks/approvals.ts` (new), `tasks.handler.ts`
+  (`applyStatusChange` extracted, gate check, `SetTransitionApproval`),
+  `inputRequests.ts` (`waitingOnPeopleCounts`), `lib/notificationRegistry.ts`,
+  `lib/scopes.ts`, `lib/cascadePurge.ts`, `modules/webhooks/events.ts`, the two
+  gate sweeps, GUI webhook event list, `docs/webhooks.md`;
+  `src/modules/tasks/approvals.test.ts` (12 tests).
+- **Verified**: backend `bun test` 1984 pass; `backend:typecheck`, `:knip` green.
+- **Notes**: The status change itself (CAS, activity, event, unblocked) is now
+  one factory-level function, so approving applies exactly what a direct move
+  does, attributed to the approver. Decisions are claimed with a conditional
+  update before the move is applied, so two approvers cannot both apply it; a
+  task that moved meanwhile turns the claim into `stale`. Open questions and
+  pending approvals are counted for a page in one `UNION ALL` query, keeping
+  the list query count where it was. Agents may read approvals
+  (`tasks:read`); deciding and flagging edges are human-only.
+- **Next**: M39-T03

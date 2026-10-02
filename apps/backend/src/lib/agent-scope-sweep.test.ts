@@ -181,6 +181,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     createTaskStatus: { taskTypeId: ids.taskType, name: 'S' },
     createTaskStatusTransition: { taskTypeId: ids.taskType, fromStatusId: ids.taskStatus, toStatusId: ids.taskStatus },
     deleteTaskStatusTransition: { transitionId: 'tstr-scope-sweep', taskTypeId: ids.taskType },
+    setTransitionApproval: { taskTypeId: ids.taskType, transitionId: 'tstr-scope-sweep', requiresApproval: true },
     reorderTaskStatuses: { taskTypeId: ids.taskType, statusIds: [ids.taskStatus] },
   },
   taskManagement: {
@@ -201,6 +202,9 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     cancelInputRequest: { id: 'ir-scope-sweep' },
     getInputRequest: { id: 'ir-scope-sweep' },
     listInputRequests: { taskId: ids.task },
+    decideTransitionApproval: { id: 'apr-scope-sweep', approve: false },
+    getTransitionApproval: { id: 'apr-scope-sweep' },
+    listTransitionApprovals: { taskId: ids.task },
     addTaskReviewer: { taskId: ids.task, userId: ids.user },
     removeTaskReviewer: { taskId: ids.task, userId: ids.user },
     listTaskReviewers: { taskId: ids.task },
@@ -325,6 +329,7 @@ beforeAll(async () => {
   await db.insert(schema.taskStatuses).values({ id: ids.taskStatus, taskTypeId: ids.taskType, name: 'todo' });
   await db.insert(schema.tasks).values({ id: ids.task, projectId: ids.project, title: 'T', status: 'todo', createdAt: now });
   await db.insert(schema.inputRequests).values({ id: 'ir-scope-sweep', taskId: ids.task, orgId: ids.org, projectId: ids.project, question: 'Which?', options: '[]', createdAt: now });
+  await db.insert(schema.transitionApprovals).values({ id: 'apr-scope-sweep', taskId: ids.task, orgId: ids.org, projectId: ids.project, fromStatus: 'todo', toStatus: 'done', status: 'pending', requestedByAgentId: ids.agent, createdAt: now });
   await db.insert(schema.folders).values({ id: ids.folder, projectId: ids.project, name: 'F', createdAt: now });
   await db.insert(schema.artifacts).values({ id: ids.artifact, folderId: ids.folder, name: 'A', createdAt: now });
   await db.insert(schema.comments).values({ id: ids.comment, entityId: ids.task, entityType: 'task', agentId: ids.agent, content: 'c', createdAt: now });

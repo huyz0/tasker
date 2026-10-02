@@ -110,6 +110,10 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     cancelInputRequest: 'tasks:write',
     getInputRequest: 'tasks:read',
     listInputRequests: 'tasks:read',
+    // M39 (ADR-0032): an agent may follow its own pending approval; deciding
+    // one (decideTransitionApproval) is human-only, like answering a question.
+    getTransitionApproval: 'tasks:read',
+    listTransitionApprovals: 'tasks:read',
     // assignTask and unassignTask are deliberately absent. Deciding which
     // worker picks up a piece of work is an orchestration decision, and a token
     // that can reassign work to itself is a token that can help itself to any

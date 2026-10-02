@@ -194,14 +194,32 @@ export function createInputRequestHandlers(db: any, nc: any, isStandalone: boole
   };
 }
 
-/** Open questions per task, for a page of tasks, in one grouped query. */
-export async function openInputRequestCounts(db: any, isStandalone: boolean, taskIds: string[]): Promise<Map<string, number>> {
-  const out = new Map<string, number>();
-  if (taskIds.length === 0) return out;
-  const requests = (isStandalone ? schemaSqlite.inputRequests : schemaMysql.inputRequests) as any;
-  const rows = await db.select({ taskId: requests.taskId, n: sql`count(*)` }).from(requests)
-    .where(and(inArray(requests.taskId, taskIds), eq(requests.status, "open"))).groupBy(requests.taskId);
-  for (const r of rows) out.set(r.taskId, Number(r.n));
-  return out;
+export interface WaitingCounts {
+  openInputRequestCount: number;
+  pendingApprovalCount: number;
 }
 
+/**
+ * What each task in a page is waiting on people for - open questions (M38)
+ * and pending approvals (M39) - in one query for the page, whatever its size.
+ */
+export async function waitingOnPeopleCounts(db: any, isStandalone: boolean, taskIds: string[]): Promise<Map<string, WaitingCounts>> {
+  const out = new Map<string, WaitingCounts>(taskIds.map((id) => [id, { openInputRequestCount: 0, pendingApprovalCount: 0 }]));
+  if (taskIds.length === 0) return out;
+  const S = isStandalone ? schemaSqlite : schemaMysql;
+  const q = S.inputRequests as any;
+  const a = S.transitionApprovals as any;
+  const ids = sql.join(taskIds.map((id) => sql`${id}`), sql`, `);
+  const query = sql`
+    SELECT ${q.taskId} AS task_id, 'q' AS kind, count(*) AS n FROM ${q} WHERE ${q.taskId} IN (${ids}) AND ${q.status} = 'open' GROUP BY ${q.taskId}
+    UNION ALL
+    SELECT ${a.taskId} AS task_id, 'a' AS kind, count(*) AS n FROM ${a} WHERE ${a.taskId} IN (${ids}) AND ${a.status} = 'pending' GROUP BY ${a.taskId}`;
+  const rows: any[] = isStandalone ? await db.all(query) : (await db.execute(query))[0];
+  for (const r of rows) {
+    const entry = out.get(r.task_id);
+    if (!entry) continue;
+    if (r.kind === "q") entry.openInputRequestCount = Number(r.n);
+    else entry.pendingApprovalCount = Number(r.n);
+  }
+  return out;
+}
