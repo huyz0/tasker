@@ -57,3 +57,21 @@
   leaves the next slot alone. The sweep is exported separately from the RPC
   handlers so it is not mistaken for an endpoint by the scope sweep.
 - **Next**: M43-T04
+
+## M43-T04 — CLI and MCP
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/schedules.go` (new: `schedules
+  list|get|create|update|delete|run|runs`), `internal/backend/clients.go`,
+  `cmd/schedules_test.go`; `docs/cli-reference.md` regenerated; MCP
+  `list_schedules`, `run_schedule` (e2e case), `docs/mcp.md`.
+- **Verified**: `go test ./...` green (incl. the output contract: every
+  `--cursor` command offers `--page-all`); backend MCP tests 19 pass;
+  `cli:docs-check`, `backend:typecheck`, `:knip` green; local Storybook
+  (144 stories) a11y and overflow green.
+- **Notes**: `--weekdays mon,thu` implies weekly and `--day 15` monthly, so
+  the common case is one flag; `update` fetches the schedule and keeps what
+  it was not given, with `--pause`/`--resume`. No MCP tool defines a
+  schedule; agents list and run them.
+- **Next**: M43-T05

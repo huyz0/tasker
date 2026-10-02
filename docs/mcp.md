@@ -85,6 +85,7 @@ the same endpoint, using `TASKER_TOKEN` (or a saved `tasker auth login`) and
 | `list_compaction_candidates` | A project's finished tasks with no summary, oldest first | `ListCompactionCandidates` |
 | `list_workflow_templates` / `get_workflow_template` | Repeatable multi-step workflows and their step graphs | `ListWorkflowTemplates` / `GetWorkflowTemplate` |
 | `start_workflow` | Create a workflow's parent task and its wired steps in a project | `InstantiateWorkflow` |
+| `list_schedules` / `run_schedule` | Recurring work: when each schedule fires next; fire one now as you | `ListSchedules` / `RunSchedule` |
 | `get_task_type` | A type's statuses and legal transitions | `GetTaskType` |
 | `search_memory` | Search shared beliefs | `SearchBeliefs` |
 | `record_belief` | Record a durable fact | `RecordBelief` |

@@ -1518,6 +1518,142 @@ Flags:
       --project string   Only this project
 ```
 
+### `tasker schedules`
+
+```
+Recurring work: a task or workflow created on a cadence (UTC)
+
+Usage:
+  tasker schedules [command]
+
+Available Commands:
+  create      Create a schedule (people only): --task or --workflow, with --cadence/--weekdays/--day and --hour (UTC)
+  delete      Delete a schedule and its run history (tasks it created stay)
+  get         One schedule: what it creates, when, and how its last run went
+  list        Schedules of the organization, or one project
+  run         Fire a schedule now, as you; its regular next run is unchanged
+  runs        A schedule's run history, newest first
+  update      Change a schedule; flags not given keep their value (--pause / --resume to stop and start it)
+
+Flags:
+  -h, --help   help for schedules
+```
+
+#### `tasker schedules create`
+
+```
+Create a schedule (people only): --task or --workflow, with --cadence/--weekdays/--day and --hour (UTC)
+
+Usage:
+  tasker schedules create [flags]
+
+Flags:
+      --allow-overlap        Run even while the previous run's task is unfinished
+      --cadence string       daily, weekly or monthly (implied by --weekdays / --day) (default "daily")
+      --day int32            Monthly: day of the month, 1-28 (default 1)
+      --description string   The task's description (with --task)
+  -h, --help                 help for create
+      --hour int32           Hour of the day, 0-23, in UTC (default 9)
+      --name string          Schedule name
+      --priority string      The task's priority: urgent, high, medium, low or none
+      --project string       Project (or set TASKER_PROJECT_ID)
+      --task string          Create one task with this title each time
+      --weekdays string      Weekly: days such as mon,thu
+      --workflow string      Start this workflow template each time instead
+```
+
+#### `tasker schedules delete`
+
+```
+Delete a schedule and its run history (tasks it created stay)
+
+Usage:
+  tasker schedules delete [schedule_id] [flags]
+
+Flags:
+  -h, --help   help for delete
+```
+
+#### `tasker schedules get`
+
+```
+One schedule: what it creates, when, and how its last run went
+
+Usage:
+  tasker schedules get [schedule_id] [flags]
+
+Flags:
+  -h, --help   help for get
+```
+
+#### `tasker schedules list`
+
+```
+Schedules of the organization, or one project
+
+Usage:
+  tasker schedules list [flags]
+
+Flags:
+  -c, --cursor string    Pagination cursor to fetch the next set
+  -h, --help             help for list
+  -l, --limit int32      Maximum number of items to return (default 50)
+      --org string       Organization (or set TASKER_ORG_ID; an agent's is implied)
+      --page-all         Fetch every page, printing one JSON object per item per line (NDJSON)
+      --project string   Only this project's schedules
+```
+
+#### `tasker schedules run`
+
+```
+Fire a schedule now, as you; its regular next run is unchanged
+
+Usage:
+  tasker schedules run [schedule_id] [flags]
+
+Flags:
+  -h, --help   help for run
+```
+
+#### `tasker schedules runs`
+
+```
+A schedule's run history, newest first
+
+Usage:
+  tasker schedules runs [schedule_id] [flags]
+
+Flags:
+  -c, --cursor string   Pagination cursor to fetch the next set
+  -h, --help            help for runs
+  -l, --limit int32     Maximum number of items to return (default 50)
+      --page-all        Fetch every page, printing one JSON object per item per line (NDJSON)
+```
+
+#### `tasker schedules update`
+
+```
+Change a schedule; flags not given keep their value (--pause / --resume to stop and start it)
+
+Usage:
+  tasker schedules update [schedule_id] [flags]
+
+Flags:
+      --allow-overlap        Run even while the previous run's task is unfinished
+      --cadence string       daily, weekly or monthly (implied by --weekdays / --day) (default "daily")
+      --day int32            Monthly: day of the month, 1-28 (default 1)
+      --description string   The task's description (with --task)
+  -h, --help                 help for update
+      --hour int32           Hour of the day, 0-23, in UTC (default 9)
+      --name string          Schedule name
+      --pause                Stop firing until resumed
+      --priority string      The task's priority: urgent, high, medium, low or none
+      --resume               Start firing again
+      --task string          Create one task with this title each time
+      --weekdays string      Weekly: days such as mon,thu
+      --workflow string      Start this workflow template each time instead
+```
+
 ### `tasker search`
 
 ```

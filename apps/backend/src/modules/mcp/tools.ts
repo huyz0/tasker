@@ -7,7 +7,7 @@
  * tool can never do more than the token could do directly.
  */
 import {
-  AuthService, ProjectService, TaskService, TaskTypeService, TaskNoteService, CommentService, MemoryService, WorkflowService,
+  AuthService, ProjectService, TaskService, TaskTypeService, TaskNoteService, CommentService, MemoryService, WorkflowService, ScheduleService,
 } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { InvalidToolArguments, type ToolHost, type Tool, type ToolResult } from "./protocol";
 
@@ -369,6 +369,19 @@ export const TOOL_SPECS: ToolSpec[] = [
     }, ["template_id", "project_id"]),
     service: WorkflowService, method: "InstantiateWorkflow",
     request: (a) => defined({ templateId: a.template_id, projectId: a.project_id, title: a.title, idempotencyKey: a.idempotency_key }),
+  },
+  {
+    name: "list_schedules", title: "List schedules",
+    description: "Recurring work in your organization or one project: when each schedule fires next and how its last run went.",
+    inputSchema: schema({ project_id: str("Only this project's schedules"), limit, cursor }), annotations: readOnly,
+    service: ScheduleService, method: "ListSchedules", request: (a) => defined({ projectId: a.project_id, ...page(a) }),
+  },
+  {
+    name: "run_schedule", title: "Run a schedule now",
+    description: "Fires a schedule immediately, as you, creating its task or workflow now; its regular next run is unchanged. " +
+      "Skipped (and says why) while the previous run's task is still open, if the schedule asks for that.",
+    inputSchema: schema({ schedule_id: str("Schedule id") }, ["schedule_id"]),
+    service: ScheduleService, method: "RunSchedule", request: (a) => ({ id: a.schedule_id }),
   },
   {
     name: "get_task_type", title: "Get a task type",
