@@ -28,8 +28,9 @@ func optionalString(cmd *cobra.Command, name string) *string {
 
 var tasksClaimNextCmd = &cobra.Command{
 	Use:   "claim-next",
-	Short: "Claim the oldest open, unassigned task in a project (agent self-service)",
-	Long: "Claims the oldest open, unassigned task in the project for the calling principal, in one\n" +
+	Short: "Claim the most important ready task in a project (agent self-service)",
+	Long: "Claims the highest-priority ready task - open, unassigned, nothing unfinished blocking it,\n" +
+		"oldest within its priority - for the calling principal, in one\n" +
 		"call - no list-then-claim race. With nothing to claim it prints nothing and exits 0; with\n" +
 		"--json it prints an object with no \"task\". A prior handoff note on the task is shown.",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -44,6 +45,7 @@ var tasksClaimNextCmd = &cobra.Command{
 			ProjectId:      projectID,
 			TaskTypeId:     optionalString(cmd, "type"),
 			IdempotencyKey: optionalString(cmd, "idempotency-key"),
+			LabelId:        optionalString(cmd, "label"),
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to claim the next task: %w", err)
@@ -147,6 +149,7 @@ func init() {
 
 	tasksClaimNextCmd.Flags().StringP("project", "p", "", "Project to take work from (or set TASKER_PROJECT_ID)")
 	tasksClaimNextCmd.Flags().String("type", "", "Only tasks of this task type ID")
+	tasksClaimNextCmd.Flags().String("label", "", "Only tasks carrying this label ID")
 	tasksClaimNextCmd.Flags().String("idempotency-key", "", "Optional key: a retry with the same key returns the original claim instead of claiming another task")
 
 	tasksReleaseCmd.Flags().String("handoff", "", "A handoff note to record before releasing: what you tried, what is blocked, the next step")

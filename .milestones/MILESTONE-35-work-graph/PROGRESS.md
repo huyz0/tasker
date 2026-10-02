@@ -83,3 +83,21 @@
   renders as the bare alias ("no such table: blocker"); SQLite's suite caught
   it, and `taskGraph.sql.test.ts` now pins the MySQL text, which CI cannot run.
 - **Next**: M35-T05
+
+## M35-T05 — CLI
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/{tasks.go,tasks_queue.go,tasks_graph.go}`
+  (+ `tasks_graph_test.go`), `docs/cli-reference.md`
+- **Verified**: `go test ./cmd/` green; `moon run cli:format cli:vet
+  cli:docs-check cli:coverage-gate` green, coverage 94.6%.
+- **Notes**: `tasks create --priority --parent --blocked-by --discovered-from`,
+  `tasks update --priority --parent` (`--parent ""` clears; unset sends
+  nothing), `tasks list --ready --priority --label --parent` and `--sort
+  priority`, `tasks claim-next --label`, and `tasks link add|remove|list`
+  (`--kind blocked-by|discovered-from`). Priorities are names or 0-4; a bad
+  one exits 6 before any request, through a new `invalidArgf` so client-side
+  argument errors share the server's exit code. Lists show `{urgent, blocked
+  by 2}` only when there is something to say.
+- **Next**: M35-T06

@@ -29,6 +29,10 @@ var tasksListCmd = &cobra.Command{
 		onlyDeleted, _ := cmd.Flags().GetBool("only-deleted")
 		status, _ := cmd.Flags().GetString("status")
 		assigneeFilter, _ := cmd.Flags().GetString("assignee-filter")
+		priority, err := optionalPriority(cmd)
+		if err != nil {
+			return err
+		}
 		if projectID == "" {
 			projectID = backend.DefaultProjectID()
 		}
@@ -44,6 +48,10 @@ var tasksListCmd = &cobra.Command{
 			OnlyDeleted:    onlyDeleted,
 			Status:         status,
 			AssigneeFilter: assigneeFilter,
+			Priority:       priority,
+			Ready:          optionalBool(cmd, "ready"),
+			LabelId:        optionalString(cmd, "label"),
+			ParentTaskId:   optionalString(cmd, "parent"),
 		})
 
 		listReq := req
@@ -68,7 +76,7 @@ var tasksListCmd = &cobra.Command{
 		} else {
 			cmd.Println("Tasks Workbench:")
 			for _, task := range res.Msg.Tasks {
-				cmd.Printf("- %s [%s]: %s (id: %s)\n", task.DisplayId, task.Status, task.Title, task.Id)
+				cmd.Printf("- %s\n", taskLine(task))
 			}
 		}
 		printNextPageHint(cmd, res.Msg)
@@ -101,7 +109,10 @@ var tasksGetCmd = &cobra.Command{
 				return err
 			}
 		} else {
-			cmd.Printf("%s [%s]: %s (id: %s)\n", res.Msg.Task.DisplayId, res.Msg.Task.Status, res.Msg.Task.Title, res.Msg.Task.Id)
+			cmd.Println(taskLine(res.Msg.Task))
+			if p := res.Msg.Task.GetParentTaskId(); p != "" {
+				cmd.Printf("Parent: %s\n", p)
+			}
 			if res.Msg.Task.Description != "" {
 				cmd.Printf("\n%s\n", res.Msg.Task.Description)
 			}
@@ -115,7 +126,7 @@ var tasksGetCmd = &cobra.Command{
 
 var tasksUpdateCmd = &cobra.Command{
 	Use:   "update [task_id]",
-	Short: "Update a task's title, description, or task type",
+	Short: "Update a task's title, description, type, priority or parent",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
@@ -137,6 +148,12 @@ var tasksUpdateCmd = &cobra.Command{
 			taskType, _ := cmd.Flags().GetString("task-type")
 			req.TaskTypeId = &taskType
 		}
+		priority, err := optionalPriority(cmd)
+		if err != nil {
+			return err
+		}
+		req.Priority = priority
+		req.ParentTaskId = optionalString(cmd, "parent")
 
 		client := backend.NewTaskServiceClient()
 		res, err := client.UpdateTask(context.Background(), connect.NewRequest(req))
@@ -172,15 +189,24 @@ var tasksCreateCmd = &cobra.Command{
 		if title == "" || projectID == "" {
 			return fmt.Errorf("--project and --title flags are required")
 		}
+		priority, err := optionalPriority(cmd)
+		if err != nil {
+			return err
+		}
+		blockedBy, _ := cmd.Flags().GetStringSlice("blocked-by")
 
 		client := backend.NewTaskServiceClient()
 		res, err := client.CreateTask(context.Background(), connect.NewRequest(&healthv1.CreateTaskRequest{
-			ProjectId:      projectID,
-			Title:          title,
-			Status:         status,
-			Description:    description,
-			TaskTypeId:     taskTypeID,
-			IdempotencyKey: idempotencyKey,
+			ProjectId:            projectID,
+			Title:                title,
+			Status:               status,
+			Description:          description,
+			TaskTypeId:           taskTypeID,
+			IdempotencyKey:       idempotencyKey,
+			Priority:             priority,
+			ParentTaskId:         optionalString(cmd, "parent"),
+			BlockedBy:            blockedBy,
+			DiscoveredFromTaskId: optionalString(cmd, "discovered-from"),
 		}))
 		if err != nil {
 			return fmt.Errorf("failed to create task: %w", err)
@@ -538,6 +564,10 @@ func init() {
 	tasksCreateCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	tasksCreateCmd.Flags().String("task-type", "", "Optional task type ID; enforces that type's status enum/transitions if configured")
 	tasksCreateCmd.Flags().String("idempotency-key", "", "Optional key: replaying the same key from the same principal returns the original task instead of creating a second one")
+	tasksCreateCmd.Flags().String("priority", "", "urgent, high, medium, low or none (default none)")
+	tasksCreateCmd.Flags().String("parent", "", "Parent task ID in the same project")
+	tasksCreateCmd.Flags().StringSlice("blocked-by", nil, "Task IDs that must finish first (repeat or comma-separate)")
+	tasksCreateCmd.Flags().String("discovered-from", "", "The task whose work turned this one up")
 	tasksClaimCmd.Flags().String("idempotency-key", "", "Optional key: replaying the same key from the same principal returns the original claim instead of erroring on an already-claimed task")
 	tasksAssignCmd.Flags().String("agent", "", "Agent ID to assign")
 	tasksAssignCmd.Flags().String("user", "", "User ID to assign")
@@ -546,16 +576,22 @@ func init() {
 	tasksUpdateCmd.Flags().String("title", "", "New title")
 	tasksUpdateCmd.Flags().String("description", "", "New description (pass an empty string to clear it)")
 	tasksUpdateCmd.Flags().String("task-type", "", "New task type ID")
+	tasksUpdateCmd.Flags().String("priority", "", "urgent, high, medium, low or none")
+	tasksUpdateCmd.Flags().String("parent", "", "New parent task ID (pass an empty string to clear it)")
 	tasksReviewerAddCmd.Flags().String("user", "", "User ID to add as reviewer")
 	tasksReviewerRemoveCmd.Flags().String("user", "", "User ID to remove as reviewer")
 	tasksUpdateStatusCmd.Flags().String("status", "", "The new status (todo, in-progress, done)")
 	tasksListCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	tasksListCmd.Flags().StringP("filter", "f", "", "Substring match against task title")
-	tasksListCmd.Flags().StringP("sort", "s", "", "Sort as \"title\"/\"status\" or \"title:desc\" (works with --cursor for paging)")
+	tasksListCmd.Flags().StringP("sort", "s", "", "Sort as \"title\"/\"status\"/\"priority\" or \"title:desc\" (works with --cursor for paging); \"priority\" is urgent first")
 	tasksListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	tasksListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
 	tasksListCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
 	tasksListCmd.Flags().Bool("only-deleted", false, "List only binned (soft-deleted) tasks, instead of active ones")
 	tasksListCmd.Flags().String("status", "", "Filter to one status column (e.g. todo, in-progress, done, or a custom task-type status)")
 	tasksListCmd.Flags().String("assignee-filter", "", "\"unassigned\" for claimable work, or \"me\" to resolve to the calling principal")
+	tasksListCmd.Flags().Bool("ready", false, "Only ready work: open, unassigned, nothing unfinished blocking it")
+	tasksListCmd.Flags().String("priority", "", "Only tasks of this priority (urgent, high, medium, low, none)")
+	tasksListCmd.Flags().String("label", "", "Only tasks carrying this label ID")
+	tasksListCmd.Flags().String("parent", "", "Only subtasks of this task ID")
 }

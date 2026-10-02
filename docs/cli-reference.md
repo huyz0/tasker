@@ -1592,13 +1592,14 @@ Usage:
 Available Commands:
   assign          Assign a task to an agent or user
   claim           Atomically claim an unassigned task for the calling principal (agent self-service)
-  claim-next      Claim the oldest open, unassigned task in a project (agent self-service)
+  claim-next      Claim the most important ready task in a project (agent self-service)
   comment-add     Add a comment to a task
   comments        List comments on a task
   create          Create a new task in a project
   delete          Move a task to the bin (soft delete; requires org admin)
   get             Get a single task, including its description
   handoffs        List tasks with a pending handoff note (one row per task, the latest only)
+  link            Blocking and discovered-from links between tasks
   list            List tasks within a project
   mine            List the open tasks you hold, across every project in the organization
   note-add        Add an AI agent note to a task (requires an agent token)
@@ -1612,7 +1613,7 @@ Available Commands:
   reviewer-remove Remove a reviewer from a task
   reviewers       List a task's reviewers
   unassign        Remove an agent or user's assignment from a task
-  update          Update a task's title, description, or task type
+  update          Update a task's title, description, type, priority or parent
   update-status   Update a task's status
 
 Flags:
@@ -1649,7 +1650,8 @@ Flags:
 #### `tasker tasks claim-next`
 
 ```
-Claims the oldest open, unassigned task in the project for the calling principal, in one
+Claims the highest-priority ready task - open, unassigned, nothing unfinished blocking it,
+oldest within its priority - for the calling principal, in one
 call - no list-then-claim race. With nothing to claim it prints nothing and exits 0; with
 --json it prints an object with no "task". A prior handoff note on the task is shown.
 
@@ -1659,6 +1661,7 @@ Usage:
 Flags:
   -h, --help                     help for claim-next
       --idempotency-key string   Optional key: a retry with the same key returns the original claim instead of claiming another task
+      --label string             Only tasks carrying this label ID
   -p, --project string           Project to take work from (or set TASKER_PROJECT_ID)
       --type string              Only tasks of this task type ID
 ```
@@ -1697,9 +1700,13 @@ Usage:
   tasker tasks create [flags]
 
 Flags:
+      --blocked-by strings       Task IDs that must finish first (repeat or comma-separate)
       --description string       Task description
+      --discovered-from string   The task whose work turned this one up
   -h, --help                     help for create
       --idempotency-key string   Optional key: replaying the same key from the same principal returns the original task instead of creating a second one
+      --parent string            Parent task ID in the same project
+      --priority string          urgent, high, medium, low or none (default none)
       --project string           Project ID (or set TASKER_PROJECT_ID)
       --status string            Initial status
       --task-type string         Optional task type ID; enforces that type's status enum/transitions if configured
@@ -1746,6 +1753,23 @@ Flags:
       --project string   Project ID (or set TASKER_PROJECT_ID)
 ```
 
+#### `tasker tasks link`
+
+```
+Blocking and discovered-from links between tasks
+
+Usage:
+  tasker tasks link [command]
+
+Available Commands:
+  add         Record that a task is blocked by (or was discovered from) another
+  list        Show a task's blockers, dependents, parent, subtasks and origin
+  remove      Remove a blocking or discovered-from link
+
+Flags:
+  -h, --help   help for link
+```
+
 #### `tasker tasks list`
 
 ```
@@ -1759,11 +1783,15 @@ Flags:
   -c, --cursor string            Pagination cursor to fetch the next set
   -f, --filter string            Substring match against task title
   -h, --help                     help for list
+      --label string             Only tasks carrying this label ID
   -l, --limit int32              Maximum number of items to return (default 50)
       --only-deleted             List only binned (soft-deleted) tasks, instead of active ones
       --page-all                 Fetch every page, printing one JSON object per item per line (NDJSON)
+      --parent string            Only subtasks of this task ID
+      --priority string          Only tasks of this priority (urgent, high, medium, low, none)
       --project string           Project ID (or set TASKER_PROJECT_ID)
-  -s, --sort string              Sort as "title"/"status" or "title:desc" (works with --cursor for paging)
+      --ready                    Only ready work: open, unassigned, nothing unfinished blocking it
+  -s, --sort string              Sort as "title"/"status"/"priority" or "title:desc" (works with --cursor for paging); "priority" is urgent first
       --status string            Filter to one status column (e.g. todo, in-progress, done, or a custom task-type status)
 ```
 
@@ -1929,7 +1957,7 @@ Flags:
 #### `tasker tasks update`
 
 ```
-Update a task's title, description, or task type
+Update a task's title, description, type, priority or parent
 
 Usage:
   tasker tasks update [task_id] [flags]
@@ -1937,6 +1965,8 @@ Usage:
 Flags:
       --description string   New description (pass an empty string to clear it)
   -h, --help                 help for update
+      --parent string        New parent task ID (pass an empty string to clear it)
+      --priority string      urgent, high, medium, low or none
       --task-type string     New task type ID
       --title string         New title
 ```

@@ -80,7 +80,7 @@ impossible.
   - **Files**: `apps/backend/src/modules/tasks/taskLinks.ts` (+ test), handler
 - [x] **M35-T04** — Ready work: `blockedByOpenCount`, list filters, claim-next order, `domain.task.unblocked`.
   - **Files**: as T02, `taskActivity.ts`
-- [ ] **M35-T05** — CLI.
+- [x] **M35-T05** — CLI.
   - **Files**: `apps/cli/cmd/tasks*.go`, `docs/cli-reference.md`
 - [ ] **M35-T06** — GUI: priority everywhere, relations panel, filters.
   - **Files**: `apps/gui/src/features/Tasks/*`
