@@ -69,6 +69,8 @@ const (
 	WebhookServiceName = "tasker.health.v1.WebhookService"
 	// WorkflowServiceName is the fully-qualified name of the WorkflowService service.
 	WorkflowServiceName = "tasker.health.v1.WorkflowService"
+	// ScheduleServiceName is the fully-qualified name of the ScheduleService service.
+	ScheduleServiceName = "tasker.health.v1.ScheduleService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -573,6 +575,27 @@ const (
 	// WorkflowServiceInstantiateWorkflowProcedure is the fully-qualified name of the WorkflowService's
 	// InstantiateWorkflow RPC.
 	WorkflowServiceInstantiateWorkflowProcedure = "/tasker.health.v1.WorkflowService/InstantiateWorkflow"
+	// ScheduleServiceCreateScheduleProcedure is the fully-qualified name of the ScheduleService's
+	// CreateSchedule RPC.
+	ScheduleServiceCreateScheduleProcedure = "/tasker.health.v1.ScheduleService/CreateSchedule"
+	// ScheduleServiceUpdateScheduleProcedure is the fully-qualified name of the ScheduleService's
+	// UpdateSchedule RPC.
+	ScheduleServiceUpdateScheduleProcedure = "/tasker.health.v1.ScheduleService/UpdateSchedule"
+	// ScheduleServiceGetScheduleProcedure is the fully-qualified name of the ScheduleService's
+	// GetSchedule RPC.
+	ScheduleServiceGetScheduleProcedure = "/tasker.health.v1.ScheduleService/GetSchedule"
+	// ScheduleServiceListSchedulesProcedure is the fully-qualified name of the ScheduleService's
+	// ListSchedules RPC.
+	ScheduleServiceListSchedulesProcedure = "/tasker.health.v1.ScheduleService/ListSchedules"
+	// ScheduleServiceDeleteScheduleProcedure is the fully-qualified name of the ScheduleService's
+	// DeleteSchedule RPC.
+	ScheduleServiceDeleteScheduleProcedure = "/tasker.health.v1.ScheduleService/DeleteSchedule"
+	// ScheduleServiceRunScheduleProcedure is the fully-qualified name of the ScheduleService's
+	// RunSchedule RPC.
+	ScheduleServiceRunScheduleProcedure = "/tasker.health.v1.ScheduleService/RunSchedule"
+	// ScheduleServiceListScheduleRunsProcedure is the fully-qualified name of the ScheduleService's
+	// ListScheduleRuns RPC.
+	ScheduleServiceListScheduleRunsProcedure = "/tasker.health.v1.ScheduleService/ListScheduleRuns"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -779,6 +802,14 @@ var (
 	workflowServiceListWorkflowTemplatesMethodDescriptor          = workflowServiceServiceDescriptor.Methods().ByName("ListWorkflowTemplates")
 	workflowServiceDeleteWorkflowTemplateMethodDescriptor         = workflowServiceServiceDescriptor.Methods().ByName("DeleteWorkflowTemplate")
 	workflowServiceInstantiateWorkflowMethodDescriptor            = workflowServiceServiceDescriptor.Methods().ByName("InstantiateWorkflow")
+	scheduleServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("ScheduleService")
+	scheduleServiceCreateScheduleMethodDescriptor                 = scheduleServiceServiceDescriptor.Methods().ByName("CreateSchedule")
+	scheduleServiceUpdateScheduleMethodDescriptor                 = scheduleServiceServiceDescriptor.Methods().ByName("UpdateSchedule")
+	scheduleServiceGetScheduleMethodDescriptor                    = scheduleServiceServiceDescriptor.Methods().ByName("GetSchedule")
+	scheduleServiceListSchedulesMethodDescriptor                  = scheduleServiceServiceDescriptor.Methods().ByName("ListSchedules")
+	scheduleServiceDeleteScheduleMethodDescriptor                 = scheduleServiceServiceDescriptor.Methods().ByName("DeleteSchedule")
+	scheduleServiceRunScheduleMethodDescriptor                    = scheduleServiceServiceDescriptor.Methods().ByName("RunSchedule")
+	scheduleServiceListScheduleRunsMethodDescriptor               = scheduleServiceServiceDescriptor.Methods().ByName("ListScheduleRuns")
 )
 
 // HealthServiceClient is a client for the tasker.health.v1.HealthService service.
@@ -6417,4 +6448,228 @@ func (UnimplementedWorkflowServiceHandler) DeleteWorkflowTemplate(context.Contex
 
 func (UnimplementedWorkflowServiceHandler) InstantiateWorkflow(context.Context, *connect.Request[v1.InstantiateWorkflowRequest]) (*connect.Response[v1.InstantiateWorkflowResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.WorkflowService.InstantiateWorkflow is not implemented"))
+}
+
+// ScheduleServiceClient is a client for the tasker.health.v1.ScheduleService service.
+type ScheduleServiceClient interface {
+	CreateSchedule(context.Context, *connect.Request[v1.CreateScheduleRequest]) (*connect.Response[v1.CreateScheduleResponse], error)
+	UpdateSchedule(context.Context, *connect.Request[v1.UpdateScheduleRequest]) (*connect.Response[v1.UpdateScheduleResponse], error)
+	GetSchedule(context.Context, *connect.Request[v1.GetScheduleRequest]) (*connect.Response[v1.GetScheduleResponse], error)
+	ListSchedules(context.Context, *connect.Request[v1.ListSchedulesRequest]) (*connect.Response[v1.ListSchedulesResponse], error)
+	DeleteSchedule(context.Context, *connect.Request[v1.DeleteScheduleRequest]) (*connect.Response[v1.DeleteScheduleResponse], error)
+	RunSchedule(context.Context, *connect.Request[v1.RunScheduleRequest]) (*connect.Response[v1.RunScheduleResponse], error)
+	ListScheduleRuns(context.Context, *connect.Request[v1.ListScheduleRunsRequest]) (*connect.Response[v1.ListScheduleRunsResponse], error)
+}
+
+// NewScheduleServiceClient constructs a client for the tasker.health.v1.ScheduleService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewScheduleServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ScheduleServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &scheduleServiceClient{
+		createSchedule: connect.NewClient[v1.CreateScheduleRequest, v1.CreateScheduleResponse](
+			httpClient,
+			baseURL+ScheduleServiceCreateScheduleProcedure,
+			connect.WithSchema(scheduleServiceCreateScheduleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		updateSchedule: connect.NewClient[v1.UpdateScheduleRequest, v1.UpdateScheduleResponse](
+			httpClient,
+			baseURL+ScheduleServiceUpdateScheduleProcedure,
+			connect.WithSchema(scheduleServiceUpdateScheduleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getSchedule: connect.NewClient[v1.GetScheduleRequest, v1.GetScheduleResponse](
+			httpClient,
+			baseURL+ScheduleServiceGetScheduleProcedure,
+			connect.WithSchema(scheduleServiceGetScheduleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listSchedules: connect.NewClient[v1.ListSchedulesRequest, v1.ListSchedulesResponse](
+			httpClient,
+			baseURL+ScheduleServiceListSchedulesProcedure,
+			connect.WithSchema(scheduleServiceListSchedulesMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		deleteSchedule: connect.NewClient[v1.DeleteScheduleRequest, v1.DeleteScheduleResponse](
+			httpClient,
+			baseURL+ScheduleServiceDeleteScheduleProcedure,
+			connect.WithSchema(scheduleServiceDeleteScheduleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		runSchedule: connect.NewClient[v1.RunScheduleRequest, v1.RunScheduleResponse](
+			httpClient,
+			baseURL+ScheduleServiceRunScheduleProcedure,
+			connect.WithSchema(scheduleServiceRunScheduleMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listScheduleRuns: connect.NewClient[v1.ListScheduleRunsRequest, v1.ListScheduleRunsResponse](
+			httpClient,
+			baseURL+ScheduleServiceListScheduleRunsProcedure,
+			connect.WithSchema(scheduleServiceListScheduleRunsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// scheduleServiceClient implements ScheduleServiceClient.
+type scheduleServiceClient struct {
+	createSchedule   *connect.Client[v1.CreateScheduleRequest, v1.CreateScheduleResponse]
+	updateSchedule   *connect.Client[v1.UpdateScheduleRequest, v1.UpdateScheduleResponse]
+	getSchedule      *connect.Client[v1.GetScheduleRequest, v1.GetScheduleResponse]
+	listSchedules    *connect.Client[v1.ListSchedulesRequest, v1.ListSchedulesResponse]
+	deleteSchedule   *connect.Client[v1.DeleteScheduleRequest, v1.DeleteScheduleResponse]
+	runSchedule      *connect.Client[v1.RunScheduleRequest, v1.RunScheduleResponse]
+	listScheduleRuns *connect.Client[v1.ListScheduleRunsRequest, v1.ListScheduleRunsResponse]
+}
+
+// CreateSchedule calls tasker.health.v1.ScheduleService.CreateSchedule.
+func (c *scheduleServiceClient) CreateSchedule(ctx context.Context, req *connect.Request[v1.CreateScheduleRequest]) (*connect.Response[v1.CreateScheduleResponse], error) {
+	return c.createSchedule.CallUnary(ctx, req)
+}
+
+// UpdateSchedule calls tasker.health.v1.ScheduleService.UpdateSchedule.
+func (c *scheduleServiceClient) UpdateSchedule(ctx context.Context, req *connect.Request[v1.UpdateScheduleRequest]) (*connect.Response[v1.UpdateScheduleResponse], error) {
+	return c.updateSchedule.CallUnary(ctx, req)
+}
+
+// GetSchedule calls tasker.health.v1.ScheduleService.GetSchedule.
+func (c *scheduleServiceClient) GetSchedule(ctx context.Context, req *connect.Request[v1.GetScheduleRequest]) (*connect.Response[v1.GetScheduleResponse], error) {
+	return c.getSchedule.CallUnary(ctx, req)
+}
+
+// ListSchedules calls tasker.health.v1.ScheduleService.ListSchedules.
+func (c *scheduleServiceClient) ListSchedules(ctx context.Context, req *connect.Request[v1.ListSchedulesRequest]) (*connect.Response[v1.ListSchedulesResponse], error) {
+	return c.listSchedules.CallUnary(ctx, req)
+}
+
+// DeleteSchedule calls tasker.health.v1.ScheduleService.DeleteSchedule.
+func (c *scheduleServiceClient) DeleteSchedule(ctx context.Context, req *connect.Request[v1.DeleteScheduleRequest]) (*connect.Response[v1.DeleteScheduleResponse], error) {
+	return c.deleteSchedule.CallUnary(ctx, req)
+}
+
+// RunSchedule calls tasker.health.v1.ScheduleService.RunSchedule.
+func (c *scheduleServiceClient) RunSchedule(ctx context.Context, req *connect.Request[v1.RunScheduleRequest]) (*connect.Response[v1.RunScheduleResponse], error) {
+	return c.runSchedule.CallUnary(ctx, req)
+}
+
+// ListScheduleRuns calls tasker.health.v1.ScheduleService.ListScheduleRuns.
+func (c *scheduleServiceClient) ListScheduleRuns(ctx context.Context, req *connect.Request[v1.ListScheduleRunsRequest]) (*connect.Response[v1.ListScheduleRunsResponse], error) {
+	return c.listScheduleRuns.CallUnary(ctx, req)
+}
+
+// ScheduleServiceHandler is an implementation of the tasker.health.v1.ScheduleService service.
+type ScheduleServiceHandler interface {
+	CreateSchedule(context.Context, *connect.Request[v1.CreateScheduleRequest]) (*connect.Response[v1.CreateScheduleResponse], error)
+	UpdateSchedule(context.Context, *connect.Request[v1.UpdateScheduleRequest]) (*connect.Response[v1.UpdateScheduleResponse], error)
+	GetSchedule(context.Context, *connect.Request[v1.GetScheduleRequest]) (*connect.Response[v1.GetScheduleResponse], error)
+	ListSchedules(context.Context, *connect.Request[v1.ListSchedulesRequest]) (*connect.Response[v1.ListSchedulesResponse], error)
+	DeleteSchedule(context.Context, *connect.Request[v1.DeleteScheduleRequest]) (*connect.Response[v1.DeleteScheduleResponse], error)
+	RunSchedule(context.Context, *connect.Request[v1.RunScheduleRequest]) (*connect.Response[v1.RunScheduleResponse], error)
+	ListScheduleRuns(context.Context, *connect.Request[v1.ListScheduleRunsRequest]) (*connect.Response[v1.ListScheduleRunsResponse], error)
+}
+
+// NewScheduleServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewScheduleServiceHandler(svc ScheduleServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	scheduleServiceCreateScheduleHandler := connect.NewUnaryHandler(
+		ScheduleServiceCreateScheduleProcedure,
+		svc.CreateSchedule,
+		connect.WithSchema(scheduleServiceCreateScheduleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	scheduleServiceUpdateScheduleHandler := connect.NewUnaryHandler(
+		ScheduleServiceUpdateScheduleProcedure,
+		svc.UpdateSchedule,
+		connect.WithSchema(scheduleServiceUpdateScheduleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	scheduleServiceGetScheduleHandler := connect.NewUnaryHandler(
+		ScheduleServiceGetScheduleProcedure,
+		svc.GetSchedule,
+		connect.WithSchema(scheduleServiceGetScheduleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	scheduleServiceListSchedulesHandler := connect.NewUnaryHandler(
+		ScheduleServiceListSchedulesProcedure,
+		svc.ListSchedules,
+		connect.WithSchema(scheduleServiceListSchedulesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	scheduleServiceDeleteScheduleHandler := connect.NewUnaryHandler(
+		ScheduleServiceDeleteScheduleProcedure,
+		svc.DeleteSchedule,
+		connect.WithSchema(scheduleServiceDeleteScheduleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	scheduleServiceRunScheduleHandler := connect.NewUnaryHandler(
+		ScheduleServiceRunScheduleProcedure,
+		svc.RunSchedule,
+		connect.WithSchema(scheduleServiceRunScheduleMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	scheduleServiceListScheduleRunsHandler := connect.NewUnaryHandler(
+		ScheduleServiceListScheduleRunsProcedure,
+		svc.ListScheduleRuns,
+		connect.WithSchema(scheduleServiceListScheduleRunsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/tasker.health.v1.ScheduleService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case ScheduleServiceCreateScheduleProcedure:
+			scheduleServiceCreateScheduleHandler.ServeHTTP(w, r)
+		case ScheduleServiceUpdateScheduleProcedure:
+			scheduleServiceUpdateScheduleHandler.ServeHTTP(w, r)
+		case ScheduleServiceGetScheduleProcedure:
+			scheduleServiceGetScheduleHandler.ServeHTTP(w, r)
+		case ScheduleServiceListSchedulesProcedure:
+			scheduleServiceListSchedulesHandler.ServeHTTP(w, r)
+		case ScheduleServiceDeleteScheduleProcedure:
+			scheduleServiceDeleteScheduleHandler.ServeHTTP(w, r)
+		case ScheduleServiceRunScheduleProcedure:
+			scheduleServiceRunScheduleHandler.ServeHTTP(w, r)
+		case ScheduleServiceListScheduleRunsProcedure:
+			scheduleServiceListScheduleRunsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedScheduleServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedScheduleServiceHandler struct{}
+
+func (UnimplementedScheduleServiceHandler) CreateSchedule(context.Context, *connect.Request[v1.CreateScheduleRequest]) (*connect.Response[v1.CreateScheduleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ScheduleService.CreateSchedule is not implemented"))
+}
+
+func (UnimplementedScheduleServiceHandler) UpdateSchedule(context.Context, *connect.Request[v1.UpdateScheduleRequest]) (*connect.Response[v1.UpdateScheduleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ScheduleService.UpdateSchedule is not implemented"))
+}
+
+func (UnimplementedScheduleServiceHandler) GetSchedule(context.Context, *connect.Request[v1.GetScheduleRequest]) (*connect.Response[v1.GetScheduleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ScheduleService.GetSchedule is not implemented"))
+}
+
+func (UnimplementedScheduleServiceHandler) ListSchedules(context.Context, *connect.Request[v1.ListSchedulesRequest]) (*connect.Response[v1.ListSchedulesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ScheduleService.ListSchedules is not implemented"))
+}
+
+func (UnimplementedScheduleServiceHandler) DeleteSchedule(context.Context, *connect.Request[v1.DeleteScheduleRequest]) (*connect.Response[v1.DeleteScheduleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ScheduleService.DeleteSchedule is not implemented"))
+}
+
+func (UnimplementedScheduleServiceHandler) RunSchedule(context.Context, *connect.Request[v1.RunScheduleRequest]) (*connect.Response[v1.RunScheduleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ScheduleService.RunSchedule is not implemented"))
+}
+
+func (UnimplementedScheduleServiceHandler) ListScheduleRuns(context.Context, *connect.Request[v1.ListScheduleRunsRequest]) (*connect.Response[v1.ListScheduleRunsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ScheduleService.ListScheduleRuns is not implemented"))
 }

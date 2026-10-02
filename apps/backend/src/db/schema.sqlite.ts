@@ -421,6 +421,8 @@ export const tasks = sqliteTable("tasks", {
   summaryUpdatedAt: integer("summary_updated_at", { mode: "timestamp" }),
   summaryAgentId: text("summary_agent_id"),
   summaryUserId: text("summary_user_id"),
+  // M43 (ADR-0036): the schedule that created this task, if one did.
+  scheduleId: text("schedule_id"),
 }, (table) => {
   return {
     projectIdIdx: index("tasks_project_id_idx").on(table.projectId),
@@ -1085,5 +1087,50 @@ export const workflowTemplates = sqliteTable("workflow_templates", {
 }, (table) => {
   return {
     orgCreatedIdx: index("workflow_templates_org_id_created_idx").on(table.orgId, table.createdAt),
+  };
+});
+
+// M43 (ADR-0036). Recurring work: fires at hour_utc on its cadence, creating a
+// workflow instance or one task. next_run_at is the compare-and-swap claim:
+// a sweep that moves it owns that run.
+export const schedules = sqliteTable("schedules", {
+  id: text("id").primaryKey(),
+  orgId: text("org_id").notNull(),
+  projectId: text("project_id").notNull(),
+  name: text("name").notNull(),
+  cadence: text("cadence").notNull(),
+  weekdays: text("weekdays").notNull().default("[]"),
+  dayOfMonth: integer("day_of_month").notNull().default(1),
+  hourUtc: integer("hour_utc").notNull().default(9),
+  templateId: text("template_id"),
+  taskTitle: text("task_title"),
+  taskDescription: text("task_description"),
+  taskPriority: integer("task_priority").notNull().default(0),
+  skipIfOpen: integer("skip_if_open", { mode: "boolean" }).notNull().default(true),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  nextRunAt: integer("next_run_at", { mode: "timestamp" }).notNull(),
+  lastRunAt: integer("last_run_at", { mode: "timestamp" }),
+  lastTaskId: text("last_task_id"),
+  lastOutcome: text("last_outcome"),
+  createdBy: text("created_by").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    dueIdx: index("schedules_active_next_run_idx").on(table.active, table.nextRunAt),
+    projectIdx: index("schedules_project_id_idx").on(table.projectId),
+  };
+});
+
+export const scheduleRuns = sqliteTable("schedule_runs", {
+  id: text("id").primaryKey(),
+  scheduleId: text("schedule_id").notNull(),
+  ranAt: integer("ran_at", { mode: "timestamp" }).notNull(),
+  outcome: text("outcome").notNull(),
+  taskId: text("task_id"),
+  detail: text("detail"),
+  trigger: text("trigger").notNull(),
+}, (table) => {
+  return {
+    scheduleRanIdx: index("schedule_runs_schedule_id_ran_idx").on(table.scheduleId, table.ranAt),
   };
 });

@@ -112,6 +112,7 @@ function taskListSelect(tasks: any) {
     deletedAt: tasks.deletedAt,
     priority: tasks.priority,
     parentTaskId: tasks.parentTaskId,
+    scheduleId: tasks.scheduleId,
     // Not on the wire: the sort key for `sort: "priority"`, where "none" ranks
     // after "low". Stripped before the response leaves (see toWireTask).
     priorityRank: priorityRankSql(tasks),
@@ -127,6 +128,7 @@ function toWireTask(t: any, extra: Record<string, unknown> = {}) {
     // M38 (ADR-0031): stored as JSON text; lists never select it.
     plan: typeof plan === "string" ? JSON.parse(plan) : [],
     parentTaskId: rest.parentTaskId ?? undefined,
+    scheduleId: rest.scheduleId ?? undefined,
     createdAt: rest.createdAt instanceof Date ? rest.createdAt.toISOString() : rest.createdAt,
     ...extra,
   };

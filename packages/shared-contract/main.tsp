@@ -895,6 +895,9 @@ model Task {
 
   // M41 (ADR-0034): the durable summary of this task. GetTask only.
   @field(19) summary?: TaskSummary;
+
+  // M43 (ADR-0036): the schedule that created this task, if one did.
+  @field(20) scheduleId?: string;
 }
 
 // M41 (ADR-0034): what a task came to - outcome, decisions, gotchas - in a
@@ -3331,4 +3334,136 @@ interface WorkflowService {
   instantiateWorkflow(
     request: InstantiateWorkflowRequest,
   ): InstantiateWorkflowResponse;
+}
+
+// ==== Recurring work (M43, ADR-0036) ====
+
+// Creates work on a cadence, at `hourUtc`:00 UTC: "daily"; "weekly" on
+// `weekdays` (0 = Sunday .. 6 = Saturday); or "monthly" on `dayOfMonth`
+// (1-28). The work is a workflow (`templateId`) or one task (`taskTitle`,
+// `taskDescription`, `taskPriority`) - exactly one. With `skipIfOpen` (the
+// default) a run is skipped while the previous run's task is unfinished.
+model Schedule {
+  @field(1) id: string;
+  @field(2) orgId: string;
+  @field(3) projectId: string;
+  @field(4) name: string;
+  @field(5) cadence: string;
+  @field(6) weekdays: int32[];
+  @field(7) dayOfMonth: int32;
+  @field(8) hourUtc: int32;
+  @field(9) templateId?: string;
+  @field(10) taskTitle?: string;
+  @field(11) taskDescription?: string;
+  @field(12) taskPriority: int32;
+  @field(13) skipIfOpen: boolean;
+  @field(14) active: boolean;
+  @field(15) nextRunAt: string;
+  @field(16) lastRunAt?: string;
+  @field(17) lastTaskId?: string;
+
+  // "created", "skipped" or "failed".
+  @field(18) lastOutcome?: string;
+
+  @field(19) createdAt: string;
+}
+
+// One firing of a schedule. `detail` says why a run was skipped or failed.
+model ScheduleRun {
+  @field(1) id: string;
+  @field(2) scheduleId: string;
+  @field(3) ranAt: string;
+  @field(4) outcome: string;
+  @field(5) taskId?: string;
+  @field(6) detail?: string;
+
+  // "schedule" (the sweep) or "manual" (RunSchedule).
+  @field(7) trigger: string;
+}
+
+model CreateScheduleRequest {
+  @field(1) projectId: string;
+  @field(2) name: string;
+  @field(3) cadence: string;
+  @field(4) weekdays: int32[];
+  @field(5) dayOfMonth?: int32;
+  @field(6) hourUtc: int32;
+  @field(7) templateId?: string;
+  @field(8) taskTitle?: string;
+  @field(9) taskDescription?: string;
+  @field(10) taskPriority?: int32;
+  @field(11) skipIfOpen?: boolean;
+}
+model CreateScheduleResponse {
+  @field(1) schedule: Schedule;
+}
+
+// Replaces the cadence and target whole; `active` pauses or resumes.
+model UpdateScheduleRequest {
+  @field(1) id: string;
+  @field(2) name: string;
+  @field(3) cadence: string;
+  @field(4) weekdays: int32[];
+  @field(5) dayOfMonth?: int32;
+  @field(6) hourUtc: int32;
+  @field(7) templateId?: string;
+  @field(8) taskTitle?: string;
+  @field(9) taskDescription?: string;
+  @field(10) taskPriority?: int32;
+  @field(11) skipIfOpen?: boolean;
+  @field(12) active?: boolean;
+}
+model UpdateScheduleResponse {
+  @field(1) schedule: Schedule;
+}
+
+model GetScheduleRequest {
+  @field(1) id: string;
+}
+model GetScheduleResponse {
+  @field(1) schedule: Schedule;
+}
+
+model ListSchedulesRequest {
+  @field(1) orgId?: string;
+  @field(2) projectId?: string;
+  @field(3) page?: PageRequest;
+}
+model ListSchedulesResponse {
+  @field(1) schedules: Schedule[];
+  @field(2) page: PageResponse;
+}
+
+model DeleteScheduleRequest {
+  @field(1) id: string;
+}
+model DeleteScheduleResponse {
+  @field(1) success: boolean;
+}
+
+// Fires the schedule now, as the caller, without moving its next run.
+model RunScheduleRequest {
+  @field(1) id: string;
+}
+model RunScheduleResponse {
+  @field(1) run: ScheduleRun;
+}
+
+model ListScheduleRunsRequest {
+  @field(1) scheduleId: string;
+  @field(2) page?: PageRequest;
+}
+model ListScheduleRunsResponse {
+  @field(1) runs: ScheduleRun[];
+  @field(2) page: PageResponse;
+}
+
+interface ScheduleService {
+  createSchedule(request: CreateScheduleRequest): CreateScheduleResponse;
+  updateSchedule(request: UpdateScheduleRequest): UpdateScheduleResponse;
+  getSchedule(request: GetScheduleRequest): GetScheduleResponse;
+  listSchedules(request: ListSchedulesRequest): ListSchedulesResponse;
+  deleteSchedule(request: DeleteScheduleRequest): DeleteScheduleResponse;
+  runSchedule(request: RunScheduleRequest): RunScheduleResponse;
+  listScheduleRuns(request: ListScheduleRunsRequest): ListScheduleRunsResponse;
 }

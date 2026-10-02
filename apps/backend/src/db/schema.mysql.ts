@@ -292,6 +292,8 @@ export const tasks = mysqlTable("tasks", {
   summaryUpdatedAt: timestamp("summary_updated_at"),
   summaryAgentId: varchar("summary_agent_id", { length: 256 }),
   summaryUserId: varchar("summary_user_id", { length: 256 }),
+  // M43 (ADR-0036).
+  scheduleId: varchar("schedule_id", { length: 256 }),
 }, (table) => {
   return {
     projectIdIdx: index("tasks_project_id_idx").on(table.projectId),
@@ -856,5 +858,48 @@ export const workflowTemplates = mysqlTable("workflow_templates", {
 }, (table) => {
   return {
     orgCreatedIdx: index("workflow_templates_org_id_created_idx").on(table.orgId, table.createdAt),
+  };
+});
+
+// M43 (ADR-0036). See schema.sqlite.ts.
+export const schedules = mysqlTable("schedules", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  orgId: varchar("org_id", { length: 256 }).notNull(),
+  projectId: varchar("project_id", { length: 256 }).notNull(),
+  name: varchar("name", { length: 256 }).notNull(),
+  cadence: varchar("cadence", { length: 16 }).notNull(),
+  weekdays: varchar("weekdays", { length: 64 }).notNull().default("[]"),
+  dayOfMonth: int("day_of_month").notNull().default(1),
+  hourUtc: int("hour_utc").notNull().default(9),
+  templateId: varchar("template_id", { length: 256 }),
+  taskTitle: varchar("task_title", { length: 512 }),
+  taskDescription: text("task_description"),
+  taskPriority: int("task_priority").notNull().default(0),
+  skipIfOpen: boolean("skip_if_open").notNull().default(true),
+  active: boolean("active").notNull().default(true),
+  nextRunAt: timestamp("next_run_at").notNull(),
+  lastRunAt: timestamp("last_run_at"),
+  lastTaskId: varchar("last_task_id", { length: 256 }),
+  lastOutcome: varchar("last_outcome", { length: 16 }),
+  createdBy: varchar("created_by", { length: 256 }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
+}, (table) => {
+  return {
+    dueIdx: index("schedules_active_next_run_idx").on(table.active, table.nextRunAt),
+    projectIdx: index("schedules_project_id_idx").on(table.projectId),
+  };
+});
+
+export const scheduleRuns = mysqlTable("schedule_runs", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  scheduleId: varchar("schedule_id", { length: 256 }).notNull(),
+  ranAt: timestamp("ran_at").notNull(),
+  outcome: varchar("outcome", { length: 16 }).notNull(),
+  taskId: varchar("task_id", { length: 256 }),
+  detail: text("detail"),
+  trigger: varchar("trigger", { length: 16 }).notNull(),
+}, (table) => {
+  return {
+    scheduleRanIdx: index("schedule_runs_schedule_id_ran_idx").on(table.scheduleId, table.ranAt),
   };
 });

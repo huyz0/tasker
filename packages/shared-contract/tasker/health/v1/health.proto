@@ -742,6 +742,8 @@ message Task {
   optional UsageTotals usage = 18;
   // M41 (ADR-0034). GetTask only.
   optional TaskSummary summary = 19;
+  // M43 (ADR-0036).
+  optional string scheduleId = 20;
 }
 
 // M38 (ADR-0031). See main.tsp.
@@ -2802,4 +2804,114 @@ service WorkflowService {
   rpc ListWorkflowTemplates(ListWorkflowTemplatesRequest) returns (ListWorkflowTemplatesResponse);
   rpc DeleteWorkflowTemplate(DeleteWorkflowTemplateRequest) returns (DeleteWorkflowTemplateResponse);
   rpc InstantiateWorkflow(InstantiateWorkflowRequest) returns (InstantiateWorkflowResponse);
+}
+
+// M43 (ADR-0036): recurring work. See main.tsp.
+message Schedule {
+  string id = 1;
+  string orgId = 2;
+  string projectId = 3;
+  string name = 4;
+  string cadence = 5;
+  repeated int32 weekdays = 6;
+  int32 dayOfMonth = 7;
+  int32 hourUtc = 8;
+  optional string templateId = 9;
+  optional string taskTitle = 10;
+  optional string taskDescription = 11;
+  int32 taskPriority = 12;
+  bool skipIfOpen = 13;
+  bool active = 14;
+  string nextRunAt = 15;
+  optional string lastRunAt = 16;
+  optional string lastTaskId = 17;
+  optional string lastOutcome = 18;
+  string createdAt = 19;
+}
+message ScheduleRun {
+  string id = 1;
+  string scheduleId = 2;
+  string ranAt = 3;
+  string outcome = 4;
+  optional string taskId = 5;
+  optional string detail = 6;
+  string trigger = 7;
+}
+message CreateScheduleRequest {
+  string projectId = 1;
+  string name = 2;
+  string cadence = 3;
+  repeated int32 weekdays = 4;
+  optional int32 dayOfMonth = 5;
+  int32 hourUtc = 6;
+  optional string templateId = 7;
+  optional string taskTitle = 8;
+  optional string taskDescription = 9;
+  optional int32 taskPriority = 10;
+  optional bool skipIfOpen = 11;
+}
+message CreateScheduleResponse {
+  Schedule schedule = 1;
+}
+message UpdateScheduleRequest {
+  string id = 1;
+  string name = 2;
+  string cadence = 3;
+  repeated int32 weekdays = 4;
+  optional int32 dayOfMonth = 5;
+  int32 hourUtc = 6;
+  optional string templateId = 7;
+  optional string taskTitle = 8;
+  optional string taskDescription = 9;
+  optional int32 taskPriority = 10;
+  optional bool skipIfOpen = 11;
+  optional bool active = 12;
+}
+message UpdateScheduleResponse {
+  Schedule schedule = 1;
+}
+message GetScheduleRequest {
+  string id = 1;
+}
+message GetScheduleResponse {
+  Schedule schedule = 1;
+}
+message ListSchedulesRequest {
+  optional string orgId = 1;
+  optional string projectId = 2;
+  PageRequest page = 3;
+}
+message ListSchedulesResponse {
+  repeated Schedule schedules = 1;
+  PageResponse page = 2;
+}
+message DeleteScheduleRequest {
+  string id = 1;
+}
+message DeleteScheduleResponse {
+  bool success = 1;
+}
+message RunScheduleRequest {
+  string id = 1;
+}
+message RunScheduleResponse {
+  ScheduleRun run = 1;
+}
+message ListScheduleRunsRequest {
+  string scheduleId = 1;
+  PageRequest page = 2;
+}
+message ListScheduleRunsResponse {
+  repeated ScheduleRun runs = 1;
+  PageResponse page = 2;
+}
+
+service ScheduleService {
+  rpc CreateSchedule(CreateScheduleRequest) returns (CreateScheduleResponse);
+  rpc UpdateSchedule(UpdateScheduleRequest) returns (UpdateScheduleResponse);
+  rpc GetSchedule(GetScheduleRequest) returns (GetScheduleResponse);
+  rpc ListSchedules(ListSchedulesRequest) returns (ListSchedulesResponse);
+  rpc DeleteSchedule(DeleteScheduleRequest) returns (DeleteScheduleResponse);
+  rpc RunSchedule(RunScheduleRequest) returns (RunScheduleResponse);
+  rpc ListScheduleRuns(ListScheduleRunsRequest) returns (ListScheduleRunsResponse);
 }

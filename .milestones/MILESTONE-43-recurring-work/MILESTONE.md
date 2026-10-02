@@ -1,12 +1,12 @@
 ---
 id: M43
 title: Recurring Work
-status: todo
+status: in-progress
 goal: Routine work - a weekly triage, a nightly dependency check, a monthly report - appears on the queue by itself on schedule, as a single task or a whole workflow, so agents and people pick it up without anyone remembering to file it.
 depends_on: [M42]
 surfaces: [contract, backend, cli, gui, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-10-02
 completed_at: null
 ---
 
@@ -48,7 +48,7 @@ event-triggered schedules (webhooks already cover reacting to events).
 
 ## 5. Task Breakdown
 
-- [ ] **M43-T01** — ADR-0036, contract and schema.
+- [x] **M43-T01** — ADR-0036, contract and schema.
 - [ ] **M43-T02** — Schedule CRUD and next-run computation.
 - [ ] **M43-T03** — The sweep, Run now and run history.
 - [ ] **M43-T04** — CLI and MCP.
