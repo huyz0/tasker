@@ -1,8 +1,8 @@
 ---
-active_milestone: null
-active_task: null
-last_updated: 2026-08-24
-last_commit: db170cc
+active_milestone: M30
+active_task: M30-T02
+last_updated: 2026-10-02
+last_commit: e2b1ddd
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,28 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-10-02 — M30 (Backend Correctness at Scale) in progress.** A deep
+review (three parallel read-only reviews of backend, GUI and CLI; every
+finding re-verified in code) produced five milestones, delivered in order and
+each merged to `main` with CI green before the next starts:
+
+| Id | Milestone | Why |
+|----|-----------|-----|
+| M30 | Backend Correctness at Scale | Dashboard and report RPCs throw on MySQL (raw aggregates decoded as SQLite seconds); search leaks team-scoped beliefs; done tasks claimable; per-call writes and firehose subscriptions per agent. |
+| M31 | CLI Output Truth | Every command — `--json` included — writes to **stderr** (cobra `cmd.Println`), so `$(tasker … --json)` captures nothing; 15 list commands drop the next-page cursor. |
+| M32 | Task Workspace Correctness | Open task dialog never live-updates notes, shows stale values after edit, Escape closes it under a confirm, failed loads render as empty. |
+| M33 | Agent Work Queue | No atomic claim-next, no agent self-release, no cross-project "my work" list. |
+| M34 | Milestone & Doc Truth Gate | M08/M10/M21–M23 frontmatter drift and the gate that would have caught it; testing-standard's false "MSW is not installed". |
+
+**Also on 2026-10-02, before M30 and outside any milestone:** a UI design
+review (`.specs/reviews/2026-10-02-ui-design-review.md`) and its fixes —
+calmer brand tokens and dark surfaces, all six chart colours rendering, a
+`PageHeader` primitive, sticky sidebar and skip link, per-screen layout fixes,
+scope auto-select no longer undoing the first click, cancelled RPCs no longer
+reported as errors — and a dependency refresh that emptied the audit accept
+list (nodemailer ^10). Its deferred items are folded into M32 where they are
+defects and left in the review file where they are taste.
 
 **2026-08-24 — M29 (In-App Notifications) complete: 9/9 tasks, 9/9 exit
 criteria.** A human now sees their stalled-claim alerts inside the product,
@@ -1709,8 +1731,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M27 | Documentation Truth             | done   | —          | 6     | 6    |
 | M28 | Addressable Screens             | done   | —          | 8     | 8    |
 | M29 | In-App Notifications            | done   | —          | 9     | 9    |
+| M30 | Backend Correctness at Scale    | in-progress | —     | 10    | 1    |
 
-**Total: 237 tasks across 23 milestones — 236 done.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
+**Total: 247 tasks across 24 milestones — 237 done.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;

@@ -39,14 +39,6 @@ export const iso = (v: Date | null | undefined): string | undefined =>
   v instanceof Date ? v.toISOString() : undefined;
 
 /**
- * `max(occurredAt)` and friends bypass drizzle's timestamp decoding, so the
- * value arrives as the stored integer - sqlite-**seconds**, not ms (the
- * dashboard.handler.ts gotcha: treating it as ms reported everything as 1970).
- */
-export const fromSeconds = (v: unknown): Date | undefined =>
-  v == null ? undefined : new Date(Number(v) * 1000);
-
-/**
  * Assignee attribution for a completion row (ADR-0020): who HELD the task as
  * it completed, not who clicked. A completion with no assignee at all falls
  * back to the actor's kind - there is nobody else to credit. Shared by the

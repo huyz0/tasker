@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { decodeSqlTimestamp } from "../../lib/sqlTime";
 import * as schema from "../../db/schema.sqlite";
-import { PANEL_LIMIT, DELETED_AGENT, completionByAgent, fromSeconds, iso } from "./common";
+import { PANEL_LIMIT, DELETED_AGENT, completionByAgent, iso } from "./common";
 
 /**
  * The fleet scorecard half of the exceptions report (M24-T05): per-agent and
@@ -124,7 +125,7 @@ export async function buildScorecard(
   // Agent task-creations, aggregated in SQL (see the SCORECARD_KINDS note):
   // one row per creating agent, feeding lastActiveAt and the mention set.
   const createdAggRows = await db
-    .select({ actorId: taskActivity.actorId, lastAt: sql<number | null>`max(${taskActivity.occurredAt})` })
+    .select({ actorId: taskActivity.actorId, lastAt: sql<unknown>`max(${taskActivity.occurredAt})` })
     .from(taskActivity)
     .where(and(
       eq(taskActivity.projectId, projectId),
@@ -136,7 +137,7 @@ export async function buildScorecard(
   const createdLastByAgent = new Map<string, Date>();
   for (const r of createdAggRows) {
     // max() bypasses drizzle's timestamp decode - sqlite seconds arrive raw.
-    const at = fromSeconds(r.lastAt);
+    const at = decodeSqlTimestamp(r.lastAt);
     if (r.actorId && at) createdLastByAgent.set(r.actorId, at);
   }
 

@@ -1,7 +1,8 @@
 import { and, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { decodeSqlTimestamp } from "../../lib/sqlTime";
 import * as schema from "../../db/schema.sqlite";
 import { notDeleted } from "../../db/query-builder";
-import { PANEL_LIMIT, DAY_MS, completionByAgent, fromSeconds, iso } from "./common";
+import { PANEL_LIMIT, DAY_MS, completionByAgent, iso } from "./common";
 import { isAutonomousCompletion } from "./scorecard";
 import { dayBucketSql, epochDaySql, epochDayToDateStr } from "./dateBucket";
 
@@ -84,10 +85,10 @@ export async function buildReportTrends(
   // backfill makes that the honest "history starts here" label); a project
   // with no activity collects from today.
   const [minRow] = await db
-    .select({ minAt: sql<number | null>`min(${taskActivity.occurredAt})` })
+    .select({ minAt: sql<unknown>`min(${taskActivity.occurredAt})` })
     .from(taskActivity)
     .where(eq(taskActivity.projectId, projectId));
-  const collectedSinceAt = fromSeconds(minRow?.minAt);
+  const collectedSinceAt = decodeSqlTimestamp(minRow?.minAt);
   const collectedSince = dayStr(collectedSinceAt ?? now);
 
   const usage: { taskTypeId: string | null; n: number }[] = await db

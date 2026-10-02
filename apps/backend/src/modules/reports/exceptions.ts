@@ -1,11 +1,12 @@
 import { and, desc, eq, gte, inArray, isNull, isNotNull, sql } from "drizzle-orm";
+import { decodeSqlTimestamp } from "../../lib/sqlTime";
 import * as schema from "../../db/schema.sqlite";
 import { notDeleted } from "../../db/query-builder";
 import { isTerminalStatus } from "../tasks/taskActivity";
 import { findStalledCandidates } from "../../lib/stalledClaims";
 import {
   PANEL_LIMIT, STALLED_AFTER_HOURS, UNCLAIMED_AFTER_HOURS, HOUR_MS, DAY_MS,
-  DELETED_AGENT, DELETED_USER, iso, fromSeconds,
+  DELETED_AGENT, DELETED_USER, iso,
 } from "./common";
 import { buildScorecard, buildCompletionHeadline } from "./scorecard";
 
@@ -108,12 +109,12 @@ export async function buildReportExceptions(
   const lastUnassignedByTask = new Map<string, Date>();
   if (openUnheld.length > 0) {
     const rows = await db
-      .select({ taskId: taskActivity.taskId, lastAt: sql<number | null>`max(${taskActivity.occurredAt})` })
+      .select({ taskId: taskActivity.taskId, lastAt: sql<unknown>`max(${taskActivity.occurredAt})` })
       .from(taskActivity)
       .where(and(eq(taskActivity.projectId, projectId), eq(taskActivity.kind, "unassigned")))
       .groupBy(taskActivity.taskId);
     for (const r of rows) {
-      const at = fromSeconds(r.lastAt);
+      const at = decodeSqlTimestamp(r.lastAt);
       if (at) lastUnassignedByTask.set(r.taskId, at);
     }
   }
@@ -159,7 +160,7 @@ export async function buildReportExceptions(
       taskDisplayId: tasks.displayId,
       taskTitle: tasks.title,
       handoffCount: sql<number>`count(*)`,
-      lastAt: sql<number>`max(${taskActivity.occurredAt})`,
+      lastAt: sql<unknown>`max(${taskActivity.occurredAt})`,
     })
     .from(taskActivity)
     .innerJoin(tasks, eq(tasks.id, taskActivity.taskId))
@@ -274,7 +275,7 @@ export async function buildReportExceptions(
       handoffCount: BigInt(Number(c.handoffCount)),
       lastAgentId: lastHandoffByTask.get(c.taskId)?.actorId ?? "",
       lastAgentName: agentName(lastHandoffByTask.get(c.taskId)?.actorId),
-      lastHandoffAt: iso(fromSeconds(c.lastAt)) ?? "",
+      lastHandoffAt: iso(decodeSqlTimestamp(c.lastAt)) ?? "",
       claimHeld: claimHeldByTask.get(c.taskId) ?? false,
     })),
     agentRows,

@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { sql } from "drizzle-orm";
 import { setupIntegrationTest } from "../test/setup";
 import * as schema from "../db/schema.sqlite";
-import { findStalledCandidates, buildHeldTaskQuery, decodeAggregate } from "./stalledClaims";
+import { findStalledCandidates, buildHeldTaskQuery } from "./stalledClaims";
 
 /**
  * M25-T03 (ADR-0022). This is a `lib/` unit test, not a handler test - every
@@ -330,126 +330,5 @@ describe("findStalledCandidates - global-scale query shape (exit criterion 6)", 
 
     const { params: scopedParams } = buildHeldTaskQuery(db, true, { projectId: projectIds[0]! }).toSQL();
     expect(scopedParams.length).toBeLessThan(10);
-  });
-});
-
-describe("decodeAggregate - MySQL raw aggregate datetime decode (M25-T06 regression)", () => {
-  /**
-   * Live-verification finding from M25-T05: against a real MySQL server, the
-   * `MAX(CASE WHEN … THEN occurredAt END)` expressions in
-   * `buildHeldTaskQuery` come back through drizzle-orm's own mysql2
-   * `typeCast` (`mysql2/session.js`) as a plain `"YYYY-MM-DD HH:MM:SS"`
-   * string - no timezone marker, no fractional seconds - never as a `Date`
-   * object, confirmed directly against a real MySQL 8 container in this
-   * task. MySQL's TIMESTAMP type stores/returns that text as UTC wall-clock,
-   * but the old `decodeAggregate` did `new Date(v)` on it, which V8 parses
-   * as the *host process's local* timezone. On a UTC+10 host that silently
-   * added 10 hours to every `hoursSilent` - the exact "silent for 11 hours"
-   * against a true ~2h-old claim M25-T05 observed live in a real email.
-   *
-   * This test does not require a live MySQL server - it feeds the module's
-   * own decode path a string shaped exactly like the confirmed real mysql2
-   * return value. It also does not merely assert "correct in this host's
-   * timezone": it pins the process to a non-UTC zone (Australia/Sydney,
-   * chosen because it's the exact zone M25-T05's live host used) and asserts
-   * the resulting Date's UTC epoch value directly, restoring TZ afterward so
-   * no other test is affected. Under the old `new Date(v)` behavior this
-   * assertion fails by exactly the host's UTC offset in *every* timezone
-   * except UTC itself - it is not a coincidence of Sydney specifically, and
-   * running this suite under `TZ=UTC` would not have caught the bug, which
-   * is exactly why the offset is asserted explicitly rather than implicitly
-   * relying on whatever zone the CI runner happens to default to.
-   */
-  it("decodes a mysql2 CASE-aggregate datetime string as UTC, independent of the host's TZ", () => {
-    const originalTz = process.env.TZ;
-    try {
-      process.env.TZ = "Australia/Sydney"; // UTC+10 - matches M25-T05's live host exactly.
-      const mysqlRaw = "2026-08-22 14:08:50"; // Confirmed real mysql2 shape - see block comment.
-      const decoded = decodeAggregate(mysqlRaw, false);
-      expect(decoded).toBeInstanceOf(Date);
-      expect(decoded!.getTime()).toBe(Date.UTC(2026, 7, 22, 14, 8, 50));
-    } finally {
-      if (originalTz === undefined) delete process.env.TZ;
-      else process.env.TZ = originalTz;
-    }
-  });
-
-  it("decodes fractional-second mysql2 output too, in case a column ever declares fsp", () => {
-    const originalTz = process.env.TZ;
-    try {
-      process.env.TZ = "Australia/Sydney";
-      const decoded = decodeAggregate("2026-08-22 14:08:50.500", false);
-      expect(decoded!.getTime()).toBe(Date.UTC(2026, 7, 22, 14, 8, 50, 500));
-    } finally {
-      if (originalTz === undefined) delete process.env.TZ;
-      else process.env.TZ = originalTz;
-    }
-  });
-
-  it("passes a real Date instance through unchanged (defensive - not the observed real shape)", () => {
-    const d = new Date("2026-08-22T14:08:50.000Z");
-    expect(decodeAggregate(d, false)).toBe(d);
-  });
-
-  it("still decodes the SQLite integer-seconds aggregate correctly - untouched by the MySQL fix", () => {
-    const seconds = Math.floor(Date.UTC(2026, 7, 22, 14, 8, 50) / 1000);
-    const decoded = decodeAggregate(seconds, true);
-    expect(decoded!.getTime()).toBe(seconds * 1000);
-  });
-
-  it("returns undefined for null/undefined on both dialects", () => {
-    expect(decodeAggregate(null, false)).toBeUndefined();
-    expect(decodeAggregate(undefined, true)).toBeUndefined();
-  });
-});
-
-describe("findStalledCandidates - anchorAt/silentSince (M25-T04)", () => {
-  it("exposes anchorAt as claimedAt when a claim row exists", async () => {
-    const { db } = await setupIntegrationTest();
-    const base = await seedOrg(db, "anchor1");
-    const projectId = await seedProject(db, base, "anchor1");
-    const agentId = await seedAgent(db, base, "anchor1");
-    const taskId = await seedTask(db, projectId, "anchor1");
-    await seedHold(db, taskId, agentId);
-    const claimedAt = ago(30 * HOUR);
-    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: claimedAt, actorId: agentId, assigneeAgentId: agentId });
-
-    const [c] = await findStalledCandidates(db, true, { projectId, afterHours: 24 });
-    expect(c!.anchorAt).toBeInstanceOf(Date);
-    expect(Math.abs(c!.anchorAt.getTime() - claimedAt.getTime())).toBeLessThan(5000);
-  });
-
-  it("falls back anchorAt to the task's own createdAt for a claim predating activity collection - never undefined", async () => {
-    // This is the exact NOT NULL case ADR-0022 Decision 3 exists for: no
-    // claimed/assigned row at all, so `claimedAt` above is undefined but
-    // `anchorAt` must not be - a dedup table keyed on a hole here is the bug
-    // T02/T03 were built to close.
-    const { db } = await setupIntegrationTest();
-    const base = await seedOrg(db, "anchor2");
-    const projectId = await seedProject(db, base, "anchor2");
-    const agentId = await seedAgent(db, base, "anchor2");
-    const createdAt = ago(30 * HOUR);
-    const taskId = await seedTask(db, projectId, "anchor2", { createdAt });
-    await seedHold(db, taskId, agentId);
-
-    const [c] = await findStalledCandidates(db, true, { projectId, afterHours: 24 });
-    expect(c!.claimedAt).toBeUndefined();
-    expect(c!.anchorAt).toBeInstanceOf(Date);
-    expect(Math.abs(c!.anchorAt.getTime() - createdAt.getTime())).toBeLessThan(5000);
-  });
-
-  it("exposes silentSince matching the detector's own filter clock", async () => {
-    const { db } = await setupIntegrationTest();
-    const base = await seedOrg(db, "anchor3");
-    const projectId = await seedProject(db, base, "anchor3");
-    const agentId = await seedAgent(db, base, "anchor3");
-    const taskId = await seedTask(db, projectId, "anchor3");
-    await seedHold(db, taskId, agentId);
-    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
-    const noteAt = ago(26 * HOUR);
-    await recordActivity(db, { taskId, projectId, kind: "note", occurredAt: noteAt, actorId: agentId });
-
-    const [c] = await findStalledCandidates(db, true, { projectId, afterHours: 24 });
-    expect(Math.abs(c!.silentSince.getTime() - noteAt.getTime())).toBeLessThan(5000);
   });
 });

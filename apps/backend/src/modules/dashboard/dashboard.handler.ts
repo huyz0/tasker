@@ -6,6 +6,7 @@ import * as schema from "../../db/schema.sqlite";
 import { requireUser } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
 import { notDeleted } from "../../db/query-builder";
+import { decodeSqlTimestamp } from "../../lib/sqlTime";
 
 /**
  * The home screen's data, in one call.
@@ -119,7 +120,7 @@ export default (router: ConnectRouter, db: any) => {
             .select({
               id: agents.id,
               name: agents.name,
-              lastUsedAt: sql<number | null>`max(${apiTokens.lastUsedAt})`,
+              lastUsedAt: sql<unknown>`max(${apiTokens.lastUsedAt})`,
             })
             .from(agents)
             .leftJoin(apiTokens, and(eq(apiTokens.agentId, agents.id), isNull(apiTokens.revokedAt)))
@@ -203,11 +204,9 @@ export default (router: ConnectRouter, db: any) => {
           agentRows.map(async (a: any) => ({
             id: a.id,
             name: a.name,
-            // `max()` returns the raw column, so drizzle's timestamp decoding is
-            // bypassed and the value arrives as the stored integer. That column
-            // is `mode: "timestamp"` — **seconds**, not milliseconds — so
-            // treating it as ms reported every agent as last seen in 1970.
-            lastUsedAt: a.lastUsedAt == null ? undefined : new Date(Number(a.lastUsedAt) * 1000).toISOString(),
+            // `max()` bypasses drizzle's timestamp decoding; the raw shape
+            // differs by dialect (lib/sqlTime.ts).
+            lastUsedAt: decodeSqlTimestamp(a.lastUsedAt)?.toISOString(),
             openTaskCount: BigInt(
               await db
                 .select({ count: sql<number>`count(*)` })

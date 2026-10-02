@@ -8,7 +8,7 @@ import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
  * Renders `column` as a `YYYY-MM-DD` day bucket:
  *
  * - **sqlite**: drizzle's `mode: 'timestamp'` stores integer **seconds**
- *   (the dashboard/common.ts `fromSeconds` gotcha), so the bucket is
+ *   (the raw-aggregate gotcha `lib/sqlTime.ts` documents), so the bucket is
  *   `strftime('%Y-%m-%d', col, 'unixepoch')` - epoch seconds rendered in
  *   UTC, unconditionally.
  * - **mysql**: `DATE_FORMAT(col, '%Y-%m-%d')`. Honesty note: the column is a
