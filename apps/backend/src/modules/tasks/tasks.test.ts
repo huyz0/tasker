@@ -829,6 +829,35 @@ describe("Tasks Handler Integration Tests", () => {
     expect(claimed.task.id).toBe(typedMiddle.task.id);
   });
 
+  // M33-T01 (ADR-0027): how an assignment was made is recorded, because only
+  // a claim may later be released by its holder.
+  test("records a claim as source 'claim' and a human assignment as 'assign'", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const stamp = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const orgId = "org-src-" + stamp, adminId = "user-src-" + stamp, projectId = "proj-src-" + stamp, agentId = "agent-src-" + stamp;
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Source Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId: "tmpl-src-" + stamp, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: "role-src-" + stamp, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId: "role-src-" + stamp, name: "Agent" });
+    const ctx = makeAuthContext(adminId);
+    const handler = createTaskManagementHandler(db, nc);
+    const agentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-test", scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any;
+
+    const claimed = await handler.createTask({ projectId, title: "Claimed", status: "todo", description: "" }, ctx);
+    const assigned = await handler.createTask({ projectId, title: "Assigned", status: "todo", description: "" }, ctx);
+    await handler.claimTask({ taskId: claimed.task.id }, agentCtx);
+    await handler.assignTask({ taskId: assigned.task.id, agentId }, ctx);
+
+    const sourceOf = async (taskId: string) =>
+      (await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, taskId)))[0].source;
+    expect(await sourceOf(claimed.task.id)).toBe("claim");
+    expect(await sourceOf(assigned.task.id)).toBe("assign");
+  });
+
   // M14-T06: the atomic claim primitive - the missing half of "an agent can
   // discover and take work with no human broker". claimTask always assigns
   // the *calling* principal; there is no field to claim on someone else's

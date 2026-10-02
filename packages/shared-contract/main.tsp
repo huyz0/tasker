@@ -67,7 +67,23 @@ model Organization {
 
 model GetIdentityRequest {}
 model GetIdentityResponse {
+  // Set for a human session.
   @field(1) user: User;
+
+  // M33-T05: set instead of `user` when the caller authenticated with an
+  // agent token, so `tasker auth whoami` can answer for an agent.
+  @field(2) agent?: AgentIdentity;
+}
+
+model AgentIdentity {
+  @field(1) id: string;
+  @field(2) name: string;
+  @field(3) orgId: string;
+
+  // The token's scopes - what this credential may do, not the agent's role.
+  @field(4) scopes: string[];
+
+  @field(5) tokenId: string;
 }
 
 // M13-T06. `currentPassword` is required when the caller already has a
@@ -897,6 +913,56 @@ model ClaimTaskResponse {
   @field(2) latestHandoffNote?: TaskNote;
 }
 
+// M33-T02: claims the oldest open (non-terminal), unassigned task in the
+// project for the calling principal, in one call - the same atomic insert
+// ClaimTask uses, tried across a small window of candidates so an agent that
+// loses a race moves on to the next task instead of failing. With nothing to
+// claim the response carries no task; that is not an error.
+model ClaimNextTaskRequest {
+  @field(1) projectId: string;
+
+  // Only tasks of this type.
+  @field(2) taskTypeId?: string;
+
+  // Retry-safety, same contract as ClaimTaskRequest.idempotencyKey.
+  @field(3) idempotencyKey?: string;
+}
+
+model ClaimNextTaskResponse {
+  @field(1) task?: Task;
+  @field(2) latestHandoffNote?: TaskNote;
+}
+
+// M33-T03 (ADR-0027): gives back a task the caller holds by its own claim.
+// An assignment a human made is not the caller's to release
+// (PermissionDenied). With `handoffNote`, an agent records a handoff note
+// first, so the next claimant sees it - the ADR-0017 loop, completed.
+model ReleaseTaskRequest {
+  @field(1) taskId: string;
+  @field(2) handoffNote?: string;
+}
+
+model ReleaseTaskResponse {
+  @field(1) success: boolean;
+  @field(2) handoffNote?: TaskNote;
+}
+
+// M33-T04: what the caller holds, across every project in the org. An agent's
+// org is its token's; a human names one.
+model ListMyTasksRequest {
+  @field(1) orgId?: string;
+
+  // Terminal tasks are excluded unless asked for.
+  @field(2) includeTerminal?: boolean;
+
+  @field(3) page?: PageRequest;
+}
+
+model ListMyTasksResponse {
+  @field(1) tasks: Task[];
+  @field(2) page?: PageResponse;
+}
+
 model TaskReviewer {
   @field(1) id: string;
   @field(2) taskId: string;
@@ -1029,6 +1095,9 @@ interface TaskService {
   assignTask(request: AssignTaskRequest): AssignTaskResponse;
   unassignTask(request: UnassignTaskRequest): UnassignTaskResponse;
   claimTask(request: ClaimTaskRequest): ClaimTaskResponse;
+  claimNextTask(request: ClaimNextTaskRequest): ClaimNextTaskResponse;
+  releaseTask(request: ReleaseTaskRequest): ReleaseTaskResponse;
+  listMyTasks(request: ListMyTasksRequest): ListMyTasksResponse;
   getTask(request: GetTaskRequest): GetTaskResponse;
   listTasks(request: ListTasksRequest): ListTasksResponse;
   updateTask(request: UpdateTaskRequest): UpdateTaskResponse;

@@ -51,6 +51,16 @@ message Organization {
 message GetIdentityRequest {}
 message GetIdentityResponse {
   User user = 1;
+  // M33-T05: set instead of `user` for an agent token.
+  optional AgentIdentity agent = 2;
+}
+
+message AgentIdentity {
+  string id = 1;
+  string name = 2;
+  string orgId = 3;
+  repeated string scopes = 4;
+  string tokenId = 5;
 }
 
 // M13-T06. See main.tsp's SetPasswordRequest for the currentPassword /
@@ -761,6 +771,42 @@ message ClaimTaskResponse {
   TaskNote latestHandoffNote = 2;
 }
 
+// M33-T02. See main.tsp's ClaimNextTaskRequest.
+message ClaimNextTaskRequest {
+  string projectId = 1;
+  optional string taskTypeId = 2;
+  optional string idempotencyKey = 3;
+}
+
+message ClaimNextTaskResponse {
+  // Absent when there is nothing open and unassigned to claim.
+  optional Task task = 1;
+  optional TaskNote latestHandoffNote = 2;
+}
+
+// M33-T03 (ADR-0027). See main.tsp's ReleaseTaskRequest.
+message ReleaseTaskRequest {
+  string taskId = 1;
+  optional string handoffNote = 2;
+}
+
+message ReleaseTaskResponse {
+  bool success = 1;
+  optional TaskNote handoffNote = 2;
+}
+
+// M33-T04. See main.tsp's ListMyTasksRequest.
+message ListMyTasksRequest {
+  optional string orgId = 1;
+  optional bool includeTerminal = 2;
+  PageRequest page = 3;
+}
+
+message ListMyTasksResponse {
+  repeated Task tasks = 1;
+  PageResponse page = 2;
+}
+
 message TaskReviewer {
   string id = 1;
   string task_id = 2;
@@ -888,6 +934,9 @@ service TaskService {
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
   rpc UnassignTask(UnassignTaskRequest) returns (UnassignTaskResponse);
   rpc ClaimTask(ClaimTaskRequest) returns (ClaimTaskResponse);
+  rpc ClaimNextTask(ClaimNextTaskRequest) returns (ClaimNextTaskResponse);
+  rpc ReleaseTask(ReleaseTaskRequest) returns (ReleaseTaskResponse);
+  rpc ListMyTasks(ListMyTasksRequest) returns (ListMyTasksResponse);
   rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);

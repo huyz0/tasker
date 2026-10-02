@@ -292,6 +292,8 @@ export const taskAssignments = mysqlTable("task_assignments", {
   taskId: varchar("task_id", { length: 256 }).notNull().references(() => tasks.id),
   agentId: varchar("agent_id", { length: 256 }).references(() => agents.id),
   userId: varchar("user_id", { length: 256 }).references(() => users.id),
+  // M33 (ADR-0027): see schema.sqlite.ts.
+  source: varchar("source", { length: 16 }).notNull().default("assign"),
 }, (table) => {
   return {
     taskIdIdx: index("task_assignments_task_id_idx").on(table.taskId),

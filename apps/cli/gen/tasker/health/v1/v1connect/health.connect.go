@@ -222,6 +222,13 @@ const (
 	TaskServiceUnassignTaskProcedure = "/tasker.health.v1.TaskService/UnassignTask"
 	// TaskServiceClaimTaskProcedure is the fully-qualified name of the TaskService's ClaimTask RPC.
 	TaskServiceClaimTaskProcedure = "/tasker.health.v1.TaskService/ClaimTask"
+	// TaskServiceClaimNextTaskProcedure is the fully-qualified name of the TaskService's ClaimNextTask
+	// RPC.
+	TaskServiceClaimNextTaskProcedure = "/tasker.health.v1.TaskService/ClaimNextTask"
+	// TaskServiceReleaseTaskProcedure is the fully-qualified name of the TaskService's ReleaseTask RPC.
+	TaskServiceReleaseTaskProcedure = "/tasker.health.v1.TaskService/ReleaseTask"
+	// TaskServiceListMyTasksProcedure is the fully-qualified name of the TaskService's ListMyTasks RPC.
+	TaskServiceListMyTasksProcedure = "/tasker.health.v1.TaskService/ListMyTasks"
 	// TaskServiceGetTaskProcedure is the fully-qualified name of the TaskService's GetTask RPC.
 	TaskServiceGetTaskProcedure = "/tasker.health.v1.TaskService/GetTask"
 	// TaskServiceListTasksProcedure is the fully-qualified name of the TaskService's ListTasks RPC.
@@ -535,6 +542,9 @@ var (
 	taskServiceAssignTaskMethodDescriptor                         = taskServiceServiceDescriptor.Methods().ByName("AssignTask")
 	taskServiceUnassignTaskMethodDescriptor                       = taskServiceServiceDescriptor.Methods().ByName("UnassignTask")
 	taskServiceClaimTaskMethodDescriptor                          = taskServiceServiceDescriptor.Methods().ByName("ClaimTask")
+	taskServiceClaimNextTaskMethodDescriptor                      = taskServiceServiceDescriptor.Methods().ByName("ClaimNextTask")
+	taskServiceReleaseTaskMethodDescriptor                        = taskServiceServiceDescriptor.Methods().ByName("ReleaseTask")
+	taskServiceListMyTasksMethodDescriptor                        = taskServiceServiceDescriptor.Methods().ByName("ListMyTasks")
 	taskServiceGetTaskMethodDescriptor                            = taskServiceServiceDescriptor.Methods().ByName("GetTask")
 	taskServiceListTasksMethodDescriptor                          = taskServiceServiceDescriptor.Methods().ByName("ListTasks")
 	taskServiceUpdateTaskMethodDescriptor                         = taskServiceServiceDescriptor.Methods().ByName("UpdateTask")
@@ -2241,6 +2251,9 @@ type TaskServiceClient interface {
 	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
 	UnassignTask(context.Context, *connect.Request[v1.UnassignTaskRequest]) (*connect.Response[v1.UnassignTaskResponse], error)
 	ClaimTask(context.Context, *connect.Request[v1.ClaimTaskRequest]) (*connect.Response[v1.ClaimTaskResponse], error)
+	ClaimNextTask(context.Context, *connect.Request[v1.ClaimNextTaskRequest]) (*connect.Response[v1.ClaimNextTaskResponse], error)
+	ReleaseTask(context.Context, *connect.Request[v1.ReleaseTaskRequest]) (*connect.Response[v1.ReleaseTaskResponse], error)
+	ListMyTasks(context.Context, *connect.Request[v1.ListMyTasksRequest]) (*connect.Response[v1.ListMyTasksResponse], error)
 	GetTask(context.Context, *connect.Request[v1.GetTaskRequest]) (*connect.Response[v1.GetTaskResponse], error)
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
 	UpdateTask(context.Context, *connect.Request[v1.UpdateTaskRequest]) (*connect.Response[v1.UpdateTaskResponse], error)
@@ -2285,6 +2298,24 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+TaskServiceClaimTaskProcedure,
 			connect.WithSchema(taskServiceClaimTaskMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		claimNextTask: connect.NewClient[v1.ClaimNextTaskRequest, v1.ClaimNextTaskResponse](
+			httpClient,
+			baseURL+TaskServiceClaimNextTaskProcedure,
+			connect.WithSchema(taskServiceClaimNextTaskMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		releaseTask: connect.NewClient[v1.ReleaseTaskRequest, v1.ReleaseTaskResponse](
+			httpClient,
+			baseURL+TaskServiceReleaseTaskProcedure,
+			connect.WithSchema(taskServiceReleaseTaskMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listMyTasks: connect.NewClient[v1.ListMyTasksRequest, v1.ListMyTasksResponse](
+			httpClient,
+			baseURL+TaskServiceListMyTasksProcedure,
+			connect.WithSchema(taskServiceListMyTasksMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getTask: connect.NewClient[v1.GetTaskRequest, v1.GetTaskResponse](
@@ -2356,6 +2387,9 @@ type taskServiceClient struct {
 	assignTask         *connect.Client[v1.AssignTaskRequest, v1.AssignTaskResponse]
 	unassignTask       *connect.Client[v1.UnassignTaskRequest, v1.UnassignTaskResponse]
 	claimTask          *connect.Client[v1.ClaimTaskRequest, v1.ClaimTaskResponse]
+	claimNextTask      *connect.Client[v1.ClaimNextTaskRequest, v1.ClaimNextTaskResponse]
+	releaseTask        *connect.Client[v1.ReleaseTaskRequest, v1.ReleaseTaskResponse]
+	listMyTasks        *connect.Client[v1.ListMyTasksRequest, v1.ListMyTasksResponse]
 	getTask            *connect.Client[v1.GetTaskRequest, v1.GetTaskResponse]
 	listTasks          *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
 	updateTask         *connect.Client[v1.UpdateTaskRequest, v1.UpdateTaskResponse]
@@ -2386,6 +2420,21 @@ func (c *taskServiceClient) UnassignTask(ctx context.Context, req *connect.Reque
 // ClaimTask calls tasker.health.v1.TaskService.ClaimTask.
 func (c *taskServiceClient) ClaimTask(ctx context.Context, req *connect.Request[v1.ClaimTaskRequest]) (*connect.Response[v1.ClaimTaskResponse], error) {
 	return c.claimTask.CallUnary(ctx, req)
+}
+
+// ClaimNextTask calls tasker.health.v1.TaskService.ClaimNextTask.
+func (c *taskServiceClient) ClaimNextTask(ctx context.Context, req *connect.Request[v1.ClaimNextTaskRequest]) (*connect.Response[v1.ClaimNextTaskResponse], error) {
+	return c.claimNextTask.CallUnary(ctx, req)
+}
+
+// ReleaseTask calls tasker.health.v1.TaskService.ReleaseTask.
+func (c *taskServiceClient) ReleaseTask(ctx context.Context, req *connect.Request[v1.ReleaseTaskRequest]) (*connect.Response[v1.ReleaseTaskResponse], error) {
+	return c.releaseTask.CallUnary(ctx, req)
+}
+
+// ListMyTasks calls tasker.health.v1.TaskService.ListMyTasks.
+func (c *taskServiceClient) ListMyTasks(ctx context.Context, req *connect.Request[v1.ListMyTasksRequest]) (*connect.Response[v1.ListMyTasksResponse], error) {
+	return c.listMyTasks.CallUnary(ctx, req)
 }
 
 // GetTask calls tasker.health.v1.TaskService.GetTask.
@@ -2444,6 +2493,9 @@ type TaskServiceHandler interface {
 	AssignTask(context.Context, *connect.Request[v1.AssignTaskRequest]) (*connect.Response[v1.AssignTaskResponse], error)
 	UnassignTask(context.Context, *connect.Request[v1.UnassignTaskRequest]) (*connect.Response[v1.UnassignTaskResponse], error)
 	ClaimTask(context.Context, *connect.Request[v1.ClaimTaskRequest]) (*connect.Response[v1.ClaimTaskResponse], error)
+	ClaimNextTask(context.Context, *connect.Request[v1.ClaimNextTaskRequest]) (*connect.Response[v1.ClaimNextTaskResponse], error)
+	ReleaseTask(context.Context, *connect.Request[v1.ReleaseTaskRequest]) (*connect.Response[v1.ReleaseTaskResponse], error)
+	ListMyTasks(context.Context, *connect.Request[v1.ListMyTasksRequest]) (*connect.Response[v1.ListMyTasksResponse], error)
 	GetTask(context.Context, *connect.Request[v1.GetTaskRequest]) (*connect.Response[v1.GetTaskResponse], error)
 	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
 	UpdateTask(context.Context, *connect.Request[v1.UpdateTaskRequest]) (*connect.Response[v1.UpdateTaskResponse], error)
@@ -2484,6 +2536,24 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		TaskServiceClaimTaskProcedure,
 		svc.ClaimTask,
 		connect.WithSchema(taskServiceClaimTaskMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceClaimNextTaskHandler := connect.NewUnaryHandler(
+		TaskServiceClaimNextTaskProcedure,
+		svc.ClaimNextTask,
+		connect.WithSchema(taskServiceClaimNextTaskMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceReleaseTaskHandler := connect.NewUnaryHandler(
+		TaskServiceReleaseTaskProcedure,
+		svc.ReleaseTask,
+		connect.WithSchema(taskServiceReleaseTaskMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceListMyTasksHandler := connect.NewUnaryHandler(
+		TaskServiceListMyTasksProcedure,
+		svc.ListMyTasks,
+		connect.WithSchema(taskServiceListMyTasksMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	taskServiceGetTaskHandler := connect.NewUnaryHandler(
@@ -2556,6 +2626,12 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceUnassignTaskHandler.ServeHTTP(w, r)
 		case TaskServiceClaimTaskProcedure:
 			taskServiceClaimTaskHandler.ServeHTTP(w, r)
+		case TaskServiceClaimNextTaskProcedure:
+			taskServiceClaimNextTaskHandler.ServeHTTP(w, r)
+		case TaskServiceReleaseTaskProcedure:
+			taskServiceReleaseTaskHandler.ServeHTTP(w, r)
+		case TaskServiceListMyTasksProcedure:
+			taskServiceListMyTasksHandler.ServeHTTP(w, r)
 		case TaskServiceGetTaskProcedure:
 			taskServiceGetTaskHandler.ServeHTTP(w, r)
 		case TaskServiceListTasksProcedure:
@@ -2599,6 +2675,18 @@ func (UnimplementedTaskServiceHandler) UnassignTask(context.Context, *connect.Re
 
 func (UnimplementedTaskServiceHandler) ClaimTask(context.Context, *connect.Request[v1.ClaimTaskRequest]) (*connect.Response[v1.ClaimTaskResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ClaimTask is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ClaimNextTask(context.Context, *connect.Request[v1.ClaimNextTaskRequest]) (*connect.Response[v1.ClaimNextTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ClaimNextTask is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ReleaseTask(context.Context, *connect.Request[v1.ReleaseTaskRequest]) (*connect.Response[v1.ReleaseTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ReleaseTask is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ListMyTasks(context.Context, *connect.Request[v1.ListMyTasksRequest]) (*connect.Response[v1.ListMyTasksResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListMyTasks is not implemented"))
 }
 
 func (UnimplementedTaskServiceHandler) GetTask(context.Context, *connect.Request[v1.GetTaskRequest]) (*connect.Response[v1.GetTaskResponse], error) {

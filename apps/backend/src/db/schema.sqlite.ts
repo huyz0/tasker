@@ -417,6 +417,9 @@ export const taskAssignments = sqliteTable("task_assignments", {
   taskId: text("task_id").notNull().references(() => tasks.id),
   agentId: text("agent_id").references(() => agents.id),
   userId: text("user_id").references(() => users.id),
+  // M33 (ADR-0027): "claim" (taken by its holder via ClaimTask, releasable by
+  // that holder) or "assign" (given by a human; not self-releasable).
+  source: text("source").notNull().default("assign"),
 }, (table) => {
   return {
     taskIdIdx: index("task_assignments_task_id_idx").on(table.taskId),

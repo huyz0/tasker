@@ -972,13 +972,13 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
         const insertResult = isStandalone
           ? await db.run(sql`
-              INSERT INTO ${assignments} (id, task_id, agent_id, user_id)
-              SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}
+              INSERT INTO ${assignments} (id, task_id, agent_id, user_id, source)
+              SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}, 'claim'
               WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${parsed.taskId})
             `)
           : await db.execute(sql`
-              INSERT INTO ${assignments} (id, task_id, agent_id, user_id)
-              SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}
+              INSERT INTO ${assignments} (id, task_id, agent_id, user_id, source)
+              SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}, 'claim'
               FROM DUAL
               WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${parsed.taskId})
             `);
