@@ -210,16 +210,16 @@ async function refs(db: any, isStandalone: boolean, ids: string[]): Promise<Map<
   return out;
 }
 
-/** Every relation of one task, for ListTaskLinks. */
-export async function listLinks(db: any, isStandalone: boolean, taskId: string) {
+/** Every relation of one task, for ListTaskLinks - at most `limit` of each kind. */
+export async function listLinks(db: any, isStandalone: boolean, taskId: string, limit = LINK_LIST_LIMIT) {
   const { tasks, links } = tables(isStandalone);
   const [self] = await db.select({ parentTaskId: (tasks as any).parentTaskId }).from(tasks).where(eq((tasks as any).id, taskId)).limit(1);
   const [outgoing, incoming, children] = await Promise.all([
-    db.select().from(links).where(eq((links as any).taskId, taskId)).orderBy(desc((links as any).createdAt)).limit(LINK_LIST_LIMIT * 2),
-    db.select().from(links).where(eq((links as any).linkedTaskId, taskId)).orderBy(desc((links as any).createdAt)).limit(LINK_LIST_LIMIT * 2),
+    db.select().from(links).where(eq((links as any).taskId, taskId)).orderBy(desc((links as any).createdAt)).limit(limit * 2),
+    db.select().from(links).where(eq((links as any).linkedTaskId, taskId)).orderBy(desc((links as any).createdAt)).limit(limit * 2),
     db.select({ id: (tasks as any).id }).from(tasks)
       .where(and(eq((tasks as any).parentTaskId, taskId), isNull((tasks as any).deletedAt)))
-      .orderBy(desc((tasks as any).createdAt)).limit(LINK_LIST_LIMIT),
+      .orderBy(desc((tasks as any).createdAt)).limit(limit),
   ]);
   const ids = new Set<string>([
     ...outgoing.map((l: any) => l.linkedTaskId),
@@ -229,7 +229,7 @@ export async function listLinks(db: any, isStandalone: boolean, taskId: string) 
   ]);
   const byId = await refs(db, isStandalone, [...ids]);
   const pick = (rows: any[], key: string, kind: LinkKind) =>
-    rows.filter((l) => l.kind === kind).map((l) => byId.get(l[key])).filter(Boolean).slice(0, LINK_LIST_LIMIT);
+    rows.filter((l) => l.kind === kind).map((l) => byId.get(l[key])).filter(Boolean).slice(0, limit);
   const [discoveredFrom] = pick(outgoing, "linkedTaskId", "discovered_from");
   const parent = self?.parentTaskId ? byId.get(self.parentTaskId) : undefined;
   return {

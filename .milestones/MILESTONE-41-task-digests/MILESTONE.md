@@ -47,7 +47,7 @@ summaries server-side (Tasker has no model; agents write them).
 ## 5. Task Breakdown
 
 - [x] **M41-T01** — Contract and schema.
-- [ ] **M41-T02** — Summary, digest and candidates RPCs.
+- [x] **M41-T02** — Summary, digest and candidates RPCs.
 - [ ] **M41-T03** — CLI and MCP.
 - [ ] **M41-T04** — GUI.
 - [ ] **M41-T05** — Docs and close.

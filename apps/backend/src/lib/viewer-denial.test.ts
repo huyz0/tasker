@@ -44,7 +44,7 @@ const READS: Record<string, string[]> = {
   projects: ['getProject', 'listProjects'],
   projectTemplates: ['getTemplate', 'listTemplates'],
   tasks: ['getTaskType', 'listTaskTypes'],
-  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks', 'listTaskLinks', 'getInputRequest', 'listInputRequests', 'getTransitionApproval', 'listTransitionApprovals', 'listUsageRecords'],
+  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks', 'listTaskLinks', 'getInputRequest', 'listInputRequests', 'getTransitionApproval', 'listTransitionApprovals', 'listUsageRecords', 'getTaskDigest', 'listCompactionCandidates'],
   // Read-only supervision console; a viewer may look at it.
   dashboard: ['getDashboard'],
   // Same read-only reasoning as dashboard. getReportTrends is M24-T06's
@@ -169,6 +169,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     cancelInputRequest: { id: ids.inputRequest },
     decideTransitionApproval: { id: ids.approval, approve: true },
     reportUsage: { taskId: ids.task, inputTokens: 1n, outputTokens: 0n, costMicros: 0n },
+    setTaskSummary: { taskId: ids.task, text: 'Done.' },
     addTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     removeTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     updateTask: { taskId: ids.task, title: 'T2' },

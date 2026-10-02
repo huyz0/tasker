@@ -14,6 +14,7 @@ import { purgeTaskCascade } from "../../lib/cascadePurge";
 import { createInputRequestHandlers, waitingOnPeopleCounts } from "./inputRequests";
 import { createApprovalHandlers, isGatedTransition } from "./approvals";
 import { createUsageHandlers, taskUsageTotals } from "./usage";
+import { createDigestHandlers, taskSummaryToWire } from "./digest";
 import { MAX_PRIORITY, priorityRankSql, LINK_KINDS, assertLinkAllowed, openBlockerCounts, hasOpenBlockerSql, newlyUnblocked, assertParentAllowed, insertLink, deleteLink, listLinks } from "./taskGraph";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -859,7 +860,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
   }
   const approvals = createApprovalHandlers(db, nc, isStandalone, applyStatusChange);
 
-  return {
+  const handlers = {
     // M38 (ADR-0031): questions an agent asks a person, on this same service.
     ...createInputRequestHandlers(db, nc, isStandalone),
     // M39 (ADR-0032): agents' gated moves, decided by people.
@@ -1026,6 +1027,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           blockedByOpenCount: await openBlockerCount(t.id),
           ...(await waitingOnPeopleCounts(db, isStandalone, [t.id])).get(t.id),
           usage: await taskUsageTotals(db, isStandalone, t.id),
+          summary: await taskSummaryToWire(db, isStandalone, t),
         }),
         ...(latestHandoffNote ? { latestHandoffNote } : {}),
       };
@@ -1715,4 +1717,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return { success: true };
     },
   };
+  // M41 (ADR-0034): the digest is assembled from GetTask and ListInputRequests
+  // themselves, so it reads exactly what those screens read.
+  return Object.assign(handlers, createDigestHandlers(db, nc, isStandalone, {
+    getTask: (req, ctx) => handlers.getTask(req, ctx),
+    listInputRequests: (req, ctx) => handlers.listInputRequests(req, ctx),
+  }));
 };
