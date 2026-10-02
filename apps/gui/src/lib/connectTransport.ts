@@ -1,5 +1,5 @@
 import { createConnectTransport } from "@connectrpc/connect-web";
-import type { Interceptor } from "@connectrpc/connect";
+import { Code, ConnectError, type Interceptor } from "@connectrpc/connect";
 import { reportError } from "./errorReporter";
 import { BACKEND_URL } from "./backendUrl";
 
@@ -14,6 +14,11 @@ const requestLoggingInterceptor: Interceptor = (next) => async (req) => {
   try {
     return await next(req);
   } catch (err) {
+    // A request its caller cancelled — a stream torn down on navigation, a
+    // page closing — has not failed. Reporting it as an error filled the log
+    // stream (and every screenshot run's console) with `AbortError`s that
+    // nobody could act on.
+    if (isCancellation(err, req.signal)) throw err;
     reportError({
       message: `rpc failed: ${service}.${method}`,
       err,
@@ -23,6 +28,12 @@ const requestLoggingInterceptor: Interceptor = (next) => async (req) => {
     throw err;
   }
 };
+
+function isCancellation(err: unknown, signal: AbortSignal | undefined): boolean {
+  if (signal?.aborted) return true;
+  if (err instanceof Error && err.name === "AbortError") return true;
+  return err instanceof ConnectError && err.code === Code.Canceled;
+}
 
 export const transport = createConnectTransport({
   baseUrl: BACKEND_URL,

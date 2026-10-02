@@ -36,4 +36,23 @@ describe('connectTransport', () => {
     expect(req.header.get('x-request-id')).toBeTruthy();
     expect(spy).toHaveBeenCalled();
   });
+
+  it('does not report a request the caller cancelled', async () => {
+    await import('./connectTransport');
+    const interceptor = capturedOptions.interceptors[0];
+    const controller = new AbortController();
+    controller.abort();
+    const req = {
+      header: new Headers(),
+      signal: controller.signal,
+      method: { name: 'SubscribeEvents', parent: { typeName: 'tasker.health.v1.EventService' } },
+    };
+
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const abort = Object.assign(new Error('signal is aborted without reason'), { name: 'AbortError' });
+    const next = vi.fn().mockRejectedValue(abort);
+
+    await expect(interceptor(next)(req)).rejects.toBe(abort);
+    expect(spy).not.toHaveBeenCalled();
+  });
 });
