@@ -172,6 +172,15 @@ export async function purgeProjectCascade(db: any, projectId: string): Promise<v
   const taskTypeRows = await db.select({ id: schema.taskTypes.id }).from(schema.taskTypes).where(eq(schema.taskTypes.projectId, projectId));
   await bulkPurgeTaskTypes(db, schema, taskTypeRows.map((t: any) => t.id));
 
+  // M42/M43: a project's own workflow templates and its schedules - a
+  // schedule left behind would keep firing into a project that is gone.
+  await db.delete(schema.workflowTemplates).where(eq(schema.workflowTemplates.projectId, projectId));
+  const scheduleRows = await db.select({ id: schema.schedules.id }).from(schema.schedules).where(eq(schema.schedules.projectId, projectId));
+  if (scheduleRows.length > 0) {
+    await db.delete(schema.scheduleRuns).where(inArray(schema.scheduleRuns.scheduleId, scheduleRows.map((r: any) => r.id)));
+    await db.delete(schema.schedules).where(eq(schema.schedules.projectId, projectId));
+  }
+
   await db.delete(schema.projects).where(eq(schema.projects.id, projectId));
 }
 
@@ -206,6 +215,7 @@ export async function purgeOrgCascade(db: any, orgId: string): Promise<void> {
   // projectTemplates.rootTaskTypeId references taskTypes, so it must be
   // cleared before the taskTypes rows it points to are deleted below.
   await db.delete(schema.projectTemplates).where(eq(schema.projectTemplates.orgId, orgId));
+  await db.delete(schema.workflowTemplates).where(eq(schema.workflowTemplates.orgId, orgId));
   await db.delete(schema.labels).where(eq(schema.labels.orgId, orgId));
 
   const orgTaskTypeRows = await db.select({ id: schema.taskTypes.id }).from(schema.taskTypes).where(eq(schema.taskTypes.orgId, orgId));

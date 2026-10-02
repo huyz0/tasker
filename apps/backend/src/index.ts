@@ -1,6 +1,6 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService, NotificationService, EventService, WebhookService, WorkflowService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService, NotificationService, EventService, WebhookService, WorkflowService, ScheduleService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
@@ -29,6 +29,7 @@ import { createNotificationHandler } from "./modules/notifications/notifications
 import { createEventsHandler } from "./modules/events/events.handler";
 import { createWebhooksHandler } from "./modules/webhooks/webhooks.handler";
 import { createWorkflowsHandler } from "./modules/workflows/workflows.handler";
+import { createSchedulesHandler, createScheduleSweep } from "./modules/schedules/schedules.handler";
 import { createWebhookSink } from "./modules/webhooks/outbox";
 import { runWebhookSweep, httpSender } from "./modules/webhooks/delivery";
 import { allowPrivateTargets } from "./modules/webhooks/urlSafety";
@@ -223,6 +224,7 @@ const handler = connectNodeAdapter({
     router.service(RepositoryService as any, createRepositoriesHandler(db, nc));
     router.service(WebhookService as any, createWebhooksHandler(db, nc, { onChange: webhookSink.invalidate }));
     router.service(WorkflowService as any, createWorkflowsHandler(db, nc));
+    router.service(ScheduleService as any, createSchedulesHandler(db, nc));
     createSearchHandler(router, db);
     createDashboardHandler(router, db);
     createReportsHandler(router, db);
@@ -480,6 +482,19 @@ setInterval(() => {
     .catch((err) => reportError({ message: "webhook_sweep.failed", err, severity: "error" }))
     .finally(() => { webhookSweepRunning = false; });
 }, WEBHOOK_SWEEP_INTERVAL_MS);
+
+// M43 (ADR-0036). Every minute: schedules fire at whole hours, so a minute's
+// lateness is within the promise; a run still in flight is not overlapped.
+const SCHEDULE_SWEEP_INTERVAL_MS = 60_000;
+const runDueSchedules = createScheduleSweep(db, nc);
+let scheduleSweepRunning = false;
+setInterval(() => {
+  if (scheduleSweepRunning) return;
+  scheduleSweepRunning = true;
+  runDueSchedules()
+    .catch((err) => reportError({ message: "schedule_sweep.failed", err, severity: "error" }))
+    .finally(() => { scheduleSweepRunning = false; });
+}, SCHEDULE_SWEEP_INTERVAL_MS);
 
 const STALLED_ALERT_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 setInterval(() => {

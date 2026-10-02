@@ -138,6 +138,14 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     listWorkflowTemplates: 'tasks:read',
     instantiateWorkflow: 'tasks:write',
   },
+  // M43 (ADR-0036): an agent may read schedules and fire one now (which only
+  // creates tasks); defining, changing and deleting them is a person's.
+  schedules: {
+    getSchedule: 'tasks:read',
+    listSchedules: 'tasks:read',
+    listScheduleRuns: 'tasks:read',
+    runSchedule: 'tasks:write',
+  },
   taskNotes: {
     listTaskNotes: 'tasks:read',
     createTaskNote: 'comments:write',

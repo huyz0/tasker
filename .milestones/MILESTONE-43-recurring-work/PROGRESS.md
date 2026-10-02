@@ -17,3 +17,43 @@
   `next_run_at`; work created as the schedule's creator; skip while the last
   run's task is open; missed slots after downtime are not replayed.
 - **Next**: M43-T02
+
+## M43-T02 — Schedule CRUD and next-run computation
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `src/modules/schedules/cadence.ts` (new: `nextRunAfter`,
+  `describeCadence`) with `cadence.test.ts`; `schedules.handler.ts` (new:
+  create/update/get/list/delete); `index.ts` (ScheduleService), `lib/scopes.ts`
+  (`schedules` section), both gate sweeps with a real schedule fixture,
+  `lib/cascadePurge.ts` (a project's schedules, runs and own workflow
+  templates; an org's templates).
+- **Verified**: see M43-T03 (one commit).
+- **Notes**: Same commit as T03 for the same reason as M42-T02/T03: one
+  module, one test file. Validation: cadence vocabulary, ≥1 unique weekday
+  for weekly, day 1-28 for monthly, hour 0-23, exactly one target (template
+  in the org and allowed in the project, or a task title). The next slot is
+  always strictly after now, so "exactly at 09:00" means tomorrow's. An edit
+  makes the editor the schedule's author (ADR-0036).
+- **Next**: M43-T03
+
+## M43-T03 — The sweep, Run now and run history
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `schedules.handler.ts` (`runSchedule`, `listScheduleRuns`,
+  `createScheduleSweep`), `index.ts` (sweep every minute, not overlapped);
+  `src/modules/schedules/schedules.test.ts` (11 tests, injected clock).
+- **Verified**: backend `bun test` 2041 pass; `backend:typecheck`, `:knip`
+  green.
+- **Notes**: The sweep claims each due row with `UPDATE … SET next_run_at =
+  <next after now> WHERE id = ? AND next_run_at = <value read>`; four sweeps
+  racing over one due slot fire it once (tested). A run never throws - skip
+  (last task still open), create (task or workflow, stamped with
+  `schedule_id`, titled with the date) or fail (message recorded) - so one
+  broken schedule does not stop the rest; a creator who lost access makes
+  runs fail visibly. Missed slots after downtime fire once, not once per
+  slot. Run now fires as the caller (agents included, `tasks:write`) and
+  leaves the next slot alone. The sweep is exported separately from the RPC
+  handlers so it is not mistaken for an endpoint by the scope sweep.
+- **Next**: M43-T04

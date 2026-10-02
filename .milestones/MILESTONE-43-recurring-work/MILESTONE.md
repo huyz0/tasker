@@ -49,8 +49,8 @@ event-triggered schedules (webhooks already cover reacting to events).
 ## 5. Task Breakdown
 
 - [x] **M43-T01** — ADR-0036, contract and schema.
-- [ ] **M43-T02** — Schedule CRUD and next-run computation.
-- [ ] **M43-T03** — The sweep, Run now and run history.
+- [x] **M43-T02** — Schedule CRUD and next-run computation.
+- [x] **M43-T03** — The sweep, Run now and run history.
 - [ ] **M43-T04** — CLI and MCP.
 - [ ] **M43-T05** — GUI.
 - [ ] **M43-T06** — Docs and close.
