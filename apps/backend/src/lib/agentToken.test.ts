@@ -206,6 +206,24 @@ describe("lastUsedAt", () => {
     expect(Math.floor(new Date(row[0].lastUsedAt).getTime() / 1000)).toBe(Math.floor(when.getTime() / 1000));
   });
 
+  // M30-T06: every authenticated agent call used to issue an UPDATE. At the
+  // mission's 20K polling agents that turns read traffic into write load for
+  // a column the token list shows to the minute.
+  it("writes at most once per token per minute", async () => {
+    let writes = 0;
+    const countingDb = { update: () => ({ set: () => ({ where: () => { writes++; return Promise.resolve(); } }) }) };
+    const id = `tok-throttle-${String(Math.random()).slice(2)}`;
+    const t0 = new Date("2026-10-02T00:00:00Z");
+    for (let i = 0; i < 5; i++) touchLastUsed(countingDb as any, id, new Date(t0.getTime() + i * 1000));
+    touchLastUsed(countingDb as any, `${id}-other`, t0);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(writes).toBe(2);
+
+    touchLastUsed(countingDb as any, id, new Date(t0.getTime() + 61_000));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(writes).toBe(3);
+  });
+
   it("swallows a write failure instead of failing the request or the process", async () => {
     const brokenDb = { update: () => { throw new Error("db down"); } };
     expect(() => touchLastUsed(brokenDb as any, "tok-1")).not.toThrow();

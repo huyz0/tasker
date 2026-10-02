@@ -66,7 +66,7 @@ for the list query every board load and agent poll runs.
   `created_at, id`, with `indexCoverage.test.ts` green. (Already true since
   M07-T09 on SQLite; on MySQL 8 the composite was measured and the optimiser
   kept its filesort — see M30-T05's journal entry. Not re-added.)
-- [ ] An agent token used N times within a minute is written at most once.
+- [x] An agent token used N times within a minute is written at most once.
 - [ ] One slow event-feed client holds a bounded queue; the oldest events are
   dropped and counted, never unbounded growth.
 - [ ] `moon run backend:typecheck backend:test` green, and CI green on `main`.
@@ -103,7 +103,7 @@ for the list query every board load and agent poll runs.
 - [~] **M30-T05** — Indexes for the task list and the retention sweep, both dialects. *(Dropped — see PROGRESS.md.)*
   - **Files**: `db/schema.{mysql,sqlite}.ts`, new migrations, `db/embeddedMigrations.generated.ts`
   - **Verify**: `indexCoverage.test.ts`, migration tests.
-- [ ] **M30-T06** — Agent token `lastUsedAt` is written at most once a minute per token.
+- [x] **M30-T06** — Agent token `lastUsedAt` is written at most once a minute per token.
   - **Files**: `lib/agentToken.ts`, `lib/authenticate.ts`
   - **Verify**: `agentToken.test.ts`.
 - [ ] **M30-T07** — The retention sweep reads ids only, never artifact content.

@@ -94,3 +94,18 @@
   that sweep read ids only, and an hourly scan of a narrow projection does
   not justify a write-path index on six tables.
 - **Next**: M30-T06
+
+## M30-T06 — Agent token bookkeeping writes at most once a minute
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/lib/agentToken.ts`, `agentToken.test.ts`
+- **Verified**: `bun test` — 1850 pass, 0 fail; the throttle test failed first
+  (5 writes for 5 calls).
+- **Notes**: Per-process, in memory: N replicas write at most N times a
+  minute per token, which is the bound that matters. A clock that steps
+  backwards writes rather than suppressing. The map clears at 50,000 tokens
+  instead of tracking LRU order — clearing costs one extra write per token,
+  an LRU costs bookkeeping on every call. `authenticate.ts` is unchanged; the
+  throttle lives where the write does.
+- **Next**: M30-T07

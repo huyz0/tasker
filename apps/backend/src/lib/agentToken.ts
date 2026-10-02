@@ -130,6 +130,10 @@ export function parseScopes(raw: unknown): string[] {
   }
 }
 
+const TOUCH_INTERVAL_MS = 60_000;
+const TOUCH_TRACKED_MAX = 50_000;
+const lastTouched = new Map<string, number>();
+
 /**
  * Records that a token was used, without making the request wait for it.
  *
@@ -140,6 +144,16 @@ export function parseScopes(raw: unknown): string[] {
  * would take down the process.
  */
 export function touchLastUsed(db: any, tokenId: string, now: Date = new Date()): void {
+  // M30-T06: at most one write per token per minute, per process. Every agent
+  // call authenticates, so an unthrottled write turned a polling fleet's read
+  // traffic into write load - for a column the token list renders to the
+  // minute. The map is cleared rather than evicted when it grows past the
+  // fleet size; the cost of clearing is one extra write per token.
+  const last = lastTouched.get(tokenId);
+  if (last !== undefined && now.getTime() - last < TOUCH_INTERVAL_MS && now.getTime() >= last) return;
+  if (lastTouched.size >= TOUCH_TRACKED_MAX) lastTouched.clear();
+  lastTouched.set(tokenId, now.getTime());
+
   const { apiTokens } = tables();
   Promise.resolve()
     .then(() => db.update(apiTokens).set({ lastUsedAt: now }).where(eq((apiTokens as any).id, tokenId)))
