@@ -141,3 +141,25 @@
   organization admins can manage webhooks" and no add button.
   `webhook` joins the live-event key map.
 - **Next**: M37-T07
+
+## M37-T07 — Docs, E2E and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/webhooks.md` (new), `README.md`, `docs/agent-integration.md`,
+  `.specs/product/architecture.md`, `apps/gui/tests/e2e/webhooks.spec.ts`,
+  `.milestones/STATE.md`
+- **Verified**: the new Playwright spec against the live seeded backend -
+  add a webhook (real public host, so validation passes without
+  `WEBHOOKS_ALLOW_PRIVATE`), secret shown once and gone after Done, pause,
+  delete. `moon run :docs-lint :doc-drift` green. End-to-end delivery was
+  proven live in T05 (signatures verified by an independent receiver).
+- **Notes**: `docs/webhooks.md` covers registration, every event type, the
+  payload and headers, signature verification in TypeScript and Python
+  (raw body, constant-time compare, replay window), at-least-once and
+  ordering guarantees, retry/disable behaviour, and the security model
+  (https, non-public addresses refused at registration and at connect time,
+  `WEBHOOKS_ALLOW_PRIVATE`, encrypted secrets, URLs kept out of audit events).
+  The E2E webhook subscribes only to `tasknote.deleted` and is deleted, so the
+  suite sends it nothing. M37 closed: 7/7 tasks, 6/6 criteria.
+- **Next**: M38-T01

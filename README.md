@@ -84,6 +84,9 @@ Tasker queue through `<backend>/mcp` (or `tasker mcp` over stdio) with its agent
 token: claim the next ready task, note, hand off, link follow-up work, search
 memory.
 
+[**Webhooks**](docs/webhooks.md) — an organization's task events, POSTed to an
+HTTPS endpoint and signed, so an external runner starts when work appears.
+
 ### Foundational context
 
 All foundational context is stored entirely within the `.specs/` directory.
@@ -137,7 +140,7 @@ instance, whichever way you are running it.
 
 Then: **[Standalone guide](docs/standalone.md)** for flags, upgrades and
 backups · **[Agent integration](docs/agent-integration.md)** for connecting an
-autonomous worker · **[MCP](docs/mcp.md)** for MCP clients · **[CLI reference](docs/cli-reference.md)** for every
+autonomous worker · **[MCP](docs/mcp.md)** for MCP clients · **[Webhooks](docs/webhooks.md)** for push delivery · **[CLI reference](docs/cli-reference.md)** for every
 command · **[Email](docs/email.md)** for invitation delivery.
 
 Everything below is for working *on* Tasker rather than running it.

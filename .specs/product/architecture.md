@@ -75,6 +75,14 @@ One process serves everything (`apps/backend/src/index.ts`):
   loopback with the caller's own `Authorization` header - so it passes through
   the same interceptors, scopes and rate limit as a direct call. `tasker mcp`
   relays stdio clients to it.
+- **Webhooks ride an in-process outbox** (M37, ADR-0030):
+  `publishDomainEvent` offers every event to one sink
+  (`modules/webhooks/outbox.ts`), which writes a `webhook_deliveries` row per
+  matching webhook in the publishing process - so webhooks work without NATS.
+  A 5-second sweep (`delivery.ts`) leases due rows, signs and POSTs them,
+  retries with backoff and disables a webhook after 20 consecutive failures;
+  target addresses are vetted inside the connection's DNS lookup
+  (`urlSafety.ts`).
 
 Cross-cutting behaviour is implemented as Connect interceptors in `index.ts`:
 session resolution, request logging (`lib/requestLogging.ts`) and per-method
@@ -82,12 +90,13 @@ latency capture (`lib/rpcMetrics.ts`).
 
 ### Bounded contexts
 
-The backend is a **modular monolith**. Twenty-one modules under
+The backend is a **modular monolith**. Twenty-two modules under
 `apps/backend/src/modules/` own their own handlers and schema access:
 
 `agents`, `artifacts`, `audit`, `auth`, `comments`, `dashboard`, `events`,
 `health`, `labels`, `mcp`, `memory`, `notifications`, `orgs`, `projects`,
-`reports`, `repositories`, `roles`, `search`, `tasks`, `teams`, `telemetry`.
+`reports`, `repositories`, `roles`, `search`, `tasks`, `teams`, `telemetry`,
+`webhooks`.
 
 Each exports a `create*Handler(router, db, nc)` factory registered in
 `index.ts`. Modules do not import one another's handlers; shared behaviour lives

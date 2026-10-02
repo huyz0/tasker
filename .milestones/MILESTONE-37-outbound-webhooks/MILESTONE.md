@@ -1,13 +1,13 @@
 ---
 id: M37
 title: Outbound Webhooks
-status: in-progress
+status: done
 goal: An organization can subscribe an HTTPS endpoint to its task events and receive each one, signed, at least once — so an outside agent runner starts work when work appears instead of polling or holding a stream open.
 depends_on: [M35]
 surfaces: [contract, backend, cli, gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M37 — Outbound Webhooks
@@ -30,21 +30,21 @@ event-feed stream, which needs a long-lived connection per consumer.
 
 ## 3. Exit Criteria
 
-- [ ] Each delivery carries `X-Tasker-Signature: sha256=<hex HMAC of
+- [x] Each delivery carries `X-Tasker-Signature: sha256=<hex HMAC of
   "<timestamp>.<body>">`, `X-Tasker-Delivery`, `X-Tasker-Event` and
   `X-Tasker-Timestamp`; a test verifies a signature the way a receiver would.
-- [ ] Delivery is durable: events are written to an outbox in the same
+- [x] Delivery is durable: events are written to an outbox in the same
   process that publishes them, a sweep delivers and retries with backoff,
   and a restart loses nothing queued.
-- [ ] URLs must be `https`; private, loopback, link-local and metadata
+- [x] URLs must be `https`; private, loopback, link-local and metadata
   addresses are refused at registration and inside the delivery's own DNS
   lookup (`WEBHOOKS_ALLOW_PRIVATE=true` permits them, and `http`, for
   development and on-premises receivers).
-- [ ] Only `org:admin` manages webhooks; agents cannot (agent-scope sweep);
+- [x] Only `org:admin` manages webhooks; agents cannot (agent-scope sweep);
   events from projects the subscription does not cover are never sent.
-- [ ] After N consecutive failures a subscription is disabled and org admins
+- [x] After N consecutive failures a subscription is disabled and org admins
   get an in-app notification.
-- [ ] CLI `webhooks create|list|delete|deliveries|rotate-secret`; GUI
+- [x] CLI `webhooks create|list|delete|deliveries|rotate-secret`; GUI
   Organization → Webhooks; CI green on `main`.
 
 ## 4. Scope
@@ -61,7 +61,7 @@ events on demand.
 - [x] **M37-T04** — Outbox fan-out from domain events; signed delivery sweep with retries and auto-disable.
 - [x] **M37-T05** — CLI.
 - [x] **M37-T06** — GUI.
-- [ ] **M37-T07** — Docs and close.
+- [x] **M37-T07** — Docs and close.
 
 ## 6. Verification
 

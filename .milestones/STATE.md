@@ -1,6 +1,6 @@
 ---
-active_milestone: M37
-active_task: M37-T07
+active_milestone: M38
+active_task: M38-T01
 last_updated: 2026-10-02
 last_commit: 1815c88
 blocked: false
@@ -36,7 +36,11 @@ panel (ADR-0028).
 **M36 (MCP Server) complete: 5/5 tasks, 6/6 exit criteria** — `POST /mcp`
 with twenty agent-loop tools, each a validated mapping onto one RPC called over
 loopback with the caller's own token (ADR-0029); `tasker mcp` for stdio
-clients; `docs/mcp.md`. Next: M37.
+clients; `docs/mcp.md`.
+**M37 (Outbound Webhooks) complete: 7/7 tasks, 6/6 exit criteria** — signed,
+retried, leased delivery of task events from an in-process outbox (works
+without NATS), SSRF-safe targets vetted at connect time, auto-disable with an
+admin notification (ADR-0030); CLI, GUI and `docs/webhooks.md`. Next: M38.
 
 **2026-10-02 — M30 (Backend Correctness at Scale) complete: 10/11 tasks
 (T05 dropped — the index already existed), 8/8 exit criteria.**
@@ -1777,10 +1781,10 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M34 | Milestone and Doc Truth         | done   | —          | 4     | 4    |
 | M35 | Work Graph                      | done   | M33        | 7     | 7    |
 | M36 | MCP Server                      | done   | M35        | 5     | 5    |
-| M37 | Outbound Webhooks               | in-progress | M35   | 7     | 6    |
+| M37 | Outbound Webhooks               | done   | M35        | 7     | 7    |
 | M38 | Agent Plan and Input Requests   | todo   | M35        | 6     | 0    |
 
-**Total: 298 tasks across 32 milestones — 290 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 298 tasks across 32 milestones — 291 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
@@ -1970,7 +1974,7 @@ lead, with M10 following.
    keeps the migration from touching every other table's `userId` foreign key
    — the alternative (mint a new internal id, re-point every FK) would have
    made this a second M10-sized rewrite for no behavioural gain.
-3. **M08 was not started** (`active_task: M37-T07`, no commits recorded against
+3. **M08 was not started** (`active_task: M38-T01`, no commits recorded against
    it) when this re-plan landed, so re-sequencing ahead of it abandoned no
    in-flight work. It resumes in its prior position once M13 and M10 close.
 4. Full plan, exit criteria and task breakdown:

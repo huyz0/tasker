@@ -434,6 +434,8 @@ Links need `tasks:write` (reading them, `tasks:read`); a viewer can do neither.
 
 - [Connecting an MCP client](mcp.md) — the same loop as MCP tools, for any
   MCP-capable agent, over `<backend>/mcp` or `tasker mcp`.
+- [Webhooks](webhooks.md) — be told when work appears or unblocks, instead of
+  polling `claim-next` or holding the event feed open.
 
 - `ADR-0008` in `.specs/adr/` — why tokens look the way they do, and what was
   rejected.
