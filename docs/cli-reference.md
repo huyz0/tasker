@@ -2505,3 +2505,113 @@ Flags:
   -h, --help                 help for update
       --url string           New HTTPS endpoint
 ```
+
+### `tasker workflows`
+
+```
+Repeatable multi-step workflows: define a template, start it as wired tasks
+
+Usage:
+  tasker workflows [command]
+
+Available Commands:
+  create      Define a workflow template from --step flags or a JSON --file (people only)
+  delete      Delete a workflow template (tasks it already created stay)
+  get         A workflow template's steps and dependencies
+  list        Workflow templates of the organization (with --project, plus that project's own)
+  start       Create a workflow's parent task and its steps, each blocked by the steps it depends on
+  update      Replace a template's name, description and steps (running instances are not touched)
+
+Flags:
+  -h, --help   help for workflows
+```
+
+#### `tasker workflows create`
+
+```
+Define a workflow template from --step flags or a JSON --file (people only)
+
+Usage:
+  tasker workflows create [flags]
+
+Flags:
+      --description string   What the workflow is for; becomes the parent task's description
+      --file string          Steps as JSON (an array, or {name, description, steps}); - for stdin
+  -h, --help                 help for create
+      --name string          Template name
+      --org string           Organization (or set TASKER_ORG_ID)
+      --project string       Only this project may use the template
+      --step stringArray     A step as "key:title" or "key:title:dep1,dep2"; repeat in order
+```
+
+#### `tasker workflows delete`
+
+```
+Delete a workflow template (tasks it already created stay)
+
+Usage:
+  tasker workflows delete [template_id] [flags]
+
+Flags:
+  -h, --help   help for delete
+```
+
+#### `tasker workflows get`
+
+```
+A workflow template's steps and dependencies
+
+Usage:
+  tasker workflows get [template_id] [flags]
+
+Flags:
+  -h, --help   help for get
+```
+
+#### `tasker workflows list`
+
+```
+Workflow templates of the organization (with --project, plus that project's own)
+
+Usage:
+  tasker workflows list [flags]
+
+Flags:
+  -c, --cursor string    Pagination cursor to fetch the next set
+  -h, --help             help for list
+  -l, --limit int32      Maximum number of items to return (default 50)
+      --org string       Organization (or set TASKER_ORG_ID; an agent's is implied)
+      --page-all         Fetch every page, printing one JSON object per item per line (NDJSON)
+      --project string   Also include this project's own templates
+```
+
+#### `tasker workflows start`
+
+```
+Create a workflow's parent task and its steps, each blocked by the steps it depends on
+
+Usage:
+  tasker workflows start [template_id] [flags]
+
+Flags:
+  -h, --help                     help for start
+      --idempotency-key string   Retry with the same key to get the first instance back
+      --project string           Project to create the tasks in (or set TASKER_PROJECT_ID)
+      --title string             Parent task title (default: the template's name)
+```
+
+#### `tasker workflows update`
+
+```
+Replace a template's name, description and steps (running instances are not touched)
+
+Usage:
+  tasker workflows update [template_id] [flags]
+
+Flags:
+      --description string   What the workflow is for; becomes the parent task's description
+      --file string          Steps as JSON (an array, or {name, description, steps}); - for stdin
+  -h, --help                 help for update
+      --name string          Template name
+      --step stringArray     A step as "key:title" or "key:title:dep1,dep2"; repeat in order
+```

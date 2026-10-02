@@ -7,7 +7,7 @@
  * tool can never do more than the token could do directly.
  */
 import {
-  AuthService, ProjectService, TaskService, TaskTypeService, TaskNoteService, CommentService, MemoryService,
+  AuthService, ProjectService, TaskService, TaskTypeService, TaskNoteService, CommentService, MemoryService, WorkflowService,
 } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { InvalidToolArguments, type ToolHost, type Tool, type ToolResult } from "./protocol";
 
@@ -346,6 +346,29 @@ export const TOOL_SPECS: ToolSpec[] = [
     inputSchema: schema({ task_id: str("Only this task's approvals"), status: str("Status", { enum: ["pending", "approved", "rejected", "stale", "all"] }), limit, cursor }),
     annotations: readOnly,
     service: TaskService, method: "ListTransitionApprovals", request: (a) => defined({ taskId: a.task_id, status: a.status, ...page(a) }),
+  },
+  {
+    name: "list_workflow_templates", title: "List workflow templates",
+    description: "Repeatable multi-step workflows defined for your organization (and, with project_id, that project's own).",
+    inputSchema: schema({ project_id: str("Also include this project's own templates"), limit, cursor }), annotations: readOnly,
+    service: WorkflowService, method: "ListWorkflowTemplates", request: (a) => defined({ projectId: a.project_id, ...page(a) }),
+  },
+  {
+    name: "get_workflow_template", title: "Get a workflow template",
+    description: "A workflow template's steps and which step waits on which.",
+    inputSchema: schema({ template_id: str("Template id") }, ["template_id"]), annotations: readOnly,
+    service: WorkflowService, method: "GetWorkflowTemplate", request: (a) => ({ id: a.template_id }),
+  },
+  {
+    name: "start_workflow", title: "Start a workflow",
+    description: "Creates a parent task and one subtask per step of a workflow template, each blocked by the steps it depends on. " +
+      "claim_next_task then hands the steps out in order. Pass idempotency_key when retrying.",
+    inputSchema: schema({
+      template_id: str("Template id"), project_id: str("Project to create the tasks in"),
+      title: str("Parent task title (default: the template's name)"), idempotency_key: str("Retry key"),
+    }, ["template_id", "project_id"]),
+    service: WorkflowService, method: "InstantiateWorkflow",
+    request: (a) => defined({ templateId: a.template_id, projectId: a.project_id, title: a.title, idempotencyKey: a.idempotency_key }),
   },
   {
     name: "get_task_type", title: "Get a task type",

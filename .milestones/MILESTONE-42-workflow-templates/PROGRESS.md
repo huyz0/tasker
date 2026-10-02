@@ -56,3 +56,21 @@
   new code - the test walks it through. Untyped steps start at "todo",
   typed ones at their type's first status. Idempotent by key.
 - **Next**: M42-T04
+
+## M42-T04 — CLI and MCP
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/workflows.go` (new: `workflows
+  list|get|create|update|delete|start`), `internal/backend/clients.go`,
+  `cmd/workflows_test.go`; `docs/cli-reference.md` regenerated; MCP
+  `list_workflow_templates`, `get_workflow_template`, `start_workflow`
+  (e2e case), `docs/mcp.md`.
+- **Verified**: `go test ./...` green; backend MCP tests 18 pass;
+  `cli:docs-check`, `backend:typecheck`, `:knip` green.
+- **Notes**: Steps come from repeated `--step "key:title[:deps]"` for quick
+  use or a JSON `--file` (array, or `{name, description, steps}`; `-` for
+  stdin) - JSON rather than YAML to avoid a new dependency. `update` fetches
+  the template and keeps whatever it was not given. No MCP tool defines or
+  deletes a template, asserted in the tool test.
+- **Next**: M42-T05

@@ -50,7 +50,7 @@ instance is ordinary tasks once created).
 - [x] **M42-T01** — ADR-0035, contract and schema.
 - [x] **M42-T02** — Template CRUD with graph validation.
 - [x] **M42-T03** — InstantiateWorkflow.
-- [ ] **M42-T04** — CLI and MCP.
+- [x] **M42-T04** — CLI and MCP.
 - [ ] **M42-T05** — GUI.
 - [ ] **M42-T06** — Docs and close.
 

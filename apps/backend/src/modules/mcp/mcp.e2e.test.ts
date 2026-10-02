@@ -3,7 +3,7 @@ import * as http from "node:http";
 import type { AddressInfo } from "node:net";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import type { Interceptor } from "@connectrpc/connect";
-import { AuthService, TaskService, TaskNoteService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { AuthService, TaskService, TaskNoteService, WorkflowService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin, seedProject } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { currentPrincipalKey, currentUserIdKey } from "../auth/session";
@@ -14,6 +14,7 @@ import { createTaskManagementHandler, createTasksHandler } from "../tasks/tasks.
 import { createTaskNotesHandler } from "../tasks/task_notes.handler";
 import { createAgentsHandler } from "../agents/agents.handler";
 import { handleMcpHttp, MCP_PATH } from "./http";
+import { createWorkflowsHandler } from "../workflows/workflows.handler";
 
 /**
  * M36-T03: MCP end to end, in process but over real sockets. A real HTTP
@@ -29,6 +30,7 @@ describe("MCP over HTTP (M36-T03)", () => {
   let readOnlyToken = "";
   let projectId = "";
   let gatedTaskId = "";
+  let workflowId = "";
   let db: any;
 
   beforeAll(async () => {
@@ -56,6 +58,9 @@ describe("MCP over HTTP (M36-T03)", () => {
     const done = (await types.createTaskStatus({ taskTypeId: typeId, name: "done" }, admin)).status.id;
     const edge = (await types.createTaskStatusTransition({ taskTypeId: typeId, fromStatusId: todo, toStatusId: done }, admin)).transition.id;
     await types.setTransitionApproval({ taskTypeId: typeId, transitionId: edge, requiresApproval: true }, admin);
+    workflowId = (await createWorkflowsHandler(db, setup.nc).createWorkflowTemplate({
+      orgId, name: "Hotfix", steps: [{ key: "fix", title: "Fix" }, { key: "verify", title: "Verify", dependsOn: ["fix"] }],
+    }, admin)).template.id;
     gatedTaskId = (await tasks.createTask({ projectId, title: "Ship 2.0", status: "todo", taskTypeId: typeId, priority: 4 }, admin)).task.id;
 
     const session: Interceptor = (next) => async (req) => {
@@ -70,6 +75,7 @@ describe("MCP over HTTP (M36-T03)", () => {
         router.service(AuthService as any, createAuthHandler(db) as any);
         router.service(TaskService as any, createTaskManagementHandler(db, setup.nc));
         router.service(TaskNoteService as any, createTaskNotesHandler(db, setup.nc));
+        router.service(WorkflowService as any, createWorkflowsHandler(db, setup.nc));
       },
     });
     server = http.createServer(async (req, res) => {
@@ -161,6 +167,15 @@ describe("MCP over HTTP (M36-T03)", () => {
     const candidates = await call("list_compaction_candidates", { project_id: projectId, older_than_days: 0 });
     expect(candidates.isError).toBeUndefined();
     expect(candidates.structuredContent.candidates ?? []).not.toContainEqual(expect.objectContaining({ taskId: gatedTaskId }));
+  });
+
+  it("lists, reads and starts a workflow (M42)", async () => {
+    const listed = (await call("list_workflow_templates", { project_id: projectId })).structuredContent.templates;
+    expect(listed.map((t: any) => t.name)).toContain("Hotfix");
+    expect((await call("get_workflow_template", { template_id: workflowId })).structuredContent.template.steps).toHaveLength(2);
+    const started = (await call("start_workflow", { template_id: workflowId, project_id: projectId, title: "Hotfix 1" })).structuredContent;
+    expect(started.parent.title).toBe("Hotfix 1");
+    expect(started.steps.map((s: any) => s.title)).toEqual(["Fix", "Verify"]);
   });
 
   it("applies the token's own scopes - a read-only token cannot claim", async () => {

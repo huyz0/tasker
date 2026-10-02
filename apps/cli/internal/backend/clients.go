@@ -59,6 +59,10 @@ func NewReportServiceClient() v1connect.ReportServiceClient {
 	return v1connect.NewReportServiceClient(http.DefaultClient, URL(), ClientOptions()...)
 }
 
+func NewWorkflowServiceClient() v1connect.WorkflowServiceClient {
+	return v1connect.NewWorkflowServiceClient(http.DefaultClient, URL(), ClientOptions()...)
+}
+
 func NewSearchServiceClient() v1connect.SearchServiceClient {
 	return v1connect.NewSearchServiceClient(http.DefaultClient, URL(), ClientOptions()...)
 }

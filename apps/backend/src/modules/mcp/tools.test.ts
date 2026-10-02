@@ -42,12 +42,14 @@ describe("MCP tool catalogue (M36-T02)", () => {
     }
     // The agent loop, at least.
     for (const n of ["whoami", "claim_next_task", "set_task_status", "release_task", "create_task", "link_tasks", "search_memory",
-      "set_task_plan", "request_input", "get_input_request", "get_transition_approval", "list_transition_approvals", "report_usage", "set_task_summary", "get_task_digest", "list_compaction_candidates"]) expect(names.has(n)).toBe(true);
+      "set_task_plan", "request_input", "get_input_request", "get_transition_approval", "list_transition_approvals", "report_usage", "set_task_summary", "get_task_digest", "list_compaction_candidates", "list_workflow_templates", "get_workflow_template", "start_workflow"]) expect(names.has(n)).toBe(true);
     // Answering is a person's job (ADR-0031); no tool offers it.
     expect(names.has("answer_input_request")).toBe(false);
     expect(TOOL_SPECS.some((t) => t.method === "AnswerInputRequest")).toBe(false);
     // Nor deciding an approval (ADR-0032): an agent would approve its own move.
     expect(TOOL_SPECS.some((t) => t.method === "DecideTransitionApproval")).toBe(false);
+    // Defining workflows is a person's job (ADR-0035); agents only start them.
+    expect(TOOL_SPECS.some((t) => t.method === "CreateWorkflowTemplate" || t.method === "DeleteWorkflowTemplate")).toBe(false);
   });
 
   it("validates arguments against the advertised schema", async () => {
