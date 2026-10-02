@@ -6,7 +6,7 @@ import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tansta
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { AgentService, DashboardService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
-import { Bot } from 'lucide-react';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { sinceLabel } from '../../lib/sinceLabel';
 import { AgentTokens } from './AgentTokens';
@@ -17,6 +17,17 @@ import { ListState } from '../../components/ui/ListState';
 // Only the pre-measurement estimate; `measureRows` reads the real height,
 // because a row grows when its edit form opens.
 const AGENT_ROW_HEIGHT = 76;
+
+/**
+ * Name, role, actions - shared by the header and every row so the "Role"
+ * heading sits over the role column and not the buttons. Name and role
+ * truncate (`minmax(0, …)`) rather than wrap one word per line. On a phone
+ * three columns leave the name a single letter wide, so the role drops under
+ * the name and the actions take the right-hand column.
+ */
+const AGENT_ROW_GRID = 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,9rem)_auto]';
+const AGENT_ROLE_CELL = 'col-start-1 row-start-2 sm:col-start-2 sm:row-start-1';
+const AGENT_ACTIONS_CELL = 'col-start-2 row-span-2 row-start-1 sm:col-start-3 sm:row-span-1';
 
 // The backend stores capabilities as an opaque JSON string (main.tsp:
 // `capabilities: string // JSON string`) and never validates it - a typo here
@@ -195,23 +206,22 @@ export function AgentsDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">AI Agents</h1>
-        <p className="text-muted-foreground mt-1">Manage agent roles, memory partitions, and running instances.</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-         <div className="p-4 border rounded-lg bg-card shadow-sm flex items-center justify-between">
-           <div>
-             <div className="text-muted-foreground text-sm font-medium mb-1">Total Agents</div>
-             <div className="text-3xl font-bold">{agentTotal}</div>
-           </div>
-           <div className="w-10 h-10 rounded-full bg-primary-subtle text-primary-subtle-foreground flex items-center justify-center"><Bot className="w-5 h-5" /></div>
-         </div>
-      </div>
+      {/* The count used to be a lone "Total Agents" card that left a wide
+          empty strip beside it; one number reads fine as a sentence. */}
+      <PageHeader
+        title="AI Agents"
+        description={
+          <>
+            {!isLoading && !agentsError && (
+              <span className="tabular-nums">{agentTotal} {agentTotal === 1 ? 'agent' : 'agents'} in this organization. </span>
+            )}
+            Manage agent roles, memory partitions, and running instances.
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="border rounded-lg bg-card p-6 shadow-sm">
+        <div className="border rounded-lg bg-card p-4 shadow-sm md:p-6">
           <div className="flex justify-between items-center mb-4">
              <h2 className="text-xl font-medium">AI Agent Instances</h2>
              <button
@@ -264,9 +274,10 @@ export function AgentsDashboard() {
             <p className="text-sm text-destructive mb-2">Failed to update agent: {(updateAgentMutation.error as Error).message}</p>
           )}
           <div className="border rounded-md divide-y">
-            <div className="p-3 text-xs font-medium text-muted-foreground flex justify-between bg-muted/30">
-              <span className="flex-1">Name</span>
-              <span className="w-24">Role</span>
+            <div className={`${AGENT_ROW_GRID} p-3 text-xs font-medium text-muted-foreground bg-muted/30`}>
+              <span>Name</span>
+              <span className={`hidden sm:block ${AGENT_ROLE_CELL}`}>Role</span>
+              <span className={`sr-only ${AGENT_ACTIONS_CELL}`}>Actions</span>
             </div>
             <ListState
               isLoading={isLoading}
@@ -316,44 +327,48 @@ export function AgentsDashboard() {
                   </form>
                 ) : (
                 <div key={a.id}>
-                <div className="p-3 text-sm flex justify-between items-center">
-                  <span className="flex-1 font-medium text-primary flex justify-start items-center gap-2">
+                <div className={`${AGENT_ROW_GRID} p-3 text-sm`}>
+                  <span className="min-w-0 truncate font-medium text-primary" title={a.name}>
                     {a.name}
                   </span>
-                  <span className="w-24 text-muted-foreground">{roleNameById.get(a.agentRoleId) ?? a.agentRoleId}</span>
-                  <button
-                    aria-label={`Tokens for ${a.name}`}
-                    onClick={() => setTokensAgentId((cur) => (cur === a.id ? null : a.id))}
-                    className="text-muted-foreground hover:text-foreground text-xs ml-3"
-                  >
-                    Tokens
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingAgentId(a.id);
-                      setEditAgentName(a.name);
-                      setEditAgentRoleId(a.agentRoleId);
-                    }}
-                    className="text-muted-foreground hover:text-foreground text-xs ml-3"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (await confirm({
-                        title: `Move "${a.name}" to the bin?`,
-                        consequence: 'The agent stops appearing in lists and cannot be assigned work.',
-                        undo: 'You can restore it from the Bin.',
-                        confirmLabel: 'Move to bin',
-                      })) {
-                        archiveAgentMutation.mutate(a.id);
-                      }
-                    }}
-                    disabled={archiveAgentMutation.isPending}
-                    className="text-muted-foreground hover:text-destructive text-xs ml-3 disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
+                  <span className={`min-w-0 truncate text-muted-foreground ${AGENT_ROLE_CELL}`} title={roleNameById.get(a.agentRoleId) ?? a.agentRoleId}>
+                    {roleNameById.get(a.agentRoleId) ?? a.agentRoleId}
+                  </span>
+                  <div className={`flex items-center gap-3 ${AGENT_ACTIONS_CELL}`}>
+                    <button
+                      aria-label={`Tokens for ${a.name}`}
+                      onClick={() => setTokensAgentId((cur) => (cur === a.id ? null : a.id))}
+                      className="text-muted-foreground hover:text-foreground text-xs"
+                    >
+                      Tokens
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingAgentId(a.id);
+                        setEditAgentName(a.name);
+                        setEditAgentRoleId(a.agentRoleId);
+                      }}
+                      className="text-muted-foreground hover:text-foreground text-xs"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (await confirm({
+                          title: `Move "${a.name}" to the bin?`,
+                          consequence: 'The agent stops appearing in lists and cannot be assigned work.',
+                          undo: 'You can restore it from the Bin.',
+                          confirmLabel: 'Move to bin',
+                        })) {
+                          archiveAgentMutation.mutate(a.id);
+                        }
+                      }}
+                      disabled={archiveAgentMutation.isPending}
+                      className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
                 {tokensAgentId === a.id && <AgentTokens agentId={a.id} agentName={a.name} />}
                 </div>
@@ -364,7 +379,7 @@ export function AgentsDashboard() {
                 <button
                   onClick={() => fetchMoreAgents()}
                   disabled={isFetchingMoreAgents}
-                  className="w-full p-3 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  className="w-full p-3 text-xs tabular-nums text-muted-foreground hover:text-foreground disabled:opacity-50"
                 >
                   {isFetchingMoreAgents ? 'Loading…' : `Load more (${loadedAgents} of ${agentTotal})`}
                 </button>
@@ -373,7 +388,7 @@ export function AgentsDashboard() {
           </div>
         </div>
 
-        <div className="border rounded-lg bg-card p-6 shadow-sm">
+        <div className="border rounded-lg bg-card p-4 shadow-sm md:p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-medium">Agent Activity</h2>
             <span className="text-xs text-muted-foreground">Quietest first</span>
@@ -394,7 +409,7 @@ export function AgentsDashboard() {
                   <div key={a.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50">
                     <span className="flex-1 min-w-0 truncate text-sm">{a.name}</span>
                     {Number(a.openTaskCount) > 0 && (
-                      <span className="text-xs text-muted-foreground shrink-0">
+                      <span className="text-xs tabular-nums text-muted-foreground shrink-0">
                         {Number(a.openTaskCount)} open
                       </span>
                     )}
@@ -413,7 +428,7 @@ export function AgentsDashboard() {
             </div>
           </ListState>
           {agentTotal > agentActivity.length && (
-            <p className="text-xs text-muted-foreground mt-3">
+            <p className="text-xs tabular-nums text-muted-foreground mt-3">
               Showing the {agentActivity.length} quietest of {agentTotal}. See the{' '}
               <Link to={scopedTo('/')} className="text-primary hover:underline">Dashboard</Link> for the full picture alongside review and PR status.
             </p>
@@ -421,7 +436,7 @@ export function AgentsDashboard() {
         </div>
       </div>
 
-      <div className="border rounded-lg bg-card p-6 shadow-sm">
+      <div className="border rounded-lg bg-card p-4 shadow-sm md:p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-medium">Agent Roles</h2>
           <button

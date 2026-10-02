@@ -11,6 +11,7 @@ import { RowActionsMenu } from '../../components/ui/RowActionsMenu';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { Dialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/button';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const teamClient = createClient(TeamService, transport);
 const roleClient = createClient(RoleService, transport);
@@ -325,7 +326,7 @@ function TeamDetail({ team, orgId }: { team: Team; orgId: string }) {
         <h2 className="text-lg font-semibold flex items-center gap-2">
           {team.name}
           {team.deletedAt && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-muted-foreground">Archived</span>
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-muted-foreground">Archived</span>
           )}
         </h2>
         <p className="text-xs text-muted-foreground">ID: {team.id}</p>
@@ -527,79 +528,89 @@ export function TeamsManager() {
   const handleRestore = (teamId: string) => restoreMutation.mutate(teamId);
 
   if (!activeOrgId) {
-    return <p className="p-4 text-sm text-muted-foreground">Select an organization to manage its teams.</p>;
+    return <p className="text-sm text-muted-foreground">Select an organization to manage its teams.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:flex-row">
-      <div className="flex w-full flex-col gap-3 md:w-80 md:shrink-0">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Teams</h1>
-          <Button onClick={() => setCreateOpen(true)}>Create team</Button>
-        </div>
-        <button
-          onClick={() => { setShowArchived((v) => !v); setSelectedTeamId(null); }}
-          className="self-start text-xs text-muted-foreground hover:text-foreground"
-        >
-          {showArchived ? 'Show active teams' : 'Show archived teams'}
-        </button>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Teams"
+        description="Group people so you can grant a role to all of them at once."
+        actions={<Button onClick={() => setCreateOpen(true)}>Create team</Button>}
+      />
+      <div className="flex flex-col gap-6 md:flex-row">
+        <div className="flex w-full flex-col gap-3 md:w-80 md:shrink-0">
+          <button
+            onClick={() => { setShowArchived((v) => !v); setSelectedTeamId(null); }}
+            className="self-start text-xs text-muted-foreground hover:text-foreground"
+          >
+            {showArchived ? 'Show active teams' : 'Show archived teams'}
+          </button>
 
-        {renameMutation.isError && (
-          <p role="alert" className="text-sm text-destructive">Failed to rename: {(renameMutation.error as Error).message}</p>
-        )}
-        {archiveMutation.isError && (
-          <p role="alert" className="text-sm text-destructive">Failed to archive: {(archiveMutation.error as Error).message}</p>
-        )}
-        {restoreMutation.isError && (
-          <p role="alert" className="text-sm text-destructive">Failed to restore: {(restoreMutation.error as Error).message}</p>
-        )}
+          {renameMutation.isError && (
+            <p role="alert" className="text-sm text-destructive">Failed to rename: {(renameMutation.error as Error).message}</p>
+          )}
+          {archiveMutation.isError && (
+            <p role="alert" className="text-sm text-destructive">Failed to archive: {(archiveMutation.error as Error).message}</p>
+          )}
+          {restoreMutation.isError && (
+            <p role="alert" className="text-sm text-destructive">Failed to restore: {(restoreMutation.error as Error).message}</p>
+          )}
 
-        <ListState
-          isLoading={isLoading}
-          error={error}
-          isEmpty={!isLoading && !error && teams.length === 0}
-          loadingMessage="Loading teams…"
-          emptyMessage={showArchived ? 'No archived teams.' : 'No teams yet.'}
-          onRetry={() => refetch()}
-        >
-          <div className="rounded-md border">
-            <VirtualList
-              items={teams}
-              rowHeight={TEAM_ROW_HEIGHT}
-              className="max-h-[60vh] overflow-y-auto"
-              renderRow={(team) => (
-                <TeamRow
-                  key={team.id}
-                  team={team}
-                  isSelected={team.id === selectedTeamId}
-                  isBusy={renameMutation.isPending || archiveMutation.isPending || restoreMutation.isPending}
-                  onSelect={setSelectedTeamId}
-                  onRename={handleRename}
-                  onArchive={handleArchive}
-                  onRestore={handleRestore}
-                />
+          <ListState
+            isLoading={isLoading}
+            error={error}
+            isEmpty={!isLoading && !error && teams.length === 0}
+            loadingMessage="Loading teams…"
+            emptyMessage={showArchived ? 'No archived teams.' : 'No teams yet.'}
+            emptyAction={showArchived ? undefined : (
+              <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>Create your first team</Button>
+            )}
+            onRetry={() => refetch()}
+          >
+            <div className="rounded-md border">
+              <VirtualList
+                items={teams}
+                rowHeight={TEAM_ROW_HEIGHT}
+                className="max-h-[60vh] overflow-y-auto"
+                renderRow={(team) => (
+                  <TeamRow
+                    key={team.id}
+                    team={team}
+                    isSelected={team.id === selectedTeamId}
+                    isBusy={renameMutation.isPending || archiveMutation.isPending || restoreMutation.isPending}
+                    onSelect={setSelectedTeamId}
+                    onRename={handleRename}
+                    onArchive={handleArchive}
+                    onRestore={handleRestore}
+                  />
+                )}
+              />
+              {hasNextPage && (
+                <div className="border-t p-2 text-center">
+                  <button
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    {isFetchingNextPage ? 'Loading…' : 'Load more teams'}
+                  </button>
+                </div>
               )}
-            />
-            {hasNextPage && (
-              <div className="border-t p-2 text-center">
-                <button
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                  className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                >
-                  {isFetchingNextPage ? 'Loading…' : 'Load more teams'}
-                </button>
-              </div>
+            </div>
+          </ListState>
+        </div>
+
+        {/* The placeholder only makes sense when there is something to select;
+            beside an empty list it contradicts the list's own empty state. */}
+        {(selectedTeam || teams.length > 0) && (
+          <div className="min-w-0 flex-1">
+            {selectedTeam ? (
+              <TeamDetail team={selectedTeam} orgId={activeOrgId} />
+            ) : (
+              <p className="text-sm text-muted-foreground md:pt-2">Select a team to see its roster and role grants.</p>
             )}
           </div>
-        </ListState>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        {selectedTeam ? (
-          <TeamDetail team={selectedTeam} orgId={activeOrgId} />
-        ) : (
-          <p className="p-4 text-sm text-muted-foreground">Select a team to see its roster and role grants.</p>
         )}
       </div>
 

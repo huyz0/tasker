@@ -126,6 +126,25 @@ describe('AgentsDashboard', () => {
     expect(screen.getAllByText('Researcher').length).toBeGreaterThan(0);
   });
 
+  it('states the agent count in the page description instead of a lone stat card', async () => {
+    withListAgents({ agents: [{ id: 'agent-1', name: 'Page One Agent', agentRoleId: 'role-1' }], page: { totalCount: 5 } });
+    withListAgentRoles();
+    renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'AI Agents' })).toBeDefined();
+    await waitFor(() => expect(screen.getByText(/^5 agents in this organization\./)).toBeDefined());
+    expect(screen.queryByText('Total Agents')).toBeNull();
+    // The actions column is named for screen readers, so "Role" no longer
+    // reads as the heading of the buttons beside it.
+    expect(screen.getByText('Actions')).toBeDefined();
+  });
+
+  it('says "1 agent", not "1 agents"', async () => {
+    withListAgents({ agents: [{ id: 'agent-1', name: 'Solo', agentRoleId: 'role-1' }], page: { totalCount: 1 } });
+    withListAgentRoles();
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/^1 agent in this organization\./)).toBeDefined());
+  });
+
   it('issues one request on mount, and pages the rest on request', async () => {
     // Replaces a test that asserted the dashboard looped the cursor to
     // exhaustion. The old justification was that it "needs every agent to

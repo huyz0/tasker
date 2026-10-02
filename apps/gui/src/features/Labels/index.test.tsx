@@ -103,6 +103,14 @@ describe('LabelsManager', () => {
     expect(screen.queryByRole('button', { name: /Load more/ })).toBeNull();
   });
 
+  it('titles the page with a single h1 and labels the name field', async () => {
+    withListLabels({ labels: [] });
+    renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Labels' })).toBeDefined();
+    // A placeholder disappears as soon as someone types; the field needs a name of its own.
+    expect(screen.getByRole('textbox', { name: 'Label name' })).toBeDefined();
+  });
+
   it('shows an empty state when there are no labels', async () => {
     withListLabels({ labels: [] });
 

@@ -15,6 +15,7 @@ import { RowActionsMenu } from '../../components/ui/RowActionsMenu';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { Dialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/button';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { Search, Plus, History as HistoryIcon, Link2 } from 'lucide-react';
 
 const memoryClient = createClient(MemoryService, transport);
@@ -69,6 +70,8 @@ type ScopeType = (typeof SCOPE_TYPES)[number];
 const CONFIDENCE_LEVELS = ['low', 'medium', 'high'] as const;
 const STATUSES = ['active', 'superseded', 'retracted'] as const;
 const RELATION_TYPES = ['relates_to', 'supports', 'contradicts', 'duplicates'] as const;
+
+const dateTimeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 const CONFIDENCE_BADGE: Record<string, string> = {
   high: 'bg-success-subtle text-success-subtle-foreground',
@@ -525,7 +528,7 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
                 className="max-h-48 overflow-y-auto"
                 renderRow={(relation) => (
                   <div key={relation.id} className="flex items-center gap-2 border-b px-3 text-sm">
-                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-2xs font-medium capitalize">{relation.relationType.replace('_', ' ')}</span>
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-2xs font-medium capitalize text-muted-foreground">{relation.relationType.replace('_', ' ')}</span>
                     <button onClick={() => onSelect(otherIdOf(relation))} className="min-w-0 flex-1 truncate text-left text-primary hover:underline">
                       {otherIdOf(relation)}
                     </button>
@@ -564,7 +567,7 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
                   <div key={promotion.id} className="flex flex-col gap-0.5 border-b px-3 py-1.5 text-sm">
                     <span>{promotion.fromScopeType} → {promotion.toScopeType}</span>
                     <span className="text-xs text-muted-foreground">
-                      by {promotion.promotedBy} · {new Date(promotion.promotedAt).toLocaleString()}
+                      by {promotion.promotedBy} · <time dateTime={promotion.promotedAt}>{dateTimeFormat.format(new Date(promotion.promotedAt))}</time>
                       {promotion.note && ` · ${promotion.note}`}
                     </span>
                   </div>
@@ -735,110 +738,118 @@ export function MemoryExplorer() {
   };
 
   if (!activeOrgId) {
-    return <p className="p-4 text-sm text-muted-foreground">Select an organization to browse its shared memory.</p>;
+    return <p className="text-sm text-muted-foreground">Select an organization to browse its shared memory.</p>;
   }
   if (scopeType === 'project' && !activeProjectId) {
-    return <p className="p-4 text-sm text-muted-foreground">Select a project to browse its shared memory, or switch to organization scope.</p>;
+    return <p className="text-sm text-muted-foreground">Select a project to browse its shared memory, or switch to organization scope.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:flex-row">
-      <div className="flex w-full flex-col gap-3 md:w-96 md:shrink-0">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Memory</h1>
-          <Button onClick={() => setRecordOpen(true)}><Plus className="mr-1 h-4 w-4" /> Record belief</Button>
-        </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Memory"
+        description="Facts and conventions your team and its agents have learned, kept so nobody has to rediscover them."
+        actions={<Button onClick={() => setRecordOpen(true)}><Plus className="mr-1 h-4 w-4" /> Record belief</Button>}
+      />
+      <div className="flex flex-col gap-6 md:flex-row">
+        <div className="flex w-full flex-col gap-3 md:w-96 md:shrink-0">
 
-        <div className="flex items-center gap-1 text-xs">
-          {SCOPE_TYPES.map((s) => (
+          <div className="flex items-center gap-1 text-xs">
+            {SCOPE_TYPES.map((s) => (
+              <button
+                key={s}
+                onClick={() => selectScopeType(s)}
+                aria-pressed={scopeType === s}
+                className={`rounded-full px-2.5 py-1 font-medium capitalize ${scopeType === s ? 'bg-primary-subtle text-primary-subtle-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+              >
+                {s}
+              </button>
+            ))}
+            <span className="mx-1 text-muted-foreground">·</span>
             <button
-              key={s}
-              onClick={() => selectScopeType(s)}
-              aria-pressed={scopeType === s}
-              className={`rounded-full px-2.5 py-1 font-medium capitalize ${scopeType === s ? 'bg-primary-subtle text-primary-subtle-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+              onClick={() => setMode(mode === 'search' ? 'browse' : 'search')}
+              className="text-primary hover:underline"
             >
-              {s}
+              {mode === 'search' ? 'Browse all' : 'Back to search'}
             </button>
-          ))}
-          <span className="mx-1 text-muted-foreground">·</span>
-          <button
-            onClick={() => setMode(mode === 'search' ? 'browse' : 'search')}
-            className="text-primary hover:underline"
-          >
-            {mode === 'search' ? 'Browse all' : 'Back to search'}
-          </button>
-        </div>
-
-        {mode === 'search' && (
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search beliefs…"
-              aria-label="Search beliefs"
-              className="w-full rounded-md border bg-background py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/50"
-            />
           </div>
-        )}
 
-        <div className="flex gap-2 text-xs">
-          <select
-            aria-label="Filter by status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
+          {mode === 'search' && (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search beliefs…"
+                aria-label="Search beliefs"
+                className="w-full rounded-md border bg-background py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+          )}
+
+          <div className="flex gap-2 text-xs">
+            <select
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="">Any status</option>
+              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select
+              aria-label="Filter by confidence"
+              value={confidenceFilter}
+              onChange={(e) => setConfidenceFilter(e.target.value)}
+              className="rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="">Any confidence</option>
+              {CONFIDENCE_LEVELS.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <ListState
+            isLoading={isLoading}
+            error={error}
+            isEmpty={!isLoading && !error && beliefs.length === 0}
+            loadingMessage={mode === 'search' ? 'Searching…' : 'Loading beliefs…'}
+            emptyMessage={mode === 'search' ? (debouncedQuery ? 'No beliefs match that search.' : 'Type to search this scope’s beliefs.') : 'No beliefs recorded yet.'}
+            emptyAction={<Button variant="outline" size="sm" onClick={() => setRecordOpen(true)}>Record a belief</Button>}
+            onRetry={retry}
           >
-            <option value="">Any status</option>
-            {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select
-            aria-label="Filter by confidence"
-            value={confidenceFilter}
-            onChange={(e) => setConfidenceFilter(e.target.value)}
-            className="rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            <option value="">Any confidence</option>
-            {CONFIDENCE_LEVELS.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+            <div className="rounded-md border">
+              <VirtualList
+                items={beliefs}
+                rowHeight={BELIEF_ROW_HEIGHT}
+                className="max-h-[60vh] overflow-y-auto"
+                renderRow={(belief) => (
+                  <BeliefCard key={belief.id} belief={belief} isSelected={belief.id === selectedBeliefId} onSelect={selectBelief} />
+                )}
+              />
+              {mode === 'browse' && hasNextPage && (
+                <div className="border-t p-2 text-center">
+                  <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50">
+                    {isFetchingNextPage ? 'Loading…' : 'Load more beliefs'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </ListState>
         </div>
 
-        <ListState
-          isLoading={isLoading}
-          error={error}
-          isEmpty={!isLoading && !error && beliefs.length === 0}
-          loadingMessage={mode === 'search' ? 'Searching…' : 'Loading beliefs…'}
-          emptyMessage={mode === 'search' ? (debouncedQuery ? 'No beliefs match that search.' : 'Type to search this scope’s beliefs.') : 'No beliefs recorded yet.'}
-          onRetry={retry}
-        >
-          <div className="rounded-md border">
-            <VirtualList
-              items={beliefs}
-              rowHeight={BELIEF_ROW_HEIGHT}
-              className="max-h-[60vh] overflow-y-auto"
-              renderRow={(belief) => (
-                <BeliefCard key={belief.id} belief={belief} isSelected={belief.id === selectedBeliefId} onSelect={selectBelief} />
-              )}
-            />
-            {mode === 'browse' && hasNextPage && (
-              <div className="border-t p-2 text-center">
-                <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50">
-                  {isFetchingNextPage ? 'Loading…' : 'Load more beliefs'}
-                </button>
-              </div>
+        {/* Only point at the list when it has something to point at; beside an
+            empty list the prompt contradicts the list's own empty state. */}
+        {(selectedBelief || beliefs.length > 0) && (
+          <div className="min-w-0 flex-1">
+            {selectedBelief ? (
+              <>
+                <BeliefCrumbs scopeType={scopeType} statement={selectedBelief.statement} />
+                <BeliefDetail belief={selectedBelief} onSelect={selectBelief} />
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground md:pt-2">Select a belief to see its details, related beliefs, and history.</p>
             )}
           </div>
-        </ListState>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        {selectedBelief ? (
-          <>
-            <BeliefCrumbs scopeType={scopeType} statement={selectedBelief.statement} />
-            <BeliefDetail belief={selectedBelief} onSelect={selectBelief} />
-          </>
-        ) : (
-          <p className="p-4 text-sm text-muted-foreground">Select a belief to see its details, related beliefs, and history.</p>
         )}
       </div>
 

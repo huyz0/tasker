@@ -245,6 +245,23 @@ describe('MemoryExplorer', () => {
 
     await screen.findByText((_, el) => el?.textContent === 'project → organization');
     expect(screen.getByText(/widely useful/)).toBeInTheDocument();
+    // A machine-readable instant, shown in the reader's own locale.
+    const when = document.querySelector('time[datetime="2026-01-03T00:00:00Z"]');
+    expect(when?.textContent).toBe(new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date('2026-01-03T00:00:00Z')));
+  });
+
+  it('titles the page with a single h1 and says what memory is for', () => {
+    renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Memory' })).toBeInTheDocument();
+    expect(screen.getByText(/Facts and conventions your team and its agents have learned/)).toBeInTheDocument();
+  });
+
+  it('offers to record a belief, not to select one, when the list is empty', async () => {
+    renderPage();
+    expect(screen.getByText('Type to search this scope’s beliefs.')).toBeInTheDocument();
+    expect(screen.queryByText(/Select a belief to see its details/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Record a belief' }));
+    expect(await screen.findByLabelText('Statement')).toBeInTheDocument();
   });
 
   it('archives a belief after confirmation', async () => {

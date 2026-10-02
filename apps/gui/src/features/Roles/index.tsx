@@ -10,13 +10,29 @@ import { RowActionsMenu } from '../../components/ui/RowActionsMenu';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { Dialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/button';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const roleClient = createClient(RoleService, transport);
 
 // A fixed height (M07-T14's own rationale in VirtualList.tsx: measuring each
 // row instead makes the scrollbar jump as rows are measured). Every row
-// renders exactly one line of checkboxes, so this never varies.
-const ROLE_ROW_HEIGHT = 44;
+// renders exactly one line of checkboxes, so this never varies. The row fills
+// this height (`h-full`) and centres its cells, so the tallest cell - the
+// 32px row-actions button or the inline rename input - sits mid-row instead
+// of on the top border.
+const ROLE_ROW_HEIGHT = 48;
+
+/**
+ * Role-name column, permission columns, actions column. The name column is
+ * narrower on a phone so a checkbox column still fits beside it; every
+ * column past it scrolls sideways under the sticky name.
+ */
+function matrixColumns(permissionCount: number) {
+  return `var(--role-col) repeat(${permissionCount}, 4.5rem) 3rem`;
+}
+const MATRIX_GRID = 'grid [--role-col:9rem] md:[--role-col:14rem]';
+/** The sticky role-name cell: opaque so scrolled checkboxes pass beneath it. */
+const STICKY_NAME_CELL = 'sticky left-0 z-10 bg-card pl-3 pr-2';
 
 /** One permission column's toggle state for one role. Not persisted until the row's own save fires. */
 type PermissionKeySet = ReadonlySet<string>;
@@ -55,8 +71,8 @@ const RoleRow = memo(function RoleRow({
   };
 
   return (
-    <div className="grid items-center gap-2 border-b px-3 text-sm" style={{ gridTemplateColumns: `220px repeat(${permissions.length}, 84px) 40px` }}>
-      <div className="min-w-0 truncate font-medium flex items-center gap-2">
+    <div className={`${MATRIX_GRID} h-full items-center border-b bg-card text-sm`} style={{ gridTemplateColumns: matrixColumns(permissions.length) }}>
+      <div className={`${STICKY_NAME_CELL} flex h-full min-w-0 items-center gap-2 font-medium`}>
         {editing ? (
           <input
             autoFocus
@@ -100,7 +116,7 @@ const RoleRow = memo(function RoleRow({
           />
         </div>
       ))}
-      <div className="flex justify-end">
+      <div className="flex justify-end pr-2">
         {!role.isSystem && (
           <RowActionsMenu
             label={`Actions for ${role.name}`}
@@ -236,23 +252,19 @@ export function RolesManager() {
   };
 
   if (!activeOrgId) {
-    return <p className="p-4 text-sm text-muted-foreground">Select an organization to manage its roles.</p>;
+    return <p className="text-sm text-muted-foreground">Select an organization to manage its roles.</p>;
   }
 
   const isLoading = permissionsLoading || rolesLoading;
   const error = permissionsError || rolesError;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">Roles</h1>
-          <p className="text-sm text-muted-foreground">
-            The four built-in roles apply to every organization. Custom roles are yours to define.
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>Create role</Button>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Roles"
+        description="The four built-in roles apply to every organization. Custom roles are yours to define."
+        actions={<Button onClick={() => setCreateOpen(true)}>Create role</Button>}
+      />
 
       {updateMutation.isError && (
         <p role="alert" className="text-sm text-destructive">
@@ -274,37 +286,52 @@ export function RolesManager() {
         onRetry={() => refetchRoles()}
       >
         {permissions && (
-          <div className="rounded-md border overflow-x-auto">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-muted-foreground">
+              {permissions.length} permissions. Scroll the table sideways to see them all; the role name stays put.
+            </p>
+            {/* One scroller for both the header and the rows, so the columns
+                stay aligned and the sticky name column has something to stick
+                to. The page scrolls vertically: a role list is short, and a
+                nested vertical scroll box would be a second scrollbar to find. */}
             <div
-              className="grid items-center gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground sticky top-0"
-              style={{ gridTemplateColumns: `220px repeat(${permissions.length}, 84px) 40px` }}
+              role="region"
+              aria-label="Permission matrix"
+              tabIndex={0}
+              className="relative overflow-x-auto scrollbar-thin rounded-md border bg-card outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             >
-              <div>Role</div>
-              {permissions.map((p) => (
-                <div key={p.key} title={p.description} className="truncate text-center" style={{ writingMode: 'vertical-rl' }}>
-                  {p.key}
+              <div className="w-max min-w-full">
+                <div
+                  className={`${MATRIX_GRID} items-end border-b bg-card text-xs font-medium text-muted-foreground`}
+                  style={{ gridTemplateColumns: matrixColumns(permissions.length) }}
+                >
+                  <div className={`${STICKY_NAME_CELL} self-stretch flex items-end py-2`}>Role</div>
+                  {permissions.map((p) => (
+                    <div key={p.key} title={p.description} className="flex justify-center py-2">
+                      <span className="max-h-36 truncate [writing-mode:vertical-rl] rotate-180">{p.key}</span>
+                    </div>
+                  ))}
+                  <div className="py-2"><span className="sr-only">Actions</span></div>
                 </div>
-              ))}
-              <div />
-            </div>
-            <VirtualList
-              items={roles}
-              rowHeight={ROLE_ROW_HEIGHT}
-              className="max-h-[60vh] overflow-y-auto"
-              renderRow={(role) => (
-                <RoleRow
-                  key={role.id}
-                  role={role}
-                  permissions={permissions}
-                  isBusy={updateMutation.isPending || deleteMutation.isPending}
-                  onTogglePermission={handleTogglePermission}
-                  onRename={handleRename}
-                  onDelete={handleDelete}
+                <VirtualList
+                  items={roles}
+                  rowHeight={ROLE_ROW_HEIGHT}
+                  renderRow={(role) => (
+                    <RoleRow
+                      key={role.id}
+                      role={role}
+                      permissions={permissions}
+                      isBusy={updateMutation.isPending || deleteMutation.isPending}
+                      onTogglePermission={handleTogglePermission}
+                      onRename={handleRename}
+                      onDelete={handleDelete}
+                    />
+                  )}
                 />
-              )}
-            />
+              </div>
+            </div>
             {hasNextPage && (
-              <div className="p-2 text-center border-t">
+              <div className="text-center">
                 <button
                   onClick={() => fetchNextPage()}
                   disabled={isFetchingNextPage}

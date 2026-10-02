@@ -288,7 +288,9 @@ describe('AgentTokens', () => {
     ] });
     renderPanel();
     expect(await screen.findByText('never used')).toBeInTheDocument();
-    expect(screen.getByText(/^used /)).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === 'SPAN' && /^used \S/.test(el.textContent ?? ''))).toBeInTheDocument();
+    const when = document.querySelector('time[datetime="2026-08-01T00:00:00Z"]');
+    expect(when?.textContent).toBe(new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date('2026-08-01T00:00:00Z')));
   });
 
   // M17-T04: ADR-0008's 365-day maximum was stated in the helper text but not

@@ -94,6 +94,17 @@ describe('RolesManager', () => {
     expect(await screen.findByText('owner')).toBeInTheDocument();
   });
 
+  it('titles the page with a single h1 and puts the matrix in a keyboard-scrollable region', async () => {
+    renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Roles' })).toBeInTheDocument();
+    await screen.findByText('owner');
+    // At phone width the matrix is wider than the screen; the region is what
+    // scrolls sideways, so it has to be named and reachable without a mouse.
+    const region = screen.getByRole('region', { name: 'Permission matrix' });
+    expect(region).toHaveAttribute('tabindex', '0');
+    expect(screen.getByText(/5 permissions/)).toBeInTheDocument();
+  });
+
   it('shows a prompt instead of a request when no organization is selected', () => {
     mockActiveOrgId = '';
     const requests = withListRoles();

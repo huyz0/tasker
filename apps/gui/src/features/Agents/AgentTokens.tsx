@@ -7,6 +7,8 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const agentClient = createClient(AgentService, transport);
 
+const dateTimeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
 /**
  * ADR-0008's vocabulary, shown verbatim. The string is what appears in the CLI,
  * in the ADR, and in the error an agent gets when it lacks one — a friendlier
@@ -231,12 +233,14 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
           {tokensQuery.data.map((t) => {
             const state = t.revokedAt ? 'revoked' : t.expired ? 'expired' : 'active';
             return (
-              <li key={t.id} className="flex items-center gap-2 text-xs p-2 border rounded-md bg-card">
+              <li key={t.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs p-2 border rounded-md bg-card">
                 <code className="text-muted-foreground">{t.tokenPrefix}…</code>
                 <span className="flex-1 truncate">{t.name}</span>
                 <span className={state === 'active' ? 'text-success' : 'text-muted-foreground'}>{state}</span>
-                <span className="text-muted-foreground w-24 text-right">
-                  {t.lastUsedAt ? `used ${new Date(t.lastUsedAt).toLocaleDateString()}` : 'never used'}
+                <span className="shrink-0 whitespace-nowrap text-right text-muted-foreground">
+                  {t.lastUsedAt
+                    ? <>used <time dateTime={t.lastUsedAt}>{dateTimeFormat.format(new Date(t.lastUsedAt))}</time></>
+                    : 'never used'}
                 </span>
                 <span className="text-muted-foreground w-32 text-right">
                   {state === 'active' ? relativeDays(t.expiresAt) : '—'}

@@ -187,6 +187,21 @@ describe('TeamsManager', () => {
     expect(await screen.findByText(/Could not load this list: .*backend unreachable/)).toBeInTheDocument();
   });
 
+  it('titles the page with a single h1 and says what teams are for', async () => {
+    renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Teams' })).toBeInTheDocument();
+    expect(screen.getByText(/Group people so you can grant a role to all of them at once/)).toBeInTheDocument();
+  });
+
+  it('offers to create a team, not to select one, when there are none', async () => {
+    withListTeams({ teams: [], page: {} });
+    renderPage();
+    expect(await screen.findByText('No teams yet.')).toBeInTheDocument();
+    expect(screen.queryByText('Select a team to see its roster and role grants.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Create your first team' }));
+    expect(await screen.findByLabelText('Name')).toBeInTheDocument();
+  });
+
   it('prompts to select a team before showing a roster', async () => {
     renderPage();
     await screen.findByText('Platform');

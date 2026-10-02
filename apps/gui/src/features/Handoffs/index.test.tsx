@@ -69,6 +69,15 @@ describe('HandoffsScreen', () => {
     expect(screen.getByText('Migration written, needs a MySQL run before merge')).toBeInTheDocument();
   });
 
+  it('titles the page with a single h1 and dates each note in the reader\'s locale', async () => {
+    renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Handoffs' })).toBeInTheDocument();
+    expect(screen.getByText(/an agent handed off: what it tried/)).toBeInTheDocument();
+    await screen.findByText('Fix flaky test');
+    const when = document.querySelector('time[datetime="2026-08-19T10:00:00.000Z"]');
+    expect(when?.textContent).toBe(new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date('2026-08-19T10:00:00.000Z')));
+  });
+
   it('shows a loading message while the first page is in flight', async () => {
     mockRpcPending(TaskNoteService, 'ListHandoffNotes');
     renderPage();

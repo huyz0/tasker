@@ -5,6 +5,7 @@ import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { LabelService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 
+import { PageHeader } from '../../components/ui/PageHeader';
 import { ListState } from '../../components/ui/ListState';
 
 const labelClient = createClient(LabelService, transport);
@@ -74,22 +75,22 @@ export function LabelsManager() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Labels</h1>
-        <p className="text-muted-foreground mt-1">Labels defined for this organization, used to tag tasks and artifacts.</p>
-      </div>
+      <PageHeader
+        title="Labels"
+        description="Labels defined for this organization, used to tag tasks and artifacts."
+      />
 
-      <div className="border rounded-lg bg-card p-6 shadow-sm max-w-xl">
+      <div className="w-full max-w-3xl rounded-lg border bg-card p-4 shadow-sm md:p-6">
         <h2 className="text-lg font-medium mb-4">Create a label</h2>
         <form
           onSubmit={(e) => { e.preventDefault(); createLabelMutation.mutate(); }}
-          className="flex items-center gap-3"
+          className="flex flex-wrap items-center gap-3"
         >
           <input
             type="color"
             value={newLabelColor}
             onChange={(e) => setNewLabelColor(e.target.value)}
-            className="h-9 w-9 rounded-md border cursor-pointer bg-transparent"
+            className="h-9 w-9 shrink-0 cursor-pointer rounded-md border bg-transparent"
             aria-label="Label color"
           />
           <input
@@ -97,12 +98,13 @@ export function LabelsManager() {
             value={newLabelName}
             onChange={(e) => setNewLabelName(e.target.value)}
             placeholder="Label name"
-            className="flex-1 text-sm bg-transparent border rounded-md px-3 py-2"
+            aria-label="Label name"
+            className="min-w-0 flex-1 basis-32 rounded-md border bg-transparent px-3 py-2 text-sm"
           />
           <button
             type="submit"
             disabled={createLabelMutation.isPending || !newLabelName.trim() || !activeOrgId}
-            className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md font-medium disabled:bg-muted disabled:text-muted-foreground"
+            className="shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:bg-muted disabled:text-muted-foreground"
           >
             {createLabelMutation.isPending ? 'Creating…' : 'Create'}
           </button>
@@ -112,7 +114,7 @@ export function LabelsManager() {
         )}
       </div>
 
-      <div className="border rounded-lg bg-card p-6 shadow-sm max-w-xl">
+      <div className="w-full max-w-3xl rounded-lg border bg-card p-4 shadow-sm md:p-6">
         <h2 className="text-lg font-medium mb-4">All labels</h2>
         <ListState
           isLoading={isLoading}

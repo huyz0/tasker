@@ -8,7 +8,7 @@ import { TaskNoteService } from 'shared-contract/gen/ts/tasker/health/v1/health_
 import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../../components/ui/ListState';
 import { VirtualList } from '../../components/ui/VirtualList';
-import { Handshake } from 'lucide-react';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const taskNoteClient = createClient(TaskNoteService, transport);
 
@@ -24,6 +24,8 @@ type HandoffEntry = {
 };
 
 const ROW_HEIGHT = 84;
+
+const dateTimeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 /**
  * One task with a pending handoff note. Clicking navigates straight to the
@@ -44,7 +46,7 @@ function HandoffRow({ entry, onSelect }: { entry: HandoffEntry; onSelect: (taskI
       </div>
       <p className="line-clamp-2 text-sm text-muted-foreground">{entry.note.content}</p>
       <p className="text-xs text-muted-foreground">
-        Agent {entry.note.agentId} · {new Date(entry.note.createdAt).toLocaleString()}
+        Agent {entry.note.agentId} · <time dateTime={entry.note.createdAt}>{dateTimeFormat.format(new Date(entry.note.createdAt))}</time>
       </p>
     </button>
   );
@@ -80,21 +82,18 @@ export function HandoffsScreen() {
   const entries = useMemo(() => (pages?.pages.flatMap((p) => p.entries) ?? []) as HandoffEntry[], [pages]);
 
   if (!activeOrgId) {
-    return <p className="p-4 text-sm text-muted-foreground">Select an organization to see its pending handoffs.</p>;
+    return <p className="text-sm text-muted-foreground">Select an organization to see its pending handoffs.</p>;
   }
   if (!activeProjectId) {
-    return <p className="p-4 text-sm text-muted-foreground">Select a project to see its pending handoffs.</p>;
+    return <p className="text-sm text-muted-foreground">Select a project to see its pending handoffs.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-3 p-4">
-      <div className="flex items-center gap-2">
-        <Handshake className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-lg font-semibold">Handoffs</h1>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Tasks with unfinished work an agent handed off - what it tried, what's blocked, and the next step.
-      </p>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Handoffs"
+        description="Tasks with unfinished work an agent handed off: what it tried, what’s blocked, and the next step."
+      />
 
       <ListState
         isLoading={isLoading}
