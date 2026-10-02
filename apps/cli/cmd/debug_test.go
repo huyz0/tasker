@@ -19,8 +19,8 @@ func TestDebugSessionCommandMetadata(t *testing.T) {
 	if debugSessionCmd.Short == "" {
 		t.Error("expected debugSessionCmd to have a short description")
 	}
-	if debugSessionCmd.Run == nil {
-		t.Error("expected debugSessionCmd.Run to be defined")
+	if debugSessionCmd.RunE == nil {
+		t.Error("expected debugSessionCmd.RunE to be defined")
 	}
 }
 
@@ -113,9 +113,11 @@ func TestRunDebugSessionRevokedOrExpiredToken(t *testing.T) {
 
 	token := makeFakeToken("user-42", 1, "jti-abc") // exp in the past
 	var buf bytes.Buffer
+	// The report is still printed in full; the error is what makes the exit
+	// code non-zero (M31-T05).
 	err := runDebugSession(&buf, srv.Client(), srv.URL, token)
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
+	if exitCodeFor(err) != exitAuth {
+		t.Fatalf("expected an auth failure for an invalid session, got: %v", err)
 	}
 	out := buf.String()
 	if !strings.Contains(out, "EXPIRED") {
@@ -143,9 +145,10 @@ func TestRunDebugSessionUndecodableToken(t *testing.T) {
 	defer srv.Close()
 
 	var buf bytes.Buffer
+	// Decode failure is non-fatal - the server check still runs and decides.
 	err := runDebugSession(&buf, srv.Client(), srv.URL, "not-a-real-token")
-	if err != nil {
-		t.Fatalf("expected no error (decode failure is non-fatal, still checks server), got: %v", err)
+	if exitCodeFor(err) != exitAuth {
+		t.Fatalf("expected the server's INVALID to fail the check, got: %v", err)
 	}
 	out := buf.String()
 	if !strings.Contains(out, "Could not decode token locally") {

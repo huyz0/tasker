@@ -311,19 +311,43 @@ func TestWhoamiSendsTheSavedTokenAsABearerHeader(t *testing.T) {
 	}
 }
 
+// M31-T05: "not logged in" is a failure. It used to print and exit 0, which
+// a script checking `whoami` before acting read as success.
 func TestWhoamiReportsNotLoggedInWithoutSavedCredentials(t *testing.T) {
 	resetAllFlags(t)
 	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "does-not-exist.json"))
+	t.Setenv("TASKER_TOKEN", "")
 
-	b := bytes.NewBufferString("")
-	rootCmd.SetOut(b)
-	rootCmd.SetArgs([]string{"auth", "whoami"})
-	if err := executeForTest(); err != nil {
-		t.Fatal(err)
+	var stdout, stderr bytes.Buffer
+	code := runCLI([]string{"auth", "whoami"}, &stdout, &stderr)
+	if code != exitAuth {
+		t.Errorf("expected exit %d, got %d", exitAuth, code)
 	}
-	out := b.String()
-	if !strings.Contains(out, "Not logged in") {
-		t.Errorf("expected a not-logged-in message, got %s", out)
+	if !strings.Contains(stderr.String(), "not logged in") || stdout.Len() != 0 {
+		t.Errorf("expected the message on stderr only, got stdout %q stderr %q", stdout.String(), stderr.String())
+	}
+}
+
+// M31-T05: whoami read the saved session file directly, so an agent running
+// with TASKER_TOKEN and no saved session was told it was not logged in.
+func TestWhoamiUsesTheResolvedTokenNotJustTheSavedSession(t *testing.T) {
+	resetAllFlags(t)
+	t.Setenv("TASKER_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "does-not-exist.json"))
+	t.Setenv("TASKER_TOKEN", "env-token")
+
+	fake := &fakeAuthHandler{}
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewAuthServiceHandler(fake))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+
+	var stdout, stderr bytes.Buffer
+	if code := runCLI([]string{"auth", "whoami"}, &stdout, &stderr); code != exitOK {
+		t.Fatalf("expected exit 0, got %d: %s", code, stderr.String())
+	}
+	if fake.receivedAuthHeader != "Bearer env-token" {
+		t.Errorf("expected the TASKER_TOKEN credential to be used, got %q", fake.receivedAuthHeader)
 	}
 }
 

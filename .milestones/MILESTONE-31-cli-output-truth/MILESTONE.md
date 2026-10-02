@@ -58,7 +58,7 @@ not agent-first.
   (camelCase, zero values present), so every list carries `page`.
 - [x] `--page-all` on list commands emits one JSON object per line for every
   item across every page.
-- [ ] `auth whoami` reports the identity of whatever credential the command
+- [x] `auth whoami` reports the identity of whatever credential the command
   would actually use, and exits non-zero when there is none.
 - [ ] `docs/cli-reference.md` documents output, exit codes and pagination, and
   `moon run cli:format cli:vet cli:test cli:build cli:coverage-gate` is green
@@ -90,7 +90,7 @@ not agent-first.
 - [x] **M31-T04** — `--page-all` streams every item as NDJSON.
   - **Files**: `apps/cli/cmd/output.go`, list commands
   - **Verify**: a fake server with three pages yields every item once.
-- [ ] **M31-T05** — `whoami` and `debug session` use the resolved credential; the login callback binds loopback only.
+- [x] **M31-T05** — `whoami` and `debug session` use the resolved credential; the login callback binds loopback only.
   - **Files**: `apps/cli/cmd/{auth,debug}.go`
   - **Verify**: tests with `TASKER_TOKEN` set and no session file.
 - [ ] **M31-T06** — Documentation and close.

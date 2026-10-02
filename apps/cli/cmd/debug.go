@@ -3,13 +3,14 @@ package cmd
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -121,6 +122,9 @@ func runDebugSession(w io.Writer, httpClient *http.Client, serverURL string, tok
 		fmt.Fprintf(w, "  VALID - authenticates as %s\n", userID)
 	} else {
 		fmt.Fprintf(w, "  INVALID - rejected by the server (expired, revoked, or malformed)\n")
+		// A diagnosis of "invalid" is a failed check: exit non-zero (3), so a
+		// script can branch on it without parsing the report.
+		return connect.NewError(connect.CodeUnauthenticated, errors.New("the session token is not valid"))
 	}
 	return nil
 }
@@ -129,26 +133,21 @@ var debugSessionCmd = &cobra.Command{
 	Use:   "session [token]",
 	Short: "Decode and validate a session token",
 	Long: "Decodes a session token's claims locally and checks with the backend whether it's\n" +
-		"currently valid (not expired, not revoked). Defaults to the saved CLI credentials\n" +
-		"if no token is given.",
+		"currently valid (not expired, not revoked). Defaults to the credential every other\n" +
+		"command would use (--token, TASKER_TOKEN, then the saved session). Exits 3 if invalid.",
 	Args: cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		token := ""
 		if len(args) == 1 {
 			token = args[0]
 		} else {
-			saved, err := backend.LoadCredentials()
+			resolved, err := backend.ResolveToken()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to read saved credentials: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to read saved credentials: %w", err)
 			}
-			token = saved
+			token = resolved
 		}
-
-		if err := runDebugSession(os.Stdout, http.DefaultClient, backend.URL(), token); err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
-		}
+		return runDebugSession(cmd.OutOrStdout(), http.DefaultClient, backend.URL(), token)
 	},
 }
 

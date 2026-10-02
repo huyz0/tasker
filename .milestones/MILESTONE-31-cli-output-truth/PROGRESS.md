@@ -85,3 +85,26 @@
   `--page-all`. Committed together with T03 — they are one change to the same
   eighteen call sites.
 - **Next**: M31-T05
+
+## M31-T05 — whoami and debug session use the resolved credential; loopback login
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/{auth,debug}.go`, `cmd/{auth,debug}_test.go`
+- **Verified**: `moon run cli:format cli:vet cli:test cli:coverage-gate` green.
+- **Notes**:
+  - `auth whoami` and `debug session` read the saved session file directly;
+    every other command resolves `--token`, then `TASKER_TOKEN`, then the
+    file. An agent with only `TASKER_TOKEN` was told "Not logged in" — with
+    exit 0. Both now call `ResolveToken`; "not logged in" and a session the
+    server reports INVALID are `Unauthenticated` errors, so they exit 3. The
+    debug report is still printed in full before the error.
+  - Two tests had pinned the old exit-0 behaviour; they now pin the new one,
+    and a new test proves `whoami` sends the `TASKER_TOKEN` credential.
+  - `whoami` with an *agent* token now reaches the server and gets the
+    server's answer — `GetIdentity` is human-only, so it is refused.
+    Agent self-identity is new API; recorded for M33.
+  - The OAuth callback listener binds `127.0.0.1` instead of every
+    interface, and the login guidance ("open this URL…") goes to stderr.
+    `debug session` was the last command on `Run` + `os.Exit`; now `RunE`.
+- **Next**: M31-T06

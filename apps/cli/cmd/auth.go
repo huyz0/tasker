@@ -208,15 +208,18 @@ var loginCmd = &cobra.Command{
 		}
 
 		loginURL := fmt.Sprintf("%s/api/auth/google/login?cli=true&cliNonce=%s", backend.URL(), nonce)
-		cmd.Println("Please open this URL to authenticate:")
-		cmd.Println(loginURL)
-		cmd.Printf("Waiting for callback on localhost:%d... ⏳\n", cliCallbackPort)
+		// Guidance, not output: stderr, so a captured stdout holds only results.
+		cmd.PrintErrln("Please open this URL to authenticate:")
+		cmd.PrintErrln(loginURL)
+		cmd.PrintErrf("Waiting for callback on localhost:%d...\n", cliCallbackPort)
 
 		ch := make(chan string, 1)
 		mux := http.NewServeMux()
 		mux.HandleFunc("/callback", newCallbackHandler(nonce, ch))
 
-		srv := &http.Server{Addr: fmt.Sprintf(":%d", cliCallbackPort), Handler: mux}
+		// Loopback only (M31-T05): the callback carries a session token, and
+		// ":port" listened on every interface the machine has.
+		srv := &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", cliCallbackPort), Handler: mux}
 		// Surfaced separately from the callback channel so a bind failure
 		// (e.g. another `tasker auth login` already running, or something
 		// else holding the port) fails fast instead of silently sitting
@@ -302,18 +305,25 @@ var logoutCmd = &cobra.Command{
 	},
 }
 
+// errNotLoggedIn is an authentication failure, so it exits 3 like any other:
+// "not logged in" used to print and exit 0, which a script read as success.
+var errNotLoggedIn = connect.NewError(connect.CodeUnauthenticated,
+	errors.New("not logged in - run `tasker auth login`, or pass --token / set TASKER_TOKEN"))
+
 var whoamiCmd = &cobra.Command{
 	Use:   "whoami",
 	Short: "Show the currently authenticated user",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isJson, _ := cmd.Flags().GetBool("json")
-		token, err := backend.LoadCredentials()
+		// The credential every other command would use - --token, then
+		// TASKER_TOKEN, then the saved session - not the saved session alone,
+		// which made whoami say "not logged in" to an agent holding a token.
+		token, err := backend.ResolveToken()
 		if err != nil {
 			return fmt.Errorf("failed to read saved credentials: %w", err)
 		}
 		if token == "" {
-			cmd.Println("Not logged in. Run `tasker auth login` first.")
-			return nil
+			return errNotLoggedIn
 		}
 
 		client := backend.NewAuthServiceClient()
