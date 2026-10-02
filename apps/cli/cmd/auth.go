@@ -336,6 +336,9 @@ var whoamiCmd = &cobra.Command{
 			if err := printJSON(cmd, res.Msg); err != nil {
 				return err
 			}
+		} else if a := res.Msg.Agent; a != nil {
+			// M33-T05: an agent token answers with the agent, not a user.
+			cmd.Printf("Agent %s (%s) in organization %s\nScopes: %s\n", a.Name, a.Id, a.OrgId, strings.Join(a.Scopes, ", "))
 		} else {
 			cmd.Printf("Logged in as %s (%s)\n", res.Msg.User.Name, res.Msg.User.Email)
 		}

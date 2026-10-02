@@ -1592,6 +1592,7 @@ Usage:
 Available Commands:
   assign          Assign a task to an agent or user
   claim           Atomically claim an unassigned task for the calling principal (agent self-service)
+  claim-next      Claim the oldest open, unassigned task in a project (agent self-service)
   comment-add     Add a comment to a task
   comments        List comments on a task
   create          Create a new task in a project
@@ -1599,11 +1600,13 @@ Available Commands:
   get             Get a single task, including its description
   handoffs        List tasks with a pending handoff note (one row per task, the latest only)
   list            List tasks within a project
+  mine            List the open tasks you hold, across every project in the organization
   note-add        Add an AI agent note to a task (requires an agent token)
   note-delete     Delete an agent note (author only, requires an agent token)
   note-update     Update an agent note's content (author only, requires an agent token)
   notes           List AI agent notes on a task
   purge           Permanently delete an already-binned task and its dependent records (requires org admin)
+  release         Give back a task you claimed, optionally leaving a handoff note
   restore         Restore a task from the bin (requires org admin)
   reviewer-add    Add a reviewer to a task
   reviewer-remove Remove a reviewer from a task
@@ -1641,6 +1644,23 @@ Usage:
 Flags:
   -h, --help                     help for claim
       --idempotency-key string   Optional key: replaying the same key from the same principal returns the original claim instead of erroring on an already-claimed task
+```
+
+#### `tasker tasks claim-next`
+
+```
+Claims the oldest open, unassigned task in the project for the calling principal, in one
+call - no list-then-claim race. With nothing to claim it prints nothing and exits 0; with
+--json it prints an object with no "task". A prior handoff note on the task is shown.
+
+Usage:
+  tasker tasks claim-next [flags]
+
+Flags:
+  -h, --help                     help for claim-next
+      --idempotency-key string   Optional key: a retry with the same key returns the original claim instead of claiming another task
+  -p, --project string           Project to take work from (or set TASKER_PROJECT_ID)
+      --type string              Only tasks of this task type ID
 ```
 
 #### `tasker tasks comment-add`
@@ -1747,6 +1767,23 @@ Flags:
       --status string            Filter to one status column (e.g. todo, in-progress, done, or a custom task-type status)
 ```
 
+#### `tasker tasks mine`
+
+```
+List the open tasks you hold, across every project in the organization
+
+Usage:
+  tasker tasks mine [flags]
+
+Flags:
+  -c, --cursor string   Pagination cursor to fetch the next set
+  -h, --help            help for mine
+      --include-done    Include tasks in a terminal status
+  -l, --limit int32     Maximum number of items to return (default 50)
+      --org string      Organization ID (people only - an agent's token names its org; or set TASKER_ORG_ID)
+      --page-all        Fetch every page, printing one JSON object per item per line (NDJSON)
+```
+
 #### `tasker tasks note-add`
 
 ```
@@ -1808,6 +1845,21 @@ Usage:
 
 Flags:
   -h, --help   help for purge
+```
+
+#### `tasker tasks release`
+
+```
+Releases a task the caller holds by its own claim, so another agent can take it. With
+--handoff the note is recorded first, and the next claimant receives it. A task a person
+assigned to you cannot be released this way (exit 3); ask them to unassign it.
+
+Usage:
+  tasker tasks release [task_id] [flags]
+
+Flags:
+      --handoff string   A handoff note to record before releasing: what you tried, what is blocked, the next step
+  -h, --help             help for release
 ```
 
 #### `tasker tasks restore`

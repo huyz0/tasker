@@ -51,7 +51,7 @@ scriptable; both are prerequisites.
   and only the caller's.
 - [x] `GetIdentity` with an agent token returns the agent's id, name, org and
   scopes.
-- [ ] `tasker tasks claim-next`, `tasker tasks release`, `tasker tasks mine`
+- [x] `tasker tasks claim-next`, `tasker tasks release`, `tasker tasks mine`
   exist; `tasker auth whoami` works with an agent token.
 - [ ] The agent-scope sweep covers the new methods; docs describe the loop;
   CI green on `main`.
@@ -80,7 +80,7 @@ scriptable; both are prerequisites.
   - **Files**: as T02
 - [x] **M33-T05** — `GetIdentity` for agents.
   - **Files**: `apps/backend/src/modules/auth/auth.handler.ts`, `lib/scopes.ts`
-- [ ] **M33-T06** — CLI: `claim-next`, `release`, `mine`, agent `whoami`.
+- [x] **M33-T06** — CLI: `claim-next`, `release`, `mine`, agent `whoami`.
   - **Files**: `apps/cli/cmd/{tasks,auth}.go`, `docs/cli-reference.md`
 - [ ] **M33-T07** — Documentation, skill and close.
   - **Files**: `docs/agent-integration.md`, `.agents/skills/handoff-task/SKILL.md`,

@@ -101,3 +101,23 @@
   `releaseTask` are writes and refuse a viewer (both authorize before doing
   anything else).
 - **Next**: M33-T06
+
+## M33-T06 — CLI: claim-next, release, mine, agent whoami
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/tasks_queue.go` (new, + test), `cmd/auth.go`,
+  `cmd/tasks.go`, `docs/cli-reference.md` (regenerated)
+- **Verified**: `moon run cli:format cli:vet cli:test cli:coverage-gate
+  cli:docs-check` green.
+- **Notes**: `tasks claim-next` prints nothing to stdout and "Nothing to
+  claim." to stderr on an idle queue, exit 0, so `while tasker tasks
+  claim-next --json | jq -e .task` loops until there is work; a lost
+  contention race is `Aborted`, exit 5. `tasks release` sends `--handoff` only
+  when given (proto3 `optional`, so "absent" is not ""), and a person's
+  assignment exits 3. `tasks mine` names no org for an agent (its token does),
+  takes `--org`/`TASKER_ORG_ID` for a person, `--include-done`, and the M31
+  pagination contract including `--page-all`. `auth whoami` with an agent
+  token prints the agent, its org and scopes. Handoff notes everywhere are
+  attributed by name (`noteAuthor`) now that the server sends one.
+- **Next**: M33-T07

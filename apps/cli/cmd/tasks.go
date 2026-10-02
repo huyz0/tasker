@@ -106,7 +106,7 @@ var tasksGetCmd = &cobra.Command{
 				cmd.Printf("\n%s\n", res.Msg.Task.Description)
 			}
 			if res.Msg.LatestHandoffNote != nil {
-				cmd.Printf("\nHandoff note (agent %s): %s\n", res.Msg.LatestHandoffNote.AgentId, res.Msg.LatestHandoffNote.Content)
+				cmd.Printf("\nHandoff note (%s): %s\n", noteAuthor(res.Msg.LatestHandoffNote), res.Msg.LatestHandoffNote.Content)
 			}
 		}
 		return nil
@@ -228,7 +228,7 @@ var tasksClaimCmd = &cobra.Command{
 		} else {
 			cmd.Printf("Task %s claimed\n", res.Msg.Task.Id)
 			if res.Msg.LatestHandoffNote != nil {
-				cmd.Printf("Handoff note (agent %s): %s\n", res.Msg.LatestHandoffNote.AgentId, res.Msg.LatestHandoffNote.Content)
+				cmd.Printf("Handoff note (%s): %s\n", noteAuthor(res.Msg.LatestHandoffNote), res.Msg.LatestHandoffNote.Content)
 			}
 		}
 		return nil
