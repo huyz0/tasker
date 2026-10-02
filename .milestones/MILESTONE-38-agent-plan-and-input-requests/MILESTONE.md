@@ -51,7 +51,7 @@ policy choice), agent-to-agent questions.
 ## 5. Task Breakdown
 
 - [x] **M38-T01** — ADR-0031; contract and schema.
-- [ ] **M38-T02** — Plan RPC.
+- [x] **M38-T02** — Plan RPC.
 - [ ] **M38-T03** — Input requests: RPCs, notifications, events.
 - [ ] **M38-T04** — CLI and MCP tools.
 - [ ] **M38-T05** — GUI.

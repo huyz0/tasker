@@ -160,6 +160,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     releaseTask: { taskId: ids.task },
     addTaskLink: { taskId: ids.task, linkedTaskId: ids.task, kind: 'blocked_by' },
     removeTaskLink: { taskId: ids.task, linkedTaskId: ids.task, kind: 'blocked_by' },
+    setTaskPlan: { taskId: ids.task, steps: [] },
     addTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     removeTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     updateTask: { taskId: ids.task, title: 'T2' },

@@ -195,6 +195,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     addTaskLink: { taskId: ids.task, linkedTaskId: ids.task, kind: 'blocked_by' },
     removeTaskLink: { taskId: ids.task, linkedTaskId: ids.task, kind: 'blocked_by' },
     listTaskLinks: { taskId: ids.task },
+    setTaskPlan: { taskId: ids.task, steps: [] },
     addTaskReviewer: { taskId: ids.task, userId: ids.user },
     removeTaskReviewer: { taskId: ids.task, userId: ids.user },
     listTaskReviewers: { taskId: ids.task },

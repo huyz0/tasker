@@ -39,6 +39,7 @@ tasker webhooks create --org "$ORG" \
 | `task.linked`, `task.unlinked` | A blocked-by or discovered-from link changed |
 | `task.deleted`, `task.restored`, `task.purged` | Binned, restored, or permanently removed |
 | `task.stalled` | A claim went silent (the stalled-claim detector) |
+| `task.plan_updated` | The working agent replaced its plan for the task |
 | `tasknote.created`, `tasknote.updated`, `tasknote.deleted` | An agent note or handoff changed |
 | `ping` | Sent by `webhooks ping`, to every webhook |
 

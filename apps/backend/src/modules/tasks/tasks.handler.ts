@@ -80,6 +80,16 @@ const TaskLinkSchema = z.object({
   kind: z.enum(LINK_KINDS, { message: `kind must be one of ${LINK_KINDS.join(", ")}` }),
 });
 
+/** M38 (ADR-0031). */
+const PLAN_STEP_STATUSES = ["pending", "in_progress", "done", "skipped"] as const;
+const SetTaskPlanSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+  steps: z.array(z.object({
+    title: z.string().trim().min(1, "a step needs a title").max(500),
+    status: z.enum(PLAN_STEP_STATUSES, { message: `step status must be one of ${PLAN_STEP_STATUSES.join(", ")}` }),
+  })).max(50, "a plan has at most 50 steps").optional().default([]),
+});
+
 const ListTaskLinksSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
 });
@@ -1347,6 +1357,25 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         publishDomainEvent(nc, "domain.task.unlinked", { taskId: parsed.taskId, linkedTaskId: parsed.linkedTaskId, kind: parsed.kind });
       }
       return { success: true };
+    },
+    /**
+     * M38 (ADR-0031): replaces the task's plan with the given steps - the
+     * whole list, every time, so there is nothing to merge. An empty list
+     * clears it.
+     */
+    async setTaskPlan(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = SetTaskPlanSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
+      const steps = parsed.steps.map((s) => ({ title: s.title, status: s.status }));
+      await db.update(taskTable).set({ plan: steps.length > 0 ? JSON.stringify(steps) : null }).where(eq((taskTable as any).id, parsed.taskId));
+      publishDomainEvent(nc, "domain.task.plan_updated", {
+        taskId: parsed.taskId,
+        steps: steps.length,
+        done: steps.filter((s) => s.status === "done").length,
+      });
+      return { plan: steps };
     },
     async listTaskLinks(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
