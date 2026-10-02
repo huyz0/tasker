@@ -94,4 +94,58 @@ describe("agent work queue (M33)", () => {
       expect(again.task.id).toBe(first.task.id);
     });
   });
+
+  describe("ReleaseTask (M33-T03, ADR-0027)", () => {
+    it("gives back the caller's own claim, so the next agent can take it", async () => {
+      const t = await task("T");
+      await handler.claimTask({ taskId: t.id }, agentCtx(agentIds[0]!));
+      const res = await handler.releaseTask({ taskId: t.id }, agentCtx(agentIds[0]!));
+      expect(res.success).toBe(true);
+
+      const next = await handler.claimNextTask({ projectId }, agentCtx(agentIds[1]!));
+      expect(next.task.id).toBe(t.id);
+    });
+
+    it("records a handoff note first, and the next claimant receives it", async () => {
+      const t = await task("T");
+      await handler.claimTask({ taskId: t.id }, agentCtx(agentIds[0]!));
+      const res = await handler.releaseTask({ taskId: t.id, handoffNote: "Tried X. Blocked on Y. Next: Z." }, agentCtx(agentIds[0]!));
+      expect(res.handoffNote.noteType).toBe("handoff");
+      expect(res.handoffNote.content).toBe("Tried X. Blocked on Y. Next: Z.");
+
+      const next = await handler.claimTask({ taskId: t.id }, agentCtx(agentIds[1]!));
+      expect(next.latestHandoffNote.content).toBe("Tried X. Blocked on Y. Next: Z.");
+    });
+
+    it("refuses to release an assignment a person made", async () => {
+      const t = await task("T");
+      await handler.assignTask({ taskId: t.id, agentId: agentIds[0] }, ctx);
+      await expect(handler.releaseTask({ taskId: t.id }, agentCtx(agentIds[0]!)))
+        .rejects.toMatchObject({ code: Code.PermissionDenied });
+      const rows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, t.id));
+      expect(rows).toHaveLength(1);
+    });
+
+    it("refuses to release someone else's claim, and says so", async () => {
+      const t = await task("T");
+      await handler.claimTask({ taskId: t.id }, agentCtx(agentIds[0]!));
+      await expect(handler.releaseTask({ taskId: t.id }, agentCtx(agentIds[1]!)))
+        .rejects.toMatchObject({ code: Code.FailedPrecondition });
+    });
+
+    it("lets a person release a claim they took themselves", async () => {
+      const t = await task("T");
+      await handler.claimTask({ taskId: t.id }, ctx);
+      expect((await handler.releaseTask({ taskId: t.id }, ctx)).success).toBe(true);
+    });
+
+    it("needs comments:write to leave a handoff note, before anything is released", async () => {
+      const t = await task("T");
+      await handler.claimTask({ taskId: t.id }, agentCtx(agentIds[0]!));
+      await expect(handler.releaseTask({ taskId: t.id, handoffNote: "n" }, agentCtx(agentIds[0]!, ["tasks:read", "tasks:write"])))
+        .rejects.toMatchObject({ code: Code.PermissionDenied });
+      const rows = await db.select().from(schemaSqlite.taskAssignments).where(eq(schemaSqlite.taskAssignments.taskId, t.id));
+      expect(rows).toHaveLength(1);
+    });
+  });
 });

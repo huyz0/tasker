@@ -79,6 +79,43 @@ async function withAgentNames<T extends { agentId: string }>(db: any, isStandalo
   return notes.map((n) => ({ ...n, agentName: names.get(n.agentId) ?? "" }));
 }
 
+/**
+ * Writes a task note and everything that goes with one: the activity row (a
+ * note is a "last signal" for the stalled-claim detector) and the domain
+ * event. Shared by CreateTaskNote and ReleaseTask's handoff note (M33-T03), so
+ * a note written as part of a release is indistinguishable from any other.
+ */
+export async function recordTaskNote(
+  db: any,
+  isStandalone: boolean,
+  nc: any,
+  note: { taskId: string; agentId: string; content: string; noteType: string },
+) {
+  const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
+  // M19-T02: set explicitly rather than left to insertRecord's default -
+  // that default only fires in standalone/sqlite mode.
+  const payload = { id: `tnt-${crypto.randomUUID()}`, ...note, createdAt: new Date() };
+  await insertRecord(db, notes, payload, isStandalone, false);
+
+  // M24-T04 (ADR-0020): a note's creation is a signal for the stalled-claims
+  // "last signal per task" query, recorded as 'note' or 'handoff' per its
+  // type. Only creation is a signal - updates and deletes record nothing.
+  const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+  const taskRows = await db.select().from(tasksTable).where(eq((tasksTable as any).id, note.taskId)).limit(1);
+  await recordTaskActivity(db, isStandalone, {
+    taskId: note.taskId,
+    projectId: taskRows[0].projectId,
+    kind: note.noteType === "handoff" ? "handoff" : "note",
+    actorType: "agent",
+    actorId: note.agentId,
+    ...(await currentAssignee(db, isStandalone, note.taskId)),
+  });
+
+  const noteResp = { ...payload, createdAt: payload.createdAt.toISOString() };
+  publishDomainEvent(nc, "domain.tasknote.created", noteResp);
+  return noteResp;
+}
+
 export async function getLatestHandoffNote(db: any, taskId: string, isStandalone: boolean) {
   const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
   const rows = await db
@@ -133,41 +170,12 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       }
       await authorizePrincipal(db, principal, orgId, { scope: "comments:write", permission: "tasknote:write" });
 
-      const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
-      const newId = `tnt-${crypto.randomUUID()}`;
-      // M19-T02: set explicitly rather than left to insertRecord's default -
-      // that default only fires in standalone/sqlite mode, and either way it
-      // was never added to the object returned below, only to the copy
-      // insertRecord wrote to the DB.
-      const payload = {
-        id: newId,
+      const noteResp = await recordTaskNote(db, isStandalone, nc, {
         taskId: parsed.taskId,
         agentId: principal.agentId,
         content: parsed.content,
-        createdAt: new Date(),
         noteType: parsed.noteType,
-      };
-
-      await insertRecord(db, notes, payload, isStandalone, false);
-
-      // M24-T04 (ADR-0020): a note's creation is a signal for the
-      // stalled-claims "last signal per task" query, recorded as 'note' or
-      // 'handoff' per its type. Only creation is a signal -
-      // updateTaskNote/deleteTaskNote deliberately record no activity.
-      // projectId isn't in scope here - one small lookup.
-      const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-      const taskRows = await db.select().from(tasksTable).where(eq((tasksTable as any).id, parsed.taskId)).limit(1);
-      await recordTaskActivity(db, isStandalone, {
-        taskId: parsed.taskId,
-        projectId: taskRows[0].projectId,
-        kind: parsed.noteType === "handoff" ? "handoff" : "note",
-        actorType: "agent",
-        actorId: principal.agentId,
-        ...(await currentAssignee(db, isStandalone, parsed.taskId)),
       });
-
-      const noteResp = { ...payload, createdAt: payload.createdAt.toISOString() };
-      publishDomainEvent(nc, "domain.tasknote.created", noteResp);
       return { taskNote: noteResp };
     },
     async updateTaskNote(req: unknown, { values: contextValues }: { values: any }) {

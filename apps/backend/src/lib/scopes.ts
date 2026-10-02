@@ -81,6 +81,10 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     // M33-T02: claimTask over the oldest open task in a project - the same
     // grant, choosing the task instead of naming it.
     claimNextTask: 'tasks:write',
+    // M33-T03 (ADR-0027): claimTask's exact inverse - it can only remove the
+    // caller's own row, and only one it claimed. A handoff note in the same
+    // call additionally needs comments:write, checked in the handler.
+    releaseTask: 'tasks:write',
     // assignTask and unassignTask are deliberately absent. Deciding which
     // worker picks up a piece of work is an orchestration decision, and a token
     // that can reassign work to itself is a token that can help itself to any

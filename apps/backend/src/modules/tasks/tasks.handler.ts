@@ -8,7 +8,7 @@ import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restor
 import { requireUser, getProjectOrgId, getTaskOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
 import { withIdempotency } from "../../lib/idempotency";
-import { getLatestHandoffNote } from "./task_notes.handler";
+import { getLatestHandoffNote, recordTaskNote } from "./task_notes.handler";
 import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal, terminalStatusSql } from "./taskActivity";
 import { purgeTaskCascade } from "../../lib/cascadePurge";
 import { ConnectError, Code } from "@connectrpc/connect";
@@ -106,6 +106,11 @@ const ClaimNextTaskSchema = z.object({
   projectId: z.string().min(1, "projectId is required"),
   taskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
   idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
+});
+
+const ReleaseTaskSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+  handoffNote: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(20_000).optional()),
 });
 
 /**
@@ -1090,6 +1095,64 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         // retryable answer; an empty response would wrongly say "no work".
         throw new ConnectError("every open task was claimed by another caller first - retry", Code.Aborted);
       });
+    },
+    /**
+     * M33-T03 (ADR-0027): gives back a task the caller holds by its own
+     * claim. An assignment a person made is theirs to change, not the
+     * holder's. With a handoff note, the note is written first - so the next
+     * claimant sees it - and refused up front if the caller may not write one,
+     * before anything is released.
+     */
+    async releaseTask(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = ReleaseTaskSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
+      if (parsed.handoffNote !== undefined) {
+        if (principal.kind !== "agent") {
+          throw new ConnectError("handoff notes are written by agents - release without one, or comment on the task", Code.InvalidArgument);
+        }
+        await authorizePrincipal(db, principal, orgId, { scope: "comments:write", permission: "tasknote:write" });
+      }
+
+      const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+      const selfColumn = principal.kind === "agent" ? (assignments as any).agentId : (assignments as any).userId;
+      const selfId = principal.kind === "agent" ? principal.agentId : principal.userId;
+      const [held] = await db.select().from(assignments)
+        .where(and(eq((assignments as any).taskId, parsed.taskId), eq(selfColumn, selfId))).limit(1);
+      if (!held) {
+        throw new ConnectError("you do not hold this task - only its holder can release it", Code.FailedPrecondition);
+      }
+      if (held.source !== "claim") {
+        throw new ConnectError("this task was assigned to you by a person - ask them to unassign it", Code.PermissionDenied);
+      }
+
+      const handoffNote = parsed.handoffNote !== undefined && principal.kind === "agent"
+        ? await recordTaskNote(db, isStandalone, nc, { taskId: parsed.taskId, agentId: principal.agentId, content: parsed.handoffNote, noteType: "handoff" })
+        : undefined;
+
+      // By row id, so a concurrent release, unassign or re-claim cannot make
+      // this delete someone else's assignment.
+      const deleted = await db.delete(assignments).where(eq((assignments as any).id, held.id));
+      const removed = isStandalone ? (deleted as any).changes : (deleted as any)[0]?.affectedRows;
+      if (removed) {
+        const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+        const [task] = await db.select({ projectId: (tasksTable as any).projectId }).from(tasksTable).where(eq((tasksTable as any).id, parsed.taskId)).limit(1);
+        await recordTaskActivity(db, isStandalone, {
+          taskId: parsed.taskId,
+          projectId: task.projectId,
+          kind: "unassigned",
+          ...actorFromPrincipal(principal),
+          assigneeAgentId: principal.kind === "agent" ? principal.agentId : null,
+          assigneeUserId: principal.kind === "user" ? principal.userId : null,
+        });
+        publishDomainEvent(nc, "domain.task.released", {
+          taskId: parsed.taskId,
+          agentId: principal.kind === "agent" ? principal.agentId : null,
+          userId: principal.kind === "user" ? principal.userId : null,
+        });
+      }
+      return { success: true, ...(handoffNote ? { handoffNote } : {}) };
     },
     async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);

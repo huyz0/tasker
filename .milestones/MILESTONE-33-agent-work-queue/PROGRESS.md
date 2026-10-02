@@ -42,3 +42,25 @@
   retryable code, and exit 5 from the CLI — because "no work" would be false.
   Five concurrent claimers on five tasks get five distinct tasks.
 - **Next**: M33-T03
+
+## M33-T03 — ReleaseTask (ADR-0027)
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/tasks/{tasks,task_notes}.handler.ts`,
+  `workQueue.test.ts`, `lib/scopes.ts`, `lib/agent-scope-sweep.test.ts`
+- **Verified**: `bun test src/modules/tasks src/lib/agent-scope-sweep.test.ts`
+  — 133 pass; six new tests, all failing first.
+- **Notes**: Release removes the caller's own `task_assignments` row only when
+  its `source` is `claim`; a person's assignment is `PermissionDenied` ("ask
+  them to unassign it"), and a task the caller does not hold is
+  `FailedPrecondition`. The delete is by row id, so a concurrent unassign or
+  re-claim cannot make it remove someone else's assignment. With a handoff
+  note, `comments:write` is checked *before* anything changes (a refusal must
+  not leave the task released with no note), the note is written through
+  CreateTaskNote's own path — now `recordTaskNote`, shared — and the next
+  claimant receives it via `latestHandoffNote`. People may release their own
+  claims too, but not with a handoff note (notes are agent-authored since
+  M04). Publishes `domain.task.released`; the GUI's `task` entity mapping
+  already invalidates on it.
+- **Next**: M33-T04
