@@ -4,10 +4,10 @@ import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
 import { AgentService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { formatDateTime } from '../../lib/format';
 
 const agentClient = createClient(AgentService, transport);
 
-const dateTimeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 /**
  * ADR-0008's vocabulary, shown verbatim. The string is what appears in the CLI,
@@ -239,7 +239,7 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
                 <span className={state === 'active' ? 'text-success' : 'text-muted-foreground'}>{state}</span>
                 <span className="shrink-0 whitespace-nowrap text-right text-muted-foreground">
                   {t.lastUsedAt
-                    ? <>used <time dateTime={t.lastUsedAt}>{dateTimeFormat.format(new Date(t.lastUsedAt))}</time></>
+                    ? <>used <time dateTime={t.lastUsedAt}>{formatDateTime(t.lastUsedAt)}</time></>
                     : 'never used'}
                 </span>
                 <span className="text-muted-foreground w-32 text-right">

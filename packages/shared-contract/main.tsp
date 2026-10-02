@@ -1375,6 +1375,12 @@ model TaskNote {
   // anywhere, every enum-like field is a plain string with the allowed
   // literals in a comment, validated in Zod at the handler boundary.
   @field(6) noteType: string;
+
+  // M32-T06: the author's display name, resolved server-side in one batched
+  // lookup per response (as GetDashboard does for agents), so a reader does
+  // not have to load the org's whole agent list to label a note. Empty when
+  // the agent has since been purged.
+  @field(7) agentName: string;
 }
 
 model CreateTaskNoteRequest {

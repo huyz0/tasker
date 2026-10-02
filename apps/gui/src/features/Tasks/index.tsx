@@ -25,14 +25,16 @@ import { LazyRichMarkdownEditor } from '../../components/ui/LazyRichMarkdownEdit
 import { ListState } from '../../components/ui/ListState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { allowedStatuses, type TypeStateMachine } from './statusTransitions';
+import { formatDateTime } from '../../lib/format';
 
 const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
 const taskTypeClient = createClient(TaskTypeService, transport);
 const taskNoteClient = createClient(TaskNoteService, transport);
 
-/** The reader's own locale, not a bare `toLocaleString()` whose shape varies by browser. */
-const noteTimeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
+/** A note's author: the name the server resolved, or the id if the agent is gone. */
+const agentLabel = (note: { agentId: string; agentName?: string }) => note.agentName || `Agent ${note.agentId}`;
 
 function TaskNotesPanel({ taskId }: { taskId: string }) {
   const { confirm, confirmDialog } = useConfirm();
@@ -119,7 +121,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
         ) : (
           <div key={note.id} className="p-3 rounded-lg bg-muted/50 border flex flex-col gap-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-xs text-muted-foreground">Agent {note.agentId}</span>
+              <span className="text-xs text-muted-foreground">{agentLabel(note)}</span>
               <span className="flex items-center gap-2">
                 <button
                   onClick={() => { setEditingNoteId(note.id); setEditNoteContent(note.content); }}
@@ -144,7 +146,10 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
                 </button>
               </span>
             </div>
-            <p className="text-sm">{note.content}</p>
+            {/* Handoff notes are written as "tried / blocked / next" on
+                separate lines, often in Markdown; one <p> collapsed them
+                into a single paragraph (M32-T06). */}
+            <MarkdownRenderer content={note.content} />
           </div>
         )
       ))}
@@ -205,7 +210,7 @@ function HandoffsSummary({ taskId }: { taskId: string }) {
           <div key={n.id} className="rounded-lg border bg-muted/50 p-2">
             <p className="line-clamp-2 text-xs">{n.content}</p>
             <p className="mt-1 text-2xs text-muted-foreground">
-              Agent {n.agentId} · <time dateTime={n.createdAt}>{noteTimeFormat.format(new Date(n.createdAt))}</time>
+              {agentLabel(n)} · <time dateTime={n.createdAt}>{formatDateTime(n.createdAt)}</time>
             </p>
           </div>
         ))}

@@ -95,3 +95,36 @@
     longer flickers as the pointer crosses the column's own cards —
     `dragleave` only clears it when the pointer actually leaves the column.
 - **Next**: M32-T06
+
+## M32-T06 — Notes render Markdown; agents appear by name; one date formatter
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `packages/shared-contract/{main.tsp,tasker/health/v1/health.proto}`
+  (`TaskNote.agentName`, field 7), generated TS and Go,
+  `apps/backend/src/modules/tasks/task_notes.handler.ts` (+ test),
+  `apps/gui/src/lib/format.ts` (new, + test), Tasks, Handoffs, Memory, Bin,
+  AgentTokens, CommentItem
+- **Verified**: `moon run shared-contract:format gui:* backend:typecheck
+  backend:test cli:test cli:docs-check :knip` green; GUI 1230 tests.
+- **Notes**:
+  - **Names are resolved on the server**, the way GetDashboard already does:
+    `withAgentNames` adds one batched lookup to `listTaskNotes`,
+    `listHandoffNotes` and the latest-handoff attached to `getTask`/
+    `claimTask`. Resolving them in the browser would have meant loading the
+    org's whole agent list — 20K at the declared scale — to label three notes.
+  - **Contract codegen without buf.build**: the remote Go plugins are
+    unreachable from this environment, so `protoc-gen-go v1.36.0` and
+    `protoc-gen-connect-go v1.17.0` — the versions in the generated headers —
+    were installed locally and run with a temporary template; the Go diff is
+    the new field plus the re-encoded descriptor, nothing else. The `.proto`
+    is hand-maintained beside `main.tsp` (buf reads the checked-in file),
+    so both were edited.
+  - Notes render through `MarkdownRenderer`; a handoff written as "tried /
+    blocked / next" on separate lines no longer collapses into one paragraph.
+  - `formatDateTime` replaces six copies of the same formatter and returns ""
+    for a missing or unparseable time — `format(new Date(''))` throws a
+    RangeError that took the whole list down. `formatStatus` reads
+    `in_progress` as "In progress" on Handoffs (CSS `capitalize` rendered
+    "In_progress").
+- **Next**: M32-T07

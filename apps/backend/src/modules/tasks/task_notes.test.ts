@@ -160,6 +160,8 @@ describe("Task Notes Handler", () => {
     expect(res.taskNotes).toHaveLength(2);
     expect(res.taskNotes.map((n: any) => n.content)).toContain("N1");
     expect(res.taskNotes.every((n: any) => typeof n.createdAt === "string" && n.createdAt.length > 0)).toBe(true);
+    // M32-T06: the author's name, so a reader need not load every agent.
+    expect(res.taskNotes.every((n: any) => n.agentName === "Agent")).toBe(true);
   });
 
   it("should reject listTaskNotes with missing taskId", async () => {
@@ -236,6 +238,7 @@ describe("Task Notes Handler", () => {
       expect(res.entries.every((e: any) => e.note.noteType === "handoff")).toBe(true);
       expect(res.entries.every((e: any) => typeof e.taskTitle === "string" && e.taskTitle.length > 0)).toBe(true);
       expect(res.entries.every((e: any) => typeof e.taskStatus === "string")).toBe(true);
+      expect(res.entries.every((e: any) => e.note.agentName === "Agent")).toBe(true);
     });
 
     it("returns only the latest handoff note when a task has been handed off more than once", async () => {

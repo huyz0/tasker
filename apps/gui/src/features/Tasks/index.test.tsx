@@ -1533,4 +1533,20 @@ describe('TasksWorkbench', () => {
       expect(await screen.findByText(/1 of 2 tasks failed to update: T-2/)).toBeInTheDocument();
     });
   });
+
+  describe('agent notes read like the agent wrote them (M32-T06)', () => {
+    it('shows the author by name and keeps the note\'s Markdown structure', async () => {
+      withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+      mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [{
+        id: 'n-1', taskId: 'task-1', agentId: 'agent-1', agentName: 'Scout', noteType: 'comment',
+        content: '**Tried:** rerunning CI\n\n- blocked on review', createdAt: '2026-10-02T09:00:00.000Z',
+      }] });
+      renderPage('/tasks/task-1');
+      const panel = await screen.findByText('Agent Notes');
+      const notes = panel.parentElement as HTMLElement;
+      expect(await within(notes).findByText('Scout')).toBeInTheDocument();
+      expect(within(notes).getByText('Tried:').tagName).toBe('STRONG');
+      expect(within(notes).getByRole('listitem')).toHaveTextContent('blocked on review');
+    });
+  });
 });

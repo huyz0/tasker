@@ -17,6 +17,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/button';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Search, Plus, History as HistoryIcon, Link2 } from 'lucide-react';
+import { formatDateTime } from '../../lib/format';
 
 const memoryClient = createClient(MemoryService, transport);
 
@@ -71,7 +72,6 @@ const CONFIDENCE_LEVELS = ['low', 'medium', 'high'] as const;
 const STATUSES = ['active', 'superseded', 'retracted'] as const;
 const RELATION_TYPES = ['relates_to', 'supports', 'contradicts', 'duplicates'] as const;
 
-const dateTimeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 const CONFIDENCE_BADGE: Record<string, string> = {
   high: 'bg-success-subtle text-success-subtle-foreground',
@@ -567,7 +567,7 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
                   <div key={promotion.id} className="flex flex-col gap-0.5 border-b px-3 py-1.5 text-sm">
                     <span>{promotion.fromScopeType} → {promotion.toScopeType}</span>
                     <span className="text-xs text-muted-foreground">
-                      by {promotion.promotedBy} · <time dateTime={promotion.promotedAt}>{dateTimeFormat.format(new Date(promotion.promotedAt))}</time>
+                      by {promotion.promotedBy} · <time dateTime={promotion.promotedAt}>{formatDateTime(promotion.promotedAt)}</time>
                       {promotion.note && ` · ${promotion.note}`}
                     </span>
                   </div>

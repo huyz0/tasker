@@ -1201,6 +1201,8 @@ message TaskNote {
   // M22-T02 (ADR-0017): "comment" | "handoff". No proto enum - this repo
   // validates enum-like fields in Zod only, see Belief.scopeType.
   string noteType = 6;
+  // M32-T06: the author's display name, resolved server-side.
+  string agentName = 7;
 }
 
 message CreateTaskNoteRequest {

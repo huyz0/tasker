@@ -2,7 +2,7 @@ import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, inArray, isNull } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery } from "../../db/query-builder";
 import { requirePrincipal, authorizePrincipal, getTaskOrgId, getProjectOrgId } from "../../lib/authz";
 import { recordTaskActivity, currentAssignee } from "./taskActivity";
@@ -63,6 +63,22 @@ function assertTaskNoteAuthor(note: any, principal: Principal) {
  * an agent claims or inspects a task, prior handoff context arrives with it
  * - the point of this milestone (ADR-0017).
  */
+/**
+ * Attaches each note's author name in one query (M32-T06), the way
+ * GetDashboard does for agents - so a client labelling notes need not load
+ * the organization's whole agent list. A purged agent leaves "".
+ */
+async function withAgentNames<T extends { agentId: string }>(db: any, isStandalone: boolean, notes: T[]): Promise<(T & { agentName: string })[]> {
+  const ids = [...new Set(notes.map((n) => n.agentId).filter(Boolean))];
+  const names = new Map<string, string>();
+  if (ids.length > 0) {
+    const agents = isStandalone ? schemaSqlite.agents : schemaMysql.agents;
+    const rows = await db.select({ id: (agents as any).id, name: (agents as any).name }).from(agents).where(inArray((agents as any).id, ids));
+    for (const r of rows) names.set(r.id, r.name);
+  }
+  return notes.map((n) => ({ ...n, agentName: names.get(n.agentId) ?? "" }));
+}
+
 export async function getLatestHandoffNote(db: any, taskId: string, isStandalone: boolean) {
   const notes = isStandalone ? schemaSqlite.taskNotes : schemaMysql.taskNotes;
   const rows = await db
@@ -72,8 +88,8 @@ export async function getLatestHandoffNote(db: any, taskId: string, isStandalone
     .orderBy(desc((notes as any).createdAt), desc((notes as any).id))
     .limit(1);
   if (!rows || rows.length === 0) return null;
-  const n = rows[0];
-  return { ...n, createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : n.createdAt };
+  const [n] = await withAgentNames(db, isStandalone, [rows[0]]);
+  return { ...n!, createdAt: n!.createdAt instanceof Date ? n!.createdAt.toISOString() : n!.createdAt };
 }
 
 // listHandoffNotes's own tiny index cursor, not query-builder.ts's keyset
@@ -212,7 +228,7 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       });
 
       return {
-        taskNotes: items.map((n: any) => ({
+        taskNotes: (await withAgentNames(db, isStandalone, items as any[])).map((n: any) => ({
           ...n,
           createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : n.createdAt,
         })),
@@ -276,10 +292,11 @@ export const createTaskNotesHandler = (db: any, nc: any = null) => {
       const page = deduped.slice(startIndex, startIndex + limit);
       const nextCursor = startIndex + limit < deduped.length ? encodeIndexCursor(startIndex + limit) : undefined;
 
+      const named = await withAgentNames(db, isStandalone, page.map((row: any) => row.note));
       return {
-        entries: page.map((row: any) => ({
+        entries: page.map((row: any, i: number) => ({
           note: {
-            ...row.note,
+            ...named[i],
             createdAt: row.note.createdAt instanceof Date ? row.note.createdAt.toISOString() : row.note.createdAt,
           },
           taskTitle: row.taskTitle,

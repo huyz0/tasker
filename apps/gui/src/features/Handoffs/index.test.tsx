@@ -24,7 +24,7 @@ function LocationProbe() {
 
 const ENTRIES = [
   {
-    note: { id: 'tnt-1', taskId: 'task-1', agentId: 'agent-1', content: 'Blocked on review, next: rerun tests', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'handoff' },
+    note: { id: 'tnt-1', taskId: 'task-1', agentId: 'agent-1', agentName: 'Scout', content: 'Blocked on review, next: rerun tests', createdAt: '2026-08-19T10:00:00.000Z', noteType: 'handoff' },
     taskTitle: 'Fix flaky test',
     taskStatus: 'in_progress',
   },
@@ -62,8 +62,11 @@ describe('HandoffsScreen', () => {
 
     await waitFor(() => expect(screen.getByText('Fix flaky test')).toBeInTheDocument());
     expect(screen.getByText('Blocked on review, next: rerun tests')).toBeInTheDocument();
-    expect(screen.getByText('in_progress')).toBeInTheDocument();
-    expect(screen.getByText(/Agent agent-1/)).toBeInTheDocument();
+    // M32-T07/T06: a status reads as words, and the author by name when the
+    // server resolved one - the id only for an agent that has since gone.
+    expect(screen.getByText('In progress')).toBeInTheDocument();
+    expect(screen.getByText(/Scout ·/)).toBeInTheDocument();
+    expect(screen.getByText(/Agent agent-2 ·/)).toBeInTheDocument();
 
     expect(screen.getByText('Add note_type column')).toBeInTheDocument();
     expect(screen.getByText('Migration written, needs a MySQL run before merge')).toBeInTheDocument();

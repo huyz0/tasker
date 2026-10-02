@@ -4,7 +4,7 @@ title: Task Workspace Correctness
 status: in-progress
 goal: A human supervising agents from the task screen sees what the agents are doing as they do it, is never shown a stale or wrong value after their own edit, can only choose moves the server will accept, and is told when something failed instead of being shown an empty panel.
 depends_on: [M30]
-surfaces: [gui, specs]
+surfaces: [gui, backend, contract, specs]
 exit_criteria_met: false
 started_at: 2026-10-02
 completed_at: null
@@ -60,7 +60,7 @@ the server); no E2E asserted it rendered a row.
   are labelled as such.
 - [x] The detail status select offers only the current status and its allowed
   targets.
-- [ ] Notes render Markdown; agent names replace agent ids where the org's
+- [x] Notes render Markdown; agent names replace agent ids where the org's
   agents are known.
 - [ ] An E2E spec asserts the audit trail renders at least one row.
 - [ ] `moon run gui:lint gui:design-lint gui:typecheck gui:test gui:build`,
@@ -92,7 +92,7 @@ review's deferred items that are defects (`formatDateTime` helper, raw
   - **Files**: `apps/gui/src/components/ui/comments/*` (+ test)
 - [x] **M32-T05** — Status pickers offer only allowed transitions.
   - **Files**: `apps/gui/src/features/Tasks/index.tsx` (+ test)
-- [ ] **M32-T06** — Notes render Markdown; agents appear by name; one date formatter.
+- [x] **M32-T06** — Notes render Markdown; agents appear by name; one date formatter.
   - **Files**: `apps/gui/src/features/{Tasks,Handoffs}/index.tsx`, `src/lib/formatDateTime.ts`
 - [ ] **M32-T07** — Copy and small UX fixes: Handoffs status labels, Title Case buttons, set-password submit, flaky upload test.
   - **Files**: as named in the journal

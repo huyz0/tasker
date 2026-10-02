@@ -6,9 +6,8 @@ import { LazyRichMarkdownEditor } from '../LazyRichMarkdownEditor';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 import { Bot } from 'lucide-react';
 import { useConfirm } from '../ConfirmDialog';
+import { formatDateTime } from '../../../lib/format';
 
-// The viewer's locale, date and time to the minute; seconds on a comment are noise.
-const createdAtFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 export function CommentItem({ comment }: { comment: CommentData }) {
   const { confirm, confirmDialog } = useConfirm();
@@ -39,7 +38,7 @@ export function CommentItem({ comment }: { comment: CommentData }) {
         </span>
         <span className="flex items-center gap-2">
           <time dateTime={comment.createdAt} className="text-muted-foreground text-xs tabular-nums">
-            {createdAtFormat.format(new Date(comment.createdAt))}
+            {formatDateTime(comment.createdAt)}
           </time>
           {isOwnComment && !isEditing && (
             <>

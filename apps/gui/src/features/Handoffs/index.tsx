@@ -9,6 +9,7 @@ import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../../components/ui/ListState';
 import { VirtualList } from '../../components/ui/VirtualList';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { formatDateTime, formatStatus } from '../../lib/format';
 
 const taskNoteClient = createClient(TaskNoteService, transport);
 
@@ -18,14 +19,13 @@ const taskNoteClient = createClient(TaskNoteService, transport);
 // every other feature file here makes (see e.g. Memory/index.tsx's `Belief`).
 
 type HandoffEntry = {
-  note: { id: string; taskId: string; agentId: string; content: string; createdAt: string; noteType: string };
+  note: { id: string; taskId: string; agentId: string; agentName: string; content: string; createdAt: string; noteType: string };
   taskTitle: string;
   taskStatus: string;
 };
 
 const ROW_HEIGHT = 84;
 
-const dateTimeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 /**
  * One task with a pending handoff note. Clicking navigates straight to the
@@ -40,13 +40,13 @@ function HandoffRow({ entry, onSelect }: { entry: HandoffEntry; onSelect: (taskI
     >
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-sm font-medium">{entry.taskTitle}</p>
-        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-2xs font-medium capitalize text-muted-foreground">
-          {entry.taskStatus}
+        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-muted-foreground">
+          {formatStatus(entry.taskStatus)}
         </span>
       </div>
       <p className="line-clamp-2 text-sm text-muted-foreground">{entry.note.content}</p>
       <p className="text-xs text-muted-foreground">
-        Agent {entry.note.agentId} · <time dateTime={entry.note.createdAt}>{dateTimeFormat.format(new Date(entry.note.createdAt))}</time>
+        {entry.note.agentName || `Agent ${entry.note.agentId}`} · <time dateTime={entry.note.createdAt}>{formatDateTime(entry.note.createdAt)}</time>
       </p>
     </button>
   );

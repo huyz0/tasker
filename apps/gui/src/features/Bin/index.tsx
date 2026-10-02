@@ -17,10 +17,8 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ListState } from '../../components/ui/ListState';
 import { formatBytes } from '../Artifacts/ArtifactUpload';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { formatDateTime } from '../../lib/format';
 
-// The viewer's locale, date and time both: a bin row is read to answer "when
-// did this go?", and a bare toLocaleString() gave seconds nobody needs.
-const deletedAtFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 const orgClient = createClient(OrgService, transport);
 const projectClient = createClient(ProjectService, transport);
@@ -463,7 +461,7 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
               <span className="font-medium">{item[labelKey] || item.id}</span>
               {item.deletedAt && (
                 <span className="text-xs text-muted-foreground ml-2 tabular-nums">
-                  Deleted <time dateTime={item.deletedAt}>{deletedAtFormat.format(new Date(item.deletedAt))}</time>
+                  Deleted <time dateTime={item.deletedAt}>{formatDateTime(item.deletedAt)}</time>
                 </span>
               )}
             </div>
