@@ -37,6 +37,7 @@ import { requestLoggingInterceptor } from "./lib/requestLogging";
 import { reportError } from "./lib/errorReporter";
 import { runRetentionSweep } from "./lib/retentionSweep";
 import { purgeExpiredIdempotencyKeys } from "./lib/idempotency";
+import { validationErrorInterceptor } from "./lib/validationErrors";
 import { runStalledClaimAlertSweep } from "./lib/stalledClaimAlerts";
 import { config } from "./config";
 import { withRequestCorrelation } from "./lib/natsCorrelation";
@@ -187,7 +188,7 @@ const handler = connectNodeAdapter({
   // Tracing first, so the span covers authentication and the request-context
   // setup rather than starting after them — "why was this slow" has a
   // credential lookup in it often enough to matter.
-  interceptors: [tracingInterceptor, requestLoggingInterceptor, sessionInterceptor],
+  interceptors: [tracingInterceptor, requestLoggingInterceptor, sessionInterceptor, validationErrorInterceptor],
   routes: (router) => {
     router.service(HealthService as any, createHealthHandler(db, nc));
     router.service(TaskTypeService as any, createTasksHandler(db, nc));

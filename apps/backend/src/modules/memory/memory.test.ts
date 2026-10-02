@@ -160,6 +160,9 @@ describe("Memory Handler Integration Logic", () => {
     );
     const found: any = await handler.searchBeliefs({ scopeType: "project", scopeId: projectId, query: "zephyr-unique-marker" }, ctx);
     expect(found.beliefs.some((b: any) => b.id === created.belief.id)).toBe(true);
+    // M30-T11: `tasker memory search` sends limit 0 when the flag is unset.
+    const zero: any = await handler.searchBeliefs({ scopeType: "project", scopeId: projectId, query: "zephyr-unique-marker", limit: 0 }, ctx);
+    expect(zero.beliefs.some((b: any) => b.id === created.belief.id)).toBe(true);
 
     const superseded: any = await handler.supersedeBelief(
       { id: created.belief.id, statement: "zephyr-unique-marker two, corrected" },

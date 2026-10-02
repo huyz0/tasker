@@ -54,6 +54,13 @@ describe("Audit Handler", () => {
     expect(res.events.length).toBe(3);
   });
 
+  test("treats page.limit 0 as unset, the way proto3 sends it (M30-T11)", async () => {
+    // The GUI's audit trail sends `page: { cursor }`; on the wire an unset
+    // int32 is 0, and the handler refused it - the trail never loaded.
+    const res = await handler.listAuditEvents({ orgId, page: { cursor: "", limit: 0 } }, adminCtx);
+    expect(res.events.length).toBe(3);
+  });
+
   test("never returns another organization's events", async () => {
     // The trail names who did what inside an org; leaking it across a tenant
     // boundary is the failure that matters most here.

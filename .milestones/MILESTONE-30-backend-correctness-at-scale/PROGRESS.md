@@ -207,3 +207,24 @@
   keyed on the literal `"done"`; the missing idempotency documentation.
 - **Not done, deliberately**: per-org NATS subjects; a MySQL service in CI;
   claim-next, self-release and claim leases (M33).
+
+## M30-T11 — Validation failures are InvalidArgument; limit 0 means unset
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/lib/validationErrors.ts` (new, + test),
+  `src/index.ts`, `modules/{audit,notifications,memory}/*.handler.ts` and
+  their tests
+- **Verified**: full `bun test` green; each new case failed first.
+- **Notes**: Found by running the GUI E2E suite locally before pushing M30 —
+  every spec passed, but the backend log showed `ListAuditEvents` failing on
+  every load. The GUI sends `page: { cursor }`; an unset proto3 `int32`
+  arrives as `0`, and three schemas declared `limit` `.positive()`, so the
+  **Organizations → Audit trail screen has never loaded**, and `tasker memory
+  search` without `--limit` (which defaults to 0) failed the same way. The
+  failure was reported as `Internal` because nothing mapped a `ZodError` to a
+  Connect code — a caller with a bad request was told the server broke. Both
+  fixed: the three `limit`s accept 0 (their consumers already default on
+  `|| n`), and a new innermost interceptor turns a `ZodError` into
+  `InvalidArgument` naming each failing field. No E2E asserted the audit
+  trail rendered rows; M32 adds one.

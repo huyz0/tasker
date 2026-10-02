@@ -62,6 +62,9 @@ describe("listNotifications", () => {
     const res = await handler.listNotifications({ orgId: "org-n" }, asUser("alice"));
     expect(res.notifications).toHaveLength(1);
     expect(res.notifications[0]!.id).toBe("ntf-a");
+    // M30-T11: an unset int32 arrives as 0.
+    const zero = await handler.listNotifications({ orgId: "org-n", page: { limit: 0 } }, asUser("alice"));
+    expect(zero.notifications).toHaveLength(1);
   });
 
   it("filters to unread when asked", async () => {

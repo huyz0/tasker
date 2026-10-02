@@ -82,7 +82,7 @@ const SearchBeliefsSchema = z.object({
   status: StatusSchema.optional(),
   confidence: ConfidenceSchema.optional(),
   queryEmbedding: z.array(z.number()).optional().default([]),
-  limit: z.number().int().positive().optional(),
+  limit: z.number().int().nonnegative().optional(), // 0 = unset (proto3)
 });
 
 const UpdateBeliefSchema = z.object({

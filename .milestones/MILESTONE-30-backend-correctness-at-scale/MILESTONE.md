@@ -115,6 +115,10 @@ for the list query every board load and agent poll runs.
 - [x] **M30-T09** — Idempotency keys bind to their request; `purgeTask` is atomic; dashboard open-task counts are one terminal-aware query.
   - **Files**: `lib/idempotency.ts`, `modules/tasks/tasks.handler.ts`, `modules/dashboard/dashboard.handler.ts`
   - **Verify**: respective tests.
+- [x] **M30-T11** — A request that fails validation is `InvalidArgument`, and an unset (0) page limit is accepted. *(Added at close: found by the local E2E run — the Organizations audit trail never loaded.)*
+  - **Files**: `lib/validationErrors.ts` (new), `src/index.ts`,
+    `modules/{audit,notifications,memory}/*.handler.ts`
+  - **Verify**: `validationErrors.test.ts`; limit-0 cases in the three suites.
 - [x] **M30-T10** — Documentation and close.
   - **Files**: `.specs/product/architecture.md`, `.milestones/STATE.md`
   - **Verify**: `moon run :doc-drift :spec-drift`.

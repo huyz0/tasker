@@ -31,7 +31,7 @@ const ListSchema = z.object({
   page: z
     .object({
       cursor: z.string().optional(),
-      limit: z.number().int().positive().max(200).optional(),
+      limit: z.number().int().nonnegative().max(200).optional(), // 0 = unset (proto3)
       filter: z.string().optional(),
       sort: z.string().optional(),
     })
