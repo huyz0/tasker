@@ -62,8 +62,10 @@ for the list query every board load and agent poll runs.
   terminal tasks.
 - [x] A stalled-claim candidate whose dedup row already exists (another
   replica alerted it) is neither published, notified nor emailed.
-- [ ] `tasks` carries an index serving `project_id + deleted_at` ordered by
-  `created_at, id`, on both dialects, with `indexCoverage.test.ts` green.
+- [x] `tasks` carries an index serving `project_id + deleted_at` ordered by
+  `created_at, id`, with `indexCoverage.test.ts` green. (Already true since
+  M07-T09 on SQLite; on MySQL 8 the composite was measured and the optimiser
+  kept its filesort — see M30-T05's journal entry. Not re-added.)
 - [ ] An agent token used N times within a minute is written at most once.
 - [ ] One slow event-feed client holds a bounded queue; the oldest events are
   dropped and counted, never unbounded growth.
@@ -98,7 +100,7 @@ for the list query every board load and agent poll runs.
 - [x] **M30-T04** — The stalled-claim sweep skips candidates another replica already recorded.
   - **Files**: `lib/stalledClaimAlerts.ts`
   - **Verify**: `stalledClaimAlerts.test.ts` dedup-conflict case.
-- [ ] **M30-T05** — Indexes for the task list and the retention sweep, both dialects.
+- [~] **M30-T05** — Indexes for the task list and the retention sweep, both dialects. *(Dropped — see PROGRESS.md.)*
   - **Files**: `db/schema.{mysql,sqlite}.ts`, new migrations, `db/embeddedMigrations.generated.ts`
   - **Verify**: `indexCoverage.test.ts`, migration tests.
 - [ ] **M30-T06** — Agent token `lastUsedAt` is written at most once a minute per token.

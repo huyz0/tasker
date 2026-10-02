@@ -75,3 +75,22 @@
   hourly only to be discarded in memory; the in-memory per-type terminality
   pass is gone.
 - **Next**: M30-T05
+
+## M30-T05 — Indexes for the task list and the retention sweep
+
+- **Status**: dropped
+- **Date**: 2026-10-02
+- **Notes**: The review finding behind this task was wrong, and it is worth
+  recording why so the next review does not re-raise it. `schema.*.ts`
+  declares only `tasks_project_id_idx` and `tasks_task_type_id_idx`, but
+  M07-T09 added `tasks_project_created_idx` and
+  `tasks_project_status_created_idx` as raw-SQL migrations
+  (`drizzle-sqlite/0027_hot_query_indexes.sql`), and `indexCoverage.test.ts`
+  already gates that the task list and a board column neither scan nor sort.
+  They are SQLite-only on purpose: on MySQL 8.0.46 at 20,000 rows the
+  optimiser kept its filesort even with the index forced. A schema file is
+  not the whole index set — read the migrations too.
+  A `deleted_at` index for the retention sweep was the other half; T07 makes
+  that sweep read ids only, and an hourly scan of a narrow projection does
+  not justify a write-path index on six tables.
+- **Next**: M30-T06
