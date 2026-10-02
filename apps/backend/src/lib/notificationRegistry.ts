@@ -92,6 +92,26 @@ registerNotificationType(TASK_STALLED, (p: TaskStalledPayload): RenderedNotifica
   };
 });
 
+export interface WebhookDisabledPayload {
+  orgId: string;
+  webhookId: string;
+  /** Host only - a URL's path or query can carry a token. */
+  host: string;
+  failures: number;
+  disabledAt: string;
+}
+
+// M37 (ADR-0030): a webhook that kept failing was switched off; its org's
+// admins are the ones who can fix the receiver and turn it back on.
+registerNotificationType('webhook.disabled', (p: WebhookDisabledPayload) => ({
+  title: `Webhook to ${p.host} disabled`,
+  body: `Turned off after ${p.failures} consecutive failed deliveries. Fix the receiver, then re-enable it.`,
+  targetPath: `/organizations?${new URLSearchParams({ section: 'webhooks', org: p.orgId }).toString()}`,
+  dedupeKey: `${p.webhookId}::${p.disabledAt}`,
+  orgId: p.orgId,
+  projectId: null,
+}));
+
 // ── The write path ─────────────────────────────────────────────────────────
 
 /**

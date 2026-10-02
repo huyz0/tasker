@@ -106,4 +106,21 @@ export function withRequestCorrelation<T extends { publish: (subject: string, da
 export function publishDomainEvent(nc: { publish: (subject: string, data?: any) => void } | null, subject: string, payload: unknown): void {
   recordBusinessEvent(subject);
   if (nc) nc.publish(subject, Buffer.from(JSON.stringify(payload)));
+  // M37 (ADR-0030): the webhook outbox, fed in-process so it works with or
+  // without a broker. Best-effort like the publish above: never throws.
+  if (domainEventSink) {
+    try {
+      domainEventSink(subject, payload);
+    } catch {
+      // The sink reports its own failures; a publisher must never fail on it.
+    }
+  }
+}
+
+type DomainEventSink = (subject: string, payload: unknown) => void;
+let domainEventSink: DomainEventSink | null = null;
+
+/** M37: installs (or with null, removes) the one in-process consumer of every published event. */
+export function setDomainEventSink(sink: DomainEventSink | null): void {
+  domainEventSink = sink;
 }

@@ -65,3 +65,33 @@
   with NotFound on placeholder ids, i.e. it never reached authorization; it
   now runs against a seeded webhook.
 - **Next**: M37-T04
+
+## M37-T04 — Outbox fan-out and the signed delivery sweep
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/webhooks/{outbox.ts,delivery.ts}`
+  (+ `delivery.test.ts`), `lib/natsCorrelation.ts` (`setDomainEventSink`),
+  `lib/notificationRegistry.ts` (`webhook.disabled`), `src/index.ts`
+- **Verified**: backend `bun test` 1954 pass; knip, typecheck green. Mutation
+  check: dropping the lease condition makes the overlapping-sweeps test send
+  20 POSTs for 10 deliveries - it fails, as it should.
+- **Notes**: `publishDomainEvent` now also offers each event to one in-process
+  sink (never throws, like the publish beside it). The webhook sink places a
+  task or task-note event by its task's project and organization and writes a
+  delivery per active webhook whose scope and filter match - one event id
+  shared across webhooks. An organization set, cached 30 s and cleared on any
+  change in this process, makes events cost nothing when nobody subscribes.
+  The sweep (every 5 s, never overlapping itself) claims due rows by a
+  conditional update, POSTs with `X-Tasker-Event/-Delivery/-Timestamp/
+  -Signature` (tested by verifying the HMAC as a receiver would), treats any
+  non-2xx - redirects included, never followed - as a failure, backs off 30 s
+  doubling for 8 attempts, and counts consecutive failures in the database so
+  replicas add up; at 20 the webhook is switched off once and the org's
+  owners/admins get a `webhook.disabled` notification linking to
+  `/organizations?section=webhooks`. Deliveries for a webhook paused or
+  deleted since queuing are closed, not sent. Settled rows go after a week.
+  The real `httpSender` refuses an IP-literal private host itself (Node does
+  not call `lookup` for those) and a name that resolves privately via
+  `safeLookup`, before a byte is sent.
+- **Next**: M37-T05

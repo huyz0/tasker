@@ -28,6 +28,9 @@ import { createAuditHandler } from "./modules/audit/audit.handler";
 import { createNotificationHandler } from "./modules/notifications/notifications.handler";
 import { createEventsHandler } from "./modules/events/events.handler";
 import { createWebhooksHandler } from "./modules/webhooks/webhooks.handler";
+import { createWebhookSink } from "./modules/webhooks/outbox";
+import { runWebhookSweep, httpSender } from "./modules/webhooks/delivery";
+import { allowPrivateTargets } from "./modules/webhooks/urlSafety";
 import { createRepositoriesHandler } from "./modules/repositories/repositories.handler";
 import createSearchHandler from "./modules/search/search.handler";
 import createDashboardHandler from "./modules/dashboard/dashboard.handler";
@@ -42,7 +45,7 @@ import { purgeExpiredIdempotencyKeys } from "./lib/idempotency";
 import { validationErrorInterceptor } from "./lib/validationErrors";
 import { runStalledClaimAlertSweep } from "./lib/stalledClaimAlerts";
 import { config } from "./config";
-import { withRequestCorrelation } from "./lib/natsCorrelation";
+import { withRequestCorrelation, setDomainEventSink } from "./lib/natsCorrelation";
 import { getRpcMethodStats } from "./lib/rpcMetrics";
 import { getBusinessEventCounts } from "./lib/businessEvents";
 import { recordHttpRequest } from "./lib/httpMetrics";
@@ -119,6 +122,12 @@ try {
 } catch (e) {
   logger.error({ err: e, natsUrl: process.env.NATS_URL || "nats://localhost:4222" }, "nats.connect_failed");
 }
+
+// M37 (ADR-0030): every published task event is offered to the webhook
+// outbox in this process - with or without a broker.
+const webhookSink = createWebhookSink(db, isStandalone, (err, subject) =>
+  reportError({ message: "webhook_outbox.enqueue_failed", err, severity: "error", context: { subject } }));
+setDomainEventSink(webhookSink.publish);
 
 const sessionInterceptor: Interceptor = (next) => async (req) => {
   // The decision about who the caller is lives in lib/authenticate.ts, not
@@ -211,7 +220,7 @@ const handler = connectNodeAdapter({
     router.service(NotificationService as any, createNotificationHandler(db));
     router.service(EventService as any, createEventsHandler(db, nc));
     router.service(RepositoryService as any, createRepositoriesHandler(db, nc));
-    router.service(WebhookService as any, createWebhooksHandler(db, nc));
+    router.service(WebhookService as any, createWebhooksHandler(db, nc, { onChange: webhookSink.invalidate }));
     createSearchHandler(router, db);
     createDashboardHandler(router, db);
     createReportsHandler(router, db);
@@ -454,6 +463,22 @@ setInterval(() => {
 // a mechanism detail, not a policy a deployment has a legitimate reason to
 // tune, mirroring RETENTION_SWEEP_INTERVAL_MS's own precedent). No sweep at
 // boot, matching both blocks above - the first fire is after one full interval.
+// M37 (ADR-0030). Every few seconds, because a webhook exists to wake a runner
+// promptly; a run still in flight is not overlapped by the next.
+const WEBHOOK_SWEEP_INTERVAL_MS = 5_000;
+const webhookSender = httpSender(allowPrivateTargets());
+let webhookSweepRunning = false;
+setInterval(() => {
+  if (webhookSweepRunning) return;
+  webhookSweepRunning = true;
+  runWebhookSweep(db, isStandalone, {
+    send: webhookSender,
+    onError: (err) => reportError({ message: "webhook_sweep.delivery_failed", err, severity: "error" }),
+  })
+    .catch((err) => reportError({ message: "webhook_sweep.failed", err, severity: "error" }))
+    .finally(() => { webhookSweepRunning = false; });
+}, WEBHOOK_SWEEP_INTERVAL_MS);
+
 const STALLED_ALERT_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 setInterval(() => {
   runStalledClaimAlertSweep(db, isStandalone, mailer, nc).catch((err) =>
