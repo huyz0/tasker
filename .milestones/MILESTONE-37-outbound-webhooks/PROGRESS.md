@@ -23,3 +23,22 @@
   `WebhookService`: create (secret once), list, update, delete, rotate secret,
   ping, list deliveries.
 - **Next**: M37-T02
+
+## M37-T03 — URL safety
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/webhooks/urlSafety.ts` (+ test)
+- **Verified**: `bun test src/modules/webhooks` 9 pass; knip, typecheck green.
+- **Notes**: Done ahead of T02, which needs it to validate a URL at create.
+  `isPublicAddress` refuses this-network, private, loopback, CGNAT,
+  link-local (the metadata service), IETF/documentation/benchmark ranges,
+  multicast and broadcast; for IPv6 also unique-local, link-local, multicast,
+  documentation, and IPv4 smuggled in through mapped (`::ffff:a9fe:a9fe`) and
+  NAT64 forms. `validateWebhookUrl` requires https, no credentials or fragment,
+  and every resolved address public. `safeLookup` is the delivery half: a
+  `lookup` for `http.request` that vets the very resolution the connection
+  uses, refusing a host if *any* address it resolves to is non-public. Node
+  does not call `lookup` for an IP-literal host, so delivery must also check a
+  literal itself - noted for T04. `WEBHOOKS_ALLOW_PRIVATE=true` lifts both.
+- **Next**: M37-T02

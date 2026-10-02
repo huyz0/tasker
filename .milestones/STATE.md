@@ -1777,10 +1777,10 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M34 | Milestone and Doc Truth         | done   | —          | 4     | 4    |
 | M35 | Work Graph                      | done   | M33        | 7     | 7    |
 | M36 | MCP Server                      | done   | M35        | 5     | 5    |
-| M37 | Outbound Webhooks               | in-progress | M35   | 7     | 1    |
+| M37 | Outbound Webhooks               | in-progress | M35   | 7     | 2    |
 | M38 | Agent Plan and Input Requests   | todo   | M35        | 6     | 0    |
 
-**Total: 298 tasks across 32 milestones — 285 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 298 tasks across 32 milestones — 286 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
