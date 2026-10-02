@@ -81,3 +81,23 @@
   caller and the terminal flag, so a cursor from one view cannot report
   another's count. Scope: `tasks:read`.
 - **Next**: M33-T05
+
+## M33-T05 — GetIdentity for agents
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/auth/auth.handler.ts` (+ test),
+  `lib/scopes.ts` (`AGENT_SCOPE_FREE`), `lib/agent-scope-sweep.test.ts`,
+  `lib/viewer-denial.test.ts`
+- **Verified**: `bun test` — 1882 pass, 0 fail.
+- **Notes**: An agent token now gets `{ agent: { id, name, orgId, scopes,
+  tokenId } }` instead of "requires a human session". It needs no scope —
+  whose credential this is, is the one thing every valid token may ask — so
+  it is listed in a new `AGENT_SCOPE_FREE` (one entry, and a test pins it to
+  that one). The `auth` service otherwise stays closed to agents and the
+  sweep still refuses every other auth method.
+  The viewer-denial gate failed on the full run, as designed: it requires
+  every new RPC to be classified. `listMyTasks` is a read; `claimNextTask` and
+  `releaseTask` are writes and refuse a viewer (both authorize before doing
+  anything else).
+- **Next**: M33-T06

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'bun:test';
 import { createContextValues } from '@connectrpc/connect';
 import { eq } from 'drizzle-orm';
 import { createAuthHandler } from './auth.handler';
-import { currentUserIdKey } from './session';
+import { currentUserIdKey, currentPrincipalKey } from './session';
 import { setupIntegrationTest } from '../../test/setup';
 import * as schemaSqlite from '../../db/schema.sqlite';
 import { verifyPassword } from '../../lib/credentials';
@@ -29,6 +29,23 @@ describe('auth handler getIdentity', () => {
 
     const result = await handler.getIdentity({}, { values: contextValues } as any);
     expect(result.user.id).toBe('user-b');
+  });
+
+  // M33-T05: `tasker auth whoami` with an agent token. It used to be refused
+  // as "requires a human session", so an agent could not ask who it was.
+  it('answers for an agent token with the agent, its org and its scopes', async () => {
+    const { db } = await setupIntegrationTest();
+    await db.insert(schemaSqlite.organizations).values({ id: 'org-who', name: 'O', slug: 'org-who', createdAt: new Date() });
+    await db.insert(schemaSqlite.agentRoles).values({ id: 'role-who', orgId: 'org-who', name: 'R', systemPrompt: 'p', capabilities: '[]' });
+    await db.insert(schemaSqlite.agents).values({ id: 'agent-who', orgId: 'org-who', agentRoleId: 'role-who', name: 'Scout' });
+    const handler = createAuthHandler(db);
+    const contextValues = createContextValues();
+    // No scopes at all: knowing whose token this is needs none.
+    contextValues.set(currentPrincipalKey, { kind: 'agent', agentId: 'agent-who', orgId: 'org-who', tokenId: 'tok-who', scopes: [] });
+
+    const result: any = await handler.getIdentity({}, { values: contextValues } as any);
+    expect(result.user).toBeUndefined();
+    expect(result.agent).toEqual({ id: 'agent-who', name: 'Scout', orgId: 'org-who', scopes: [], tokenId: 'tok-who' });
   });
 
   it('rejects when there is no session instead of leaking/impersonating a user', async () => {

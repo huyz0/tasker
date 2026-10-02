@@ -54,6 +54,16 @@ export const AGENT_SCOPES = [
  * issuance itself. An agent that could purge a project or mint a credential
  * escapes every other limit here (ADR-0008).
  */
+/**
+ * Methods an agent token may call with no scope at all (M33-T05). One, and it
+ * should stay that short: `getIdentity` tells a credential whose it is, which
+ * every valid token may know. Its service stays closed to agents otherwise -
+ * the sweep test refuses every other auth method.
+ */
+export const AGENT_SCOPE_FREE: Record<string, string[]> = {
+  auth: ['getIdentity'],
+};
+
 export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
   // Keyed by handler factory, not by subject: task *types* and task
   // *management* are two handlers, and putting a method under the wrong key

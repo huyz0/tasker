@@ -43,7 +43,7 @@ const READS: Record<string, string[]> = {
   projects: ['getProject', 'listProjects'],
   projectTemplates: ['getTemplate', 'listTemplates'],
   tasks: ['getTaskType', 'listTaskTypes'],
-  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers'],
+  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks'],
   // Read-only supervision console; a viewer may look at it.
   dashboard: ['getDashboard'],
   // Same read-only reasoning as dashboard. getReportTrends is M24-T06's
@@ -154,6 +154,8 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     assignTask: { taskId: ids.task, userId: ids.viewer },
     unassignTask: { taskId: ids.task, userId: ids.viewer },
     claimTask: { taskId: ids.task },
+    claimNextTask: { projectId: ids.project },
+    releaseTask: { taskId: ids.task },
     addTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     removeTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     updateTask: { taskId: ids.task, title: 'T2' },

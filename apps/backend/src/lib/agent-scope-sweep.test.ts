@@ -3,7 +3,7 @@ import { createContextValues, ConnectError, Code } from '@connectrpc/connect';
 import { setupIntegrationTest } from '../test/setup';
 import * as schema from '../db/schema.sqlite';
 import { currentPrincipalKey, type Principal } from '../modules/auth/session';
-import { AGENT_RPC_SCOPES, AGENT_SCOPES } from './scopes';
+import { AGENT_RPC_SCOPES, AGENT_SCOPES, AGENT_SCOPE_FREE } from './scopes';
 
 import { createOrgsHandler } from '../modules/orgs/orgs.handler';
 import { createProjectsHandler, createProjectTemplatesHandler } from '../modules/projects/projects.handler';
@@ -439,6 +439,7 @@ describe('agents are denied by default across every handler', () => {
     it(`refuses every method on ${handlerName} to a token holding every scope`, async () => {
       const survivors: string[] = [];
       for (const [method, req] of Object.entries(REQUESTS[handlerName] ?? {})) {
+        if (AGENT_SCOPE_FREE[handlerName]?.includes(method)) continue;
         try {
           await invoke(handlers[handlerName], method, req, ctxFor(allScopes()));
           survivors.push(method);
@@ -449,6 +450,15 @@ describe('agents are denied by default across every handler', () => {
       expect(survivors).toEqual([]);
     });
   }
+});
+
+describe('scope-free agent methods (M33-T05)', () => {
+  it('are few, and each answers a token holding no scope at all', async () => {
+    const all = Object.entries(AGENT_SCOPE_FREE).flatMap(([name, methods]) => methods.map((m) => `${name}.${m}`));
+    expect(all).toEqual(['auth.getIdentity']);
+    const result: any = await invoke(handlers.auth, 'getIdentity', {}, ctxFor({ kind: 'agent', agentId: ids.agent, orgId: ids.org, tokenId: ids.token, scopes: [] }));
+    expect(result.agent).toBeDefined();
+  });
 });
 
 describe('unmapped methods refuse an agent even with every scope', () => {

@@ -2,7 +2,7 @@ import { eq, and } from "drizzle-orm";
 import { ConnectError, Code } from "@connectrpc/connect";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { requireUser, countActiveSignInMethods, assertNotLastSignInMethod } from "../../lib/authz";
+import { requireUser, requirePrincipal, countActiveSignInMethods, assertNotLastSignInMethod } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
 import { hashPassword, verifyPassword, generateTemporaryPassword, MIN_PASSWORD_LENGTH } from "../../lib/credentials";
 
@@ -15,7 +15,18 @@ export const createAuthHandler = (db: any) => {
 
   return {
     async getIdentity(_req: unknown, { values: contextValues }: { values: any }) {
-      const currentUserId = requireUser(contextValues);
+      // M33-T05: an agent token answers too - with the agent, its org and its
+      // token's scopes. Scope-free on purpose: whose credential this is, is
+      // the one question every valid token may ask (see AGENT_SCOPE_FREE).
+      const principal = requirePrincipal(contextValues);
+      if (principal.kind === "agent") {
+        const agents = process.env.STANDALONE === "true" ? schemaSqlite.agents : schemaMysql.agents;
+        const [agent] = await db.select({ name: (agents as any).name }).from(agents).where(eq((agents as any).id, principal.agentId)).limit(1);
+        return {
+          agent: { id: principal.agentId, name: agent?.name ?? "", orgId: principal.orgId, scopes: principal.scopes, tokenId: principal.tokenId },
+        };
+      }
+      const currentUserId = principal.userId;
 
       const result = await db.select().from(usersTable).where(eq(usersTable.id, currentUserId)).limit(1);
       if (!result || result.length === 0) {
