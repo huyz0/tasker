@@ -410,6 +410,9 @@ export const tasks = sqliteTable("tasks", {
   // M35: a task in the same project. No FK - a purged parent leaves children
   // pointing at nothing, which the handler treats as no parent.
   parentTaskId: text("parent_task_id"),
+  // M38 (ADR-0031): the working agent's plan, a JSON array of {title, status},
+  // replaced whole on every update.
+  plan: text("plan"),
 }, (table) => {
   return {
     projectIdIdx: index("tasks_project_id_idx").on(table.projectId),
@@ -988,5 +991,28 @@ export const webhookDeliveries = sqliteTable("webhook_deliveries", {
   return {
     dueIdx: index("webhook_deliveries_status_next_attempt_idx").on(table.status, table.nextAttemptAt),
     webhookIdx: index("webhook_deliveries_webhook_id_created_at_idx").on(table.webhookId, table.createdAt),
+  };
+});
+
+// M38 (ADR-0031). A question an agent asked on a task; only a person answers.
+export const inputRequests = sqliteTable("input_requests", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull(),
+  orgId: text("org_id").notNull(),
+  projectId: text("project_id").notNull(),
+  question: text("question").notNull(),
+  // JSON array of suggested answers.
+  options: text("options").notNull().default("[]"),
+  status: text("status").notNull().default("open"),
+  askedByAgentId: text("asked_by_agent_id"),
+  askedByUserId: text("asked_by_user_id"),
+  answer: text("answer"),
+  answeredByUserId: text("answered_by_user_id"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  answeredAt: integer("answered_at", { mode: "timestamp" }),
+}, (table) => {
+  return {
+    taskStatusIdx: index("input_requests_task_id_status_idx").on(table.taskId, table.status),
+    orgStatusIdx: index("input_requests_org_id_status_created_idx").on(table.orgId, table.status, table.createdAt),
   };
 });

@@ -863,6 +863,99 @@ model Task {
   // Tasks blocking this one that are not finished. Zero means nothing in the
   // graph stops this task; with no assignee and an open status it is ready.
   @field(14) blockedByOpenCount: int32;
+
+  // M38 (ADR-0031). The working agent's plan, replaced whole on each update.
+  // Only GetTask fills it; lists leave it empty.
+  @field(15) plan: PlanStep[];
+
+  // Questions on this task still waiting for a person's answer.
+  @field(16) openInputRequestCount: int32;
+}
+
+// M38 (ADR-0031). status: "pending", "in_progress", "done" or "skipped".
+model PlanStep {
+  @field(1) title: string;
+  @field(2) status: string;
+}
+
+model SetTaskPlanRequest {
+  @field(1) taskId: string;
+
+  // The whole plan; an empty list clears it. At most 50 steps.
+  @field(2) steps: PlanStep[];
+}
+model SetTaskPlanResponse {
+  @field(1) plan: PlanStep[];
+}
+
+// A question an agent asked on a task, for a person to answer.
+model InputRequest {
+  @field(1) id: string;
+  @field(2) taskId: string;
+  @field(3) taskDisplayId: string;
+  @field(4) taskTitle: string;
+  @field(5) projectId: string;
+  @field(6) question: string;
+
+  // Suggested answers; the answer need not be one of them.
+  @field(7) options: string[];
+
+  // "open", "answered" or "cancelled".
+  @field(8) status: string;
+
+  @field(9) askedByAgentId?: string;
+  @field(10) askedByUserId?: string;
+  @field(11) askedByName: string;
+  @field(12) answer?: string;
+  @field(13) answeredByUserId?: string;
+  @field(14) answeredByName?: string;
+  @field(15) createdAt: string;
+  @field(16) answeredAt?: string;
+}
+
+model RequestInputRequest {
+  @field(1) taskId: string;
+  @field(2) question: string;
+  @field(3) options?: string[];
+}
+model RequestInputResponse {
+  @field(1) inputRequest: InputRequest;
+}
+
+// People only (ADR-0031).
+model AnswerInputRequestRequest {
+  @field(1) id: string;
+  @field(2) answer: string;
+}
+model AnswerInputRequestResponse {
+  @field(1) inputRequest: InputRequest;
+}
+
+model CancelInputRequestRequest {
+  @field(1) id: string;
+}
+model CancelInputRequestResponse {
+  @field(1) inputRequest: InputRequest;
+}
+
+model GetInputRequestRequest {
+  @field(1) id: string;
+}
+model GetInputRequestResponse {
+  @field(1) inputRequest: InputRequest;
+}
+
+// One task's questions, or the whole organization's queue. status defaults
+// to "open"; "all" lists every status.
+model ListInputRequestsRequest {
+  @field(1) orgId?: string;
+  @field(2) taskId?: string;
+  @field(3) status?: string;
+  @field(4) page?: PageRequest;
+}
+model ListInputRequestsResponse {
+  @field(1) inputRequests: InputRequest[];
+  @field(2) page: PageResponse;
 }
 
 // ==== Task Services ====
@@ -1200,6 +1293,18 @@ interface TaskService {
   addTaskLink(request: AddTaskLinkRequest): AddTaskLinkResponse;
   removeTaskLink(request: RemoveTaskLinkRequest): RemoveTaskLinkResponse;
   listTaskLinks(request: ListTaskLinksRequest): ListTaskLinksResponse;
+  setTaskPlan(request: SetTaskPlanRequest): SetTaskPlanResponse;
+  requestInput(request: RequestInputRequest): RequestInputResponse;
+  answerInputRequest(
+    request: AnswerInputRequestRequest,
+  ): AnswerInputRequestResponse;
+  cancelInputRequest(
+    request: CancelInputRequestRequest,
+  ): CancelInputRequestResponse;
+  getInputRequest(request: GetInputRequestRequest): GetInputRequestResponse;
+  listInputRequests(
+    request: ListInputRequestsRequest,
+  ): ListInputRequestsResponse;
 }
 
 // ==== Artifacts ====

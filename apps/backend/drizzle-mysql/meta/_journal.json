@@ -288,6 +288,13 @@
       "when": 1788900000000,
       "tag": "0040_webhooks",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1789000000000,
+      "tag": "0041_plans_and_input_requests",
+      "breakpoints": true
     }
   ]
 }

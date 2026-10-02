@@ -721,6 +721,77 @@ message Task {
   int32 priority = 12;
   optional string parentTaskId = 13;
   int32 blockedByOpenCount = 14;
+  // M38 (ADR-0031). See main.tsp's Task.
+  repeated PlanStep plan = 15;
+  int32 openInputRequestCount = 16;
+}
+
+// M38 (ADR-0031). See main.tsp.
+message PlanStep {
+  string title = 1;
+  string status = 2;
+}
+message SetTaskPlanRequest {
+  string taskId = 1;
+  repeated PlanStep steps = 2;
+}
+message SetTaskPlanResponse {
+  repeated PlanStep plan = 1;
+}
+message InputRequest {
+  string id = 1;
+  string taskId = 2;
+  string taskDisplayId = 3;
+  string taskTitle = 4;
+  string projectId = 5;
+  string question = 6;
+  repeated string options = 7;
+  string status = 8;
+  optional string askedByAgentId = 9;
+  optional string askedByUserId = 10;
+  string askedByName = 11;
+  optional string answer = 12;
+  optional string answeredByUserId = 13;
+  optional string answeredByName = 14;
+  string createdAt = 15;
+  optional string answeredAt = 16;
+}
+message RequestInputRequest {
+  string taskId = 1;
+  string question = 2;
+  repeated string options = 3;
+}
+message RequestInputResponse {
+  InputRequest inputRequest = 1;
+}
+message AnswerInputRequestRequest {
+  string id = 1;
+  string answer = 2;
+}
+message AnswerInputRequestResponse {
+  InputRequest inputRequest = 1;
+}
+message CancelInputRequestRequest {
+  string id = 1;
+}
+message CancelInputRequestResponse {
+  InputRequest inputRequest = 1;
+}
+message GetInputRequestRequest {
+  string id = 1;
+}
+message GetInputRequestResponse {
+  InputRequest inputRequest = 1;
+}
+message ListInputRequestsRequest {
+  optional string orgId = 1;
+  optional string taskId = 2;
+  optional string status = 3;
+  PageRequest page = 4;
+}
+message ListInputRequestsResponse {
+  repeated InputRequest inputRequests = 1;
+  PageResponse page = 2;
 }
 
 message UnassignTaskRequest {
@@ -1009,6 +1080,12 @@ service TaskService {
   rpc AddTaskLink(AddTaskLinkRequest) returns (AddTaskLinkResponse);
   rpc RemoveTaskLink(RemoveTaskLinkRequest) returns (RemoveTaskLinkResponse);
   rpc ListTaskLinks(ListTaskLinksRequest) returns (ListTaskLinksResponse);
+  rpc SetTaskPlan(SetTaskPlanRequest) returns (SetTaskPlanResponse);
+  rpc RequestInput(RequestInputRequest) returns (RequestInputResponse);
+  rpc AnswerInputRequest(AnswerInputRequestRequest) returns (AnswerInputRequestResponse);
+  rpc CancelInputRequest(CancelInputRequestRequest) returns (CancelInputRequestResponse);
+  rpc GetInputRequest(GetInputRequestRequest) returns (GetInputRequestResponse);
+  rpc ListInputRequests(ListInputRequestsRequest) returns (ListInputRequestsResponse);
 }
 
 message Folder {

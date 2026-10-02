@@ -106,9 +106,11 @@ function taskListSelect(tasks: any) {
 
 /** A task row as the wire `Task` carries it. */
 function toWireTask(t: any, extra: Record<string, unknown> = {}) {
-  const { priorityRank: _rank, ...rest } = t;
+  const { priorityRank: _rank, plan, ...rest } = t;
   return {
     ...rest,
+    // M38 (ADR-0031): stored as JSON text; lists never select it.
+    plan: typeof plan === "string" ? JSON.parse(plan) : [],
     parentTaskId: rest.parentTaskId ?? undefined,
     createdAt: rest.createdAt instanceof Date ? rest.createdAt.toISOString() : rest.createdAt,
     ...extra,

@@ -263,6 +263,23 @@ const (
 	// TaskServiceListTaskLinksProcedure is the fully-qualified name of the TaskService's ListTaskLinks
 	// RPC.
 	TaskServiceListTaskLinksProcedure = "/tasker.health.v1.TaskService/ListTaskLinks"
+	// TaskServiceSetTaskPlanProcedure is the fully-qualified name of the TaskService's SetTaskPlan RPC.
+	TaskServiceSetTaskPlanProcedure = "/tasker.health.v1.TaskService/SetTaskPlan"
+	// TaskServiceRequestInputProcedure is the fully-qualified name of the TaskService's RequestInput
+	// RPC.
+	TaskServiceRequestInputProcedure = "/tasker.health.v1.TaskService/RequestInput"
+	// TaskServiceAnswerInputRequestProcedure is the fully-qualified name of the TaskService's
+	// AnswerInputRequest RPC.
+	TaskServiceAnswerInputRequestProcedure = "/tasker.health.v1.TaskService/AnswerInputRequest"
+	// TaskServiceCancelInputRequestProcedure is the fully-qualified name of the TaskService's
+	// CancelInputRequest RPC.
+	TaskServiceCancelInputRequestProcedure = "/tasker.health.v1.TaskService/CancelInputRequest"
+	// TaskServiceGetInputRequestProcedure is the fully-qualified name of the TaskService's
+	// GetInputRequest RPC.
+	TaskServiceGetInputRequestProcedure = "/tasker.health.v1.TaskService/GetInputRequest"
+	// TaskServiceListInputRequestsProcedure is the fully-qualified name of the TaskService's
+	// ListInputRequests RPC.
+	TaskServiceListInputRequestsProcedure = "/tasker.health.v1.TaskService/ListInputRequests"
 	// ArtifactServiceCreateFolderProcedure is the fully-qualified name of the ArtifactService's
 	// CreateFolder RPC.
 	ArtifactServiceCreateFolderProcedure = "/tasker.health.v1.ArtifactService/CreateFolder"
@@ -589,6 +606,12 @@ var (
 	taskServiceAddTaskLinkMethodDescriptor                        = taskServiceServiceDescriptor.Methods().ByName("AddTaskLink")
 	taskServiceRemoveTaskLinkMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("RemoveTaskLink")
 	taskServiceListTaskLinksMethodDescriptor                      = taskServiceServiceDescriptor.Methods().ByName("ListTaskLinks")
+	taskServiceSetTaskPlanMethodDescriptor                        = taskServiceServiceDescriptor.Methods().ByName("SetTaskPlan")
+	taskServiceRequestInputMethodDescriptor                       = taskServiceServiceDescriptor.Methods().ByName("RequestInput")
+	taskServiceAnswerInputRequestMethodDescriptor                 = taskServiceServiceDescriptor.Methods().ByName("AnswerInputRequest")
+	taskServiceCancelInputRequestMethodDescriptor                 = taskServiceServiceDescriptor.Methods().ByName("CancelInputRequest")
+	taskServiceGetInputRequestMethodDescriptor                    = taskServiceServiceDescriptor.Methods().ByName("GetInputRequest")
+	taskServiceListInputRequestsMethodDescriptor                  = taskServiceServiceDescriptor.Methods().ByName("ListInputRequests")
 	artifactServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
 	artifactServiceCreateFolderMethodDescriptor                   = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
 	artifactServiceUpdateFolderMethodDescriptor                   = artifactServiceServiceDescriptor.Methods().ByName("UpdateFolder")
@@ -2309,6 +2332,12 @@ type TaskServiceClient interface {
 	AddTaskLink(context.Context, *connect.Request[v1.AddTaskLinkRequest]) (*connect.Response[v1.AddTaskLinkResponse], error)
 	RemoveTaskLink(context.Context, *connect.Request[v1.RemoveTaskLinkRequest]) (*connect.Response[v1.RemoveTaskLinkResponse], error)
 	ListTaskLinks(context.Context, *connect.Request[v1.ListTaskLinksRequest]) (*connect.Response[v1.ListTaskLinksResponse], error)
+	SetTaskPlan(context.Context, *connect.Request[v1.SetTaskPlanRequest]) (*connect.Response[v1.SetTaskPlanResponse], error)
+	RequestInput(context.Context, *connect.Request[v1.RequestInputRequest]) (*connect.Response[v1.RequestInputResponse], error)
+	AnswerInputRequest(context.Context, *connect.Request[v1.AnswerInputRequestRequest]) (*connect.Response[v1.AnswerInputRequestResponse], error)
+	CancelInputRequest(context.Context, *connect.Request[v1.CancelInputRequestRequest]) (*connect.Response[v1.CancelInputRequestResponse], error)
+	GetInputRequest(context.Context, *connect.Request[v1.GetInputRequestRequest]) (*connect.Response[v1.GetInputRequestResponse], error)
+	ListInputRequests(context.Context, *connect.Request[v1.ListInputRequestsRequest]) (*connect.Response[v1.ListInputRequestsResponse], error)
 }
 
 // NewTaskServiceClient constructs a client for the tasker.health.v1.TaskService service. By
@@ -2441,6 +2470,42 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(taskServiceListTaskLinksMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		setTaskPlan: connect.NewClient[v1.SetTaskPlanRequest, v1.SetTaskPlanResponse](
+			httpClient,
+			baseURL+TaskServiceSetTaskPlanProcedure,
+			connect.WithSchema(taskServiceSetTaskPlanMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		requestInput: connect.NewClient[v1.RequestInputRequest, v1.RequestInputResponse](
+			httpClient,
+			baseURL+TaskServiceRequestInputProcedure,
+			connect.WithSchema(taskServiceRequestInputMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		answerInputRequest: connect.NewClient[v1.AnswerInputRequestRequest, v1.AnswerInputRequestResponse](
+			httpClient,
+			baseURL+TaskServiceAnswerInputRequestProcedure,
+			connect.WithSchema(taskServiceAnswerInputRequestMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		cancelInputRequest: connect.NewClient[v1.CancelInputRequestRequest, v1.CancelInputRequestResponse](
+			httpClient,
+			baseURL+TaskServiceCancelInputRequestProcedure,
+			connect.WithSchema(taskServiceCancelInputRequestMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getInputRequest: connect.NewClient[v1.GetInputRequestRequest, v1.GetInputRequestResponse](
+			httpClient,
+			baseURL+TaskServiceGetInputRequestProcedure,
+			connect.WithSchema(taskServiceGetInputRequestMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listInputRequests: connect.NewClient[v1.ListInputRequestsRequest, v1.ListInputRequestsResponse](
+			httpClient,
+			baseURL+TaskServiceListInputRequestsProcedure,
+			connect.WithSchema(taskServiceListInputRequestsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -2466,6 +2531,12 @@ type taskServiceClient struct {
 	addTaskLink        *connect.Client[v1.AddTaskLinkRequest, v1.AddTaskLinkResponse]
 	removeTaskLink     *connect.Client[v1.RemoveTaskLinkRequest, v1.RemoveTaskLinkResponse]
 	listTaskLinks      *connect.Client[v1.ListTaskLinksRequest, v1.ListTaskLinksResponse]
+	setTaskPlan        *connect.Client[v1.SetTaskPlanRequest, v1.SetTaskPlanResponse]
+	requestInput       *connect.Client[v1.RequestInputRequest, v1.RequestInputResponse]
+	answerInputRequest *connect.Client[v1.AnswerInputRequestRequest, v1.AnswerInputRequestResponse]
+	cancelInputRequest *connect.Client[v1.CancelInputRequestRequest, v1.CancelInputRequestResponse]
+	getInputRequest    *connect.Client[v1.GetInputRequestRequest, v1.GetInputRequestResponse]
+	listInputRequests  *connect.Client[v1.ListInputRequestsRequest, v1.ListInputRequestsResponse]
 }
 
 // CreateTask calls tasker.health.v1.TaskService.CreateTask.
@@ -2568,6 +2639,36 @@ func (c *taskServiceClient) ListTaskLinks(ctx context.Context, req *connect.Requ
 	return c.listTaskLinks.CallUnary(ctx, req)
 }
 
+// SetTaskPlan calls tasker.health.v1.TaskService.SetTaskPlan.
+func (c *taskServiceClient) SetTaskPlan(ctx context.Context, req *connect.Request[v1.SetTaskPlanRequest]) (*connect.Response[v1.SetTaskPlanResponse], error) {
+	return c.setTaskPlan.CallUnary(ctx, req)
+}
+
+// RequestInput calls tasker.health.v1.TaskService.RequestInput.
+func (c *taskServiceClient) RequestInput(ctx context.Context, req *connect.Request[v1.RequestInputRequest]) (*connect.Response[v1.RequestInputResponse], error) {
+	return c.requestInput.CallUnary(ctx, req)
+}
+
+// AnswerInputRequest calls tasker.health.v1.TaskService.AnswerInputRequest.
+func (c *taskServiceClient) AnswerInputRequest(ctx context.Context, req *connect.Request[v1.AnswerInputRequestRequest]) (*connect.Response[v1.AnswerInputRequestResponse], error) {
+	return c.answerInputRequest.CallUnary(ctx, req)
+}
+
+// CancelInputRequest calls tasker.health.v1.TaskService.CancelInputRequest.
+func (c *taskServiceClient) CancelInputRequest(ctx context.Context, req *connect.Request[v1.CancelInputRequestRequest]) (*connect.Response[v1.CancelInputRequestResponse], error) {
+	return c.cancelInputRequest.CallUnary(ctx, req)
+}
+
+// GetInputRequest calls tasker.health.v1.TaskService.GetInputRequest.
+func (c *taskServiceClient) GetInputRequest(ctx context.Context, req *connect.Request[v1.GetInputRequestRequest]) (*connect.Response[v1.GetInputRequestResponse], error) {
+	return c.getInputRequest.CallUnary(ctx, req)
+}
+
+// ListInputRequests calls tasker.health.v1.TaskService.ListInputRequests.
+func (c *taskServiceClient) ListInputRequests(ctx context.Context, req *connect.Request[v1.ListInputRequestsRequest]) (*connect.Response[v1.ListInputRequestsResponse], error) {
+	return c.listInputRequests.CallUnary(ctx, req)
+}
+
 // TaskServiceHandler is an implementation of the tasker.health.v1.TaskService service.
 type TaskServiceHandler interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
@@ -2590,6 +2691,12 @@ type TaskServiceHandler interface {
 	AddTaskLink(context.Context, *connect.Request[v1.AddTaskLinkRequest]) (*connect.Response[v1.AddTaskLinkResponse], error)
 	RemoveTaskLink(context.Context, *connect.Request[v1.RemoveTaskLinkRequest]) (*connect.Response[v1.RemoveTaskLinkResponse], error)
 	ListTaskLinks(context.Context, *connect.Request[v1.ListTaskLinksRequest]) (*connect.Response[v1.ListTaskLinksResponse], error)
+	SetTaskPlan(context.Context, *connect.Request[v1.SetTaskPlanRequest]) (*connect.Response[v1.SetTaskPlanResponse], error)
+	RequestInput(context.Context, *connect.Request[v1.RequestInputRequest]) (*connect.Response[v1.RequestInputResponse], error)
+	AnswerInputRequest(context.Context, *connect.Request[v1.AnswerInputRequestRequest]) (*connect.Response[v1.AnswerInputRequestResponse], error)
+	CancelInputRequest(context.Context, *connect.Request[v1.CancelInputRequestRequest]) (*connect.Response[v1.CancelInputRequestResponse], error)
+	GetInputRequest(context.Context, *connect.Request[v1.GetInputRequestRequest]) (*connect.Response[v1.GetInputRequestResponse], error)
+	ListInputRequests(context.Context, *connect.Request[v1.ListInputRequestsRequest]) (*connect.Response[v1.ListInputRequestsResponse], error)
 }
 
 // NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -2718,6 +2825,42 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(taskServiceListTaskLinksMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskServiceSetTaskPlanHandler := connect.NewUnaryHandler(
+		TaskServiceSetTaskPlanProcedure,
+		svc.SetTaskPlan,
+		connect.WithSchema(taskServiceSetTaskPlanMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceRequestInputHandler := connect.NewUnaryHandler(
+		TaskServiceRequestInputProcedure,
+		svc.RequestInput,
+		connect.WithSchema(taskServiceRequestInputMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceAnswerInputRequestHandler := connect.NewUnaryHandler(
+		TaskServiceAnswerInputRequestProcedure,
+		svc.AnswerInputRequest,
+		connect.WithSchema(taskServiceAnswerInputRequestMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceCancelInputRequestHandler := connect.NewUnaryHandler(
+		TaskServiceCancelInputRequestProcedure,
+		svc.CancelInputRequest,
+		connect.WithSchema(taskServiceCancelInputRequestMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceGetInputRequestHandler := connect.NewUnaryHandler(
+		TaskServiceGetInputRequestProcedure,
+		svc.GetInputRequest,
+		connect.WithSchema(taskServiceGetInputRequestMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceListInputRequestsHandler := connect.NewUnaryHandler(
+		TaskServiceListInputRequestsProcedure,
+		svc.ListInputRequests,
+		connect.WithSchema(taskServiceListInputRequestsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskServiceCreateTaskProcedure:
@@ -2760,6 +2903,18 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceRemoveTaskLinkHandler.ServeHTTP(w, r)
 		case TaskServiceListTaskLinksProcedure:
 			taskServiceListTaskLinksHandler.ServeHTTP(w, r)
+		case TaskServiceSetTaskPlanProcedure:
+			taskServiceSetTaskPlanHandler.ServeHTTP(w, r)
+		case TaskServiceRequestInputProcedure:
+			taskServiceRequestInputHandler.ServeHTTP(w, r)
+		case TaskServiceAnswerInputRequestProcedure:
+			taskServiceAnswerInputRequestHandler.ServeHTTP(w, r)
+		case TaskServiceCancelInputRequestProcedure:
+			taskServiceCancelInputRequestHandler.ServeHTTP(w, r)
+		case TaskServiceGetInputRequestProcedure:
+			taskServiceGetInputRequestHandler.ServeHTTP(w, r)
+		case TaskServiceListInputRequestsProcedure:
+			taskServiceListInputRequestsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2847,6 +3002,30 @@ func (UnimplementedTaskServiceHandler) RemoveTaskLink(context.Context, *connect.
 
 func (UnimplementedTaskServiceHandler) ListTaskLinks(context.Context, *connect.Request[v1.ListTaskLinksRequest]) (*connect.Response[v1.ListTaskLinksResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListTaskLinks is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) SetTaskPlan(context.Context, *connect.Request[v1.SetTaskPlanRequest]) (*connect.Response[v1.SetTaskPlanResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.SetTaskPlan is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) RequestInput(context.Context, *connect.Request[v1.RequestInputRequest]) (*connect.Response[v1.RequestInputResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.RequestInput is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) AnswerInputRequest(context.Context, *connect.Request[v1.AnswerInputRequestRequest]) (*connect.Response[v1.AnswerInputRequestResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.AnswerInputRequest is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) CancelInputRequest(context.Context, *connect.Request[v1.CancelInputRequestRequest]) (*connect.Response[v1.CancelInputRequestResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.CancelInputRequest is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) GetInputRequest(context.Context, *connect.Request[v1.GetInputRequestRequest]) (*connect.Response[v1.GetInputRequestResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.GetInputRequest is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ListInputRequests(context.Context, *connect.Request[v1.ListInputRequestsRequest]) (*connect.Response[v1.ListInputRequestsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListInputRequests is not implemented"))
 }
 
 // ArtifactServiceClient is a client for the tasker.health.v1.ArtifactService service.

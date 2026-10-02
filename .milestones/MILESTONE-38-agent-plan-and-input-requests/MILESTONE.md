@@ -1,12 +1,12 @@
 ---
 id: M38
 title: Agent Plan and Input Requests
-status: todo
+status: in-progress
 goal: A person watching a task sees the agent's plan and how far through it the agent is, and when an agent cannot proceed without a human it asks a question on the task, the right person is notified, and the answer reaches the agent.
 depends_on: [M35]
 surfaces: [contract, backend, cli, gui, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-10-02
 completed_at: null
 ---
 
@@ -50,7 +50,7 @@ policy choice), agent-to-agent questions.
 
 ## 5. Task Breakdown
 
-- [ ] **M38-T01** — ADR-0031; contract and schema.
+- [x] **M38-T01** — ADR-0031; contract and schema.
 - [ ] **M38-T02** — Plan RPC.
 - [ ] **M38-T03** — Input requests: RPCs, notifications, events.
 - [ ] **M38-T04** — CLI and MCP tools.

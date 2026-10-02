@@ -283,6 +283,8 @@ export const tasks = mysqlTable("tasks", {
   // M35 (ADR-0028). See schema.sqlite.ts.
   priority: int("priority").notNull().default(0),
   parentTaskId: varchar("parent_task_id", { length: 256 }),
+  // M38 (ADR-0031). See schema.sqlite.ts.
+  plan: text("plan"),
 }, (table) => {
   return {
     projectIdIdx: index("tasks_project_id_idx").on(table.projectId),
@@ -765,5 +767,27 @@ export const webhookDeliveries = mysqlTable("webhook_deliveries", {
   return {
     dueIdx: index("webhook_deliveries_status_next_attempt_idx").on(table.status, table.nextAttemptAt),
     webhookIdx: index("webhook_deliveries_webhook_id_created_at_idx").on(table.webhookId, table.createdAt),
+  };
+});
+
+// M38 (ADR-0031). See schema.sqlite.ts.
+export const inputRequests = mysqlTable("input_requests", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull(),
+  orgId: varchar("org_id", { length: 256 }).notNull(),
+  projectId: varchar("project_id", { length: 256 }).notNull(),
+  question: text("question").notNull(),
+  options: text("options").notNull(),
+  status: varchar("status", { length: 16 }).notNull().default("open"),
+  askedByAgentId: varchar("asked_by_agent_id", { length: 256 }),
+  askedByUserId: varchar("asked_by_user_id", { length: 256 }),
+  answer: text("answer"),
+  answeredByUserId: varchar("answered_by_user_id", { length: 256 }),
+  createdAt: timestamp("created_at").notNull(),
+  answeredAt: timestamp("answered_at"),
+}, (table) => {
+  return {
+    taskStatusIdx: index("input_requests_task_id_status_idx").on(table.taskId, table.status),
+    orgStatusIdx: index("input_requests_org_id_status_created_idx").on(table.orgId, table.status, table.createdAt),
   };
 });
