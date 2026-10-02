@@ -56,7 +56,7 @@ events on demand.
 ## 5. Task Breakdown
 
 - [x] **M37-T01** — ADR-0030; contract and schema: subscriptions, outbox/deliveries.
-- [ ] **M37-T02** — Management RPCs: create (secret once), list, update, delete, rotate.
+- [x] **M37-T02** — Management RPCs: create (secret once), list, update, delete, rotate.
 - [x] **M37-T03** — URL safety: scheme, address and DNS checks.
 - [ ] **M37-T04** — Outbox fan-out from domain events; signed delivery sweep with retries and auto-disable.
 - [ ] **M37-T05** — CLI.

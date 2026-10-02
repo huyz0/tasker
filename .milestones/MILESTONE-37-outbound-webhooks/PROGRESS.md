@@ -42,3 +42,26 @@
   does not call `lookup` for an IP-literal host, so delivery must also check a
   literal itself - noted for T04. `WEBHOOKS_ALLOW_PRIVATE=true` lifts both.
 - **Next**: M37-T02
+
+## M37-T02 — Management RPCs
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/webhooks/{webhooks.handler.ts,events.ts,outbox.ts}`
+  (+ tests), `apps/backend/src/index.ts`, `lib/{viewer-denial,agent-scope-sweep}.test.ts`
+- **Verified**: backend `bun test` 1943 pass; knip, typecheck green.
+- **Notes**: `org:admin` throughout - a member, a viewer, another org's admin
+  and every agent token are refused (agents: `NO_AGENT_ACCESS`, since a token
+  that could register a webhook could copy the organization's events out).
+  Create checks the URL (T03), the event filters against the fifteen
+  `domain.task.*`/`domain.tasknote.*` subjects actually published (plus
+  `<entity>.*` and `*`), and that a project belongs to the org; it returns a
+  `whsec_` secret once and stores it AES-GCM encrypted. Update re-validates a
+  new URL, replaces the filter only when one is given, and re-enabling clears
+  the failure record. Rotate, ping (queues a `ping` delivery through the
+  outbox) and paginated deliveries (no payloads) follow. Management events go
+  to the feed and the audit log without the URL, which can carry a token in
+  its query string - there is a test for that. The viewer gate first failed
+  with NotFound on placeholder ids, i.e. it never reached authorization; it
+  now runs against a seeded webhook.
+- **Next**: M37-T04

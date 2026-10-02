@@ -14,6 +14,7 @@ import { createArtifactsHandler } from '../modules/artifacts/artifacts.handler';
 import { createCommentsHandler } from '../modules/comments/comments.handler';
 import { createLabelsHandler } from '../modules/labels/labels.handler';
 import { createRepositoriesHandler } from '../modules/repositories/repositories.handler';
+import { createWebhooksHandler } from '../modules/webhooks/webhooks.handler';
 import { createMemoryHandler } from '../modules/memory/memory.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
@@ -46,7 +47,7 @@ import { createNotificationHandler } from '../modules/notifications/notification
  */
 
 /** Handlers agents may never reach at all, whatever scopes they hold. */
-const NO_AGENT_ACCESS = ['orgs', 'auth', 'search', 'teams', 'roles', 'audit', 'notifications'];
+const NO_AGENT_ACCESS = ['orgs', 'auth', 'search', 'teams', 'roles', 'audit', 'notifications', 'webhooks'];
 
 /** Unauthenticated, so there is no principal for a scope to apply to. */
 const PUBLIC: Record<string, string[]> = { health: ['ping'] };
@@ -102,6 +103,15 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
   },
   audit: {
     listAuditEvents: { orgId: ids.org },
+  },
+  webhooks: {
+    createWebhook: { orgId: ids.org, url: 'https://hooks.example.com/x', events: ['*'] },
+    listWebhooks: { orgId: ids.org },
+    updateWebhook: { id: 'wh-x', active: false },
+    deleteWebhook: { id: 'wh-x' },
+    rotateWebhookSecret: { id: 'wh-x' },
+    pingWebhook: { id: 'wh-x' },
+    listWebhookDeliveries: { webhookId: 'wh-x' },
   },
   notifications: {
     listNotifications: { orgId: ids.org },
@@ -329,6 +339,9 @@ beforeAll(async () => {
     // M29-T05. Human-only: every method resolves the recipient from the
     // session via requireUser, so an agent token has nothing to resolve.
     notifications: createNotificationHandler(db),
+    // M37 (ADR-0030). Human-only: a token that could register a webhook could
+    // copy every event in the organization elsewhere.
+    webhooks: createWebhooksHandler(db, null),
     orgs: createOrgsHandler(db, null),
     auth: createAuthHandler(db),
     projects: createProjectsHandler(db, null),

@@ -14,6 +14,7 @@ import { createLabelsHandler } from '../modules/labels/labels.handler';
 import { createTeamsHandler } from '../modules/teams/teams.handler';
 import { createRolesHandler } from '../modules/roles/roles.handler';
 import { createRepositoriesHandler } from '../modules/repositories/repositories.handler';
+import { createWebhooksHandler } from '../modules/webhooks/webhooks.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
 import createDashboardHandler from '../modules/dashboard/dashboard.handler';
@@ -99,6 +100,7 @@ const ids = {
   agent: 'agt-viewer-sweep',
   note: 'note-viewer-sweep',
   repoLink: 'repo-viewer-sweep',
+  webhook: 'wh-viewer-sweep',
   invitation: 'inv-viewer-sweep',
   apiToken: 'tok-viewer-sweep',
   team: 'team-viewer-sweep',
@@ -227,6 +229,15 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     revokeGrant: { grantId: ids.grant },
     listGrants: { scopeType: 'organization', scopeId: ids.org },
   },
+  webhooks: {
+    createWebhook: { orgId: ids.org, url: 'https://hooks.example.com/x', events: ['*'] },
+    listWebhooks: { orgId: ids.org },
+    updateWebhook: { id: ids.webhook, active: false },
+    deleteWebhook: { id: ids.webhook },
+    rotateWebhookSecret: { id: ids.webhook },
+    pingWebhook: { id: ids.webhook },
+    listWebhookDeliveries: { webhookId: ids.webhook },
+  },
   repositories: {
     addRepositoryLink: { projectId: ids.project, provider: 'github', remoteName: 'o/r', apiToken: 't' },
     removeRepositoryLink: { repositoryLinkId: ids.repoLink },
@@ -296,6 +307,9 @@ beforeAll(async () => {
     scopes: '["tasks:read"]', createdBy: ids.viewer, createdAt: now,
     expiresAt: new Date(now.getTime() + 86400000),
   });
+  await db.insert(schema.webhooks).values({
+    id: ids.webhook, orgId: ids.org, url: 'https://hooks.example.com/x', secretEncrypted: 'x', events: '["*"]', createdAt: now,
+  });
   await db.insert(schema.repositoryLinks).values({
     id: ids.repoLink, projectId: ids.project, provider: 'github', remoteName: 'o/r',
     accessTokenEncrypted: 'x', createdAt: now,
@@ -325,6 +339,8 @@ beforeAll(async () => {
     teams: createTeamsHandler(db, nc),
     roles: createRolesHandler(db, nc),
     repositories: createRepositoriesHandler(db, nc),
+    // M37: admin-only throughout - a viewer reads no webhook, not even the list.
+    webhooks: createWebhooksHandler(db, nc),
     health: createHealthHandler(db, nc),
     auth: createAuthHandler(db),
     // These two register onto a ConnectRouter rather than returning their
