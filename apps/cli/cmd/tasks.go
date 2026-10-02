@@ -119,6 +119,9 @@ var tasksGetCmd = &cobra.Command{
 			if n := res.Msg.Task.PendingApprovalCount; n > 0 {
 				cmd.Printf("Waiting on a person: %d status change(s) to approve - `tasker tasks approvals --task %s`\n", n, res.Msg.Task.Id)
 			}
+			if u := res.Msg.Task.Usage; u != nil && u.Reports > 0 {
+				cmd.Printf("Usage: %s\n", usageSummary(u))
+			}
 			if len(res.Msg.Task.Plan) > 0 {
 				printPlan(cmd, res.Msg.Task.Plan)
 			}

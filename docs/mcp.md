@@ -79,6 +79,7 @@ the same endpoint, using `TASKER_TOKEN` (or a saved `tasker auth login`) and
 | `get_input_request` / `list_input_requests` | A question's status and answer; a task's or the org's open questions | `GetInputRequest` / `ListInputRequests` |
 | `cancel_input_request` | Withdraw a question you asked | `CancelInputRequest` |
 | `get_transition_approval` / `list_transition_approvals` | Follow a held move: pending, approved (applied), rejected (with a reason) or stale | `GetTransitionApproval` / `ListTransitionApprovals` |
+| `report_usage` | Record the tokens and cost (micro-dollars) of your work on a task; idempotent by key | `ReportUsage` |
 | `get_task_type` | A type's statuses and legal transitions | `GetTaskType` |
 | `search_memory` | Search shared beliefs | `SearchBeliefs` |
 | `record_belief` | Record a durable fact | `RecordBelief` |

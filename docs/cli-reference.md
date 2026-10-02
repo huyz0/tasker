@@ -1488,6 +1488,36 @@ Flags:
       --project string   Project ID (or set TASKER_PROJECT_ID)
 ```
 
+### `tasker reports`
+
+```
+Supervision reports (people only)
+
+Usage:
+  tasker reports [command]
+
+Available Commands:
+  usage       Agent spend over the last N days, by agent, project and day
+
+Flags:
+  -h, --help   help for reports
+```
+
+#### `tasker reports usage`
+
+```
+Agent spend over the last N days, by agent, project and day
+
+Usage:
+  tasker reports usage [flags]
+
+Flags:
+      --days int32       Window in days, 1-365 (default 30)
+  -h, --help             help for usage
+      --org string       Organization (or set TASKER_ORG_ID)
+      --project string   Only this project
+```
+
 ### `tasker search`
 
 ```
@@ -1654,6 +1684,7 @@ Available Commands:
   unassign        Remove an agent or user's assignment from a task
   update          Update a task's title, description, type, priority or parent
   update-status   Update a task's status
+  usage           Tokens and cost reported against a task
 
 Flags:
   -h, --help   help for tasks
@@ -2162,6 +2193,22 @@ Usage:
 Flags:
   -h, --help            help for update-status
       --status string   The new status (todo, in-progress, done)
+```
+
+#### `tasker tasks usage`
+
+```
+Tokens and cost reported against a task
+
+Usage:
+  tasker tasks usage [command]
+
+Available Commands:
+  report      Report the tokens and cost a piece of work on a task took (idempotent with --idempotency-key)
+  show        A task's usage reports, newest first, with its totals
+
+Flags:
+  -h, --help   help for usage
 ```
 
 ### `tasker teams`

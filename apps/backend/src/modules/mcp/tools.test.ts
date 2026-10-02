@@ -42,7 +42,7 @@ describe("MCP tool catalogue (M36-T02)", () => {
     }
     // The agent loop, at least.
     for (const n of ["whoami", "claim_next_task", "set_task_status", "release_task", "create_task", "link_tasks", "search_memory",
-      "set_task_plan", "request_input", "get_input_request", "get_transition_approval", "list_transition_approvals"]) expect(names.has(n)).toBe(true);
+      "set_task_plan", "request_input", "get_input_request", "get_transition_approval", "list_transition_approvals", "report_usage"]) expect(names.has(n)).toBe(true);
     // Answering is a person's job (ADR-0031); no tool offers it.
     expect(names.has("answer_input_request")).toBe(false);
     expect(TOOL_SPECS.some((t) => t.method === "AnswerInputRequest")).toBe(false);
@@ -59,6 +59,8 @@ describe("MCP tool catalogue (M36-T02)", () => {
     await refuse("claim_next_task", { project_id: "p", projectId: "p" }, /unknown argument "projectId"/);
     await refuse("list_tasks", { project_id: "p", ready: "yes" }, /ready must be a boolean/);
     await refuse("list_tasks", { project_id: "p", limit: 500 }, /limit must be an integer from 1 to 100/);
+    await refuse("report_usage", { task_id: "t", cost_micros: 0.5 }, /cost_micros must be an integer/);
+    await refuse("report_usage", { task_id: "t", input_tokens: -1 }, /input_tokens must be an integer/);
     await refuse("list_tasks", { project_id: "p", priority: "critical" }, /priority must be one of/);
     await refuse("create_task", { project_id: "p", title: "t", blocked_by: [1] }, /blocked_by must be a array/);
     await expect(host.call("whoami", { extra: 1 })).rejects.toBeInstanceOf(InvalidToolArguments);

@@ -139,6 +139,19 @@ describe("MCP over HTTP (M36-T03)", () => {
     expect(listed.map((a: any) => a.id)).toEqual([pending.id]);
   });
 
+  it("reports usage and reads the task's totals back (M40)", async () => {
+    const first = await call("report_usage", { task_id: gatedTaskId, model_name: "m-1", input_tokens: 1200, output_tokens: 300, cost_micros: 15000, idempotency_key: "k1" });
+    expect(first.isError).toBeUndefined();
+    expect(first.structuredContent).toMatchObject({ record: { modelName: "m-1", costMicros: "15000", reportedByName: "Scout" } });
+    expect(first.structuredContent.replayed).toBeUndefined();
+    expect((await call("report_usage", { task_id: gatedTaskId, cost_micros: 15000, idempotency_key: "k1" })).structuredContent.replayed).toBe(true);
+    const usage = (await call("get_task", { task_id: gatedTaskId })).structuredContent.task.usage;
+    expect(usage).toEqual({ inputTokens: "1200", outputTokens: "300", costMicros: "15000", reports: "1" });
+    const empty = await call("report_usage", { task_id: gatedTaskId });
+    expect(empty.isError).toBe(true);
+    expect(empty.content[0].text).toMatch(/tokens or cost/);
+  });
+
   it("applies the token's own scopes - a read-only token cannot claim", async () => {
     const res = await call("claim_next_task", { project_id: projectId }, readOnlyToken);
     expect(res.isError).toBe(true);

@@ -294,6 +294,23 @@ export const TOOL_SPECS: ToolSpec[] = [
     service: TaskService, method: "CancelInputRequest", request: (a) => ({ id: a.input_request_id }),
   },
   {
+    name: "report_usage", title: "Report usage and cost",
+    description: "Records the tokens and money a piece of your work on a task cost, so people see spend per task, agent and project. " +
+      "Report each model call or batch once; pass the same idempotency_key when retrying so it is not counted twice. " +
+      "cost_micros is US dollars x 1,000,000 (USD 0.015 = 15000).",
+    inputSchema: schema({
+      task_id: str("Task id"), model_name: str("Model that did the work"),
+      input_tokens: int("Input tokens", 0, 1_000_000_000), output_tokens: int("Output tokens", 0, 1_000_000_000),
+      cost_micros: int("Cost in micro-dollars (USD x 1,000,000)", 0, 1_000_000_000),
+      idempotency_key: str("Retry with the same key to get the original report back"),
+    }, ["task_id"]),
+    service: TaskService, method: "ReportUsage",
+    request: (a) => defined({
+      taskId: a.task_id, modelName: a.model_name, inputTokens: a.input_tokens ?? 0, outputTokens: a.output_tokens ?? 0,
+      costMicros: a.cost_micros ?? 0, idempotencyKey: a.idempotency_key,
+    }),
+  },
+  {
     name: "get_transition_approval", title: "Get an approval request",
     description: "A status change of yours held for a person's approval: pending, approved (the move was applied), rejected (with a reason) or stale (the task moved meanwhile).",
     inputSchema: schema({ approval_id: str("Approval id from set_task_status's pendingApproval") }, ["approval_id"]), annotations: readOnly,

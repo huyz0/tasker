@@ -40,3 +40,21 @@
   independent of volume; agents and projects ranked by spend, capped at 50;
   empty days filled. Person-filed reports share one "People" row.
 - **Next**: M40-T03
+
+## M40-T03 — CLI and MCP
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/usage.go` (new: `tasks usage report|show`,
+  `reports usage`), `internal/backend/clients.go` (ReportService client),
+  `cmd/tasks.go` (usage on `get`), `cmd/usage_test.go`;
+  `docs/cli-reference.md` regenerated; MCP `report_usage` with validation and
+  an e2e case; `docs/mcp.md`.
+- **Verified**: `go test ./...` green; backend MCP tests 16 pass;
+  `cli:docs-check` green.
+- **Notes**: `--cost-usd` is parsed as a decimal string straight into
+  micro-dollars - no float on the path - and printed back with only
+  significant digits (`$0.015`, `$1.50`). The MCP tool takes `cost_micros`
+  as an integer for the same reason; its description gives the conversion.
+  Bad input exits 6 before any request.
+- **Next**: M40-T04

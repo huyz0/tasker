@@ -55,6 +55,10 @@ func NewRepositoryServiceClient() v1connect.RepositoryServiceClient {
 	return v1connect.NewRepositoryServiceClient(http.DefaultClient, URL(), ClientOptions()...)
 }
 
+func NewReportServiceClient() v1connect.ReportServiceClient {
+	return v1connect.NewReportServiceClient(http.DefaultClient, URL(), ClientOptions()...)
+}
+
 func NewSearchServiceClient() v1connect.SearchServiceClient {
 	return v1connect.NewSearchServiceClient(http.DefaultClient, URL(), ClientOptions()...)
 }

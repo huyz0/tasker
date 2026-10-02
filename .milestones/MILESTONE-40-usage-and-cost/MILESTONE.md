@@ -44,7 +44,7 @@ alerts on spend - candidates once the numbers exist.
 
 - [x] **M40-T01** — Contract and schema.
 - [x] **M40-T02** — ReportUsage, task totals, usage report.
-- [ ] **M40-T03** — CLI and MCP.
+- [x] **M40-T03** — CLI and MCP.
 - [ ] **M40-T04** — GUI.
 - [ ] **M40-T05** — Docs and close.
 
