@@ -108,3 +108,41 @@
     interface, and the login guidance ("open this URL…") goes to stderr.
     `debug session` was the last command on `Run` + `os.Exit`; now `RunE`.
 - **Next**: M31-T06
+
+## M31-T06 — Documentation, the reference gate, and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/cli-reference.md` (new intro sections: output, exit codes,
+  pagination; every subcommand and its flags), `docs/agent-integration.md`
+  (exit-code-driven claim loop), `apps/cli/scripts/generate-cli-reference.sh`,
+  `apps/cli/moon.yml` (`docs-check`), `.github/workflows/ci.yml`,
+  `apps/cli/internal/backend/client.go`, `.gitignore`, `apps/cli/tasker`
+  (untracked)
+- **Verified**: `moon run cli:format cli:vet cli:test cli:build
+  cli:coverage-gate cli:docs-check :docs-lint :doc-drift` green, coverage
+  94.3%; the docs gate fails on a stale file (checked by appending a line).
+  Built binary against a live backend: `ping --json 2>/dev/null` parses,
+  `whoami` without a credential exits 3, a refused list prints one line.
+- **Notes**:
+  - **The reference generator's documented usage deleted the intro.** It
+    printed only the command section while the instructions redirected it over
+    the whole file. It now rewrites in place below the "Command reference"
+    heading, goes one level deeper (every subcommand with its flags — none
+    were documented before), and `--check` backs a new CI gate.
+  - **The smoke run found a second line on stderr**: the client's request-id
+    interceptor logged every failed RPC as JSON. The id now rides in the one
+    error line (`… (request <id>)`), the JSON log only under `TASKER_DEBUG`.
+  - `DescribeHTTPError` had no caller (password login already reads the RFC
+    7807 detail); removed with its test. The root reuses
+    `DescribeRPCError`'s throttle detection rather than a second copy.
+  - **`apps/cli/tasker`, a 32 MB built binary, was tracked** — committed in
+    M12, rewritten in M24. Untracked and ignored; history keeps the old blobs.
+
+## Milestone closed
+
+- **Date**: 2026-10-02
+- **Exit criteria**: 6/6.
+- **Not done, deliberately**: `--fields` masks and a `schema` command (now
+  unblocked by a stable JSON shape); agent self-identity for `whoami` with an
+  agent token (`GetIdentity` is human-only) — M33.

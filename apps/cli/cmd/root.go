@@ -86,13 +86,12 @@ func runCLI(args []string, stdout, stderr io.Writer) int {
 
 // describeError is the one line a failure prints. A throttle arrives as
 // Unavailable with the transport's text, which reads as "the backend is down"
-// when the caller needs to slow down - so it says that instead.
+// when the caller needs to slow down - backend.DescribeRPCError recognises it,
+// and its advice is appended.
 func describeError(err error) string {
 	msg := err.Error()
-	var connectErr *connect.Error
-	if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeUnavailable &&
-		strings.Contains(strings.ToLower(connectErr.Message()), "too many requests") {
-		msg += " (rate limit exceeded - wait before retrying)"
+	if hint := backend.DescribeRPCError(err); strings.HasPrefix(hint, "rate limit") {
+		msg += " (" + hint + ")"
 	}
 	return msg
 }

@@ -3,8 +3,6 @@ package backend
 import (
 	"context"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,35 +87,6 @@ func TestAuthInterceptorSendsAnAgentTokenFromTheEnvironment(t *testing.T) {
 
 	if got != "Bearer tskr_agenttoken" {
 		t.Errorf("expected the agent token on the wire, got %q", got)
-	}
-}
-
-func TestDescribeRPCErrorExplainsAThrottle(t *testing.T) {
-	// ADR-0008 puts the rate limiter ahead of the Connect adapter so the 429 can
-	// carry RFC 7807 and Retry-After. The cost, named in that ADR, is that a
-	// generated client sees a transport-level failure rather than a typed error
-	// — so the CLI has to recognise a bare 429 itself or print something
-	// unhelpful at exactly the moment a user needs to know to back off.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/problem+json")
-		w.Header().Set("Retry-After", "42")
-		w.WriteHeader(http.StatusTooManyRequests)
-		_, _ = w.Write([]byte(`{"type":"about:blank","title":"Too Many Requests","status":429,"detail":"Rate limit exceeded. Retry after 42 seconds."}`))
-	}))
-	defer srv.Close()
-
-	res, err := http.Post(srv.URL, "application/json", strings.NewReader("{}"))
-	if err != nil {
-		t.Fatalf("post: %v", err)
-	}
-	defer res.Body.Close()
-
-	msg := DescribeHTTPError(res)
-	if !strings.Contains(msg, "rate limit") {
-		t.Errorf("expected the message to name the rate limit, got %q", msg)
-	}
-	if !strings.Contains(msg, "42") {
-		t.Errorf("expected the message to carry Retry-After, got %q", msg)
 	}
 }
 

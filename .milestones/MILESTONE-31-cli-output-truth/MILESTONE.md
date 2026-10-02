@@ -1,13 +1,13 @@
 ---
 id: M31
 title: CLI Output Truth
-status: in-progress
+status: done
 goal: An agent can drive every CLI command from a script — output on stdout in one stable JSON shape, errors once on stderr with an exit code that says what kind of failure it was, and every page of a list reachable.
 depends_on: []
 surfaces: [cli, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M31 — CLI Output Truth
@@ -48,7 +48,7 @@ not agent-first.
 
 ## 3. Exit Criteria
 
-- [ ] `tasker <cmd> --json 2>/dev/null` prints the result and
+- [x] `tasker <cmd> --json 2>/dev/null` prints the result and
   `tasker <cmd> 1>/dev/null` prints nothing for a successful command — pinned
   by a test that runs `Execute()` with real `os.Stdout`/`os.Stderr` pipes.
 - [x] A failing command prints exactly one `Error: …` line to stderr and exits
@@ -60,7 +60,7 @@ not agent-first.
   item across every page.
 - [x] `auth whoami` reports the identity of whatever credential the command
   would actually use, and exits non-zero when there is none.
-- [ ] `docs/cli-reference.md` documents output, exit codes and pagination, and
+- [x] `docs/cli-reference.md` documents output, exit codes and pagination, and
   `moon run cli:format cli:vet cli:test cli:build cli:coverage-gate` is green
   in CI on `main`.
 
@@ -93,7 +93,7 @@ not agent-first.
 - [x] **M31-T05** — `whoami` and `debug session` use the resolved credential; the login callback binds loopback only.
   - **Files**: `apps/cli/cmd/{auth,debug}.go`
   - **Verify**: tests with `TASKER_TOKEN` set and no session file.
-- [ ] **M31-T06** — Documentation and close.
+- [x] **M31-T06** — Documentation and close.
   - **Files**: `docs/cli-reference.md`, `docs/agent-integration.md`,
     `apps/cli/scripts/generate-cli-reference.sh`
   - **Verify**: `moon run :docs-lint`; regenerated reference matches.

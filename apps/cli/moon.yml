@@ -80,3 +80,15 @@ tasks:
       - 'go.mod'
       - 'go.sum'
       - 'scripts/check-coverage.sh'
+
+  # M31-T06. docs/cli-reference.md is generated from the binary's own help;
+  # until this gate nothing regenerated it, so a new flag was undocumented
+  # until someone remembered.
+  docs-check:
+    command: 'bash scripts/generate-cli-reference.sh --check'
+    deps:
+      - build-binary
+    inputs:
+      - '**/*.go'
+      - 'scripts/generate-cli-reference.sh'
+      - '/docs/cli-reference.md'

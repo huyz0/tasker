@@ -67,3 +67,6 @@ coverage/
 # Tmp
 .tmp
 .tmp/
+# The built CLI binary (`moon run cli:build-binary`). It was committed by
+# accident in M12 and rewritten in M24 - 32 MB per build in history.
+/apps/cli/tasker

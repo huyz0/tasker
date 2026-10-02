@@ -348,3 +348,23 @@ func TestEveryCursorCommandOffersPageAll(t *testing.T) {
 		t.Errorf("commands with --cursor but no --page-all: %v", missing)
 	}
 }
+
+// A throttle reads as "unavailable" from the transport; the one error line
+// says to slow down, and carries the request id for the backend's logs.
+func TestAThrottledFailureSaysToSlowDownAndNamesTheRequest(t *testing.T) {
+	resetAllFlags(t)
+	serveTasks(t, &fakeTaskLister{err: connect.NewError(connect.CodeUnavailable, errString("Too Many Requests"))})
+
+	var stdout, stderr bytes.Buffer
+	code := runCLI([]string{"tasks", "list", "--project", "p1"}, &stdout, &stderr)
+	if code != exitUnavailable {
+		t.Errorf("expected exit %d, got %d", exitUnavailable, code)
+	}
+	line := stderr.String()
+	if !strings.Contains(line, "rate limit exceeded") || !strings.Contains(line, "(request ") {
+		t.Errorf("expected throttle advice and a request id, got %q", line)
+	}
+	if strings.Count(strings.TrimSpace(line), "\n") != 0 {
+		t.Errorf("expected exactly one line on stderr, got %q", line)
+	}
+}

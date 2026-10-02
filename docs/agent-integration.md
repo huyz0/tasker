@@ -357,8 +357,18 @@ returned.
 
 **Taking it.** `tasker tasks claim <task-id>` (`ClaimTask`) assigns the task to
 the caller in a single statement, so of several agents racing one task exactly
-one wins; the others get `FailedPrecondition`. Claiming a task in a terminal
-status is refused the same way, with a message that says so.
+one wins; the others get `FailedPrecondition` — exit code 5 from the CLI, so a
+script can move on to the next task without parsing the message. Claiming a
+task in a terminal status is refused the same way.
+
+```bash
+for id in $(tasker tasks list --project "$P" --assignee-filter unassigned --page-all | jq -r .id); do
+  tasker tasks claim "$id" --json > claim.json && break   # exit 5: someone else won; try the next
+done
+```
+
+Every exit code, the `--json` shape and `--page-all` are in the
+[CLI reference](cli-reference.md#output-errors-and-exit-codes).
 
 **Retrying.** `CreateTask` and `ClaimTask` accept an `idempotencyKey`. Send the
 same key when you retry a call whose response you never saw, and you get the

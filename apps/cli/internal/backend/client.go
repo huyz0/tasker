@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"strings"
 
@@ -39,8 +38,18 @@ func DefaultProjectID() string {
 	return os.Getenv("TASKER_PROJECT_ID")
 }
 
-// Logger is the CLI's structured (JSON) logger.
-var Logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
+// Logger is the CLI's structured (JSON) logger, on stderr. Silent unless
+// TASKER_DEBUG is set (M31-T06): a failed command already prints one
+// "Error: …" line carrying the request id, and a JSON log line beside it
+// broke the one-line contract scripts rely on.
+var Logger = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel()}))
+
+func logLevel() slog.Level {
+	if os.Getenv("TASKER_DEBUG") != "" {
+		return slog.LevelDebug
+	}
+	return slog.LevelError + 1
+}
 
 func newRequestID() string {
 	b := make([]byte, 16)
@@ -48,8 +57,9 @@ func newRequestID() string {
 	return hex.EncodeToString(b)
 }
 
-// RequestIDInterceptor stamps an X-Request-Id header on every outgoing RPC
-// and logs failures with the id attached.
+// RequestIDInterceptor stamps an X-Request-Id header on every outgoing RPC.
+// A failure carries the id in its message, so the one error line a command
+// prints is enough to find the request in the backend's logs.
 func RequestIDInterceptor() connect.Interceptor {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
@@ -58,16 +68,27 @@ func RequestIDInterceptor() connect.Interceptor {
 
 			res, err := next(ctx, req)
 			if err != nil {
-				Logger.Error("rpc failed",
+				Logger.Debug("rpc failed",
 					"requestId", requestID,
 					"procedure", req.Spec().Procedure,
 					"err", err,
 				)
+				return res, &requestError{err: err, requestID: requestID}
 			}
 			return res, err
 		}
 	})
 }
+
+// requestError is an RPC failure annotated with its request id. It unwraps to
+// the original, so errors.As still finds the *connect.Error and its code.
+type requestError struct {
+	err       error
+	requestID string
+}
+
+func (e *requestError) Error() string { return fmt.Sprintf("%v (request %s)", e.err, e.requestID) }
+func (e *requestError) Unwrap() error { return e.err }
 
 // AuthInterceptor attaches the caller's credential as an Authorization: Bearer
 // header on every outgoing RPC. That is an agent token from --token or
@@ -92,24 +113,6 @@ func AuthInterceptor() connect.Interceptor {
 // ClientOptions returns the connect.ClientOption set every CLI client should use.
 func ClientOptions() []connect.ClientOption {
 	return []connect.ClientOption{connect.WithInterceptors(RequestIDInterceptor(), AuthInterceptor())}
-}
-
-// DescribeHTTPError turns a raw HTTP response into a message worth printing.
-//
-// Only 429 gets special treatment, and only because ADR-0008 put the rate
-// limiter ahead of the Connect adapter so the refusal could carry RFC 7807 and
-// Retry-After. The cost, named in that ADR, is that generated Connect clients
-// see a transport-level failure rather than a typed error - so without this the
-// CLI prints something unhelpful at exactly the moment a caller needs to know
-// to back off.
-func DescribeHTTPError(res *http.Response) string {
-	if res.StatusCode != http.StatusTooManyRequests {
-		return fmt.Sprintf("request failed with status %d", res.StatusCode)
-	}
-	if retry := res.Header.Get("Retry-After"); retry != "" {
-		return fmt.Sprintf("rate limit exceeded - retry after %s seconds", retry)
-	}
-	return "rate limit exceeded"
 }
 
 // DescribeRPCError renders an RPC failure for a human or an agent to act on.

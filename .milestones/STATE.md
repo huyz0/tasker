@@ -1,8 +1,8 @@
 ---
-active_milestone: M31
-active_task: M31-T06
+active_milestone: M32
+active_task: null
 last_updated: 2026-10-02
-last_commit: f416b3c
+last_commit: b95fdec
 blocked: false
 blocker: null
 ---
@@ -16,8 +16,10 @@ blocker: null
 ## Now
 
 **2026-10-02 — M30 (Backend Correctness at Scale) complete: 10/11 tasks
-(T05 dropped — the index already existed), 8/8 exit criteria.** M31 (CLI
-Output Truth) in progress.
+(T05 dropped — the index already existed), 8/8 exit criteria.**
+**M31 (CLI Output Truth) complete: 6/6 tasks, 6/6 exit criteria** — results on
+stdout, one error line with a classified exit code, protojson everywhere,
+`--page-all`, and a CI gate on the generated reference. Next: M32.
 A deep
 review (three parallel read-only reviews of backend, GUI and CLI; every
 finding re-verified in code) produced five milestones, delivered in order and
@@ -1735,9 +1737,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M28 | Addressable Screens             | done   | —          | 8     | 8    |
 | M29 | In-App Notifications            | done   | —          | 9     | 9    |
 | M30 | Backend Correctness at Scale    | done   | —          | 11    | 10   |
-| M31 | CLI Output Truth                | in-progress | —     | 6     | 5    |
+| M31 | CLI Output Truth                | done   | —          | 6     | 6    |
 
-**Total: 254 tasks across 25 milestones — 251 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
+**Total: 254 tasks across 25 milestones — 252 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
