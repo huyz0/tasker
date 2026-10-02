@@ -116,6 +116,9 @@ var tasksGetCmd = &cobra.Command{
 			if n := res.Msg.Task.OpenInputRequestCount; n > 0 {
 				cmd.Printf("Waiting on a person: %d open question(s) - `tasker tasks questions --task %s`\n", n, res.Msg.Task.Id)
 			}
+			if n := res.Msg.Task.PendingApprovalCount; n > 0 {
+				cmd.Printf("Waiting on a person: %d status change(s) to approve - `tasker tasks approvals --task %s`\n", n, res.Msg.Task.Id)
+			}
 			if len(res.Msg.Task.Plan) > 0 {
 				printPlan(cmd, res.Msg.Task.Plan)
 			}
@@ -454,7 +457,12 @@ var tasksUpdateStatusCmd = &cobra.Command{
 				return err
 			}
 		} else {
-			cmd.Printf("Task %s status updated to %s\n", res.Msg.Task.Id, res.Msg.Task.Status)
+			if a := res.Msg.PendingApproval; a != nil {
+				// Not an error: the move is held, and nothing changed yet.
+				cmd.Printf("Task %s stays %s - moving it to %s needs a person's approval (request %s; `tasker tasks approval %s`)\n", res.Msg.Task.Id, res.Msg.Task.Status, a.ToStatus, a.Id, a.Id)
+			} else {
+				cmd.Printf("Task %s status updated to %s\n", res.Msg.Task.Id, res.Msg.Task.Status)
+			}
 		}
 		return nil
 	},

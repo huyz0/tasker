@@ -172,7 +172,9 @@ export const TOOL_SPECS: ToolSpec[] = [
   },
   {
     name: "set_task_status", title: "Set task status",
-    description: "Moves a task to a status its type allows (see get_task_type). Finishing a task frees the tasks it blocked.",
+    description: "Moves a task to a status its type allows (see get_task_type). Finishing a task frees the tasks it blocked. " +
+      "Some moves need a person's approval: then the result carries pendingApproval and the task has NOT moved yet - " +
+      "follow it with get_transition_approval rather than assuming the move happened.",
     inputSchema: schema({ task_id: str("Task id"), status: str("New status") }, ["task_id", "status"]),
     service: TaskService, method: "UpdateTaskStatus", request: (a) => ({ taskId: a.task_id, status: a.status }),
   },
@@ -290,6 +292,19 @@ export const TOOL_SPECS: ToolSpec[] = [
     description: "Withdraws a question you asked that no longer needs an answer.",
     inputSchema: schema({ input_request_id: str("Question id") }, ["input_request_id"]),
     service: TaskService, method: "CancelInputRequest", request: (a) => ({ id: a.input_request_id }),
+  },
+  {
+    name: "get_transition_approval", title: "Get an approval request",
+    description: "A status change of yours held for a person's approval: pending, approved (the move was applied), rejected (with a reason) or stale (the task moved meanwhile).",
+    inputSchema: schema({ approval_id: str("Approval id from set_task_status's pendingApproval") }, ["approval_id"]), annotations: readOnly,
+    service: TaskService, method: "GetTransitionApproval", request: (a) => ({ id: a.approval_id }),
+  },
+  {
+    name: "list_transition_approvals", title: "List approval requests",
+    description: "Status changes on one task, or your organization's, waiting on (or decided by) a person.",
+    inputSchema: schema({ task_id: str("Only this task's approvals"), status: str("Status", { enum: ["pending", "approved", "rejected", "stale", "all"] }), limit, cursor }),
+    annotations: readOnly,
+    service: TaskService, method: "ListTransitionApprovals", request: (a) => defined({ taskId: a.task_id, status: a.status, ...page(a) }),
   },
   {
     name: "get_task_type", title: "Get a task type",

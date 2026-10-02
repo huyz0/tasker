@@ -10,7 +10,7 @@ import { currentPrincipalKey, currentUserIdKey } from "../auth/session";
 import { resolvePrincipal } from "../../lib/authenticate";
 import { validationErrorInterceptor } from "../../lib/validationErrors";
 import { createAuthHandler } from "../auth/auth.handler";
-import { createTaskManagementHandler } from "../tasks/tasks.handler";
+import { createTaskManagementHandler, createTasksHandler } from "../tasks/tasks.handler";
 import { createTaskNotesHandler } from "../tasks/task_notes.handler";
 import { createAgentsHandler } from "../agents/agents.handler";
 import { handleMcpHttp, MCP_PATH } from "./http";
@@ -28,6 +28,7 @@ describe("MCP over HTTP (M36-T03)", () => {
   let token = "";
   let readOnlyToken = "";
   let projectId = "";
+  let gatedTaskId = "";
   let db: any;
 
   beforeAll(async () => {
@@ -48,6 +49,14 @@ describe("MCP over HTTP (M36-T03)", () => {
     const tasks = createTaskManagementHandler(db, setup.nc);
     await tasks.createTask({ projectId, title: "Low", status: "todo", description: "", priority: 4 }, admin);
     await tasks.createTask({ projectId, title: "Urgent", status: "todo", description: "", priority: 1 }, admin);
+    // M39: a type whose todo -> done needs a person's approval when an agent moves it.
+    const types = createTasksHandler(db, setup.nc);
+    const typeId = (await types.createTaskType({ orgId, projectId, name: "Release" }, admin)).taskType.id;
+    const todo = (await types.createTaskStatus({ taskTypeId: typeId, name: "todo" }, admin)).status.id;
+    const done = (await types.createTaskStatus({ taskTypeId: typeId, name: "done" }, admin)).status.id;
+    const edge = (await types.createTaskStatusTransition({ taskTypeId: typeId, fromStatusId: todo, toStatusId: done }, admin)).transition.id;
+    await types.setTransitionApproval({ taskTypeId: typeId, transitionId: edge, requiresApproval: true }, admin);
+    gatedTaskId = (await tasks.createTask({ projectId, title: "Ship 2.0", status: "todo", taskTypeId: typeId, priority: 4 }, admin)).task.id;
 
     const session: Interceptor = (next) => async (req) => {
       const principal = await resolvePrincipal(db, { cookie: req.header.get("cookie"), authorization: req.header.get("authorization") });
@@ -117,6 +126,17 @@ describe("MCP over HTTP (M36-T03)", () => {
     const task = (await call("get_task", { task_id: claimed.id })).structuredContent;
     expect(task.task.assignees ?? []).toEqual([]);
     expect(task.latestHandoffNote.content).toContain("next: rerun");
+  });
+
+  it("a gated move comes back pending, unmoved, and can be followed (M39)", async () => {
+    const res = await call("set_task_status", { task_id: gatedTaskId, status: "done" });
+    expect(res.isError).toBeUndefined();
+    expect(res.structuredContent.task.status).toBe("todo");
+    const pending = res.structuredContent.pendingApproval;
+    expect(pending).toMatchObject({ status: "pending", fromStatus: "todo", toStatus: "done", requestedByName: "Scout" });
+    expect((await call("get_transition_approval", { approval_id: pending.id })).structuredContent.approval.status).toBe("pending");
+    const listed = (await call("list_transition_approvals", { task_id: gatedTaskId })).structuredContent.approvals;
+    expect(listed.map((a: any) => a.id)).toEqual([pending.id]);
   });
 
   it("applies the token's own scopes - a read-only token cannot claim", async () => {

@@ -136,7 +136,11 @@ var taskTypesGetCmd = &cobra.Command{
 			}
 			cmd.Println("Transitions:")
 			for _, t := range res.Msg.Transitions {
-				cmd.Printf("  - %s -> %s\n", t.FromStatusId, t.ToStatusId)
+				gate := ""
+				if t.RequiresApproval {
+					gate = " (agents need approval)"
+				}
+				cmd.Printf("  - %s -> %s (id: %s)%s\n", t.FromStatusId, t.ToStatusId, t.Id, gate)
 			}
 		}
 		return nil
@@ -207,8 +211,35 @@ var taskTypesCreateTransitionCmd = &cobra.Command{
 	},
 }
 
+var taskTypesGateTransitionCmd = &cobra.Command{
+	Use:   "gate-transition [task_type_id] [transition_id]",
+	Short: "Require a person's approval when an agent makes this move (--off to lift it)",
+	Args:  cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		off, _ := cmd.Flags().GetBool("off")
+		res, err := backend.NewTaskTypeServiceClient().SetTransitionApproval(context.Background(), connect.NewRequest(&healthv1.SetTransitionApprovalRequest{
+			TaskTypeId: args[0], TransitionId: args[1], RequiresApproval: !off,
+		}))
+		if err != nil {
+			return fmt.Errorf("failed to set the approval gate: %w", err)
+		}
+		if wantsJSON(cmd) {
+			return printJSON(cmd, res.Msg)
+		}
+		t := res.Msg.Transition
+		if t.RequiresApproval {
+			cmd.Printf("Transition %s -> %s now needs a person's approval when an agent makes it\n", t.FromStatusId, t.ToStatusId)
+		} else {
+			cmd.Printf("Transition %s -> %s no longer needs approval\n", t.FromStatusId, t.ToStatusId)
+		}
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(taskTypesCmd)
+	taskTypesCmd.AddCommand(taskTypesGateTransitionCmd)
+	taskTypesGateTransitionCmd.Flags().Bool("off", false, "Lift the gate instead of setting it")
 	taskTypesCmd.AddCommand(taskTypesCreateCmd)
 	taskTypesCmd.AddCommand(taskTypesListCmd)
 	taskTypesCmd.AddCommand(taskTypesGetCmd)

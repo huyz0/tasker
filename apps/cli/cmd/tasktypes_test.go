@@ -17,6 +17,17 @@ import (
 type fakeTaskTypeHandler struct {
 	v1connect.UnimplementedTaskTypeServiceHandler
 	gotListPage *healthv1.PageRequest
+	gotGate     *healthv1.SetTransitionApprovalRequest
+}
+
+func (f *fakeTaskTypeHandler) SetTransitionApproval(
+	_ context.Context,
+	req *connect.Request[healthv1.SetTransitionApprovalRequest],
+) (*connect.Response[healthv1.SetTransitionApprovalResponse], error) {
+	f.gotGate = req.Msg
+	return connect.NewResponse(&healthv1.SetTransitionApprovalResponse{
+		Transition: &healthv1.TaskStatusTransition{Id: req.Msg.TransitionId, FromStatusId: "st_1", ToStatusId: "st_2", RequiresApproval: req.Msg.RequiresApproval},
+	}), nil
 }
 
 func (f *fakeTaskTypeHandler) CreateTaskType(
@@ -37,6 +48,7 @@ func (f *fakeTaskTypeHandler) GetTaskType(
 		Statuses: []*healthv1.TaskStatus{{Id: "st_1", Name: "open"}},
 		Transitions: []*healthv1.TaskStatusTransition{
 			{Id: "tr_1", FromStatusId: "st_1", ToStatusId: "st_2"},
+			{Id: "tr_2", FromStatusId: "st_2", ToStatusId: "st_3", RequiresApproval: true},
 		},
 	}), nil
 }
@@ -193,5 +205,23 @@ func TestTaskTypesCreateTransitionCmd(t *testing.T) {
 	out := b.String()
 	if !strings.Contains(out, "st_1 -> st_2") {
 		t.Fatalf("expected output to contain the transition, got %s", out)
+	}
+}
+
+func TestTaskTypesGetShowsGatedTransitionsAndGateTransitionSetsAndLiftsIt(t *testing.T) {
+	resetAllFlags(t)
+	fake := withTaskTypeServer(t)
+	out, errw, code := run(t, "task-types", "get", "tt_1")
+	if code != exitOK || !strings.Contains(out, "st_2 -> st_3 (id: tr_2) (agents need approval)") || strings.Contains(out, "st_1 -> st_2 (id: tr_1) (agents") {
+		t.Fatalf("get: exit %d %q %q", code, out, errw)
+	}
+	out, _, _ = run(t, "task-types", "gate-transition", "tt_1", "tr_1")
+	if fake.gotGate.GetTaskTypeId() != "tt_1" || fake.gotGate.GetTransitionId() != "tr_1" || !fake.gotGate.RequiresApproval || !strings.Contains(out, "now needs a person's approval") {
+		t.Errorf("gate: %+v %q", fake.gotGate, out)
+	}
+	resetAllFlags(t)
+	out, _, _ = run(t, "task-types", "gate-transition", "tt_1", "tr_1", "--off")
+	if fake.gotGate.RequiresApproval || !strings.Contains(out, "no longer needs approval") {
+		t.Errorf("lift: %+v %q", fake.gotGate, out)
 	}
 }

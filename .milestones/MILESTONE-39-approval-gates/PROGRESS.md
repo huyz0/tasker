@@ -40,3 +40,21 @@
   the list query count where it was. Agents may read approvals
   (`tasks:read`); deciding and flagging edges are human-only.
 - **Next**: M39-T03
+
+## M39-T03 — CLI and MCP
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/tasks_approvals.go` (new: `tasks approvals`,
+  `approval`, `approve`, `reject`), `tasks.go` (held move on `update-status`,
+  pending count on `get`), `tasktypes.go` (`gate-transition`, gate shown on
+  `get`), tests; `docs/cli-reference.md` regenerated; MCP
+  `get_transition_approval`, `list_transition_approvals`, `set_task_status`
+  description; `docs/mcp.md`; MCP e2e case for a held move.
+- **Verified**: `go test ./...` green; backend MCP tests 15 pass;
+  `cli:docs-check`, `backend:typecheck` green.
+- **Notes**: A held move is exit 0 with a sentence saying the task stays put
+  and naming the request - it is not an error (ADR-0032), but it must not
+  read as success either. No MCP tool decides an approval, asserted in the
+  tool test alongside answering questions.
+- **Next**: M39-T04

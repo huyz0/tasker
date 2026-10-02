@@ -1516,6 +1516,7 @@ Available Commands:
   create            Create a task type for an organization (optionally scoped to a project)
   create-status     Add a status to a task type's enum
   create-transition Allow a status transition (edge) in a task type's state machine
+  gate-transition   Require a person's approval when an agent makes this move (--off to lift it)
   get               Show a task type along with its configured statuses and transitions
   list              List task types for an organization
 
@@ -1566,6 +1567,19 @@ Flags:
       --to string     Status ID this transition ends at
 ```
 
+#### `tasker task-types gate-transition`
+
+```
+Require a person's approval when an agent makes this move (--off to lift it)
+
+Usage:
+  tasker task-types gate-transition [task_type_id] [transition_id] [flags]
+
+Flags:
+  -h, --help   help for gate-transition
+      --off    Lift the gate instead of setting it
+```
+
 #### `tasker task-types get`
 
 ```
@@ -1606,6 +1620,9 @@ Usage:
 
 Available Commands:
   answer          Answer a question an agent asked (people only)
+  approval        Show one approval request and, once made, its decision
+  approvals       Status changes waiting on a person's approval - the organization's queue, or one task's
+  approve         Approve an agent's held status change; it is applied as you (people only)
   ask             Ask a person a question on a task; its reviewers (or org admins) are notified
   assign          Assign a task to an agent or user
   cancel-question Withdraw a question you asked (or, as an admin, close any)
@@ -1628,6 +1645,7 @@ Available Commands:
   purge           Permanently delete an already-binned task and its dependent records (requires org admin)
   question        Show one question and, once given, its answer
   questions       Questions waiting on people - the organization's queue, or one task's
+  reject          Reject an agent's held status change; the task stays where it is (people only)
   release         Give back a task you claimed, optionally leaving a handoff note
   restore         Restore a task from the bin (requires org admin)
   reviewer-add    Add a reviewer to a task
@@ -1652,6 +1670,49 @@ Usage:
 Flags:
       --answer string   Your answer
   -h, --help            help for answer
+```
+
+#### `tasker tasks approval`
+
+```
+Show one approval request and, once made, its decision
+
+Usage:
+  tasker tasks approval [approval_id] [flags]
+
+Flags:
+  -h, --help   help for approval
+```
+
+#### `tasker tasks approvals`
+
+```
+Status changes waiting on a person's approval - the organization's queue, or one task's
+
+Usage:
+  tasker tasks approvals [flags]
+
+Flags:
+  -c, --cursor string   Pagination cursor to fetch the next set
+  -h, --help            help for approvals
+  -l, --limit int32     Maximum number of items to return (default 50)
+      --org string      Organization (or set TASKER_ORG_ID; an agent's is implied)
+      --page-all        Fetch every page, printing one JSON object per item per line (NDJSON)
+      --status string   pending (default), approved, rejected, stale or all
+      --task string     Only this task's approvals
+```
+
+#### `tasker tasks approve`
+
+```
+Approve an agent's held status change; it is applied as you (people only)
+
+Usage:
+  tasker tasks approve [approval_id] [flags]
+
+Flags:
+  -h, --help            help for approve
+      --reason string   Optional note recorded with the decision
 ```
 
 #### `tasker tasks ask`
@@ -1979,6 +2040,19 @@ Flags:
       --page-all        Fetch every page, printing one JSON object per item per line (NDJSON)
       --status string   open (default), answered, cancelled or all
       --task string     Only this task's questions
+```
+
+#### `tasker tasks reject`
+
+```
+Reject an agent's held status change; the task stays where it is (people only)
+
+Usage:
+  tasker tasks reject [approval_id] [flags]
+
+Flags:
+  -h, --help            help for reject
+      --reason string   Why - the agent is told
 ```
 
 #### `tasker tasks release`

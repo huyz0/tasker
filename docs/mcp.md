@@ -64,7 +64,7 @@ the same endpoint, using `TASKER_TOKEN` (or a saved `tasker auth login`) and
 | `get_task` | One task, with its latest handoff note | `GetTask` |
 | `create_task` | New task; `priority`, `parent_task_id`, `blocked_by`, `discovered_from_task_id` | `CreateTask` |
 | `update_task` | Title, description, priority, parent | `UpdateTask` |
-| `set_task_status` | Move a task along its type's transitions | `UpdateTaskStatus` |
+| `set_task_status` | Move a task along its type's transitions; a gated move comes back as `pendingApproval` and has not happened yet | `UpdateTaskStatus` |
 | `claim_next_task` | Atomically take the most important ready task | `ClaimNextTask` |
 | `claim_task` | Take one named task | `ClaimTask` |
 | `release_task` | Give back your own claim, with an optional handoff note | `ReleaseTask` |
@@ -78,6 +78,7 @@ the same endpoint, using `TASKER_TOKEN` (or a saved `tasker auth login`) and
 | `request_input` | Ask a person a question; reviewers or admins are notified | `RequestInput` |
 | `get_input_request` / `list_input_requests` | A question's status and answer; a task's or the org's open questions | `GetInputRequest` / `ListInputRequests` |
 | `cancel_input_request` | Withdraw a question you asked | `CancelInputRequest` |
+| `get_transition_approval` / `list_transition_approvals` | Follow a held move: pending, approved (applied), rejected (with a reason) or stale | `GetTransitionApproval` / `ListTransitionApprovals` |
 | `get_task_type` | A type's statuses and legal transitions | `GetTaskType` |
 | `search_memory` | Search shared beliefs | `SearchBeliefs` |
 | `record_belief` | Record a durable fact | `RecordBelief` |
