@@ -16,13 +16,13 @@ export const JSONRPC = {
   internalError: -32603,
 } as const;
 
-interface ToolResult {
+export interface ToolResult {
   content: { type: "text"; text: string }[];
   structuredContent?: Record<string, unknown>;
   isError?: boolean;
 }
 
-interface Tool {
+export interface Tool {
   name: string;
   title: string;
   description: string;

@@ -57,7 +57,7 @@ issued by Tasker's own agent-token flow).
 
 - [x] **M36-T01** — ADR-0029; JSON-RPC core: initialize, ping, tools/list, errors.
   - **Files**: `.specs/adr/ADR-0029-*.md`, `apps/backend/src/modules/mcp/*` (+ test)
-- [ ] **M36-T02** — The tool catalogue and its loopback dispatch.
+- [x] **M36-T02** — The tool catalogue and its loopback dispatch.
   - **Files**: `apps/backend/src/modules/mcp/tools.ts` (+ test)
 - [ ] **M36-T03** — Mount `/mcp`: auth, rate limit, size limit; end-to-end test.
   - **Files**: `apps/backend/src/index.ts`, `apps/backend/src/modules/mcp/*.test.ts`
