@@ -176,6 +176,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
   taskManagement: {
     createTask: { projectId: ids.project, title: 'T' },
     listTasks: { projectId: ids.project },
+    listMyTasks: {},
     assignTask: { taskId: ids.task, agentId: ids.agent },
     unassignTask: { taskId: ids.task, agentId: ids.agent },
     claimTask: { taskId: ids.task },

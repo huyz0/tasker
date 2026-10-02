@@ -64,3 +64,20 @@
   M04). Publishes `domain.task.released`; the GUI's `task` entity mapping
   already invalidates on it.
 - **Next**: M33-T04
+
+## M33-T04 — ListMyTasks
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/tasks/tasks.handler.ts`,
+  `workQueue.test.ts`, `lib/scopes.ts`, `lib/agent-scope-sweep.test.ts`
+- **Verified**: `bun test src/modules/tasks src/lib/agent-scope-sweep.test.ts`
+  — 136 pass; three new tests, all failing first.
+- **Notes**: The caller's tasks across every live project of the org, open
+  only unless `includeTerminal`, through `executePaginatedQuery` with the same
+  projection and assignee enrichment as ListTasks. The org is the agent
+  token's; a person must name one, and an agent naming a different org is
+  refused by `authorizePrincipal`. The cursor's cache key includes org,
+  caller and the terminal flag, so a cursor from one view cannot report
+  another's count. Scope: `tasks:read`.
+- **Next**: M33-T05

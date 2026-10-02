@@ -64,6 +64,8 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
   },
   taskManagement: {
     listTasks: 'tasks:read',
+    // M33-T04: listTasks across the token's org, filtered to the caller.
+    listMyTasks: 'tasks:read',
     getTask: 'tasks:read',
     listTaskReviewers: 'tasks:read',
     createTask: 'tasks:write',

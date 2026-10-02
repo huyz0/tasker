@@ -47,7 +47,7 @@ scriptable; both are prerequisites.
   N distinct tasks; with none left the response carries no task.
 - [x] `ReleaseTask` releases the caller's own claim (recording a handoff note
   when given) and is `PermissionDenied` on an assignment a human made.
-- [ ] `ListMyTasks` returns the caller's open tasks across projects, paginated,
+- [x] `ListMyTasks` returns the caller's open tasks across projects, paginated,
   and only the caller's.
 - [ ] `GetIdentity` with an agent token returns the agent's id, name, org and
   scopes.
@@ -76,7 +76,7 @@ scriptable; both are prerequisites.
   - **Files**: `apps/backend/src/modules/tasks/tasks.handler.ts`, `lib/scopes.ts`
 - [x] **M33-T03** — `ReleaseTask` (ADR-0027).
   - **Files**: as T02
-- [ ] **M33-T04** — `ListMyTasks`.
+- [x] **M33-T04** — `ListMyTasks`.
   - **Files**: as T02
 - [ ] **M33-T05** — `GetIdentity` for agents.
   - **Files**: `apps/backend/src/modules/auth/auth.handler.ts`, `lib/scopes.ts`

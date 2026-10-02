@@ -1,8 +1,8 @@
 ---
 active_milestone: M33
-active_task: M33-T04
+active_task: M33-T05
 last_updated: 2026-10-02
-last_commit: 892879d
+last_commit: e4f8629
 blocked: false
 blocker: null
 ---
@@ -1743,9 +1743,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M30 | Backend Correctness at Scale    | done   | —          | 11    | 10   |
 | M31 | CLI Output Truth                | done   | —          | 6     | 6    |
 | M32 | Task Workspace Correctness      | done   | M30        | 8     | 8    |
-| M33 | Agent Work Queue                | in-progress | M30, M31 | 7   | 3    |
+| M33 | Agent Work Queue                | in-progress | M30, M31 | 7   | 4    |
 
-**Total: 269 tasks across 27 milestones — 263 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
+**Total: 269 tasks across 27 milestones — 264 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;

@@ -108,6 +108,12 @@ const ClaimNextTaskSchema = z.object({
   idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
 });
 
+const ListMyTasksSchema = z.object({
+  orgId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  includeTerminal: z.boolean().optional(),
+  page: z.any().optional(),
+});
+
 const ReleaseTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   handoffNote: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(20_000).optional()),
@@ -883,6 +889,55 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       const assignees = await assigneesByTask(items.map((t: any) => t.id));
 
+      return {
+        tasks: items.map((t: any) => ({
+          ...t,
+          createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
+          assignees: assignees.get(t.id) ?? [],
+        })),
+        page: { nextCursor, totalCount },
+      };
+    },
+    /**
+     * M33-T04: everything the caller holds, across every live project in the
+     * organization - ListTasks needs a project, so an agent could only answer
+     * "what am I working on" by walking all of them. An agent's org is its
+     * token's; a person names one.
+     */
+    async listMyTasks(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = ListMyTasksSchema.parse(req);
+      const orgId = parsed.orgId ?? (principal.kind === "agent" ? principal.orgId : undefined);
+      if (!orgId) throw new ConnectError("orgId is required", Code.InvalidArgument);
+      await authorizePrincipal(db, principal, orgId, { scope: "tasks:read", permission: "task:read" });
+
+      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+      const projects = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
+      const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+      const selfColumn = principal.kind === "user" ? (assignments as any).userId : (assignments as any).agentId;
+      const selfId = principal.kind === "user" ? principal.userId : principal.agentId;
+      const scope = and(
+        notDeleted(tasks),
+        sql`${(tasks as any).projectId} IN (SELECT ${(projects as any).id} FROM ${projects} WHERE ${(projects as any).orgId} = ${orgId} AND ${(projects as any).deletedAt} IS NULL)`,
+        sql`EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id} AND ${selfColumn} = ${selfId})`,
+        parsed.includeTerminal ? undefined : not(terminalStatusSql(tasks, isStandalone)),
+      );
+      const { items, nextCursor, totalCount } = await executePaginatedQuery(db, tasks, scope, parsed.page, {
+        sortableColumns: { createdAt: (tasks as any).createdAt, status: (tasks as any).status },
+        select: {
+          id: (tasks as any).id,
+          projectId: (tasks as any).projectId,
+          displayId: (tasks as any).displayId,
+          taskTypeId: (tasks as any).taskTypeId,
+          createdBy: (tasks as any).createdBy,
+          title: (tasks as any).title,
+          status: (tasks as any).status,
+          createdAt: (tasks as any).createdAt,
+          deletedAt: (tasks as any).deletedAt,
+        },
+        extraCacheKey: [orgId, selfId, parsed.includeTerminal ? "1" : "0"].join("|"),
+      });
+      const assignees = await assigneesByTask(items.map((t: any) => t.id));
       return {
         tasks: items.map((t: any) => ({
           ...t,

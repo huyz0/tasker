@@ -148,4 +148,43 @@ describe("agent work queue (M33)", () => {
       expect(rows).toHaveLength(1);
     });
   });
+
+  describe("ListMyTasks (M33-T04)", () => {
+    it("returns what the caller holds across every project in the org, and only that", async () => {
+      const mine1 = await task("mine here");
+      const mine2 = (await handler.createTask({ projectId: otherProjectId, title: "mine there", status: "todo", description: "" }, ctx)).task;
+      const theirs = await task("theirs");
+      const finished = await task("finished");
+      await handler.claimTask({ taskId: mine1.id }, agentCtx(agentIds[0]!));
+      await handler.claimTask({ taskId: mine2.id }, agentCtx(agentIds[0]!));
+      await handler.claimTask({ taskId: theirs.id }, agentCtx(agentIds[1]!));
+      await handler.claimTask({ taskId: finished.id }, agentCtx(agentIds[0]!));
+      await handler.updateTaskStatus({ taskId: finished.id, status: "done" }, ctx);
+
+      const res = await handler.listMyTasks({}, agentCtx(agentIds[0]!));
+      expect(res.tasks.map((t: any) => t.id).sort()).toEqual([mine1.id, mine2.id].sort());
+      expect(Number(res.page.totalCount)).toBe(2);
+
+      const withDone = await handler.listMyTasks({ includeTerminal: true }, agentCtx(agentIds[0]!));
+      expect(withDone.tasks.map((t: any) => t.id)).toContain(finished.id);
+    });
+
+    it("pages", async () => {
+      for (let i = 0; i < 3; i++) {
+        const t = await task(`T${i}`);
+        await handler.claimTask({ taskId: t.id }, agentCtx(agentIds[0]!));
+      }
+      const first = await handler.listMyTasks({ page: { limit: 2 } }, agentCtx(agentIds[0]!));
+      expect(first.tasks).toHaveLength(2);
+      const second = await handler.listMyTasks({ page: { limit: 2, cursor: first.page.nextCursor } }, agentCtx(agentIds[0]!));
+      expect(second.tasks).toHaveLength(1);
+    });
+
+    it("needs an org for a person, and refuses an agent naming another org", async () => {
+      await expect(handler.listMyTasks({}, ctx)).rejects.toMatchObject({ code: Code.InvalidArgument });
+      expect((await handler.listMyTasks({ orgId }, ctx)).tasks).toEqual([]);
+      await expect(handler.listMyTasks({ orgId: "org-elsewhere" }, agentCtx(agentIds[0]!)))
+        .rejects.toMatchObject({ code: Code.PermissionDenied });
+    });
+  });
 });
