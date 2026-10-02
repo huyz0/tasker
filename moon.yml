@@ -73,10 +73,13 @@ tasks:
   # gate. Its own suite runs first — a rule that cannot be made to fail
   # enforces nothing.
   doc-drift:
-    command: 'bash -c "bun test scripts/doc-drift.test.ts && bun run scripts/doc-drift.ts"'
+    command: 'bash -c "bun test scripts/doc-drift.test.ts scripts/milestone-truth.test.ts && bun run scripts/doc-drift.ts"'
     inputs:
       - '/scripts/doc-drift.ts'
       - '/scripts/doc-drift.test.ts'
+      - '/scripts/milestone-truth.ts'
+      - '/scripts/milestone-truth.test.ts'
+      - '/.milestones/**/MILESTONE.md'
       - '/README.md'
       - '/.specs/product/architecture.md'
       - '/.specs/product/mission.md'

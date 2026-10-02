@@ -49,8 +49,10 @@ forward unscheduled. The 2026-10-02 review confirmed and extended it:
   two untested ones have tests.
 - [x] No handler authorizes by comparing a role name; the owner rule goes
   through `can(…, "org:owner")`.
-- [ ] `moon run :doc-drift` fails on a milestone whose frontmatter contradicts
-  its boxes, or whose ledger row disagrees — proven by the gate's own tests.
+- [x] `moon run :doc-drift` fails on a milestone whose frontmatter contradicts
+  its boxes, or whose ledger row disagrees — proven by the gate's own tests
+  (`scripts/milestone-truth.test.ts`: one failing fixture per rule, plus the
+  real repository passing).
 - [ ] `testing-standard.md` describes the GUI's real RPC mocking (MSW).
 - [ ] CI green on `main`.
 
@@ -69,8 +71,8 @@ truth pass beyond MSW (COUNCIL-0001 candidate 5) — later.
     `.milestones/MILESTONE-10-*/MILESTONE.md`
 - [x] **M34-T02** — Frontmatter and ledger agree with the boxes (M08, M21–M23, M12's ledger row).
   - **Files**: those `MILESTONE.md` files, `.milestones/STATE.md`
-- [ ] **M34-T03** — The gate: `doc-drift` checks every `MILESTONE.md` against its boxes and the ledger.
-  - **Files**: `scripts/doc-drift.ts` (+ test), `moon.yml`
+- [x] **M34-T03** — The gate: `doc-drift` checks every `MILESTONE.md` against its boxes and the ledger.
+  - **Files**: `scripts/milestone-truth.ts` (+ test), `scripts/doc-drift.ts`, `moon.yml`
 - [ ] **M34-T04** — Testing standard tells the truth about MSW; close.
   - **Files**: `.specs/standards/testing-standard.md`, `.milestones/STATE.md`
 

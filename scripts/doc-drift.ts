@@ -25,6 +25,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { checkMilestoneTruth, type TruthFinding } from './milestone-truth';
 
 /**
  * The documents an agent session is told to trust. A hand-written list, not a
@@ -137,16 +138,30 @@ export function checkDocDrift(root: string, docs: string[] = CHECKED_DOCS): Resu
 if (import.meta.main) {
   const root = process.env.DOC_DRIFT_ROOT ?? join(import.meta.dir, '..');
   let result: Result;
+  let truth: { findings: TruthFinding[]; milestones: number };
   try {
     result = checkDocDrift(root);
+    // M34-T03: the milestone files themselves, against their boxes and the ledger.
+    truth = checkMilestoneTruth(root);
   } catch (e) {
     console.error(`doc-drift could not run: ${(e as Error).message}`);
     process.exit(2);
   }
 
+  if (truth.findings.length > 0) {
+    console.error(`\n✗ milestone drift — ${truth.findings.length} finding(s)\n`);
+    for (const f of truth.findings) console.error(`    ${f.where}  ${f.problem}`);
+    console.error(
+      '\n  → Make the frontmatter and the ledger say what the boxes say' +
+      '\n    (.specs/standards/milestone-standard.md), or check the boxes the work earned.\n',
+    );
+  }
+
   const { findings, checkedDocs, closedMilestones } = result;
   if (findings.length === 0) {
+    if (truth.findings.length > 0) process.exit(1);
     console.log(`✓ PASS — ${checkedDocs} documents checked against ${closedMilestones} closed milestones, 0 drift`);
+    console.log(`✓ PASS — ${truth.milestones} milestone files agree with their boxes and the ledger`);
     process.exit(0);
   }
 

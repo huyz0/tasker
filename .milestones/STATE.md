@@ -1,6 +1,6 @@
 ---
 active_milestone: M34
-active_task: M34-T03
+active_task: M34-T04
 last_updated: 2026-10-02
 last_commit: 6d3856e
 blocked: false
@@ -1748,9 +1748,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M31 | CLI Output Truth                | done   | —          | 6     | 6    |
 | M32 | Task Workspace Correctness      | done   | M30        | 8     | 8    |
 | M33 | Agent Work Queue                | done   | M30, M31   | 7     | 7    |
-| M34 | Milestone and Doc Truth         | in-progress | —     | 4     | 2    |
+| M34 | Milestone and Doc Truth         | in-progress | —     | 4     | 3    |
 
-**Total: 273 tasks across 28 milestones — 270 done, 1 dropped.** Every milestone is closed. Binary *signing* was scoped out of M09 and M12 as a
+**Total: 273 tasks across 28 milestones — 271 done, 1 dropped.** Every milestone is closed. Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

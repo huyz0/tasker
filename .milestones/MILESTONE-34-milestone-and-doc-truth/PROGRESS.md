@@ -39,3 +39,23 @@
   produced an off-by-one in this session (270 written for 269) — the reason
   T03's gate checks the total line too, not only the rows.
 - **Next**: M34-T03
+
+## M34-T03 — The gate
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `scripts/milestone-truth.ts` (+ test), `scripts/doc-drift.ts`
+  (runs it; exit 1 on either kind of drift), `moon.yml` (`doc-drift` runs the
+  new tests and takes every `MILESTONE.md` as an input)
+- **Verified**: `moon run :doc-drift` — 40 tests pass; 28 milestone files
+  agree. Flipping M08 back to `todo` makes `bun run scripts/doc-drift.ts`
+  exit 1 with three findings; restored.
+- **Notes**: Checks only contradictions a claim makes: allowed status, id vs
+  folder, `done` ⇒ no open boxes + criteria met + completion date,
+  `exit_criteria_met` ⇒ no open criterion, `todo` ⇒ no checked task,
+  `completed_at` ⇒ `done`; ledger row status/Tasks/Done against the file; the
+  total line against the rows and the files' `[~]` count. Only top-level boxes
+  in "Exit Criteria" and "Task Breakdown" count, so nested sub-steps and
+  verification checklists never trip it. Each rule has a fixture reproducing
+  the drift M34 found (M08, M10, M12, M21–M23).
+- **Next**: M34-T04
