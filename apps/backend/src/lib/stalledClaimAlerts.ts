@@ -83,17 +83,33 @@ export async function runStalledClaimAlertSweep(
   const unalerted = candidates.filter((c) => !alreadyAlerted.has(alertKey(c.taskId, c.anchorAt)));
   if (unalerted.length === 0) return;
 
-  // Record and publish every newly-detected candidate exactly once, before
-  // any delivery is attempted (ADR-0026). This runs whether or not a mailer
-  // is configured, and a failed send no longer suppresses the domain event.
-  //
-  // Doing it here rather than inside the per-recipient loop also fixes a
-  // latent duplicate: a task with two reviewers landed in two groups and
-  // was inserted into `stalled_claim_alerts` twice.
+  // Record every newly-detected candidate before any delivery (ADR-0026),
+  // whether or not a mailer is configured. The record is also the claim:
+  // `stalled_claim_alerts` is unique on (task_id, anchor_at), so when two
+  // replicas run this sweep together exactly one insert wins, and only the
+  // winner delivers (M30-T04). A failed insert of any kind skips the
+  // candidate rather than alerting unrecorded - the next sweep retries it,
+  // where alerting without a record would alert it again every hour.
+  const won: StalledClaimCandidate[] = [];
+  for (const c of unalerted) {
+    try {
+      await db.insert(schema.stalledClaimAlerts).values({
+        id: randomUUID(),
+        taskId: c.taskId,
+        anchorAt: c.anchorAt,
+        alertedAt: new Date(),
+      });
+      won.push(c);
+    } catch (err) {
+      logger.info({ err, taskId: c.taskId }, 'stalled_claim_alerts.record_skipped');
+    }
+  }
+  if (won.length === 0) return;
+
   // Resolve recipients once, before either channel runs. Both need them and
   // the resolution is two queries per task.
   const recipientsByTask = new Map<string, TaskAlertRecipient[]>();
-  for (const candidate of unalerted) {
+  for (const candidate of won) {
     try {
       recipientsByTask.set(
         candidate.taskId,
@@ -106,18 +122,7 @@ export async function runStalledClaimAlertSweep(
   }
 
   const now = Date.now();
-  for (const c of unalerted) {
-    try {
-      await db.insert(schema.stalledClaimAlerts).values({
-        id: randomUUID(),
-        taskId: c.taskId,
-        anchorAt: c.anchorAt,
-        alertedAt: new Date(),
-      });
-    } catch (err) {
-      logger.error({ err, taskId: c.taskId }, 'stalled_claim_alerts.record_failed');
-    }
-
+  for (const c of won) {
     try {
       // Decision 4: an explicit orgId (left untouched by the correlation
       // Proxy precisely because it is present), and the claimed agent as
@@ -166,7 +171,7 @@ export async function runStalledClaimAlertSweep(
   // recipient's digest (multiple task_reviewers rows); a candidate that
   // resolves to nobody is simply not notified for - not an error.
   const groups = new Map<string, RecipientGroup>();
-  for (const candidate of unalerted) {
+  for (const candidate of won) {
     const recipients = recipientsByTask.get(candidate.taskId) ?? [];
     for (const recipient of recipients) {
       // M29-T02: resolution returns people, so this is where the email

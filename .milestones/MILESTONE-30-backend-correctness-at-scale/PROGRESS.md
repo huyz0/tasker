@@ -56,3 +56,22 @@
   Not done here, deliberately: agent self-release and claim leases — new API,
   owned by M33.
 - **Next**: M30-T04
+
+## M30-T04 — The stalled sweep alerts once across replicas
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/lib/{stalledClaimAlerts,stalledClaims}.ts`,
+  `stalledClaimAlerts.test.ts`
+- **Verified**: `bun test src/lib/stalledClaims.test.ts
+  src/lib/stalledClaimAlerts.test.ts src/modules/reports` — 76 pass. The new
+  two-concurrent-sweeps test failed first: 2 digests sent.
+- **Notes**: The dedup insert is now the claim — only the replica whose
+  insert wins delivers, and recipient resolution runs only for winners. A
+  failed insert of *any* kind now skips the candidate; before, it was logged
+  and alerted anyway, which with no record meant re-alerting every hour. The
+  held-task query filters terminal tasks in SQL (`terminalStatusSql`, from
+  T03), so a finished task's activity history is no longer joined and grouped
+  hourly only to be discarded in memory; the in-memory per-type terminality
+  pass is gone.
+- **Next**: M30-T05

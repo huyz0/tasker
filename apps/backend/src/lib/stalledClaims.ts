@@ -1,7 +1,7 @@
-import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, not, sql } from "drizzle-orm";
 import * as schemaMysql from "../db/schema.mysql";
 import * as schemaSqlite from "../db/schema.sqlite";
-import { isTerminalStatus } from "../modules/tasks/taskActivity";
+import { terminalStatusSql } from "../modules/tasks/taskActivity";
 import { decodeSqlTimestamp } from "./sqlTime";
 
 /**
@@ -128,6 +128,9 @@ export function buildHeldTaskQuery(db: any, isStandalone: boolean, opts: { proje
     .where(and(
       isNotNull(taskAssignments.agentId),
       isNull(tasks.deletedAt),
+      // M30-T03/T04: in SQL, so a finished task's whole activity history is
+      // never joined and grouped just to be thrown away in memory.
+      not(terminalStatusSql(tasks, isStandalone)),
       opts.projectId ? eq(tasks.projectId, opts.projectId) : undefined,
     ))
     .groupBy(
@@ -142,33 +145,14 @@ export async function findStalledCandidates(
   opts: FindStalledCandidatesOptions,
 ): Promise<StalledClaimCandidate[]> {
   const schema = isStandalone ? schemaSqlite : schemaMysql;
-  const { taskStatuses, agents, apiTokens } = schema as any;
+  const { agents, apiTokens } = schema as any;
 
   const now = new Date();
   const silentBefore = new Date(now.getTime() - opts.afterHours * HOUR_MS);
 
   const heldRows = await buildHeldTaskQuery(db, isStandalone, { projectId: opts.projectId });
 
-  // Batched terminality: one query over the distinct task TYPES appearing
-  // among the held rows above - bounded by the org's own configuration, not
-  // by how many tasks are held, unlike a per-task query would be.
-  const typeIds = [...new Set(heldRows.map((r: any) => r.taskTypeId).filter(Boolean))] as string[];
-  const statusesByType = new Map<string, any[]>(typeIds.map((id) => [id, []]));
-  if (typeIds.length > 0) {
-    const statusRows = await db.select().from(taskStatuses).where(inArray(taskStatuses.taskTypeId, typeIds));
-    for (const s of statusRows) statusesByType.get(s.taskTypeId)?.push(s);
-  }
-
-  const openHeld: any[] = [];
-  for (const r of heldRows) {
-    const terminal = await isTerminalStatus(
-      db, isStandalone, r.taskTypeId ?? null, r.status,
-      r.taskTypeId ? statusesByType.get(r.taskTypeId) ?? [] : undefined,
-    );
-    if (!terminal) openHeld.push(r);
-  }
-
-  const withSilence = openHeld.map((r) => {
+  const withSilence = (heldRows as any[]).map((r) => {
     const lastSignalAt = decodeSqlTimestamp(r.lastSignalRaw);
     const claimedAt = decodeSqlTimestamp(r.claimedRaw);
     const assignedAt = decodeSqlTimestamp(r.assignedRaw);

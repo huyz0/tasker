@@ -60,7 +60,7 @@ for the list query every board load and agent poll runs.
 - [x] `ClaimTask` on a task in a terminal status fails with
   `FailedPrecondition`, and `ListTasks(assigneeFilter="unassigned")` excludes
   terminal tasks.
-- [ ] A stalled-claim candidate whose dedup row already exists (another
+- [x] A stalled-claim candidate whose dedup row already exists (another
   replica alerted it) is neither published, notified nor emailed.
 - [ ] `tasks` carries an index serving `project_id + deleted_at` ordered by
   `created_at, id`, on both dialects, with `indexCoverage.test.ts` green.
@@ -95,7 +95,7 @@ for the list query every board load and agent poll runs.
 - [x] **M30-T03** — Terminal tasks are not claimable and not offered as unassigned work.
   - **Files**: `modules/tasks/tasks.handler.ts`
   - **Verify**: tasks handler tests.
-- [ ] **M30-T04** — The stalled-claim sweep skips candidates another replica already recorded.
+- [x] **M30-T04** — The stalled-claim sweep skips candidates another replica already recorded.
   - **Files**: `lib/stalledClaimAlerts.ts`
   - **Verify**: `stalledClaimAlerts.test.ts` dedup-conflict case.
 - [ ] **M30-T05** — Indexes for the task list and the retention sweep, both dialects.

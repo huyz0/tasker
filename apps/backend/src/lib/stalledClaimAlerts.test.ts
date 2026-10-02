@@ -222,6 +222,36 @@ describe("runStalledClaimAlertSweep - dedup", () => {
     expect(sent).toHaveLength(1);
   });
 
+  // M30-T04: two backend replicas run the same hourly sweep. Both read "not
+  // yet alerted", both try to record; the unique (task_id, anchor_at) index
+  // lets exactly one win. The loser used to log the conflict and alert anyway.
+  it("two concurrent sweeps (two replicas) alert, notify and publish exactly once", async () => {
+    const { db } = await setupIntegrationTest();
+    const base = await seedOrg(db, "d4r");
+    const projectId = await seedProject(db, base, "d4r");
+    const agentId = await seedAgent(db, base, "d4r");
+    const rev = await seedUser(db, "d4r-rev", { email: "rev4r@test.local" });
+    const taskId = await seedTask(db, projectId, "d4r");
+    await seedHold(db, taskId, agentId);
+    await recordActivity(db, { taskId, projectId, kind: "claimed", occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
+    await seedReviewer(db, taskId, rev);
+
+    const a = fakeMailer();
+    const b = fakeMailer();
+    const published: string[] = [];
+    const nc = { publish: (subject: string) => { published.push(subject); } };
+    await Promise.all([
+      runStalledClaimAlertSweep(db, true, a.mailer, nc),
+      runStalledClaimAlertSweep(db, true, b.mailer, nc),
+    ]);
+
+    expect(a.sent.length + b.sent.length).toBe(1);
+    expect(published.filter((p) => p === "domain.task.stalled")).toHaveLength(1);
+    const notes = await db.select().from(schema.notifications).where(eq(schema.notifications.userId, rev));
+    expect(notes).toHaveLength(1);
+    expect(await alertRowsFor(db, taskId)).toHaveLength(1);
+  });
+
   it("a task unassigned and reclaimed gets a new anchor and becomes eligible again", async () => {
     const { db, nc } = await setupIntegrationTest();
     const base = await seedOrg(db, "d5");
