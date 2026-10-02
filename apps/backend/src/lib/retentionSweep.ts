@@ -1,7 +1,6 @@
-import { isNotNull, eq } from "drizzle-orm";
+import { and, isNotNull, isNull, eq } from "drizzle-orm";
 import * as schemaMysql from "../db/schema.mysql";
 import * as schemaSqlite from "../db/schema.sqlite";
-import { getProjectOrgId, getFolderOrgId } from "./authz";
 import {
   purgeTaskCascade,
   purgeArtifactCascade,
@@ -28,10 +27,50 @@ function isExpired(deletedAt: Date | string | null, retentionDays: number): bool
   return toTimestamp(deletedAt) <= cutoff;
 }
 
-async function getOrgRetentionDays(db: any, orgId: string): Promise<number> {
+/**
+ * Lookups one sweep repeats for every archived row, memoized for the length
+ * of that sweep (M30-T07): a project's org and an org's retention period do
+ * not change between two rows of the same hourly run, and resolving them per
+ * row was two to three queries each. Every read projects only the columns it
+ * needs - `SELECT *` on `artifacts` held each binned file's content in memory.
+ */
+function sweepLookups(db: any) {
   const schema = getSchema();
-  const rows = await db.select().from(schema.organizations).where(eq(schema.organizations.id, orgId)).limit(1);
-  return rows[0]?.binRetentionDays ?? DEFAULT_RETENTION_DAYS;
+  const retentionByOrg = new Map<string, number>();
+  const orgByLiveProject = new Map<string, string | null>();
+  const projectByFolder = new Map<string, string | null>();
+
+  async function retentionDays(orgId: string): Promise<number> {
+    const cached = retentionByOrg.get(orgId);
+    if (cached !== undefined) return cached;
+    const rows = await db.select({ days: schema.organizations.binRetentionDays })
+      .from(schema.organizations).where(eq(schema.organizations.id, orgId)).limit(1);
+    const days = rows[0]?.days ?? DEFAULT_RETENTION_DAYS;
+    retentionByOrg.set(orgId, days);
+    return days;
+  }
+
+  /** Null when the project is gone or itself archived - its own cascade owns its contents. */
+  async function orgOfLiveProject(projectId: string): Promise<string | null> {
+    if (orgByLiveProject.has(projectId)) return orgByLiveProject.get(projectId)!;
+    const rows = await db.select({ orgId: schema.projects.orgId }).from(schema.projects)
+      .where(and(eq(schema.projects.id, projectId), isNull(schema.projects.deletedAt))).limit(1);
+    const orgId = rows[0]?.orgId ?? null;
+    orgByLiveProject.set(projectId, orgId);
+    return orgId;
+  }
+
+  async function orgOfFolder(folderId: string): Promise<string | null> {
+    if (!projectByFolder.has(folderId)) {
+      const rows = await db.select({ projectId: schema.folders.projectId }).from(schema.folders)
+        .where(eq(schema.folders.id, folderId)).limit(1);
+      projectByFolder.set(folderId, rows[0]?.projectId ?? null);
+    }
+    const projectId = projectByFolder.get(folderId);
+    return projectId ? orgOfLiveProject(projectId) : null;
+  }
+
+  return { retentionDays, orgOfLiveProject, orgOfFolder };
 }
 
 /**
@@ -44,7 +83,7 @@ async function getOrgRetentionDays(db: any, orgId: string): Promise<number> {
  * still exists (only its deletedAt is cleared).
  */
 export async function stillExpired(db: any, table: any, id: string): Promise<boolean> {
-  const rows = await db.select().from(table).where(eq(table.id, id)).limit(1);
+  const rows = await db.select({ deletedAt: table.deletedAt }).from(table).where(eq(table.id, id)).limit(1);
   return !!rows[0]?.deletedAt;
 }
 
@@ -59,8 +98,11 @@ export async function stillExpired(db: any, table: any, id: string): Promise<boo
 export async function runRetentionSweep(db: any): Promise<Record<string, number>> {
   const schema = getSchema();
   const purged = { organizations: 0, projects: 0, tasks: 0, artifacts: 0, folders: 0, agents: 0 };
+  const lookups = sweepLookups(db);
 
-  const deletedOrgs = await db.select().from(schema.organizations).where(isNotNull(schema.organizations.deletedAt));
+  const deletedOrgs = await db
+    .select({ id: schema.organizations.id, deletedAt: schema.organizations.deletedAt, binRetentionDays: schema.organizations.binRetentionDays })
+    .from(schema.organizations).where(isNotNull(schema.organizations.deletedAt));
   for (const org of deletedOrgs) {
     try {
       if (isExpired(org.deletedAt, org.binRetentionDays ?? DEFAULT_RETENTION_DAYS) && await stillExpired(db, schema.organizations, org.id)) {
@@ -75,10 +117,12 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
     }
   }
 
-  const deletedProjects = await db.select().from(schema.projects).where(isNotNull(schema.projects.deletedAt));
+  const deletedProjects = await db
+    .select({ id: schema.projects.id, orgId: schema.projects.orgId, deletedAt: schema.projects.deletedAt })
+    .from(schema.projects).where(isNotNull(schema.projects.deletedAt));
   for (const project of deletedProjects) {
     try {
-      const retentionDays = await getOrgRetentionDays(db, project.orgId);
+      const retentionDays = await lookups.retentionDays(project.orgId);
       if (isExpired(project.deletedAt, retentionDays) && await stillExpired(db, schema.projects, project.id)) {
         await purgeProjectCascade(db, project.id);
         purged.projects++;
@@ -88,52 +132,64 @@ export async function runRetentionSweep(db: any): Promise<Record<string, number>
     }
   }
 
-  const deletedTasks = await db.select().from(schema.tasks).where(isNotNull(schema.tasks.deletedAt));
+  const deletedTasks = await db
+    .select({ id: schema.tasks.id, projectId: schema.tasks.projectId, deletedAt: schema.tasks.deletedAt })
+    .from(schema.tasks).where(isNotNull(schema.tasks.deletedAt));
   for (const task of deletedTasks) {
     try {
-      const orgId = await getProjectOrgId(db, task.projectId);
-      const retentionDays = await getOrgRetentionDays(db, orgId);
-      if (isExpired(task.deletedAt, retentionDays) && await stillExpired(db, schema.tasks, task.id)) {
+      // No live project: it was purged earlier in this sweep, or it is
+      // archived itself and its own cascade owns this task.
+      const orgId = await lookups.orgOfLiveProject(task.projectId);
+      if (!orgId) continue;
+      if (isExpired(task.deletedAt, await lookups.retentionDays(orgId)) && await stillExpired(db, schema.tasks, task.id)) {
         await purgeTaskCascade(db, task.id);
         purged.tasks++;
       }
-    } catch {
-      // Project (and this task with it) was already purged earlier in this sweep.
+    } catch (err) {
+      logger.error({ err, taskId: task.id }, "retention_sweep.task_failed");
     }
   }
 
-  const deletedFolders = await db.select().from(schema.folders).where(isNotNull(schema.folders.deletedAt));
+  const deletedFolders = await db
+    .select({ id: schema.folders.id, projectId: schema.folders.projectId, deletedAt: schema.folders.deletedAt })
+    .from(schema.folders).where(isNotNull(schema.folders.deletedAt));
   for (const folder of deletedFolders) {
     try {
-      const orgId = await getProjectOrgId(db, folder.projectId);
-      const retentionDays = await getOrgRetentionDays(db, orgId);
-      if (isExpired(folder.deletedAt, retentionDays) && await stillExpired(db, schema.folders, folder.id)) {
+      const orgId = await lookups.orgOfLiveProject(folder.projectId);
+      if (!orgId) continue;
+      if (isExpired(folder.deletedAt, await lookups.retentionDays(orgId)) && await stillExpired(db, schema.folders, folder.id)) {
         await purgeFolderCascade(db, folder.id);
         purged.folders++;
       }
-    } catch {
-      // Project already purged.
+    } catch (err) {
+      logger.error({ err, folderId: folder.id }, "retention_sweep.folder_failed");
     }
   }
 
-  const deletedArtifacts = await db.select().from(schema.artifacts).where(isNotNull(schema.artifacts.deletedAt));
+  const deletedArtifacts = await db
+    .select({ id: schema.artifacts.id, folderId: schema.artifacts.folderId, deletedAt: schema.artifacts.deletedAt })
+    .from(schema.artifacts).where(isNotNull(schema.artifacts.deletedAt));
   for (const artifact of deletedArtifacts) {
     try {
-      const orgId = await getFolderOrgId(db, artifact.folderId);
-      const retentionDays = await getOrgRetentionDays(db, orgId);
-      if (isExpired(artifact.deletedAt, retentionDays) && await stillExpired(db, schema.artifacts, artifact.id)) {
+      // A folder purged above takes its artifacts with it; the existence
+      // re-check below is what notices.
+      const orgId = await lookups.orgOfFolder(artifact.folderId);
+      if (!orgId) continue;
+      if (isExpired(artifact.deletedAt, await lookups.retentionDays(orgId)) && await stillExpired(db, schema.artifacts, artifact.id)) {
         await purgeArtifactCascade(db, artifact.id);
         purged.artifacts++;
       }
-    } catch {
-      // Folder (or its project) already purged.
+    } catch (err) {
+      logger.error({ err, artifactId: artifact.id }, "retention_sweep.artifact_failed");
     }
   }
 
-  const deletedAgents = await db.select().from(schema.agents).where(isNotNull(schema.agents.deletedAt));
+  const deletedAgents = await db
+    .select({ id: schema.agents.id, orgId: schema.agents.orgId, deletedAt: schema.agents.deletedAt })
+    .from(schema.agents).where(isNotNull(schema.agents.deletedAt));
   for (const agent of deletedAgents) {
     try {
-      const retentionDays = await getOrgRetentionDays(db, agent.orgId);
+      const retentionDays = await lookups.retentionDays(agent.orgId);
       if (isExpired(agent.deletedAt, retentionDays) && await stillExpired(db, schema.agents, agent.id)) {
         await purgeAgentCascade(db, agent.id);
         purged.agents++;

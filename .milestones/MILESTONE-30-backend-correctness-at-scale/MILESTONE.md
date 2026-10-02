@@ -106,7 +106,7 @@ for the list query every board load and agent poll runs.
 - [x] **M30-T06** — Agent token `lastUsedAt` is written at most once a minute per token.
   - **Files**: `lib/agentToken.ts`, `lib/authenticate.ts`
   - **Verify**: `agentToken.test.ts`.
-- [ ] **M30-T07** — The retention sweep reads ids only, never artifact content.
+- [x] **M30-T07** — The retention sweep reads ids only, never artifact content.
   - **Files**: `lib/retentionSweep.ts`
   - **Verify**: `retentionSweep.test.ts`.
 - [ ] **M30-T08** — Event-feed clients share one NATS subscription and hold a bounded, drop-oldest queue.

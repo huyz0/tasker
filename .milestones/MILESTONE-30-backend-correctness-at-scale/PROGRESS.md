@@ -109,3 +109,19 @@
   an LRU costs bookkeeping on every call. `authenticate.ts` is unchanged; the
   throttle lives where the write does.
 - **Next**: M30-T07
+
+## M30-T07 — The retention sweep reads ids, not rows
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/lib/retentionSweep.ts`, `retentionSweep.test.ts`
+- **Verified**: `bun test src/lib/retentionSweep.test.ts src/lib/cascadePurge.test.ts`
+  — 16 pass; the new "projects columns on every read" test failed first.
+- **Notes**: Every read now projects the two or three columns it uses, so the
+  hourly scan of binned artifacts no longer holds their base64 content in
+  memory. A project's org and an org's retention period are memoized for the
+  length of one sweep (`sweepLookups`) instead of re-queried per row. The
+  per-row `catch {}` blocks that silently ate *every* error — they were
+  written to absorb "parent already purged", which is now an explicit `null`
+  from the lookup — log what they catch, so a real failure is visible.
+- **Next**: M30-T08

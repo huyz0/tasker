@@ -113,6 +113,34 @@ describe("runRetentionSweep", () => {
     expect(Object.values(purged).every((n) => n === 0)).toBe(true);
   });
 
+  // M30-T07: the sweep ran `SELECT *` over every archived row of every table
+  // hourly - for artifacts that is the whole base64 content of every binned
+  // file, held in memory to read two columns.
+  test("projects columns on every read instead of selecting whole rows", async () => {
+    const { db } = await setupIntegrationTest();
+    const suffix = "proj-cols-" + Date.now();
+    await db.insert(schemaSqlite.users).values({ id: "u-" + suffix, email: `${suffix}@t.com`, createdAt: new Date() });
+    await db.insert(schemaSqlite.organizations).values({ id: "o-" + suffix, name: "O", slug: suffix, createdAt: new Date() });
+    await db.insert(schemaSqlite.projectTemplates).values({ id: "t-" + suffix, orgId: "o-" + suffix, name: "T", createdAt: new Date() });
+    await db.insert(schemaSqlite.projects).values({ id: "p-" + suffix, orgId: "o-" + suffix, templateId: "t-" + suffix, ownerId: "u-" + suffix, name: "P", createdAt: new Date() });
+    await db.insert(schemaSqlite.folders).values({ id: "f-" + suffix, projectId: "p-" + suffix, name: "F", createdAt: new Date() });
+    await db.insert(schemaSqlite.artifacts).values({ id: "a-" + suffix, folderId: "f-" + suffix, name: "A", content: "x".repeat(1000), createdAt: new Date(), deletedAt: daysAgo(1) });
+
+    let bareSelects = 0;
+    const spyDb = new Proxy(db, {
+      get(target, prop, receiver) {
+        const value = Reflect.get(target, prop, receiver);
+        if (prop !== "select" || typeof value !== "function") return value;
+        return (...args: any[]) => {
+          if (args.length === 0) bareSelects++;
+          return value.apply(target, args);
+        };
+      },
+    });
+    await runRetentionSweep(spyDb);
+    expect(bareSelects).toBe(0);
+  });
+
   test("independently purges an expired task, folder, artifact, and agent within a still-live project", async () => {
     const { db } = await setupIntegrationTest();
 
