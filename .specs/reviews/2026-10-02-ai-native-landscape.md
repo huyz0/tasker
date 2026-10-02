@@ -42,3 +42,30 @@ against Tasker after M34. It is the evidence behind M35–M38.
 
 Also: `ListTasks` has no label filter, so label-based routing is impossible
 — folded into M35.
+
+## Second pass (after M41)
+
+Re-checked after M35–M41 shipped, against what agent-first trackers added
+during 2026:
+
+| Product | What it added | Tasker after M41 |
+|---|---|---|
+| Linear | **Loops** (Jul–Sep 2026): recurring agent workflows on a schedule or trigger - "review stalled issues weekly", "prepare a planning brief". Agent Plans; coding sessions; model routing. | Plans: M38. Nothing recurring. |
+| Beads | **Formulas → molecules**: a reusable template of steps with dependencies, poured into a live set of issues an agent works through; dashboard shows each molecule's current step. | Dependencies and subtasks (M35), but no way to stamp out a graph of work from a template. |
+| GitHub Copilot | Session visibility, subagent activity, custom agents. | Plans, notes, activity feed (M22, M38). |
+| Taskfolk, clu | Agents as team members, MCP, atomic claims, dependency graphs, per-agent audit. | All present (M14, M33, M35, M36, audit). |
+| A2A | v1.0 task lifecycle incl. `input_required`, `auth_required`, `rejected`. | `input_required` ≈ input requests (M38); Tasker is a tracker, not an A2A agent. |
+
+New gaps, ranked:
+
+1. **Workflow templates** - a named graph of steps (title, priority, type,
+   blocked-by other steps) instantiated as a parent task plus subtasks wired
+   with blockers, so claim-next hands the steps out in order. → **M42**
+2. **Recurring work** - a schedule that instantiates a template (or a single
+   task) every day / chosen weekdays / month, skipping a run while the last
+   one is unfinished; agents pick it up through claim-next or webhooks.
+   Tasker does not run agents, so the tracker's part of a Loop is putting the
+   work on the queue on time. → **M43**
+
+Not taken: trigger-on-event loops (webhooks M37 already let a runner react to
+any task event), running models server-side (Tasker has none, ADR-0033/0034).
