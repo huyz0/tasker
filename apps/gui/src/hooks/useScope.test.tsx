@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, act } from '@testing-library/react';
+import { Link } from 'react-router-dom';
 import { renderScoped } from '../test/renderScoped';
 import { useLayoutStore } from '../store/layout';
 import { useScope, useSetScope, useScopeSync, useScopedTo } from './useScope';
@@ -78,6 +79,31 @@ describe('useSetScope', () => {
   });
 });
 
+describe('useSetScope after the user has navigated', () => {
+  // The switcher auto-selects a scope when its org list arrives. If the user
+  // clicked a sidebar link in the meantime, that late write used to resolve
+  // against the page the shell was rendered on and send them back there —
+  // the first click after load was silently undone.
+  let captured: ReturnType<typeof useSetScope> | null = null;
+  function Shell() {
+    const setScope = useSetScope();
+    captured ??= setScope;
+    return <Link to="/settings">Settings</Link>;
+  }
+
+  it('keeps the page the user moved to', () => {
+    captured = null;
+    const { location } = renderScoped(<Shell />, { paths: ['*'], initialEntry: '/' });
+    fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
+    expect(location.pathname).toBe('/settings');
+
+    act(() => captured!({ orgId: 'o1', projectId: 'p1' }, { replace: true }));
+
+    expect(location.pathname).toBe('/settings');
+    expect(location.search).toContain('org=o1');
+  });
+});
+
 describe('useScopeSync', () => {
   function Synced() {
     useScopeSync();
@@ -134,5 +160,26 @@ describe('useScopedTo', () => {
     // `?tab=` belongs to Bin, not to the next screen.
     renderScoped(<Linker to="/reports" />, { paths: ['/bin'], initialEntry: '/bin?org=o1&tab=tasks' });
     expect(screen.getByText('/reports?org=o1')).toBeInTheDocument();
+  });
+});
+
+describe('useSetScope under a browser router', () => {
+  it('writes onto the URL the browser is at, even before React has re-rendered', () => {
+    // Simulate the gap: the browser history has moved on (BrowserRouter's
+    // stamped state), the rendered location has not.
+    window.history.pushState({ key: 'k1', idx: 1, usr: null }, '', '/settings');
+    try {
+      let setScope: ReturnType<typeof useSetScope> | null = null;
+      function Grab() {
+        setScope = useSetScope();
+        return null;
+      }
+      const { location } = renderScoped(<Grab />, { paths: ['*'], initialEntry: '/' });
+      act(() => setScope!({ orgId: 'o1' }, { replace: true }));
+      expect(location.pathname).toBe('/settings');
+      expect(location.search).toBe('?org=o1');
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
   });
 });

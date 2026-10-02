@@ -1,5 +1,5 @@
-import { useCallback, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useRef } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLayoutStore } from '../store/layout';
 
 /**
@@ -59,32 +59,59 @@ export function useScope(): Scope {
  * user never chose should not leave the scopeless URL sitting in history for
  * the Back button to return to.
  */
+/**
+ * Where the user is *now*, not where they were at the last render.
+ *
+ * A render-time location is not enough: a sidebar click commits to history
+ * synchronously, but React re-renders a tick later, and the project
+ * auto-select measured landing 11ms after a click — inside that gap — and
+ * wrote the scope onto the page the user had just left. When the browser's
+ * history belongs to the router (BrowserRouter stamps a `key` into
+ * `history.state`), `window.location` is the live truth. Otherwise — a
+ * MemoryRouter, as in tests — the render-time location is the only one.
+ */
+function currentLocation(rendered: { pathname: string; search: string; hash: string }) {
+  if (typeof window !== 'undefined' && window.history.state && 'key' in window.history.state) {
+    const { pathname, search, hash } = window.location;
+    return { pathname, search, hash };
+  }
+  return rendered;
+}
+
 export function useSetScope() {
-  // The functional updater, deliberately: closing over `params` would make
-  // this callback change identity on every navigation, and the effects that
-  // correct scope (`Organizations`' snap-to-first, `Projects`' archive-clear)
-  // list it as a dependency. That churn re-runs them after every URL change,
-  // and where the correction's own condition is still true on the next pass
-  // it becomes an unbounded loop. `setParams` is stable, so this is too.
-  const [, setParams] = useSearchParams();
+  // Stable identity, deliberately: the effects that correct scope
+  // (`Organizations`' snap-to-first, `Projects`' archive-clear) list this as a
+  // dependency, and a callback that changed on every navigation re-ran them
+  // after every URL change — an unbounded loop where the correction's own
+  // condition stayed true.
+  //
+  // It reads the live location (see `currentLocation`) and navigates to an
+  // absolute path. `setSearchParams` did neither: its "?…" navigation resolved against
+  // the pathname the caller was rendered on, so the switcher's auto-select,
+  // landing after the user had already clicked a sidebar link, sent them back
+  // to the page they had just left.
+  const navigate = useNavigate();
+  const location = useLocation();
+  const latest = useRef(location);
+  latest.current = location;
   return useCallback(
     (next: Partial<Scope>, options?: { replace?: boolean }) => {
-      setParams(
-        (current) => {
-          const updated = new URLSearchParams(current);
-          const apply = (key: string, value: string | undefined) => {
-            if (value === undefined) return;
-            if (value) updated.set(key, value);
-            else updated.delete(key);
-          };
-          apply(ORG_PARAM, next.orgId);
-          apply(PROJECT_PARAM, next.projectId);
-          return updated;
-        },
-        { replace: options?.replace ?? false },
-      );
+      const { pathname, search, hash } = currentLocation(latest.current);
+      const updated = new URLSearchParams(search);
+      const apply = (key: string, value: string | undefined) => {
+        if (value === undefined) return;
+        if (value) updated.set(key, value);
+        else updated.delete(key);
+      };
+      apply(ORG_PARAM, next.orgId);
+      apply(PROJECT_PARAM, next.projectId);
+      const query = updated.toString();
+      navigate({ pathname, search: query ? `?${query}` : '', hash }, { replace: options?.replace ?? false });
     },
-    [setParams],
+    // Empty on purpose: the target is absolute and read from the ref, so the
+    // first render's `navigate` is as correct as any later one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 }
 
