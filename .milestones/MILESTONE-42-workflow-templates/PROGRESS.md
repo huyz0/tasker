@@ -115,3 +115,15 @@
   template's own, for a project-scoped template), defaulting to the active
   one. Exit criteria met; CI on `main` verified after the push.
 - **Next**: M43-T01
+
+## M42 follow-up — GUI build on main
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `features/Workflows/index.test.tsx` (`rerender()` takes no
+  element in this repo's `renderScoped`).
+- **Verified**: `gui:build` (whose `tsc -b` also checks test files, unlike
+  `gui:typecheck`) green; the Workflows tests pass.
+- **Notes**: CI on `90795fc` was red on GUI build and the standalone binary
+  (which builds the GUI) for this one type error. `gui:build` joins the
+  local pre-push checks so it is caught before a push.

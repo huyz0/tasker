@@ -205,7 +205,7 @@ describe('WorkflowsScreen (M42)', () => {
     const { rerender } = renderScreen('/workflows/w1');
     await screen.findByRole('list', { name: 'Workflow steps' });
     mockActiveOrgId = 'org-2';
-    rerender(<WorkflowsScreen />);
+    rerender();
     expect(await screen.findByText('Choose a workflow on the left, or create one.')).toBeInTheDocument();
   });
 });
