@@ -71,8 +71,22 @@ Severity follows the `design-review` skill: Critical and Major block.
 
 ## Fixes
 
-See the commits on `chore/ui-design-review`. Each finding above is either
-fixed there or listed under *Deferred* below.
+All Critical and Major findings and the token findings are fixed on
+`chore/ui-design-review`. Verification at the last commit:
+
+- `gui:design-lint` passes. It also gained three rules: the ellipsis rule
+  that now works, the multi-line div-`onClick` rule, and a check for
+  runtime token references.
+- `tsc -b` is clean.
+- vitest passes: 1,206 tests.
+- Playwright e2e passes: 47 of 47 on a freshly seeded backend.
+
+Fixing the e2e suite surfaced one more defect, now fixed.
+
+**The first click after load was undone.** The org/project switcher's
+auto-select wrote the URL scope onto the page the shell had *rendered* on. It
+landed 11ms after a sidebar click and sent the user back to where they had
+been (`hooks/useScope.ts`).
 
 ## Deferred
 
@@ -81,6 +95,17 @@ fixed there or listed under *Deferred* below.
   feature, so it is better done as its own change.
 - **Brand mark.** The shell uses the generic lucide `Activity` icon. A real
   mark is a brand decision, not a review fix.
+- **A shared `formatDateTime` helper.** Tasks, Handoffs, Memory, Bin,
+  AgentTokens and CommentItem each build the same `Intl.DateTimeFormat`.
+- **A page-scroll mode for `VirtualList`.** Projects and Roles dropped their
+  inner scroll boxes, so they render every loaded row. That is fine at
+  today's page sizes.
+- **Remaining copy and label work:**
+  - Button labels are still in Title Case ("Ping Backend", "Load More").
+  - The "Recent completions" label on Reports is all caps.
+  - Handoffs shows raw status values (`in_progress`).
+  - Register has no brand mark.
+  - Set password still disables submit until the fields are valid.
 - **Light-mode greys** are still the stock shadcn slate. They are consistent
   (one cool family) and pass contrast, so changing them is taste, not a
   defect.
