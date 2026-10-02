@@ -551,6 +551,37 @@ tasker tasks compaction-candidates --older-than-days 30
   full history is still one call away.
 - `task.summary_updated` reaches the event feed and [webhooks](webhooks.md).
 
+## 17. Workflows: repeatable multi-step work
+
+A workflow template is a named set of steps where some steps wait on others
+(M42, ADR-0035). Starting one creates a parent task and one subtask per step,
+each blocked by the steps it waits for - so `claim-next` hands the steps out
+in order, with no extra coordination.
+
+```bash
+# People define the template (or use Workflows in the GUI).
+tasker workflows create --name "Security review" \
+  --step "scan:Run the dependency scan" \
+  --step "triage:Triage findings:scan" \
+  --step "report:Write the report:triage"
+
+# Anyone - an agent included - starts it in a project.
+tasker workflows start "$WF" --project "$P" --title "Q4 security review" --idempotency-key q4
+
+tasker tasks claim-next --project "$P"   # the scan step; triage once scan is done
+```
+
+- Steps can also come from a JSON file (`--file`, `-` for stdin): an array
+  of `{key, title, description, priority, taskTypeId, status, dependsOn}`, or
+  `{name, description, steps}`.
+- A template is checked when saved: unique keys, known dependencies, no
+  cycles, at most 50 steps. Agents read and start templates (`tasks:read`,
+  `tasks:write`; MCP `list_workflow_templates`, `get_workflow_template`,
+  `start_workflow`); only people define or delete them.
+- Starting is all or nothing, and idempotent by key. The result is ordinary
+  tasks: editing the template later does not change a running instance.
+- `task.workflow_started` reaches the event feed and [webhooks](webhooks.md).
+
 ## See also
 
 - [Connecting an MCP client](mcp.md) — the same loop as MCP tools, for any
@@ -571,6 +602,8 @@ tasker tasks compaction-candidates --older-than-days 30
   micro-dollars, against a task.
 - `ADR-0034` in `.specs/adr/` — why compaction is a written summary plus a
   digest assembled at read time, and never deletes history.
+- `ADR-0035` in `.specs/adr/` — why a workflow is a stored step graph
+  started as ordinary tasks.
 - `ADR-0027` in `.specs/adr/` — why an agent may release a claim it took but
   never an assignment a person gave it.
 - `.agents/skills/capture-belief/SKILL.md` — the same §9 guidance, written

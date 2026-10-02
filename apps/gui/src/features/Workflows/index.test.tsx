@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { WorkflowService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { ProjectService, WorkflowService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 import { renderScoped } from '../../test/renderScoped';
 import { WorkflowsScreen } from './index';
@@ -32,6 +32,7 @@ describe('WorkflowsScreen (M42)', () => {
     mockActiveProjectId = 'proj-1';
     mockRpc(WorkflowService, 'ListWorkflowTemplates', { templates: [release], page: {} });
     mockRpc(WorkflowService, 'GetWorkflowTemplate', { template: release });
+    mockRpc(ProjectService, 'ListProjects', { projects: [{ id: 'proj-0', name: 'Alpha' }, { id: 'proj-1', name: 'Beta' }], page: {} });
   });
 
   it('asks for an organization first', () => {
@@ -61,16 +62,33 @@ describe('WorkflowsScreen (M42)', () => {
     expect(requests).toEqual([{ templateId: 'w1', projectId: 'proj-1', title: 'Release 4.2' }]);
   });
 
-  it('needs a project to start one, and reports a refused start', async () => {
-    mockActiveProjectId = null;
-    const { unmount } = renderScreen('/workflows/w1');
-    expect(await screen.findByText('Select a project to start this workflow in it.')).toBeInTheDocument();
-    unmount();
-    mockActiveProjectId = 'proj-1';
-    mockRpcError(WorkflowService, 'InstantiateWorkflow', 'failed_precondition', 'this workflow template belongs to another project');
+  it('starts in a chosen project, defaulting to the active one, and reports a refused start', async () => {
+    const requests: any[] = [];
+    mockRpc(WorkflowService, 'InstantiateWorkflow', (body) => { requests.push(body); throw new Error('this workflow template belongs to another project'); });
     renderScreen('/workflows/w1');
-    fireEvent.click(await screen.findByRole('button', { name: 'Start workflow' }));
+    const select = await screen.findByLabelText('Project');
+    expect(select).toHaveValue('proj-1');
+    fireEvent.change(select, { target: { value: 'proj-0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start workflow' }));
     expect(await screen.findByText(/Could not start: .*another project/)).toBeInTheDocument();
+    expect(requests[0]).toMatchObject({ templateId: 'w1', projectId: 'proj-0' });
+  });
+
+  it('with no active project, preselects the first; a project template offers only its project', async () => {
+    mockActiveProjectId = null;
+    mockRpc(WorkflowService, 'GetWorkflowTemplate', { template: { ...release, projectId: 'proj-1' } });
+    renderScreen('/workflows/w1');
+    const select = await screen.findByLabelText('Project');
+    expect(select).toHaveValue('proj-1');
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Beta']);
+  });
+
+  it('says when there is no project, and retries a failed project list', async () => {
+    let calls = 0;
+    mockRpc(ProjectService, 'ListProjects', () => { calls++; if (calls === 1) throw new Error('down'); return { projects: [], page: {} }; });
+    renderScreen('/workflows/w1');
+    fireEvent.click(await screen.findByRole('button', { name: /retry|try again/i }));
+    expect(await screen.findByText('There is no project to start this workflow in.')).toBeInTheDocument();
   });
 
   it('creates a workflow and opens it', async () => {
@@ -149,7 +167,7 @@ describe('WorkflowsScreen (M42)', () => {
     fireEvent.click(await screen.findByRole('button', { name: /retry|try again/i }));
     expect(await screen.findByRole('list', { name: 'Workflow steps' })).toBeInTheDocument();
     expect(screen.queryByText('Cut it')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Start workflow' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start workflow' }));
     expect(await screen.findByText(/with 1 step\./)).toBeInTheDocument();
   });
 

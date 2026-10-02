@@ -95,3 +95,23 @@
   coverage under 95%; the gap was closed with tests for its retry, empty,
   error and pending paths rather than by lowering the bar.
 - **Next**: M42-T06
+
+## M42-T06 — Docs and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/agent-integration.md` §17; `tests/e2e/workflows.spec.ts`
+  (new); `features/Workflows/index.tsx` (Start picks the project) and its
+  tests; milestone closed, STATE.
+- **Verified**: full Playwright suite on a fresh seed, 51 passed (the new
+  spec defines a two-step workflow in the GUI, starts it and opens the
+  parent); `gui:test` 1314 pass, branch coverage 95.24%; live CLI smoke - a
+  JSON template piped on stdin, an agent starts it, claim-next hands out the
+  first step, an agent creating a template is refused (exit 3), a cycle is
+  refused naming the steps (exit 6).
+- **Notes**: The e2e run found a real gap: Start relied on an active
+  project, and after choosing an organization there is none, so the button
+  never appeared. The panel now lists the org's projects (only the
+  template's own, for a project-scoped template), defaulting to the active
+  one. Exit criteria met; CI on `main` verified after the push.
+- **Next**: M43-T01

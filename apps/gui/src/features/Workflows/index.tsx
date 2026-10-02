@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
-import { WorkflowService, type WorkflowTemplate } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { ProjectService, WorkflowService, type WorkflowTemplate } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore } from '../../store/layout';
 import { useScopedTo } from '../../hooks/useScope';
 import { ListState } from '../../components/ui/ListState';
@@ -12,6 +12,7 @@ import { WorkflowEditor, draftFrom, type WorkflowDraft } from './WorkflowEditor'
 import { priorityLabel } from '../Tasks/priority';
 
 const workflowClient = createClient(WorkflowService, transport);
+const projectClient = createClient(ProjectService, transport);
 
 function toRequestSteps(draft: WorkflowDraft) {
   return draft.steps.map((s) => ({
@@ -23,25 +24,49 @@ function toRequestSteps(draft: WorkflowDraft) {
 
 interface StartPanelProps {
   template: WorkflowTemplate;
-  projectId: string | null;
+  orgId: string;
+  /** The active project, preselected; any project of the org may be chosen. */
+  activeProjectId: string | null;
 }
 
-/** Start the workflow in the active project: a parent task plus its wired steps. */
-function StartPanel({ template, projectId }: StartPanelProps) {
+/** Start the workflow in a project: a parent task plus its wired steps. */
+function StartPanel({ template, orgId, activeProjectId }: StartPanelProps) {
   const [title, setTitle] = useState('');
+  const [chosen, setChosen] = useState<string>('');
   const scopedTo = useScopedTo();
   const queryClient = useQueryClient();
+  const projects = useQuery({
+    queryKey: ['projects', 'workflow-start', orgId],
+    queryFn: async () => (await projectClient.listProjects({ orgId, page: { limit: 100 } })).projects,
+  });
+  // A template scoped to one project can only start there.
+  const options = (projects.data ?? []).filter((p) => !template.projectId || p.id === template.projectId);
+  const projectId = chosen || (options.some((p) => p.id === activeProjectId) ? activeProjectId! : options[0]?.id ?? '');
   const start = useMutation({
-    mutationFn: async () => workflowClient.instantiateWorkflow({ templateId: template.id, projectId: projectId!, title: title.trim() || undefined }),
+    mutationFn: async () => workflowClient.instantiateWorkflow({ templateId: template.id, projectId, title: title.trim() || undefined }),
     onSuccess: () => { setTitle(''); queryClient.invalidateQueries({ queryKey: ['tasks'] }); },
   });
-  if (!projectId) return <p className="text-sm text-muted-foreground">Select a project to start this workflow in it.</p>;
+  if (projects.isLoading || projects.error) {
+    return <ListState isLoading={projects.isLoading} error={projects.error} isEmpty={false} emptyMessage="" loadingMessage="Loading projects…" onRetry={() => projects.refetch()} />;
+  }
+  if (options.length === 0) return <p className="text-sm text-muted-foreground">There is no project to start this workflow in.</p>;
   return (
     <div className="flex flex-col gap-2">
       <form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(e) => { e.preventDefault(); start.mutate(); }}
       >
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground" htmlFor="workflow-run-project">Project</label>
+          <select
+            id="workflow-run-project"
+            value={projectId}
+            onChange={(e) => setChosen(e.target.value)}
+            className="text-sm rounded-md border bg-background px-2 py-1"
+          >
+            {options.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
         <div className="flex flex-col gap-1 flex-1 min-w-48">
           <label className="text-xs text-muted-foreground" htmlFor="workflow-run-title">Title for this run</label>
           <input
@@ -226,7 +251,7 @@ export function WorkflowsScreen() {
               </ol>
               <section className="flex flex-col gap-2">
                 <h3 className="text-sm font-semibold tracking-tight">Start</h3>
-                <StartPanel template={detail.data} projectId={activeProjectId} />
+                <StartPanel template={detail.data} orgId={activeOrgId} activeProjectId={activeProjectId} />
               </section>
             </div>
           )}

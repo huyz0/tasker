@@ -1,13 +1,13 @@
 ---
 id: M42
 title: Workflow Templates
-status: in-progress
+status: done
 goal: A team defines a repeatable piece of work once - its steps and which step waits on which - and anyone, person or agent, stamps out a live copy in one call, so agents work through the steps in dependency order without anyone wiring blockers by hand.
 depends_on: [M35]
 surfaces: [contract, backend, cli, gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M42 — Workflow Templates
@@ -30,13 +30,13 @@ something to instantiate.
 
 ## 3. Exit Criteria
 
-- [ ] Templates are validated on save: unique keys, known keys, no cycles,
+- [x] Templates are validated on save: unique keys, known keys, no cycles,
   at most 50 steps; CRUD needs `tasktype:write`, reading `tasks:read`.
-- [ ] `InstantiateWorkflow` creates the parent, the steps and their blockers
+- [x] `InstantiateWorkflow` creates the parent, the steps and their blockers
   in one transaction, idempotent by key; agents may call it (`tasks:write`).
-- [ ] Ready-work and claim-next respect step order (a step with an open
+- [x] Ready-work and claim-next respect step order (a step with an open
   blocker is not ready).
-- [ ] CLI, MCP tools, GUI template editor and "Start workflow"; CI green on
+- [x] CLI, MCP tools, GUI template editor and "Start workflow"; CI green on
   `main`.
 
 ## 4. Scope
@@ -52,7 +52,7 @@ instance is ordinary tasks once created).
 - [x] **M42-T03** — InstantiateWorkflow.
 - [x] **M42-T04** — CLI and MCP.
 - [x] **M42-T05** — GUI.
-- [ ] **M42-T06** — Docs and close.
+- [x] **M42-T06** — Docs and close.
 
 ## 6. Verification
 
