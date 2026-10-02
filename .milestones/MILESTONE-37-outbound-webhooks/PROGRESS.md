@@ -95,3 +95,25 @@
   not call `lookup` for those) and a name that resolves privately via
   `safeLookup`, before a byte is sent.
 - **Next**: M37-T05
+
+## M37-T05 — CLI
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/webhooks.go` (+ `webhooks_test.go`),
+  `apps/cli/internal/backend/clients.go`, `docs/cli-reference.md`
+- **Verified**: `moon run cli:format cli:vet cli:test cli:docs-check
+  cli:coverage-gate` green, coverage 94.5%. **Live, standalone, no NATS**:
+  with `WEBHOOKS_ALLOW_PRIVATE=true` and a local receiver that recomputes the
+  HMAC from the secret `webhooks create` printed, `webhooks ping` and then
+  `tasks create` x2 / `update-status done` produced four deliveries - ping,
+  task.created x2, task.unblocked - every signature verified by the receiver,
+  every row `delivered after 1 attempt HTTP 204` in `webhooks deliveries`; the
+  status change itself, outside the filter, was not sent; an agent token's
+  `webhooks list` exited 3.
+- **Notes**: `webhooks create|list|update|delete|rotate-secret|ping|
+  deliveries`. The secret prints once with a label saying so; `update`
+  sends only the flags given (`--enable`/`--disable` are exclusive and exit
+  6 together); `deliveries` pages like every list (`--cursor`, `--page-all`,
+  `--json`).
+- **Next**: M37-T06

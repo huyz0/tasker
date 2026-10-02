@@ -74,3 +74,7 @@ func NewTaskTypeServiceClient() v1connect.TaskTypeServiceClient {
 func NewTeamServiceClient() v1connect.TeamServiceClient {
 	return v1connect.NewTeamServiceClient(http.DefaultClient, URL(), ClientOptions()...)
 }
+
+func NewWebhookServiceClient() v1connect.WebhookServiceClient {
+	return v1connect.NewWebhookServiceClient(http.DefaultClient, URL(), ClientOptions()...)
+}

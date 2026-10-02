@@ -2125,3 +2125,125 @@ Usage:
 Flags:
   -h, --help   help for restore
 ```
+
+### `tasker webhooks`
+
+```
+Each matching task event is POSTed as JSON with X-Tasker-Event, X-Tasker-Delivery,
+X-Tasker-Timestamp and X-Tasker-Signature (sha256=HMAC of "<timestamp>.<body>" with the
+webhook's secret). Delivery is at least once; failures retry with backoff, and a webhook
+that keeps failing is disabled. See docs/webhooks.md.
+
+Usage:
+  tasker webhooks [command]
+
+Available Commands:
+  create        Register an HTTPS endpoint; prints its signing secret once
+  delete        Delete a webhook and its delivery history
+  deliveries    Recent deliveries to a webhook, newest first
+  list          List an organization's webhooks
+  ping          Queue a "ping" delivery to check the receiver end to end
+  rotate-secret Replace a webhook's signing secret; prints the new one once
+  update        Change a webhook's URL, events or description, or enable/disable it
+
+Flags:
+  -h, --help   help for webhooks
+```
+
+#### `tasker webhooks create`
+
+```
+Register an HTTPS endpoint; prints its signing secret once
+
+Usage:
+  tasker webhooks create [flags]
+
+Flags:
+      --description string   What the endpoint is for
+      --event strings        Event type, "task.*"/"tasknote.*", or "*" (repeat or comma-separate)
+  -h, --help                 help for create
+      --org string           Organization ID (or set TASKER_ORG_ID)
+      --project string       Only this project's events (default: the whole organization)
+      --url string           HTTPS endpoint to POST events to
+```
+
+#### `tasker webhooks delete`
+
+```
+Delete a webhook and its delivery history
+
+Usage:
+  tasker webhooks delete [webhook_id] [flags]
+
+Flags:
+  -h, --help   help for delete
+```
+
+#### `tasker webhooks deliveries`
+
+```
+Recent deliveries to a webhook, newest first
+
+Usage:
+  tasker webhooks deliveries [webhook_id] [flags]
+
+Flags:
+  -c, --cursor string   Pagination cursor to fetch the next set
+  -h, --help            help for deliveries
+  -l, --limit int32     Maximum number of items to return (default 50)
+      --page-all        Fetch every page, printing one JSON object per item per line (NDJSON)
+```
+
+#### `tasker webhooks list`
+
+```
+List an organization's webhooks
+
+Usage:
+  tasker webhooks list [flags]
+
+Flags:
+  -h, --help         help for list
+      --org string   Organization ID (or set TASKER_ORG_ID)
+```
+
+#### `tasker webhooks ping`
+
+```
+Queue a "ping" delivery to check the receiver end to end
+
+Usage:
+  tasker webhooks ping [webhook_id] [flags]
+
+Flags:
+  -h, --help   help for ping
+```
+
+#### `tasker webhooks rotate-secret`
+
+```
+Replace a webhook's signing secret; prints the new one once
+
+Usage:
+  tasker webhooks rotate-secret [webhook_id] [flags]
+
+Flags:
+  -h, --help   help for rotate-secret
+```
+
+#### `tasker webhooks update`
+
+```
+Change a webhook's URL, events or description, or enable/disable it
+
+Usage:
+  tasker webhooks update [webhook_id] [flags]
+
+Flags:
+      --description string   New description
+      --disable              Pause the webhook
+      --enable               Turn the webhook on (clears its failure count)
+      --event strings        Replace the event filter (repeat or comma-separate)
+  -h, --help                 help for update
+      --url string           New HTTPS endpoint
+```
