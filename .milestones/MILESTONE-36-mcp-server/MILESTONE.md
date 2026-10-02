@@ -1,12 +1,12 @@
 ---
 id: M36
 title: MCP Server
-status: todo
+status: in-progress
 goal: Any MCP-capable agent can work a Tasker queue — find, claim, update, note, hand off and search memory — by pointing its client at one URL with its agent token, with exactly the permissions that token already has.
 depends_on: [M35]
 surfaces: [backend, cli, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-10-02
 completed_at: null
 ---
 
@@ -55,7 +55,7 @@ issued by Tasker's own agent-token flow).
 
 ## 5. Task Breakdown
 
-- [ ] **M36-T01** — ADR-0029; JSON-RPC core: initialize, ping, tools/list, errors.
+- [x] **M36-T01** — ADR-0029; JSON-RPC core: initialize, ping, tools/list, errors.
   - **Files**: `.specs/adr/ADR-0029-*.md`, `apps/backend/src/modules/mcp/*` (+ test)
 - [ ] **M36-T02** — The tool catalogue and its loopback dispatch.
   - **Files**: `apps/backend/src/modules/mcp/tools.ts` (+ test)
