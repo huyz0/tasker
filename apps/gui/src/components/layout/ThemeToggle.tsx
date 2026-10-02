@@ -23,7 +23,7 @@ export function ThemeToggle() {
     <div
       role="radiogroup"
       aria-label="Colour theme"
-      className="flex rounded-md border overflow-hidden"
+      className="inline-flex shrink-0 rounded-md border overflow-hidden"
     >
       {OPTIONS.map(({ value, label, Icon }) => (
         <button
@@ -33,13 +33,13 @@ export function ThemeToggle() {
           aria-label={label}
           title={label}
           onClick={() => setTheme(value)}
-          className={`px-2 py-1.5 ${
+          className={`p-1.5 transition-colors ${
             theme === value
               ? 'bg-secondary text-secondary-foreground'
               : 'bg-background text-muted-foreground hover:text-foreground'
           }`}
         >
-          <Icon className="w-4 h-4" />
+          <Icon className="w-3.5 h-3.5" aria-hidden="true" />
         </button>
       ))}
     </div>

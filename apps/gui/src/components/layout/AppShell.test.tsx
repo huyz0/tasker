@@ -188,3 +188,32 @@ describe('notification bell (M29-T07)', () => {
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'Notifications' })).toHaveLength(2));
   });
 });
+
+describe('keyboard and screen-reader affordances', () => {
+  beforeEach(() => useLayoutStore.setState({ sidebarOpen: false }));
+
+  test('the first focusable element skips to the page content', () => {
+    renderShell();
+    const skip = screen.getByRole('link', { name: 'Skip to content' });
+    expect(skip).toHaveAttribute('href', '#main');
+    expect(document.querySelector('main#main')).not.toBeNull();
+    // Nothing precedes it in tab order.
+    const focusables = document.querySelectorAll('a[href],button,input,select,textarea,[tabindex="0"]');
+    expect(focusables[0]).toBe(skip);
+  });
+
+  test('the menu button reports whether the drawer it controls is open', () => {
+    renderShell();
+    const toggle = screen.getByRole('button', { name: 'Toggle Sidebar' });
+    expect(toggle).toHaveAttribute('aria-controls', 'app-sidebar');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test('the theme toggle is mounted once, in the sidebar footer, for every width', () => {
+    renderShell();
+    expect(screen.getAllByRole('radiogroup', { name: 'Colour theme' })).toHaveLength(1);
+    expect(document.querySelector('aside')!.contains(screen.getByRole('radiogroup'))).toBe(true);
+  });
+});

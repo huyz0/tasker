@@ -110,16 +110,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col md:flex-row bg-background">
+    <div className="flex min-h-dvh w-full flex-col md:flex-row bg-background">
+      {/* First focusable element on every page: a keyboard user otherwise tabs
+          through search, bell, two switchers and sixteen nav links to reach
+          the page they opened. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-overlay focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-md"
+      >
+        Skip to content
+      </a>
+
       {/* Mobile Header Menu */}
       <header className="sticky top-0 z-header flex justify-between h-14 items-center border-b bg-card px-4 md:hidden">
         <div className="flex items-center gap-4">
-          <button onClick={toggleSidebar} className="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent text-foreground">
-            <Menu className="h-5 w-5" />
+          <button
+            onClick={toggleSidebar}
+            aria-expanded={sidebarOpen}
+            aria-controls="app-sidebar"
+            className="inline-flex items-center justify-center rounded-md p-2 hover:bg-accent text-foreground"
+          >
+            <Menu className="h-5 w-5" aria-hidden="true" />
             <span className="sr-only">Toggle Sidebar</span>
           </button>
           <div className="font-semibold text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
+            <Activity className="h-5 w-5 text-primary" aria-hidden="true" />
             Tasker
           </div>
         </div>
@@ -130,7 +145,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <LiveStatusIndicator status={liveStatus} />
           <GlobalSearchTrigger compact />
           <NotificationBell orgId={activeOrgId} />
-          <ThemeToggle />
+          {/* The theme toggle used to sit here too, and at 375px its third
+              button was clipped by the avatar. It lives in the drawer's
+              footer now, which is one tap away and has the room. */}
           <CurrentUser />
         </div>
       </header>
@@ -148,10 +165,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar Navigation */}
       <aside
+        id="app-sidebar"
         ref={sidebarRef}
         data-focus-trap={sidebarOpen ? 'on' : undefined}
         tabIndex={-1}
-        className={`fixed inset-y-0 left-0 z-drawer w-sidebar border-r bg-card transition-transform md:relative md:translate-x-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-drawer w-sidebar border-r bg-card transition-transform md:sticky md:top-0 md:h-dvh md:shrink-0 md:translate-x-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div className="flex h-full flex-col">
           {/* Was `h-14 md:h-[60px]` — two different "header height" values
@@ -161,8 +179,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               `md:hidden`), so nothing broke — but a design system with two
               unreconciled answers to "how tall is the header" is still wrong,
               just quietly. One value, Tailwind's own `h-14`, everywhere. */}
-          <div className="flex h-14 items-center px-6 border-b font-semibold text-lg gap-2">
-            <Activity className="h-5 w-5 text-primary" />
+          <div className="flex h-14 shrink-0 items-center px-6 border-b font-semibold text-lg gap-2">
+            <Activity className="h-5 w-5 text-primary" aria-hidden="true" />
             Tasker
           </div>
           <div className="hidden md:flex flex-col gap-3 px-4 py-3 border-b">
@@ -174,9 +192,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   user has no bell at all. */}
               <NotificationBell orgId={activeOrgId} />
             </div>
-            {/* The header above is `md:hidden`, so a desktop user would never
-                have seen the toggle if it only lived there. */}
-            <ThemeToggle />
           </div>
           <OrgProjectSwitcher />
           <nav className="flex-1 space-y-4 overflow-y-auto scrollbar-thin p-4">
@@ -184,11 +199,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div key={group.label} role="group" aria-labelledby={`nav-group-${group.label}`}>
                 <div
                   id={`nav-group-${group.label}`}
-                  className="px-3 pb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide"
+                  className="px-3 pb-1 text-xs font-medium text-muted-foreground"
                 >
                   {group.label}
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {group.items.map((item) => {
                     const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
                     return (
@@ -200,13 +215,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         // pathname effect never fires and the drawer stayed open over
                         // it (M06-T10).
                         onClick={() => setSidebarOpen(false)}
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
+                        className={`flex items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors ${
                           isActive
                             ? 'bg-primary-subtle text-primary-subtle-foreground font-medium'
                             : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                         }`}
                       >
-                        <item.icon className={`h-4 w-4 ${isActive ? 'text-primary' : ''}`} />
+                        <item.icon aria-hidden="true" className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : ''}`} />
                         {item.name}
                       </Link>
                     );
@@ -218,8 +233,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* This carried an opacity modifier on the border-width utility,
               which Tailwind never generates — so the sidebar footer had no top
               border at all. The opacity belongs on the colour (M06-T12). */}
-          <div className="p-4 border-t border-border/50 mt-auto">
-             <div className="flex items-center justify-between gap-3 py-2 px-3 text-sm text-muted-foreground">
+          <div className="p-4 border-t border-border/50 mt-auto shrink-0">
+             <div className="flex items-center justify-between gap-3 py-2 px-3 text-sm text-muted-foreground min-w-0">
                 {/* Was a hardcoded "Tuong Nguyen / Admin" - the same name and
                     the same role for every account that ever signed in. */}
                 <CurrentUser />
@@ -228,18 +243,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   aria-label="Log out"
                   className="rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
                 </button>
              </div>
-             <div className="px-3 pb-1 text-xs text-muted-foreground font-mono">
-               build {__BUILD_SHA__.slice(0, 7)}
+             {/* One home for the theme toggle at every width: the drawer on
+                 mobile, the column on desktop. */}
+             <div className="flex items-center justify-between gap-3 px-3 pt-1">
+               <span className="text-xs text-muted-foreground font-mono">
+                 build {__BUILD_SHA__.slice(0, 7)}
+               </span>
+               <ThemeToggle />
              </div>
           </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-x-hidden">
+      {/* The skip link's target. Programmatic focus only (tabIndex -1), and a
+          ring around the whole page body would be noise, not a focus cue.
+          design-lint-disable-next-line wig — focus target, not a control */}
+      <main id="main" tabIndex={-1} className="flex-1 min-w-0 p-4 md:p-8 lg:p-12 overflow-x-hidden outline-none">
         {children}
       </main>
 

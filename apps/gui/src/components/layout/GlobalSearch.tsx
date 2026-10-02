@@ -112,12 +112,14 @@ export function GlobalSearchTrigger({ compact = false }: { compact?: boolean }) 
         compact ? 'p-2 shrink-0' : 'px-3 py-1.5 w-full justify-between'
       }`}
     >
-      <span className="flex items-center gap-2">
-        <Search className="w-4 h-4 shrink-0" />
-        <span className={compact ? 'sr-only' : undefined}>Search tasks, artifacts…</span>
+      <span className="flex min-w-0 items-center gap-2">
+        <Search className="w-4 h-4 shrink-0" aria-hidden="true" />
+        {/* One line, always: at the sidebar's width this wrapped onto two
+            centred lines, which made the trigger read as a paragraph. */}
+        <span className={compact ? 'sr-only' : 'truncate'}>Search tasks, artifacts…</span>
       </span>
       {!compact && (
-        <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-2xs font-medium text-muted-foreground opacity-100">
+        <kbd className="hidden md:inline-flex shrink-0 h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-2xs font-medium text-muted-foreground opacity-100">
           <span className="text-xs">⌘</span>K
         </kbd>
       )}
