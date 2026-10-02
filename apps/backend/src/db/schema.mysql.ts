@@ -814,3 +814,26 @@ export const transitionApprovals = mysqlTable("transition_approvals", {
     orgStatusIdx: index("transition_approvals_org_id_status_created_idx").on(table.orgId, table.status, table.createdAt),
   };
 });
+
+// M40 (ADR-0033). See schema.sqlite.ts.
+export const usageRecords = mysqlTable("usage_records", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull(),
+  orgId: varchar("org_id", { length: 256 }).notNull(),
+  projectId: varchar("project_id", { length: 256 }).notNull(),
+  agentId: varchar("agent_id", { length: 256 }),
+  userId: varchar("user_id", { length: 256 }),
+  modelName: varchar("model_name", { length: 100 }).notNull().default(""),
+  inputTokens: bigint("input_tokens", { mode: "number" }).notNull().default(0),
+  outputTokens: bigint("output_tokens", { mode: "number" }).notNull().default(0),
+  costMicros: bigint("cost_micros", { mode: "number" }).notNull().default(0),
+  idempotencyKey: varchar("idempotency_key", { length: 256 }),
+  createdAt: timestamp("created_at").notNull(),
+}, (table) => {
+  return {
+    taskCreatedIdx: index("usage_records_task_id_created_idx").on(table.taskId, table.createdAt),
+    orgCreatedIdx: index("usage_records_org_id_created_idx").on(table.orgId, table.createdAt),
+    projectCreatedIdx: index("usage_records_project_id_created_idx").on(table.projectId, table.createdAt),
+    taskKeyIdx: uniqueIndex("usage_records_task_id_key_idx").on(table.taskId, table.idempotencyKey),
+  };
+});

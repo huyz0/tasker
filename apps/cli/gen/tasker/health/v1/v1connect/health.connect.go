@@ -292,6 +292,11 @@ const (
 	// TaskServiceListTransitionApprovalsProcedure is the fully-qualified name of the TaskService's
 	// ListTransitionApprovals RPC.
 	TaskServiceListTransitionApprovalsProcedure = "/tasker.health.v1.TaskService/ListTransitionApprovals"
+	// TaskServiceReportUsageProcedure is the fully-qualified name of the TaskService's ReportUsage RPC.
+	TaskServiceReportUsageProcedure = "/tasker.health.v1.TaskService/ReportUsage"
+	// TaskServiceListUsageRecordsProcedure is the fully-qualified name of the TaskService's
+	// ListUsageRecords RPC.
+	TaskServiceListUsageRecordsProcedure = "/tasker.health.v1.TaskService/ListUsageRecords"
 	// ArtifactServiceCreateFolderProcedure is the fully-qualified name of the ArtifactService's
 	// CreateFolder RPC.
 	ArtifactServiceCreateFolderProcedure = "/tasker.health.v1.ArtifactService/CreateFolder"
@@ -420,6 +425,9 @@ const (
 	// ReportServiceGetReportTrendsProcedure is the fully-qualified name of the ReportService's
 	// GetReportTrends RPC.
 	ReportServiceGetReportTrendsProcedure = "/tasker.health.v1.ReportService/GetReportTrends"
+	// ReportServiceGetUsageReportProcedure is the fully-qualified name of the ReportService's
+	// GetUsageReport RPC.
+	ReportServiceGetUsageReportProcedure = "/tasker.health.v1.ReportService/GetUsageReport"
 	// TeamServiceCreateTeamProcedure is the fully-qualified name of the TeamService's CreateTeam RPC.
 	TeamServiceCreateTeamProcedure = "/tasker.health.v1.TeamService/CreateTeam"
 	// TeamServiceUpdateTeamProcedure is the fully-qualified name of the TeamService's UpdateTeam RPC.
@@ -628,6 +636,8 @@ var (
 	taskServiceDecideTransitionApprovalMethodDescriptor           = taskServiceServiceDescriptor.Methods().ByName("DecideTransitionApproval")
 	taskServiceGetTransitionApprovalMethodDescriptor              = taskServiceServiceDescriptor.Methods().ByName("GetTransitionApproval")
 	taskServiceListTransitionApprovalsMethodDescriptor            = taskServiceServiceDescriptor.Methods().ByName("ListTransitionApprovals")
+	taskServiceReportUsageMethodDescriptor                        = taskServiceServiceDescriptor.Methods().ByName("ReportUsage")
+	taskServiceListUsageRecordsMethodDescriptor                   = taskServiceServiceDescriptor.Methods().ByName("ListUsageRecords")
 	artifactServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
 	artifactServiceCreateFolderMethodDescriptor                   = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
 	artifactServiceUpdateFolderMethodDescriptor                   = artifactServiceServiceDescriptor.Methods().ByName("UpdateFolder")
@@ -679,6 +689,7 @@ var (
 	reportServiceServiceDescriptor                                = v1.File_tasker_health_v1_health_proto.Services().ByName("ReportService")
 	reportServiceGetReportExceptionsMethodDescriptor              = reportServiceServiceDescriptor.Methods().ByName("GetReportExceptions")
 	reportServiceGetReportTrendsMethodDescriptor                  = reportServiceServiceDescriptor.Methods().ByName("GetReportTrends")
+	reportServiceGetUsageReportMethodDescriptor                   = reportServiceServiceDescriptor.Methods().ByName("GetUsageReport")
 	teamServiceServiceDescriptor                                  = v1.File_tasker_health_v1_health_proto.Services().ByName("TeamService")
 	teamServiceCreateTeamMethodDescriptor                         = teamServiceServiceDescriptor.Methods().ByName("CreateTeam")
 	teamServiceUpdateTeamMethodDescriptor                         = teamServiceServiceDescriptor.Methods().ByName("UpdateTeam")
@@ -2383,6 +2394,8 @@ type TaskServiceClient interface {
 	DecideTransitionApproval(context.Context, *connect.Request[v1.DecideTransitionApprovalRequest]) (*connect.Response[v1.DecideTransitionApprovalResponse], error)
 	GetTransitionApproval(context.Context, *connect.Request[v1.GetTransitionApprovalRequest]) (*connect.Response[v1.GetTransitionApprovalResponse], error)
 	ListTransitionApprovals(context.Context, *connect.Request[v1.ListTransitionApprovalsRequest]) (*connect.Response[v1.ListTransitionApprovalsResponse], error)
+	ReportUsage(context.Context, *connect.Request[v1.ReportUsageRequest]) (*connect.Response[v1.ReportUsageResponse], error)
+	ListUsageRecords(context.Context, *connect.Request[v1.ListUsageRecordsRequest]) (*connect.Response[v1.ListUsageRecordsResponse], error)
 }
 
 // NewTaskServiceClient constructs a client for the tasker.health.v1.TaskService service. By
@@ -2569,6 +2582,18 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(taskServiceListTransitionApprovalsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		reportUsage: connect.NewClient[v1.ReportUsageRequest, v1.ReportUsageResponse](
+			httpClient,
+			baseURL+TaskServiceReportUsageProcedure,
+			connect.WithSchema(taskServiceReportUsageMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listUsageRecords: connect.NewClient[v1.ListUsageRecordsRequest, v1.ListUsageRecordsResponse](
+			httpClient,
+			baseURL+TaskServiceListUsageRecordsProcedure,
+			connect.WithSchema(taskServiceListUsageRecordsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -2603,6 +2628,8 @@ type taskServiceClient struct {
 	decideTransitionApproval *connect.Client[v1.DecideTransitionApprovalRequest, v1.DecideTransitionApprovalResponse]
 	getTransitionApproval    *connect.Client[v1.GetTransitionApprovalRequest, v1.GetTransitionApprovalResponse]
 	listTransitionApprovals  *connect.Client[v1.ListTransitionApprovalsRequest, v1.ListTransitionApprovalsResponse]
+	reportUsage              *connect.Client[v1.ReportUsageRequest, v1.ReportUsageResponse]
+	listUsageRecords         *connect.Client[v1.ListUsageRecordsRequest, v1.ListUsageRecordsResponse]
 }
 
 // CreateTask calls tasker.health.v1.TaskService.CreateTask.
@@ -2750,6 +2777,16 @@ func (c *taskServiceClient) ListTransitionApprovals(ctx context.Context, req *co
 	return c.listTransitionApprovals.CallUnary(ctx, req)
 }
 
+// ReportUsage calls tasker.health.v1.TaskService.ReportUsage.
+func (c *taskServiceClient) ReportUsage(ctx context.Context, req *connect.Request[v1.ReportUsageRequest]) (*connect.Response[v1.ReportUsageResponse], error) {
+	return c.reportUsage.CallUnary(ctx, req)
+}
+
+// ListUsageRecords calls tasker.health.v1.TaskService.ListUsageRecords.
+func (c *taskServiceClient) ListUsageRecords(ctx context.Context, req *connect.Request[v1.ListUsageRecordsRequest]) (*connect.Response[v1.ListUsageRecordsResponse], error) {
+	return c.listUsageRecords.CallUnary(ctx, req)
+}
+
 // TaskServiceHandler is an implementation of the tasker.health.v1.TaskService service.
 type TaskServiceHandler interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
@@ -2781,6 +2818,8 @@ type TaskServiceHandler interface {
 	DecideTransitionApproval(context.Context, *connect.Request[v1.DecideTransitionApprovalRequest]) (*connect.Response[v1.DecideTransitionApprovalResponse], error)
 	GetTransitionApproval(context.Context, *connect.Request[v1.GetTransitionApprovalRequest]) (*connect.Response[v1.GetTransitionApprovalResponse], error)
 	ListTransitionApprovals(context.Context, *connect.Request[v1.ListTransitionApprovalsRequest]) (*connect.Response[v1.ListTransitionApprovalsResponse], error)
+	ReportUsage(context.Context, *connect.Request[v1.ReportUsageRequest]) (*connect.Response[v1.ReportUsageResponse], error)
+	ListUsageRecords(context.Context, *connect.Request[v1.ListUsageRecordsRequest]) (*connect.Response[v1.ListUsageRecordsResponse], error)
 }
 
 // NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -2963,6 +3002,18 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(taskServiceListTransitionApprovalsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskServiceReportUsageHandler := connect.NewUnaryHandler(
+		TaskServiceReportUsageProcedure,
+		svc.ReportUsage,
+		connect.WithSchema(taskServiceReportUsageMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceListUsageRecordsHandler := connect.NewUnaryHandler(
+		TaskServiceListUsageRecordsProcedure,
+		svc.ListUsageRecords,
+		connect.WithSchema(taskServiceListUsageRecordsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskServiceCreateTaskProcedure:
@@ -3023,6 +3074,10 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceGetTransitionApprovalHandler.ServeHTTP(w, r)
 		case TaskServiceListTransitionApprovalsProcedure:
 			taskServiceListTransitionApprovalsHandler.ServeHTTP(w, r)
+		case TaskServiceReportUsageProcedure:
+			taskServiceReportUsageHandler.ServeHTTP(w, r)
+		case TaskServiceListUsageRecordsProcedure:
+			taskServiceListUsageRecordsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -3146,6 +3201,14 @@ func (UnimplementedTaskServiceHandler) GetTransitionApproval(context.Context, *c
 
 func (UnimplementedTaskServiceHandler) ListTransitionApprovals(context.Context, *connect.Request[v1.ListTransitionApprovalsRequest]) (*connect.Response[v1.ListTransitionApprovalsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListTransitionApprovals is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ReportUsage(context.Context, *connect.Request[v1.ReportUsageRequest]) (*connect.Response[v1.ReportUsageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ReportUsage is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ListUsageRecords(context.Context, *connect.Request[v1.ListUsageRecordsRequest]) (*connect.Response[v1.ListUsageRecordsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListUsageRecords is not implemented"))
 }
 
 // ArtifactServiceClient is a client for the tasker.health.v1.ArtifactService service.
@@ -4512,6 +4575,7 @@ func (UnimplementedDashboardServiceHandler) GetDashboard(context.Context, *conne
 type ReportServiceClient interface {
 	GetReportExceptions(context.Context, *connect.Request[v1.GetReportExceptionsRequest]) (*connect.Response[v1.GetReportExceptionsResponse], error)
 	GetReportTrends(context.Context, *connect.Request[v1.GetReportTrendsRequest]) (*connect.Response[v1.GetReportTrendsResponse], error)
+	GetUsageReport(context.Context, *connect.Request[v1.GetUsageReportRequest]) (*connect.Response[v1.GetUsageReportResponse], error)
 }
 
 // NewReportServiceClient constructs a client for the tasker.health.v1.ReportService service. By
@@ -4536,6 +4600,12 @@ func NewReportServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(reportServiceGetReportTrendsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getUsageReport: connect.NewClient[v1.GetUsageReportRequest, v1.GetUsageReportResponse](
+			httpClient,
+			baseURL+ReportServiceGetUsageReportProcedure,
+			connect.WithSchema(reportServiceGetUsageReportMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -4543,6 +4613,7 @@ func NewReportServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 type reportServiceClient struct {
 	getReportExceptions *connect.Client[v1.GetReportExceptionsRequest, v1.GetReportExceptionsResponse]
 	getReportTrends     *connect.Client[v1.GetReportTrendsRequest, v1.GetReportTrendsResponse]
+	getUsageReport      *connect.Client[v1.GetUsageReportRequest, v1.GetUsageReportResponse]
 }
 
 // GetReportExceptions calls tasker.health.v1.ReportService.GetReportExceptions.
@@ -4555,10 +4626,16 @@ func (c *reportServiceClient) GetReportTrends(ctx context.Context, req *connect.
 	return c.getReportTrends.CallUnary(ctx, req)
 }
 
+// GetUsageReport calls tasker.health.v1.ReportService.GetUsageReport.
+func (c *reportServiceClient) GetUsageReport(ctx context.Context, req *connect.Request[v1.GetUsageReportRequest]) (*connect.Response[v1.GetUsageReportResponse], error) {
+	return c.getUsageReport.CallUnary(ctx, req)
+}
+
 // ReportServiceHandler is an implementation of the tasker.health.v1.ReportService service.
 type ReportServiceHandler interface {
 	GetReportExceptions(context.Context, *connect.Request[v1.GetReportExceptionsRequest]) (*connect.Response[v1.GetReportExceptionsResponse], error)
 	GetReportTrends(context.Context, *connect.Request[v1.GetReportTrendsRequest]) (*connect.Response[v1.GetReportTrendsResponse], error)
+	GetUsageReport(context.Context, *connect.Request[v1.GetUsageReportRequest]) (*connect.Response[v1.GetUsageReportResponse], error)
 }
 
 // NewReportServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -4579,12 +4656,20 @@ func NewReportServiceHandler(svc ReportServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(reportServiceGetReportTrendsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	reportServiceGetUsageReportHandler := connect.NewUnaryHandler(
+		ReportServiceGetUsageReportProcedure,
+		svc.GetUsageReport,
+		connect.WithSchema(reportServiceGetUsageReportMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.ReportService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ReportServiceGetReportExceptionsProcedure:
 			reportServiceGetReportExceptionsHandler.ServeHTTP(w, r)
 		case ReportServiceGetReportTrendsProcedure:
 			reportServiceGetReportTrendsHandler.ServeHTTP(w, r)
+		case ReportServiceGetUsageReportProcedure:
+			reportServiceGetUsageReportHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -4600,6 +4685,10 @@ func (UnimplementedReportServiceHandler) GetReportExceptions(context.Context, *c
 
 func (UnimplementedReportServiceHandler) GetReportTrends(context.Context, *connect.Request[v1.GetReportTrendsRequest]) (*connect.Response[v1.GetReportTrendsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ReportService.GetReportTrends is not implemented"))
+}
+
+func (UnimplementedReportServiceHandler) GetUsageReport(context.Context, *connect.Request[v1.GetUsageReportRequest]) (*connect.Response[v1.GetUsageReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.ReportService.GetUsageReport is not implemented"))
 }
 
 // TeamServiceClient is a client for the tasker.health.v1.TeamService service.

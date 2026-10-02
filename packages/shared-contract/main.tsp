@@ -889,6 +889,9 @@ model Task {
 
   // M39 (ADR-0032): agent moves on this task waiting for approval.
   @field(17) pendingApprovalCount: int32;
+
+  // M40 (ADR-0033): what agents reported this task cost. GetTask only.
+  @field(18) usage?: UsageTotals;
 }
 
 // M38 (ADR-0031). status: "pending", "in_progress", "done" or "skipped".
@@ -1258,6 +1261,55 @@ model ListTransitionApprovalsResponse {
   @field(2) page: PageResponse;
 }
 
+// M40 (ADR-0033). Cost is integer micro-dollars (1 USD = 1,000,000), never a
+// float; tokens and cost are whatever the reporting agent measured.
+model UsageTotals {
+  @field(1) inputTokens: int64;
+  @field(2) outputTokens: int64;
+  @field(3) costMicros: int64;
+  @field(4) reports: int64;
+}
+
+model UsageRecord {
+  @field(1) id: string;
+  @field(2) taskId: string;
+  @field(3) projectId: string;
+  @field(4) agentId?: string;
+  @field(5) userId?: string;
+  @field(6) reportedByName: string;
+  @field(7) modelName: string;
+  @field(8) inputTokens: int64;
+  @field(9) outputTokens: int64;
+  @field(10) costMicros: int64;
+  @field(11) createdAt: string;
+}
+
+// Replaying an idempotencyKey on the same task returns the original record
+// with replayed = true, and records nothing.
+model ReportUsageRequest {
+  @field(1) taskId: string;
+  @field(2) modelName?: string;
+  @field(3) inputTokens: int64;
+  @field(4) outputTokens: int64;
+  @field(5) costMicros: int64;
+  @field(6) idempotencyKey?: string;
+}
+model ReportUsageResponse {
+  @field(1) record: UsageRecord;
+  @field(2) totals: UsageTotals;
+  @field(3) replayed: boolean;
+}
+
+model ListUsageRecordsRequest {
+  @field(1) taskId: string;
+  @field(2) page?: PageRequest;
+}
+model ListUsageRecordsResponse {
+  @field(1) records: UsageRecord[];
+  @field(2) totals: UsageTotals;
+  @field(3) page: PageResponse;
+}
+
 model UpdateTaskRequest {
   @field(1) taskId: string;
   @field(2) title?: string;
@@ -1388,6 +1440,8 @@ interface TaskService {
   listTransitionApprovals(
     request: ListTransitionApprovalsRequest,
   ): ListTransitionApprovalsResponse;
+  reportUsage(request: ReportUsageRequest): ReportUsageResponse;
+  listUsageRecords(request: ListUsageRecordsRequest): ListUsageRecordsResponse;
 }
 
 // ==== Artifacts ====
@@ -2227,6 +2281,30 @@ model GetReportExceptionsResponse {
   @field(10) priorHumanCompleted: int64;
 }
 
+// M40 (ADR-0033): agent spend over a window, for an organization or one
+// project. `days` is 1-365 (default 30). `key` is the agent, project or
+// UTC day (YYYY-MM-DD); `label` is its display name. People only.
+model UsageBucket {
+  @field(1) key: string;
+  @field(2) label: string;
+  @field(3) inputTokens: int64;
+  @field(4) outputTokens: int64;
+  @field(5) costMicros: int64;
+  @field(6) reports: int64;
+}
+model GetUsageReportRequest {
+  @field(1) orgId?: string;
+  @field(2) projectId?: string;
+  @field(3) days?: int32;
+}
+model GetUsageReportResponse {
+  @field(1) totals: UsageTotals;
+  @field(2) byAgent: UsageBucket[];
+  @field(3) byProject: UsageBucket[];
+  @field(4) byDay: UsageBucket[];
+  @field(5) since: string;
+}
+
 model GetReportTrendsRequest {
   @field(1) projectId: string;
   @field(2) windowDays: int32;
@@ -2295,6 +2373,7 @@ interface ReportService {
     request: GetReportExceptionsRequest,
   ): GetReportExceptionsResponse;
   getReportTrends(request: GetReportTrendsRequest): GetReportTrendsResponse;
+  getUsageReport(request: GetUsageReportRequest): GetUsageReportResponse;
 }
 
 // ==== Teams (M10-T07, ADR-0013) ====

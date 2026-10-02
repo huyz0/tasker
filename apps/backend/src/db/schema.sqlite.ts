@@ -1039,3 +1039,27 @@ export const transitionApprovals = sqliteTable("transition_approvals", {
     orgStatusIdx: index("transition_approvals_org_id_status_created_idx").on(table.orgId, table.status, table.createdAt),
   };
 });
+
+// M40 (ADR-0033). What a principal reported one piece of work on a task cost.
+// Cost is integer micro-dollars; sqlite integers are 64-bit.
+export const usageRecords = sqliteTable("usage_records", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull(),
+  orgId: text("org_id").notNull(),
+  projectId: text("project_id").notNull(),
+  agentId: text("agent_id"),
+  userId: text("user_id"),
+  modelName: text("model_name").notNull().default(""),
+  inputTokens: integer("input_tokens").notNull().default(0),
+  outputTokens: integer("output_tokens").notNull().default(0),
+  costMicros: integer("cost_micros").notNull().default(0),
+  idempotencyKey: text("idempotency_key"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    taskCreatedIdx: index("usage_records_task_id_created_idx").on(table.taskId, table.createdAt),
+    orgCreatedIdx: index("usage_records_org_id_created_idx").on(table.orgId, table.createdAt),
+    projectCreatedIdx: index("usage_records_project_id_created_idx").on(table.projectId, table.createdAt),
+    taskKeyIdx: uniqueIndex("usage_records_task_id_key_idx").on(table.taskId, table.idempotencyKey),
+  };
+});

@@ -1,12 +1,12 @@
 ---
 id: M40
 title: Agent Usage and Cost
-status: todo
+status: in-progress
 goal: Agents report the tokens and money each piece of work cost, and people see it per task, per agent and per project - so the cost of autonomous work is visible where the work is.
 depends_on: [M35]
 surfaces: [contract, backend, cli, gui, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-10-02
 completed_at: null
 ---
 
@@ -42,7 +42,7 @@ alerts on spend - candidates once the numbers exist.
 
 ## 5. Task Breakdown
 
-- [ ] **M40-T01** — Contract and schema.
+- [x] **M40-T01** — Contract and schema.
 - [ ] **M40-T02** — ReportUsage, task totals, usage report.
 - [ ] **M40-T03** — CLI and MCP.
 - [ ] **M40-T04** — GUI.

@@ -738,6 +738,8 @@ message Task {
   int32 openInputRequestCount = 16;
   // M39 (ADR-0032).
   int32 pendingApprovalCount = 17;
+  // M40 (ADR-0033). GetTask only.
+  optional UsageTotals usage = 18;
 }
 
 // M38 (ADR-0031). See main.tsp.
@@ -1043,6 +1045,49 @@ message ListTransitionApprovalsResponse {
   PageResponse page = 2;
 }
 
+// M40 (ADR-0033). See main.tsp.
+message UsageTotals {
+  int64 inputTokens = 1;
+  int64 outputTokens = 2;
+  int64 costMicros = 3;
+  int64 reports = 4;
+}
+message UsageRecord {
+  string id = 1;
+  string taskId = 2;
+  string projectId = 3;
+  optional string agentId = 4;
+  optional string userId = 5;
+  string reportedByName = 6;
+  string modelName = 7;
+  int64 inputTokens = 8;
+  int64 outputTokens = 9;
+  int64 costMicros = 10;
+  string createdAt = 11;
+}
+message ReportUsageRequest {
+  string taskId = 1;
+  optional string modelName = 2;
+  int64 inputTokens = 3;
+  int64 outputTokens = 4;
+  int64 costMicros = 5;
+  optional string idempotencyKey = 6;
+}
+message ReportUsageResponse {
+  UsageRecord record = 1;
+  UsageTotals totals = 2;
+  bool replayed = 3;
+}
+message ListUsageRecordsRequest {
+  string taskId = 1;
+  PageRequest page = 2;
+}
+message ListUsageRecordsResponse {
+  repeated UsageRecord records = 1;
+  UsageTotals totals = 2;
+  PageResponse page = 3;
+}
+
 message UpdateTaskRequest {
   string taskId = 1;
   optional string title = 2;
@@ -1148,6 +1193,8 @@ service TaskService {
   rpc DecideTransitionApproval(DecideTransitionApprovalRequest) returns (DecideTransitionApprovalResponse);
   rpc GetTransitionApproval(GetTransitionApprovalRequest) returns (GetTransitionApprovalResponse);
   rpc ListTransitionApprovals(ListTransitionApprovalsRequest) returns (ListTransitionApprovalsResponse);
+  rpc ReportUsage(ReportUsageRequest) returns (ReportUsageResponse);
+  rpc ListUsageRecords(ListUsageRecordsRequest) returns (ListUsageRecordsResponse);
 }
 
 message Folder {
@@ -1897,6 +1944,28 @@ message GetReportExceptionsResponse {
   int64 priorHumanCompleted = 10;
 }
 
+// M40 (ADR-0033). See main.tsp.
+message UsageBucket {
+  string key = 1;
+  string label = 2;
+  int64 inputTokens = 3;
+  int64 outputTokens = 4;
+  int64 costMicros = 5;
+  int64 reports = 6;
+}
+message GetUsageReportRequest {
+  optional string orgId = 1;
+  optional string projectId = 2;
+  optional int32 days = 3;
+}
+message GetUsageReportResponse {
+  UsageTotals totals = 1;
+  repeated UsageBucket byAgent = 2;
+  repeated UsageBucket byProject = 3;
+  repeated UsageBucket byDay = 4;
+  string since = 5;
+}
+
 message GetReportTrendsRequest {
   string projectId = 1;
   int32 windowDays = 2;
@@ -1958,6 +2027,7 @@ message GetReportTrendsResponse {
 service ReportService {
   rpc GetReportExceptions(GetReportExceptionsRequest) returns (GetReportExceptionsResponse);
   rpc GetReportTrends(GetReportTrendsRequest) returns (GetReportTrendsResponse);
+  rpc GetUsageReport(GetUsageReportRequest) returns (GetUsageReportResponse);
 }
 
 // ==== Teams (M10-T07, ADR-0013) ====
