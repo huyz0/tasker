@@ -1,13 +1,13 @@
 ---
 id: M36
 title: MCP Server
-status: in-progress
+status: done
 goal: Any MCP-capable agent can work a Tasker queue — find, claim, update, note, hand off and search memory — by pointing its client at one URL with its agent token, with exactly the permissions that token already has.
 depends_on: [M35]
 surfaces: [backend, cli, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M36 — MCP Server
@@ -33,17 +33,17 @@ against the CLI or the RPC API. M35 lands the work-graph tools it exposes.
 
 ## 3. Exit Criteria
 
-- [ ] `initialize`, `ping`, `tools/list` and `tools/call` behave per the MCP
+- [x] `initialize`, `ping`, `tools/list` and `tools/call` behave per the MCP
   specification (JSON-RPC 2.0 errors for malformed requests, unknown methods
   and unknown tools; tool failures as `isError` results).
-- [ ] Unauthenticated requests get 401 with `WWW-Authenticate: Bearer`; a tool
+- [x] Unauthenticated requests get 401 with `WWW-Authenticate: Bearer`; a tool
   the token's scopes do not allow fails exactly as the RPC would.
-- [ ] Every tool is a thin mapping onto an existing RPC — proven by a test that
+- [x] Every tool is a thin mapping onto an existing RPC — proven by a test that
   each tool's target method exists in the generated service descriptors.
-- [ ] An end-to-end test drives a real server over HTTP: initialize, list,
+- [x] An end-to-end test drives a real server over HTTP: initialize, list,
   claim-next, note, release.
-- [ ] `tasker mcp` relays stdio JSON-RPC to the endpoint with the CLI's token.
-- [ ] `docs/mcp.md` shows client configuration; CI green on `main`.
+- [x] `tasker mcp` relays stdio JSON-RPC to the endpoint with the CLI's token.
+- [x] `docs/mcp.md` shows client configuration; CI green on `main`.
 
 ## 4. Scope
 
@@ -63,7 +63,7 @@ issued by Tasker's own agent-token flow).
   - **Files**: `apps/backend/src/index.ts`, `apps/backend/src/modules/mcp/*.test.ts`
 - [x] **M36-T04** — `tasker mcp` stdio bridge.
   - **Files**: `apps/cli/cmd/mcp.go` (+ test), `docs/cli-reference.md`
-- [ ] **M36-T05** — Docs and close.
+- [x] **M36-T05** — Docs and close.
   - **Files**: `docs/mcp.md`, `docs/agent-integration.md`,
     `.specs/product/architecture.md`, `.milestones/STATE.md`
 

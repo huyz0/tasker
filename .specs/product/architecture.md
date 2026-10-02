@@ -69,6 +69,12 @@ One process serves everything (`apps/backend/src/index.ts`):
   *ready* when open, unassigned and with no unfinished, undeleted blocker;
   `ClaimNextTask` takes ready work by priority rank, and finishing a task
   publishes `domain.task.unblocked` for each dependent it freed.
+- **MCP is a translation, not a second API** (M36, ADR-0029): `POST /mcp`
+  (`modules/mcp/`) implements the protocol's lifecycle and tools statelessly,
+  and every tool is a declared mapping onto one existing RPC, called over
+  loopback with the caller's own `Authorization` header - so it passes through
+  the same interceptors, scopes and rate limit as a direct call. `tasker mcp`
+  relays stdio clients to it.
 
 Cross-cutting behaviour is implemented as Connect interceptors in `index.ts`:
 session resolution, request logging (`lib/requestLogging.ts`) and per-method
@@ -76,12 +82,12 @@ latency capture (`lib/rpcMetrics.ts`).
 
 ### Bounded contexts
 
-The backend is a **modular monolith**. Nineteen modules under
+The backend is a **modular monolith**. Twenty-one modules under
 `apps/backend/src/modules/` own their own handlers and schema access:
 
 `agents`, `artifacts`, `audit`, `auth`, `comments`, `dashboard`, `events`,
-`health`, `labels`, `memory`, `orgs`, `projects`, `reports`, `repositories`,
-`roles`, `search`, `tasks`, `teams`, `telemetry`.
+`health`, `labels`, `mcp`, `memory`, `notifications`, `orgs`, `projects`,
+`reports`, `repositories`, `roles`, `search`, `tasks`, `teams`, `telemetry`.
 
 Each exports a `create*Handler(router, db, nc)` factory registered in
 `index.ts`. Modules do not import one another's handlers; shared behaviour lives

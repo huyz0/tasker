@@ -432,6 +432,9 @@ Links need `tasks:write` (reading them, `tasks:read`); a viewer can do neither.
 
 ## See also
 
+- [Connecting an MCP client](mcp.md) — the same loop as MCP tools, for any
+  MCP-capable agent, over `<backend>/mcp` or `tasker mcp`.
+
 - `ADR-0008` in `.specs/adr/` — why tokens look the way they do, and what was
   rejected.
 - `ADR-0014`, `ADR-0015`, `ADR-0016` in `.specs/adr/` — shared memory's scope

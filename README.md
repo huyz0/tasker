@@ -79,6 +79,11 @@ worker gets a token, what the eleven scopes grant, what no token can do, and how
 to rotate without downtime. Start here if you are wiring a worker to Tasker
 rather than developing Tasker itself.
 
+[**Connecting an MCP client**](docs/mcp.md) — any MCP-capable agent can work a
+Tasker queue through `<backend>/mcp` (or `tasker mcp` over stdio) with its agent
+token: claim the next ready task, note, hand off, link follow-up work, search
+memory.
+
 ### Foundational context
 
 All foundational context is stored entirely within the `.specs/` directory.
@@ -132,7 +137,7 @@ instance, whichever way you are running it.
 
 Then: **[Standalone guide](docs/standalone.md)** for flags, upgrades and
 backups · **[Agent integration](docs/agent-integration.md)** for connecting an
-autonomous worker · **[CLI reference](docs/cli-reference.md)** for every
+autonomous worker · **[MCP](docs/mcp.md)** for MCP clients · **[CLI reference](docs/cli-reference.md)** for every
 command · **[Email](docs/email.md)** for invitation delivery.
 
 Everything below is for working *on* Tasker rather than running it.

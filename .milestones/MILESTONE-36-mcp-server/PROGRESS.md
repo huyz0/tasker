@@ -90,3 +90,20 @@
   skipped every later job. Fixed in 520c17f; the contract format check is now
   in this milestone's local verification.
 - **Next**: M36-T05
+
+## M36-T05 — Docs and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/mcp.md` (new), `docs/agent-integration.md`, `README.md`,
+  `.specs/product/architecture.md` (MCP; the module list, which had also
+  missed `notifications` since M29), `.milestones/STATE.md`
+- **Verified**: `moon run :docs-lint :doc-drift :spec-drift :skills-check`
+  green.
+- **Notes**: `docs/mcp.md` covers HTTP configuration (Claude Code and generic
+  JSON), the stdio relay, every tool with the RPC behind it, argument
+  validation, tool errors, and the limits: two rate-limit units per
+  `tools/call`, 401/403 refusals, no resources/prompts/streams/OAuth
+  discovery. M36 closed: 5/5 tasks, 6/6 criteria - each criterion is a test in
+  `src/modules/mcp/` or the live T04 run.
+- **Next**: M37-T01
