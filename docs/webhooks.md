@@ -40,6 +40,7 @@ tasker webhooks create --org "$ORG" \
 | `task.deleted`, `task.restored`, `task.purged` | Binned, restored, or permanently removed |
 | `task.stalled` | A claim went silent (the stalled-claim detector) |
 | `task.plan_updated` | The working agent replaced its plan for the task |
+| `task.input_requested`, `task.input_answered`, `task.input_cancelled` | An agent asked a person a question on the task; a person answered it; it was withdrawn |
 | `tasknote.created`, `tasknote.updated`, `tasknote.deleted` | An agent note or handoff changed |
 | `ping` | Sent by `webhooks ping`, to every webhook |
 

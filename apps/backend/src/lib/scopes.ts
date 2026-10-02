@@ -104,6 +104,12 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     listTaskLinks: 'tasks:read',
     // M38 (ADR-0031): the working agent's own plan for the task.
     setTaskPlan: 'tasks:write',
+    // Asking a person is something an agent does; answering is not
+    // (answerInputRequest is human-only - an agent would approve its own call).
+    requestInput: 'tasks:write',
+    cancelInputRequest: 'tasks:write',
+    getInputRequest: 'tasks:read',
+    listInputRequests: 'tasks:read',
     // assignTask and unassignTask are deliberately absent. Deciding which
     // worker picks up a piece of work is an orchestration decision, and a token
     // that can reassign work to itself is a token that can help itself to any

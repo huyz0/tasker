@@ -112,6 +112,28 @@ registerNotificationType('webhook.disabled', (p: WebhookDisabledPayload) => ({
   projectId: null,
 }));
 
+export interface InputRequestedPayload {
+  orgId: string;
+  projectId: string;
+  taskId: string;
+  inputRequestId: string;
+  taskDisplayId?: string;
+  question: string;
+  askedByName: string;
+}
+
+// M38 (ADR-0031): an agent stopped to ask a person something. The task's
+// reviewers hear first, else its organization's owners and admins - the same
+// people a stalled claim reaches.
+registerNotificationType('task.input_requested', (p: InputRequestedPayload) => ({
+  title: `${p.askedByName} asks on ${p.taskDisplayId ?? p.taskId}`,
+  body: p.question.length > 280 ? `${p.question.slice(0, 279)}…` : p.question,
+  targetPath: scoped(`/tasks/${p.taskId}`, p.orgId, p.projectId),
+  dedupeKey: p.inputRequestId,
+  orgId: p.orgId,
+  projectId: p.projectId,
+}));
+
 // ── The write path ─────────────────────────────────────────────────────────
 
 /**

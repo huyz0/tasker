@@ -11,6 +11,7 @@ import { withIdempotency } from "../../lib/idempotency";
 import { getLatestHandoffNote, recordTaskNote } from "./task_notes.handler";
 import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal, terminalStatusSql } from "./taskActivity";
 import { purgeTaskCascade } from "../../lib/cascadePurge";
+import { createInputRequestHandlers, openInputRequestCounts } from "./inputRequests";
 import { MAX_PRIORITY, priorityRankSql, LINK_KINDS, assertLinkAllowed, openBlockerCounts, hasOpenBlockerSql, newlyUnblocked, assertParentAllowed, insertLink, deleteLink, listLinks } from "./taskGraph";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -784,6 +785,8 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
   const taskTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
 
   return {
+    // M38 (ADR-0031): questions an agent asks a person, on this same service.
+    ...createInputRequestHandlers(db, nc, isStandalone),
     async createTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = CreateTaskSchema.parse(req);
@@ -937,7 +940,11 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // task is inspected, without a separate listTaskNotes call.
       const latestHandoffNote = await getLatestHandoffNote(db, t.id, isStandalone);
       return {
-        task: toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: await openBlockerCount(t.id) }),
+        task: toWireTask(t, {
+          assignees: assignees.get(t.id) ?? [],
+          blockedByOpenCount: await openBlockerCount(t.id),
+          openInputRequestCount: (await openInputRequestCounts(db, isStandalone, [t.id])).get(t.id) ?? 0,
+        }),
         ...(latestHandoffNote ? { latestHandoffNote } : {}),
       };
     },
@@ -1019,9 +1026,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
 
       const assignees = await assigneesByTask(items.map((t: any) => t.id));
       const blockers = await openBlockerCounts(db, isStandalone, items.map((t: any) => t.id));
+      const questions = await openInputRequestCounts(db, isStandalone, items.map((t: any) => t.id));
 
       return {
-        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: blockers.get(t.id) ?? 0 })),
+        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: blockers.get(t.id) ?? 0, openInputRequestCount: questions.get(t.id) ?? 0 })),
         page: { nextCursor, totalCount },
       };
     },
@@ -1057,8 +1065,9 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       });
       const assignees = await assigneesByTask(items.map((t: any) => t.id));
       const blockers = await openBlockerCounts(db, isStandalone, items.map((t: any) => t.id));
+      const questions = await openInputRequestCounts(db, isStandalone, items.map((t: any) => t.id));
       return {
-        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: blockers.get(t.id) ?? 0 })),
+        tasks: items.map((t: any) => toWireTask(t, { assignees: assignees.get(t.id) ?? [], blockedByOpenCount: blockers.get(t.id) ?? 0, openInputRequestCount: questions.get(t.id) ?? 0 })),
         page: { nextCursor, totalCount },
       };
     },

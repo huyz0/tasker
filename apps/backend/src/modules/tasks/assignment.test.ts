@@ -106,8 +106,9 @@ describe("assignees are readable", () => {
     // has a parent at all costs a query even when the answer is no - same
     // class of bump T05 already made this test's siblings absorb.
     // M35-T04: plus one grouped query for every row's open-blocker count -
-    // still one for the page, not one per task.
-    expect(queries).toBeLessThan(12);
+    // still one for the page, not one per task. M38-T03: likewise one for
+    // the page's open-question counts.
+    expect(queries).toBeLessThan(13);
   });
 });
 

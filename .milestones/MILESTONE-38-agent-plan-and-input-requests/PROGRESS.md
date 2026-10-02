@@ -41,3 +41,30 @@
   and done counts - added to the webhook event vocabulary, the GUI's event
   picker and the webhooks guide, so a watcher can follow progress.
 - **Next**: M38-T03
+
+## M38-T03 — Input requests
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/tasks/{inputRequests.ts,tasks.handler.ts}`
+  (+ `planAndInput.test.ts`, `assignment.test.ts` bound), `lib/notificationRegistry.ts`,
+  `lib/cascadePurge.ts`, `lib/scopes.ts`, `lib/{agent-scope-sweep,viewer-denial}.test.ts`,
+  `modules/webhooks/events.ts`, `apps/gui/src/features/Organizations/Webhooks.tsx`, `docs/webhooks.md`
+- **Verified**: backend `bun test` 1969 pass; knip, typecheck green. (M37's
+  `gui:storybook-test`, outstanding at its T06 commit, finished green: a11y,
+  and nothing wider than 375px across 130 stories.)
+- **Notes**: `RequestInput` (`tasks:write`) records a question with up to ten
+  suggested answers, publishes `domain.task.input_requested`, and notifies the
+  task's reviewers, or else the org's owners/admins (the stalled-claim
+  recipients), never the asker - best-effort, after the question exists.
+  `AnswerInputRequest` is people-only (ADR-0031) and decided by a conditional
+  update, so of two racing answers exactly one wins (tested); it publishes
+  `domain.task.input_answered` with the answer. `CancelInputRequest`: the
+  asker or an org admin. `GetInputRequest` lets an agent poll;
+  `ListInputRequests` gives one task's history or the organization's open
+  queue (agents' org implied). Tasks carry `openInputRequestCount` (one
+  grouped query per page - the assignment query bound +1 again). Purge removes
+  a task's questions. The three events join the webhook vocabulary. Both
+  permission gates first returned NotFound on a placeholder id - they now run
+  against seeded questions, so the scope check is what they test.
+- **Next**: M38-T04

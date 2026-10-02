@@ -46,6 +46,8 @@ export async function purgeTaskCascade(db: any, taskId: string): Promise<void> {
   // M35 (ADR-0028): links in both directions, and children lose their parent.
   await db.delete(schema.taskLinks).where(or(eq(schema.taskLinks.taskId, taskId), eq(schema.taskLinks.linkedTaskId, taskId)));
   await db.update(schema.tasks).set({ parentTaskId: null }).where(eq(schema.tasks.parentTaskId, taskId));
+  // M38 (ADR-0031): a task's questions go with it.
+  await db.delete(schema.inputRequests).where(eq(schema.inputRequests.taskId, taskId));
   await db.delete(schema.tasks).where(eq(schema.tasks.id, taskId));
 }
 
@@ -140,6 +142,7 @@ export async function purgeProjectCascade(db: any, projectId: string): Promise<v
     await db.update(schema.remotePullRequests).set({ taskId: null }).where(inArray(schema.remotePullRequests.taskId, taskIds));
     // M35 (ADR-0028): links may cross projects, so both directions go.
     await db.delete(schema.taskLinks).where(or(inArray(schema.taskLinks.taskId, taskIds), inArray(schema.taskLinks.linkedTaskId, taskIds)));
+    await db.delete(schema.inputRequests).where(inArray(schema.inputRequests.taskId, taskIds));
     await db.delete(schema.tasks).where(inArray(schema.tasks.id, taskIds));
   }
 

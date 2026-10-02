@@ -44,7 +44,7 @@ const READS: Record<string, string[]> = {
   projects: ['getProject', 'listProjects'],
   projectTemplates: ['getTemplate', 'listTemplates'],
   tasks: ['getTaskType', 'listTaskTypes'],
-  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks', 'listTaskLinks'],
+  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks', 'listTaskLinks', 'getInputRequest', 'listInputRequests'],
   // Read-only supervision console; a viewer may look at it.
   dashboard: ['getDashboard'],
   // Same read-only reasoning as dashboard. getReportTrends is M24-T06's
@@ -101,6 +101,7 @@ const ids = {
   note: 'note-viewer-sweep',
   repoLink: 'repo-viewer-sweep',
   webhook: 'wh-viewer-sweep',
+  inputRequest: 'ir-viewer-sweep',
   invitation: 'inv-viewer-sweep',
   apiToken: 'tok-viewer-sweep',
   team: 'team-viewer-sweep',
@@ -161,6 +162,9 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     addTaskLink: { taskId: ids.task, linkedTaskId: ids.task, kind: 'blocked_by' },
     removeTaskLink: { taskId: ids.task, linkedTaskId: ids.task, kind: 'blocked_by' },
     setTaskPlan: { taskId: ids.task, steps: [] },
+    requestInput: { taskId: ids.task, question: 'Which?' },
+    answerInputRequest: { id: ids.inputRequest, answer: 'A' },
+    cancelInputRequest: { id: ids.inputRequest },
     addTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     removeTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     updateTask: { taskId: ids.task, title: 'T2' },
@@ -307,6 +311,9 @@ beforeAll(async () => {
     tokenPrefix: 'tskr_sweep', tokenHash: 'hash-viewer-sweep',
     scopes: '["tasks:read"]', createdBy: ids.viewer, createdAt: now,
     expiresAt: new Date(now.getTime() + 86400000),
+  });
+  await db.insert(schema.inputRequests).values({
+    id: ids.inputRequest, taskId: ids.task, orgId: ids.org, projectId: ids.project, question: 'Which?', options: '[]', createdAt: now,
   });
   await db.insert(schema.webhooks).values({
     id: ids.webhook, orgId: ids.org, url: 'https://hooks.example.com/x', secretEncrypted: 'x', events: '["*"]', createdAt: now,

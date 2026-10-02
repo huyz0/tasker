@@ -196,6 +196,11 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     removeTaskLink: { taskId: ids.task, linkedTaskId: ids.task, kind: 'blocked_by' },
     listTaskLinks: { taskId: ids.task },
     setTaskPlan: { taskId: ids.task, steps: [] },
+    requestInput: { taskId: ids.task, question: 'Which?' },
+    answerInputRequest: { id: 'ir-scope-sweep', answer: 'A' },
+    cancelInputRequest: { id: 'ir-scope-sweep' },
+    getInputRequest: { id: 'ir-scope-sweep' },
+    listInputRequests: { taskId: ids.task },
     addTaskReviewer: { taskId: ids.task, userId: ids.user },
     removeTaskReviewer: { taskId: ids.task, userId: ids.user },
     listTaskReviewers: { taskId: ids.task },
@@ -319,6 +324,7 @@ beforeAll(async () => {
   await db.insert(schema.taskTypes).values({ id: ids.taskType, orgId: ids.org, projectId: ids.project, name: 'TT', createdAt: now });
   await db.insert(schema.taskStatuses).values({ id: ids.taskStatus, taskTypeId: ids.taskType, name: 'todo' });
   await db.insert(schema.tasks).values({ id: ids.task, projectId: ids.project, title: 'T', status: 'todo', createdAt: now });
+  await db.insert(schema.inputRequests).values({ id: 'ir-scope-sweep', taskId: ids.task, orgId: ids.org, projectId: ids.project, question: 'Which?', options: '[]', createdAt: now });
   await db.insert(schema.folders).values({ id: ids.folder, projectId: ids.project, name: 'F', createdAt: now });
   await db.insert(schema.artifacts).values({ id: ids.artifact, folderId: ids.folder, name: 'A', createdAt: now });
   await db.insert(schema.comments).values({ id: ids.comment, entityId: ids.task, entityType: 'task', agentId: ids.agent, content: 'c', createdAt: now });
