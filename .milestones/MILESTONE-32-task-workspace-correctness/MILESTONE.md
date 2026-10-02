@@ -58,7 +58,7 @@ the server); no E2E asserted it rendered a row.
   renders a loading state.
 - [x] A failed comment load renders an error with retry; edit/delete failures
   are labelled as such.
-- [ ] The detail status select offers only the current status and its allowed
+- [x] The detail status select offers only the current status and its allowed
   targets.
 - [ ] Notes render Markdown; agent names replace agent ids where the org's
   agents are known.
@@ -90,7 +90,7 @@ review's deferred items that are defects (`formatDateTime` helper, raw
   - **Files**: `apps/gui/src/features/Tasks/index.tsx` (+ test)
 - [x] **M32-T04** — Comment load and mutation errors are reported truthfully.
   - **Files**: `apps/gui/src/components/ui/comments/*` (+ test)
-- [ ] **M32-T05** — Status pickers offer only allowed transitions.
+- [x] **M32-T05** — Status pickers offer only allowed transitions.
   - **Files**: `apps/gui/src/features/Tasks/index.tsx` (+ test)
 - [ ] **M32-T06** — Notes render Markdown; agents appear by name; one date formatter.
   - **Files**: `apps/gui/src/features/{Tasks,Handoffs}/index.tsx`, `src/lib/formatDateTime.ts`

@@ -1,4 +1,4 @@
-import { screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within, createEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   TaskService, CommentService, LabelService, RepositoryService, TaskTypeService,
@@ -164,6 +164,46 @@ describe('TasksWorkbench', () => {
     fireEvent.drop(inProgressColumn, { dataTransfer });
 
     await waitFor(() => expect(requests).toContainEqual({ taskId: 'task-1', status: 'in-progress' }));
+  });
+
+  it('does nothing when a card is dropped back on its own column (M32-T05)', async () => {
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    const requests: any[] = [];
+    mockRpc(TaskService, 'UpdateTaskStatus', (body) => { requests.push(body); return { task: {} }; });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    const card = screen.getByText('Fix bug').closest('[draggable="true"]') as HTMLElement;
+    const todoColumn = screen.getAllByLabelText('Add task to Todo')[0].parentElement!.parentElement as HTMLElement;
+
+    const dataTransfer = fakeDataTransfer();
+    fireEvent.dragStart(card, { dataTransfer });
+    fireEvent.drop(todoColumn, { dataTransfer });
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(requests).toHaveLength(0);
+  });
+
+  it('keeps the drop highlight while the pointer moves over the column\'s own cards (M32-T05)', async () => {
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    const card = screen.getByText('Fix bug').closest('[draggable="true"]') as HTMLElement;
+    const todoColumn = screen.getAllByLabelText('Add task to Todo')[0].parentElement!.parentElement as HTMLElement;
+
+    fireEvent.dragEnter(todoColumn, { dataTransfer: fakeDataTransfer() });
+    expect(todoColumn.className).toContain('border-primary');
+    // dragleave fires on the column as the pointer crosses into a child.
+    // jsdom drops `relatedTarget` from a DragEvent's init, so it is set here.
+    const leaveTo = (target: Element) => {
+      const event = createEvent.dragLeave(todoColumn);
+      Object.defineProperty(event, 'relatedTarget', { value: target });
+      fireEvent(todoColumn, event);
+    };
+    leaveTo(card);
+    expect(todoColumn.className).toContain('border-primary');
+    leaveTo(document.body);
+    expect(todoColumn.className).not.toContain('border-primary');
   });
 
   it('shows an error if a drag-and-drop status move fails', async () => {
@@ -1030,7 +1070,7 @@ describe('TasksWorkbench', () => {
     fireEvent.click(screen.getByLabelText('Select all loaded tasks'));
     fireEvent.change(screen.getByLabelText('Change status of selected tasks'), { target: { value: 'in-progress' } });
 
-    expect(await screen.findByText('1 of 2 tasks failed to update')).toBeInTheDocument();
+    expect(await screen.findByText(/^1 of 2 tasks failed to update: /)).toBeInTheDocument();
     // A partial failure keeps the selection so the user can see what happened.
     expect(screen.getByText('2 selected')).toBeInTheDocument();
   });
@@ -1445,6 +1485,52 @@ describe('TasksWorkbench', () => {
       mockRpcPending(TaskService, 'GetTask');
       renderPage('/tasks/slow');
       expect(await screen.findByText('Loading task…')).toBeInTheDocument();
+    });
+  });
+
+  describe('status pickers offer only moves the server accepts (M32-T05)', () => {
+    function withPipeline(status: string) {
+      withTasks([{ id: 'task-1', displayId: 'T-1', title: 'Pipelined', status, description: '', taskTypeId: 'tt-1' }]);
+      mockRpc(TaskTypeService, 'ListTaskTypes', { taskTypes: [{ id: 'tt-1', name: 'Pipeline' }] });
+      mockRpc(TaskTypeService, 'GetTaskType', {
+        taskType: { id: 'tt-1' },
+        statuses: [
+          { id: 's-1', name: 'backlog', position: 0 },
+          { id: 's-2', name: 'in-review', position: 1 },
+          { id: 's-3', name: 'shipped', position: 2 },
+        ],
+        transitions: [{ fromStatusId: 's-1', toStatusId: 's-2' }, { fromStatusId: 's-2', toStatusId: 's-3' }],
+      });
+    }
+
+    it('limits the detail select to the current status and its allowed targets', async () => {
+      withPipeline('backlog');
+      renderPage('/tasks/task-1');
+      const select = await screen.findByLabelText('Status');
+      await waitFor(() => {
+        const options = within(select).getAllByRole('option').map((o) => (o as HTMLOptionElement).value);
+        expect(options).toEqual(['backlog', 'in-review']);
+      });
+    });
+
+    it('names the tasks a bulk change could not move', async () => {
+      withTasks([
+        { id: 'task-1', displayId: 'T-1', title: 'One', status: 'todo', description: '' },
+        { id: 'task-2', displayId: 'T-2', title: 'Two', status: 'todo', description: '' },
+      ]);
+      server.use(http.post(`${BACKEND_URL}/${TaskService.typeName}/UpdateTaskStatus`, async ({ request }) => {
+        const body = await request.json() as { taskId: string };
+        return body.taskId === 'task-2'
+          ? HttpResponse.json({ code: 'invalid_argument', message: 'transition not allowed' }, { status: 400 })
+          : HttpResponse.json({ task: {} });
+      }));
+      renderPage();
+      await screen.findByText('One');
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+      fireEvent.click(await screen.findByLabelText('Select One'));
+      fireEvent.click(screen.getByLabelText('Select Two'));
+      fireEvent.change(screen.getByLabelText('Change status of selected tasks'), { target: { value: 'done' } });
+      expect(await screen.findByText(/1 of 2 tasks failed to update: T-2/)).toBeInTheDocument();
     });
   });
 });

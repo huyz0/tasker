@@ -24,6 +24,7 @@ import { Breadcrumbs } from '../../components/layout/Breadcrumbs';
 import { LazyRichMarkdownEditor } from '../../components/ui/LazyRichMarkdownEditor';
 import { ListState } from '../../components/ui/ListState';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { allowedStatuses, type TypeStateMachine } from './statusTransitions';
 
 const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
@@ -220,6 +221,9 @@ function HandoffsSummary({ taskId }: { taskId: string }) {
 // couple of badges before wrapping.
 const TABLE_COLUMN_WIDTHS = '32px 110px minmax(200px, 1fr) 140px minmax(180px, 260px)';
 
+/** Carries a dragged card's own status, so a drop on its own column is a no-op. */
+const DRAG_STATUS_TYPE = 'application/x-tasker-status';
+
 /** One screenful of cards. A column is a queue to work, not a catalogue. */
 const COLUMN_PAGE = 20;
 
@@ -308,12 +312,18 @@ function BoardColumn({
     <div
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
       onDragEnter={(e) => { e.preventDefault(); setIsDragOver(true); }}
-      onDragLeave={() => setIsDragOver(false)}
+      // dragleave also fires as the pointer crosses into one of the column's
+      // own cards, which made the highlight flicker; only leaving the column
+      // itself clears it (M32-T05).
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsDragOver(false);
+      }}
       onDrop={(e) => {
         e.preventDefault();
         setIsDragOver(false);
         const taskId = e.dataTransfer.getData('text/plain');
-        if (taskId) onDropTask(taskId, status);
+        // Dropped back where it started: not a move, and not worth a request.
+        if (taskId && e.dataTransfer.getData(DRAG_STATUS_TYPE) !== status) onDropTask(taskId, status);
       }}
       // `snap-start` pairs with the board's `snap-x` so a phone swipe lands on
       // a whole column. `md:min-h-0` lets the column take the board's bounded
@@ -360,6 +370,7 @@ function BoardColumn({
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData('text/plain', task.id);
+              e.dataTransfer.setData(DRAG_STATUS_TYPE, task.status || 'todo');
               e.dataTransfer.effectAllowed = 'move';
             }}
             className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-grab active:cursor-grabbing transition-colors focus-within:border-primary"
@@ -579,10 +590,13 @@ export function TasksWorkbench() {
     })),
   });
   const statusesByTaskType = new Map<string, string[]>();
+  const machineByTaskType = new Map<string, TypeStateMachine>();
   distinctTaskTypeIds.forEach((taskTypeId, i) => {
-    const statuses = taskTypeQueries[i]?.data?.statuses;
+    const data = taskTypeQueries[i]?.data;
+    const statuses = data?.statuses;
     if (statuses && statuses.length > 0) {
       statusesByTaskType.set(taskTypeId, statuses.map(s => s.name));
+      machineByTaskType.set(taskTypeId, { statuses, transitions: data?.transitions ?? [] });
     }
   });
 
@@ -651,8 +665,14 @@ export function TasksWorkbench() {
     mutationFn: async (status: string) => {
       const ids = [...selectedTaskIds];
       const results = await Promise.allSettled(ids.map((taskId) => taskClient.updateTaskStatus({ taskId, status })));
-      const failed = results.filter((r) => r.status === 'rejected').length;
-      if (failed > 0) throw new Error(`${failed} of ${ids.length} task${ids.length === 1 ? '' : 's'} failed to update`);
+      // Name the ones that failed (M32-T05): across task types a status can be
+      // a legal move for some rows and not others, and "2 of 5 failed" left
+      // the user to find which.
+      const failedIds = ids.filter((_, i) => results[i]!.status === 'rejected');
+      if (failedIds.length > 0) {
+        const label = (id: string) => tasksData?.find((t) => t.id === id)?.displayId || id;
+        throw new Error(`${failedIds.length} of ${ids.length} task${ids.length === 1 ? '' : 's'} failed to update: ${failedIds.map(label).join(', ')}`);
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] });
@@ -703,8 +723,13 @@ export function TasksWorkbench() {
   // is why the board used to need every task.
   const columns = columnDefs;
 
-  const expandedTaskStatusOptions = expandedTask?.taskTypeId && statusesByTaskType.has(expandedTask.taskTypeId)
-    ? statusesByTaskType.get(expandedTask.taskTypeId)!.map(name => ({ id: name, display: name }))
+  // Only moves the server will accept (M32-T05): the type's transitions, not
+  // every status it has. A pick the server refuses was an InvalidArgument.
+  const expandedTaskAllowed = expandedTask?.taskTypeId
+    ? allowedStatuses(machineByTaskType.get(expandedTask.taskTypeId), expandedTask.status)
+    : null;
+  const expandedTaskStatusOptions = expandedTaskAllowed
+    ? expandedTaskAllowed.map(name => ({ id: name, display: name }))
     : DEFAULT_STATUS_OPTIONS;
 
   // M19-T04: columnDefs only ever covers statuses this render has resolved

@@ -73,3 +73,25 @@
   `errorLabel`, because "Could not load this list" was the wrong sentence for
   a comment thread and for T03's unopenable task.
 - **Next**: M32-T05
+
+## M32-T05 — Status pickers offer only allowed transitions
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/gui/src/features/Tasks/statusTransitions.ts` (new, + test),
+  `features/Tasks/index.tsx`, `index.test.tsx`
+- **Verified**: GUI gates green, 1225 tests; each new test failed first.
+- **Notes**:
+  - `allowedStatuses` is the server's `validateStatusForTaskType` rule on the
+    client — including its two permissive cases (a type with no edges yet,
+    and a current status that predates the type's machine), so the picker
+    never refuses a move the server would allow either. The detail select
+    now offers the current status and its outgoing edges only.
+  - Bulk changes keep their per-row fan-out but name the tasks that failed
+    ("1 of 2 tasks failed to update: T-2"): across task types the same
+    target is legal for some rows and not others.
+  - A card dropped back on its own column no longer sends an update (the
+    card now carries its status in the drag data), and the drop highlight no
+    longer flickers as the pointer crosses the column's own cards —
+    `dragleave` only clears it when the pointer actually leaves the column.
+- **Next**: M32-T06
