@@ -74,3 +74,24 @@
   the template and keeps whatever it was not given. No MCP tool defines or
   deletes a template, asserted in the tool test.
 - **Next**: M42-T05
+
+## M42-T05 — GUI
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `features/Workflows/` (new: `WorkflowsScreen` at `/workflows`
+  and `/workflows/:templateId`, `WorkflowEditor`), tests and stories;
+  `App.tsx` route, `AppShell.tsx` sidebar entry under Configuration; extra
+  branch tests for `Approvals` and `TaskSummary`.
+- **Verified**: `gui:test` 1312 pass, branch coverage 95.22% (threshold
+  95%); `gui:typecheck`, `gui:lint`, `gui:design-lint`, `gui:rpc-coverage`,
+  `gui:query-error-coverage` green.
+- **Notes**: Same two-pane, URL-addressed shape as Task Types, including its
+  org-switch rule. The editor names dependencies by ticking the steps a step
+  waits for; renaming a key carries its dependents and removing a step drops
+  it from them. Typed steps (set from the CLI/API) keep their type and
+  status through a GUI save. "Start workflow" runs in the active project and
+  links to the new parent task. The new screen first pushed global branch
+  coverage under 95%; the gap was closed with tests for its retry, empty,
+  error and pending paths rather than by lowering the bar.
+- **Next**: M42-T06

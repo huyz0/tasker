@@ -51,7 +51,7 @@ instance is ordinary tasks once created).
 - [x] **M42-T02** — Template CRUD with graph validation.
 - [x] **M42-T03** — InstantiateWorkflow.
 - [x] **M42-T04** — CLI and MCP.
-- [ ] **M42-T05** — GUI.
+- [x] **M42-T05** — GUI.
 - [ ] **M42-T06** — Docs and close.
 
 ## 6. Verification

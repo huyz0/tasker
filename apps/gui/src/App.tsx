@@ -27,6 +27,7 @@ const LabelsManager = lazy(() => import('./features/Labels').then((m) => ({ defa
 const RolesManager = lazy(() => import('./features/Roles').then((m) => ({ default: m.RolesManager })));
 const TeamsManager = lazy(() => import('./features/Teams').then((m) => ({ default: m.TeamsManager })));
 const MemoryExplorer = lazy(() => import('./features/Memory').then((m) => ({ default: m.MemoryExplorer })));
+const WorkflowsScreen = lazy(() => import('./features/Workflows').then((m) => ({ default: m.WorkflowsScreen })));
 const HandoffsScreen = lazy(() => import('./features/Handoffs').then((m) => ({ default: m.HandoffsScreen })));
 const TaskTypesEditor = lazy(() => import('./features/TaskTypes').then((m) => ({ default: m.TaskTypesEditor })));
 const BinDashboard = lazy(() => import('./features/Bin').then((m) => ({ default: m.BinDashboard })));
@@ -72,6 +73,8 @@ function App() {
                     {/* Same reason as /tasks/:taskId: the type being configured
                         is in the URL, and it already resolves by id. */}
                     <Route path="/task-types/:typeId" element={<TaskTypesEditor />} />
+                    <Route path="/workflows" element={<WorkflowsScreen />} />
+                    <Route path="/workflows/:templateId" element={<WorkflowsScreen />} />
                     <Route path="/labels" element={<LabelsManager />} />
                     <Route path="/roles" element={<RolesManager />} />
                     <Route path="/teams" element={<TeamsManager />} />

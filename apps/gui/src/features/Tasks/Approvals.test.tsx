@@ -43,6 +43,15 @@ describe('TaskApprovals (M39)', () => {
     await waitFor(() => expect(decisions).toEqual([{ id: 'apr-1', approve: true }]));
   });
 
+  it('titles a task with only past decisions plainly, and shows an unknown outcome as given', async () => {
+    mockRpc(TaskService, 'ListTransitionApprovals', { approvals: [approval({ status: 'approved', decidedByName: 'Ada' }), approval({ id: 'apr-9', status: 'withdrawn' })], page: {} });
+    renderScoped(<TaskApprovals taskId="t-1" />);
+    const section = await screen.findByRole('region', { name: 'Status changes awaiting approval' });
+    expect(within(section).getByRole('heading')).toHaveTextContent('Approvals');
+    expect(section).toHaveTextContent('Ada approved');
+    expect(section).toHaveTextContent('withdrawn');
+  });
+
   it('rejects with a reason, and reports a refused decision', async () => {
     mockRpc(TaskService, 'ListTransitionApprovals', { approvals: [approval()], page: {} });
     const decisions: any[] = [];
@@ -58,9 +67,12 @@ describe('TaskApprovals (M39)', () => {
   });
 
   it('shows a failed load with a way to retry', async () => {
-    mockRpcError(TaskService, 'ListTransitionApprovals', 'unavailable', 'down');
+    let calls = 0;
+    mockRpc(TaskService, 'ListTransitionApprovals', () => { calls++; if (calls === 1) throw new Error('down'); return { approvals: [], page: {} }; });
     renderScoped(<TaskApprovals taskId="t-1" />);
     expect(await screen.findByText(/Could not load this task's approvals/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /retry|try again/i }));
+    await waitFor(() => expect(calls).toBe(2));
   });
 });
 
@@ -74,9 +86,11 @@ describe('ApprovalsQueue (M39)', () => {
     expect(requests[0]).toMatchObject({ orgId: 'org-1', status: 'pending' });
   });
 
-  it('says when nothing is waiting', async () => {
-    mockRpc(TaskService, 'ListTransitionApprovals', { approvals: [], page: {} });
+  it('says when nothing is waiting, after a retried failure', async () => {
+    let calls = 0;
+    mockRpc(TaskService, 'ListTransitionApprovals', () => { calls++; if (calls === 1) throw new Error('down'); return { approvals: [], page: {} }; });
     renderScoped(<ApprovalsQueue orgId="org-1" />);
+    fireEvent.click(await screen.findByRole('button', { name: /retry|try again/i }));
     expect(await screen.findByText('No status change is waiting for approval.')).toBeInTheDocument();
   });
 });

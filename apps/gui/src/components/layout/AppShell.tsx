@@ -11,6 +11,7 @@ import {
   Trash2,
   Tag,
   Workflow,
+  ListChecks,
   Settings,
   ShieldCheck,
   Users,
@@ -55,6 +56,7 @@ const NAV_GROUPS = [
     label: 'Configuration',
     items: [
       { name: 'Task Types', path: '/task-types', icon: Workflow },
+      { name: 'Workflows', path: '/workflows', icon: ListChecks },
       { name: 'Labels', path: '/labels', icon: Tag },
       { name: 'Organizations', path: '/organizations', icon: Building2 },
       { name: 'Teams', path: '/teams', icon: Users },

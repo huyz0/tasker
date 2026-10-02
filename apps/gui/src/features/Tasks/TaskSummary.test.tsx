@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { create } from '@bufbuild/protobuf';
 import { TaskService, TaskSummarySchema } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
-import { mockRpc, mockRpcError } from '../../test/mockRpc';
+import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 import { renderScoped } from '../../test/renderScoped';
 import { TaskSummaryPanel } from './TaskSummary';
 
@@ -58,5 +58,16 @@ describe('TaskSummaryPanel (M41)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save summary' }));
     expect(await screen.findByText(/Failed to save the summary: .*viewers cannot write/)).toBeInTheDocument();
+  });
+
+  it('does not submit a blank draft, and shows saving', async () => {
+    mockRpcPending(TaskService, 'SetTaskSummary');
+    renderScoped(<TaskSummaryPanel taskId="t-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Write a summary' }));
+    fireEvent.submit(screen.getByLabelText('Summary').closest('form')!);
+    expect(screen.queryByRole('button', { name: 'Saving…' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Summary'), { target: { value: 'Done.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save summary' }));
+    expect(await screen.findByRole('button', { name: 'Saving…' })).toBeDisabled();
   });
 });
