@@ -128,3 +128,34 @@
     `in_progress` as "In progress" on Handoffs (CSS `capitalize` rendered
     "In_progress").
 - **Next**: M32-T07
+
+## M32-T07 — Copy and small UX fixes
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: sentence-case labels across 17 source/test/e2e files;
+  `features/Reports/{TrendCards,StalledWorkCard}.tsx`;
+  `features/Settings/AccountSettings.tsx` (+ test);
+  `components/layout/NotificationBell.tsx` (+ test);
+  `features/Artifacts/ArtifactUpload.test.tsx`
+- **Verified**: GUI gates green, 1232 tests; the new tests failed first.
+- **Notes**:
+  - **Labels**: "Post comment", "Load more", "Create template", "Use
+    template", "Delete forever", "Deploy agent", "New role", "Ping backend",
+    "Show/Hide builds" — sentence case, as the design review asked. Unit and
+    E2E selectors moved with them.
+  - **Reports sub-headings** are no longer all caps — both "Recent
+    completions" (the one the review named) and `StalledWorkCard`'s, which
+    used the same style; changing one would have made the page inconsistent.
+  - **Set password** kept its submit disabled until the fields were valid,
+    without saying why. It is now enabled, validates on submit and says what
+    is missing ("Enter your current password." / "Use at least N
+    characters."); the form is `noValidate` so the messages are ours.
+  - **Notification bell** closes on a click outside it — a popover, not a
+    modal.
+  - **The flaky upload test** that failed this session's first full GUI run:
+    "previews an image while it uploads" started an upload it never awaited,
+    and the late request landed on the next test's handler, which then
+    counted two requests. It now registers its own handler and waits for the
+    request.
+- **Next**: M32-T08

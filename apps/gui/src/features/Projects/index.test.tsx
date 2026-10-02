@@ -97,7 +97,7 @@ describe('ProjectsWizard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
-    const useTemplateButton = screen.getByRole('button', { name: 'Use Template' });
+    const useTemplateButton = screen.getByRole('button', { name: 'Use template' });
     expect(useTemplateButton).toHaveProperty('disabled', true);
   });
 
@@ -113,7 +113,7 @@ describe('ProjectsWizard', () => {
 
     await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
     fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'My Real Project' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Use Template' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use template' }));
 
     await waitFor(() => expect(requests).toContainEqual({
       orgId: 'org-1',
@@ -132,7 +132,7 @@ describe('ProjectsWizard', () => {
 
     await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
     fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Use Template' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use template' }));
 
     await waitFor(() => expect(screen.getByText(/Failed to create project/)).toBeDefined());
   });
@@ -243,7 +243,7 @@ describe('ProjectsWizard', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Template name'), { target: { value: 'New Template' } });
     fireEvent.change(screen.getByPlaceholderText('Description (optional)'), { target: { value: 'A description' } });
-    fireEvent.click(screen.getByText('Create Template'));
+    fireEvent.click(screen.getByText('Create template'));
 
     await waitFor(() => expect(requests).toContainEqual({
       orgId: 'org-1',
@@ -255,7 +255,7 @@ describe('ProjectsWizard', () => {
   // M14-T09: this screen used to create and rename task types itself, with
   // no view of the statuses/transitions the rename affects. It is now a
   // read-only glance, linking to /task-types for anything that changes one.
-  it('loads the next page of projects when Load More is clicked', async () => {
+  it('loads the next page of projects when Load more is clicked', async () => {
     withTemplates([]);
     const requests = withProjects((body: { page?: { cursor?: string } }) =>
       body.page?.cursor
@@ -265,7 +265,7 @@ describe('ProjectsWizard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Page One Project')).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'Load More' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
 
     await waitFor(() => expect(screen.getByText('Page Two Project')).toBeDefined());
     expect(requests).toContainEqual({ orgId: 'org-1', page: { cursor: 'cursor-2' } });
@@ -308,7 +308,7 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText('+ New Template')).toBeDefined());
     fireEvent.click(screen.getByText('+ New Template'));
     fireEvent.change(screen.getByPlaceholderText('Template name'), { target: { value: 'Dup' } });
-    fireEvent.click(screen.getByText('Create Template'));
+    fireEvent.click(screen.getByText('Create template'));
 
     await waitFor(() => expect(screen.getByText(/Failed to create template/)).toBeDefined());
   });
@@ -400,7 +400,7 @@ describe('ProjectsWizard', () => {
 
     await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
     fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Use Template' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use template' }));
 
     await waitFor(() => expect(screen.getByText(/Failed to create project/)).toBeDefined());
     expect(requests).toHaveLength(0);
@@ -431,7 +431,7 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
 
     fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Use Template' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use template' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Creating…' })).toBeInTheDocument());
     pendingProject.resolve({ project: { id: 'proj-new', name: 'X' } });
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Creating…' })).toBeNull());
@@ -439,16 +439,16 @@ describe('ProjectsWizard', () => {
     const pendingTemplate = mockRpcPending(ProjectTemplateService, 'CreateTemplate');
     fireEvent.click(screen.getByText('+ New Template'));
     fireEvent.change(screen.getByPlaceholderText('Template name'), { target: { value: 'Tmpl' } });
-    fireEvent.click(screen.getByText('Create Template'));
+    fireEvent.click(screen.getByText('Create template'));
     await waitFor(() => expect(screen.getByText('Creating…')).toBeInTheDocument());
     pendingTemplate.resolve({ template: { id: 'tpl-new', name: 'Tmpl' } });
   });
 
   // M20-T06: createProjectMutation used to be one shared object read by every
-  // template card's "Use Template" button - creating from template A left
+  // template card's "Use template" button - creating from template A left
   // template B's button disabled and relabeled "Creating..." too, even though
   // no request had been made for it.
-  it('isolates the pending "Use Template" state to the template that was clicked', async () => {
+  it('isolates the pending "Use template" state to the template that was clicked', async () => {
     withTemplates([
       { id: 'tpl-1', name: 'Software', description: 'desc' },
       { id: 'tpl-2', name: 'Marketing', description: 'desc2' },
@@ -459,10 +459,10 @@ describe('ProjectsWizard', () => {
 
     await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
     fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Use Template' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Use template' })[0]);
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Creating…' })).toBeInTheDocument());
-    const untouchedButton = screen.getByRole('button', { name: 'Use Template' });
+    const untouchedButton = screen.getByRole('button', { name: 'Use template' });
     expect(untouchedButton).not.toBeDisabled();
 
     pending.resolve({ project: { id: 'proj-new', name: 'X' } });
@@ -596,7 +596,7 @@ describe('ProjectsWizard', () => {
     await waitFor(() => expect(screen.getByText('Software')).toBeDefined());
     fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
     fireEvent.change(screen.getByPlaceholderText('What is this project for? (optional)'), { target: { value: 'A real description' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Use Template' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use template' }));
 
     await waitFor(() => expect(requests).toContainEqual(expect.objectContaining({ description: 'A real description' })));
   });
@@ -810,7 +810,7 @@ describe('ProjectsWizard', () => {
       await waitFor(() => expect(requests).toContainEqual({ scopeType: 'project', scopeId: 'proj-1' }));
     });
 
-    // M20-T07: the Members toggle is a disclosure like the Show/Hide Builds
+    // M20-T07: the Members toggle is a disclosure like the Show/Hide builds
     // one on the repository panel - it needs the same aria-expanded state to
     // announce, not just show, whether the panel it controls is open.
     it('reflects its open/closed state via aria-expanded', async () => {

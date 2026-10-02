@@ -109,7 +109,7 @@ describe('BinDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete forever' }));
     await confirmAction();
 
     await waitFor(() => expect(requests).toContainEqual({ orgId: 'org-2' }));
@@ -122,7 +122,7 @@ describe('BinDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete forever' }));
     await cancelAction();
 
     expect(requests).toHaveLength(0);
@@ -135,7 +135,7 @@ describe('BinDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete forever' }));
     await confirmAction();
 
     await waitFor(() => expect(screen.getByText(/Failed to delete forever/)).toBeDefined());
@@ -188,7 +188,7 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('Archived Agent')).toBeDefined());
     expect(listRequests).toContainEqual({ orgId: 'org-1', onlyDeleted: true, page: {} });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete forever' }));
     await confirmAction();
     await waitFor(() => expect(purgeRequests).toContainEqual({ agentId: 'agent-2' }));
   });
@@ -229,7 +229,7 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(screen.getByText('Archived Artifact A')).toBeDefined());
     expect(screen.getByText('Archived Artifact B')).toBeDefined();
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Delete Forever' })[0]!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete forever' })[0]!);
     await confirmAction();
     await waitFor(() => expect(purgeRequests).toContainEqual({ artifactId: 'art-1' }));
   });
@@ -355,7 +355,7 @@ describe('BinDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Projects' }));
     await waitFor(() => expect(screen.getByText('Archived Project')).toBeDefined());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete forever' }));
     await confirmAction();
     await waitFor(() => expect(purgeRequests).toContainEqual({ projectId: 'proj-2' }));
   });
@@ -374,7 +374,7 @@ describe('BinDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
     await waitFor(() => expect(restoreRequests).toContainEqual({ taskId: 'task-1' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete forever' }));
     await confirmAction();
     await waitFor(() => expect(purgeRequests).toContainEqual({ taskId: 'task-1' }));
   });
@@ -403,7 +403,7 @@ describe('BinDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Folders' }));
     await waitFor(() => expect(screen.getByText('Archived Folder')).toBeDefined());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete forever' }));
     await confirmAction();
     await waitFor(() => expect(requests).toContainEqual({ folderId: 'fld-2' }));
   });
@@ -420,7 +420,7 @@ describe('BinDashboard', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('switches to the Teams tab and lists/restores an archived team, with no Delete Forever button', async () => {
+  it('switches to the Teams tab and lists/restores an archived team, with no Delete forever button', async () => {
     withRpc(OrgService, 'ListOrgs', { organizations: [] });
     const listRequests = withRpc(TeamService, 'ListTeams', { teams: [{ id: 'team-2', name: 'Archived Team', deletedAt: new Date().toISOString() }] });
     const restoreRequests = withRpc(TeamService, 'RestoreTeam', { success: true });
@@ -433,7 +433,7 @@ describe('BinDashboard', () => {
     expect(listRequests).toContainEqual({ orgId: 'org-1', onlyDeleted: true, page: {} });
 
     // TeamService has no purgeTeam RPC - the row offers Restore only.
-    expect(screen.queryByRole('button', { name: 'Delete Forever' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete forever' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
     await waitFor(() => expect(restoreRequests).toContainEqual({ teamId: 'team-2' }));

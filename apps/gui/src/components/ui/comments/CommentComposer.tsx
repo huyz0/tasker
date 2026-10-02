@@ -38,7 +38,7 @@ export function CommentComposer() {
         />
         <div className="flex justify-end">
           <Button type="submit" disabled={state.isLoading || !newComment.trim()}>
-            {state.isLoading ? 'Posting…' : 'Post Comment'}
+            {state.isLoading ? 'Posting…' : 'Post comment'}
           </Button>
         </div>
       </form>

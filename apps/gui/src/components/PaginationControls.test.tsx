@@ -21,10 +21,10 @@ describe('PaginationControls', () => {
     expect(screen.queryByText('No more items to load')).toBeNull();
   });
 
-  it('renders "Load More" button when nextCursor is provided', () => {
+  it('renders "Load more" button when nextCursor is provided', () => {
     const onNextPage = vi.fn();
     render(<PaginationControls nextCursor="cursor123" onNextPage={onNextPage} />);
-    const button = screen.getByRole('button', { name: 'Load More' });
+    const button = screen.getByRole('button', { name: 'Load more' });
     expect(button).toBeDefined();
     
     fireEvent.click(button);

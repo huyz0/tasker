@@ -339,7 +339,7 @@ export function ProjectsWizard() {
   // M20-T05: none of the page-level drafts (new project name/description,
   // the new-template form, the two inline edit forms) ever reset on an org
   // switch - typing a project name intended for org A, switching to org B,
-  // then clicking "Use Template" created the project in org B carrying org
+  // then clicking "Use template" created the project in org B carrying org
   // A's draft name, with no visible reset having happened. Skipped on the
   // very first render so mounting doesn't clear a draft nobody has typed
   // yet.
@@ -523,7 +523,7 @@ export function ProjectsWizard() {
               disabled={createTemplateMutation.isPending || !newTemplateName.trim()}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:bg-muted disabled:text-muted-foreground"
             >
-              {createTemplateMutation.isPending ? 'Creating…' : 'Create Template'}
+              {createTemplateMutation.isPending ? 'Creating…' : 'Create template'}
             </button>
           </form>
         )}
@@ -652,7 +652,7 @@ export function ProjectsWizard() {
                        disabled={(createProjectMutation.isPending && createProjectMutation.variables === t.id) || !projectName.trim()}
                        className="w-full px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
                      >
-                       {createProjectMutation.isPending && createProjectMutation.variables === t.id ? 'Creating…' : 'Use Template'}
+                       {createProjectMutation.isPending && createProjectMutation.variables === t.id ? 'Creating…' : 'Use template'}
                      </button>
                    </>
                  )}

@@ -316,7 +316,7 @@ describe('RepositoryIntegrationConfig', () => {
     renderComponent();
 
     await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
-    fireEvent.click(screen.getByText('Show Builds'));
+    fireEvent.click(screen.getByText('Show builds'));
 
     await waitFor(() => expect(buildRequests).toContainEqual({ repositoryLinkId: 'link-1' }));
     await waitFor(() => expect(screen.getByText('abc1234')).toBeDefined());
@@ -342,7 +342,7 @@ describe('RepositoryIntegrationConfig', () => {
     renderComponent();
 
     await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'Show Builds' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show builds' }));
 
     const buildRow = await screen.findByRole('button', { name: /abc1234/ });
     expect(buildRow).toHaveAttribute('aria-expanded', 'false');
@@ -367,7 +367,7 @@ describe('RepositoryIntegrationConfig', () => {
     await waitFor(() => expect(screen.getByText('huyz0/page-one', { exact: false })).toBeDefined());
     expect(screen.getByText('huyz0/page-two', { exact: false })).toBeDefined();
 
-    fireEvent.click(screen.getAllByText('Show Builds')[0]);
+    fireEvent.click(screen.getAllByText('Show builds')[0]);
 
     await waitFor(() => expect(screen.getByText('aaa1111')).toBeDefined());
     expect(screen.getByText('bbb2222')).toBeDefined();
@@ -382,7 +382,7 @@ describe('RepositoryIntegrationConfig', () => {
     renderComponent();
 
     await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
-    fireEvent.click(screen.getByText('Show Builds'));
+    fireEvent.click(screen.getByText('Show builds'));
 
     await waitFor(() => expect(screen.getByText('No builds found.')).toBeDefined());
   });
@@ -395,7 +395,7 @@ describe('RepositoryIntegrationConfig', () => {
     renderComponent();
 
     await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
-    fireEvent.click(screen.getByText('Show Builds'));
+    fireEvent.click(screen.getByText('Show builds'));
 
     await waitFor(() => expect(screen.getByText(/Failed to load builds/)).toBeDefined());
   });
@@ -411,7 +411,7 @@ describe('RepositoryIntegrationConfig', () => {
     renderComponent();
 
     await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
-    fireEvent.click(screen.getByText('Show Builds'));
+    fireEvent.click(screen.getByText('Show builds'));
     await waitFor(() => expect(screen.getByText('UNKNOWN_STATUS')).toBeDefined());
 
     fireEvent.click(screen.getByText('abc1234'));
@@ -432,7 +432,7 @@ describe('RepositoryIntegrationConfig', () => {
     renderComponent();
 
     await waitFor(() => expect(screen.getByText('huyz0/tasker', { exact: false })).toBeDefined());
-    fireEvent.click(screen.getByText('Show Builds'));
+    fireEvent.click(screen.getByText('Show builds'));
     fireEvent.click(await screen.findByText('abc1234'));
 
     await waitFor(() => expect(screen.getByText('No deployments for this build.')).toBeDefined());

@@ -72,7 +72,7 @@ export function SystemHealthPage() {
           {/* Outline, not primary: this page's one primary action is the
               password form above; a second violet button competed with it. */}
           <Button variant="outline" onClick={() => setTimestamp(Date.now())}>
-            Ping Backend
+            Ping backend
           </Button>
         </div>
 
@@ -83,7 +83,7 @@ export function SystemHealthPage() {
             isEmpty
             loadingMessage="Loading telemetry…"
             emptyMessage="No telemetry returned."
-            emptyAction={<p className="text-xs">Use “Ping Backend” to try again.</p>}
+            emptyAction={<p className="text-xs">Use “Ping backend” to try again.</p>}
             onRetry={() => refetch()}
           />
         ) : (

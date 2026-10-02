@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { useNavigate } from 'react-router-dom';
@@ -47,6 +47,20 @@ export function NotificationBell({ orgId }: { orgId: string }) {
 
   useFocusTrap(panelRef, open, () => setOpen(false));
 
+  // Clicking anywhere outside the bell and its panel dismisses it - it is a
+  // popover, and it used to stay open over whatever was clicked next
+  // (M32-T07). The bell itself is inside the container, so its own toggle
+  // still works.
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [open]);
+
   // The badge is cheap and always mounted; the list is only fetched once the
   // panel is opened, so a header on every screen does not pull a page of
   // notifications nobody looked at.
@@ -89,7 +103,7 @@ export function NotificationBell({ orgId }: { orgId: string }) {
   }
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

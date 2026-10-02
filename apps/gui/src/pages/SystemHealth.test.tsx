@@ -90,7 +90,7 @@ describe('SystemHealthPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('pong')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ping Backend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ping backend' }));
     await waitFor(() => expect(calls).toBeGreaterThan(1));
   });
 });

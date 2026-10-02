@@ -94,7 +94,7 @@ review's deferred items that are defects (`formatDateTime` helper, raw
   - **Files**: `apps/gui/src/features/Tasks/index.tsx` (+ test)
 - [x] **M32-T06** — Notes render Markdown; agents appear by name; one date formatter.
   - **Files**: `apps/gui/src/features/{Tasks,Handoffs}/index.tsx`, `src/lib/formatDateTime.ts`
-- [ ] **M32-T07** — Copy and small UX fixes: Handoffs status labels, Title Case buttons, set-password submit, flaky upload test.
+- [x] **M32-T07** — Copy and small UX fixes: Handoffs status labels, Title Case buttons, set-password submit, flaky upload test.
   - **Files**: as named in the journal
 - [ ] **M32-T08** — Audit trail E2E, documentation and close.
   - **Files**: `apps/gui/tests/e2e/*.spec.ts`, `.milestones/STATE.md`

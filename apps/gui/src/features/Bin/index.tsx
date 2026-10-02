@@ -121,7 +121,7 @@ function TeamsBin() {
       isRestoring={restoreMutation.isPending}
       restoreError={restoreMutation.error as Error | null}
       // TeamService has no purgeTeam RPC (archive/restore only, no hard
-      // delete) - BinList omits the "Delete Forever" button entirely when
+      // delete) - BinList omits the "Delete forever" button entirely when
       // onPurge is absent, rather than wiring it to a call that doesn't exist.
       emptyMessage={activeOrgId
         ? 'No archived teams in this organization.'
@@ -402,7 +402,7 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
   restoreError: Error | null;
   /**
    * Absent for entity kinds with no hard-delete RPC (Teams, as of this
-   * writing) - the "Delete Forever" button and its confirm flow are omitted
+   * writing) - the "Delete forever" button and its confirm flow are omitted
    * entirely rather than wired to a call that doesn't exist.
    */
   onPurge?: (id: string) => void;
@@ -490,7 +490,7 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
                 disabled={isRestoring || isPurging}
                 className="px-3 py-1 bg-destructive-subtle text-destructive-subtle-foreground hover:bg-destructive hover:text-destructive-foreground rounded-md text-xs font-medium disabled:opacity-50"
               >
-                {isPurging ? 'Deleting…' : 'Delete Forever'}
+                {isPurging ? 'Deleting…' : 'Delete forever'}
               </button>
             )}
           </div>

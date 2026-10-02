@@ -228,7 +228,7 @@ export function AgentsDashboard() {
                onClick={() => setIsDeploying((v) => !v)}
                className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
              >
-               {isDeploying ? 'Cancel' : 'Deploy Agent'}
+               {isDeploying ? 'Cancel' : 'Deploy agent'}
              </button>
           </div>
           {isDeploying && (
@@ -443,7 +443,7 @@ export function AgentsDashboard() {
             onClick={() => setIsAddingRole((v) => !v)}
             className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
           >
-            {isAddingRole ? 'Cancel' : 'New Role'}
+            {isAddingRole ? 'Cancel' : 'New role'}
           </button>
         </div>
         {isAddingRole && (

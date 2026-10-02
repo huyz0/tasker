@@ -181,7 +181,7 @@ describe('AgentsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
-    fireEvent.click(screen.getByText('Deploy Agent'));
+    fireEvent.click(screen.getByText('Deploy agent'));
 
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'role-1' } });
@@ -197,7 +197,7 @@ describe('AgentsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
-    fireEvent.click(screen.getByText('Deploy Agent'));
+    fireEvent.click(screen.getByText('Deploy agent'));
 
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'role-1' } });
@@ -275,7 +275,7 @@ describe('AgentsDashboard', () => {
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
-    fireEvent.click(screen.getByText('Deploy Agent'));
+    fireEvent.click(screen.getByText('Deploy agent'));
     fireEvent.change(screen.getByPlaceholderText('Agent name'), { target: { value: 'New Agent' } });
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'role-1' } });
     fireEvent.click(screen.getByText('Deploy'));
@@ -290,7 +290,7 @@ describe('AgentsDashboard', () => {
 
     renderPage();
     await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
-    fireEvent.click(screen.getByText('Deploy Agent'));
+    fireEvent.click(screen.getByText('Deploy agent'));
 
     expect(screen.getByText('Select a role…')).toBeInTheDocument();
   });
@@ -299,8 +299,8 @@ describe('AgentsDashboard', () => {
     withListAgents({ agents: [] });
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('Deploy Agent')).toBeDefined());
-    fireEvent.click(screen.getByText('Deploy Agent'));
+    await waitFor(() => expect(screen.getByText('Deploy agent')).toBeDefined());
+    fireEvent.click(screen.getByText('Deploy agent'));
     expect(screen.getByPlaceholderText('Agent name')).toBeDefined();
 
     fireEvent.click(screen.getByText('Cancel'));
@@ -432,8 +432,8 @@ describe('AgentsDashboard', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('Deploy Agent')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Deploy Agent'));
+    await waitFor(() => expect(screen.getByText('Deploy agent')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Deploy agent'));
 
     await waitFor(() => expect(screen.getByRole('option', { name: 'Role 120' })).toBeInTheDocument());
     // The first page must still be there — paging should append, not replace.
@@ -467,7 +467,7 @@ describe('AgentsDashboard', () => {
     const requests = withCreateAgentRole();
     renderPage();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'New Role' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'New role' }));
     fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Reviewer' } });
     fireEvent.change(screen.getByLabelText('System prompt'), { target: { value: 'Review carefully.' } });
     fireEvent.change(screen.getByLabelText('Capabilities'), { target: { value: '["review"]' } });
@@ -490,7 +490,7 @@ describe('AgentsDashboard', () => {
     const requests = withCreateAgentRole();
     renderPage();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'New Role' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'New role' }));
     fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Reviewer' } });
     fireEvent.change(screen.getByLabelText('System prompt'), { target: { value: 'p' } });
     fireEvent.change(screen.getByLabelText('Capabilities'), { target: { value: '{not json' } });
@@ -520,7 +520,7 @@ describe('AgentsDashboard', () => {
     mockRpcError(AgentService, 'CreateAgentRole', 'permission_denied', 'permission denied');
     renderPage();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'New Role' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'New role' }));
     fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Reviewer' } });
     fireEvent.change(screen.getByLabelText('System prompt'), { target: { value: 'p' } });
     fireEvent.change(screen.getByLabelText('Capabilities'), { target: { value: '[]' } });

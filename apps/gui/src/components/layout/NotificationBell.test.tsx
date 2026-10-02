@@ -188,6 +188,20 @@ describe('NotificationBell', () => {
     await waitFor(() => expect(screen.queryByTestId('notification-panel')).not.toBeInTheDocument());
   });
 
+  it('closes when the user clicks elsewhere on the page (M32-T07)', async () => {
+    // A popover, not a modal: clicking away is how it is dismissed. It used to
+    // stay open over whatever the user clicked next.
+    renderScoped(<><NotificationBell orgId={ORG} /><p>elsewhere</p></>);
+    fireEvent.click(screen.getByTestId('notification-bell'));
+    const panel = await screen.findByTestId('notification-panel');
+
+    fireEvent.pointerDown(panel);
+    expect(screen.getByTestId('notification-panel')).toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByText('elsewhere'));
+    await waitFor(() => expect(screen.queryByTestId('notification-panel')).not.toBeInTheDocument());
+  });
+
   it('renders whatever type the server sends, without knowing what it is', async () => {
     // The milestone's own exit criterion, from the component's side: a type
     // this file has never heard of renders identically, because the server

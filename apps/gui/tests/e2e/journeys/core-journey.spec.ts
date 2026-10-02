@@ -93,21 +93,21 @@ test.describe('the core journey', () => {
     // fixture left one lying around. The form is behind a toggle.
     await page.getByRole('button', { name: '+ New Template' }).click();
     await page.getByPlaceholder('Template name').fill(TEMPLATE_NAME);
-    await page.getByRole('button', { name: 'Create Template' }).click();
+    await page.getByRole('button', { name: 'Create template' }).click();
     await expect(page.getByText(TEMPLATE_NAME).first()).toBeVisible({ timeout: 15_000 });
 
     await page.getByPlaceholder('New project name').fill(PROJECT_NAME);
     // The card for the template just created, identified by containing *both*
     // its heading and the button — filtering on the heading alone matches the
-    // inner wrapper that holds the heading and "Edit" and no "Use Template" at
+    // inner wrapper that holds the heading and "Edit" and no "Use template" at
     // all. In a shared database the first card on the page belongs to someone
     // else, so `.first()` would create the project from the wrong template.
     const templateCard = page
       .locator('div')
       .filter({ has: page.getByRole('heading', { name: TEMPLATE_NAME }) })
-      .filter({ has: page.getByRole('button', { name: 'Use Template' }) })
+      .filter({ has: page.getByRole('button', { name: 'Use template' }) })
       .last();
-    await templateCard.getByRole('button', { name: 'Use Template' }).click();
+    await templateCard.getByRole('button', { name: 'Use template' }).click();
 
     await expect(page.getByText(PROJECT_NAME).first()).toBeVisible({ timeout: 15_000 });
   });
@@ -135,7 +135,7 @@ test.describe('the core journey', () => {
     await expect(composer).toBeVisible({ timeout: 10_000 });
     await composer.click();
     await composer.pressSequentially(COMMENT_BODY);
-    await page.getByRole('button', { name: 'Post Comment' }).click();
+    await page.getByRole('button', { name: 'Post comment' }).click();
 
     await expect(page.getByText(COMMENT_BODY).first()).toBeVisible({ timeout: 15_000 });
   });

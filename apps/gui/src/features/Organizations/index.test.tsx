@@ -152,7 +152,7 @@ describe('OrganizationsDashboard', () => {
     expect(screen.getByText('Child Co')).toBeDefined();
   });
 
-  it('loads the next page of organizations when Load More is clicked', async () => {
+  it('loads the next page of organizations when Load more is clicked', async () => {
     const requests = withRpc('ListOrgs', (body: { page?: { cursor?: string } }) =>
       body.page?.cursor
         ? { organizations: [{ id: 'org-2', name: 'Page Two Org', slug: 'page-two' }], page: {} }
@@ -160,7 +160,7 @@ describe('OrganizationsDashboard', () => {
     renderPage('/organizations?org=org-1');
 
     await waitFor(() => expect(screen.getByText('Page One Org')).toBeDefined());
-    fireEvent.click(screen.getByRole('button', { name: 'Load More' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
 
     await waitFor(() => expect(screen.getByText('Page Two Org')).toBeDefined());
     expect(requests).toContainEqual({ page: { cursor: 'cursor-2' } });

@@ -32,7 +32,7 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
   return (
     <div className="flex justify-center p-4">
       <Button variant="outline" onClick={() => onNextPage(nextCursor)} disabled={isLoading}>
-        {isLoading ? 'Loading…' : 'Load More'}
+        {isLoading ? 'Loading…' : 'Load more'}
       </Button>
     </div>
   );

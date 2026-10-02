@@ -71,7 +71,21 @@ describe('AccountSettings', () => {
       expect(await screen.findByRole('button', { name: 'Change password' })).toBeDefined();
       const button = screen.getByRole('button', { name: 'Change password' });
       fireEvent.change(screen.getByLabelText('New password'), { target: { value: VALID_PASSWORD } });
-      expect(button).toBeDisabled(); // current password still empty
+      // M32-T07: the button stays usable and says what is missing, instead of
+      // sitting disabled with no reason given.
+      expect(button).not.toBeDisabled();
+      fireEvent.click(button);
+      expect(await screen.findByRole('alert')).toHaveTextContent('Enter your current password.');
+    });
+
+    it('says the new password is too short rather than refusing silently', async () => {
+      const requests = withSetPassword();
+      renderSettings();
+      fireEvent.change(await screen.findByLabelText('Current password'), { target: { value: 'old-secret' } });
+      fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'short' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(/at least \d+ characters/);
+      expect(requests).toHaveLength(0);
     });
 
     it('submits both currentPassword and newPassword', async () => {

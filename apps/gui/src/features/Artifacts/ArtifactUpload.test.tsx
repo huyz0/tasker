@@ -231,10 +231,16 @@ describe('ArtifactUpload', () => {
   });
 
   it('previews an image while it uploads', async () => {
+    // The upload this starts is awaited before the test ends. Left in flight,
+    // its request landed on whatever CreateArtifact handler the *next* test
+    // registered, and that test counted two requests where it sent one - a
+    // failure that only showed up when the suite ran under load.
+    const requests = withCreateArtifact();
     renderUpload();
     pick(fileOf('shot.png', 'image/png'));
     const img = await screen.findByAltText('Preview of shot.png');
     expect(img).toHaveAttribute('src', 'blob:preview');
+    await waitFor(() => expect(requests).toHaveLength(1));
   });
 
   it('does not try to preview a non-image', async () => {

@@ -107,7 +107,7 @@ function CreatedCompletedCard({ trends }: { trends: TrendsData }) {
           ]}
           footnote={collectedSinceFootnote(trends.collectedSince)}
         />
-        <h3 className="px-2 pt-2 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <h3 className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground">
           Recent completions
         </h3>
         {trends.recentCompletions.length === 0 ? (

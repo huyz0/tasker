@@ -67,24 +67,24 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeDefined();
     // System Health moved to /settings: database latency is an operator's
     // concern and was the only thing on the home screen that ever changed.
-    expect(screen.queryByRole('button', { name: 'Ping Backend' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ping backend' })).toBeNull();
   });
 
   it('serves backend telemetry at /settings, which used to be a placeholder', async () => {
     healthQueryResult = { data: { message: 'pong', dbStatus: 'ok' }, error: null, isLoading: false };
     renderApp('/settings');
-    expect(await screen.findByRole('button', { name: 'Ping Backend' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Ping backend' })).toBeDefined();
     expect(screen.getByText(/pong/)).toBeDefined();
     // The route used to render "Settings module placeholder area".
     expect(screen.queryByText(/placeholder area/)).toBeNull();
   });
 
-  it('clicking Ping Backend on /settings triggers a refetch', async () => {
+  it('clicking Ping backend on /settings triggers a refetch', async () => {
     healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp('/settings');
     const before = mockUseQuery.mock.calls.length;
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Ping Backend' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ping backend' }));
 
     await waitFor(() => {
       expect(mockUseQuery.mock.calls.length).toBeGreaterThan(before);

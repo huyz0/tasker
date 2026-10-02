@@ -196,7 +196,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                     aria-expanded={expandedLinkId === link.id}
                     className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded hover:bg-secondary/80"
                   >
-                    {expandedLinkId === link.id ? 'Hide Builds' : 'Show Builds'}
+                    {expandedLinkId === link.id ? 'Hide builds' : 'Show builds'}
                   </button>
                   <button
                     onClick={() => syncMutation.mutate()}

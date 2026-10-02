@@ -58,10 +58,14 @@ export function AccountSettings() {
     },
   });
 
+  // Validated on submit, with the reason shown - not a submit button that
+  // stays disabled without saying what it is waiting for (M32-T07).
+  const [passwordProblem, setPasswordProblem] = useState<string | null>(null);
   const handleSetPassword = (e: FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < MIN_PASSWORD_LENGTH) return;
-    if (hasPassword && !currentPassword) return;
+    if (hasPassword && !currentPassword) return setPasswordProblem('Enter your current password.');
+    if (newPassword.length < MIN_PASSWORD_LENGTH) return setPasswordProblem(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+    setPasswordProblem(null);
     setPasswordMutation.mutate();
   };
 
@@ -90,7 +94,7 @@ export function AccountSettings() {
     <div className="flex flex-col gap-6">
       <div className="p-6 border rounded-lg bg-card text-card-foreground shadow-sm max-w-2xl">
         <h2 className="text-xl font-medium mb-4">Password</h2>
-        <form onSubmit={handleSetPassword} className="flex flex-col gap-3" aria-label={hasPassword ? 'Change your password' : 'Set a password'}>
+        <form noValidate onSubmit={handleSetPassword} className="flex flex-col gap-3" aria-label={hasPassword ? 'Change your password' : 'Set a password'}>
           {hasPassword && (
             <div className="flex flex-col gap-1">
               <label htmlFor="settings-current-password" className="text-sm font-medium text-foreground">
@@ -123,15 +127,15 @@ export function AccountSettings() {
             />
             <p className="text-xs text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p>
           </div>
-          {setPasswordError && (
-            <p role="alert" className="text-sm text-destructive">{setPasswordError.message}</p>
+          {(passwordProblem || setPasswordError) && (
+            <p role="alert" className="text-sm text-destructive">{passwordProblem ?? setPasswordError?.message}</p>
           )}
           {setPasswordMutation.isSuccess && (
             <p role="status" className="text-sm text-success">Password updated.</p>
           )}
           <Button
             type="submit"
-            disabled={setPasswordMutation.isPending || newPassword.length < MIN_PASSWORD_LENGTH || (hasPassword && !currentPassword)}
+            disabled={setPasswordMutation.isPending}
             className="self-start"
           >
             {setPasswordMutation.isPending ? 'Saving…' : hasPassword ? 'Change password' : 'Set password'}

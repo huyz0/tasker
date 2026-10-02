@@ -29,7 +29,7 @@ export type UnclaimedRow = {
 };
 
 function SectionHeading({ children }: { children: string }) {
-  return <h3 className="px-2 pt-2 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{children}</h3>;
+  return <h3 className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground">{children}</h3>;
 }
 
 /**
