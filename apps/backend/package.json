@@ -25,7 +25,7 @@
     "@opentelemetry/resources": "^2.10.0",
     "@opentelemetry/sdk-trace-node": "^2.10.0",
     "@opentelemetry/semantic-conventions": "^1.43.0",
-    "nodemailer": "^9.0.5",
+    "nodemailer": "^10.0.13",
     "pino": "^10.3.1",
     "shared-contract": "workspace:*"
   },

@@ -23,30 +23,9 @@ set -uo pipefail
 # numeric ids in `--json` output are a different namespace and are silently
 # ignored, which looks exactly like the gate working.
 ACCEPTED=(
-  # brace-expansion — DoS via pathological glob expansion. Reached through
-  # minimatch → glob → @storybook/react-vite's docgen plugin. Storybook does
-  # not run against untrusted input, and never ships.
-  GHSA-mh99-v99m-4gvg GHSA-rgw5-rvv9-x895 GHSA-3jxr-9vmj-r5cp
-
-  # fast-uri — URL parsing confusion. Reached through ajv → @typespec/compiler,
-  # which parses this repository's own `.tsp` files at build time. The input is
-  # the repository.
-  GHSA-7p8r-x3mc-p8w7 GHSA-v2hh-gcrm-f6hx GHSA-q3j6-qgpj-74h6 GHSA-v39h-62p7-jpjc GHSA-4c8g-83qw-93j6
-
-  # js-yaml — quadratic CPU on `!!omap`. Three routes, and one of them *ships*:
-  # `@mdxeditor/editor` is a GUI dependency. Accepted rather than urgent
-  # because the editor parses markdown, not YAML — nothing in the browser
-  # feeds it an `!!omap` — but this is the first line to clear when a fixed
-  # version exists.
-  GHSA-5p4m-2wfm-xmqj
-
-  # undici — TLS and routing issues in the HTTP client. Reached through jsdom,
-  # which exists only for the vitest DOM environment.
-  GHSA-4cwx-7wf7-3272 GHSA-vmh5-mc38-953g GHSA-vxpw-j846-p89q GHSA-hm92-r4w5-c3mj
-
-  # ws — memory exhaustion from fragmented frames. Storybook's dev server and
-  # vitest's browser mode.
-  GHSA-96hv-2xvq-fx4p
+  # Empty. The last refresh (2026-10-02) cleared every advisory that had been
+  # accepted here — brace-expansion, fast-uri, js-yaml, undici, ws — by moving
+  # to patched releases within the existing ranges, plus nodemailer 9 → 10.
 )
 
 # One `--ignore=` per id. A comma-separated list is accepted without complaint
