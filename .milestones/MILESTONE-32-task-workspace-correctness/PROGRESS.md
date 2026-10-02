@@ -159,3 +159,29 @@
     counted two requests. It now registers its own handler and waits for the
     request.
 - **Next**: M32-T08
+
+## M32-T08 — Audit trail E2E and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/gui/tests/e2e/audit-trail.spec.ts` (new),
+  `apps/backend/scripts/seed.ts`
+- **Verified**: on a fresh seed against a live `STANDALONE=true
+  ENABLE_TEST_LOGIN=true` backend, the full Playwright suite — 48/48, the new
+  spec included; the backend log shows no server error but the expected NATS
+  refusal. `moon run gui:storybook-test` — 122 stories, 0 a11y violations,
+  nothing wider than 375px.
+- **Notes**: Audit rows come from the NATS projector, and neither standalone
+  mode nor the E2E job has a broker — which is why the audit trail's
+  never-loading bug (M30-T11) had no test able to see it. The seed now writes
+  three events through the projector's own `projectEvent`, so the fixture
+  follows any change to how an event becomes a row. The spec is read-only and
+  re-runnable.
+
+## Milestone closed
+
+- **Date**: 2026-10-02
+- **Exit criteria**: 9/9 (CI on `main` confirmed after the push).
+- **Not done, deliberately**: a per-task activity timeline, board filters by
+  assignee/agent/stalled, bulk reassign, and shared `Input`/`Badge`
+  primitives — recorded in the milestone's out-of-scope list.

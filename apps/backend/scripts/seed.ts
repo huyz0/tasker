@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { setupDatabase } from "../src/db/db";
 import * as schema from "../src/db/schema.sqlite";
 import { writeNotifications, TASK_STALLED } from "../src/lib/notificationRegistry";
+import { projectEvent } from "../src/consumers/auditProjector";
 import { createSessionToken } from "../src/modules/auth/session";
 
 /**
@@ -395,6 +396,23 @@ async function main() {
       // does not collide on the dedupe index and silently write nothing.
       anchorAt: now.getTime() - (i + 1) * 3_600_000,
     }, [{ userId: GUI_DEV_USER_ID }, { userId }]);
+  }
+
+  // M32-T08: an audit trail to read. The real writer is the NATS projector
+  // (consumers/auditProjector.ts), which needs a JetStream broker that neither
+  // standalone mode nor the E2E job has - so the Organizations > Audit trail
+  // screen had never rendered a row in any test, and it was broken on every
+  // load for months without one noticing (M30-T11). Written through the
+  // projector's own `projectEvent`, so a change to how an event becomes a row
+  // shows up here too. `seq` is the unique stream position; offsetting it by
+  // the clock keeps a re-seed of the same database from colliding.
+  const auditEvents = [
+    { subject: "domain.org.created", payload: { orgId, userId, name: `Seed Org ${runId}` } },
+    { subject: "domain.project.created", payload: { orgId, projectId, userId } },
+    { subject: "domain.org.member_added", payload: { orgId, userId: GUI_DEV_USER_ID, role: "admin", actorUserId: userId } },
+  ];
+  for (const [i, event] of auditEvents.entries()) {
+    await projectEvent(db, { ...event, seq: now.getTime() * 10 + i }, new Date(now.getTime() - (auditEvents.length - i) * 60_000));
   }
 
   const token = createSessionToken(userId);

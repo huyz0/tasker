@@ -1,13 +1,13 @@
 ---
 id: M32
 title: Task Workspace Correctness
-status: in-progress
+status: done
 goal: A human supervising agents from the task screen sees what the agents are doing as they do it, is never shown a stale or wrong value after their own edit, can only choose moves the server will accept, and is told when something failed instead of being shown an empty panel.
 depends_on: [M30]
 surfaces: [gui, backend, contract, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M32 — Task Workspace Correctness
@@ -62,8 +62,8 @@ the server); no E2E asserted it rendered a row.
   targets.
 - [x] Notes render Markdown; agent names replace agent ids where the org's
   agents are known.
-- [ ] An E2E spec asserts the audit trail renders at least one row.
-- [ ] `moon run gui:lint gui:design-lint gui:typecheck gui:test gui:build`,
+- [x] An E2E spec asserts the audit trail renders at least one row.
+- [x] `moon run gui:lint gui:design-lint gui:typecheck gui:test gui:build`,
   `gui:storybook-test` and `gui:e2e` green in CI on `main`.
 
 ## 4. Scope
@@ -96,7 +96,7 @@ review's deferred items that are defects (`formatDateTime` helper, raw
   - **Files**: `apps/gui/src/features/{Tasks,Handoffs}/index.tsx`, `src/lib/formatDateTime.ts`
 - [x] **M32-T07** — Copy and small UX fixes: Handoffs status labels, Title Case buttons, set-password submit, flaky upload test.
   - **Files**: as named in the journal
-- [ ] **M32-T08** — Audit trail E2E, documentation and close.
+- [x] **M32-T08** — Audit trail E2E, documentation and close.
   - **Files**: `apps/gui/tests/e2e/*.spec.ts`, `.milestones/STATE.md`
 
 ## 6. Verification

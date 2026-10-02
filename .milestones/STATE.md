@@ -1,8 +1,8 @@
 ---
-active_milestone: M32
-active_task: M32-T08
+active_milestone: M33
+active_task: null
 last_updated: 2026-10-02
-last_commit: 21ec46d
+last_commit: 6a26061
 blocked: false
 blocker: null
 ---
@@ -19,8 +19,11 @@ blocker: null
 (T05 dropped — the index already existed), 8/8 exit criteria.**
 **M31 (CLI Output Truth) complete: 6/6 tasks, 6/6 exit criteria** — results on
 stdout, one error line with a classified exit code, protojson everywhere,
-`--page-all`, and a CI gate on the generated reference. M32 (Task Workspace
-Correctness) in progress.
+`--page-all`, and a CI gate on the generated reference.
+**M32 (Task Workspace Correctness) complete: 8/8 tasks, 9/9 exit criteria** —
+notes live-update, the dialog shows its own edits, Escape closes one layer,
+dead links and failed loads say so, pickers offer only legal moves, agents
+appear by name. Next: M33.
 A deep
 review (three parallel read-only reviews of backend, GUI and CLI; every
 finding re-verified in code) produced five milestones, delivered in order and
@@ -1739,9 +1742,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M29 | In-App Notifications            | done   | —          | 9     | 9    |
 | M30 | Backend Correctness at Scale    | done   | —          | 11    | 10   |
 | M31 | CLI Output Truth                | done   | —          | 6     | 6    |
-| M32 | Task Workspace Correctness      | in-progress | M30   | 8     | 7    |
+| M32 | Task Workspace Correctness      | done   | M30        | 8     | 8    |
 
-**Total: 262 tasks across 26 milestones — 259 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
+**Total: 262 tasks across 26 milestones — 260 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
