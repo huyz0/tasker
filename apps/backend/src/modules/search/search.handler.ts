@@ -2,7 +2,7 @@ import { type ConnectRouter, ConnectError, Code } from "@connectrpc/connect";
 import { SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { sql } from "drizzle-orm";
 import { requireUser } from "../../lib/authz";
-import { assertCan } from "../../lib/policy";
+import { assertCan, can } from "../../lib/policy";
 
 // -------------------------------------------------------------------------
 // Full-text search. SQLite reads the FTS5 tables M07-T05/T08 maintain with
@@ -173,10 +173,19 @@ function findMatches(snippet: string, tokens: string[]): { start: number; length
  * logic is where this milestone's one High finding lived (an exhausted type
  * restarting at zero and repeating its rows), and copies of it would drift.
  */
+/**
+ * Who is asking, beyond the org. Only beliefs need it today: a team-scoped
+ * belief is readable only by a caller with standing on that team, because
+ * `can()` does not climb from a team to its org (M30-T02).
+ */
+interface SearchViewer {
+  readableTeamIds: string[];
+}
+
 interface SearchEntity {
   type: string;
-  rows(db: any, match: string, orgId: string, limit: number, offset: number): any;
-  count(db: any, match: string, orgId: string): any;
+  rows(db: any, match: string, orgId: string, limit: number, offset: number, viewer: SearchViewer): any;
+  count(db: any, match: string, orgId: string, viewer: SearchViewer): any;
   toResult(row: any, tokens: string[]): any;
 }
 
@@ -198,8 +207,33 @@ export function rowsOf(result: any): any[] {
   return Array.isArray(result) ? result : [];
 }
 
+/** A team-scoped belief is visible only on a team the viewer can read. */
+function beliefVisible(viewer: SearchViewer) {
+  if (viewer.readableTeamIds.length === 0) return sql`b.scope_type <> 'team'`;
+  return sql`(b.scope_type <> 'team' OR b.scope_id IN (${sql.join(viewer.readableTeamIds.map((id) => sql`${id}`), sql`, `)}))`;
+}
+
+/**
+ * The teams whose beliefs this user may read, among those that hold any.
+ * Asked per team through `can()` - the same check `GetBelief` makes - so
+ * search cannot disagree with it. `can()` memoizes the user's grants per
+ * request, so the loop costs one grant read, not one per team.
+ */
+async function readableBeliefTeams(db: any, userId: string, orgId: string, isStandalone: boolean): Promise<string[]> {
+  const q = sql`
+    SELECT DISTINCT scope_id AS id FROM beliefs
+    WHERE org_id = ${orgId} AND scope_type = 'team' AND deleted_at IS NULL AND status = 'active'
+  `;
+  const teamIds = rowsOf(isStandalone ? await db.all(q) : await db.execute(q)).map((r: any) => String(r.id));
+  const readable: string[] = [];
+  for (const id of teamIds) {
+    if (await can(db, { kind: "user", userId }, { type: "team", id }, "memory:read")) readable.push(id);
+  }
+  return readable;
+}
+
 /** Ranked search over whichever full-text index the dialect provides. */
-async function fullTextSearch(db: any, orgId: string, rawQuery: string, page: any, dialect: SearchDialect) {
+async function fullTextSearch(db: any, orgId: string, rawQuery: string, page: any, dialect: SearchDialect, viewer: SearchViewer) {
   const totalLimit = Math.min(Math.max(page?.limit || 20, 1), 100);
   const offsets = decodeSearchCursor(page?.cursor);
 
@@ -221,8 +255,8 @@ async function fullTextSearch(db: any, orgId: string, rawQuery: string, page: an
     dialect.entities.map(async (entity) => {
       const offset = offsets[entity.type] ?? 0;
       const [rowsRaw, countRaw] = await Promise.all([
-        entity.rows(db, match, orgId, totalLimit, offset),
-        entity.count(db, match, orgId),
+        entity.rows(db, match, orgId, totalLimit, offset, viewer),
+        entity.count(db, match, orgId, viewer),
       ]);
       return {
         entity,
@@ -432,21 +466,23 @@ const sqliteDialect: SearchDialect = {
       // superseded or retracted belief must not surface in a default search
       // (M21's exit criteria) here either.
       type: "belief",
-      rows: (db, match, orgId, limit, offset) => db.all(sql`
+      rows: (db, match, orgId, limit, offset, viewer) => db.all(sql`
         SELECT b.id AS id, b.statement AS statement
         FROM beliefs_fts
         CROSS JOIN beliefs b ON b.rowid = beliefs_fts.rowid
         WHERE beliefs_fts MATCH ${match} AND b.org_id = ${orgId}
           AND b.deleted_at IS NULL AND b.status = 'active'
+          AND ${beliefVisible(viewer)}
         ORDER BY bm25(beliefs_fts), b.id
         LIMIT ${limit} OFFSET ${offset}
       `),
-      count: (db, match, orgId) => db.all(sql`
+      count: (db, match, orgId, viewer) => db.all(sql`
         SELECT count(*) AS count
         FROM beliefs_fts
         CROSS JOIN beliefs b ON b.rowid = beliefs_fts.rowid
         WHERE beliefs_fts MATCH ${match} AND b.org_id = ${orgId}
           AND b.deleted_at IS NULL AND b.status = 'active'
+          AND ${beliefVisible(viewer)}
       `),
       toResult: (r, tokens) => ({
         id: r.id,
@@ -586,19 +622,21 @@ const mysqlDialect: SearchDialect = {
       // sibling implementation rather than a call into
       // `lexicalBeliefRetriever.search()`.
       type: "belief",
-      rows: (db, match, orgId, limit, offset) => db.execute(sql`
+      rows: (db, match, orgId, limit, offset, viewer) => db.execute(sql`
         SELECT b.id AS id, b.statement AS statement
         FROM beliefs b
         WHERE ${against(sql`b.statement`, match)} AND b.org_id = ${orgId}
           AND b.deleted_at IS NULL AND b.status = 'active'
+          AND ${beliefVisible(viewer)}
         ORDER BY ${against(sql`b.statement`, match)} DESC, b.id
         LIMIT ${limit} OFFSET ${offset}
       `),
-      count: (db, match, orgId) => db.execute(sql`
+      count: (db, match, orgId, viewer) => db.execute(sql`
         SELECT count(*) AS count
         FROM beliefs b
         WHERE ${against(sql`b.statement`, match)} AND b.org_id = ${orgId}
           AND b.deleted_at IS NULL AND b.status = 'active'
+          AND ${beliefVisible(viewer)}
       `),
       toResult: (r, tokens) => ({
         id: r.id,
@@ -623,7 +661,8 @@ export default (router: ConnectRouter, db: any) => {
 
       // The `LIKE '%term%'` scan both dialects used is gone: it could not use
       // an index, and it ordered by creation date rather than relevance.
-      return await fullTextSearch(db, orgId, query, page, isStandalone ? sqliteDialect : mysqlDialect);
+      const viewer = { readableTeamIds: await readableBeliefTeams(db, userId, orgId, isStandalone) };
+      return await fullTextSearch(db, orgId, query, page, isStandalone ? sqliteDialect : mysqlDialect, viewer);
     },
   });
 };

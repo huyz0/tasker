@@ -55,7 +55,7 @@ for the list query every board load and agent poll runs.
   by unit tests that exercise the mysql branch, not only sqlite. (Every site
   now goes through `decodeSqlTimestamp`; a structural test forbids a raw
   timestamp aggregate typed as a number.)
-- [ ] `UniversalSearch` by an org member who holds no grant on team T returns
+- [x] `UniversalSearch` by an org member who holds no grant on team T returns
   none of T's beliefs; a member of T still finds them.
 - [ ] `ClaimTask` on a task in a terminal status fails with
   `FailedPrecondition`, and `ListTasks(assigneeFilter="unassigned")` excludes
@@ -89,7 +89,7 @@ for the list query every board load and agent poll runs.
     `modules/reports/{common,trends,exceptions,scorecard}.ts`,
     `modules/dashboard/dashboard.handler.ts`
   - **Verify**: new `sqlTime.test.ts`; report/dashboard tests with a mysql-shaped value.
-- [ ] **M30-T02** — Universal search filters beliefs to scopes the caller can read.
+- [x] **M30-T02** — Universal search filters beliefs to scopes the caller can read.
   - **Files**: `modules/search/search.handler.ts`
   - **Verify**: search test with a team-scoped belief and a non-member caller.
 - [ ] **M30-T03** — Terminal tasks are not claimable and not offered as unassigned work.

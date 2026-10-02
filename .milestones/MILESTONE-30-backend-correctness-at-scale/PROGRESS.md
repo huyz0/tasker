@@ -20,3 +20,20 @@
   an `…At` column is typed as a number again. `reports/common.ts`'s
   `fromSeconds` is gone rather than aliased — its name was the bug.
 - **Next**: M30-T02
+
+## M30-T02 — Search filters beliefs to scopes the caller can read
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/search/search.handler.ts`, `search.test.ts`
+- **Verified**: `bun test src/modules/search` — 36 pass (6 MySQL-only skip);
+  the new "hidden from an org member with no standing" test failed first,
+  reproducing the leak.
+- **Notes**: Search now asks `can(team, "memory:read")` — the exact check
+  `GetBelief` makes — for each team that holds an active belief in the org,
+  and filters both the rows and the count to those teams, so a hidden belief
+  does not leak through `totalCount` either. Project-scoped beliefs need no
+  filter: `can()` climbs project→org, so org-level `search:read` already
+  implies them. The per-team loop costs one grant read in total because
+  `can()` memoizes a user's grants per request.
+- **Next**: M30-T03

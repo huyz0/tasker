@@ -76,6 +76,42 @@ describe("Search Handler", () => {
     expect(res.results.some((r: any) => r.id === supersededId)).toBe(false);
   });
 
+  describe("team-scoped beliefs (M30-T02)", () => {
+    // `GetBelief` authorizes a belief against its own scope, and `can()` does
+    // not climb from a team to its org - so an org admin with no standing on
+    // team T is denied T's beliefs there. Search must not hand them over.
+    let teamId: string;
+    let teamBeliefId: string;
+
+    beforeEach(async () => {
+      teamId = "team-" + crypto.randomUUID();
+      teamBeliefId = "blf-" + crypto.randomUUID();
+      await db.insert(schemaSqlite.teams).values({ id: teamId, orgId, name: "T", createdAt: new Date() });
+      await db.insert(schemaSqlite.beliefs).values({
+        id: teamBeliefId, orgId, scopeType: "team", scopeId: teamId,
+        statement: "Findable team secret", confidence: "medium", status: "active",
+        sourceKind: "user", sourceUserId: userId, createdAt: new Date(),
+      });
+    });
+
+    it("are hidden from an org member with no standing on the team, and from the count", async () => {
+      const res = await impl.universalSearch({ query: "Findable", orgId }, ctx);
+      expect(res.results.some((r: any) => r.id === teamBeliefId)).toBe(false);
+      const only = await impl.universalSearch({ query: "secret", orgId }, ctx);
+      expect(only.results).toHaveLength(0);
+      expect(Number(only.page.totalCount)).toBe(0);
+    });
+
+    it("are found by a caller holding a grant on the team", async () => {
+      await db.insert(schemaSqlite.grants).values({
+        id: "grant-" + crypto.randomUUID(), subjectType: "user", subjectId: userId,
+        scopeType: "team", scopeId: teamId, roleId: "role-member", createdAt: new Date(),
+      });
+      const res = await impl.universalSearch({ query: "secret", orgId }, ctx);
+      expect(res.results.map((r: any) => r.id)).toEqual([teamBeliefId]);
+    });
+  });
+
   it("does not return results from a different org", async () => {
     const otherOrgId = "org-" + crypto.randomUUID();
     const otherUserId = "user-" + crypto.randomUUID();
