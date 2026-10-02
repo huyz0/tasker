@@ -1,13 +1,13 @@
 ---
 id: M43
 title: Recurring Work
-status: in-progress
+status: done
 goal: Routine work - a weekly triage, a nightly dependency check, a monthly report - appears on the queue by itself on schedule, as a single task or a whole workflow, so agents and people pick it up without anyone remembering to file it.
 depends_on: [M42]
 surfaces: [contract, backend, cli, gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M43 — Recurring Work
@@ -30,16 +30,16 @@ agents.
 
 ## 3. Exit Criteria
 
-- [ ] Schedules validate their cadence and target; CRUD needs
+- [x] Schedules validate their cadence and target; CRUD needs
   `tasktype:write`; reading and Run now need `tasks:write` (agents may run
   one).
-- [ ] The sweep fires each due schedule once even with two backends (claimed
+- [x] The sweep fires each due schedule once even with two backends (claimed
   by compare-and-swap on `next_run_at`), records the run, and computes the
   next time; a run is skipped (and recorded as skipped) while the last
   task is open, unless the schedule says otherwise.
-- [ ] Created tasks say which schedule made them; `task.created` reaches
+- [x] Created tasks say which schedule made them; `task.created` reaches
   webhooks as for any task.
-- [ ] CLI, MCP tools, GUI schedule list and editor; CI green on `main`.
+- [x] CLI, MCP tools, GUI schedule list and editor; CI green on `main`.
 
 ## 4. Scope
 
@@ -53,7 +53,7 @@ event-triggered schedules (webhooks already cover reacting to events).
 - [x] **M43-T03** — The sweep, Run now and run history.
 - [x] **M43-T04** — CLI and MCP.
 - [x] **M43-T05** — GUI.
-- [ ] **M43-T06** — Docs and close.
+- [x] **M43-T06** — Docs and close.
 
 ## 6. Verification
 

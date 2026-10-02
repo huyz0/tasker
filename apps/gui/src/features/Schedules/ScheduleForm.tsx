@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Schedule, WorkflowTemplate } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { PRIORITY_OPTIONS } from '../Tasks/priority';
 
-export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export interface ScheduleDraft {
   name: string;

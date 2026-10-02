@@ -67,5 +67,7 @@ New gaps, ranked:
    Tasker does not run agents, so the tracker's part of a Loop is putting the
    work on the queue on time. → **M43**
 
+Both delivered (ADR-0035, ADR-0036).
+
 Not taken: trigger-on-event loops (webhooks M37 already let a runner react to
 any task event), running models server-side (Tasker has none, ADR-0033/0034).

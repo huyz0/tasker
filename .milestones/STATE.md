@@ -1,8 +1,8 @@
 ---
 active_milestone: M43
-active_task: M43-T06
+active_task: null
 last_updated: 2026-10-02
-last_commit: c95c946
+last_commit: 0c5e508
 blocked: false
 blocker: null
 ---
@@ -57,6 +57,12 @@ moved (ADR-0032). CLI, MCP, GUI editor flag, task dialog and queue.
 agents report tokens and cost (integer micro-dollars, idempotent by key)
 against a task; people see task totals and an Agent spend report by agent,
 project and day (ADR-0033). CLI, MCP `report_usage`, GUI.
+
+**M43 (Recurring Work) complete: 6/6 tasks, 4/4 exit criteria** — schedules
+put a task or a workflow on the queue daily, on weekdays or monthly (UTC),
+fired exactly once across instances by compare-and-swap, skipped while the
+last run is open, every run recorded (ADR-0036). CLI, MCP, GUI Schedules
+screen. **M42–M43 delivered** — the second landscape pass is shipped.
 
 **M42 (Workflow Templates) complete: 6/6 tasks, 4/4 exit criteria** — a
 validated step graph started as a parent plus wired subtasks, all or nothing;
@@ -1824,9 +1830,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M40 | Agent Usage and Cost            | done   | M35        | 5     | 5    |
 | M41 | Task Digests                    | done   | M38, M40   | 5     | 5    |
 | M42 | Workflow Templates              | done   | M35        | 6     | 6    |
-| M43 | Recurring Work                  | in-progress | M42   | 6     | 5    |
+| M43 | Recurring Work                  | done   | M42        | 6     | 6    |
 
-**Total: 325 tasks across 37 milestones — 323 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 325 tasks across 37 milestones — 324 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

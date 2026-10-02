@@ -582,6 +582,37 @@ tasker tasks claim-next --project "$P"   # the scan step; triage once scan is do
   tasks: editing the template later does not change a running instance.
 - `task.workflow_started` reaches the event feed and [webhooks](webhooks.md).
 
+## 18. Recurring work: schedules
+
+Routine work (a weekly triage, a nightly dependency check, a monthly
+report) can put itself on the queue (M43, ADR-0036). A schedule creates one task,
+or starts a workflow (§17), on a cadence in UTC. Tasker does not run agents:
+the work lands where `claim-next` and [webhooks](webhooks.md) already reach
+them.
+
+```bash
+# People define schedules (or use Schedules in the GUI).
+tasker schedules create --name "Weekly triage" --weekdays mon,thu --hour 9 \
+  --task "Triage the inbox" --priority high
+tasker schedules create --name "Monthly report" --day 1 --hour 6 --workflow "$WF"
+
+tasker schedules list                 # next run, last outcome
+tasker schedules run "$S"             # fire one now, as you (agents may)
+tasker schedules runs "$S"            # created / skipped / failed, with reasons
+```
+
+- **Cadence:** daily, chosen weekdays, or a day of the month (1-28), at an
+  hour in UTC. A minute's sweep fires each due schedule exactly once, even
+  with several backends; missed slots after downtime fire once, not once per
+  slot.
+- **No pile-ups:** by default a run is skipped while the previous run's task
+  is unfinished (`--allow-overlap` turns that off). Every run is recorded.
+- **Who it runs as:** the work is created as the schedule's author (whoever
+  last saved it). If they lose access, runs fail visibly rather than run as
+  someone else. Created tasks carry `scheduleId`.
+- **Agents** list and run schedules (`tasks:read` / `tasks:write`; MCP
+  `list_schedules`, `run_schedule`); only people define them.
+
 ## See also
 
 - [Connecting an MCP client](mcp.md) — the same loop as MCP tools, for any
@@ -604,6 +635,8 @@ tasker tasks claim-next --project "$P"   # the scan step; triage once scan is do
   digest assembled at read time, and never deletes history.
 - `ADR-0035` in `.specs/adr/` — why a workflow is a stored step graph
   started as ordinary tasks.
+- `ADR-0036` in `.specs/adr/` — why schedules use a small UTC cadence, fire
+  once by compare-and-swap, and run as their author.
 - `ADR-0027` in `.specs/adr/` — why an agent may release a claim it took but
   never an assignment a person gave it.
 - `.agents/skills/capture-belief/SKILL.md` — the same §9 guidance, written

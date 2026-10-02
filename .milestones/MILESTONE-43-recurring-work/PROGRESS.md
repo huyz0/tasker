@@ -93,3 +93,22 @@
   Pause/Resume, and the recent runs with skip/failure reasons and links to
   the tasks they made.
 - **Next**: M43-T06
+
+## M43-T06 — Docs and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/agent-integration.md` §18; `tests/e2e/schedules.spec.ts`
+  (new); the landscape review records M42–M43 delivered; milestone closed,
+  STATE.
+- **Verified**: full Playwright suite on a fresh seed, 52 passed (the new
+  spec creates a weekly schedule, runs it now, sees the second run skipped
+  while the first task is open, and opens the task); live: a schedule's
+  `next_run_at` backdated in the database was fired by the real one-minute
+  sweep once, created "Check dependencies — 2026-10-02" stamped with the
+  schedule, and moved to the next 02:00 slot; Run now then skipped, naming
+  the open task.
+- **Notes**: `:knip` caught an export the T05 commit left unused
+  (`WEEKDAYS`); fixed here - T05 had not run knip. Exit criteria met; CI on
+  `main` verified after the push.
+- **Next**: none - M42-M43 delivered.
