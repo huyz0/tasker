@@ -65,3 +65,28 @@
   note present). A read-only token's claim comes back `permission_denied` as
   a tool error; a missing task, `not_found`.
 - **Next**: M36-T04
+
+## M36-T04 — `tasker mcp` stdio bridge
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/mcp.go` (+ `mcp_test.go`), `docs/cli-reference.md`
+- **Verified**: `moon run cli:format cli:vet cli:test cli:docs-check
+  cli:coverage-gate` green, coverage 94.3%. **Live**: against the restarted
+  standalone backend, with an agent token minted through the CLI (`agents
+  create-role`, `agents create`, `auth token create`), five stdin lines through
+  the real binary gave exactly four stdout lines - initialize (2025-06-18),
+  tools/list (20 tools), whoami (the agent and its three scopes),
+  claim_next_task (the urgent task from M35's smoke run) - and nothing for the
+  notification.
+- **Notes**: Newline-delimited JSON-RPC in, one compact line per reply out, and
+  nothing else on stdout. A server refusal answered before the server read the
+  id (401, 413) is given the request's own id so the client can match it; a
+  reply that is not JSON-RPC at all (a proxy's HTML, an unreachable backend)
+  becomes a -32603 error for a request and nothing for a notification. Without
+  a credential it exits 3 before reading stdin.
+  Also: the M35 push turned CI red - `shared-contract:format` (blank lines
+  between commented TypeSpec fields), which I had never run locally; it
+  skipped every later job. Fixed in 520c17f; the contract format check is now
+  in this milestone's local verification.
+- **Next**: M36-T05

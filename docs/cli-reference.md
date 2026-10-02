@@ -753,6 +753,21 @@ Flags:
   -h, --help                 help for on
 ```
 
+### `tasker mcp`
+
+```
+Relays Model Context Protocol messages between stdin/stdout (newline-delimited JSON-RPC)
+and the backend's /mcp endpoint, authenticated as TASKER_TOKEN or the saved login. Point an
+MCP client at the command `tasker mcp`; clients that speak HTTP can use <backend>/mcp
+directly. Nothing but protocol messages is written to stdout.
+
+Usage:
+  tasker mcp [flags]
+
+Flags:
+  -h, --help   help for mcp
+```
+
 ### `tasker memory`
 
 ```

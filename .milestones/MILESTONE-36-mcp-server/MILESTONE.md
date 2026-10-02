@@ -61,7 +61,7 @@ issued by Tasker's own agent-token flow).
   - **Files**: `apps/backend/src/modules/mcp/tools.ts` (+ test)
 - [x] **M36-T03** — Mount `/mcp`: auth, rate limit, size limit; end-to-end test.
   - **Files**: `apps/backend/src/index.ts`, `apps/backend/src/modules/mcp/*.test.ts`
-- [ ] **M36-T04** — `tasker mcp` stdio bridge.
+- [x] **M36-T04** — `tasker mcp` stdio bridge.
   - **Files**: `apps/cli/cmd/mcp.go` (+ test), `docs/cli-reference.md`
 - [ ] **M36-T05** — Docs and close.
   - **Files**: `docs/mcp.md`, `docs/agent-integration.md`,
@@ -70,7 +70,7 @@ issued by Tasker's own agent-token flow).
 ## 6. Verification
 
 ```
-moon run backend:typecheck backend:test cli:test cli:docs-check :knip
+moon run shared-contract:format backend:typecheck backend:test cli:test cli:docs-check :knip
 moon run :doc-drift :docs-lint :spec-drift
 ```
 
