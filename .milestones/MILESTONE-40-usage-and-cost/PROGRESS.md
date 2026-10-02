@@ -79,3 +79,18 @@
   scaled to the window's most expensive day, with each day's amount in its
   title.
 - **Next**: M40-T05
+
+## M40-T05 — Docs and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/agent-integration.md` §15; milestone closed, STATE.
+- **Verified**: live smoke on the seeded standalone backend - an agent reports
+  in dollars (stored as micros), a replayed key returns the first report and
+  the total stays put, a person files a report too, `tasks get`/`usage show`
+  show totals, `reports usage` breaks spend down by agent ("People" for the
+  person), project and day, and an agent asking for the report is refused
+  (exit 3); GUI (Playwright on the dev server): totals in the task dialog,
+  the Agent spend card on Reports. `:docs-lint`, `:doc-drift` green.
+- **Notes**: Exit criteria met; CI on `main` verified after the push.
+- **Next**: M41-T01

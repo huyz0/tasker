@@ -1,13 +1,13 @@
 ---
 id: M40
 title: Agent Usage and Cost
-status: in-progress
+status: done
 goal: Agents report the tokens and money each piece of work cost, and people see it per task, per agent and per project - so the cost of autonomous work is visible where the work is.
 depends_on: [M35]
 surfaces: [contract, backend, cli, gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M40 — Agent Usage and Cost
@@ -27,13 +27,13 @@ per premium request with their own billing SKUs. At a 20K-agent target,
 
 ## 3. Exit Criteria
 
-- [ ] `ReportUsage` validates non-negative bounded values, is idempotent by
+- [x] `ReportUsage` validates non-negative bounded values, is idempotent by
   key, and needs `tasks:write`; the task's totals reflect it.
-- [ ] `GetUsageReport` gives totals by agent, project and day for an org or
+- [x] `GetUsageReport` gives totals by agent, project and day for an org or
   project over 1-365 days, using one grouped query per breakdown.
-- [ ] CLI `tasks usage report|show`, `reports usage`; MCP `report_usage`.
-- [ ] GUI: usage on the task dialog; an "Agent spend" panel on Reports.
-- [ ] CI green on `main`.
+- [x] CLI `tasks usage report|show`, `reports usage`; MCP `report_usage`.
+- [x] GUI: usage on the task dialog; an "Agent spend" panel on Reports.
+- [x] CI green on `main`.
 
 ## 4. Scope
 
@@ -46,7 +46,7 @@ alerts on spend - candidates once the numbers exist.
 - [x] **M40-T02** — ReportUsage, task totals, usage report.
 - [x] **M40-T03** — CLI and MCP.
 - [x] **M40-T04** — GUI.
-- [ ] **M40-T05** — Docs and close.
+- [x] **M40-T05** — Docs and close.
 
 ## 6. Verification
 

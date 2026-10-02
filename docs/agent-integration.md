@@ -493,6 +493,34 @@ tasker tasks update-status "$T" --status done
 - People are never gated — a person making the move *is* the approval.
   Untyped tasks have no transitions, so they cannot be gated.
 
+## 15. Reporting what the work cost
+
+People supervising agents want to know what each piece of work cost, and who
+spent it (M40, ADR-0033). Tasker keeps no price table: the agent reports what
+it measured, against the task it was working on.
+
+```bash
+# After a model call (or a batch of them). The key makes a retry safe:
+# the same key on the same task returns the first report, counted once.
+tasker tasks usage report "$T" --model my-model --input-tokens 120000 \
+  --output-tokens 3400 --cost-usd 1.515 --idempotency-key "$RUN_ID-step-3"
+
+tasker tasks usage show "$T"        # the task's reports and total
+tasker reports usage --days 30      # people: spend by agent, project and day
+```
+
+- **Money is integer micro-dollars** (`costMicros`, USD x 1,000,000) on the
+  wire and in storage, never a float. `--cost-usd` converts exactly; the MCP
+  tool `report_usage` takes `cost_micros`.
+- Each report needs tokens or cost, every value whole and non-negative, at
+  most a billion tokens or USD 1,000 per report. Report each call or batch
+  once; there is no edit - a wrong report is corrected by its cause, not
+  overwritten.
+- People see a task's totals in its dialog and in `tasks get`, and an
+  **Agent spend** card on Reports. The org-wide report is people only.
+- `task.usage_reported` reaches the event feed and [webhooks](webhooks.md),
+  for billing or budget tooling of your own.
+
 ## See also
 
 - [Connecting an MCP client](mcp.md) — the same loop as MCP tools, for any
@@ -509,6 +537,8 @@ tasker tasks update-status "$T" --status done
   the existing `TaskNote`, not a new entity.
 - `ADR-0032` in `.specs/adr/` — why an approval gate is a flag on the
   transition, and why the agent gets a pending result rather than an error.
+- `ADR-0033` in `.specs/adr/` — why agents report cost themselves, in integer
+  micro-dollars, against a task.
 - `ADR-0027` in `.specs/adr/` — why an agent may release a claim it took but
   never an assignment a person gave it.
 - `.agents/skills/capture-belief/SKILL.md` — the same §9 guidance, written
