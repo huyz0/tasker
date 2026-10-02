@@ -44,3 +44,21 @@
   so a correlated subquery in a select field must be nested - noted at the
   call site.
 - **Next**: M41-T03
+
+## M41-T03 — CLI and MCP
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/tasks_digest.go` (new: `tasks summary
+  set|clear`, `tasks digest`, `tasks compaction-candidates`),
+  `tasks_graph.go` (`printRelations` shared with the digest), `tasks.go`
+  (summary on `get`), `cmd/tasks_digest_test.go`; `docs/cli-reference.md`
+  regenerated; MCP `set_task_summary`, `get_task_digest`,
+  `list_compaction_candidates` with an e2e case; `docs/mcp.md`.
+- **Verified**: `go test ./...` green; backend MCP tests 17 pass;
+  `cli:docs-check`, `backend:typecheck`, `:knip` green.
+- **Notes**: `summary set --file -` reads stdin, so an agent can pipe a
+  summary it wrote. An empty summary is refused client-side with a pointer
+  to `summary clear`, which says what it does. The digest's text view says
+  on stderr when a list was capped and where to read all of it.
+- **Next**: M41-T04

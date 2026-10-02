@@ -80,6 +80,9 @@ the same endpoint, using `TASKER_TOKEN` (or a saved `tasker auth login`) and
 | `cancel_input_request` | Withdraw a question you asked | `CancelInputRequest` |
 | `get_transition_approval` / `list_transition_approvals` | Follow a held move: pending, approved (applied), rejected (with a reason) or stale | `GetTransitionApproval` / `ListTransitionApprovals` |
 | `report_usage` | Record the tokens and cost (micro-dollars) of your work on a task; idempotent by key | `ReportUsage` |
+| `set_task_summary` | What a finished task came to (≤ 4,000 chars); replaces the last one | `SetTaskSummary` |
+| `get_task_digest` | One bounded read of a task: summary, plan, usage, latest handoff, answered questions, relations | `GetTaskDigest` |
+| `list_compaction_candidates` | A project's finished tasks with no summary, oldest first | `ListCompactionCandidates` |
 | `get_task_type` | A type's statuses and legal transitions | `GetTaskType` |
 | `search_memory` | Search shared beliefs | `SearchBeliefs` |
 | `record_belief` | Record a durable fact | `RecordBelief` |

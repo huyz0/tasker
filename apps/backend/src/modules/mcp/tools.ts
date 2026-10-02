@@ -311,6 +311,30 @@ export const TOOL_SPECS: ToolSpec[] = [
     }),
   },
   {
+    name: "set_task_summary", title: "Set a task's summary",
+    description: "Records what a task came to - outcome, decisions, gotchas - in at most 4,000 characters, for whoever reads it later. " +
+      "Write it when you finish a task. Replaces the previous summary; empty text clears it. History is never deleted.",
+    inputSchema: schema({ task_id: str("Task id"), text: str("The summary, plain text or Markdown") }, ["task_id", "text"]),
+    service: TaskService, method: "SetTaskSummary", request: (a) => ({ taskId: a.task_id, text: a.text }),
+  },
+  {
+    name: "get_task_digest", title: "Get a task digest",
+    description: "One bounded read of a task's context: the task with its summary, plan and usage, the latest handoff note, " +
+      "answered questions and relations. Prefer it to reading a long or old task's whole history.",
+    inputSchema: schema({ task_id: str("Task id") }, ["task_id"]), annotations: readOnly,
+    service: TaskService, method: "GetTaskDigest", request: (a) => ({ taskId: a.task_id }),
+  },
+  {
+    name: "list_compaction_candidates", title: "List tasks needing a summary",
+    description: "A project's finished tasks with no summary, oldest first - write one with set_task_summary and it drops off the list.",
+    inputSchema: schema({
+      project_id: str("Project id"), older_than_days: int("Finished at least this many days ago (default 30)", 0, 3650), limit,
+    }, ["project_id"]),
+    annotations: readOnly,
+    service: TaskService, method: "ListCompactionCandidates",
+    request: (a) => defined({ projectId: a.project_id, olderThanDays: a.older_than_days, limit: a.limit }),
+  },
+  {
     name: "get_transition_approval", title: "Get an approval request",
     description: "A status change of yours held for a person's approval: pending, approved (the move was applied), rejected (with a reason) or stale (the task moved meanwhile).",
     inputSchema: schema({ approval_id: str("Approval id from set_task_status's pendingApproval") }, ["approval_id"]), annotations: readOnly,

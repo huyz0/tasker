@@ -139,6 +139,37 @@ var tasksLinkRemoveCmd = &cobra.Command{
 	},
 }
 
+// printRelations writes a task's relations, one section per kind that has
+// any; it reports whether there were any at all.
+func printRelations(cmd *cobra.Command, m *healthv1.ListTaskLinksResponse) bool {
+	section := func(title string, refs []*healthv1.TaskRef) {
+		if len(refs) == 0 {
+			return
+		}
+		cmd.Printf("%s:\n", title)
+		for _, r := range refs {
+			state := r.Status
+			if r.Terminal {
+				state += ", finished"
+			}
+			cmd.Printf("  - %s [%s]: %s (id: %s)\n", r.DisplayId, state, r.Title, r.Id)
+		}
+	}
+	one := func(r *healthv1.TaskRef) []*healthv1.TaskRef {
+		if r == nil {
+			return nil
+		}
+		return []*healthv1.TaskRef{r}
+	}
+	section("Parent", one(m.Parent))
+	section("Blocked by", m.BlockedBy)
+	section("Blocks", m.Blocks)
+	section("Subtasks", m.Children)
+	section("Discovered from", one(m.DiscoveredFrom))
+	section("Discovered", m.Discovered)
+	return m.Parent != nil || m.DiscoveredFrom != nil || len(m.BlockedBy)+len(m.Blocks)+len(m.Children)+len(m.Discovered) > 0
+}
+
 var tasksLinkListCmd = &cobra.Command{
 	Use:   "list [task_id]",
 	Short: "Show a task's blockers, dependents, parent, subtasks and origin",
@@ -151,33 +182,7 @@ var tasksLinkListCmd = &cobra.Command{
 		if wantsJSON(cmd) {
 			return printJSON(cmd, res.Msg)
 		}
-		section := func(title string, refs []*healthv1.TaskRef) {
-			if len(refs) == 0 {
-				return
-			}
-			cmd.Printf("%s:\n", title)
-			for _, r := range refs {
-				state := r.Status
-				if r.Terminal {
-					state += ", finished"
-				}
-				cmd.Printf("  - %s [%s]: %s (id: %s)\n", r.DisplayId, state, r.Title, r.Id)
-			}
-		}
-		one := func(r *healthv1.TaskRef) []*healthv1.TaskRef {
-			if r == nil {
-				return nil
-			}
-			return []*healthv1.TaskRef{r}
-		}
-		m := res.Msg
-		section("Parent", one(m.Parent))
-		section("Blocked by", m.BlockedBy)
-		section("Blocks", m.Blocks)
-		section("Subtasks", m.Children)
-		section("Discovered from", one(m.DiscoveredFrom))
-		section("Discovered", m.Discovered)
-		if m.Parent == nil && m.DiscoveredFrom == nil && len(m.BlockedBy)+len(m.Blocks)+len(m.Children)+len(m.Discovered) == 0 {
+		if !printRelations(cmd, res.Msg) {
 			cmd.PrintErrln("No links.")
 		}
 		return nil

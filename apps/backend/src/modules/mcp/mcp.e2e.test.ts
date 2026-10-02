@@ -152,6 +152,17 @@ describe("MCP over HTTP (M36-T03)", () => {
     expect(empty.content[0].text).toMatch(/tokens or cost/);
   });
 
+  it("summarizes a task and reads it back as a digest (M41)", async () => {
+    const set = await call("set_task_summary", { task_id: gatedTaskId, text: "Shipped 2.0 behind a flag." });
+    expect(set.structuredContent.summary).toMatchObject({ text: "Shipped 2.0 behind a flag.", authorName: "Scout" });
+    const digest = (await call("get_task_digest", { task_id: gatedTaskId })).structuredContent.digest;
+    expect(digest.task.summary.text).toBe("Shipped 2.0 behind a flag.");
+    expect(digest.relations).toBeDefined();
+    const candidates = await call("list_compaction_candidates", { project_id: projectId, older_than_days: 0 });
+    expect(candidates.isError).toBeUndefined();
+    expect(candidates.structuredContent.candidates ?? []).not.toContainEqual(expect.objectContaining({ taskId: gatedTaskId }));
+  });
+
   it("applies the token's own scopes - a read-only token cannot claim", async () => {
     const res = await call("claim_next_task", { project_id: projectId }, readOnlyToken);
     expect(res.isError).toBe(true);

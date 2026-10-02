@@ -1649,42 +1649,45 @@ Usage:
   tasker tasks [command]
 
 Available Commands:
-  answer          Answer a question an agent asked (people only)
-  approval        Show one approval request and, once made, its decision
-  approvals       Status changes waiting on a person's approval - the organization's queue, or one task's
-  approve         Approve an agent's held status change; it is applied as you (people only)
-  ask             Ask a person a question on a task; its reviewers (or org admins) are notified
-  assign          Assign a task to an agent or user
-  cancel-question Withdraw a question you asked (or, as an admin, close any)
-  claim           Atomically claim an unassigned task for the calling principal (agent self-service)
-  claim-next      Claim the most important ready task in a project (agent self-service)
-  comment-add     Add a comment to a task
-  comments        List comments on a task
-  create          Create a new task in a project
-  delete          Move a task to the bin (soft delete; requires org admin)
-  get             Get a single task, including its description
-  handoffs        List tasks with a pending handoff note (one row per task, the latest only)
-  link            Blocking and discovered-from links between tasks
-  list            List tasks within a project
-  mine            List the open tasks you hold, across every project in the organization
-  note-add        Add an AI agent note to a task (requires an agent token)
-  note-delete     Delete an agent note (author only, requires an agent token)
-  note-update     Update an agent note's content (author only, requires an agent token)
-  notes           List AI agent notes on a task
-  plan            Show or replace the working agent's plan for a task
-  purge           Permanently delete an already-binned task and its dependent records (requires org admin)
-  question        Show one question and, once given, its answer
-  questions       Questions waiting on people - the organization's queue, or one task's
-  reject          Reject an agent's held status change; the task stays where it is (people only)
-  release         Give back a task you claimed, optionally leaving a handoff note
-  restore         Restore a task from the bin (requires org admin)
-  reviewer-add    Add a reviewer to a task
-  reviewer-remove Remove a reviewer from a task
-  reviewers       List a task's reviewers
-  unassign        Remove an agent or user's assignment from a task
-  update          Update a task's title, description, type, priority or parent
-  update-status   Update a task's status
-  usage           Tokens and cost reported against a task
+  answer                Answer a question an agent asked (people only)
+  approval              Show one approval request and, once made, its decision
+  approvals             Status changes waiting on a person's approval - the organization's queue, or one task's
+  approve               Approve an agent's held status change; it is applied as you (people only)
+  ask                   Ask a person a question on a task; its reviewers (or org admins) are notified
+  assign                Assign a task to an agent or user
+  cancel-question       Withdraw a question you asked (or, as an admin, close any)
+  claim                 Atomically claim an unassigned task for the calling principal (agent self-service)
+  claim-next            Claim the most important ready task in a project (agent self-service)
+  comment-add           Add a comment to a task
+  comments              List comments on a task
+  compaction-candidates A project's finished tasks with no summary, oldest first
+  create                Create a new task in a project
+  delete                Move a task to the bin (soft delete; requires org admin)
+  digest                One bounded read of a task: summary, plan, usage, latest handoff, answered questions, relations
+  get                   Get a single task, including its description
+  handoffs              List tasks with a pending handoff note (one row per task, the latest only)
+  link                  Blocking and discovered-from links between tasks
+  list                  List tasks within a project
+  mine                  List the open tasks you hold, across every project in the organization
+  note-add              Add an AI agent note to a task (requires an agent token)
+  note-delete           Delete an agent note (author only, requires an agent token)
+  note-update           Update an agent note's content (author only, requires an agent token)
+  notes                 List AI agent notes on a task
+  plan                  Show or replace the working agent's plan for a task
+  purge                 Permanently delete an already-binned task and its dependent records (requires org admin)
+  question              Show one question and, once given, its answer
+  questions             Questions waiting on people - the organization's queue, or one task's
+  reject                Reject an agent's held status change; the task stays where it is (people only)
+  release               Give back a task you claimed, optionally leaving a handoff note
+  restore               Restore a task from the bin (requires org admin)
+  reviewer-add          Add a reviewer to a task
+  reviewer-remove       Remove a reviewer from a task
+  reviewers             List a task's reviewers
+  summary               A task's durable summary - what it came to
+  unassign              Remove an agent or user's assignment from a task
+  update                Update a task's title, description, type, priority or parent
+  update-status         Update a task's status
+  usage                 Tokens and cost reported against a task
 
 Flags:
   -h, --help   help for tasks
@@ -1843,6 +1846,21 @@ Flags:
   -h, --help   help for comments
 ```
 
+#### `tasker tasks compaction-candidates`
+
+```
+A project's finished tasks with no summary, oldest first
+
+Usage:
+  tasker tasks compaction-candidates [flags]
+
+Flags:
+  -h, --help                    help for compaction-candidates
+  -l, --limit int32             Maximum number of tasks to return, 1-100 (default 50)
+      --older-than-days int32   Finished at least this many days ago, 0-3650 (default 30)
+      --project string          Project ID (or set TASKER_PROJECT_ID)
+```
+
 #### `tasker tasks create`
 
 ```
@@ -1875,6 +1893,18 @@ Usage:
 
 Flags:
   -h, --help   help for delete
+```
+
+#### `tasker tasks digest`
+
+```
+One bounded read of a task: summary, plan, usage, latest handoff, answered questions, relations
+
+Usage:
+  tasker tasks digest [task_id] [flags]
+
+Flags:
+  -h, --help   help for digest
 ```
 
 #### `tasker tasks get`
@@ -2149,6 +2179,22 @@ Usage:
 
 Flags:
   -h, --help   help for reviewers
+```
+
+#### `tasker tasks summary`
+
+```
+A task's durable summary - what it came to
+
+Usage:
+  tasker tasks summary [command]
+
+Available Commands:
+  clear       Remove a task's summary
+  set         Write a task's summary (at most 4,000 characters; replaces the last one)
+
+Flags:
+  -h, --help   help for summary
 ```
 
 #### `tasker tasks unassign`
