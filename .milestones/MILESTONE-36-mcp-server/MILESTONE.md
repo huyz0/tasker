@@ -59,7 +59,7 @@ issued by Tasker's own agent-token flow).
   - **Files**: `.specs/adr/ADR-0029-*.md`, `apps/backend/src/modules/mcp/*` (+ test)
 - [x] **M36-T02** — The tool catalogue and its loopback dispatch.
   - **Files**: `apps/backend/src/modules/mcp/tools.ts` (+ test)
-- [ ] **M36-T03** — Mount `/mcp`: auth, rate limit, size limit; end-to-end test.
+- [x] **M36-T03** — Mount `/mcp`: auth, rate limit, size limit; end-to-end test.
   - **Files**: `apps/backend/src/index.ts`, `apps/backend/src/modules/mcp/*.test.ts`
 - [ ] **M36-T04** — `tasker mcp` stdio bridge.
   - **Files**: `apps/cli/cmd/mcp.go` (+ test), `docs/cli-reference.md`

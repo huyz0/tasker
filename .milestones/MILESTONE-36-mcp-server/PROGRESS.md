@@ -39,3 +39,29 @@
   and message; transport failures propagate. `loopbackCaller` posts Connect
   JSON with the caller's own `Authorization` header (ADR-0029).
 - **Next**: M36-T03
+
+## M36-T03 — Mount `/mcp`; end-to-end test
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/mcp/http.ts`, `apps/backend/src/index.ts`,
+  `apps/backend/src/modules/mcp/mcp.e2e.test.ts`
+- **Verified**: backend `bun test` 1916 pass; knip, typecheck green.
+- **Notes**: `POST /mcp`, JSON response mode, stateless. Refused before any
+  JSON-RPC is read: non-POST (405, `Allow: POST`), a browser `Origin` off the
+  CORS allowlist (403, DNS-rebinding guidance), a missing or dead bearer token
+  (401, `WWW-Authenticate: Bearer realm="tasker"`), an unsupported
+  `MCP-Protocol-Version` (400), a body over 1 MiB (413); non-JSON is a -32700
+  parse error; a notification is 202 with no body. Mounted after the agent
+  rate limiter, so an MCP request spends the token's budget and each tool's
+  loopback RPC spends it again - deliberately: exempting `/mcp` would leave
+  `initialize` floods unthrottled, and a skip header would be spoofable.
+  The end-to-end test runs in `backend:test`, not the spawn-a-process wire
+  suite (which CI does not run): a real HTTP server with the Connect adapter
+  and the same session-interceptor shape as `index.ts`, a real minted agent
+  token, and the loop initialize -> notifications/initialized -> tools/list
+  -> whoami -> claim_next_task (got the urgent task over the low one) ->
+  add_task_note (handoff) -> release_task -> get_task (unassigned, handoff
+  note present). A read-only token's claim comes back `permission_denied` as
+  a tool error; a missing task, `not_found`.
+- **Next**: M36-T04

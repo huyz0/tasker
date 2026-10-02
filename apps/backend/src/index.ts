@@ -7,6 +7,7 @@ import { createAuthHandler } from "./modules/auth/auth.handler";
 import { createAuthRoutes } from "./modules/auth/auth";
 import { currentUserIdKey, currentPrincipalKey } from "./modules/auth/session";
 import { resolvePrincipal } from "./lib/authenticate";
+import { handleMcpHttp, MCP_PATH } from "./modules/mcp/http";
 import { setRequestActor } from "./lib/requestContext";
 import { createRateLimiter, rateLimitProblem } from "./lib/rateLimit";
 import { createLoginRateLimiter } from "./lib/loginRateLimiter";
@@ -306,6 +307,20 @@ const server = http.createServer(async (req, res) => {
       res.end(problem.body);
       return;
     }
+  }
+
+  // M36 (ADR-0029): the MCP endpoint. After the rate limiter on purpose, so an
+  // MCP request spends the token's budget like any request - and each tool it
+  // calls is an RPC over loopback that spends it again, with the RPC's own
+  // authentication, scopes and logs.
+  if ((req.url ?? "").split("?")[0] === MCP_PATH) {
+    const status = await lifecycle.track(() => handleMcpHttp(req, res, {
+      connectBaseUrl: `http://127.0.0.1:${runtime.port}`,
+      allowedOrigins: config.corsAllowedOrigins,
+      authenticate: async (authorization) => (await resolvePrincipal(db, { cookie: null, authorization })) !== null,
+    }));
+    recordHttpRequest(req.method || "POST", MCP_PATH, status);
+    return;
   }
 
   if (req.url?.startsWith("/api/auth/") || req.url?.startsWith("/api/client-errors") || req.url?.startsWith("/api/debug/")) {
