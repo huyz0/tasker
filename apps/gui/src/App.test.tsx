@@ -125,7 +125,11 @@ describe('App', () => {
       healthQueryResult = { data: undefined, error: null, isLoading: false };
       renderApp(resultRoute({ type: 'task', id: 'tsk-1' })!);
 
-      expect(await screen.findByRole('heading', { name: 'Tasks', level: 1 })).toBeInTheDocument();
+      // The task opens as a modal over the workbench, which hides the page
+      // behind it from the accessibility tree - so the heading is looked up
+      // with `hidden`, and the task's own dialog is what proves the route.
+      expect(await screen.findByRole('heading', { name: 'Tasks', level: 1, hidden: true })).toBeInTheDocument();
+      expect(await screen.findByRole('dialog')).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Page not found' })).toBeNull();
     });
 

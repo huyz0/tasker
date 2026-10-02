@@ -558,17 +558,6 @@ export function TasksWorkbench() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProjectId, activeOrgId]);
 
-  // Focused-overlay UX (matches Jira/Linear's task-detail pattern): Escape
-  // closes it from anywhere, not just via the visible close button.
-  useEffect(() => {
-    if (!expandedTaskId) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setExpandedTaskId(null);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [expandedTaskId]);
-
   // Task types can define their own custom status sets/state machines
   // (see tasks.handler.ts's validateStatusForTaskType) - fetch each distinct
   // task type actually in use so the board can render columns for them
@@ -629,12 +618,26 @@ export function TasksWorkbench() {
     pullRequestsByTaskId.set(pr.taskId, existing);
   }
 
+  // The open task is cached under ['task', id], separately from the board's
+  // ['tasks', …]. Invalidating only the board left the dialog showing the old
+  // value until a live event or a 30 s refetch (M32-T02). The changed fields
+  // are merged in at once - a merge, not a replace, because the update
+  // response is not the getTask projection - and the entry is then
+  // invalidated so the server's own version wins.
+  const patchOpenTask = (taskId: string, fields: Record<string, unknown>) => {
+    queryClient.setQueryData(['task', taskId], (old: any) => (old ? { ...old, ...fields } : old));
+    queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+  };
+
   const updateStatusMutation = useMutation({
     mutationFn: async (variables: { taskId: string; status: string }) => {
       const resp = await taskClient.updateTaskStatus(variables);
       return resp.task;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] }),
+    onSuccess: (_task, variables) => {
+      patchOpenTask(variables.taskId, { status: variables.status });
+      queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] });
+    },
   });
 
   // Table-view bulk status change: N individual updateTaskStatus calls, not
@@ -651,7 +654,10 @@ export function TasksWorkbench() {
       const failed = results.filter((r) => r.status === 'rejected').length;
       if (failed > 0) throw new Error(`${failed} of ${ids.length} task${ids.length === 1 ? '' : 's'} failed to update`);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['task'] });
+    },
     onSuccess: () => setSelectedTaskIds(new Set()),
   });
 
@@ -660,7 +666,8 @@ export function TasksWorkbench() {
       const resp = await taskClient.updateTask(variables);
       return resp.task;
     },
-    onSuccess: () => {
+    onSuccess: (_task, variables) => {
+      patchOpenTask(variables.taskId, { title: variables.title, description: variables.description });
       queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] });
       setIsEditingTask(false);
     },
@@ -675,6 +682,21 @@ export function TasksWorkbench() {
       setExpandedTaskId(null);
     },
   });
+
+  // Escape and the backdrop close the dialog as readily as its button, and
+  // used to throw away a half-written description without a word. Unsaved
+  // edits now ask first (M32-T03).
+  const closeTask = async () => {
+    const dirty = isEditingTask && !!expandedTask &&
+      (editTitle !== expandedTask.title || editDescription !== (expandedTask.description || ''));
+    if (dirty && !(await confirm({
+      title: 'Discard your changes?',
+      consequence: 'Your edits to this task have not been saved.',
+      undo: null,
+      confirmLabel: 'Discard',
+    }))) return;
+    setExpandedTaskId(null);
+  };
 
   // Each column fetches and counts itself (see BoardColumn). Grouping a page of
   // mixed statuses in the browser cannot produce a column's real count, which
@@ -947,10 +969,35 @@ export function TasksWorkbench() {
           room for description, labels, agent notes, and comments at once.
           On `Dialog` since M06-T03 — it previously declared no role, no
           aria-modal, and trapped no focus (ADR-0009). */}
-      {expandedTask && (
+      {/* A task link that is still loading, or names a task that cannot be
+          loaded (deleted, or outside what the caller can see), used to render
+          nothing at all: the URL changed and the screen did not (M32-T03). */}
+      {expandedTaskId && !expandedTask && (
         <Dialog
           open
           onClose={() => setExpandedTaskId(null)}
+          title="Opening task"
+          className="w-full max-w-md"
+          headerRight={
+            <button onClick={() => setExpandedTaskId(null)} aria-label="Close task details" className="text-muted-foreground hover:text-foreground">✕</button>
+          }
+        >
+          <div className="p-6">
+            <ListState
+              isLoading={expandedTaskQuery.isLoading}
+              error={expandedTaskQuery.error ?? new Error('This task could not be found.')}
+              isEmpty={false}
+              emptyMessage=""
+              loadingMessage="Loading task…"
+              onRetry={() => expandedTaskQuery.refetch()}
+            />
+          </div>
+        </Dialog>
+      )}
+      {expandedTask && (
+        <Dialog
+          open
+          onClose={closeTask}
           title="Task Details"
           className="w-full max-w-4xl h-full max-h-[90vh] animate-in zoom-in-95"
           headerRight={
@@ -983,7 +1030,7 @@ export function TasksWorkbench() {
                >
                  {deleteTaskMutation.isPending ? 'Moving to bin…' : 'Delete'}
                </button>
-              <button onClick={() => setExpandedTaskId(null)} aria-label="Close task details" className="text-muted-foreground hover:text-foreground">✕</button>
+              <button onClick={closeTask} aria-label="Close task details" className="text-muted-foreground hover:text-foreground">✕</button>
             </div>
           }
         >

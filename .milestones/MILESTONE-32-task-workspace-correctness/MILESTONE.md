@@ -51,10 +51,10 @@ the server); no E2E asserted it rendered a row.
 
 - [x] A `domain.tasknote.*` event refetches the open task's notes — pinned in
   `eventQueryKeys.test.ts`.
-- [ ] After a title edit or status change the dialog shows the new value
+- [x] After a title edit or status change the dialog shows the new value
   without waiting for an event — pinned by component tests.
-- [ ] Escape on a dialog layered over the task dialog closes only that layer.
-- [ ] `/tasks/<missing-id>` renders an error with a way out; a slow load
+- [x] Escape on a dialog layered over the task dialog closes only that layer.
+- [x] `/tasks/<missing-id>` renders an error with a way out; a slow load
   renders a loading state.
 - [ ] A failed comment load renders an error with retry; edit/delete failures
   are labelled as such.
@@ -84,9 +84,9 @@ review's deferred items that are defects (`formatDateTime` helper, raw
 
 - [x] **M32-T01** — Task-note events refresh the open task's notes.
   - **Files**: `apps/gui/src/lib/eventQueryKeys.ts` (+ test)
-- [ ] **M32-T02** — The task dialog shows its own edits immediately.
+- [x] **M32-T02** — The task dialog shows its own edits immediately.
   - **Files**: `apps/gui/src/features/Tasks/index.tsx` (+ test)
-- [ ] **M32-T03** — Escape belongs to the topmost layer; a deep link that fails or loads says so.
+- [x] **M32-T03** — Escape belongs to the topmost layer; a deep link that fails or loads says so.
   - **Files**: `apps/gui/src/features/Tasks/index.tsx` (+ test)
 - [ ] **M32-T04** — Comment load and mutation errors are reported truthfully.
   - **Files**: `apps/gui/src/components/ui/comments/*` (+ test)

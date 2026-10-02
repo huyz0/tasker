@@ -482,7 +482,10 @@ describe('TasksWorkbench', () => {
     fireEvent.click(screen.getByText('Fix bug'));
 
     await waitFor(() => expect(screen.getByText('Task Details')).toBeDefined());
-    fireEvent.keyDown(window, { key: 'Escape' });
+    // Where a real key press lands: the focused element, bubbling up through
+    // the document. Radix handles it there (M32-T03 removed the extra
+    // window-level listener that also closed the dialog).
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
 
     await waitFor(() => expect(screen.queryByText('Task Details')).toBeNull());
   });
@@ -1348,6 +1351,100 @@ describe('TasksWorkbench', () => {
 
       expect(lastLocation.pathname).toBe('/tasks/task-1');
       expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument();
+    });
+  });
+
+  describe('the open task keeps up with its own edits (M32-T02)', () => {
+    // The dialog reads ['task', id]; the mutations used to invalidate only the
+    // board's ['tasks', projectId], so the dialog showed the old value until
+    // a live event or a 30 s refetch.
+    function withMutableTask() {
+      const current = { id: 'task-1', title: 'Fix bug', status: 'todo', description: '' };
+      mockRpc(TaskService, 'ListTasks', (body: { status?: string }) =>
+        ({ tasks: !body.status || body.status === current.status ? [{ ...current }] : [], page: {} }));
+      mockRpc(TaskService, 'GetTask', () => ({ task: { ...current } }));
+      mockRpc(TaskService, 'UpdateTaskStatus', (body: { status: string }) => {
+        current.status = body.status;
+        return { task: { ...current } };
+      });
+      mockRpc(TaskService, 'UpdateTask', (body: { title: string; description: string }) => {
+        current.title = body.title;
+        current.description = body.description;
+        return { task: { ...current } };
+      });
+      return current;
+    }
+
+    it('shows a status picked in the dialog, and keeps it', async () => {
+      withMutableTask();
+      renderPage('/tasks/task-1');
+      const select = await screen.findByLabelText('Status') as HTMLSelectElement;
+      fireEvent.change(select, { target: { value: 'in-progress' } });
+      await waitFor(() => expect((screen.getByLabelText('Status') as HTMLSelectElement).value).toBe('in-progress'));
+    });
+
+    it('shows a saved title in the dialog without waiting for an event', async () => {
+      withMutableTask();
+      renderPage('/tasks/task-1');
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+      fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Fix the bug properly' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(await screen.findByRole('heading', { name: 'Fix the bug properly' })).toBeInTheDocument();
+    });
+  });
+
+  describe('closing and failing honestly (M32-T03)', () => {
+    it('Escape on the delete confirmation closes only the confirmation', async () => {
+      withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+      renderPage('/tasks/task-1');
+      await screen.findByText('Task Details');
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      const confirmDialog = await screen.findByTestId('confirm-dialog');
+      fireEvent.keyDown(document.activeElement ?? confirmDialog, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByTestId('confirm-dialog')).toBeNull());
+      expect(screen.getByText('Task Details')).toBeInTheDocument();
+      expect(lastLocation.pathname).toBe('/tasks/task-1');
+    });
+
+    it('asks before discarding an unsaved edit, and keeps it on cancel', async () => {
+      withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+      renderPage('/tasks/task-1');
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+      fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Half-typed' } });
+      fireEvent.click(screen.getByLabelText('Close task details'));
+      await cancelAction();
+      expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Half-typed');
+
+      fireEvent.click(screen.getByLabelText('Close task details'));
+      await confirmAction();
+      await waitFor(() => expect(lastLocation.pathname).toBe('/tasks'));
+    });
+
+    it('closes without asking when nothing was changed', async () => {
+      withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+      renderPage('/tasks/task-1');
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+      fireEvent.click(screen.getByLabelText('Close task details'));
+      await waitFor(() => expect(lastLocation.pathname).toBe('/tasks'));
+      expect(screen.queryByTestId('confirm-dialog')).toBeNull();
+    });
+
+    it('says so when a task link names a task that cannot be loaded', async () => {
+      // A stalled-task notification or a Handoffs row can point at a task that
+      // was deleted. The URL changed and nothing at all appeared.
+      withTasks([]);
+      mockRpcError(TaskService, 'GetTask', 'not_found', 'task not found');
+      renderPage('/tasks/gone');
+      expect(await screen.findByText(/task not found/)).toBeInTheDocument();
+      fireEvent.click(screen.getByLabelText('Close task details'));
+      await waitFor(() => expect(lastLocation.pathname).toBe('/tasks'));
+    });
+
+    it('shows a loading state while a task link resolves', async () => {
+      withTasks([]);
+      mockRpcPending(TaskService, 'GetTask');
+      renderPage('/tasks/slow');
+      expect(await screen.findByText('Loading task…')).toBeInTheDocument();
     });
   });
 });

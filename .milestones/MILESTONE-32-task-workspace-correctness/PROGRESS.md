@@ -14,3 +14,42 @@
   agent through refreshed only on window refocus. The new test asserts the
   real panel key is matched, not just that a string is in a list.
 - **Next**: M32-T02
+
+## M32-T02 — The task dialog shows its own edits immediately
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/gui/src/features/Tasks/index.tsx`, `index.test.tsx`
+- **Verified**: `moon run gui:lint gui:design-lint gui:typecheck gui:test` —
+  1214 pass, coverage thresholds met; the two new tests failed first.
+- **Notes**: Status and edit mutations now merge the changed fields into the
+  cached `['task', id]` and invalidate it. A merge, not `setQueryData(task)`:
+  the update responses are not the `getTask` projection, and replacing would
+  drop fields such as assignees. Bulk status changes invalidate every open
+  `['task']` entry. The tests serve a GetTask that answers with the server's
+  current state, so they fail if the dialog waits for anything but its own
+  mutation.
+- **Next**: M32-T03
+
+## M32-T03 — Escape belongs to the topmost layer; a deep link that fails says so
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/gui/src/features/Tasks/index.tsx`, `index.test.tsx`,
+  `src/App.test.tsx`
+- **Verified**: as T02; five new tests, all failing first except "closes
+  without asking when nothing was changed", which pins existing behaviour.
+- **Notes**:
+  - The `window` keydown listener closed the task dialog on *every* Escape,
+    alongside Radix, which already closes only the topmost layer — so Escape
+    on the delete confirmation closed both. Removed. The old Escape test
+    dispatched on `window`, which only that listener could hear; it now
+    dispatches on the focused element, where a real key press lands.
+  - Closing with unsaved edits (button, Escape or backdrop) asks first.
+  - `/tasks/:id` rendered nothing while loading or after a failure. It now
+    opens an "Opening task" dialog with a loading state, or the error with
+    retry and close. Titled differently from "Task Details" so nothing can
+    mistake the placeholder for the loaded task. `App.test.tsx`'s routing
+    test now looks the page heading up with `hidden` — the modal correctly
+    hides the page behind it.
+- **Next**: M32-T04
