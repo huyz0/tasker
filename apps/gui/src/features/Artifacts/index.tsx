@@ -19,6 +19,7 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { LazyRichMarkdownEditor } from '../../components/ui/LazyRichMarkdownEditor';
 import { ListState } from '../../components/ui/ListState';
 import { VirtualList } from '../../components/ui/VirtualList';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 // Artifact rows are `px-2 py-1` around a 12px line — a fixed height, which is
 // what lets the virtualizer skip per-row measurement. Kept beside the row's own
@@ -370,6 +371,8 @@ export function ArtifactsBrowser() {
                 >
                   <input
                     autoFocus
+                    name="folder-name"
+                    autoComplete="off"
                     aria-label={`Folder name for ${folder.name}`}
                     value={editFolderName}
                     onChange={(e) => setEditFolderName(e.target.value)}
@@ -379,24 +382,28 @@ export function ArtifactsBrowser() {
                   <button type="button" onClick={() => setEditingFolderId(null)} className="text-xs text-muted-foreground">Cancel</button>
                 </form>
               ) : (
+              // The row's own action is a real button; Rename and Delete sit
+              // beside it, not inside it. It was a `div role="button"` wrapping
+              // both, which is interactive-inside-interactive (axe
+              // `nested-interactive`) and needed a hand-rolled Enter/Space
+              // handler the browser now provides.
               <div
-                role="button"
-                tabIndex={0}
-                onClick={() => toggleFolder(folder.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    toggleFolder(folder.id);
-                  }
-                }}
                 style={{ paddingLeft: depth * 12 + 8 }}
-                className={`pr-2 py-1 hover:bg-muted font-medium cursor-pointer flex items-center justify-between gap-2 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-sm ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
+                className={`pr-2 hover:bg-muted font-medium flex items-center justify-between gap-2 group rounded-sm ${selectedFolderId === folder.id ? 'bg-muted text-primary' : ''}`}
               >
-                <span className="flex items-center gap-2">{selectedFolderId === folder.id ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />} {folder.name}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleFolder(folder.id)}
+                  aria-expanded={selectedFolderId === folder.id}
+                  className="flex-1 min-w-0 py-1 flex items-center gap-2 text-left rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                >
+                  {selectedFolderId === folder.id ? <FolderOpen aria-hidden="true" className="w-4 h-4 shrink-0" /> : <Folder aria-hidden="true" className="w-4 h-4 shrink-0" />}
+                  <span className="truncate">{folder.name}</span>
+                </button>
                 <span className="flex items-center gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    type="button"
+                    onClick={() => {
                       setEditingFolderId(folder.id);
                       setEditFolderName(folder.name);
                     }}
@@ -406,8 +413,8 @@ export function ArtifactsBrowser() {
                     Edit
                   </button>
                   <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
+                    type="button"
+                    onClick={async () => {
                       if (await confirm({
                         title: `Move "${folder.name}" to the bin?`,
                         consequence: 'The folder and the artifacts inside it stop appearing in the explorer.',
@@ -421,7 +428,7 @@ export function ArtifactsBrowser() {
                     aria-label={`Delete folder ${folder.name}`}
                     className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X aria-hidden="true" className="w-3.5 h-3.5" />
                   </button>
                 </span>
               </div>
@@ -452,23 +459,24 @@ export function ArtifactsBrowser() {
                     rowHeight={ARTIFACT_ROW_HEIGHT}
                     className="max-h-64 overflow-y-auto"
                     renderRow={(artifact) => (
-                                      <div
+                      // Same shape as the folder row: one real button opens
+                      // the artifact, and Delete is its sibling.
+                      <div
                         key={artifact.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => selectArtifact(artifact)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            selectArtifact(artifact);
-                          }
-                        }}
-                        className={`px-2 py-1 hover:bg-muted cursor-pointer flex items-center justify-between gap-2 rounded-sm text-xs group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${selectedArtifact?.id === artifact.id ? 'bg-primary-subtle text-primary-subtle-foreground font-medium' : 'text-muted-foreground'}`}
+                        className={`px-2 hover:bg-muted flex items-center justify-between gap-2 rounded-sm text-xs group ${selectedArtifact?.id === artifact.id ? 'bg-primary-subtle text-primary-subtle-foreground font-medium' : 'text-muted-foreground'}`}
                       >
-                        <span className="flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> {artifact.name}</span>
                         <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
+                          type="button"
+                          onClick={() => selectArtifact(artifact)}
+                          aria-current={selectedArtifact?.id === artifact.id ? 'true' : undefined}
+                          className="flex-1 min-w-0 py-1 flex items-center gap-2 text-left rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                        >
+                          <FileText aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{artifact.name}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
                             if (await confirm({
                               title: `Move "${artifact.name}" to the bin?`,
                               consequence: 'The artifact stops appearing in the explorer and on any task it is linked to.',
@@ -482,7 +490,7 @@ export function ArtifactsBrowser() {
                           aria-label={`Delete artifact ${artifact.name}`}
                           className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-destructive disabled:opacity-50"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X aria-hidden="true" className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     )}
@@ -553,9 +561,15 @@ export function ArtifactsBrowser() {
   );
 
   return (
-    <div className="flex h-full gap-6">
+    // From `md:` up the explorer and the open artifact sit side by side and
+    // fill the viewport (less `main`'s padding), each scrolling on its own.
+    // Below `md:` they stack and the page scrolls: a fixed-width explorer
+    // beside the detail pane left the detail one word wide on a phone.
+    <div className="flex flex-col gap-6 md:h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-6rem)]">
+      <PageHeader title="Artifacts" description="Files kept for this project, in folders." />
+      <div className="flex flex-col gap-6 md:flex-row md:flex-1 md:min-h-0">
       {/* File Tree Left Sidebar */}
-      <div className="w-64 flex-shrink-0 flex flex-col bg-card border rounded-lg overflow-hidden shadow-sm">
+      <div className="w-full md:w-64 shrink-0 flex flex-col bg-card border rounded-lg overflow-hidden shadow-sm">
         <div className="p-3 border-b text-sm font-semibold flex justify-between items-center">
           Artifacts Explorer
           <button
@@ -566,7 +580,7 @@ export function ArtifactsBrowser() {
             + Folder
           </button>
         </div>
-        <div className="p-2 space-y-1 text-sm overflow-y-auto">
+        <div className="p-2 space-y-1 text-sm overflow-y-auto scrollbar-thin">
           {folderMutationError && (
             <p className="text-xs text-destructive px-1">
               Failed to {folderMutationError.label}: {(folderMutationError.error as Error).message}
@@ -599,7 +613,10 @@ export function ArtifactsBrowser() {
       </div>
 
       {/* Editor Main Content */}
-      <div className="flex-1 flex flex-col bg-card border rounded-lg overflow-hidden shadow-sm">
+      {/* With nothing open, the "select an artifact" placeholder is only
+          worth its space beside the explorer; stacked under it on a phone it
+          is a second empty card saying what the first already shows. */}
+      <div className={`${selectedArtifact ? 'flex' : 'hidden md:flex'} flex-1 min-w-0 md:min-h-0 flex-col bg-card border rounded-lg overflow-hidden shadow-sm`}>
         {selectedArtifact ? (
           <>
             <div className="flex items-center justify-between bg-muted/30 border-b overflow-x-auto text-sm">
@@ -659,6 +676,8 @@ export function ArtifactsBrowser() {
                  ) : (
                    <textarea
                      autoFocus
+                     name="artifact-content"
+                     autoComplete="off"
                      aria-label={`Content of ${selectedArtifact.name}`}
                      value={editedContent}
                      onChange={(e) => setEditedContent(e.target.value)}
@@ -715,10 +734,11 @@ export function ArtifactsBrowser() {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
-             <FileText className="w-10 h-10 mb-2 opacity-50" />
+             <FileText aria-hidden="true" className="w-10 h-10 mb-2 opacity-50" />
              Select an artifact from the explorer to view its contents
           </div>
         )}
+      </div>
       </div>
       {confirmDialog}
     </div>

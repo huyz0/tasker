@@ -527,12 +527,24 @@ describe('ProjectsWizard', () => {
     }));
   });
 
-  it('shows a fallback when a project has no description', async () => {
+  // A grey italic "No description." on every card was the most repeated text
+  // on the page and said nothing; an empty description now takes no space.
+  it('shows nothing in place of an empty project description', async () => {
     withTemplates([]);
     withProjects([{ id: 'proj-1', name: 'Existing Project' }]);
     renderPage();
 
-    expect(await screen.findByText('No description.')).toBeInTheDocument();
+    expect(await screen.findByText('Existing Project')).toBeInTheDocument();
+    expect(screen.queryByText('No description.')).toBeNull();
+  });
+
+  it('titles the page "Projects" and says what the screen is for', async () => {
+    withTemplates([]);
+    withProjects([]);
+    renderPage();
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Projects' })).toBeInTheDocument();
+    expect(screen.getByText('Start a project from a template, and manage the ones you have.')).toBeInTheDocument();
   });
 
   // M16-T03: no task count, or any project-level signal at all, existed on

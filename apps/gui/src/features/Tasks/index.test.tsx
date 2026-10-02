@@ -98,6 +98,13 @@ describe('TasksWorkbench', () => {
     mockRpc(SearchService, 'UniversalSearch', { results: [] });
   });
 
+  it('titles the page "Tasks" and says what the screen is for', async () => {
+    withTasks([]);
+    renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Tasks' })).toBeInTheDocument();
+    expect(screen.getByText('Every task in this project, by status.')).toBeInTheDocument();
+  });
+
   it('updates a task status via the detail panel dropdown', async () => {
     withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
     const requests: any[] = [];
@@ -769,6 +776,26 @@ describe('TasksWorkbench', () => {
     // The plain comment is not a handoff - it appears only in Agent Notes,
     // never inside the summary region.
     expect(summary.queryByText('Just a comment')).toBeNull();
+  });
+
+  it('stamps each handoff with a machine-readable <time>, formatted for the reader', async () => {
+    withTasks([{ id: 'task-1', title: 'Fix bug', status: 'todo', description: '' }]);
+    const createdAt = '2026-08-19T11:00:00.000Z';
+    mockRpc(TaskNoteService, 'ListTaskNotes', { taskNotes: [
+      { id: 'note-2', taskId: 'task-1', agentId: 'agent-2', content: 'Handed off', createdAt, noteType: 'handoff' },
+    ] });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Fix bug')).toBeDefined());
+    fireEvent.click(screen.getByText('Fix bug'));
+
+    const summary = await screen.findByRole('region', { name: 'Handoffs summary' });
+    const time = summary.querySelector('time');
+    expect(time).not.toBeNull();
+    expect(time!.getAttribute('dateTime')).toBe(createdAt);
+    expect(time!.textContent).toBe(
+      new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(createdAt)),
+    );
   });
 
   it('shows no Handoffs summary at all when the task has no handoff note', async () => {

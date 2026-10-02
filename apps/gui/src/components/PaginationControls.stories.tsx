@@ -28,8 +28,18 @@ export const Loading: Story = {
   },
 };
 
+// The end of a list that took more than one page to load.
 export const NoMorePages: Story = {
   args: {
     nextCursor: undefined,
+    pagesLoaded: 3,
+  },
+};
+
+// A list that fitted on its first page: no end-of-list line at all.
+export const SinglePage: Story = {
+  args: {
+    nextCursor: undefined,
+    pagesLoaded: 1,
   },
 };

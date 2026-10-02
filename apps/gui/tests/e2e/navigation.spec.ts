@@ -14,7 +14,7 @@ const ROUTES = [
   { path: '/organizations', heading: 'Organizations & Settings' },
   { path: '/projects', heading: 'Projects' },
   { path: '/agents', heading: 'AI Agents' },
-  { path: '/tasks', heading: 'Tasks Workbench' },
+  { path: '/tasks', heading: 'Tasks' },
   { path: '/labels', heading: 'Labels' },
   { path: '/bin', heading: 'Bin' },
   // System Health moved here off the home screen; the route used to render

@@ -125,7 +125,7 @@ describe('App', () => {
       healthQueryResult = { data: undefined, error: null, isLoading: false };
       renderApp(resultRoute({ type: 'task', id: 'tsk-1' })!);
 
-      expect(await screen.findByRole('heading', { name: 'Tasks Workbench' })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Tasks', level: 1 })).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Page not found' })).toBeNull();
     });
 
@@ -144,7 +144,7 @@ describe('App', () => {
     await screen.findByRole('heading', { name: 'Dashboard' });
     const orgLink = screen.getByRole('link', { name: 'Organizations' });
     fireEvent.click(orgLink);
-    expect(await screen.findByText('Organizations & Settings')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Organizations' })).toBeInTheDocument();
   });
 
   // Every screen is its own lazy-loaded chunk now (route-level code-

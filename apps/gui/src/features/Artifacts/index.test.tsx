@@ -489,16 +489,51 @@ describe('ArtifactsBrowser', () => {
     await waitFor(() => expect(screen.queryByPlaceholderText('Artifact name')).toBeNull());
   });
 
-  it('selects a folder via keyboard Enter and toggles it off via Space', async () => {
+  it('titles the page "Artifacts" and says what the screen is for', async () => {
+    withProject([]);
+    renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Artifacts' })).toBeInTheDocument();
+    expect(screen.getByText('Files kept for this project, in folders.')).toBeInTheDocument();
+  });
+
+  // A folder row used to be a `div role="button"` with its Rename and Delete
+  // buttons inside it — interactive inside interactive, which assistive
+  // technology cannot reliably operate (axe `nested-interactive`). The row's
+  // own action is now a real button and the others are its siblings, so the
+  // keyboard path is the browser's, not a hand-rolled Enter/Space handler.
+  it('makes the folder row a real button with no controls nested inside it', async () => {
     withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
     renderPage();
 
-    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
-    fireEvent.keyDown(screen.getByText('docs'), { key: 'Enter' });
-    await waitFor(() => expect(screen.getByText('Empty folder')).toBeDefined());
+    const row = await screen.findByRole('button', { name: 'docs' });
+    expect(row.tagName).toBe('BUTTON');
+    expect(row.querySelector('button, [role="button"], a, input')).toBeNull();
+    expect(row.contains(screen.getByRole('button', { name: 'Rename folder docs' }))).toBe(false);
+    expect(row.contains(screen.getByRole('button', { name: 'Delete folder docs' }))).toBe(false);
+    expect(row).toHaveAttribute('aria-expanded', 'false');
 
-    fireEvent.keyDown(screen.getByText('docs'), { key: ' ' });
+    fireEvent.click(row);
+    await waitFor(() => expect(screen.getByText('Empty folder')).toBeDefined());
+    expect(row).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(row);
     await waitFor(() => expect(screen.queryByText('Empty folder')).toBeNull());
+  });
+
+  it('makes the artifact row a real button with its delete control beside it, not inside it', async () => {
+    withProject(
+      [{ id: 'fld-1', name: 'docs', parentId: '' }],
+      [{ id: 'art-1', name: 'readme.md', content: 'Hello there' }],
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'docs' }));
+    const row = await screen.findByRole('button', { name: 'readme.md' });
+    expect(row.tagName).toBe('BUTTON');
+    expect(row.querySelector('button, [role="button"], a, input')).toBeNull();
+    expect(row.contains(screen.getByRole('button', { name: 'Delete artifact readme.md' }))).toBe(false);
+
+    fireEvent.click(row);
+    await waitFor(() => expect(screen.getByText('Hello there')).toBeDefined());
   });
 
   it('keeps the new-folder form open on blur when there is unsaved text', async () => {
@@ -565,23 +600,6 @@ describe('ArtifactsBrowser', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('ignores non-activation keys on the folder and artifact rows', async () => {
-    withProject(
-      [{ id: 'fld-1', name: 'docs', parentId: '' }],
-      [{ id: 'art-1', name: 'readme.md', content: '' }],
-    );
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
-    fireEvent.keyDown(screen.getByText('docs'), { key: 'Tab' });
-    expect(screen.queryByText('readme.md')).toBeNull();
-
-    fireEvent.click(screen.getByText('docs'));
-    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
-    fireEvent.keyDown(screen.getByText('readme.md'), { key: 'Tab' });
-    expect(screen.queryByText('This artifact has no content.')).toBeNull();
-  });
-
   it('hides the empty-folder message while the new-artifact form is open', async () => {
     withProject([{ id: 'fld-1', name: 'docs', parentId: '' }], []);
     renderPage();
@@ -592,21 +610,6 @@ describe('ArtifactsBrowser', () => {
     fireEvent.click(screen.getByText('+ New artifact'));
 
     expect(screen.queryByText('Empty folder')).toBeNull();
-  });
-
-  it('selects an artifact via keyboard Enter', async () => {
-    withProject(
-      [{ id: 'fld-1', name: 'docs', parentId: '' }],
-      [{ id: 'art-1', name: 'readme.md', content: 'Hello there' }],
-    );
-    renderPage();
-
-    await waitFor(() => expect(screen.getByText('docs')).toBeDefined());
-    fireEvent.click(screen.getByText('docs'));
-    await waitFor(() => expect(screen.getByText('readme.md')).toBeDefined());
-    fireEvent.keyDown(screen.getByText('readme.md'), { key: 'Enter' });
-
-    await waitFor(() => expect(screen.getByText('Hello there')).toBeDefined());
   });
 
   describe('URL-driven artifact detail', () => {

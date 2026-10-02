@@ -8,6 +8,7 @@ import { useLayoutStore } from '../../store/layout';
 import { useScopedTo } from '../../hooks/useScope';
 import { ListState } from '../../components/ui/ListState';
 import { TaskTypeHeader } from './TaskTypeHeader';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const typeClient = createClient(TaskTypeService, transport);
 const templateClient = createClient(ProjectTemplateService, transport);
@@ -141,9 +142,16 @@ export function TaskTypesEditor() {
   // below the pill row on every type switch instead of leaving "which type
   // am I editing" fixed in view.
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex gap-6 items-start">
-        <aside className="w-56 shrink-0 flex flex-col gap-1">
+    // No outer padding: `main` supplies the page gutter. Below `md:` the rail
+    // stacks above the detail — side by side, a fixed-width rail left the
+    // detail pane one word wide on a phone.
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Task Types"
+        description="The kinds of task a project can hold, and the statuses each one moves through."
+      />
+      <div className="flex flex-col gap-6 md:flex-row md:items-start">
+        <aside className="w-full md:w-56 shrink-0 flex flex-col gap-1">
           <ListState
             isLoading={typesQuery.isLoading}
             error={typesQuery.error}
@@ -171,6 +179,8 @@ export function TaskTypesEditor() {
             <label className="sr-only" htmlFor="new-task-type">New task type name</label>
             <input
               id="new-task-type"
+              name="new-task-type"
+              autoComplete="off"
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
               placeholder="New type"
@@ -185,7 +195,9 @@ export function TaskTypesEditor() {
           )}
         </aside>
 
-        <div className="flex-1 min-w-0">
+        {/* The "choose a type" prompt only makes sense beside the rail; on a
+            phone it would sit under the list it points at. */}
+        <div className={`${selectedId ? 'block' : 'hidden md:block'} flex-1 min-w-0`}>
           {!selectedId ? (
             <p className="text-sm text-muted-foreground">Choose a task type on the left to configure its statuses and transitions.</p>
           ) : detail.isLoading || detail.error ? (
@@ -250,6 +262,8 @@ export function TaskTypesEditor() {
                     <label className="sr-only" htmlFor="new-status">New status name</label>
                     <input
                       id="new-status"
+                      name="new-status"
+                      autoComplete="off"
                       value={newStatus}
                       onChange={(e) => setNewStatus(e.target.value)}
                       placeholder="Status name"
@@ -297,14 +311,14 @@ export function TaskTypesEditor() {
                     >
                       <div className="flex flex-col gap-1">
                         <label className="text-xs text-muted-foreground" htmlFor="transition-from">From status</label>
-                        <select id="transition-from" value={from} onChange={(e) => setFrom(e.target.value)} className="text-sm rounded-md border bg-background px-2 py-1">
+                        <select id="transition-from" name="transition-from" value={from} onChange={(e) => setFrom(e.target.value)} className="text-sm rounded-md border bg-background px-2 py-1">
                           <option value="">Choose…</option>
                           {statuses.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className="text-xs text-muted-foreground" htmlFor="transition-to">To status</label>
-                        <select id="transition-to" value={to} onChange={(e) => setTo(e.target.value)} className="text-sm rounded-md border bg-background px-2 py-1">
+                        <select id="transition-to" name="transition-to" value={to} onChange={(e) => setTo(e.target.value)} className="text-sm rounded-md border bg-background px-2 py-1">
                           <option value="">Choose…</option>
                           {statuses.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
@@ -330,6 +344,7 @@ export function TaskTypesEditor() {
                   <label className="sr-only" htmlFor="root-template">Template to set this as the root type of</label>
                   <select
                     id="root-template"
+                    name="root-template"
                     defaultValue=""
                     onChange={(e) => { if (e.target.value) setRoot.mutate(e.target.value); }}
                     disabled={setRoot.isPending}

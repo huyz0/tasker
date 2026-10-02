@@ -23,12 +23,15 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { Breadcrumbs } from '../../components/layout/Breadcrumbs';
 import { LazyRichMarkdownEditor } from '../../components/ui/LazyRichMarkdownEditor';
 import { ListState } from '../../components/ui/ListState';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
 const taskTypeClient = createClient(TaskTypeService, transport);
 const taskNoteClient = createClient(TaskNoteService, transport);
 
+/** The reader's own locale, not a bare `toLocaleString()` whose shape varies by browser. */
+const noteTimeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 function TaskNotesPanel({ taskId }: { taskId: string }) {
   const { confirm, confirmDialog } = useConfirm();
@@ -96,6 +99,9 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
           >
             <textarea
               autoFocus
+              name="note-content"
+              autoComplete="off"
+              aria-label="Note"
               value={editNoteContent}
               onChange={(e) => setEditNoteContent(e.target.value)}
               rows={3}
@@ -198,7 +204,7 @@ function HandoffsSummary({ taskId }: { taskId: string }) {
           <div key={n.id} className="rounded-lg border bg-muted/50 p-2">
             <p className="line-clamp-2 text-xs">{n.content}</p>
             <p className="mt-1 text-2xs text-muted-foreground">
-              Agent {n.agentId} · {new Date(n.createdAt).toLocaleString()}
+              Agent {n.agentId} · <time dateTime={n.createdAt}>{noteTimeFormat.format(new Date(n.createdAt))}</time>
             </p>
           </div>
         ))}
@@ -309,9 +315,13 @@ function BoardColumn({
         const taskId = e.dataTransfer.getData('text/plain');
         if (taskId) onDropTask(taskId, status);
       }}
-      className={`flex-1 basis-80 min-w-[280px] max-w-sm flex flex-col bg-muted/30 rounded-lg p-3 border-2 transition-colors ${isDragOver ? 'border-primary' : 'border-transparent'}`}
+      // `snap-start` pairs with the board's `snap-x` so a phone swipe lands on
+      // a whole column. `md:min-h-0` lets the column take the board's bounded
+      // height so its card list (below) scrolls on its own, with this header
+      // staying put above it.
+      className={`flex-1 basis-80 min-w-70 max-w-sm snap-start flex flex-col md:min-h-0 bg-muted/30 rounded-lg p-3 border-2 transition-colors ${isDragOver ? 'border-primary' : 'border-transparent'}`}
     >
-      <div className="flex items-center justify-between mb-3 font-medium text-sm">
+      <div className="flex shrink-0 items-center justify-between mb-3 font-medium text-sm">
         <span className="flex items-center gap-2">
           {display}
           <span className="text-xs bg-muted text-muted-foreground px-2 rounded-full">{count}</span>
@@ -322,7 +332,11 @@ function BoardColumn({
           className="text-muted-foreground hover:text-foreground"
         >+</button>
       </div>
-      <div className="flex flex-col gap-3 flex-1 overflow-y-auto">
+      {/* Scrolls on its own from `md:` up, so fifty cards in one column no
+          longer stretch the whole page to thousands of pixels. Below `md:` it
+          does not: a phone gets one page scroll, not a scroll box nested in a
+          horizontally scrolling board nested in the page. */}
+      <div className="flex flex-col gap-3 flex-1 md:min-h-0 md:overflow-y-auto scrollbar-thin">
         {(isLoading || error) && (
           <ListState
             isLoading={isLoading}
@@ -411,7 +425,7 @@ export function TasksWorkbench() {
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
   const scopedTo = useScopedTo();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
-  useEffect(() => setActivePageTitle('Tasks Workbench'), [setActivePageTitle]);
+  useEffect(() => setActivePageTitle('Tasks'), [setActivePageTitle]);
 
   // The open task lives in the URL (`/tasks/:taskId`) rather than in local
   // state, so a shared link, a browser reload and the back button all land on
@@ -712,52 +726,52 @@ export function TasksWorkbench() {
   }, [virtualTaskRows, sortedTasks.length, hasMoreTasks, isFetchingMoreTasks, fetchMoreTasks]);
 
   return (
-    <div className="h-full flex flex-col gap-6">
-      {/* `layout-manifest.md` §3: stacked by default, side-by-side from `md:`.
-          This row used to be `flex justify-between` unconditionally, so the
-          200px-fixed filter input rendered starting past the viewport's right
-          edge on a phone — `main` hides horizontal overflow, so it was not
-          scrollable, just gone. `flex-wrap` on the control group is the
-          fallback for the width in between: the toggle keeps its size and the
-          filter (now `flex-1`) either shrinks to fit or wraps to its own
-          line, but never renders off-screen. */}
-      <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-end">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Tasks Workbench</h1>
-          <p className="text-muted-foreground mt-1">Detailed task workbench for humans and autonomous agents.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex rounded-md border overflow-hidden text-sm font-medium">
-            <button
-              onClick={() => setViewMode('card')}
-              aria-pressed={viewMode === 'card'}
-              className={`px-3 py-2 ${viewMode === 'card' ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
-            >
-              Board
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              aria-pressed={viewMode === 'table'}
-              className={`px-3 py-2 border-l ${viewMode === 'table' ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
-            >
-              Table
-            </button>
-          </div>
-          <div className="flex flex-col flex-1 min-w-[140px]">
-            <label className="sr-only" htmlFor="task-filter">Filter tasks</label>
-            <input
-              id="task-filter"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Filter tasks…"
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/50"
-            />
-          </div>
-        </div>
-      </div>
+    // From `md:` up the screen is exactly one viewport tall (minus `main`'s
+    // own vertical padding), so the board and the table fill it and scroll
+    // inside themselves. Below `md:` it is unbounded and the page scrolls.
+    <div className="flex flex-col gap-6 md:h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-6rem)]">
+      {/* `flex-wrap` on the action group keeps the filter from rendering
+          off-screen at in-between widths: it shrinks or wraps instead. */}
+      <PageHeader
+        title="Tasks"
+        description="Every task in this project, by status."
+        actions={
+          <>
+            <div className="flex rounded-md border overflow-hidden text-sm font-medium">
+              <button
+                onClick={() => setViewMode('card')}
+                aria-pressed={viewMode === 'card'}
+                className={`px-3 py-2 ${viewMode === 'card' ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
+              >
+                Board
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                aria-pressed={viewMode === 'table'}
+                className={`px-3 py-2 border-l ${viewMode === 'table' ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
+              >
+                Table
+              </button>
+            </div>
+            <div className="flex flex-col flex-1 min-w-36 md:w-56">
+              <label className="sr-only" htmlFor="task-filter">Filter tasks</label>
+              <input
+                id="task-filter"
+                name="task-filter"
+                type="search"
+                autoComplete="off"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Filter tasks…"
+                className="w-full px-3 py-2 rounded-md border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+          </>
+        }
+      />
 
       {viewMode === 'table' ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 md:flex-1 md:min-h-0">
           {selectedTaskIds.size > 0 && (
             <div className="flex items-center gap-3 px-4 py-2 border rounded-lg bg-muted/30 text-sm">
               <span>{selectedTaskIds.size} selected</span>
@@ -783,7 +797,10 @@ export function TasksWorkbench() {
           {bulkStatusMutation.isError && (
             <p className="text-sm text-destructive">{(bulkStatusMutation.error as Error).message}</p>
           )}
-          <div className="h-[calc(100vh-260px)] overflow-hidden border rounded-lg flex flex-col" role="table" aria-label="Tasks">
+          {/* The rows are virtualized, so the table always needs a bounded
+              height: the rest of the screen from `md:`, most of a dynamic
+              viewport (which tracks a phone's collapsing URL bar) below it. */}
+          <div className="h-[75dvh] md:h-auto md:flex-1 md:min-h-0 overflow-hidden border rounded-lg flex flex-col" role="table" aria-label="Tasks">
           <div
             role="row"
             className="grid bg-muted/30 text-left text-xs text-muted-foreground uppercase tracking-wide shrink-0"
@@ -899,7 +916,7 @@ export function TasksWorkbench() {
           Failed to move task: {(updateStatusMutation.error as Error).message}
         </p>
       )}
-      <div className="flex gap-4 overflow-x-auto scrollbar-thin pb-4 h-full">
+      <div className="flex gap-4 overflow-x-auto scrollbar-thin pb-4 snap-x snap-mandatory md:snap-none md:flex-1 md:min-h-0">
           {columns.map(col => (
             <BoardColumn
               key={col.id}
@@ -1004,6 +1021,9 @@ export function TasksWorkbench() {
                >
                  <input
                    autoFocus
+                   name="title"
+                   autoComplete="off"
+                   aria-label="Title"
                    value={editTitle}
                    onChange={(e) => setEditTitle(e.target.value)}
                    className="text-xl font-bold rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
@@ -1058,6 +1078,8 @@ export function TasksWorkbench() {
                 <div className="flex justify-between items-center">
                   <span className="w-20">Status:</span>
                   <select
+                    name="status"
+                    aria-label="Status"
                     value={expandedTask.status || 'todo'}
                     disabled={updateStatusMutation.isPending}
                     onChange={(e) => updateStatusMutation.mutate({ taskId: expandedTask.id, status: e.target.value })}

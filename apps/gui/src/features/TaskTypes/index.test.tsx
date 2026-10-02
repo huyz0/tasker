@@ -419,6 +419,12 @@ describe('TaskTypesEditor', () => {
     expect(await screen.findByText(/Failed to set root type/)).toBeInTheDocument();
   });
 
+  it('titles the page "Task Types" and says what the screen is for', async () => {
+    renderEditor();
+    expect(screen.getByRole('heading', { level: 1, name: 'Task Types' })).toBeInTheDocument();
+    expect(screen.getByText('The kinds of task a project can hold, and the statuses each one moves through.')).toBeInTheDocument();
+  });
+
   it('asks for a type before showing an editor', async () => {
     renderEditor();
     expect(await screen.findByText(/Choose a task type on the left to configure/)).toBeInTheDocument();

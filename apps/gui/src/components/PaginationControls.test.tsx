@@ -3,9 +3,22 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { PaginationControls } from './PaginationControls';
 
 describe('PaginationControls', () => {
-  it('renders "No more items to load" when nextCursor is not provided', () => {
-    render(<PaginationControls onNextPage={vi.fn()} />);
+  it('says the list has ended once more than one page has been loaded', () => {
+    render(<PaginationControls onNextPage={vi.fn()} pagesLoaded={2} />);
     expect(screen.getByText('No more items to load')).toBeDefined();
+  });
+
+  // A one-item list ending in "No more items to load" reads as an apology for
+  // a list that never paginated in the first place.
+  it('shows nothing at the end of a single-page list', () => {
+    const { container } = render(<PaginationControls onNextPage={vi.fn()} pagesLoaded={1} />);
+    expect(screen.queryByText('No more items to load')).toBeNull();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('shows nothing at the end when the caller does not say how many pages were loaded', () => {
+    render(<PaginationControls onNextPage={vi.fn()} />);
+    expect(screen.queryByText('No more items to load')).toBeNull();
   });
 
   it('renders "Load More" button when nextCursor is provided', () => {

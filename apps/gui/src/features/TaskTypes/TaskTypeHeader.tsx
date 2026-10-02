@@ -67,6 +67,8 @@ export function TaskTypeHeader({ typeId, name }: { typeId: string; name: string 
           <label className="sr-only" htmlFor="rename-task-type">Task type name</label>
           <input
             id="rename-task-type"
+            name="task-type-name"
+            autoComplete="off"
             autoFocus
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}

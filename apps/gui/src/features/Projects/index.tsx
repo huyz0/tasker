@@ -9,10 +9,11 @@ import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { ProjectService, ProjectTemplateService, TaskService, RoleService, OrgService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { PaginationControls } from '../../components/PaginationControls';
-import { Package } from 'lucide-react';
+import { ChevronDown, Package } from 'lucide-react';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { VirtualList } from '../../components/ui/VirtualList';
 import { ListState } from '../../components/ui/ListState';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 // Only the estimate used before a card has been measured — `measureRows` reads
 // the real height, because a card grows when its edit form opens.
@@ -133,15 +134,24 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
   // No count on the collapsed toggle - that would mean fetching grants
   // eagerly for every card, exactly the cost collapsing this behind a
   // click exists to avoid.
+  //
+  // Collapsed, it is a full-width disclosure row with the same top rule and
+  // spacing the open panel has, so it reads as the card's last section. It
+  // used to be a bare text link under the integrations box that looked like
+  // it belonged to nothing.
   if (!isOpen) {
     return (
-      <button
-        onClick={() => { setIsOpen(true); revokeMutation.reset(); }}
-        aria-expanded={false}
-        className="text-xs text-muted-foreground hover:text-foreground"
-      >
-        Members
-      </button>
+      <div className="mt-3 border-t pt-3">
+        <button
+          type="button"
+          onClick={() => { setIsOpen(true); revokeMutation.reset(); }}
+          aria-expanded={false}
+          className="flex w-full items-center justify-between gap-2 rounded-sm text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        >
+          Members
+          <ChevronDown aria-hidden="true" className="h-4 w-4" />
+        </button>
+      </div>
     );
   }
 
@@ -226,6 +236,9 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
               <label className="text-xs font-medium" htmlFor={`project-member-search-${projectId}`}>Search people</label>
               <input
                 id={`project-member-search-${projectId}`}
+                name="member-search"
+                type="search"
+                autoComplete="off"
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -266,6 +279,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
                 <label className="text-xs font-medium" htmlFor={`project-grant-role-${projectId}`}>Role</label>
                 <select
                   id={`project-grant-role-${projectId}`}
+                  name="grant-role"
                   value={grantRoleId}
                   onChange={(e) => setGrantRoleId(e.target.value)}
                   className="rounded-md border bg-background px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary/50"
@@ -458,10 +472,7 @@ export function ProjectsWizard() {
 
   return (
     <div className="flex flex-col gap-8 pb-12">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
-        <p className="text-muted-foreground mt-1">Manage derived project templates and ownership.</p>
-      </div>
+      <PageHeader title="Projects" description="Start a project from a template, and manage the ones you have." />
 
       <section>
         <div className="flex items-center justify-between mb-4">
@@ -485,6 +496,8 @@ export function ProjectsWizard() {
             <label className="sr-only" htmlFor="new-template-name">Template name</label>
             <input
               id="new-template-name"
+              name="template-name"
+              autoComplete="off"
               autoFocus
               value={newTemplateName}
               onChange={(e) => setNewTemplateName(e.target.value)}
@@ -494,6 +507,8 @@ export function ProjectsWizard() {
             <label className="sr-only" htmlFor="new-template-description">Template description</label>
             <textarea
               id="new-template-description"
+              name="template-description"
+              autoComplete="off"
               value={newTemplateDescription}
               onChange={(e) => setNewTemplateDescription(e.target.value)}
               placeholder="Description (optional)"
@@ -517,6 +532,8 @@ export function ProjectsWizard() {
           <label className="sr-only" htmlFor="new-project-name">New project name</label>
           <input
             id="new-project-name"
+            name="project-name"
+            autoComplete="off"
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
             placeholder="New project name"
@@ -525,6 +542,8 @@ export function ProjectsWizard() {
           <label className="sr-only" htmlFor="new-project-description">Project description</label>
           <textarea
             id="new-project-description"
+            name="project-description"
+            autoComplete="off"
             value={projectDescription}
             onChange={(e) => setProjectDescription(e.target.value)}
             placeholder="What is this project for? (optional)"
@@ -564,6 +583,8 @@ export function ProjectsWizard() {
                      <label className="sr-only" htmlFor={`edit-template-name-${t.id}`}>Template name</label>
                      <input
                        id={`edit-template-name-${t.id}`}
+                       name="template-name"
+                       autoComplete="off"
                        autoFocus
                        value={editTemplateName}
                        onChange={(e) => setEditTemplateName(e.target.value)}
@@ -572,6 +593,8 @@ export function ProjectsWizard() {
                      <label className="sr-only" htmlFor={`edit-template-description-${t.id}`}>Template description</label>
                      <textarea
                        id={`edit-template-description-${t.id}`}
+                       name="template-description"
+                       autoComplete="off"
                        value={editTemplateDescription}
                        onChange={(e) => setEditTemplateDescription(e.target.value)}
                        rows={2}
@@ -653,14 +676,22 @@ export function ProjectsWizard() {
           <div className="flex flex-col gap-6">
             {/* Measured rather than fixed-height: a project card grows an
                 inline edit form when opened, and a fixed height would misplace
-                every card below the one being edited (M07-T14). */}
+                every card below the one being edited (M07-T14).
+
+                No height cap: it was `max-h-[70vh] overflow-y-auto`, a scroll
+                box inside the scrolling page that cut the second card off
+                mid-line. The page scrolls now, so the virtualizer's viewport
+                is the whole loaded list — the number of cards on screen is
+                bounded by the server page size and the explicit "Load more"
+                below, not by the box. Each card carries its own gap so the
+                measured rows space out like the rest of the page. */}
             <VirtualList
               items={projectsData ?? []}
               rowHeight={PROJECT_ROW_HEIGHT}
               measureRows
-              className="max-h-[70vh] overflow-y-auto"
               renderRow={(p: any) => (
-              <div key={p.id} className="border rounded-lg bg-card p-6 shadow-sm">
+              <div key={p.id} className="pb-6">
+              <div className="border rounded-lg bg-card p-6 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   {editingProjectId === p.id ? (
                     <form
@@ -675,6 +706,8 @@ export function ProjectsWizard() {
                       <label className="sr-only" htmlFor={`edit-project-name-${p.id}`}>Project name</label>
                       <input
                         id={`edit-project-name-${p.id}`}
+                        name="project-name"
+                        autoComplete="off"
                         autoFocus
                         value={editProjectName}
                         onChange={(e) => setEditProjectName(e.target.value)}
@@ -683,6 +716,8 @@ export function ProjectsWizard() {
                       <label className="sr-only" htmlFor={`edit-project-description-${p.id}`}>Project description</label>
                       <textarea
                         id={`edit-project-description-${p.id}`}
+                        name="project-description"
+                        autoComplete="off"
                         value={editProjectDescription}
                         onChange={(e) => setEditProjectDescription(e.target.value)}
                         placeholder="What is this project for? (optional)"
@@ -709,10 +744,8 @@ export function ProjectsWizard() {
                   ) : (
                     <div>
                       <h3 className="font-semibold text-lg">{p.name} <span className="text-xs font-mono text-muted-foreground">[{p.key}]</span></h3>
-                      {p.description ? (
+                      {p.description && (
                         <p className="text-sm text-muted-foreground mt-1">{p.description}</p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic mt-1">No description.</p>
                       )}
                       <div className="flex items-center gap-2 mt-1">
                         <p className="text-xs text-muted-foreground">ID: {p.id}</p>
@@ -775,6 +808,7 @@ export function ProjectsWizard() {
                 <RepositoryIntegrationConfig projectId={p.id} />
                 <ProjectMembers projectId={p.id} orgId={activeOrgId} />
               </div>
+              </div>
               )}
             />
             {archiveProjectMutation.isError && (
@@ -783,6 +817,7 @@ export function ProjectsWizard() {
             <PaginationControls
               nextCursor={nextCursor}
               isLoading={isFetchingNextPage}
+              pagesLoaded={projectsPages?.pages.length}
               onNextPage={() => fetchNextPage()}
             />
           </div>
