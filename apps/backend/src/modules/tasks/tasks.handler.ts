@@ -2,7 +2,8 @@ import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
-import { eq, and, not, isNull, inArray, sql } from "drizzle-orm";
+import { eq, and, asc, not, isNull, inArray, sql } from "drizzle-orm";
+import type { Principal } from "../auth/session";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, getProjectOrgId, getTaskOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
@@ -100,6 +101,31 @@ const ClaimTaskSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
   idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
 });
+
+const ClaimNextTaskSchema = z.object({
+  projectId: z.string().min(1, "projectId is required"),
+  taskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
+});
+
+/**
+ * ClaimNextTask's candidate window (M33-T02). Every agent asks for the oldest
+ * work, so all of them would race for the same row; each one instead tries the
+ * oldest few in a shuffled order, which spreads concurrent claimers across the
+ * window, and moves on when it loses.
+ */
+const CLAIM_NEXT_WINDOW = 20;
+const CLAIM_NEXT_ROUNDS = 3;
+
+/** Fisher-Yates, so each caller walks the candidate window in its own order. */
+function shuffle<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
 
 const AddTaskReviewerSchema = z.object({
   taskId: z.string().min(1, "taskId is required"),
@@ -537,6 +563,61 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
 
   /**
+   * The atomic claim (M14-T06): one `INSERT ... SELECT ... WHERE NOT EXISTS`,
+   * so of several callers racing one task exactly one wins, with no gap
+   * between check and write on either dialect. Shared by ClaimTask and
+   * ClaimNextTask (M33-T02). Records `source = 'claim'` (ADR-0027). True when
+   * this call won.
+   */
+  async function insertClaim(taskId: string, principal: Principal): Promise<boolean> {
+    const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+    const newId = `ta-${crypto.randomUUID()}`;
+    const selfAgentId = principal.kind === "agent" ? principal.agentId : null;
+    const selfUserId = principal.kind === "user" ? principal.userId : null;
+    const insertResult = isStandalone
+      ? await db.run(sql`
+          INSERT INTO ${assignments} (id, task_id, agent_id, user_id, source)
+          SELECT ${newId}, ${taskId}, ${selfAgentId}, ${selfUserId}, 'claim'
+          WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${taskId})
+        `)
+      : await db.execute(sql`
+          INSERT INTO ${assignments} (id, task_id, agent_id, user_id, source)
+          SELECT ${newId}, ${taskId}, ${selfAgentId}, ${selfUserId}, 'claim'
+          FROM DUAL
+          WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${taskId})
+        `);
+    return Boolean(isStandalone ? (insertResult as any).changes : (insertResult as any)[0]?.affectedRows);
+  }
+
+  /** What a won claim does next - activity, event, and the response with any prior handoff note. */
+  async function completeClaim(taskId: string, principal: Principal) {
+    const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+    const [task] = await db.select().from(tasks).where(eq((tasks as any).id, taskId)).limit(1);
+    const selfAgentId = principal.kind === "agent" ? principal.agentId : null;
+    const selfUserId = principal.kind === "user" ? principal.userId : null;
+    // M24-T04 (ADR-0020): only a WON claim is recorded - claim_rejected is
+    // deliberately not a kind - and inside the caller's withIdempotency
+    // callback, so a replayed claim replays the stored response without a
+    // second row.
+    await recordTaskActivity(db, isStandalone, {
+      taskId,
+      projectId: task.projectId,
+      kind: "claimed",
+      ...actorFromPrincipal(principal),
+      assigneeAgentId: selfAgentId,
+      assigneeUserId: selfUserId,
+    });
+    publishDomainEvent(nc, "domain.task.claimed", { taskId, agentId: selfAgentId, userId: selfUserId });
+    // M22-T04 (ADR-0017): the moment a claim succeeds is when prior handoff
+    // context matters most - the new claimant sees it in the same round trip.
+    const latestHandoffNote = await getLatestHandoffNote(db, taskId, isStandalone);
+    return {
+      task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt },
+      ...(latestHandoffNote ? { latestHandoffNote } : {}),
+    };
+  }
+
+  /**
    * Resolves assignees for a page of tasks, with display names, in a fixed
    * number of queries regardless of how many tasks there are.
    *
@@ -965,56 +1046,49 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           throw new ConnectError(`task is in terminal status "${current.status}" - only open tasks can be claimed`, Code.FailedPrecondition);
         }
 
-        const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
-        const newId = `ta-${crypto.randomUUID()}`;
-        const selfAgentId = principal.kind === "agent" ? principal.agentId : null;
-        const selfUserId = principal.kind === "user" ? principal.userId : null;
-
-        const insertResult = isStandalone
-          ? await db.run(sql`
-              INSERT INTO ${assignments} (id, task_id, agent_id, user_id, source)
-              SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}, 'claim'
-              WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${parsed.taskId})
-            `)
-          : await db.execute(sql`
-              INSERT INTO ${assignments} (id, task_id, agent_id, user_id, source)
-              SELECT ${newId}, ${parsed.taskId}, ${selfAgentId}, ${selfUserId}, 'claim'
-              FROM DUAL
-              WHERE NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${parsed.taskId})
-            `);
-        const claimed = isStandalone ? (insertResult as any).changes : (insertResult as any)[0]?.affectedRows;
-        if (!claimed) {
+        if (!(await insertClaim(parsed.taskId, principal))) {
           throw new ConnectError("task is already assigned - claim only succeeds on an unassigned task", Code.FailedPrecondition);
         }
+        return completeClaim(parsed.taskId, principal);
+      });
+    },
+    /**
+     * M33-T02: the oldest open, unassigned task in the project, claimed in one
+     * call. An agent no longer lists and then races everyone else for the same
+     * rows; a lost race moves on to the next candidate. Nothing to claim is an
+     * empty response, not an error - the normal answer for an idle queue.
+     */
+    async claimNextTask(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = ClaimNextTaskSchema.parse(req);
+      return withIdempotency(db, isStandalone, principal, "claimNextTask", parsed.idempotencyKey, parsed, async () => {
+        const orgId = await getProjectOrgId(db, parsed.projectId);
+        await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
 
         const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-        const result = await db.select().from(tasks).where(eq((tasks as any).id, parsed.taskId)).limit(1);
-        const task = result[0];
-
-        // M24-T04 (ADR-0020): after the claim-won check - a LOST claim threw
-        // above and records nothing (claim_rejected is deliberately not a
-        // kind; see the ADR) - and inside the withIdempotency callback, so a
-        // replayed claim replays the stored response without a second row.
-        // Claims are self-service for either principal kind, so the new
-        // holder is whichever of agent/user is calling.
-        await recordTaskActivity(db, isStandalone, {
-          taskId: parsed.taskId,
-          projectId: task.projectId,
-          kind: "claimed",
-          ...actorFromPrincipal(principal),
-          assigneeAgentId: selfAgentId,
-          assigneeUserId: selfUserId,
-        });
-
-        publishDomainEvent(nc, "domain.task.claimed", { taskId: parsed.taskId, agentId: selfAgentId, userId: selfUserId });
-        // M22-T04 (ADR-0017): the moment a claim succeeds is exactly when
-        // prior handoff context matters most - the new claimant sees it in
-        // the same round trip, no second call needed.
-        const latestHandoffNote = await getLatestHandoffNote(db, parsed.taskId, isStandalone);
-        return {
-          task: { ...task, createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt },
-          ...(latestHandoffNote ? { latestHandoffNote } : {}),
-        };
+        const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
+        for (let round = 0; round < CLAIM_NEXT_ROUNDS; round++) {
+          const candidates: { id: string }[] = await db
+            .select({ id: (tasks as any).id })
+            .from(tasks)
+            .where(and(
+              eq((tasks as any).projectId, parsed.projectId),
+              notDeleted(tasks),
+              parsed.taskTypeId ? eq((tasks as any).taskTypeId, parsed.taskTypeId) : undefined,
+              sql`NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id})`,
+              not(terminalStatusSql(tasks, isStandalone)),
+            ))
+            .orderBy(asc((tasks as any).createdAt), asc((tasks as any).id))
+            .limit(CLAIM_NEXT_WINDOW);
+          if (candidates.length === 0) return {};
+          for (const c of shuffle(candidates)) {
+            if (await insertClaim(c.id, principal)) return completeClaim(c.id, principal);
+          }
+        }
+        // Every candidate in every round went to someone else first: there is
+        // work, but this caller lost each race for it. Aborted is the
+        // retryable answer; an empty response would wrongly say "no work".
+        throw new ConnectError("every open task was claimed by another caller first - retry", Code.Aborted);
       });
     },
     async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {

@@ -78,6 +78,9 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     // any assignee", so it is safe to open under the same tasks:write
     // scope that already covers creating and updating tasks.
     claimTask: 'tasks:write',
+    // M33-T02: claimTask over the oldest open task in a project - the same
+    // grant, choosing the task instead of naming it.
+    claimNextTask: 'tasks:write',
     // assignTask and unassignTask are deliberately absent. Deciding which
     // worker picks up a piece of work is an orchestration decision, and a token
     // that can reassign work to itself is a token that can help itself to any

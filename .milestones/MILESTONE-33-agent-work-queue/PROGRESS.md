@@ -22,3 +22,23 @@
   activity log. The backfill can only under-count claims. Codegen used the
   local plugin template from M32-T06 (buf.build remote plugins unreachable).
 - **Next**: M33-T02
+
+## M33-T02 — ClaimNextTask
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/tasks/tasks.handler.ts`,
+  `workQueue.test.ts` (new), `lib/scopes.ts`, `lib/agent-scope-sweep.test.ts`
+- **Verified**: `bun test src/modules/tasks src/lib/agent-scope-sweep.test.ts`
+  — green; five new tests, all failing first.
+- **Notes**: ClaimTask's atomic insert and its post-claim steps are now two
+  closures, `insertClaim` and `completeClaim`, shared by both RPCs — the claim
+  semantics, activity row, event and handoff-note surfacing stay in one place.
+  ClaimNextTask reads the 20 oldest open, unassigned candidates (terminal
+  excluded via `terminalStatusSql`, optional type filter), tries them in a
+  shuffled order so concurrent agents spread across the window instead of all
+  hitting the head, and re-reads up to three times. Nothing to claim is an
+  empty response; losing every race while work exists is `Aborted` — the
+  retryable code, and exit 5 from the CLI — because "no work" would be false.
+  Five concurrent claimers on five tasks get five distinct tasks.
+- **Next**: M33-T03

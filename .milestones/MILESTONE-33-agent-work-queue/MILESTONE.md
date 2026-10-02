@@ -43,7 +43,7 @@ scriptable; both are prerequisites.
 
 ## 3. Exit Criteria
 
-- [ ] N concurrent `ClaimNextTask` calls on a project with N open tasks claim
+- [x] N concurrent `ClaimNextTask` calls on a project with N open tasks claim
   N distinct tasks; with none left the response carries no task.
 - [ ] `ReleaseTask` releases the caller's own claim (recording a handoff note
   when given) and is `PermissionDenied` on an assignment a human made.
@@ -72,7 +72,7 @@ scriptable; both are prerequisites.
 - [x] **M33-T01** — Contract and schema: the four RPC shapes, `task_assignments.source`.
   - **Files**: `packages/shared-contract/{main.tsp,tasker/health/v1/health.proto}`,
     generated code, `apps/backend/src/db/schema.*.ts`, migrations
-- [ ] **M33-T02** — `ClaimNextTask`.
+- [x] **M33-T02** — `ClaimNextTask`.
   - **Files**: `apps/backend/src/modules/tasks/tasks.handler.ts`, `lib/scopes.ts`
 - [ ] **M33-T03** — `ReleaseTask` (ADR-0027).
   - **Files**: as T02
