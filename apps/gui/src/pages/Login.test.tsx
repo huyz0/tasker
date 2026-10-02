@@ -40,8 +40,17 @@ describe('LoginPage Component', () => {
 
   it('should render the page title and subtitle', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: 'Tasker' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeDefined();
     expect(screen.getByText('Autonomous SDLC Platform')).toBeDefined();
+  });
+
+  // The shell's mark (lucide Activity + "Tasker") is the first thing a person
+  // sees after signing in; the sign-in page carried none of it.
+  it('shows the same brand mark as the app shell above the card', () => {
+    renderPage();
+    const mark = screen.getByTestId('brand-mark');
+    expect(mark).toHaveTextContent('Tasker');
+    expect(mark.querySelector('svg.lucide-activity')).not.toBeNull();
   });
 
   it('offers Google once the backend says it is configured', async () => {

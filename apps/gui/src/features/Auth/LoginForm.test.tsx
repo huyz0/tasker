@@ -55,16 +55,32 @@ describe('LoginForm', () => {
     await waitFor(() => expect(mockLoginWithPassword).toHaveBeenCalledWith('alice', 'a-strong-password-123'));
   });
 
-  it('disables the submit button until both fields are filled', () => {
+  it('keeps the submit button enabled on an empty form, so the primary action is visible before typing', () => {
     renderForm();
-    const button = screen.getByRole('button', { name: 'Sign in' });
-    expect(button).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sign in' })).not.toBeDisabled();
+  });
 
+  it('validates inline on submit: names each missing field, marks it invalid, and focuses the first one', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    const username = screen.getByLabelText('Username');
+    const password = screen.getByLabelText('Password');
+    expect(username).toHaveAttribute('aria-invalid', 'true');
+    expect(username).toHaveAccessibleDescription('Enter your username.');
+    expect(password).toHaveAttribute('aria-invalid', 'true');
+    expect(password).toHaveAccessibleDescription('Enter your password.');
+    expect(document.activeElement).toBe(username);
+    expect(mockLoginWithPassword).not.toHaveBeenCalled();
+  });
+
+  it('focuses the password when only the password is missing', () => {
+    renderForm();
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'alice' } });
-    expect(button).toBeDisabled(); // password still empty
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pw' } });
-    expect(button).not.toBeDisabled();
+    expect(screen.getByLabelText('Username')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(document.activeElement).toBe(screen.getByLabelText('Password'));
   });
 
   it('invalidates the authSession query and navigates home on success', async () => {
@@ -132,7 +148,7 @@ describe('LoginForm', () => {
     await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
   });
 
-  it('ignores a submit event with an empty field, bypassing the disabled button (e.g. pressing Enter)', () => {
+  it('ignores a submit event with an empty field, (e.g. pressing Enter)', () => {
     renderForm();
     const form = screen.getByRole('form', { name: 'Sign in with username and password' });
 

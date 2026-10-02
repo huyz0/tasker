@@ -44,7 +44,7 @@ export const MissingAuthorizationCode: Story = {
 // A valid code+state, with sessionStorage's nonce set to match (the same
 // CSRF check the real flow performs) before mount - real, unmocked
 // addRepositoryLink call against an unreachable-in-Storybook backend, so
-// this shows the "Linking Repository..." state, which never resolves here.
+// this shows the "Linking repository..." state, which never resolves here.
 const nonce = 'storybook-nonce';
 const state = btoa(JSON.stringify({ nonce, projectId: 'proj-storybook', provider: 'github', remoteName: 'origin' }));
 

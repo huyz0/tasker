@@ -178,7 +178,7 @@ export function AccountSettings() {
         )}
 
         {!isGoogleLinked && (
-          <Button variant="inverted" className="mt-4" onClick={handleLinkGoogle}>
+          <Button variant="outline" className="mt-4" onClick={handleLinkGoogle}>
             Link Google account
           </Button>
         )}

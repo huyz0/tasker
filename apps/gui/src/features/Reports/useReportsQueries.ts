@@ -31,14 +31,14 @@ export function agoLabel(iso: string): string {
  * "History collected since August 1, 2026" — every trend chart's footnote.
  *
  * ADR-0020's backfill draws no false past, so a chart must label its
- * collection start rather than imply history that was never recorded. Locale
- * pinned to en-US (the UI's language) and timezone to UTC (the bucket dates
- * are UTC days), so the label cannot shift under the viewer's — or the test
- * runner's — environment.
+ * collection start rather than imply history that was never recorded. The
+ * locale is the viewer's own (a date is read in the reader's format), but the
+ * timezone stays pinned to UTC: the bucket dates are UTC days, so a viewer
+ * west of Greenwich must not see the collection start slip a day earlier.
  */
 export function collectedSinceFootnote(iso: string): string {
-  const formatted = new Date(iso).toLocaleDateString('en-US', {
+  const formatted = new Intl.DateTimeFormat(undefined, {
     timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric',
-  });
+  }).format(new Date(iso));
   return `History collected since ${formatted}`;
 }

@@ -14,6 +14,7 @@ import { ListState } from '../../components/ui/ListState';
 import { RowActionsMenu } from '../../components/ui/RowActionsMenu';
 import * as Tabs from '@radix-ui/react-tabs';
 import { AuditTrail } from './AuditTrail';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const orgClient = createClient(OrgService, transport);
 
@@ -115,7 +116,7 @@ export function OrganizationsDashboard() {
   const [collapsedOrgIds, setCollapsedOrgIds] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
 
-  useEffect(() => setActivePageTitle('Organizations & Settings'), [setActivePageTitle]);
+  useEffect(() => setActivePageTitle('Organizations'), [setActivePageTitle]);
 
   const {
     data: orgsPages,
@@ -414,7 +415,7 @@ export function OrganizationsDashboard() {
           <button
             type="submit"
             disabled={!editName.trim() || !editSlug.trim() || updateOrgMutation.isPending}
-            className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
+            className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary-subtle disabled:text-primary-subtle-foreground rounded-md text-xs font-medium"
           >
             {updateOrgMutation.isPending ? 'Saving…' : 'Save'}
           </button>
@@ -498,10 +499,12 @@ export function OrganizationsDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Organizations & Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage hierarchical organizational structure and teams.</p>
-      </div>
+      {/* "Organizations", not "Organizations & Settings": Settings is its own
+          route (/settings), so the old title promised a screen this isn't. */}
+      <PageHeader
+        title="Organizations"
+        description="Manage hierarchical organizational structure and teams."
+      />
       {/* Two tabs, hand-rolled as a `useState` toggle with no `role="tablist"`,
           no `aria-selected`, and no arrow-key navigation between them — the
           exact "second tab implementation" `design-system.md` §4 now says not
@@ -529,22 +532,22 @@ export function OrganizationsDashboard() {
             value="members"
             className="w-full text-left p-2 rounded text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50 data-[state=active]:font-medium data-[state=active]:bg-muted data-[state=inactive]:hover:bg-muted/50"
           >
-            Roles & Permissions
+            Roles & permissions
           </Tabs.Trigger>
           <Tabs.Trigger
             value="audit"
             className="w-full text-left p-2 rounded text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50 data-[state=active]:font-medium data-[state=active]:bg-muted data-[state=inactive]:hover:bg-muted/50"
           >
-            Audit Trail
+            Audit trail
           </Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="organizations" className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
             <>
-              <div className="flex justify-between mb-4">
-                <h2 className="text-xl font-medium">Your Organizations</h2>
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <h2 className="text-xl font-medium">Your organizations</h2>
                 <button
                   onClick={() => setShowNewOrgForm((v) => !v)}
-                  className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
+                  className="shrink-0 whitespace-nowrap px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
                 >
                   New Organization
                 </button>
@@ -578,7 +581,7 @@ export function OrganizationsDashboard() {
                   <button
                     type="submit"
                     disabled={!newOrgName.trim() || createOrgMutation.isPending}
-                    className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-sm font-medium transition-colors"
+                    className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary-subtle disabled:text-primary-subtle-foreground rounded-md text-sm font-medium transition-colors"
                   >
                     {createOrgMutation.isPending ? 'Creating…' : 'Create'}
                   </button>
@@ -615,12 +618,13 @@ export function OrganizationsDashboard() {
                   nextCursor={nextCursor}
                   isLoading={isFetchingNextPage}
                   onNextPage={() => fetchNextPage()}
+                  pagesLoaded={orgsPages?.pages.length}
                 />
               )}
 
               {activeOrg && (
                 <div className="mt-6 pt-6 border-t">
-                  <h3 className="font-medium mb-2">Bin Retention</h3>
+                  <h3 className="font-medium mb-2">Bin retention</h3>
                   <p className="text-sm text-muted-foreground mb-3">
                     Archived items in "{activeOrg.name}" are permanently deleted this many days after being moved to the bin, unless restored first.
                   </p>
@@ -667,7 +671,7 @@ export function OrganizationsDashboard() {
         <Tabs.Content value="members" className="col-span-1 md:col-span-3 border rounded-lg bg-card p-6 shadow-sm">
             <>
               <div className="mb-4">
-                <h2 className="text-xl font-medium">Roles & Permissions</h2>
+                <h2 className="text-xl font-medium">Roles & permissions</h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   {activeOrg ? <>Members of <span className="font-medium text-foreground">{activeOrg.name}</span> and the role each one holds.</> : 'Select an organization to manage its members.'}
                 </p>
@@ -824,7 +828,7 @@ export function OrganizationsDashboard() {
                     <button
                       type="submit"
                       disabled={inviteMutation.isPending || !inviteEmail.trim()}
-                      className="text-sm rounded-md bg-primary text-primary-foreground px-4 py-2 disabled:bg-muted disabled:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="text-sm rounded-md bg-primary text-primary-foreground px-4 py-2 disabled:bg-primary-subtle disabled:text-primary-subtle-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
                       {inviteMutation.isPending ? 'Sending…' : 'Send invite'}
                     </button>

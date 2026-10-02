@@ -72,7 +72,7 @@ export function AuditTrail({ orgId }: { orgId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-xl font-medium">Audit Trail</h2>
+        <h2 className="text-xl font-medium">Audit trail</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Every recorded change in this organization, newest first. Written by the event consumer, not
           editable here.

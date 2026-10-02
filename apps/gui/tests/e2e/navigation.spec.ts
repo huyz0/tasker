@@ -11,7 +11,7 @@ import { test, expect } from '@playwright/test';
 // URL leaves the content area empty.
 const ROUTES = [
   { path: '/', heading: 'Dashboard' },
-  { path: '/organizations', heading: 'Organizations & Settings' },
+  { path: '/organizations', heading: 'Organizations' },
   { path: '/projects', heading: 'Projects' },
   { path: '/agents', heading: 'AI Agents' },
   { path: '/tasks', heading: 'Tasks' },

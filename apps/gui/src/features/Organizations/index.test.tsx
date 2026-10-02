@@ -51,7 +51,7 @@ describe('OrganizationsDashboard', () => {
   it('renders the header correctly', () => {
     withRpc('ListOrgs', { organizations: [] });
     renderPage();
-    expect(screen.getByText('Organizations & Settings')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Organizations' })).toBeDefined();
     expect(screen.getByText('Manage hierarchical organizational structure and teams.')).toBeDefined();
   });
 
@@ -61,14 +61,14 @@ describe('OrganizationsDashboard', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Root Co')).toBeInTheDocument());
-    expect(screen.getByText('Your Organizations')).toBeInTheDocument();
+    expect(screen.getByText('Your organizations')).toBeInTheDocument();
 
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
     await waitFor(() => expect(screen.getByText('No members found.')).toBeInTheDocument());
-    expect(screen.queryByText('Your Organizations')).toBeNull();
+    expect(screen.queryByText('Your organizations')).toBeNull();
 
-    fireEvent.mouseDown(screen.getByText('Organizations'), { button: 0 });
-    expect(screen.getByText('Your Organizations')).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Organizations' }), { button: 0 });
+    expect(screen.getByText('Your organizations')).toBeInTheDocument();
   });
 
   it('renders loading state for orgs', () => {
@@ -250,7 +250,7 @@ describe('OrganizationsDashboard', () => {
     withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     mockRpcError(OrgService, 'ListOrgMembers', 'unavailable', 'backend unreachable');
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Could not load this list: .*backend unreachable/)).toBeInTheDocument());
     withRpc('ListOrgMembers', { members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }] });
@@ -545,7 +545,7 @@ describe('OrganizationsDashboard', () => {
     const requests = withRpc('RemoveOrgMember', { success: true });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -559,7 +559,7 @@ describe('OrganizationsDashboard', () => {
     withRpc('ListOrgMembers', { members: [] });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText('No members found.')).toBeInTheDocument());
   });
@@ -570,7 +570,7 @@ describe('OrganizationsDashboard', () => {
     const requests = withRpc('RemoveOrgMember', {});
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -585,7 +585,7 @@ describe('OrganizationsDashboard', () => {
     mockRpcError(OrgService, 'RemoveOrgMember', 'unknown', "cannot remove the organization's last owner");
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -605,7 +605,7 @@ describe('OrganizationsDashboard', () => {
         : { members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }], page: { nextCursor: 'cursor-2', totalCount: 2 } });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Bob/)).toBeInTheDocument());
     expect(screen.getByText(/Alice/)).toBeInTheDocument();
@@ -625,7 +625,7 @@ describe('OrganizationsDashboard', () => {
     });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText('Search members'), { target: { value: 'ali' } });
@@ -647,7 +647,7 @@ describe('OrganizationsDashboard', () => {
     });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText('Filter by role'), { target: { value: 'viewer' } });
@@ -665,7 +665,7 @@ describe('OrganizationsDashboard', () => {
     });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByTestId('member-count')).toHaveTextContent('Showing 1 of 100001'));
   });
@@ -678,7 +678,7 @@ describe('OrganizationsDashboard', () => {
         : { members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' }], page: { totalCount: 1 } });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText('Search members'), { target: { value: 'zzz' } });
@@ -703,7 +703,7 @@ describe('OrganizationsDashboard', () => {
     });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByRole('rowgroup')).toHaveAttribute('aria-rowcount', '100001'));
   });
@@ -723,7 +723,7 @@ describe('OrganizationsDashboard', () => {
     withRpc('ListOrgMembers', { members: many, page: { totalCount: 1000 } });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByTestId('member-count')).toHaveTextContent('Showing 1000 of 1000'));
 
@@ -773,7 +773,7 @@ describe('OrganizationsDashboard', () => {
     withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
     withRpc('ListOrgMembers', { members: [], page: { totalCount: 0 } });
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
   };
 
   it('sends an invitation with the chosen role and clears the field', async () => {
@@ -883,7 +883,7 @@ describe('OrganizationsDashboard', () => {
     mockRpcError(OrgService, 'RemoveOrgMember', 'unknown', 'user still owns 2 project(s) in this organization - reassign them first: proj-alpha, proj-beta');
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.click(screen.getByText('Remove'));
@@ -899,7 +899,7 @@ describe('OrganizationsDashboard', () => {
     const requests = withRpc('UpdateOrgMemberRole', { member: { userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'admin' } });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.change(screen.getByLabelText('Role for Alice'), { target: { value: 'admin' } });
@@ -912,7 +912,7 @@ describe('OrganizationsDashboard', () => {
     withRpc('ListOrgMembers', { members: [{ userId: 'user-1', email: 'a@b.com', name: 'Alice', role: 'owner' }] });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     expect(screen.getByText('Owner', { selector: 'span' })).toBeInTheDocument();
@@ -927,7 +927,7 @@ describe('OrganizationsDashboard', () => {
     ] });
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText('noname@b.com')).toBeInTheDocument());
     expect(screen.getByText('user-3')).toBeInTheDocument();
@@ -941,7 +941,7 @@ describe('OrganizationsDashboard', () => {
     mockRpcError(OrgService, 'UpdateOrgMemberRole', 'unknown', 'owner role required');
 
     renderPage();
-    fireEvent.mouseDown(screen.getByText('Roles & Permissions'), { button: 0 });
+    fireEvent.mouseDown(screen.getByText('Roles & permissions'), { button: 0 });
 
     await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
     fireEvent.change(screen.getByLabelText('Role for Alice'), { target: { value: 'viewer' } });
@@ -957,7 +957,7 @@ describe('OrganizationsDashboard', () => {
 
       const first = renderPage();
       await waitFor(() => expect(screen.getByText('Root Co')).toBeInTheDocument());
-      fireEvent.mouseDown(screen.getByText('Audit Trail'), { button: 0 });
+      fireEvent.mouseDown(screen.getByText('Audit trail'), { button: 0 });
       await waitFor(() => expect(screen.getByTestId('audit-trail')).toBeInTheDocument());
 
       expect(first.location.search).toContain('section=audit');
@@ -968,20 +968,20 @@ describe('OrganizationsDashboard', () => {
       renderPage(first.location.url);
 
       await waitFor(() => expect(screen.getByTestId('audit-trail')).toBeInTheDocument());
-      expect(screen.queryByText('Your Organizations')).toBeNull();
+      expect(screen.queryByText('Your organizations')).toBeNull();
     });
 
     it('falls back to Organizations when the section is absent or unrecognised', async () => {
       withRpc('ListOrgs', { organizations: [{ id: 'org-1', name: 'Root Co', slug: 'root-co' }], ancestors: [] });
 
       const absent = renderPage('/organizations?org=org-1');
-      await waitFor(() => expect(screen.getByText('Your Organizations')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('Your organizations')).toBeInTheDocument());
       absent.unmount();
 
       // Radix renders no panel at all for a value none of its triggers own, so
       // an unrecognised section would be a blank screen rather than a default.
       renderPage('/organizations?org=org-1&section=nonsense');
-      await waitFor(() => expect(screen.getByText('Your Organizations')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('Your organizations')).toBeInTheDocument());
     });
   });
 });

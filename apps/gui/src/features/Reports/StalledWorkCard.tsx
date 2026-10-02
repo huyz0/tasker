@@ -56,7 +56,7 @@ export function StalledWorkCard({ stalledClaims, unclaimed }: {
   return (
     <ReportPanel
       title="Stalled work"
-      subtitle="Claims with no recent signal, and tasks nobody has picked up — what to free today"
+      subtitle="Claims with no recent signal, and tasks nobody has picked up. This is what to free today."
     >
       <SectionHeading>Claimed and silent</SectionHeading>
       {unassignMutation.isError && (
@@ -65,7 +65,7 @@ export function StalledWorkCard({ stalledClaims, unclaimed }: {
         </p>
       )}
       {stalledClaims.length === 0 ? (
-        <p className="p-2 text-sm text-muted-foreground">Nothing stalled — every claimed task has recent activity.</p>
+        <p className="p-2 text-sm text-muted-foreground">Nothing stalled. Every claimed task has recent activity.</p>
       ) : (
         <ul className="divide-y">
           {stalledClaims.map((c) => {
@@ -130,7 +130,7 @@ export function StalledWorkCard({ stalledClaims, unclaimed }: {
 
       <SectionHeading>Waiting unclaimed</SectionHeading>
       {unclaimed.length === 0 ? (
-        <p className="p-2 text-sm text-muted-foreground">No tasks waiting unclaimed — everything ready has been picked up.</p>
+        <p className="p-2 text-sm text-muted-foreground">No tasks waiting unclaimed. Everything ready has been picked up.</p>
       ) : (
         <ul className="divide-y">
           {unclaimed.map((t) => (

@@ -59,7 +59,7 @@ function AutonomyReworkCard({ trends }: { trends: TrendsData }) {
   return (
     <ReportPanel
       title="Autonomy and rework"
-      subtitle="Whether agents finish work unaided, and whether it stays finished — who needs closer review"
+      subtitle="Whether agents finish work unaided and whether it stays finished. Shows who needs closer review."
     >
       <div className="flex flex-col gap-1 p-2">
         {sampledDays === 0 ? (
@@ -71,7 +71,7 @@ function AutonomyReworkCard({ trends }: { trends: TrendsData }) {
           />
         ) : (
           <>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground tabular-nums">
               {sampledDays} {sampledDays === 1 ? 'day' : 'days'} with completions in this window
             </p>
             <LineChart
@@ -93,7 +93,7 @@ function CreatedCompletedCard({ trends }: { trends: TrendsData }) {
   return (
     <ReportPanel
       title="Created vs completed"
-      subtitle="Whether work is draining or piling up — the gap between the lines is the backlog growing"
+      subtitle="Whether work is draining or piling up. A widening gap between the lines is the backlog growing."
     >
       <div className="flex flex-col gap-1 p-2">
         <LineChart
@@ -154,7 +154,7 @@ function FlowCard({ trends, taskTypeId, onTaskTypeChange }: {
   return (
     <ReportPanel
       title="Flow"
-      subtitle="Where tasks of one type sit over time — a swelling middle band is where work is queuing"
+      subtitle="Where tasks of one type sit over time. A swelling middle band is where work is queuing."
     >
       <div className="flex flex-col gap-2 p-2">
         <label className="flex items-center gap-2 self-start text-xs text-muted-foreground">

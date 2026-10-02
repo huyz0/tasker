@@ -13,7 +13,7 @@ export function InlineCreateForm({
   isSubmitting = false,
   className = 'flex gap-1 px-1 pb-1',
   inputClassName = 'border p-1 rounded text-xs flex-1 bg-background',
-  buttonClassName = 'text-xs px-2 rounded bg-primary text-primary-foreground disabled:bg-muted disabled:text-muted-foreground',
+  buttonClassName = 'text-xs px-2 rounded bg-primary text-primary-foreground disabled:bg-primary-subtle disabled:text-primary-subtle-foreground',
 }: {
   placeholder: string;
   onSubmit: (value: string) => void;
@@ -34,6 +34,10 @@ export function InlineCreateForm({
         if (trimmed) onSubmit(trimmed);
       }}
     >
+      {/* autoFocus is deliberate: this form only mounts after the person
+          clicked "add" (every caller gates it on an isAdding-style flag), so
+          the caret belongs in the field they asked for. Never render it on
+          page load - autofocus there would steal focus and scroll. */}
       <input
         autoFocus
         type="text"

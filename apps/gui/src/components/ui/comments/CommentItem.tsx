@@ -7,6 +7,9 @@ import { MarkdownRenderer } from '../MarkdownRenderer';
 import { Bot } from 'lucide-react';
 import { useConfirm } from '../ConfirmDialog';
 
+// The viewer's locale, date and time to the minute; seconds on a comment are noise.
+const createdAtFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
 export function CommentItem({ comment }: { comment: CommentData }) {
   const { confirm, confirmDialog } = useConfirm();
   const { actions } = useComments();
@@ -33,9 +36,9 @@ export function CommentItem({ comment }: { comment: CommentData }) {
           {isAgent && <Bot className="w-3.5 h-3.5" />}{author}
         </span>
         <span className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">
-            {new Date(comment.createdAt).toLocaleString()}
-          </span>
+          <time dateTime={comment.createdAt} className="text-muted-foreground text-xs tabular-nums">
+            {createdAtFormat.format(new Date(comment.createdAt))}
+          </time>
           {isOwnComment && !isEditing && (
             <>
               <button
@@ -83,7 +86,7 @@ export function CommentItem({ comment }: { comment: CommentData }) {
             placeholder="Edit your comment…"
           />
           <div className="flex gap-2 self-end">
-            <button type="submit" disabled={!editContent.trim()} className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium">Save</button>
+            <button type="submit" disabled={!editContent.trim()} className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary-subtle disabled:text-primary-subtle-foreground rounded-md text-xs font-medium">Save</button>
             <button type="button" onClick={() => setIsEditing(false)} className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium">Cancel</button>
           </div>
         </form>

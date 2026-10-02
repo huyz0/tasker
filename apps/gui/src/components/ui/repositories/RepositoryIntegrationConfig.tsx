@@ -5,6 +5,26 @@ import { transport } from "../../../lib/connectTransport";
 import { RepositoryService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { TONE_CLASSES, buildTone, pullRequestTone } from '../statusStyles';
 import { useConfirm } from '../ConfirmDialog';
+import { Button } from '../button';
+import { GitBranch } from 'lucide-react';
+
+/**
+ * GitHub's mark, drawn in `currentColor`. lucide dropped its brand icons, and
+ * the button this sits in used to be a `#2b3137` brand fill with white text,
+ * which all but vanished on the dark theme's near-black card. An outline
+ * button with the mark says "GitHub" without borrowing the vendor's colour.
+ */
+function GitHubMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
+  );
+}
+
+// Identifiers and secrets, not prose: no spellcheck (which can also ship the
+// value to a cloud spellchecker) and no autofill guessing a saved password in.
+const CREDENTIAL_FIELD = { spellCheck: false, autoComplete: 'off' } as const;
 
 const repositoryClient = createClient(RepositoryService, transport);
 
@@ -159,7 +179,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
 
   return (
     <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm mt-4">
-      <h3 className="text-lg font-semibold mb-4">Repository Integrations</h3>
+      <h3 className="text-lg font-semibold mb-4">Repository integrations</h3>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {error && <p className="text-sm text-destructive">Error loading links</p>}
@@ -225,7 +245,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
 
       {data && data.length > 0 && (
         <div className="mb-6">
-          <h4 className="text-sm font-medium mb-2">Pull Requests</h4>
+          <h4 className="text-sm font-medium mb-2">Pull requests</h4>
           {pullRequests && pullRequests.length > 0 ? (
             <ul className="space-y-1">
               {pullRequests.map(pr => (
@@ -244,8 +264,8 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
       )}
 
       <div className="flex flex-col gap-3 mt-4 pt-4 border-t">
-        <h4 className="text-sm font-medium">Add New Link</h4>
-        <div className="flex gap-2">
+        <h4 className="text-sm font-medium">Add new link</h4>
+        <div className="flex gap-2 min-w-0">
           <select
             aria-label="Repository provider"
             value={provider}
@@ -258,10 +278,12 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
           <input
             type="text"
             aria-label="Repository remote"
+            name="repository-remote"
+            {...CREDENTIAL_FIELD}
             placeholder="Remote (e.g. huyz0/tasker)"
             value={remoteName}
             onChange={e => setRemoteName(e.target.value)}
-            className="border p-2 rounded text-sm flex-1 bg-background"
+            className="border p-2 rounded text-sm flex-1 min-w-0 w-full bg-background"
           />
         </div>
 
@@ -272,22 +294,26 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                 Link with a direct Atlassian API token (Basic auth) - the app-password replacement.
                 Generate one at <span className="font-mono">id.atlassian.com/manage-profile/security/api-tokens</span>.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   type="email"
                   aria-label="Atlassian account email"
+                  name="atlassian-account-email"
+                  {...CREDENTIAL_FIELD}
                   placeholder="Atlassian account email"
                   value={bitbucketEmail}
                   onChange={e => setBitbucketEmail(e.target.value)}
-                  className="border p-2 rounded text-sm flex-1 bg-background"
+                  className="border p-2 rounded text-sm flex-1 min-w-0 bg-background"
                 />
                 <input
                   type="password"
                   aria-label="API token"
+                  name="bitbucket-api-token"
+                  {...CREDENTIAL_FIELD}
                   placeholder="API token"
                   value={apiToken}
                   onChange={e => setApiToken(e.target.value)}
-                  className="border p-2 rounded text-sm flex-1 bg-background"
+                  className="border p-2 rounded text-sm flex-1 min-w-0 bg-background"
                 />
               </div>
             </>
@@ -300,27 +326,30 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
               <input
                 type="password"
                 aria-label="Personal access token"
+                name="github-personal-access-token"
+                {...CREDENTIAL_FIELD}
                 placeholder="Personal access token"
                 value={apiToken}
                 onChange={e => setApiToken(e.target.value)}
-                className="border p-2 rounded text-sm w-full bg-background"
+                className="border p-2 rounded text-sm w-full min-w-0 bg-background"
               />
             </>
           )}
-          <button
+          <Button
             disabled={!remoteName || !apiToken || (provider === 'bitbucket' && !bitbucketEmail) || addLinkMutation.isPending}
             onClick={() => addLinkMutation.mutate()}
-            className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground transition-colors"
           >
             {addLinkMutation.isPending ? 'Linking…' : 'Link with API token'}
-          </button>
+          </Button>
           {addLinkMutation.isError && (
             <p className="text-sm text-destructive">Failed to link: {(addLinkMutation.error as Error).message}</p>
           )}
         </div>
 
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="outline"
+            className="flex-1"
             disabled={!remoteName}
             onClick={() => {
               // Binds the callback to this browser tab, so an attacker can't
@@ -340,11 +369,12 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                 window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=repo`;
               }
             }}
-            /* design-lint-disable-next-line tokens — GitHub brand colour, fixed by the vendor */
-            className="px-4 py-2 flex-1 bg-[#2b3137] text-white text-sm font-medium rounded hover:bg-[#2b3137]/90 disabled:opacity-50 transition-colors"
           >
+            {provider === 'github'
+              ? <GitHubMark className="h-4 w-4 shrink-0" />
+              : <GitBranch className="h-4 w-4 shrink-0" aria-hidden="true" />}
             Connect {provider === 'github' ? 'GitHub' : 'Bitbucket'} via OAuth
-          </button>
+          </Button>
         </div>
       </div>
       {confirmDialog}

@@ -32,4 +32,19 @@ describe('Button', () => {
     const btn = screen.getByRole('button', { name: 'Submit' });
     expect((btn as HTMLButtonElement).type).toBe('submit');
   });
+
+  // A disabled primary must still read as *the* primary action (the review:
+  // an empty Sign in form showed a grey button and no visible way forward).
+  it('keeps primary identity while disabled: a primary tint, not the generic muted grey', () => {
+    render(<Button disabled>Sign in</Button>);
+    const btn = screen.getByRole('button', { name: 'Sign in' });
+    expect(btn.className).toContain('disabled:bg-primary-subtle');
+    expect(btn.className).toContain('disabled:text-primary-subtle-foreground');
+    expect(btn.className).not.toContain('disabled:bg-muted');
+  });
+
+  it('keeps destructive identity while disabled', () => {
+    render(<Button variant="destructive" disabled>Delete</Button>);
+    expect(screen.getByRole('button', { name: 'Delete' }).className).toContain('disabled:bg-destructive-subtle');
+  });
 });

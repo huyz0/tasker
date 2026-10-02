@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../../components/ui/button';
@@ -21,6 +21,13 @@ export function LoginForm() {
   const queryClient = useQueryClient();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  // Set on submit, not while typing: an empty form is not an error until the
+  // person tries to send it. The submit button stays enabled so the primary
+  // action is visible from the start; this is where "you missed a field" is
+  // said instead, next to the field, with focus moved to the first one.
+  const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({});
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const mutation = useMutation({
     mutationFn: () => loginWithPassword(username.trim(), password),
@@ -32,19 +39,26 @@ export function LoginForm() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password) return;
+    const errors = {
+      username: username.trim() ? undefined : 'Enter your username.',
+      password: password ? undefined : 'Enter your password.',
+    };
+    setFieldErrors(errors);
+    if (errors.username) { usernameRef.current?.focus(); return; }
+    if (errors.password) { passwordRef.current?.focus(); return; }
     mutation.mutate();
   };
 
   const error = mutation.error as PasswordAuthError | null;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3" aria-label="Sign in with username and password">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3" aria-label="Sign in with username and password">
       <div className="flex flex-col gap-1">
         <label htmlFor="login-username" className="text-sm font-medium text-foreground">
           Username
         </label>
         <input
+          ref={usernameRef}
           id="login-username"
           name="username"
           type="text"
@@ -53,13 +67,19 @@ export function LoginForm() {
           onChange={(e) => setUsername(e.target.value)}
           className={INPUT_CLASS}
           required
+          aria-invalid={fieldErrors.username ? true : undefined}
+          aria-describedby={fieldErrors.username ? 'login-username-error' : undefined}
         />
+        {fieldErrors.username && (
+          <p id="login-username-error" className="text-xs text-destructive">{fieldErrors.username}</p>
+        )}
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="login-password" className="text-sm font-medium text-foreground">
           Password
         </label>
         <input
+          ref={passwordRef}
           id="login-password"
           name="password"
           type="password"
@@ -68,7 +88,12 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           className={INPUT_CLASS}
           required
+          aria-invalid={fieldErrors.password ? true : undefined}
+          aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
         />
+        {fieldErrors.password && (
+          <p id="login-password-error" className="text-xs text-destructive">{fieldErrors.password}</p>
+        )}
       </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">
@@ -77,7 +102,7 @@ export function LoginForm() {
             : error.message}
         </p>
       )}
-      <Button type="submit" className="w-full" disabled={mutation.isPending || !username.trim() || !password}>
+      <Button type="submit" className="w-full" disabled={mutation.isPending}>
         {mutation.isPending ? 'Signing in…' : 'Sign in'}
       </Button>
     </form>

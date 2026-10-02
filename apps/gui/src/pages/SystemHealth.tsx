@@ -6,8 +6,37 @@ import { HealthService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb
 import { useLayoutStore, type LayoutState } from '../store/layout';
 import { ListState } from '../components/ui/ListState';
 import { AccountSettings } from '../features/Settings/AccountSettings';
+import { AlertTriangle } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Button } from '../components/ui/button';
 
 const healthClient = createClient(HealthService, transport);
+
+// What the backend reports when a dependency is fine: "connected" for NATS,
+// "<engine>-ok" / "ok" for the database. Anything else is worth a look.
+const isHealthy = (status: string) => status === 'connected' || /(^|-)ok$/.test(status);
+
+/**
+ * One dependency's status. An unhealthy one ("disconnected", "closed",
+ * "error: …") sat in the same plain monospace as a healthy one, so the one
+ * line on the page that mattered read like every other. It now carries the
+ * warning tint, an icon and the status text itself — never colour alone.
+ */
+function StatusValue({ status, latencyMs }: { status: string; latencyMs?: number }) {
+  const text = `${status}${latencyMs !== undefined ? ` (${latencyMs}ms)` : ''}`;
+  if (isHealthy(status)) return <dd className="tabular-nums">{text}</dd>;
+  return (
+    <dd>
+      <span
+        data-status="warning"
+        className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 bg-warning-subtle text-warning-subtle-foreground"
+      >
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span>{text}</span>
+      </span>
+    </dd>
+  );
+}
 
 /**
  * Backend telemetry, moved off the home screen.
@@ -33,22 +62,18 @@ export function SystemHealthPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">Account, backend status and connection telemetry.</p>
-      </div>
+      <PageHeader title="Settings" description="Account, backend status and connection telemetry." />
 
       <AccountSettings />
 
       <div className="p-6 border rounded-lg bg-card text-card-foreground shadow-sm max-w-2xl">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-medium">System Health</h2>
-          <button
-            onClick={() => setTimestamp(Date.now())}
-            className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
-          >
+          <h2 className="text-xl font-medium">System health</h2>
+          {/* Outline, not primary: this page's one primary action is the
+              password form above; a second violet button competed with it. */}
+          <Button variant="outline" onClick={() => setTimestamp(Date.now())}>
             Ping Backend
-          </button>
+          </Button>
         </div>
 
         {isLoading || error || !health ? (
@@ -67,13 +92,13 @@ export function SystemHealthPage() {
               <dt className="text-muted-foreground">Message:</dt>
               <dd>{health.message}</dd>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <dt className="text-muted-foreground">Database:</dt>
-              <dd>{health.dbStatus}{health.dbLatencyMs !== undefined ? ` (${health.dbLatencyMs}ms)` : ''}</dd>
+              <StatusValue status={health.dbStatus} latencyMs={health.dbLatencyMs} />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <dt className="text-muted-foreground">NATS:</dt>
-              <dd>{health.natsStatus}{health.natsLatencyMs !== undefined ? ` (${health.natsLatencyMs}ms)` : ''}</dd>
+              <StatusValue status={health.natsStatus} latencyMs={health.natsLatencyMs} />
             </div>
             {health.version && (
               <div className="flex gap-2">

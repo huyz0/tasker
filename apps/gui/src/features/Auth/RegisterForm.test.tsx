@@ -75,18 +75,35 @@ describe('RegisterForm', () => {
     ));
   });
 
-  it('keeps the submit button disabled below the minimum username length', () => {
+  it('keeps the submit button enabled on an empty form, so the primary action is visible before typing', () => {
+    renderForm();
+    expect(screen.getByRole('button', { name: 'Create account' })).not.toBeDisabled();
+  });
+
+  it('flags a too-short username inline on submit and focuses it', () => {
     renderForm();
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'ab' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: VALID_PASSWORD } });
-    expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    const username = screen.getByLabelText('Username');
+    expect(username).toHaveAttribute('aria-invalid', 'true');
+    expect(username).toHaveAccessibleDescription('Use at least 3 characters.');
+    expect(document.activeElement).toBe(username);
+    expect(mockRegisterLocalUser).not.toHaveBeenCalled();
   });
 
-  it('keeps the submit button disabled below the minimum password length', () => {
+  it('flags a too-short password inline on submit and focuses it', () => {
     renderForm();
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'newlocaluser' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'short' } });
-    expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    const password = screen.getByLabelText('Password');
+    expect(password).toHaveAttribute('aria-invalid', 'true');
+    expect(password).toHaveAccessibleDescription(/Use at least 12 characters\./);
+    expect(document.activeElement).toBe(password);
+    expect(mockRegisterLocalUser).not.toHaveBeenCalled();
   });
 
   it('invalidates the authSession query and navigates home on success', async () => {
@@ -127,7 +144,7 @@ describe('RegisterForm', () => {
     await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
   });
 
-  it('ignores a submit event below the minimum lengths, bypassing the disabled button (e.g. pressing Enter)', () => {
+  it('ignores a submit event below the minimum lengths, (e.g. pressing Enter)', () => {
     renderForm();
     const form = screen.getByRole('form', { name: 'Create a local account' });
 

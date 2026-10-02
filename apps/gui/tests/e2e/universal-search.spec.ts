@@ -12,7 +12,7 @@ test.describe('Universal Search E2E', () => {
 
     // Same duplication for the search trigger - keep the visible one.
     const searchBtn = page
-      .getByRole('button', { name: 'Search tasks, artifacts...' })
+      .getByRole('button', { name: 'Search tasks, artifacts…' })
       .filter({ visible: true });
     await expect(searchBtn).toBeVisible();
 

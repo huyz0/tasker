@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useScopedTo } from '../hooks/useScope';
 import { Link, useLocation } from 'react-router-dom';
-import { Compass } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
 import { useLayoutStore, type LayoutState } from '../store/layout';
 
 /**
@@ -15,21 +15,22 @@ export function NotFound() {
   const { pathname } = useLocation();
   useEffect(() => setActivePageTitle('Not Found'), [setActivePageTitle]);
 
+  // The same header as every other screen: a centred variant with its own
+  // icon made the one page you reach by mistake look like a different app.
   return (
-    <div className="h-full flex flex-col items-center justify-center gap-4 text-center py-20">
-      <Compass className="w-10 h-10 text-muted-foreground opacity-50" />
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Page not found</h1>
-        <p className="text-muted-foreground mt-1">
-          Nothing lives at <code className="font-mono text-foreground">{pathname}</code>.
-        </p>
-      </div>
-      <Link
-        to={scopedTo('/')}
-        className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium"
-      >
-        Back to dashboard
-      </Link>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Page not found"
+        description={<>Nothing lives at <code className="font-mono text-foreground break-all">{pathname}</code>.</>}
+        actions={
+          <Link
+            to={scopedTo('/')}
+            className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          >
+            Back to dashboard
+          </Link>
+        }
+      />
     </div>
   );
 }

@@ -52,6 +52,19 @@ describe('BinDashboard', () => {
     await waitFor(() => expect(requests).toContainEqual({ orgId: 'org-2' }));
   });
 
+  it('shows when each item was deleted as a machine-readable <time>, in the viewer\'s locale', async () => {
+    const deletedAt = '2026-03-04T15:06:00.000Z';
+    withRpc(OrgService, 'ListOrgs', { organizations: [{ id: 'org-2', name: 'Archived Org', deletedAt }] });
+    const { container } = renderPage();
+
+    await waitFor(() => expect(screen.getByText('Archived Org')).toBeDefined());
+    const time = container.querySelector(`time[datetime="${deletedAt}"]`);
+    expect(time).not.toBeNull();
+    expect(time!.textContent).toBe(
+      new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(deletedAt)),
+    );
+  });
+
   it('issues one request per bin section on mount, and pages the rest on request', async () => {
     const requests: any[] = [];
     mockRpc(OrgService, 'ListOrgs', (body: { page?: { cursor?: string } }) => {

@@ -111,6 +111,20 @@ describe('Comment Compound Component', () => {
     expect(requests).toContainEqual({ entityId: 'task-1', entityType: 'task', page: { cursor: 'cursor-2' } });
   });
 
+  test('shows when a comment was written as a machine-readable <time>, in the viewer\'s locale', async () => {
+    const createdAt = '2026-03-04T15:06:00.000Z';
+    withListComments({ comments: [{ id: 'cmt-1', userId: 'user-1', content: 'Dated comment', createdAt }] });
+
+    const { container } = renderWithProvider(<Comment.List />);
+
+    await waitFor(() => expect(screen.getByText('Dated comment')).toBeInTheDocument());
+    const time = container.querySelector(`time[datetime="${createdAt}"]`);
+    expect(time).not.toBeNull();
+    expect(time!.textContent).toBe(
+      new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(createdAt)),
+    );
+  });
+
   test('Scenario 2: Agent comment renders with distinct styling', async () => {
     withListComments({
       comments: [

@@ -49,6 +49,20 @@ describe('SystemHealthPage', () => {
     expect(screen.queryByText(/undefined/)).toBeNull();
   });
 
+  it('flags an unhealthy status with the warning tint, an icon and its text, not colour alone', async () => {
+    withLinkedIdentities();
+    mockRpc(HealthService, 'Ping', { message: 'pong', dbStatus: 'sqlite+fts5-ok', natsStatus: 'disconnected' });
+    renderPage();
+
+    const nats = await screen.findByText('disconnected');
+    const badge = nats.closest('[data-status="warning"]');
+    expect(badge).not.toBeNull();
+    expect(badge).toHaveClass('bg-warning-subtle', 'text-warning-subtle-foreground');
+    expect(badge!.querySelector('svg')).not.toBeNull();
+    // A healthy status stays plain.
+    expect(screen.getByText('sqlite+fts5-ok').closest('[data-status="warning"]')).toBeNull();
+  });
+
   it('surfaces a failed ping with a retry that recovers', async () => {
     withLinkedIdentities();
     mockRpcError(HealthService, 'Ping', 'unavailable', 'connection refused');

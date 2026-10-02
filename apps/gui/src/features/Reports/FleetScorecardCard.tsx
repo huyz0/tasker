@@ -63,7 +63,7 @@ export function FleetScorecardCard({ agentRows, roleRows }: {
   return (
     <ReportPanel
       title="Fleet scorecard"
-      subtitle="Outcomes per agent and per role — who to trust with what, worst first"
+      subtitle="Outcomes per agent and per role, worst first. Shows who to trust with what."
       action={toggle}
     >
       {rows.length === 0 ? (
@@ -73,7 +73,7 @@ export function FleetScorecardCard({ agentRows, roleRows }: {
       ) : (
         // The table is wider than a phone; it scrolls inside the card rather
         // than forcing the page wider than the viewport.
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-muted-foreground">

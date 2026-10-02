@@ -8,6 +8,7 @@ import { DashboardService } from 'shared-contract/gen/ts/tasker/health/v1/health
 import { useLayoutStore, type LayoutState } from '../store/layout';
 import { ListState } from '../components/ui/ListState';
 import { sinceLabel } from '../lib/sinceLabel';
+import { PageHeader } from '../components/ui/PageHeader';
 
 const dashboardClient = createClient(DashboardService, transport);
 
@@ -78,7 +79,7 @@ export function Dashboard() {
   if (!activeOrgId) {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+        <PageHeader title="Dashboard" />
         <ListState
           isLoading={false}
           error={null}
@@ -92,20 +93,18 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">What needs you, and what your agents have been doing.</p>
-        </div>
-        {/* One link, no numbers: the Reports screen (M24) answers "how is work
-            performed", this screen answers "what needs me" — and per the header
-            comment above, no count survives "what will you do differently?". */}
-        {activeProjectId && (
-          <Link to={scopedTo('/reports')} className="shrink-0 text-sm text-primary hover:underline">
-            View project reports →
+      {/* One link, no numbers: the Reports screen (M24) answers "how is work
+          performed", this screen answers "what needs me" — and per the header
+          comment above, no count survives "what will you do differently?". */}
+      <PageHeader
+        title="Dashboard"
+        description="What needs you, and what your agents have been doing."
+        actions={activeProjectId && (
+          <Link to={scopedTo('/reports')} className="text-sm text-primary underline-offset-4 hover:underline">
+            View project reports
           </Link>
         )}
-      </div>
+      />
 
       {(isLoading || error) && (
         <ListState

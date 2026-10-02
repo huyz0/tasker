@@ -213,7 +213,7 @@ describe('Reports exception cards', () => {
       mockRpc(ReportService, 'GetReportExceptions', { ...BASE_RESPONSE, stalledClaims: [] });
       renderPage();
       await waitFor(() =>
-        expect(screen.getByText('Nothing stalled — every claimed task has recent activity.')).toBeInTheDocument(),
+        expect(screen.getByText('Nothing stalled. Every claimed task has recent activity.')).toBeInTheDocument(),
       );
     });
   });

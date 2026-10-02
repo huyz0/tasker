@@ -93,7 +93,7 @@ describe('RepositoryIntegrationConfig', () => {
     renderComponent();
 
     expect(await screen.findByText(/huyz0\/tasker/)).toBeDefined();
-    expect(screen.getByText('Add New Link')).toBeDefined();
+    expect(screen.getByText('Add new link')).toBeDefined();
   });
 
   test('does not offer GitLab as a provider option, since it is not supported by the backend', async () => {
@@ -101,7 +101,7 @@ describe('RepositoryIntegrationConfig', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Add new link')).toBeDefined());
     expect(screen.queryByText('GitLab')).toBeNull();
   });
 
@@ -111,7 +111,7 @@ describe('RepositoryIntegrationConfig', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Add new link')).toBeDefined());
     fireEvent.change(screen.getByDisplayValue('GitHub'), { target: { value: 'bitbucket' } });
     fireEvent.change(screen.getByPlaceholderText('Remote (e.g. huyz0/tasker)'), { target: { value: 'huyz0/bb-repo' } });
     fireEvent.change(screen.getByPlaceholderText('Atlassian account email'), { target: { value: 'user@example.com' } });
@@ -137,7 +137,7 @@ describe('RepositoryIntegrationConfig', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Add new link')).toBeDefined());
     fireEvent.change(screen.getByLabelText('Repository remote'), { target: { value: 'huyz0/bb-repo' } });
 
     fireEvent.change(screen.getByDisplayValue('GitHub'), { target: { value: 'bitbucket' } });
@@ -154,13 +154,43 @@ describe('RepositoryIntegrationConfig', () => {
     }));
   });
 
+  // Secrets and identifiers, not prose: no spellcheck squiggles (and no
+  // shipping the token to a cloud spellchecker), no browser autofill guessing
+  // a saved password into a token field, and a meaningful name.
+  test('token, email and remote fields opt out of spellcheck and autofill, and carry a name', async () => {
+    withListLinks({ links: [] });
+    renderComponent();
+
+    await waitFor(() => expect(screen.getByText('Add new link')).toBeDefined());
+    const expectCredentialField = (el: HTMLElement, name: string) => {
+      expect(el).toHaveAttribute('spellcheck', 'false');
+      expect(el).toHaveAttribute('autocomplete', 'off');
+      expect(el).toHaveAttribute('name', name);
+    };
+    expectCredentialField(screen.getByLabelText('Repository remote'), 'repository-remote');
+    expectCredentialField(screen.getByLabelText('Personal access token'), 'github-personal-access-token');
+
+    fireEvent.change(screen.getByDisplayValue('GitHub'), { target: { value: 'bitbucket' } });
+    expectCredentialField(screen.getByLabelText('Atlassian account email'), 'atlassian-account-email');
+    expectCredentialField(screen.getByLabelText('API token'), 'bitbucket-api-token');
+  });
+
+  test('the OAuth connect button is an outline control with an icon, not a brand-colour fill', async () => {
+    withListLinks({ links: [] });
+    renderComponent();
+
+    const button = await screen.findByRole('button', { name: /Connect GitHub via OAuth/ });
+    expect(button.className).not.toMatch(/#2b3137|text-white/);
+    expect(button.querySelector('svg')).not.toBeNull();
+  });
+
   test('the GitHub personal access token input is reachable by its accessible label', async () => {
     withListLinks({ links: [] });
     const requests = withAddLink({ link: { id: 'link-3', provider: 'github', remoteName: 'huyz0/gh-repo' } });
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Add new link')).toBeDefined());
     fireEvent.change(screen.getByLabelText('Repository remote'), { target: { value: 'huyz0/gh-repo' } });
     fireEvent.change(screen.getByLabelText('Personal access token'), { target: { value: 'ghp_fake-pat' } });
     fireEvent.click(screen.getByText('Link with API token'));
@@ -185,7 +215,7 @@ describe('RepositoryIntegrationConfig', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Add new link')).toBeDefined());
     fireEvent.change(screen.getByPlaceholderText('Remote (e.g. huyz0/tasker)'), { target: { value: 'huyz0/tasker' } });
     fireEvent.click(screen.getByText('Connect GitHub via OAuth'));
 
@@ -205,7 +235,7 @@ describe('RepositoryIntegrationConfig', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Add new link')).toBeDefined());
     fireEvent.change(screen.getByPlaceholderText('Remote (e.g. huyz0/tasker)'), { target: { value: 'huyz0/gh-repo' } });
     fireEvent.change(screen.getByPlaceholderText('Personal access token'), { target: { value: 'ghp_fake-pat' } });
     fireEvent.click(screen.getByText('Link with API token'));
@@ -437,7 +467,7 @@ describe('RepositoryIntegrationConfig', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByText('Add New Link')).toBeDefined());
+    await waitFor(() => expect(screen.getByText('Add new link')).toBeDefined());
     fireEvent.change(screen.getByDisplayValue('GitHub'), { target: { value: 'bitbucket' } });
     fireEvent.change(screen.getByPlaceholderText('Remote (e.g. huyz0/tasker)'), { target: { value: 'huyz0/bb-repo' } });
     fireEvent.click(screen.getByText('Connect Bitbucket via OAuth'));

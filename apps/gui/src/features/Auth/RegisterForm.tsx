@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../../components/ui/button';
@@ -26,6 +26,11 @@ export function RegisterForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
+  // Set on submit, not while typing - see LoginForm.tsx for why the submit
+  // button stays enabled and the rules are stated next to the field instead.
+  const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({});
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const mutation = useMutation({
     mutationFn: () => registerLocalUser({
@@ -41,20 +46,26 @@ export function RegisterForm() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (username.trim().length < MIN_USERNAME_LENGTH || password.length < MIN_PASSWORD_LENGTH) return;
+    const errors = {
+      username: username.trim().length >= MIN_USERNAME_LENGTH ? undefined : `Use at least ${MIN_USERNAME_LENGTH} characters.`,
+      password: password.length >= MIN_PASSWORD_LENGTH ? undefined : `Use at least ${MIN_PASSWORD_LENGTH} characters.`,
+    };
+    setFieldErrors(errors);
+    if (errors.username) { usernameRef.current?.focus(); return; }
+    if (errors.password) { passwordRef.current?.focus(); return; }
     mutation.mutate();
   };
 
   const error = mutation.error as PasswordAuthError | null;
-  const canSubmit = username.trim().length >= MIN_USERNAME_LENGTH && password.length >= MIN_PASSWORD_LENGTH;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3" aria-label="Create a local account">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3" aria-label="Create a local account">
       <div className="flex flex-col gap-1">
         <label htmlFor="register-username" className="text-sm font-medium text-foreground">
           Username
         </label>
         <input
+          ref={usernameRef}
           id="register-username"
           name="username"
           type="text"
@@ -64,13 +75,19 @@ export function RegisterForm() {
           onChange={(e) => setUsername(e.target.value)}
           className={INPUT_CLASS}
           required
+          aria-invalid={fieldErrors.username ? true : undefined}
+          aria-describedby={fieldErrors.username ? 'register-username-error' : undefined}
         />
+        {fieldErrors.username && (
+          <p id="register-username-error" className="text-xs text-destructive">{fieldErrors.username}</p>
+        )}
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="register-password" className="text-sm font-medium text-foreground">
           Password
         </label>
         <input
+          ref={passwordRef}
           id="register-password"
           name="password"
           type="password"
@@ -80,8 +97,14 @@ export function RegisterForm() {
           onChange={(e) => setPassword(e.target.value)}
           className={INPUT_CLASS}
           required
+          aria-invalid={fieldErrors.password ? true : undefined}
+          aria-describedby={fieldErrors.password ? 'register-password-error' : 'register-password-hint'}
         />
-        <p className="text-xs text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p>
+        {fieldErrors.password ? (
+          <p id="register-password-error" className="text-xs text-destructive">{fieldErrors.password}</p>
+        ) : (
+          <p id="register-password-hint" className="text-xs text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p>
+        )}
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="register-email" className="text-sm font-medium text-foreground">
@@ -102,7 +125,7 @@ export function RegisterForm() {
           {error.message}
         </p>
       )}
-      <Button type="submit" className="w-full" disabled={mutation.isPending || !canSubmit}>
+      <Button type="submit" className="w-full" disabled={mutation.isPending}>
         {mutation.isPending ? 'Creating account…' : 'Create account'}
       </Button>
     </form>

@@ -24,7 +24,7 @@ export function WentBackwardsCard({ regressions }: { regressions: RegressionRow[
   return (
     <ReportPanel
       title="Went backwards"
-      subtitle="Finished work reopened in this window — which completions not to trust"
+      subtitle="Finished work reopened in this window. These completions are not to be trusted yet."
     >
       {regressions.length === 0 ? (
         <p className="p-2 text-sm text-muted-foreground">No terminal work reopened in this window.</p>

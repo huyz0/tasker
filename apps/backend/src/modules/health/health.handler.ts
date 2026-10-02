@@ -48,7 +48,7 @@ export const createHealthHandler = (db: any, nc: any = null) => {
       }
 
       return {
-        message: "pong from backend!",
+        message: "pong from backend",
         dbStatus,
         dbLatencyMs,
         natsStatus,

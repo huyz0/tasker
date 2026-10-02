@@ -181,7 +181,7 @@ describe('Dashboard', () => {
     withGetDashboard(EMPTY);
     renderPage();
     await waitFor(() =>
-      expect(screen.getByRole('link', { name: 'View project reports →' })).toHaveAttribute('href', '/reports'),
+      expect(screen.getByRole('link', { name: 'View project reports' })).toHaveAttribute('href', '/reports'),
     );
   });
 

@@ -69,7 +69,7 @@ test.describe('Dashboard', () => {
   test('reaches System Health from the sidebar, not just by typing the URL', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('link', { name: 'Settings' }).click();
-    await expect(page.getByRole('heading', { name: 'System Health', level: 2 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'System health', level: 2 })).toBeVisible();
   });
 
   test('serves backend telemetry at /settings, off the home screen', async ({ page }) => {
@@ -77,7 +77,7 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('button', { name: 'Ping Backend' })).toHaveCount(0);
 
     await page.goto('/settings');
-    await expect(page.getByRole('heading', { name: 'System Health', level: 2 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'System health', level: 2 })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Ping Backend' })).toBeVisible();
     await expect(page.getByText(/placeholder area/)).toHaveCount(0);
   });

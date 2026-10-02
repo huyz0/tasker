@@ -26,7 +26,7 @@ export function ChurningTasksCard({ churning }: { churning: ChurningRow[] }) {
   return (
     <ReportPanel
       title="Churning tasks"
-      subtitle="Tasks handed between agents repeatedly — which ones need a human decision"
+      subtitle="Tasks handed between agents repeatedly. These need a human decision."
       action={
         <Link to={scopedTo('/handoffs')} className="shrink-0 text-xs text-primary hover:underline">
           View handoff notes
@@ -47,7 +47,7 @@ export function ChurningTasksCard({ churning }: { churning: ChurningRow[] }) {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground tabular-nums">
                 {`${Number(c.handoffCount)} handoffs · last with ${c.lastAgentName} · ${agoLabel(c.lastHandoffAt)}`}
               </p>
             </li>

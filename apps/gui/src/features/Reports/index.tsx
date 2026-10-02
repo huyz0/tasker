@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3 } from 'lucide-react';
 import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../../components/ui/ListState';
 import { reportClient, REPORT_WINDOWS } from './useReportsQueries';
@@ -9,6 +8,7 @@ import { WentBackwardsCard } from './WentBackwardsCard';
 import { ChurningTasksCard } from './ChurningTasksCard';
 import { FleetScorecardCard } from './FleetScorecardCard';
 import { TrendsSection } from './TrendsSection';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 /**
  * The "Agents completed N% (M% prior window)" header stat, computed from the
@@ -74,41 +74,40 @@ export function ReportsScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <BarChart3 aria-hidden="true" className="h-6 w-6 text-muted-foreground" />
-            <h1 className="text-3xl font-semibold tracking-tight">Reports</h1>
-          </div>
-          <p className="text-muted-foreground mt-1">
+      <PageHeader
+        title="Reports"
+        description={
+          <>
             How work is performed in this project, and whether the agents are carrying it.
-          </p>
-          {data && <p className="text-sm mt-1">{agentShareStat(data)}</p>}
-        </div>
-        <div role="group" aria-label="Report window" className="flex shrink-0 gap-0.5 rounded-md border p-0.5">
-          {REPORT_WINDOWS.map((days) => (
-            <button
-              key={days}
-              aria-pressed={windowDays === days}
-              onClick={() => setWindowDays(days)}
-              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                windowDays === days
-                  ? 'bg-primary-subtle text-primary-subtle-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              {days} days
-            </button>
-          ))}
-        </div>
-      </div>
+            {data && <span className="mt-1 block text-sm text-foreground tabular-nums">{agentShareStat(data)}</span>}
+          </>
+        }
+        actions={
+          <div role="group" aria-label="Report window" className="flex shrink-0 gap-0.5 rounded-md border p-0.5">
+            {REPORT_WINDOWS.map((days) => (
+              <button
+                key={days}
+                aria-pressed={windowDays === days}
+                onClick={() => setWindowDays(days)}
+                className={`rounded px-2.5 py-1 text-xs font-medium tabular-nums transition-colors ${
+                  windowDays === days
+                    ? 'bg-primary-subtle text-primary-subtle-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                {days} days
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       <ListState
         isLoading={isLoading}
         error={error}
         isEmpty={isEmpty}
         loadingMessage="Loading project reports…"
-        emptyMessage="Nothing to report in this window — no stalled work, reopened tasks, churn or agent activity recorded."
+        emptyMessage="Nothing to report in this window. No stalled work, reopened tasks, churn or agent activity was recorded."
         emptyAction={<p className="text-xs">Exception cards fill in as agents claim and complete work.</p>}
         onRetry={() => refetch()}
       >

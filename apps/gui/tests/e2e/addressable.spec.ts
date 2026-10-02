@@ -196,7 +196,7 @@ test.describe('Addressable screens', () => {
     // `:typeId` gets its own test at the bottom of this file.
     await selectSeededOrg(page);
     await page.getByRole('link', { name: 'Organizations' }).click();
-    await expect(page.getByRole('heading', { name: 'Organizations & Settings', level: 1 })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'Organizations', level: 1 })).toBeVisible({
       timeout: 15_000,
     });
 

@@ -13,7 +13,7 @@ describe("Health Handler Integration Logic", () => {
 
     const res = await handler.ping({});
 
-    expect(res.message).toBe("pong from backend!");
+    expect(res.message).toBe("pong from backend");
 
     // In our test environment STANDALONE is true, so we expect sqlite+fts5-ok or a safe fallback
     expect(res.dbStatus).not.toBe("disconnected");

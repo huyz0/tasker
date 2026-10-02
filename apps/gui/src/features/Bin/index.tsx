@@ -16,6 +16,11 @@ import { VirtualList } from '../../components/ui/VirtualList';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ListState } from '../../components/ui/ListState';
 import { formatBytes } from '../Artifacts/ArtifactUpload';
+import { PageHeader } from '../../components/ui/PageHeader';
+
+// The viewer's locale, date and time both: a bin row is read to answer "when
+// did this go?", and a bare toLocaleString() gave seconds nobody needs.
+const deletedAtFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 const orgClient = createClient(OrgService, transport);
 const projectClient = createClient(ProjectService, transport);
@@ -449,20 +454,22 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
         renderRow={(item: any) => {
           const detail = renderDetail?.(item);
           return (
-        <div key={item.id} className="p-3 text-sm flex justify-between items-center">
-          <div>
+        <div key={item.id} className="p-3 text-sm flex justify-between items-center gap-3">
+          <div className="min-w-0">
             <div>
               {/* `||`, not `??` (M12-T01): a plain (non-optional) proto3
                   scalar decodes a missing name to '', not undefined, so
                   nullish coalescing never falls back to the id. */}
               <span className="font-medium">{item[labelKey] || item.id}</span>
               {item.deletedAt && (
-                <span className="text-xs text-muted-foreground ml-2">Deleted {new Date(item.deletedAt).toLocaleString()}</span>
+                <span className="text-xs text-muted-foreground ml-2 tabular-nums">
+                  Deleted <time dateTime={item.deletedAt}>{deletedAtFormat.format(new Date(item.deletedAt))}</time>
+                </span>
               )}
             </div>
-            {detail && <div className="text-xs text-muted-foreground mt-0.5">{detail}</div>}
+            {detail && <div className="text-xs text-muted-foreground mt-0.5 truncate">{detail}</div>}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               onClick={() => onRestore(item.id)}
               disabled={isRestoring || isPurging}
@@ -497,7 +504,7 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
         <button
           onClick={onLoadMore}
           disabled={isLoadingMore}
-          className="w-full p-3 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+          className="w-full p-3 text-xs text-muted-foreground tabular-nums hover:text-foreground disabled:opacity-50"
         >
           {isLoadingMore ? 'Loading…' : `Load more (${items.length} of ${total})`}
         </button>
@@ -525,15 +532,15 @@ export function BinDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Bin</h1>
-        <p className="text-muted-foreground mt-1">
-          Archived items can be restored here, or permanently deleted (only allowed once empty of any remaining contents). Anything left untouched is automatically purged after each organization's retention period.
-        </p>
-      </div>
+      <PageHeader
+        title="Bin"
+        description="Archived items can be restored here, or permanently deleted (only allowed once empty of any remaining contents). Anything left untouched is automatically purged after each organization's retention period."
+      />
 
       <div className="border rounded-lg bg-card shadow-sm">
-        <div className="flex border-b overflow-x-auto">
+        {/* Seven tabs are wider than a phone: they scroll inside the card
+            rather than pushing the page sideways at 375px. */}
+        <div className="flex border-b overflow-x-auto scrollbar-thin">
           {TABS.map((tab) => (
             <button
               key={tab.id}

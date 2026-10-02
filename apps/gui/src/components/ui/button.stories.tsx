@@ -56,9 +56,9 @@ export const Inverted: Story = {
   },
 };
 
-// The dedicated disabled look (M06): a distinct muted style, not a faded
-// version of whichever variant was chosen - a review once mistook a
-// disabled default-variant button for one that had failed to load.
+// Disabled keeps the variant's identity via its subtle token pair (a primary
+// button stays recognisably primary), rather than a fade (illegible) or one
+// shared grey (no visible primary action on an empty form). See button.tsx.
 export const Disabled: Story = {
   args: {
     children: 'Save',
@@ -75,6 +75,8 @@ export const AllVariants: Story = {
       <Button variant="ghost">Ghost</Button>
       <Button variant="inverted">Inverted</Button>
       <Button disabled>Disabled</Button>
+      <Button variant="destructive" disabled>Disabled destructive</Button>
+      <Button variant="outline" disabled>Disabled outline</Button>
     </div>
   ),
 };
