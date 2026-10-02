@@ -25,7 +25,7 @@ func TestProjectsCreateRejectsUnknownFlags(t *testing.T) {
 
 	// Agent hallucinating an unknown flag `--extra-data`
 	rootCmd.SetArgs([]string{"projects", "create", "--json", "--title", "foo", "--extra-data", "bad"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Errorf("Expected CLI to hard reject unknown flags for agent determinism, but command succeeded")
@@ -65,7 +65,7 @@ func TestProjectsListCmdForwardsCursorAndLimit(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"projects", "list", "--org", "org-1", "--cursor", "cursor-2", "--limit", "10", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects list failed: %v", err)
 	}
 
@@ -96,7 +96,7 @@ func TestProjectsListCmdForwardsOnlyDeleted(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"projects", "list", "--org", "org-1", "--only-deleted", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects list failed: %v", err)
 	}
 
@@ -152,7 +152,7 @@ func TestProjectsUpdateCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"projects", "update", "proj-1", "--title", "Renamed", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects update failed: %v", err)
 	}
 
@@ -186,7 +186,7 @@ func TestProjectsUpdateCommandCanClearDescription(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"projects", "update", "proj-1", "--title", "Renamed", "--description", "", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects update failed: %v", err)
 	}
 
@@ -212,7 +212,7 @@ func TestProjectsUpdateCommandRequiresTitle(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"projects", "update", "proj-1"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Error("expected an error when --title is omitted")
@@ -253,7 +253,7 @@ func TestProjectsCreateCommandRequiresOwner(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"projects", "create", "--org", "org-1", "--template", "tpl-1", "--title", "New Project"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Error("expected an error when --owner is omitted")
@@ -279,7 +279,7 @@ func TestProjectsCreateCommandForwardsDescription(t *testing.T) {
 		"projects", "create", "--org", "org-1", "--template", "tpl-1",
 		"--title", "New Project", "--owner", "user-1", "--description", "what this is for", "--json",
 	})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects create failed: %v", err)
 	}
 
@@ -345,7 +345,7 @@ func TestProjectsDeleteRestorePurgeJSONParity(t *testing.T) {
 		b := bytes.NewBufferString("")
 		rootCmd.SetOut(b)
 		rootCmd.SetArgs(tc.args)
-		if err := rootCmd.Execute(); err != nil {
+		if err := executeForTest(); err != nil {
 			t.Fatalf("%v failed: %v", tc.args, err)
 		}
 		out := b.String()
@@ -395,7 +395,7 @@ func TestProjectsGetCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"projects", "get", "proj-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects get failed: %v", err)
 	}
 	out := b.String()
@@ -417,7 +417,7 @@ func TestProjectsGetCmdJSON(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"projects", "get", "proj-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects get failed: %v", err)
 	}
 	if !strings.Contains(b.String(), `"id":"proj-1"`) {
@@ -439,11 +439,11 @@ func TestProjectsGetCmdReportsBackendError(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"projects", "get", "proj-missing"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 	if err == nil {
 		t.Fatal("expected the backend error to propagate")
 	}
-	if !strings.Contains(b.String(), "Failed to get project") {
+	if !strings.Contains(b.String(), "failed to get project") {
 		t.Errorf("expected a failure message, got %s", b.String())
 	}
 }
@@ -461,7 +461,7 @@ func TestProjectsListCmdRequiresOrg(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"projects", "list"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Error("expected an error when --org is omitted and TASKER_ORG_ID is unset")
@@ -487,7 +487,7 @@ func TestProjectsListCmdHumanReadableOutput(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"projects", "list", "--org", "org-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects list failed: %v", err)
 	}
 	out := b.String()
@@ -526,12 +526,12 @@ func TestProjectsListCmdReportsBackendError(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"projects", "list", "--org", "org-1"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Fatal("expected the backend error to propagate")
 	}
-	if !strings.Contains(b.String(), "Failed to list projects") {
+	if !strings.Contains(b.String(), "failed to list projects") {
 		t.Errorf("expected a failure message, got %s", b.String())
 	}
 }
@@ -550,7 +550,7 @@ func TestProjectsCreateCmdHumanReadableOutput(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"projects", "create", "--org", "org-1", "--template", "tpl-1", "--title", "New Project", "--owner", "user-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects create failed: %v", err)
 	}
 	out := b.String()
@@ -576,7 +576,7 @@ func TestProjectsCreateCmdFallsBackToDefaultOrgID(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"projects", "create", "--template", "tpl-1", "--title", "New Project", "--owner", "user-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects create failed: %v", err)
 	}
 
@@ -599,12 +599,12 @@ func TestProjectsCreateCmdReportsBackendError(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"projects", "create", "--org", "org-1", "--template", "tpl-1", "--title", "New Project", "--owner", "user-1"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Fatal("expected the backend error to propagate")
 	}
-	if !strings.Contains(b.String(), "Failed to create project") {
+	if !strings.Contains(b.String(), "failed to create project") {
 		t.Errorf("expected a failure message, got %s", b.String())
 	}
 }
@@ -635,7 +635,7 @@ func TestProjectsUpdateCmdHumanReadableOutput(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"projects", "update", "proj-1", "--title", "Renamed"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("projects update failed: %v", err)
 	}
 	if !strings.Contains(b.String(), "Project proj-1 updated") {
@@ -657,12 +657,12 @@ func TestProjectsUpdateCmdReportsBackendError(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"projects", "update", "proj-missing", "--title", "Renamed"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Fatal("expected the backend error to propagate")
 	}
-	if !strings.Contains(b.String(), "Failed to update project") {
+	if !strings.Contains(b.String(), "failed to update project") {
 		t.Errorf("expected a failure message, got %s", b.String())
 	}
 }
@@ -703,7 +703,7 @@ func TestProjectsDeleteRestorePurgeHumanReadableOutput(t *testing.T) {
 		b := bytes.NewBufferString("")
 		rootCmd.SetOut(b)
 		rootCmd.SetArgs(tc.args)
-		if err := rootCmd.Execute(); err != nil {
+		if err := executeForTest(); err != nil {
 			t.Fatalf("%v failed: %v", tc.args, err)
 		}
 		if !strings.Contains(b.String(), "proj-1") || !strings.Contains(b.String(), tc.want) {
@@ -727,16 +727,16 @@ func TestProjectsDeleteRestorePurgeReportBackendErrors(t *testing.T) {
 		args []string
 		want string
 	}{
-		{[]string{"projects", "delete", "proj-1"}, "Failed to delete project"},
-		{[]string{"projects", "restore", "proj-1"}, "Failed to restore project"},
-		{[]string{"projects", "purge", "proj-1"}, "Failed to purge project"},
+		{[]string{"projects", "delete", "proj-1"}, "failed to delete project"},
+		{[]string{"projects", "restore", "proj-1"}, "failed to restore project"},
+		{[]string{"projects", "purge", "proj-1"}, "failed to purge project"},
 	}
 	for _, tc := range cases {
 		b := bytes.NewBufferString("")
 		rootCmd.SetOut(b)
 		rootCmd.SetErr(b)
 		rootCmd.SetArgs(tc.args)
-		if err := rootCmd.Execute(); err == nil {
+		if err := executeForTest(); err == nil {
 			t.Errorf("%v: expected the backend error to propagate", tc.args)
 		}
 		if !strings.Contains(b.String(), tc.want) {

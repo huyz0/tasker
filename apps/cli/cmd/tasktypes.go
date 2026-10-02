@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
@@ -32,7 +33,6 @@ var taskTypesCreateCmd = &cobra.Command{
 			projectID = backend.DefaultProjectID()
 		}
 		if name == "" || orgID == "" {
-			cmd.Println("Error: --org and --name are required.")
 			return errors.New("--org and --name are required")
 		}
 
@@ -44,8 +44,7 @@ var taskTypesCreateCmd = &cobra.Command{
 			ParentId:  parentID,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to create task type: %v\n", err)
-			return err
+			return fmt.Errorf("failed to create task type: %w", err)
 		}
 
 		if isJson {
@@ -72,7 +71,6 @@ var taskTypesListCmd = &cobra.Command{
 			orgID = backend.DefaultOrgID()
 		}
 		if orgID == "" {
-			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
 			return errors.New("--org is required (or set TASKER_ORG_ID)")
 		}
 
@@ -82,8 +80,7 @@ var taskTypesListCmd = &cobra.Command{
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list task types: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list task types: %w", err)
 		}
 
 		if isJson {
@@ -108,8 +105,7 @@ var taskTypesGetCmd = &cobra.Command{
 		client := backend.NewTaskTypeServiceClient()
 		res, err := client.GetTaskType(context.Background(), connect.NewRequest(&healthv1.GetTaskTypeRequest{Id: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to get task type: %v\n", err)
-			return err
+			return fmt.Errorf("failed to get task type: %w", err)
 		}
 
 		if isJson {
@@ -141,7 +137,6 @@ var taskTypesCreateStatusCmd = &cobra.Command{
 		name, _ := cmd.Flags().GetString("name")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if name == "" {
-			cmd.Println("Error: --name is required.")
 			return errors.New("--name is required")
 		}
 
@@ -151,8 +146,7 @@ var taskTypesCreateStatusCmd = &cobra.Command{
 			Name:       name,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to create task status: %v\n", err)
-			return err
+			return fmt.Errorf("failed to create task status: %w", err)
 		}
 
 		if isJson {
@@ -174,7 +168,6 @@ var taskTypesCreateTransitionCmd = &cobra.Command{
 		toStatusID, _ := cmd.Flags().GetString("to")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if fromStatusID == "" || toStatusID == "" {
-			cmd.Println("Error: --from and --to status IDs are required.")
 			return errors.New("--from and --to status IDs are required")
 		}
 
@@ -185,8 +178,7 @@ var taskTypesCreateTransitionCmd = &cobra.Command{
 			ToStatusId:   toStatusID,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to create status transition: %v\n", err)
-			return err
+			return fmt.Errorf("failed to create status transition: %w", err)
 		}
 
 		if isJson {

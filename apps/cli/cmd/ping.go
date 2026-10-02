@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
@@ -45,11 +44,8 @@ func runPing(w io.Writer, factory PingClientFactory, httpClient *http.Client, se
 var pingCmd = &cobra.Command{
 	Use:   "ping",
 	Short: "Ping the backend health service",
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := runPing(os.Stdout, defaultPingClientFactory, http.DefaultClient, backend.URL()); err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
-		}
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runPing(cmd.OutOrStdout(), defaultPingClientFactory, http.DefaultClient, backend.URL())
 	},
 }
 

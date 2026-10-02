@@ -22,8 +22,8 @@ func TestPingCommandMetadata(t *testing.T) {
 	if pingCmd.Short == "" {
 		t.Error("expected pingCmd to have a short description")
 	}
-	if pingCmd.Run == nil {
-		t.Error("expected pingCmd.Run to be defined")
+	if pingCmd.RunE == nil {
+		t.Error("expected pingCmd.RunE to be defined")
 	}
 }
 

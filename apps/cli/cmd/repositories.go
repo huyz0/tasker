@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
@@ -28,8 +29,7 @@ var repoListCmd = &cobra.Command{
 			projectID = backend.DefaultProjectID()
 		}
 		if projectID == "" {
-			cmd.Println("Error: --project is required (or set TASKER_PROJECT_ID).")
-			return errors.New("Error: --project is required (or set TASKER_PROJECT_ID).")
+			return errors.New("--project is required (or set TASKER_PROJECT_ID)")
 		}
 
 		client := backend.NewRepositoryServiceClient()
@@ -38,8 +38,7 @@ var repoListCmd = &cobra.Command{
 			Page:      &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list repository links: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list repository links: %w", err)
 		}
 
 		if isJson {
@@ -70,16 +69,13 @@ var repoLinkCmd = &cobra.Command{
 			projectID = backend.DefaultProjectID()
 		}
 		if provider == "" || remote == "" || projectID == "" {
-			cmd.Println("Error: --project, --provider, and --remote are all required.")
-			return errors.New("Error: --project, --provider, and --remote are all required.")
+			return errors.New("--project, --provider, and --remote are all required")
 		}
 		if oauthCode == "" && apiToken == "" {
-			cmd.Println("Error: provide either --oauth-code, or --api-token (add --email too for Bitbucket).")
-			return errors.New("Error: provide either --oauth-code, or --api-token (add --email too for Bitbucket).")
+			return errors.New("provide either --oauth-code, or --api-token (add --email too for Bitbucket)")
 		}
 		if oauthCode == "" && provider == "bitbucket" && email == "" {
-			cmd.Println("Error: --email is required alongside --api-token for Bitbucket.")
-			return errors.New("Error: --email is required alongside --api-token for Bitbucket.")
+			return errors.New("--email is required alongside --api-token for Bitbucket")
 		}
 
 		client := backend.NewRepositoryServiceClient()
@@ -92,8 +88,7 @@ var repoLinkCmd = &cobra.Command{
 			Email:      email,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to link repository: %v\n", err)
-			return err
+			return fmt.Errorf("failed to link repository: %w", err)
 		}
 
 		if isJson {
@@ -116,15 +111,13 @@ var repoSyncCmd = &cobra.Command{
 			projectID = backend.DefaultProjectID()
 		}
 		if projectID == "" {
-			cmd.Println("Error: --project is required (or set TASKER_PROJECT_ID).")
-			return errors.New("Error: --project is required (or set TASKER_PROJECT_ID).")
+			return errors.New("--project is required (or set TASKER_PROJECT_ID)")
 		}
 
 		client := backend.NewRepositoryServiceClient()
 		res, err := client.SyncPullRequests(context.Background(), connect.NewRequest(&healthv1.SyncPullRequestsRequest{ProjectId: projectID}))
 		if err != nil {
-			cmd.PrintErrf("Failed to sync pull requests: %v\n", err)
-			return err
+			return fmt.Errorf("failed to sync pull requests: %w", err)
 		}
 
 		if isJson {
@@ -149,15 +142,13 @@ var repoPrsCmd = &cobra.Command{
 			projectID = backend.DefaultProjectID()
 		}
 		if projectID == "" {
-			cmd.Println("Error: --project is required (or set TASKER_PROJECT_ID).")
-			return errors.New("Error: --project is required (or set TASKER_PROJECT_ID).")
+			return errors.New("--project is required (or set TASKER_PROJECT_ID)")
 		}
 
 		client := backend.NewRepositoryServiceClient()
 		res, err := client.ListPullRequests(context.Background(), connect.NewRequest(&healthv1.ListPullRequestsRequest{ProjectId: projectID}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list pull requests: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list pull requests: %w", err)
 		}
 
 		if isJson {
@@ -188,8 +179,7 @@ var repoBuildsCmd = &cobra.Command{
 			Page:             &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list builds: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list builds: %w", err)
 		}
 
 		if isJson {
@@ -214,8 +204,7 @@ var repoDeploymentsCmd = &cobra.Command{
 		repositoryLinkID, _ := cmd.Flags().GetString("link")
 		commitSha, _ := cmd.Flags().GetString("commit")
 		if repositoryLinkID == "" || commitSha == "" {
-			cmd.Println("Error: --link and --commit are both required (run `repo builds` first to find a build's commit sha).")
-			return errors.New("Error: --link and --commit are both required (run `repo builds` first to find a build's commit sha).")
+			return errors.New("--link and --commit are both required (run `repo builds` first to find a build's commit sha)")
 		}
 
 		client := backend.NewRepositoryServiceClient()
@@ -225,8 +214,7 @@ var repoDeploymentsCmd = &cobra.Command{
 			CommitSha:        commitSha,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list deployments: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list deployments: %w", err)
 		}
 
 		if isJson {

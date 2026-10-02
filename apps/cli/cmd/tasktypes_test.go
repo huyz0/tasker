@@ -96,7 +96,7 @@ func TestTaskTypesCreateCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"task-types", "create", "--org", "org-1", "--name", "Ticket"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -113,7 +113,7 @@ func TestTaskTypesCreateCmdWithParent(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"task-types", "create", "--org", "org-1", "--name", "Story", "--parent", "tt_parent"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -130,7 +130,7 @@ func TestTaskTypesListCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"task-types", "list", "--org", "org-1", "--cursor", "cursor-2", "--limit", "10"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -150,7 +150,7 @@ func TestTaskTypesGetCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"task-types", "get", "tt_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -170,7 +170,7 @@ func TestTaskTypesCreateStatusCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"task-types", "create-status", "tt_1", "--name", "closed"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -187,7 +187,7 @@ func TestTaskTypesCreateTransitionCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"task-types", "create-transition", "tt_1", "--from", "st_1", "--to", "st_2"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()

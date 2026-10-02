@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -72,4 +73,17 @@ func defaultSliceOf(defValue string) []string {
 		return nil
 	}
 	return strings.Split(trimmed, ",")
+}
+
+// executeForTest runs the root command the way runCLI does, minus the exit:
+// a returned error is printed once, as "Error: …", to the writer the test
+// captured with rootCmd.SetOut. Before M31-T01 each command printed its own
+// error text to that writer (and then cobra printed it again to stderr);
+// now a command only returns the error, so this is where tests see it.
+func executeForTest() error {
+	err := rootCmd.Execute()
+	if err != nil {
+		fmt.Fprintf(rootCmd.OutOrStderr(), "Error: %s\n", describeError(err))
+	}
+	return err
 }

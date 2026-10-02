@@ -82,7 +82,7 @@ func TestAuthTokenCreateShowsThePlaintextOnce(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"auth", "token", "create", "agent-1", "--name", "CI worker", "--scope", "tasks:read", "--scope", "tasks:write"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -109,7 +109,7 @@ func TestAuthTokenCreateForwardsExpiry(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"auth", "token", "create", "agent-1", "--name", "n", "--scope", "tasks:read", "--expires-in-days", "30"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotCreate.ExpiresInDays != 30 {
@@ -124,7 +124,7 @@ func TestAuthTokenCreateRequiresNameAndScope(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"auth", "token", "create", "agent-1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Error("expected a token with no name and no scopes to be refused")
 	}
 }
@@ -142,7 +142,7 @@ func TestAuthTokenListNeverPrintsASecret(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"auth", "token", "list", "agent-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -162,7 +162,7 @@ func TestAuthTokenListSaysSoWhenThereAreNone(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"auth", "token", "list", "agent-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	// An agent with no tokens is a normal state, not an error or a blank screen.
@@ -180,7 +180,7 @@ func TestAuthTokenRevoke(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"auth", "token", "revoke", "tok_9"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotRevoked != "tok_9" {
@@ -202,7 +202,7 @@ func TestAuthTokenRevokeJSON(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"auth", "token", "revoke", "tok_9", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotRevoked != "tok_9" {

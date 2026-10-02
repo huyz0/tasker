@@ -142,7 +142,7 @@ func TestAgentsListCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"agents", "list", "--org", "org-1", "--cursor", "cursor-2", "--limit", "10"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -162,7 +162,7 @@ func TestAgentsCreateCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"agents", "create", "--org", "org-1", "--role", "ar_1", "--name", "Reviewer Bot"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -180,7 +180,7 @@ func TestAgentsListCmdOnlyDeleted(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"agents", "list", "--org", "org-1", "--only-deleted"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotListReq == nil || !fake.gotListReq.OnlyDeleted {
@@ -197,7 +197,7 @@ func TestAgentsUpdateCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"agents", "update", "ag_1", "--name", "Renamed Bot", "--role", "ar_2"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotUpdate == nil || fake.gotUpdate.AgentId != "ag_1" {
@@ -225,7 +225,7 @@ func TestAgentsUpdateCmdRequiresNameOrRole(t *testing.T) {
 	agentsUpdateCmd.Flags().Set("name", "")
 	agentsUpdateCmd.Flags().Set("role", "")
 	rootCmd.SetArgs([]string{"agents", "update", "ag_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected update with neither --name nor --role to be refused")
 	}
 }
@@ -239,7 +239,7 @@ func TestAgentsUpdateRoleCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"agents", "update-role", "ar_1", "--system-prompt", "Be extra careful"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotRoleUpdate == nil || fake.gotRoleUpdate.Id != "ar_1" {
@@ -264,7 +264,7 @@ func TestAgentsUpdateRoleCmdRequiresAField(t *testing.T) {
 	agentsUpdateRoleCmd.Flags().Set("system-prompt", "")
 	agentsUpdateRoleCmd.Flags().Set("capabilities", "")
 	rootCmd.SetArgs([]string{"agents", "update-role", "ar_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected update-role with no fields to be refused")
 	}
 }
@@ -278,7 +278,7 @@ func TestAgentsListRolesCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"agents", "list-roles", "--org", "org_1", "--cursor", "cursor-2", "--limit", "10"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -298,7 +298,7 @@ func TestAgentsCreateRoleCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"agents", "create-role", "--org", "org_1", "--name", "Reviewer", "--system-prompt", "You review code", "--capabilities", "read,comment"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -317,7 +317,7 @@ func TestAgentsDeleteRestorePurgeCmd(t *testing.T) {
 	rootCmd.Flags().Set("json", "false")
 
 	rootCmd.SetArgs([]string{"agents", "delete", "ag_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.archivedID != "ag_1" {
@@ -325,7 +325,7 @@ func TestAgentsDeleteRestorePurgeCmd(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"agents", "restore", "ag_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.restoredID != "ag_1" {
@@ -333,7 +333,7 @@ func TestAgentsDeleteRestorePurgeCmd(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"agents", "purge", "ag_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.purgedID != "ag_1" {
@@ -356,7 +356,7 @@ func TestAgentsDeleteRestorePurgeCmdJSON(t *testing.T) {
 		b := bytes.NewBufferString("")
 		rootCmd.SetOut(b)
 		rootCmd.SetArgs(args)
-		if err := rootCmd.Execute(); err != nil {
+		if err := executeForTest(); err != nil {
 			t.Fatal(err)
 		}
 		out := b.String()
@@ -387,7 +387,7 @@ func TestAgentRoleCommandsRequireAnOrg(t *testing.T) {
 		rootCmd.SetOut(b)
 		rootCmd.SetErr(b)
 		rootCmd.SetArgs(args)
-		if err := rootCmd.Execute(); err == nil {
+		if err := executeForTest(); err == nil {
 			t.Fatalf("expected %v to require --org", args)
 		}
 		if !strings.Contains(b.String(), "--org is required") {

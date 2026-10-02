@@ -192,7 +192,7 @@ func TestMemorySearchCmd(t *testing.T) {
 		_ = memorySearchCmd.Flags().Set("scope-id", "")
 	})
 	rootCmd.SetArgs([]string{"memory", "search", "Tests must pass", "--scope-type", "project", "--scope-id", "proj_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.searchedArgs == nil || fake.searchedArgs.ScopeType != "project" || fake.searchedArgs.ScopeId != "proj_1" || fake.searchedArgs.Query != "Tests must pass" {
@@ -211,7 +211,7 @@ func TestMemorySearchCmdDefaultsScopeToProjectEnv(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "search", "q"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.searchedArgs == nil || fake.searchedArgs.ScopeType != "project" || fake.searchedArgs.ScopeId != "proj_env" {
@@ -234,7 +234,7 @@ func TestMemorySearchCmdOrganizationScopeUsesOrgEnv(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "search", "q", "--scope-type", "organization"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.searchedArgs == nil || fake.searchedArgs.ScopeType != "organization" || fake.searchedArgs.ScopeId != "org_env" {
@@ -252,7 +252,7 @@ func TestMemorySearchCmdRequiresScopeIdForTeamScope(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "search", "q", "--scope-type", "team"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when team scope has no --scope-id and no env fallback")
 	}
 	if fake.searchedArgs != nil {
@@ -276,7 +276,7 @@ func TestMemorySearchCmdForwardsFilters(t *testing.T) {
 		"memory", "search", "q", "--scope-type", "project", "--scope-id", "proj_1",
 		"--status", "superseded", "--confidence", "high", "--task", "task_1", "--limit", "5",
 	})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	req := fake.searchedArgs
@@ -299,7 +299,7 @@ func TestMemoryRecordCmd(t *testing.T) {
 		_ = memoryRecordCmd.Flags().Set("confidence", "")
 	})
 	rootCmd.SetArgs([]string{"memory", "record", "New fact", "--org", "org_1", "--scope-type", "project", "--scope-id", "proj_1", "--confidence", "high"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.recordedArgs == nil || fake.recordedArgs.OrgId != "org_1" || fake.recordedArgs.Statement != "New fact" ||
@@ -322,7 +322,7 @@ func TestMemoryRecordCmdRequiresOrg(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "record", "New fact", "--scope-type", "project", "--scope-id", "proj_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when --org is omitted and TASKER_ORG_ID is unset")
 	}
 	if fake.recordedArgs != nil {
@@ -348,7 +348,7 @@ func TestMemoryRecordCmdForwardsSourceLinks(t *testing.T) {
 		"memory", "record", "New fact", "--org", "org_1", "--scope-type", "project", "--scope-id", "proj_1",
 		"--source-task", "task_1", "--source-comment", "cmt_1", "--source-note", "note_1", "--source-artifact", "art_1",
 	})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	req := fake.recordedArgs
@@ -368,7 +368,7 @@ func TestMemoryGetCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"memory", "get", "blf_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotBeliefID != "blf_1" {
@@ -391,7 +391,7 @@ func TestMemoryGetCmdJSON(t *testing.T) {
 	})
 	rootCmd.Flags().Set("json", "true")
 	rootCmd.SetArgs([]string{"memory", "get", "blf_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), `"id":"blf_1"`) {
@@ -410,7 +410,7 @@ func TestMemoryListCmd(t *testing.T) {
 		_ = memoryListCmd.Flags().Set("scope-id", "")
 	})
 	rootCmd.SetArgs([]string{"memory", "list", "--scope-type", "project", "--scope-id", "proj_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.listedArgs == nil || fake.listedArgs.ScopeType != "project" || fake.listedArgs.ScopeId != "proj_1" {
@@ -432,7 +432,7 @@ func TestMemoryUpdateCmd(t *testing.T) {
 		_ = memoryUpdateCmd.Flags().Set("confidence", "")
 	})
 	rootCmd.SetArgs([]string{"memory", "update", "blf_1", "--confidence", "low"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.updatedArgs == nil || fake.updatedArgs.Id != "blf_1" || fake.updatedArgs.Statement != nil ||
@@ -460,7 +460,7 @@ func TestMemoryUpdateCmdRequiresAField(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "update", "blf_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when neither --statement nor --confidence is passed")
 	}
 	if fake.updatedArgs != nil {
@@ -476,7 +476,7 @@ func TestMemorySupersedeCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"memory", "supersede", "blf_1", "Corrected statement"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.supersededArgs == nil || fake.supersededArgs.Id != "blf_1" || fake.supersededArgs.Statement != "Corrected statement" {
@@ -500,7 +500,7 @@ func TestMemoryPromoteCmd(t *testing.T) {
 		_ = memoryPromoteCmd.Flags().Set("note", "")
 	})
 	rootCmd.SetArgs([]string{"memory", "promote", "blf_1", "--to-scope-type", "organization", "--to-scope-id", "org_1", "--note", "widely useful"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.promotedArgs == nil || fake.promotedArgs.Id != "blf_1" || fake.promotedArgs.ToScopeType != "organization" ||
@@ -519,7 +519,7 @@ func TestMemoryPromoteCmdRequiresDestination(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "promote", "blf_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when --to-scope-type/--to-scope-id are omitted")
 	}
 	if fake.promotedArgs != nil {
@@ -537,7 +537,7 @@ func TestMemoryRelateAndUnrelateCmd(t *testing.T) {
 	})
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "relate", "blf_1", "blf_2", "--type", "contradicts"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.relatedArgs == nil || fake.relatedArgs.BeliefAId != "blf_1" || fake.relatedArgs.BeliefBId != "blf_2" || fake.relatedArgs.RelationType != "contradicts" {
@@ -546,7 +546,7 @@ func TestMemoryRelateAndUnrelateCmd(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "unrelate", "rel_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.unrelatedID != "rel_1" {
@@ -562,7 +562,7 @@ func TestMemoryListRelationsAndPromotionsCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"memory", "list-relations", "blf_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.listedRelFor != "blf_1" {
@@ -575,7 +575,7 @@ func TestMemoryListRelationsAndPromotionsCmd(t *testing.T) {
 	b2 := bytes.NewBufferString("")
 	rootCmd.SetOut(b2)
 	rootCmd.SetArgs([]string{"memory", "list-promotions", "blf_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.listedPromosFor != "blf_1" {
@@ -593,7 +593,7 @@ func TestMemoryArchiveRestorePurgeCmd(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "archive", "blf_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.archivedBeliefID != "blf_1" {
@@ -602,7 +602,7 @@ func TestMemoryArchiveRestorePurgeCmd(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "restore", "blf_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.restoredBeliefID != "blf_1" {
@@ -611,7 +611,7 @@ func TestMemoryArchiveRestorePurgeCmd(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"memory", "purge", "blf_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.purgedBeliefID != "blf_1" {

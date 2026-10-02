@@ -20,7 +20,6 @@ var tasksNoteAddCmd = &cobra.Command{
 		noteType, _ := cmd.Flags().GetString("type")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if content == "" {
-			cmd.Println("Error: --content is required.")
 			return fmt.Errorf("--content is required")
 		}
 
@@ -31,8 +30,7 @@ var tasksNoteAddCmd = &cobra.Command{
 			NoteType: noteType,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to add note: %v\n", err)
-			return err
+			return fmt.Errorf("failed to add note: %w", err)
 		}
 
 		if isJson {
@@ -57,8 +55,7 @@ var tasksNotesCmd = &cobra.Command{
 			TaskId: args[0],
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list notes: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list notes: %w", err)
 		}
 
 		if isJson {
@@ -92,7 +89,6 @@ var tasksNoteUpdateCmd = &cobra.Command{
 		content, _ := cmd.Flags().GetString("content")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if content == "" {
-			cmd.Println("Error: --content is required.")
 			return fmt.Errorf("--content is required")
 		}
 
@@ -102,8 +98,7 @@ var tasksNoteUpdateCmd = &cobra.Command{
 			Content:    content,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to update note: %v\n", err)
-			return err
+			return fmt.Errorf("failed to update note: %w", err)
 		}
 
 		if isJson {
@@ -128,8 +123,7 @@ var tasksNoteDeleteCmd = &cobra.Command{
 			TaskNoteId: args[0],
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to delete note: %v\n", err)
-			return err
+			return fmt.Errorf("failed to delete note: %w", err)
 		}
 
 		if isJson {
@@ -158,7 +152,6 @@ var tasksHandoffsCmd = &cobra.Command{
 			projectID = backend.DefaultProjectID()
 		}
 		if projectID == "" {
-			cmd.Println("Error: --project is required (or set TASKER_PROJECT_ID).")
 			return fmt.Errorf("--project is required (or set TASKER_PROJECT_ID)")
 		}
 
@@ -168,8 +161,7 @@ var tasksHandoffsCmd = &cobra.Command{
 			Page:      &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list handoffs: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list handoffs: %w", err)
 		}
 
 		if isJson {

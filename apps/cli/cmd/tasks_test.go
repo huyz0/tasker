@@ -60,7 +60,7 @@ func TestTasksCreateCommand(t *testing.T) {
 		"--idempotency-key", "idem-1",
 		"--json",
 	})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected task creation to succeed, got error: %v", err)
 	}
 
@@ -137,7 +137,7 @@ func TestTasksClaimCommand(t *testing.T) {
 		"--idempotency-key", "idem-claim-1",
 		"--json",
 	})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected task claim to succeed, got error: %v", err)
 	}
 
@@ -179,7 +179,7 @@ func TestTasksClaimCommandSurfacesLatestHandoffNote(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "claim", "task-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected task claim to succeed, got error: %v", err)
 	}
 	if !strings.Contains(b.String(), "blocked on review, next: rerun tests") {
@@ -189,7 +189,7 @@ func TestTasksClaimCommandSurfacesLatestHandoffNote(t *testing.T) {
 	jsonBuf := bytes.NewBufferString("")
 	rootCmd.SetOut(jsonBuf)
 	rootCmd.SetArgs([]string{"tasks", "claim", "task-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected task claim to succeed, got error: %v", err)
 	}
 	if !strings.Contains(jsonBuf.String(), "\"latestHandoffNote\"") {
@@ -225,11 +225,11 @@ func TestTasksClaimCommandReportsFailure(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "claim", "task-1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected task claim to fail when the task is already assigned")
 	}
 
-	if !strings.Contains(b.String(), "Failed to claim task") {
+	if !strings.Contains(b.String(), "failed to claim task") {
 		t.Errorf("expected the failure to be reported, got %s", b.String())
 	}
 }
@@ -264,7 +264,7 @@ func TestTasksCommentAddCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "comment-add", "task-123", "--content", "looks good"})
-	_ = rootCmd.Execute()
+	_ = executeForTest()
 
 	output := b.String()
 	if !strings.Contains(output, "cmt_1") {
@@ -283,7 +283,7 @@ func TestTasksCommentAddCommandRequiresContent(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "comment-add", "task-123"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected comment-add to fail without --content")
 	}
 	if !strings.Contains(b.String(), "--content is required") {
@@ -314,7 +314,7 @@ func TestTasksCommentsListCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "comments", "task-123"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks comments failed: %v", err)
 	}
 
@@ -337,10 +337,10 @@ func TestTasksCommentsListCommandReportsFailure(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "comments", "task-123"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected tasks comments to fail on an RPC error")
 	}
-	if !strings.Contains(b.String(), "Failed to list comments") {
+	if !strings.Contains(b.String(), "failed to list comments") {
 		t.Errorf("expected the failure to be reported, got %s", b.String())
 	}
 }
@@ -397,7 +397,7 @@ func TestTasksReviewerCommands(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "reviewer-add", "task-1", "--user", "user-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("reviewer-add failed: %v", err)
 	}
 	if !strings.Contains(b.String(), "user-1") {
@@ -406,7 +406,7 @@ func TestTasksReviewerCommands(t *testing.T) {
 
 	b.Reset()
 	rootCmd.SetArgs([]string{"tasks", "reviewers", "task-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("reviewers list failed: %v", err)
 	}
 	if !strings.Contains(b.String(), "user-1") {
@@ -415,7 +415,7 @@ func TestTasksReviewerCommands(t *testing.T) {
 
 	b.Reset()
 	rootCmd.SetArgs([]string{"tasks", "reviewer-remove", "task-1", "--user", "user-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("reviewer-remove failed: %v", err)
 	}
 	if !strings.Contains(b.String(), "user-1") {
@@ -424,7 +424,7 @@ func TestTasksReviewerCommands(t *testing.T) {
 
 	b.Reset()
 	rootCmd.SetArgs([]string{"tasks", "reviewers", "task-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("reviewers list after removal failed: %v", err)
 	}
 	if strings.Contains(b.String(), "user-1") {
@@ -463,7 +463,7 @@ func TestTasksListCmdForwardsCursorAndLimit(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "list", "--project", "proj-1", "--cursor", "cursor-2", "--limit", "10", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks list failed: %v", err)
 	}
 
@@ -501,7 +501,7 @@ func TestTasksListCmdForwardsFacetFlags(t *testing.T) {
 		"--assignee-filter", "unassigned",
 		"--json",
 	})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks list failed: %v", err)
 	}
 
@@ -558,7 +558,7 @@ func TestTasksGetCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "get", "task-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks get failed: %v", err)
 	}
 
@@ -597,7 +597,7 @@ func TestTasksGetCommandSurfacesLatestHandoffNote(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "get", "task-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks get failed: %v", err)
 	}
 	if !strings.Contains(b.String(), "current understanding: X, next: Y") {
@@ -607,7 +607,7 @@ func TestTasksGetCommandSurfacesLatestHandoffNote(t *testing.T) {
 	jsonBuf := bytes.NewBufferString("")
 	rootCmd.SetOut(jsonBuf)
 	rootCmd.SetArgs([]string{"tasks", "get", "task-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks get failed: %v", err)
 	}
 	if !strings.Contains(jsonBuf.String(), "\"latestHandoffNote\"") {
@@ -656,7 +656,7 @@ func TestTasksUpdateCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "update", "task-1", "--title", "Renamed", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks update failed: %v", err)
 	}
 
@@ -690,7 +690,7 @@ func TestTasksUpdateCommandCanClearDescription(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "update", "task-1", "--description", "", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks update failed: %v", err)
 	}
 
@@ -728,7 +728,7 @@ func TestTasksUnassignCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "unassign", "task-1", "--agent", "agent-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks unassign failed: %v", err)
 	}
 
@@ -757,7 +757,7 @@ func TestTasksUnassignCommandRequiresAgentOrUser(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "unassign", "task-1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected tasks unassign to fail without --agent or --user")
 	}
 	if !strings.Contains(b.String(), "one of --agent or --user is required") {
@@ -843,7 +843,7 @@ func TestTasksAssignCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "assign", "task-1", "--user", "user-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks assign failed: %v", err)
 	}
 
@@ -869,7 +869,7 @@ func TestTasksAssignCommandRequiresAgentOrUser(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "assign", "task-1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected tasks assign to fail without --agent or --user")
 	}
 	if !strings.Contains(b.String(), "one of --agent or --user is required") {
@@ -885,7 +885,7 @@ func TestTasksUpdateStatusCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "update-status", "task-1", "--status", "in-progress", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks update-status failed: %v", err)
 	}
 
@@ -906,7 +906,7 @@ func TestTasksDeleteRestorePurgeCommands(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "delete", "task-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks delete failed: %v", err)
 	}
 	if fake.gotDeleteReq == nil || fake.gotDeleteReq.TaskId != "task-1" {
@@ -918,7 +918,7 @@ func TestTasksDeleteRestorePurgeCommands(t *testing.T) {
 
 	b.Reset()
 	rootCmd.SetArgs([]string{"tasks", "restore", "task-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks restore failed: %v", err)
 	}
 	if fake.gotRestoreReq == nil || fake.gotRestoreReq.TaskId != "task-1" {
@@ -930,7 +930,7 @@ func TestTasksDeleteRestorePurgeCommands(t *testing.T) {
 
 	b.Reset()
 	rootCmd.SetArgs([]string{"tasks", "purge", "task-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks purge failed: %v", err)
 	}
 	if fake.gotPurgeReq == nil || fake.gotPurgeReq.TaskId != "task-1" {
@@ -955,7 +955,7 @@ func TestTasksDeleteRestorePurgeCommandsPlainOutput(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "delete", "task-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks delete failed: %v", err)
 	}
 	if !strings.Contains(b.String(), "moved to bin") {
@@ -964,7 +964,7 @@ func TestTasksDeleteRestorePurgeCommandsPlainOutput(t *testing.T) {
 
 	b.Reset()
 	rootCmd.SetArgs([]string{"tasks", "restore", "task-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks restore failed: %v", err)
 	}
 	if !strings.Contains(b.String(), "restored") {
@@ -973,7 +973,7 @@ func TestTasksDeleteRestorePurgeCommandsPlainOutput(t *testing.T) {
 
 	b.Reset()
 	rootCmd.SetArgs([]string{"tasks", "purge", "task-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("tasks purge failed: %v", err)
 	}
 	if !strings.Contains(b.String(), "permanently deleted") {
@@ -998,7 +998,7 @@ func TestTasksCreateCommandRequiresTitleAndProject(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "create"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected tasks create to fail without --title/--project")
 	}
 	if !strings.Contains(b.String(), "--project and --title flags are required") {
@@ -1016,7 +1016,7 @@ func TestTasksReviewerAddCommandRequiresUser(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "reviewer-add", "task-1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected reviewer-add to fail without --user")
 	}
 	if !strings.Contains(b.String(), "--user is required") {
@@ -1034,7 +1034,7 @@ func TestTasksReviewerRemoveCommandRequiresUser(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "reviewer-remove", "task-1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected reviewer-remove to fail without --user")
 	}
 	if !strings.Contains(b.String(), "--user is required") {

@@ -121,7 +121,7 @@ func TestOrgsSeedCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"orgs", "seed", "--name", "Seeded Org", "--slug", "seeded-org"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -139,7 +139,7 @@ func TestOrgsInviteCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"orgs", "invite", "org_1", "--email", "newuser@example.com"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.invitedEmail != "newuser@example.com" {
@@ -165,7 +165,7 @@ func TestOrgsInviteCmdByUsername(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"orgs", "invite", "org_1", "--username", "invited-handle"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.invitedUsername != "invited-handle" {
@@ -188,7 +188,7 @@ func TestOrgsInviteCmdRejectsNeitherEmailNorUsername(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"orgs", "invite", "org_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when neither --email nor --username is given")
 	}
 }
@@ -200,7 +200,7 @@ func TestOrgsInviteCmdRejectsBothEmailAndUsername(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"orgs", "invite", "org_1", "--email", "a@b.com", "--username", "a-handle"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when both --email and --username are given")
 	}
 }
@@ -215,7 +215,7 @@ func TestOrgsInviteCmdWithRole(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"orgs", "invite", "org_1", "--email", "viewer@example.com", "--role", "viewer"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.invitedRole != "viewer" {
@@ -231,7 +231,7 @@ func TestOrgsSetMemberRoleCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"orgs", "set-role", "org_1", "user_1", "--role", "admin"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.updatedRoleArgs == nil || fake.updatedRoleArgs.OrgId != "org_1" || fake.updatedRoleArgs.UserId != "user_1" || fake.updatedRoleArgs.Role != "admin" {
@@ -250,7 +250,7 @@ func TestOrgsSetMemberRoleCmdRequiresRole(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"orgs", "set-role", "org_1", "user_1", "--role", ""})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when --role is omitted")
 	}
 }
@@ -262,7 +262,7 @@ func TestOrgsListCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"orgs", "list"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), "Seeded Org") {
@@ -289,7 +289,7 @@ func TestOrgsLeaveCmdRemovesTheSignedInUser(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"orgs", "leave", "org_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -323,10 +323,10 @@ func TestOrgsLeaveCmdReportsServerRefusal(t *testing.T) {
 	rootCmd.SetErr(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"orgs", "leave", "org_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected leaving as the last owner to fail")
 	}
-	if !strings.Contains(b.String(), "Failed to leave organization") {
+	if !strings.Contains(b.String(), "failed to leave organization") {
 		t.Fatalf("expected the refusal to be reported, got %s", b.String())
 	}
 	if strings.Contains(b.String(), "Left organization") {
@@ -356,7 +356,7 @@ func TestOrgsListInvitesCmdMarksExpiredInvitations(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"orgs", "list-invites", "org_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -381,7 +381,7 @@ func TestOrgsRevokeInviteCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"orgs", "revoke-invite", "inv_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 

@@ -53,7 +53,7 @@ func TestSearchCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"search", "Matching", "--org", "org-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -75,7 +75,7 @@ func TestSearchCmdNoResults(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"search", "nothing", "--org", "org-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), "No results found") {
@@ -97,7 +97,7 @@ func TestSearchCmdForwardsCursorAndShowsNextCursor(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"search", "many", "--org", "org-1", "--cursor", "cursor-1", "--limit", "5"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 

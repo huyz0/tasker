@@ -50,7 +50,7 @@ func TestLabelsCreateCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"labels", "create", "--org", "org-123", "--name", "bug", "--json"})
-	_ = rootCmd.Execute()
+	_ = executeForTest()
 
 	output := b.String()
 	if !strings.Contains(output, "lbl_1") {
@@ -71,7 +71,7 @@ func TestLabelsListCmdForwardsCursorAndLimit(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"labels", "list", "--org", "org-123", "--cursor", "cursor-2", "--limit", "10", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("labels list failed: %v", err)
 	}
 

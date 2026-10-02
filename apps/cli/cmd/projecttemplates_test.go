@@ -109,7 +109,7 @@ func TestProjectTemplatesCreateCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"project-templates", "create", "--org", "org-1", "--name", "Template A", "--root-task-type", "tt_root"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -126,7 +126,7 @@ func TestProjectTemplatesGetCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"project-templates", "get", "pt_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -159,7 +159,7 @@ func TestProjectTemplatesUpdateCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"project-templates", "update", "pt_1", "--name", "Renamed"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -192,7 +192,7 @@ func TestProjectTemplatesUpdateCmdCanClearDescriptionAndRootTaskType(t *testing.
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"project-templates", "update", "pt_1", "--description", "", "--root-task-type", ""})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -212,7 +212,7 @@ func TestProjectTemplatesListCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"project-templates", "list", "--org", "org-1", "--cursor", "cursor-2", "--limit", "10"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -235,7 +235,7 @@ func TestProjectTemplatesListCmdForwardsFilterAndSort(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"project-templates", "list", "--org", "org-1", "--filter", "Soft", "--sort", "name:desc"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -262,7 +262,7 @@ func TestProjectTemplatesCreateCmdRequiresOrgAndName(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"project-templates", "create"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Error("expected an error when --org and --name are omitted")
@@ -279,7 +279,7 @@ func TestProjectTemplatesCreateCmdJSON(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"project-templates", "create", "--org", "org-1", "--name", "Template A", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), `"id":"pt_1"`) {
@@ -296,12 +296,12 @@ func TestProjectTemplatesCreateCmdReportsBackendError(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"project-templates", "create", "--org", "org-1", "--name", "Dup"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Fatal("expected the backend error to propagate")
 	}
-	if !strings.Contains(b.String(), "Failed to create project template") {
+	if !strings.Contains(b.String(), "failed to create project template") {
 		t.Errorf("expected a failure message, got %s", b.String())
 	}
 }
@@ -313,7 +313,7 @@ func TestProjectTemplatesGetCmdJSON(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"project-templates", "get", "pt_1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), `"id":"pt_1"`) {
@@ -330,12 +330,12 @@ func TestProjectTemplatesGetCmdReportsBackendError(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"project-templates", "get", "pt_missing"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Fatal("expected the backend error to propagate")
 	}
-	if !strings.Contains(b.String(), "Failed to get project template") {
+	if !strings.Contains(b.String(), "failed to get project template") {
 		t.Errorf("expected a failure message, got %s", b.String())
 	}
 }
@@ -347,7 +347,7 @@ func TestProjectTemplatesUpdateCmdJSON(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"project-templates", "update", "pt_1", "--name", "Renamed", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), `"id":"pt_1"`) {
@@ -364,12 +364,12 @@ func TestProjectTemplatesUpdateCmdReportsBackendError(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"project-templates", "update", "pt_missing", "--name", "X"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Fatal("expected the backend error to propagate")
 	}
-	if !strings.Contains(b.String(), "Failed to update project template") {
+	if !strings.Contains(b.String(), "failed to update project template") {
 		t.Errorf("expected a failure message, got %s", b.String())
 	}
 }
@@ -387,7 +387,7 @@ func TestProjectTemplatesListCmdRequiresOrg(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"project-templates", "list"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Error("expected an error when --org is omitted and TASKER_ORG_ID is unset")
@@ -404,7 +404,7 @@ func TestProjectTemplatesListCmdJSON(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"project-templates", "list", "--org", "org-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), `"id":"pt_1"`) {
@@ -421,12 +421,12 @@ func TestProjectTemplatesListCmdReportsBackendError(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"project-templates", "list", "--org", "org-1"})
-	err := rootCmd.Execute()
+	err := executeForTest()
 
 	if err == nil {
 		t.Fatal("expected the backend error to propagate")
 	}
-	if !strings.Contains(b.String(), "Failed to list project templates") {
+	if !strings.Contains(b.String(), "failed to list project templates") {
 		t.Errorf("expected a failure message, got %s", b.String())
 	}
 }

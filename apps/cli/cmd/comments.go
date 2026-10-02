@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
@@ -35,8 +36,7 @@ var commentAddCmd = &cobra.Command{
 
 		res, err := client.CreateComment(context.Background(), req)
 		if err != nil {
-			cmd.PrintErrf("failed to add comment: %v\n", err)
-			return err
+			return fmt.Errorf("failed to add comment: %w", err)
 		}
 
 		cmd.Printf("Comment added successfully! ID: %s\n", res.Msg.Comment.Id)
@@ -60,8 +60,7 @@ var commentListCmd = &cobra.Command{
 
 		res, err := client.ListComments(context.Background(), req)
 		if err != nil {
-			cmd.PrintErrf("failed to list comments: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list comments: %w", err)
 		}
 
 		if len(res.Msg.Comments) == 0 {
@@ -94,8 +93,7 @@ var commentUpdateCmd = &cobra.Command{
 
 		res, err := client.UpdateComment(context.Background(), req)
 		if err != nil {
-			cmd.PrintErrf("failed to update comment: %v\n", err)
-			return err
+			return fmt.Errorf("failed to update comment: %w", err)
 		}
 
 		cmd.Printf("Comment %s updated\n", res.Msg.Comment.Id)
@@ -116,8 +114,7 @@ var commentDeleteCmd = &cobra.Command{
 
 		_, err := client.DeleteComment(context.Background(), req)
 		if err != nil {
-			cmd.PrintErrf("failed to delete comment: %v\n", err)
-			return err
+			return fmt.Errorf("failed to delete comment: %w", err)
 		}
 
 		cmd.Printf("Comment %s deleted\n", args[0])

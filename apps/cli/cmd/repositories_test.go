@@ -85,7 +85,7 @@ func TestRepoListCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"repo", "list", "--project", "proj-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -107,7 +107,7 @@ func TestRepoListAndBuildsCmdForwardCursorAndLimit(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"repo", "list", "--project", "proj-1", "--cursor", "cursor-2", "--limit", "10"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotListLinksPage == nil || fake.gotListLinksPage.Cursor != "cursor-2" || fake.gotListLinksPage.Limit != 10 {
@@ -116,7 +116,7 @@ func TestRepoListAndBuildsCmdForwardCursorAndLimit(t *testing.T) {
 
 	b.Reset()
 	rootCmd.SetArgs([]string{"repo", "builds", "link-1", "--cursor", "cursor-2", "--limit", "10"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotListBuildsPage == nil || fake.gotListBuildsPage.Cursor != "cursor-2" || fake.gotListBuildsPage.Limit != 10 {
@@ -136,7 +136,7 @@ func TestRepoLinkCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"repo", "link", "--project", "proj-1", "--provider", "github", "--remote", "test/repo", "--oauth-code", "fake-code"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -160,7 +160,7 @@ func TestRepoLinkCmdWithDirectApiToken(t *testing.T) {
 		"repo", "link", "--project", "proj-1", "--provider", "bitbucket", "--remote", "team/repo",
 		"--api-token", "ATATT-fake", "--email", "user@example.com", "--json",
 	})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -185,7 +185,7 @@ func TestRepoLinkCmdWithGithubDirectApiTokenNeedsNoEmail(t *testing.T) {
 		"repo", "link", "--project", "proj-1", "--provider", "github", "--remote", "huyz0/tasker",
 		"--oauth-code", "", "--api-token", "ghp_fake-pat", "--email", "",
 	})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -206,8 +206,8 @@ func TestRepoLinkCmdRequiresOauthCodeOrApiTokenWithEmail(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"repo", "link", "--project", "proj-1", "--provider", "bitbucket", "--remote", "team/repo", "--oauth-code", "", "--api-token", "tok-without-email", "--email", ""})
-	if err := rootCmd.Execute(); err == nil {
-		t.Fatal("expected rootCmd.Execute() to return an error for missing email")
+	if err := executeForTest(); err == nil {
+		t.Fatal("expected executeForTest() to return an error for missing email")
 	}
 	out := b.String()
 	if !strings.Contains(out, "Error:") {
@@ -227,7 +227,7 @@ func TestRepoPrsCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "true")
 	rootCmd.SetArgs([]string{"repo", "prs", "--project", "proj-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -248,7 +248,7 @@ func TestRepoDeploymentsCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"repo", "deployments", "run-123", "--link", "link_1", "--commit", "abc123"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -265,8 +265,8 @@ func TestRepoDeploymentsCmdRequiresLinkAndCommit(t *testing.T) {
 	repoDeploymentsCmd.Flags().Set("link", "")
 	repoDeploymentsCmd.Flags().Set("commit", "")
 	rootCmd.SetArgs([]string{"repo", "deployments", "run-123"})
-	if err := rootCmd.Execute(); err == nil {
-		t.Fatal("expected rootCmd.Execute() to return an error for missing --link/--commit")
+	if err := executeForTest(); err == nil {
+		t.Fatal("expected executeForTest() to return an error for missing --link/--commit")
 	}
 	out := b.String()
 	if !strings.Contains(out, "--link and --commit are both required") {

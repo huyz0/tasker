@@ -33,7 +33,6 @@ var tasksListCmd = &cobra.Command{
 			projectID = backend.DefaultProjectID()
 		}
 		if projectID == "" {
-			cmd.Println("Error: --project is required (or set TASKER_PROJECT_ID).")
 			return fmt.Errorf("--project is required (or set TASKER_PROJECT_ID)")
 		}
 
@@ -49,8 +48,7 @@ var tasksListCmd = &cobra.Command{
 
 		res, err := client.ListTasks(context.Background(), req)
 		if err != nil {
-			cmd.PrintErrf("Failed to list tasks: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list tasks: %w", err)
 		}
 
 		if isJson {
@@ -78,8 +76,7 @@ var tasksGetCmd = &cobra.Command{
 			TaskId: args[0],
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to get task: %v\n", err)
-			return err
+			return fmt.Errorf("failed to get task: %w", err)
 		}
 
 		if isJson {
@@ -131,8 +128,7 @@ var tasksUpdateCmd = &cobra.Command{
 		client := backend.NewTaskServiceClient()
 		res, err := client.UpdateTask(context.Background(), connect.NewRequest(req))
 		if err != nil {
-			cmd.PrintErrf("Failed to update task: %v\n", err)
-			return err
+			return fmt.Errorf("failed to update task: %w", err)
 		}
 
 		if isJson {
@@ -160,7 +156,6 @@ var tasksCreateCmd = &cobra.Command{
 			projectID = backend.DefaultProjectID()
 		}
 		if title == "" || projectID == "" {
-			cmd.Println("Error: --project and --title flags are required.")
 			return fmt.Errorf("--project and --title flags are required")
 		}
 
@@ -174,8 +169,7 @@ var tasksCreateCmd = &cobra.Command{
 			IdempotencyKey: idempotencyKey,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to create task: %v\n", err)
-			return err
+			return fmt.Errorf("failed to create task: %w", err)
 		}
 
 		if isJson {
@@ -206,8 +200,7 @@ var tasksClaimCmd = &cobra.Command{
 			IdempotencyKey: idempotencyKey,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to claim task: %v\n", err)
-			return err
+			return fmt.Errorf("failed to claim task: %w", err)
 		}
 
 		if isJson {
@@ -235,7 +228,6 @@ var tasksAssignCmd = &cobra.Command{
 		userID, _ := cmd.Flags().GetString("user")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if agentID == "" && userID == "" {
-			cmd.Println("Error: one of --agent or --user is required.")
 			return fmt.Errorf("one of --agent or --user is required")
 		}
 
@@ -252,8 +244,7 @@ var tasksAssignCmd = &cobra.Command{
 		}
 		res, err := client.AssignTask(context.Background(), connect.NewRequest(req))
 		if err != nil {
-			cmd.PrintErrf("Failed to assign task: %v\n", err)
-			return err
+			return fmt.Errorf("failed to assign task: %w", err)
 		}
 
 		if isJson {
@@ -275,7 +266,6 @@ var tasksUnassignCmd = &cobra.Command{
 		userID, _ := cmd.Flags().GetString("user")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if agentID == "" && userID == "" {
-			cmd.Println("Error: one of --agent or --user is required.")
 			return fmt.Errorf("one of --agent or --user is required")
 		}
 
@@ -286,8 +276,7 @@ var tasksUnassignCmd = &cobra.Command{
 			UserId:  userID,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to unassign task: %v\n", err)
-			return err
+			return fmt.Errorf("failed to unassign task: %w", err)
 		}
 
 		if isJson {
@@ -308,7 +297,6 @@ var tasksReviewerAddCmd = &cobra.Command{
 		userID, _ := cmd.Flags().GetString("user")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if userID == "" {
-			cmd.Println("Error: --user is required.")
 			return fmt.Errorf("--user is required")
 		}
 
@@ -318,8 +306,7 @@ var tasksReviewerAddCmd = &cobra.Command{
 			UserId: userID,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to add reviewer: %v\n", err)
-			return err
+			return fmt.Errorf("failed to add reviewer: %w", err)
 		}
 
 		if isJson {
@@ -340,7 +327,6 @@ var tasksReviewerRemoveCmd = &cobra.Command{
 		userID, _ := cmd.Flags().GetString("user")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if userID == "" {
-			cmd.Println("Error: --user is required.")
 			return fmt.Errorf("--user is required")
 		}
 
@@ -350,8 +336,7 @@ var tasksReviewerRemoveCmd = &cobra.Command{
 			UserId: userID,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to remove reviewer: %v\n", err)
-			return err
+			return fmt.Errorf("failed to remove reviewer: %w", err)
 		}
 
 		if isJson {
@@ -376,8 +361,7 @@ var tasksReviewersCmd = &cobra.Command{
 			TaskId: args[0],
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list reviewers: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list reviewers: %w", err)
 		}
 
 		if isJson {
@@ -409,8 +393,7 @@ var tasksUpdateStatusCmd = &cobra.Command{
 
 		res, err := client.UpdateTaskStatus(context.Background(), req)
 		if err != nil {
-			cmd.PrintErrf("Failed to update task status: %v\n", err)
-			return err
+			return fmt.Errorf("failed to update task status: %w", err)
 		}
 
 		if isJson {
@@ -438,8 +421,7 @@ var tasksDeleteCmd = &cobra.Command{
 
 		_, err := client.DeleteTask(context.Background(), req)
 		if err != nil {
-			cmd.PrintErrf("Failed to delete task: %v\n", err)
-			return err
+			return fmt.Errorf("failed to delete task: %w", err)
 		}
 
 		if isJson {
@@ -467,8 +449,7 @@ var tasksRestoreCmd = &cobra.Command{
 
 		_, err := client.RestoreTask(context.Background(), req)
 		if err != nil {
-			cmd.PrintErrf("Failed to restore task: %v\n", err)
-			return err
+			return fmt.Errorf("failed to restore task: %w", err)
 		}
 
 		if isJson {
@@ -496,8 +477,7 @@ var tasksPurgeCmd = &cobra.Command{
 
 		_, err := client.PurgeTask(context.Background(), req)
 		if err != nil {
-			cmd.PrintErrf("Failed to purge task: %v\n", err)
-			return err
+			return fmt.Errorf("failed to purge task: %w", err)
 		}
 
 		if isJson {

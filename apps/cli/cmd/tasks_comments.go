@@ -19,7 +19,6 @@ var tasksCommentAddCmd = &cobra.Command{
 		content, _ := cmd.Flags().GetString("content")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if content == "" {
-			cmd.Println("Error: --content is required.")
 			return fmt.Errorf("--content is required")
 		}
 
@@ -30,8 +29,7 @@ var tasksCommentAddCmd = &cobra.Command{
 			Content:    content,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to add comment: %v\n", err)
-			return err
+			return fmt.Errorf("failed to add comment: %w", err)
 		}
 
 		if isJson {
@@ -57,8 +55,7 @@ var tasksCommentsCmd = &cobra.Command{
 			EntityType: "task",
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list comments: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list comments: %w", err)
 		}
 
 		if isJson {

@@ -31,7 +31,6 @@ var authTokenCreateCmd = &cobra.Command{
 		isJSON, _ := cmd.Flags().GetBool("json")
 
 		if name == "" || len(scopes) == 0 {
-			cmd.Println("Error: --name and at least one --scope are required.")
 			return fmt.Errorf("--name and --scope are required")
 		}
 
@@ -43,8 +42,7 @@ var authTokenCreateCmd = &cobra.Command{
 			ExpiresInDays: expiresInDays,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to create token: %v\n", backend.DescribeRPCError(err))
-			return err
+			return fmt.Errorf("failed to create token: %w", err)
 		}
 
 		if isJSON {
@@ -75,8 +73,7 @@ var authTokenListCmd = &cobra.Command{
 			AgentId: args[0],
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list tokens: %v\n", backend.DescribeRPCError(err))
-			return err
+			return fmt.Errorf("failed to list tokens: %w", err)
 		}
 
 		if isJSON {
@@ -118,8 +115,7 @@ var authTokenRevokeCmd = &cobra.Command{
 			TokenId: args[0],
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to revoke token: %v\n", backend.DescribeRPCError(err))
-			return err
+			return fmt.Errorf("failed to revoke token: %w", err)
 		}
 		if isJSON {
 			out, _ := json.Marshal(map[string]any{"success": true, "tokenId": args[0]})

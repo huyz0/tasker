@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
@@ -32,8 +33,7 @@ var orgsListCmd = &cobra.Command{
 		})
 		res, err := client.ListOrgs(context.Background(), req)
 		if err != nil {
-			cmd.PrintErrf("Failed to list orgs: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list orgs: %w", err)
 		}
 
 		for _, org := range res.Msg.Organizations {
@@ -52,8 +52,7 @@ var orgsSeedCmd = &cobra.Command{
 		parentOrgID, _ := cmd.Flags().GetString("parent")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if name == "" || slug == "" {
-			cmd.Println("Error: --name and --slug are required.")
-			return errors.New("Error: --name and --slug are required.")
+			return errors.New("--name and --slug are required")
 		}
 
 		client := backend.NewOrgServiceClient()
@@ -63,8 +62,7 @@ var orgsSeedCmd = &cobra.Command{
 			ParentOrgId: parentOrgID,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to seed organization: %v\n", err)
-			return err
+			return fmt.Errorf("failed to seed organization: %w", err)
 		}
 
 		if isJson {
@@ -89,7 +87,6 @@ var orgsInviteCmd = &cobra.Command{
 		// enforces - checked here too so a malformed invocation fails fast
 		// with a CLI-shaped message instead of a raw RPC validation error.
 		if (email == "") == (username == "") {
-			cmd.Println("Error: exactly one of --email or --username is required.")
 			return errors.New("exactly one of --email or --username is required")
 		}
 
@@ -107,8 +104,7 @@ var orgsInviteCmd = &cobra.Command{
 		client := backend.NewOrgServiceClient()
 		_, err := client.InviteUser(context.Background(), connect.NewRequest(req))
 		if err != nil {
-			cmd.PrintErrf("Failed to invite user: %v\n", err)
-			return err
+			return fmt.Errorf("failed to invite user: %w", err)
 		}
 		cmd.Printf("Invited %s to organization %s\n", target, args[0])
 		return nil
@@ -122,8 +118,7 @@ var orgsSetMemberRoleCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		role, _ := cmd.Flags().GetString("role")
 		if role == "" {
-			cmd.Println("Error: --role is required.")
-			return errors.New("Error: --role is required.")
+			return errors.New("--role is required")
 		}
 
 		client := backend.NewOrgServiceClient()
@@ -133,8 +128,7 @@ var orgsSetMemberRoleCmd = &cobra.Command{
 			Role:   role,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to update member role: %v\n", err)
-			return err
+			return fmt.Errorf("failed to update member role: %w", err)
 		}
 		cmd.Printf("Set %s's role to %s in organization %s\n", args[1], res.Msg.Member.Role, args[0])
 		return nil
@@ -156,8 +150,7 @@ var orgsLeaveCmd = &cobra.Command{
 			connect.NewRequest(&healthv1.GetIdentityRequest{}),
 		)
 		if err != nil {
-			cmd.PrintErrf("Failed to resolve the signed-in user: %v\n", err)
-			return err
+			return fmt.Errorf("failed to resolve the signed-in user: %w", err)
 		}
 
 		client := backend.NewOrgServiceClient()
@@ -165,8 +158,7 @@ var orgsLeaveCmd = &cobra.Command{
 			OrgId:  args[0],
 			UserId: identity.Msg.User.Id,
 		})); err != nil {
-			cmd.PrintErrf("Failed to leave organization: %v\n", err)
-			return err
+			return fmt.Errorf("failed to leave organization: %w", err)
 		}
 		cmd.Printf("Left organization %s\n", args[0])
 		return nil
@@ -188,8 +180,7 @@ var orgsListInvitesCmd = &cobra.Command{
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list invitations: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list invitations: %w", err)
 		}
 
 		if isJson {
@@ -226,8 +217,7 @@ var orgsRevokeInviteCmd = &cobra.Command{
 		if _, err := client.RevokeInvitation(context.Background(), connect.NewRequest(&healthv1.RevokeInvitationRequest{
 			InvitationId: args[0],
 		})); err != nil {
-			cmd.PrintErrf("Failed to revoke invitation: %v\n", err)
-			return err
+			return fmt.Errorf("failed to revoke invitation: %w", err)
 		}
 		cmd.Printf("Revoked invitation %s\n", args[0])
 		return nil
@@ -242,8 +232,7 @@ var orgsDeleteCmd = &cobra.Command{
 		client := backend.NewOrgServiceClient()
 		_, err := client.ArchiveOrg(context.Background(), connect.NewRequest(&healthv1.ArchiveOrgRequest{OrgId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to delete organization: %v\n", err)
-			return err
+			return fmt.Errorf("failed to delete organization: %w", err)
 		}
 		cmd.Printf("Organization %s moved to bin\n", args[0])
 		return nil
@@ -258,8 +247,7 @@ var orgsRestoreCmd = &cobra.Command{
 		client := backend.NewOrgServiceClient()
 		_, err := client.RestoreOrg(context.Background(), connect.NewRequest(&healthv1.RestoreOrgRequest{OrgId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to restore organization: %v\n", err)
-			return err
+			return fmt.Errorf("failed to restore organization: %w", err)
 		}
 		cmd.Printf("Organization %s restored\n", args[0])
 		return nil
@@ -274,8 +262,7 @@ var orgsPurgeCmd = &cobra.Command{
 		client := backend.NewOrgServiceClient()
 		_, err := client.PurgeOrg(context.Background(), connect.NewRequest(&healthv1.PurgeOrgRequest{OrgId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to purge organization: %v\n", err)
-			return err
+			return fmt.Errorf("failed to purge organization: %w", err)
 		}
 		cmd.Printf("Organization %s permanently deleted\n", args[0])
 		return nil
@@ -289,14 +276,12 @@ var orgsSetRetentionCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		days, _ := cmd.Flags().GetInt32("days")
 		if days < 1 {
-			cmd.Println("Error: --days must be at least 1.")
-			return errors.New("Error: --days must be at least 1.")
+			return errors.New("--days must be at least 1")
 		}
 		client := backend.NewOrgServiceClient()
 		_, err := client.SetOrgRetentionDays(context.Background(), connect.NewRequest(&healthv1.SetOrgRetentionDaysRequest{OrgId: args[0], BinRetentionDays: days}))
 		if err != nil {
-			cmd.PrintErrf("Failed to set retention: %v\n", err)
-			return err
+			return fmt.Errorf("failed to set retention: %w", err)
 		}
 		cmd.Printf("Organization %s bin retention set to %d days\n", args[0], days)
 		return nil

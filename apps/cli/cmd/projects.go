@@ -31,7 +31,6 @@ var projectsListCmd = &cobra.Command{
 			orgID = backend.DefaultOrgID()
 		}
 		if orgID == "" {
-			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
 			return fmt.Errorf("--org is required (or set TASKER_ORG_ID)")
 		}
 
@@ -42,8 +41,7 @@ var projectsListCmd = &cobra.Command{
 			OnlyDeleted: onlyDeleted,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list projects: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list projects: %w", err)
 		}
 
 		if isJson {
@@ -69,8 +67,7 @@ var projectsGetCmd = &cobra.Command{
 		client := backend.NewProjectServiceClient()
 		res, err := client.GetProject(context.Background(), connect.NewRequest(&healthv1.GetProjectRequest{Id: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to get project: %v\n", err)
-			return err
+			return fmt.Errorf("failed to get project: %w", err)
 		}
 
 		if isJson {
@@ -102,7 +99,6 @@ var projectsCreateCmd = &cobra.Command{
 		// Checking it locally, in the same breath as --title/--template/--org,
 		// gives the same clear message the other three already give.
 		if title == "" || template == "" || orgID == "" || owner == "" {
-			cmd.Println("Error: --org, --template, --title and --owner flags are required.")
 			return fmt.Errorf("--org, --template, --title and --owner flags are required")
 		}
 
@@ -118,8 +114,7 @@ var projectsCreateCmd = &cobra.Command{
 		}
 		res, err := client.CreateProject(context.Background(), connect.NewRequest(req))
 		if err != nil {
-			cmd.PrintErrf("Failed to create project: %v\n", err)
-			return err
+			return fmt.Errorf("failed to create project: %w", err)
 		}
 
 		if isJson {
@@ -145,7 +140,6 @@ var projectsUpdateCmd = &cobra.Command{
 		// --title/--template/--org do on create rather than silently sending
 		// an empty title through.
 		if title == "" {
-			cmd.Println("Error: --title is required.")
 			return fmt.Errorf("--title is required")
 		}
 
@@ -163,8 +157,7 @@ var projectsUpdateCmd = &cobra.Command{
 		client := backend.NewProjectServiceClient()
 		res, err := client.UpdateProject(context.Background(), connect.NewRequest(req))
 		if err != nil {
-			cmd.PrintErrf("Failed to update project: %v\n", err)
-			return err
+			return fmt.Errorf("failed to update project: %w", err)
 		}
 
 		if isJson {
@@ -186,8 +179,7 @@ var projectsDeleteCmd = &cobra.Command{
 		client := backend.NewProjectServiceClient()
 		res, err := client.ArchiveProject(context.Background(), connect.NewRequest(&healthv1.ArchiveProjectRequest{ProjectId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to delete project: %v\n", err)
-			return err
+			return fmt.Errorf("failed to delete project: %w", err)
 		}
 		if isJson {
 			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "projectId": args[0]})
@@ -208,8 +200,7 @@ var projectsRestoreCmd = &cobra.Command{
 		client := backend.NewProjectServiceClient()
 		res, err := client.RestoreProject(context.Background(), connect.NewRequest(&healthv1.RestoreProjectRequest{ProjectId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to restore project: %v\n", err)
-			return err
+			return fmt.Errorf("failed to restore project: %w", err)
 		}
 		if isJson {
 			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "projectId": args[0]})
@@ -230,8 +221,7 @@ var projectsPurgeCmd = &cobra.Command{
 		client := backend.NewProjectServiceClient()
 		res, err := client.PurgeProject(context.Background(), connect.NewRequest(&healthv1.PurgeProjectRequest{ProjectId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to purge project: %v\n", err)
-			return err
+			return fmt.Errorf("failed to purge project: %w", err)
 		}
 		if isJson {
 			jsonString, _ := json.Marshal(map[string]any{"success": res.Msg.Success, "projectId": args[0]})

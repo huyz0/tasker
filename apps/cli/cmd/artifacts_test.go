@@ -242,7 +242,7 @@ func TestArtifactsCreateCommandDefaultsContentTypeToTextMarkdown(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "create", "--folder", "fld_1", "--name", "Doc", "--content", "# hi", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), `"contentType":"text/markdown"`) {
@@ -268,7 +268,7 @@ func TestArtifactsCreateCommandUploadsFileAsBase64Image(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "create", "--folder", "fld_1", "--name", "logo.png", "--file", tmpFile, "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -302,7 +302,7 @@ func TestArtifactsCreateCommandUploadsATextFileAsPlainText(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "create", "--folder", "fld_1", "--name", "notes.md", "--file", tmpFile, "--content-type", "text/markdown", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -324,7 +324,7 @@ func TestArtifactsListCommandIntegration(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "list", "--project", "test-123", "--json"})
-	_ = rootCmd.Execute()
+	_ = executeForTest()
 
 	output := b.String()
 	if !strings.Contains(output, "deployments") {
@@ -345,7 +345,7 @@ func TestArtifactsListCommandForwardsCursorAndLimit(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "list", "--project", "test-123", "--cursor", "cursor-2", "--limit", "10", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotListFoldersPage == nil || fake.gotListFoldersPage.Cursor != "cursor-2" || fake.gotListFoldersPage.Limit != 10 {
@@ -354,7 +354,7 @@ func TestArtifactsListCommandForwardsCursorAndLimit(t *testing.T) {
 
 	b.Reset()
 	rootCmd.SetArgs([]string{"artifacts", "list", "--folder", "fld_1", "--cursor", "cursor-2", "--limit", "10", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotListArtifactsPage == nil || fake.gotListArtifactsPage.Cursor != "cursor-2" || fake.gotListArtifactsPage.Limit != 10 {
@@ -387,7 +387,7 @@ func TestArtifactsReadCommandPrintsContentFromGetArtifactContent(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"artifacts", "read", "art_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -411,7 +411,7 @@ func TestArtifactsReadCommandReportsANonexistentArtifact(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"artifacts", "read", "art-does-not-exist"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error for a nonexistent artifact")
 	}
 }
@@ -433,7 +433,7 @@ func TestArtifactsReadCommandOutputsJSON(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "read", "art_1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), `"content":"hello"`) {
@@ -463,7 +463,7 @@ func TestArtifactsReadCommandDescribesBinaryContentInsteadOfDumpingBase64(t *tes
 	// an earlier test's --json would otherwise leak into this one.
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"artifacts", "read", "art_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -492,7 +492,7 @@ func TestArtifactsLinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "link-task", "--task", "tsk_1", "--artifact", "art_1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -525,7 +525,7 @@ func TestArtifactsLinkTaskCommandRequiresBothFlags(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "link-task", "--task", "tsk_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when --artifact is omitted")
 	}
 	if fake.gotLinkRequest != nil {
@@ -550,7 +550,7 @@ func TestArtifactsUnlinkTaskCommandSendsTaskAndArtifactIds(t *testing.T) {
 	// otherwise leak into this test.
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"artifacts", "unlink-task", "--task", "tsk_1", "--artifact", "art_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -580,7 +580,7 @@ func TestArtifactsUnlinkTaskCommandJSON(t *testing.T) {
 	rootCmd.SetOut(b)
 	t.Cleanup(func() { rootCmd.Flags().Set("json", "false") })
 	rootCmd.SetArgs([]string{"artifacts", "unlink-task", "--task", "tsk_1", "--artifact", "art_1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -606,7 +606,7 @@ func TestArtifactsUpdateContentCommand(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"artifacts", "update-content", "art_1", "--content", "new body", "--content-type", "text/plain"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -636,7 +636,7 @@ func TestArtifactsUpdateContentCommandUploadsATextFileAsPlainText(t *testing.T) 
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "update-content", "art_1", "--file", tmpFile, "--content-type", "text/markdown"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -662,7 +662,7 @@ func TestArtifactsUpdateContentCommandRequiresContentOrFile(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"artifacts", "update-content", "art_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when neither --content nor --file is given")
 	}
 	if fake.gotUpdateContentReq != nil {
@@ -686,7 +686,7 @@ func TestArtifactsUpdateFolderCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "update-folder", "fld_1", "--name", "renamed"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -714,7 +714,7 @@ func TestArtifactsUpdateFolderCommandRequiresName(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"artifacts", "update-folder", "fld_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when --name is omitted")
 	}
 	if fake.gotUpdateFolderReq != nil {
@@ -742,7 +742,7 @@ func TestArtifactsListTaskLinksCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "list-task-links", "--task", "tsk_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), "Ship the release") || !strings.Contains(b.String(), "logo.png") {
@@ -768,7 +768,7 @@ func TestArtifactsListTaskLinksCommandSaysSoWhenEmpty(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "list-task-links", "--artifact", "art_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(b.String(), "No links found") {
@@ -793,12 +793,12 @@ func TestArtifactsListTaskLinksCommandRequiresExactlyOneOfTaskOrArtifact(t *test
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"artifacts", "list-task-links"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when neither --task nor --artifact is given")
 	}
 
 	rootCmd.SetArgs([]string{"artifacts", "list-task-links", "--task", "tsk_1", "--artifact", "art_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when both --task and --artifact are given")
 	}
 }
@@ -823,7 +823,7 @@ func TestArtifactsListCommandForwardsOnlyDeleted(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"artifacts", "list", "--project", "test-123", "--only-deleted", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotListFoldersReq == nil || !fake.gotListFoldersReq.OnlyDeleted {
@@ -832,7 +832,7 @@ func TestArtifactsListCommandForwardsOnlyDeleted(t *testing.T) {
 
 	b.Reset()
 	rootCmd.SetArgs([]string{"artifacts", "list", "--folder", "fld_1", "--only-deleted", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.gotListArtifactsReq == nil || !fake.gotListArtifactsReq.OnlyDeleted {
@@ -858,7 +858,7 @@ func TestArtifactsAndFoldersDeleteRestorePurgeCmd(t *testing.T) {
 	rootCmd.Flags().Set("json", "false")
 
 	rootCmd.SetArgs([]string{"artifacts", "delete", "art_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.archivedArtifactID != "art_1" {
@@ -866,7 +866,7 @@ func TestArtifactsAndFoldersDeleteRestorePurgeCmd(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"artifacts", "restore", "art_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.restoredArtifactID != "art_1" {
@@ -874,7 +874,7 @@ func TestArtifactsAndFoldersDeleteRestorePurgeCmd(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"artifacts", "purge", "art_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.purgedArtifactID != "art_1" {
@@ -882,7 +882,7 @@ func TestArtifactsAndFoldersDeleteRestorePurgeCmd(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"artifacts", "delete-folder", "fld_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.archivedFolderID != "fld_1" {
@@ -890,7 +890,7 @@ func TestArtifactsAndFoldersDeleteRestorePurgeCmd(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"artifacts", "restore-folder", "fld_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.restoredFolderID != "fld_1" {
@@ -898,7 +898,7 @@ func TestArtifactsAndFoldersDeleteRestorePurgeCmd(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"artifacts", "purge-folder", "fld_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.purgedFolderID != "fld_1" {
@@ -929,7 +929,7 @@ func TestArtifactsAndFoldersDeleteRestorePurgeCmdJSON(t *testing.T) {
 		b := bytes.NewBufferString("")
 		rootCmd.SetOut(b)
 		rootCmd.SetArgs(args)
-		if err := rootCmd.Execute(); err != nil {
+		if err := executeForTest(); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(b.String(), `"success":true`) {
@@ -953,7 +953,7 @@ func TestFoldersCreateCommand(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"artifacts", "create-folder", "--project", "proj_1", "--name", "New Folder"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1008,7 +1008,7 @@ func TestArtifactsRequiredFlagValidations(t *testing.T) {
 		rootCmd.SetOut(b)
 		rootCmd.SetErr(b)
 		rootCmd.SetArgs(tc.args)
-		if err := rootCmd.Execute(); err == nil {
+		if err := executeForTest(); err == nil {
 			t.Fatalf("expected %v to require a flag", tc.args)
 		}
 		if !strings.Contains(b.String(), tc.wantErr) {

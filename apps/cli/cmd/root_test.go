@@ -77,7 +77,7 @@ func TestSetVersionReportsTheBuildStamp(t *testing.T) {
 	out := &bytes.Buffer{}
 	rootCmd.SetOut(out)
 	rootCmd.SetArgs([]string{"--version"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("--version returned an error: %v", err)
 	}
 	rendered := out.String()

@@ -1,8 +1,14 @@
 package cmd
 
 import (
-	"github.com/huyz0/tasker/apps/cli/internal/backend"
+	"errors"
+	"fmt"
+	"io"
 	"os"
+	"strings"
+
+	"connectrpc.com/connect"
+	"github.com/huyz0/tasker/apps/cli/internal/backend"
 
 	"github.com/spf13/cobra"
 )
@@ -21,12 +27,11 @@ Use "tasker [command] --help" for details on any subcommand, e.g.
 "tasker tasks --help" or "tasker repo --help". Most commands accept --json for
 machine-readable output, and read TASKER_BACKEND_URL, TASKER_ORG_ID, and
 TASKER_PROJECT_ID from the environment as defaults.`,
-	// Every subcommand already prints its own user-facing error message
-	// (via cmd.PrintErrf/cmd.Println) before returning the error from RunE,
-	// so the usage block cobra would otherwise dump on every RunE failure
-	// stays silenced. Cobra's own "Error: ..." line is left enabled since
-	// it's what surfaces flag-parsing failures (e.g. unknown flags).
-	SilenceUsage: true,
+	// A command reports failure only by returning an error; runCLI prints it,
+	// once, to stderr. Cobra's own printing is off for both usage and errors
+	// so nothing reaches the terminal twice (M31-T01).
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
 // SetVersion records the build stamp `main` was compiled with, so
@@ -42,12 +47,74 @@ func SetVersion(version, commit, date string) {
 	)
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// Execute runs the CLI against the process's own streams and exits with the
+// code runCLI chose. Called once, by main.main().
 func Execute() {
+	os.Exit(runCLI(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+// Exit codes (M31-T01). A script driving the CLI needs to know what kind of
+// failure it saw - retry, re-authenticate, move on, or stop - without parsing
+// a message. Documented in docs/cli-reference.md.
+const (
+	exitOK          = 0
+	exitFailure     = 1
+	exitAuth        = 3 // Unauthenticated, PermissionDenied
+	exitNotFound    = 4
+	exitConflict    = 5 // FailedPrecondition, AlreadyExists, Aborted - e.g. a claim lost
+	exitInvalid     = 6 // InvalidArgument, OutOfRange
+	exitUnavailable = 7 // Unavailable, ResourceExhausted, DeadlineExceeded - retry later
+)
+
+// runCLI is Execute without the exit, so tests can hand it real streams.
+//
+// Results go to stdout and nothing else does. Every command prints with
+// cobra's cmd.Print*, which writes to OutOrStderr() - so until M31 every
+// result, --json included, went to stderr, and `$(tasker … --json)` captured
+// nothing. Setting the writers here, on the root, fixes all of them at once.
+func runCLI(args []string, stdout, stderr io.Writer) int {
+	rootCmd.SetOut(stdout)
+	rootCmd.SetErr(stderr)
+	rootCmd.SetArgs(args)
 	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
+	if err == nil {
+		return exitOK
+	}
+	fmt.Fprintf(stderr, "Error: %s\n", describeError(err))
+	return exitCodeFor(err)
+}
+
+// describeError is the one line a failure prints. A throttle arrives as
+// Unavailable with the transport's text, which reads as "the backend is down"
+// when the caller needs to slow down - so it says that instead.
+func describeError(err error) string {
+	msg := err.Error()
+	var connectErr *connect.Error
+	if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeUnavailable &&
+		strings.Contains(strings.ToLower(connectErr.Message()), "too many requests") {
+		msg += " (rate limit exceeded - wait before retrying)"
+	}
+	return msg
+}
+
+func exitCodeFor(err error) int {
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		return exitFailure
+	}
+	switch connectErr.Code() {
+	case connect.CodeUnauthenticated, connect.CodePermissionDenied:
+		return exitAuth
+	case connect.CodeNotFound:
+		return exitNotFound
+	case connect.CodeFailedPrecondition, connect.CodeAlreadyExists, connect.CodeAborted:
+		return exitConflict
+	case connect.CodeInvalidArgument, connect.CodeOutOfRange:
+		return exitInvalid
+	case connect.CodeUnavailable, connect.CodeResourceExhausted, connect.CodeDeadlineExceeded:
+		return exitUnavailable
+	default:
+		return exitFailure
 	}
 }
 

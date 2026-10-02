@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
@@ -31,8 +32,7 @@ var agentsListCmd = &cobra.Command{
 			orgID = backend.DefaultOrgID()
 		}
 		if orgID == "" {
-			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
-			return errors.New("Error: --org is required (or set TASKER_ORG_ID).")
+			return errors.New("--org is required (or set TASKER_ORG_ID)")
 		}
 
 		client := backend.NewAgentServiceClient()
@@ -42,8 +42,7 @@ var agentsListCmd = &cobra.Command{
 			Page:        &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list agents: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list agents: %w", err)
 		}
 
 		if isJson {
@@ -71,8 +70,7 @@ var agentsCreateCmd = &cobra.Command{
 			orgID = backend.DefaultOrgID()
 		}
 		if role == "" || orgID == "" {
-			cmd.Println("Error: --org and --role are required.")
-			return errors.New("Error: --org and --role are required.")
+			return errors.New("--org and --role are required")
 		}
 
 		client := backend.NewAgentServiceClient()
@@ -82,8 +80,7 @@ var agentsCreateCmd = &cobra.Command{
 			Name:        name,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to create agent: %v\n", err)
-			return err
+			return fmt.Errorf("failed to create agent: %w", err)
 		}
 
 		if isJson {
@@ -105,8 +102,7 @@ var agentsUpdateCmd = &cobra.Command{
 		role, _ := cmd.Flags().GetString("role")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if name == "" && role == "" {
-			cmd.Println("Error: at least one of --name or --role is required.")
-			return errors.New("Error: at least one of --name or --role is required.")
+			return errors.New("at least one of --name or --role is required")
 		}
 
 		req := &healthv1.UpdateAgentRequest{AgentId: args[0]}
@@ -120,8 +116,7 @@ var agentsUpdateCmd = &cobra.Command{
 		client := backend.NewAgentServiceClient()
 		res, err := client.UpdateAgent(context.Background(), connect.NewRequest(req))
 		if err != nil {
-			cmd.PrintErrf("Failed to update agent: %v\n", err)
-			return err
+			return fmt.Errorf("failed to update agent: %w", err)
 		}
 
 		if isJson {
@@ -144,8 +139,7 @@ var agentsUpdateRoleCmd = &cobra.Command{
 		capabilities, _ := cmd.Flags().GetString("capabilities")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if name == "" && systemPrompt == "" && capabilities == "" {
-			cmd.Println("Error: at least one of --name, --system-prompt, or --capabilities is required.")
-			return errors.New("Error: at least one of --name, --system-prompt, or --capabilities is required.")
+			return errors.New("at least one of --name, --system-prompt, or --capabilities is required")
 		}
 
 		req := &healthv1.UpdateAgentRoleRequest{Id: args[0]}
@@ -162,8 +156,7 @@ var agentsUpdateRoleCmd = &cobra.Command{
 		client := backend.NewAgentServiceClient()
 		res, err := client.UpdateAgentRole(context.Background(), connect.NewRequest(req))
 		if err != nil {
-			cmd.PrintErrf("Failed to update agent role: %v\n", err)
-			return err
+			return fmt.Errorf("failed to update agent role: %w", err)
 		}
 
 		if isJson {
@@ -182,8 +175,7 @@ var agentsListRolesCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		orgID, _ := cmd.Flags().GetString("org")
 		if orgID == "" {
-			cmd.Println("Error: --org is required.")
-			return errors.New("Error: --org is required.")
+			return errors.New("--org is required")
 		}
 		isJson, _ := cmd.Flags().GetBool("json")
 		filter, _ := cmd.Flags().GetString("filter")
@@ -197,8 +189,7 @@ var agentsListRolesCmd = &cobra.Command{
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list agent roles: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list agent roles: %w", err)
 		}
 
 		if isJson {
@@ -220,16 +211,14 @@ var agentsCreateRoleCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		orgID, _ := cmd.Flags().GetString("org")
 		if orgID == "" {
-			cmd.Println("Error: --org is required.")
-			return errors.New("Error: --org is required.")
+			return errors.New("--org is required")
 		}
 		name, _ := cmd.Flags().GetString("name")
 		systemPrompt, _ := cmd.Flags().GetString("system-prompt")
 		capabilities, _ := cmd.Flags().GetString("capabilities")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if name == "" {
-			cmd.Println("Error: --name is required.")
-			return errors.New("Error: --name is required.")
+			return errors.New("--name is required")
 		}
 
 		client := backend.NewAgentServiceClient()
@@ -240,8 +229,7 @@ var agentsCreateRoleCmd = &cobra.Command{
 			Capabilities: capabilities,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to create agent role: %v\n", err)
-			return err
+			return fmt.Errorf("failed to create agent role: %w", err)
 		}
 
 		if isJson {
@@ -263,8 +251,7 @@ var agentsDeleteCmd = &cobra.Command{
 		client := backend.NewAgentServiceClient()
 		_, err := client.ArchiveAgent(context.Background(), connect.NewRequest(&healthv1.ArchiveAgentRequest{AgentId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to delete agent: %v\n", err)
-			return err
+			return fmt.Errorf("failed to delete agent: %w", err)
 		}
 		if isJson {
 			jsonString, _ := json.Marshal(map[string]any{"success": true, "agentId": args[0]})
@@ -285,8 +272,7 @@ var agentsRestoreCmd = &cobra.Command{
 		client := backend.NewAgentServiceClient()
 		_, err := client.RestoreAgent(context.Background(), connect.NewRequest(&healthv1.RestoreAgentRequest{AgentId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to restore agent: %v\n", err)
-			return err
+			return fmt.Errorf("failed to restore agent: %w", err)
 		}
 		if isJson {
 			jsonString, _ := json.Marshal(map[string]any{"success": true, "agentId": args[0]})
@@ -307,8 +293,7 @@ var agentsPurgeCmd = &cobra.Command{
 		client := backend.NewAgentServiceClient()
 		_, err := client.PurgeAgent(context.Background(), connect.NewRequest(&healthv1.PurgeAgentRequest{AgentId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to purge agent: %v\n", err)
-			return err
+			return fmt.Errorf("failed to purge agent: %w", err)
 		}
 		if isJson {
 			jsonString, _ := json.Marshal(map[string]any{"success": true, "agentId": args[0]})

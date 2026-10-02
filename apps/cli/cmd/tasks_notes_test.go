@@ -111,7 +111,7 @@ func TestTasksNoteAddCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "note-add", "task-1", "--content", "Ran the tests, all green.", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected note-add to succeed, got error: %v", err)
 	}
 
@@ -135,7 +135,7 @@ func TestTasksNoteAddCommandForwardsType(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "note-add", "task-1", "--content", "Blocked on review, next: rerun tests", "--type", "handoff", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected note-add to succeed, got error: %v", err)
 	}
 
@@ -156,7 +156,7 @@ func TestTasksNoteAddCommandOmitsTypeByDefault(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "note-add", "task-1", "--content", "Just a comment", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected note-add to succeed, got error: %v", err)
 	}
 
@@ -177,7 +177,7 @@ func TestTasksNoteAddCommandRequiresContent(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "note-add", "task-1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected note-add to fail without --content")
 	}
 	if !strings.Contains(b.String(), "--content is required") {
@@ -198,7 +198,7 @@ func TestTasksNotesListCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "notes", "task-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected notes list to succeed, got error: %v", err)
 	}
 
@@ -230,7 +230,7 @@ func TestTasksNotesListCommandTagsHandoffNotes(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "notes", "task-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected notes list to succeed, got error: %v", err)
 	}
 	if fake.gotListReq == nil || fake.gotListReq.TaskId != "task-1" {
@@ -254,7 +254,7 @@ func TestTasksNoteUpdateCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "note-update", "tnt_1", "--content", "Revised note", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected note-update to succeed, got error: %v", err)
 	}
 
@@ -276,7 +276,7 @@ func TestTasksNoteUpdateCommandRequiresContent(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "note-update", "tnt_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected note-update to fail without --content")
 	}
 	if !strings.Contains(b.String(), "--content is required") {
@@ -292,7 +292,7 @@ func TestTasksNoteDeleteCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "note-delete", "tnt_1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected note-delete to succeed, got error: %v", err)
 	}
 
@@ -320,10 +320,10 @@ func TestTasksNoteUpdateCommandReportsFailure(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "note-update", "tnt_1", "--content", "x"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected note-update to fail on an RPC error")
 	}
-	if !strings.Contains(b.String(), "Failed to update note") {
+	if !strings.Contains(b.String(), "failed to update note") {
 		t.Errorf("expected the failure to be reported, got %s", b.String())
 	}
 }
@@ -341,10 +341,10 @@ func TestTasksNoteDeleteCommandReportsFailure(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "note-delete", "tnt_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected note-delete to fail on an RPC error")
 	}
-	if !strings.Contains(b.String(), "Failed to delete note") {
+	if !strings.Contains(b.String(), "failed to delete note") {
 		t.Errorf("expected the failure to be reported, got %s", b.String())
 	}
 }
@@ -384,7 +384,7 @@ func TestTasksHandoffsCommand(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "handoffs", "--project", "proj-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected handoffs to succeed, got error: %v", err)
 	}
 
@@ -411,7 +411,7 @@ func TestTasksHandoffsCommandJSON(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "handoffs", "--project", "proj-1", "--json"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected handoffs to succeed, got error: %v", err)
 	}
 
@@ -430,7 +430,7 @@ func TestTasksHandoffsCommandEmptyState(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "handoffs", "--project", "proj-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected handoffs to succeed, got error: %v", err)
 	}
 
@@ -452,7 +452,7 @@ func TestTasksHandoffsCommandShowsNextCursorHint(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "handoffs", "--project", "proj-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected handoffs to succeed, got error: %v", err)
 	}
 
@@ -471,7 +471,7 @@ func TestTasksHandoffsCommandRequiresProject(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "handoffs"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected handoffs to fail without --project or TASKER_PROJECT_ID")
 	}
 	if !strings.Contains(b.String(), "--project is required") {
@@ -490,7 +490,7 @@ func TestTasksHandoffsCommandFallsBackToProjectEnvVar(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"tasks", "handoffs"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatalf("expected handoffs to succeed, got error: %v", err)
 	}
 
@@ -514,10 +514,10 @@ func TestTasksHandoffsCommandReportsFailure(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"tasks", "handoffs", "--project", "proj-1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected handoffs to fail on an RPC error")
 	}
-	if !strings.Contains(b.String(), "Failed to list handoffs") {
+	if !strings.Contains(b.String(), "failed to list handoffs") {
 		t.Errorf("expected the failure to be reported, got %s", b.String())
 	}
 }

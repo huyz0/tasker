@@ -28,7 +28,6 @@ var labelsCreateCmd = &cobra.Command{
 			orgID = backend.DefaultOrgID()
 		}
 		if name == "" || orgID == "" {
-			cmd.Println("Error: --org and --name are required.")
 			return fmt.Errorf("--org and --name are required")
 		}
 
@@ -39,8 +38,7 @@ var labelsCreateCmd = &cobra.Command{
 			Color: color,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to create label: %v\n", err)
-			return err
+			return fmt.Errorf("failed to create label: %w", err)
 		}
 
 		if isJson {
@@ -67,7 +65,6 @@ var labelsListCmd = &cobra.Command{
 			orgID = backend.DefaultOrgID()
 		}
 		if orgID == "" {
-			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
 			return fmt.Errorf("--org is required (or set TASKER_ORG_ID)")
 		}
 
@@ -77,8 +74,7 @@ var labelsListCmd = &cobra.Command{
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list labels: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list labels: %w", err)
 		}
 
 		if isJson {
@@ -103,7 +99,6 @@ var labelsAttachCmd = &cobra.Command{
 		labelID, _ := cmd.Flags().GetString("label")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if entityType == "" || labelID == "" {
-			cmd.Println("Error: --entity-type and --label are required.")
 			return fmt.Errorf("--entity-type and --label are required")
 		}
 
@@ -114,8 +109,7 @@ var labelsAttachCmd = &cobra.Command{
 			LabelId:    labelID,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to attach label: %v\n", err)
-			return err
+			return fmt.Errorf("failed to attach label: %w", err)
 		}
 
 		if isJson {
@@ -137,7 +131,6 @@ var labelsDetachCmd = &cobra.Command{
 		labelID, _ := cmd.Flags().GetString("label")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if entityType == "" || labelID == "" {
-			cmd.Println("Error: --entity-type and --label are required.")
 			return fmt.Errorf("--entity-type and --label are required")
 		}
 
@@ -148,8 +141,7 @@ var labelsDetachCmd = &cobra.Command{
 			LabelId:    labelID,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to detach label: %v\n", err)
-			return err
+			return fmt.Errorf("failed to detach label: %w", err)
 		}
 
 		if isJson {
@@ -170,7 +162,6 @@ var labelsOnCmd = &cobra.Command{
 		entityType, _ := cmd.Flags().GetString("entity-type")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if entityType == "" {
-			cmd.Println("Error: --entity-type is required.")
 			return fmt.Errorf("--entity-type is required")
 		}
 
@@ -180,8 +171,7 @@ var labelsOnCmd = &cobra.Command{
 			EntityType: entityType,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list labels: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list labels: %w", err)
 		}
 
 		if isJson {

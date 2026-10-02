@@ -118,7 +118,7 @@ func TestTeamsCreateCmd(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"teams", "create", "org_1", "--name", "Platform"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.createdArgs == nil || fake.createdArgs.OrgId != "org_1" || fake.createdArgs.Name != "Platform" {
@@ -137,7 +137,7 @@ func TestTeamsCreateCmdRequiresName(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"teams", "create", "org_1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when --name is omitted")
 	}
 	if fake.createdArgs != nil {
@@ -153,7 +153,7 @@ func TestTeamsRenameCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"teams", "rename", "team_1", "--name", "Platform Engineering"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.updatedArgs == nil || fake.updatedArgs.TeamId != "team_1" || fake.updatedArgs.Name != "Platform Engineering" {
@@ -168,7 +168,7 @@ func TestTeamsDeleteAndRestoreCmd(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"teams", "delete", "team_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.archivedTeamID != "team_1" {
@@ -177,7 +177,7 @@ func TestTeamsDeleteAndRestoreCmd(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"teams", "restore", "team_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.restoredTeamID != "team_1" {
@@ -194,7 +194,7 @@ func TestTeamsListCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"teams", "list", "org_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.listedOrgID != "org_1" {
@@ -212,7 +212,7 @@ func TestTeamsListCmdOnlyDeleted(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"teams", "list", "org_1", "--only-deleted"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if !fake.listedOnlyDel {
@@ -228,7 +228,7 @@ func TestTeamsAddAndRemoveMemberCmd(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"teams", "add-member", "team_1", "user_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.addedMemberArgs == nil || fake.addedMemberArgs.TeamId != "team_1" || fake.addedMemberArgs.UserId != "user_1" {
@@ -237,7 +237,7 @@ func TestTeamsAddAndRemoveMemberCmd(t *testing.T) {
 
 	rootCmd.SetOut(bytes.NewBufferString(""))
 	rootCmd.SetArgs([]string{"teams", "remove-member", "team_1", "user_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.removedMemberArg == nil || fake.removedMemberArg.TeamId != "team_1" || fake.removedMemberArg.UserId != "user_1" {
@@ -253,7 +253,7 @@ func TestTeamsListMembersCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"teams", "list-members", "team_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	if fake.listedMembersFor != "team_1" {

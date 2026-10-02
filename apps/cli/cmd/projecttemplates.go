@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
@@ -29,7 +30,6 @@ var projectTemplatesCreateCmd = &cobra.Command{
 			orgID = backend.DefaultOrgID()
 		}
 		if name == "" || orgID == "" {
-			cmd.Println("Error: --org and --name are required.")
 			return errors.New("--org and --name are required")
 		}
 
@@ -44,8 +44,7 @@ var projectTemplatesCreateCmd = &cobra.Command{
 		}
 		res, err := client.CreateTemplate(context.Background(), connect.NewRequest(req))
 		if err != nil {
-			cmd.PrintErrf("Failed to create project template: %v\n", err)
-			return err
+			return fmt.Errorf("failed to create project template: %w", err)
 		}
 
 		if isJson {
@@ -68,8 +67,7 @@ var projectTemplatesGetCmd = &cobra.Command{
 		client := backend.NewProjectTemplateServiceClient()
 		res, err := client.GetTemplate(context.Background(), connect.NewRequest(&healthv1.GetProjectTemplateRequest{Id: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to get project template: %v\n", err)
-			return err
+			return fmt.Errorf("failed to get project template: %w", err)
 		}
 
 		if isJson {
@@ -114,8 +112,7 @@ var projectTemplatesUpdateCmd = &cobra.Command{
 		client := backend.NewProjectTemplateServiceClient()
 		res, err := client.UpdateTemplate(context.Background(), connect.NewRequest(req))
 		if err != nil {
-			cmd.PrintErrf("Failed to update project template: %v\n", err)
-			return err
+			return fmt.Errorf("failed to update project template: %w", err)
 		}
 
 		if isJson {
@@ -142,7 +139,6 @@ var projectTemplatesListCmd = &cobra.Command{
 			orgID = backend.DefaultOrgID()
 		}
 		if orgID == "" {
-			cmd.Println("Error: --org is required.")
 			return errors.New("--org is required")
 		}
 
@@ -152,8 +148,7 @@ var projectTemplatesListCmd = &cobra.Command{
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list project templates: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list project templates: %w", err)
 		}
 
 		if isJson {

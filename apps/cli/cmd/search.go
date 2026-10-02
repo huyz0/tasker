@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
@@ -24,7 +25,6 @@ var searchCmd = &cobra.Command{
 			orgID = backend.DefaultOrgID()
 		}
 		if orgID == "" {
-			cmd.Println("Error: --org is required (or set TASKER_ORG_ID).")
 			return errors.New("--org is required (or set TASKER_ORG_ID)")
 		}
 
@@ -35,8 +35,7 @@ var searchCmd = &cobra.Command{
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to search: %v\n", err)
-			return err
+			return fmt.Errorf("failed to search: %w", err)
 		}
 
 		if isJson {

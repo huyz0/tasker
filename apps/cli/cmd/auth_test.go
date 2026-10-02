@@ -129,13 +129,13 @@ func TestLoginCommandReportsCallbackListenerBindFailure(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_ = rootCmd.Execute()
+		_ = executeForTest()
 		close(done)
 	}()
 
 	select {
 	case <-done:
-		if !strings.Contains(b.String(), "Failed to start local callback listener") {
+		if !strings.Contains(b.String(), "failed to start local callback listener") {
 			t.Fatalf("expected a bind-failure message, got: %s", b.String())
 		}
 	case <-time.After(10 * time.Second):
@@ -298,7 +298,7 @@ func TestWhoamiSendsTheSavedTokenAsABearerHeader(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.Flags().Set("json", "false")
 	rootCmd.SetArgs([]string{"auth", "whoami"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -318,7 +318,7 @@ func TestWhoamiReportsNotLoggedInWithoutSavedCredentials(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"auth", "whoami"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -338,7 +338,7 @@ func TestLogoutCommandClearsSavedCredentials(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"auth", "logout"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -479,7 +479,7 @@ func TestAuthLoginWithUsernameSavesCredentialsFromTheSessionCookie(t *testing.T)
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"auth", "login", "--username", "alice", "--password", "a-strong-password-123"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -508,7 +508,7 @@ func TestAuthLoginWithUsernameReportsMustChangePassword(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"auth", "login", "--username", "alice", "--password", "pw"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -531,7 +531,7 @@ func TestAuthLoginWithUsernameFailsCleanlyOnWrongPassword(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"auth", "login", "--username", "alice", "--password", "wrong"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error for a failed login")
 	}
 
@@ -614,7 +614,7 @@ func TestAuthLoginRequiresAPasswordWhenThePromptYieldsNone(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"auth", "login", "--username", "alice"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when no password can be obtained")
 	}
 	if called {
@@ -651,7 +651,7 @@ func TestSetPasswordCommandSendsBothFields(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"auth", "set-password", "--current-password", "old-pw", "--new-password", "new-strong-password-1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -679,7 +679,7 @@ func TestSetPasswordCommandSurfacesServerRejection(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"auth", "set-password", "--new-password", "new-strong-password-1"})
-	if err := rootCmd.Execute(); err == nil {
+	if err := executeForTest(); err == nil {
 		t.Fatal("expected an error when the server rejects the call")
 	}
 }

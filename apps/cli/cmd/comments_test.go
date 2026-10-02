@@ -74,7 +74,7 @@ func TestCommentAddCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"comment", "add", "--entity", "task-123", "--type", "task", "--content", "Looks good to me"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -90,7 +90,7 @@ func TestCommentListCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"comment", "list", "--entity", "task-123", "--type", "task", "--cursor", "cursor-2", "--limit", "10"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -111,7 +111,7 @@ func TestCommentUpdateCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"comment", "update", "cmt_1", "--content", "Revised"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -127,7 +127,7 @@ func TestCommentDeleteCmd(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"comment", "delete", "cmt_1"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -148,8 +148,8 @@ func TestCommentUpdateCmdReportsErrorWithoutExitingProcess(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"comment", "update", "cmt_1", "--content", "x"})
-	if err := rootCmd.Execute(); err == nil {
-		t.Fatal("expected rootCmd.Execute() to return an error on RPC failure")
+	if err := executeForTest(); err == nil {
+		t.Fatal("expected executeForTest() to return an error on RPC failure")
 	}
 	if !strings.Contains(b.String(), "failed to update comment") {
 		t.Fatalf("expected an error message and for the process to still be alive, got %s", b.String())
@@ -168,8 +168,8 @@ func TestCommentDeleteCmdReportsErrorWithoutExitingProcess(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"comment", "delete", "cmt_1"})
-	if err := rootCmd.Execute(); err == nil {
-		t.Fatal("expected rootCmd.Execute() to return an error on RPC failure")
+	if err := executeForTest(); err == nil {
+		t.Fatal("expected executeForTest() to return an error on RPC failure")
 	}
 	if !strings.Contains(b.String(), "failed to delete comment") {
 		t.Fatalf("expected an error message and for the process to still be alive, got %s", b.String())
@@ -187,7 +187,7 @@ func TestCommentListCmdWithNoComments(t *testing.T) {
 	b := bytes.NewBufferString("")
 	rootCmd.SetOut(b)
 	rootCmd.SetArgs([]string{"comment", "list", "--entity", "task-empty", "--type", "task"})
-	if err := rootCmd.Execute(); err != nil {
+	if err := executeForTest(); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -223,8 +223,8 @@ func TestCommentAddCmdReportsErrorWithoutExitingProcess(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"comment", "add", "--entity", "task-123", "--type", "task", "--content", "x"})
-	if err := rootCmd.Execute(); err == nil {
-		t.Fatal("expected rootCmd.Execute() to return an error on RPC failure")
+	if err := executeForTest(); err == nil {
+		t.Fatal("expected executeForTest() to return an error on RPC failure")
 	}
 	if !strings.Contains(b.String(), "failed to add comment") {
 		t.Fatalf("expected an error message and for the process to still be alive, got %s", b.String())
@@ -243,8 +243,8 @@ func TestCommentListCmdReportsErrorWithoutExitingProcess(t *testing.T) {
 	rootCmd.SetOut(b)
 	rootCmd.SetErr(b)
 	rootCmd.SetArgs([]string{"comment", "list", "--entity", "task-123", "--type", "task"})
-	if err := rootCmd.Execute(); err == nil {
-		t.Fatal("expected rootCmd.Execute() to return an error on RPC failure")
+	if err := executeForTest(); err == nil {
+		t.Fatal("expected executeForTest() to return an error on RPC failure")
 	}
 	if !strings.Contains(b.String(), "failed to list comments") {
 		t.Fatalf("expected an error message and for the process to still be alive, got %s", b.String())

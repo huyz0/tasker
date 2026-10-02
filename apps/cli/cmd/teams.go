@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
@@ -33,8 +34,7 @@ var teamsListCmd = &cobra.Command{
 			OnlyDeleted: onlyDeleted,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list teams: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list teams: %w", err)
 		}
 
 		if isJson {
@@ -62,8 +62,7 @@ var teamsCreateCmd = &cobra.Command{
 		name, _ := cmd.Flags().GetString("name")
 		isJson, _ := cmd.Flags().GetBool("json")
 		if name == "" {
-			cmd.Println("Error: --name is required.")
-			return errors.New("Error: --name is required.")
+			return errors.New("--name is required")
 		}
 
 		client := backend.NewTeamServiceClient()
@@ -72,8 +71,7 @@ var teamsCreateCmd = &cobra.Command{
 			Name:  name,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to create team: %v\n", err)
-			return err
+			return fmt.Errorf("failed to create team: %w", err)
 		}
 
 		if isJson {
@@ -93,8 +91,7 @@ var teamsRenameCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		if name == "" {
-			cmd.Println("Error: --name is required.")
-			return errors.New("Error: --name is required.")
+			return errors.New("--name is required")
 		}
 
 		client := backend.NewTeamServiceClient()
@@ -103,8 +100,7 @@ var teamsRenameCmd = &cobra.Command{
 			Name:   name,
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to rename team: %v\n", err)
-			return err
+			return fmt.Errorf("failed to rename team: %w", err)
 		}
 		cmd.Printf("Team %s renamed to %s\n", args[0], name)
 		return nil
@@ -119,8 +115,7 @@ var teamsDeleteCmd = &cobra.Command{
 		client := backend.NewTeamServiceClient()
 		_, err := client.ArchiveTeam(context.Background(), connect.NewRequest(&healthv1.ArchiveTeamRequest{TeamId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to delete team: %v\n", err)
-			return err
+			return fmt.Errorf("failed to delete team: %w", err)
 		}
 		cmd.Printf("Team %s moved to bin\n", args[0])
 		return nil
@@ -135,8 +130,7 @@ var teamsRestoreCmd = &cobra.Command{
 		client := backend.NewTeamServiceClient()
 		_, err := client.RestoreTeam(context.Background(), connect.NewRequest(&healthv1.RestoreTeamRequest{TeamId: args[0]}))
 		if err != nil {
-			cmd.PrintErrf("Failed to restore team: %v\n", err)
-			return err
+			return fmt.Errorf("failed to restore team: %w", err)
 		}
 		cmd.Printf("Team %s restored\n", args[0])
 		return nil
@@ -154,8 +148,7 @@ var teamsAddMemberCmd = &cobra.Command{
 			UserId: args[1],
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to add team member: %v\n", err)
-			return err
+			return fmt.Errorf("failed to add team member: %w", err)
 		}
 		cmd.Printf("Added %s to team %s\n", args[1], args[0])
 		return nil
@@ -173,8 +166,7 @@ var teamsRemoveMemberCmd = &cobra.Command{
 			UserId: args[1],
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to remove team member: %v\n", err)
-			return err
+			return fmt.Errorf("failed to remove team member: %w", err)
 		}
 		cmd.Printf("Removed %s from team %s\n", args[1], args[0])
 		return nil
@@ -196,8 +188,7 @@ var teamsListMembersCmd = &cobra.Command{
 			Page:   &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 		}))
 		if err != nil {
-			cmd.PrintErrf("Failed to list team members: %v\n", err)
-			return err
+			return fmt.Errorf("failed to list team members: %w", err)
 		}
 
 		if isJson {
