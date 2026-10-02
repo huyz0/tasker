@@ -280,10 +280,29 @@ export const tasks = mysqlTable("tasks", {
   description: varchar("description", { length: 4096 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
+  // M35 (ADR-0028). See schema.sqlite.ts.
+  priority: int("priority").notNull().default(0),
+  parentTaskId: varchar("parent_task_id", { length: 256 }),
 }, (table) => {
   return {
     projectIdIdx: index("tasks_project_id_idx").on(table.projectId),
     taskTypeIdIdx: index("tasks_task_type_id_idx").on(table.taskTypeId),
+    parentTaskIdIdx: index("tasks_parent_task_id_idx").on(table.parentTaskId),
+  };
+});
+
+// M35 (ADR-0028). See schema.sqlite.ts.
+export const taskLinks = mysqlTable("task_links", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull(),
+  linkedTaskId: varchar("linked_task_id", { length: 256 }).notNull(),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  createdBy: varchar("created_by", { length: 256 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    taskKindIdx: uniqueIndex("task_links_task_linked_kind_idx").on(table.taskId, table.linkedTaskId, table.kind),
+    linkedIdx: index("task_links_linked_task_id_idx").on(table.linkedTaskId, table.kind),
   };
 });
 

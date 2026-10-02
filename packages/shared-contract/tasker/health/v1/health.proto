@@ -717,6 +717,10 @@ message Task {
   repeated Assignee assignees = 10;
   // M19-T02.
   string created_at = 11;
+  // M35 (ADR-0028). See main.tsp's Task.
+  int32 priority = 12;
+  optional string parentTaskId = 13;
+  int32 blockedByOpenCount = 14;
 }
 
 message UnassignTaskRequest {
@@ -739,6 +743,12 @@ message CreateTaskRequest {
   // Retry-safety (M14-T07): replaying the same key from the same principal
   // returns the original response instead of creating a second task.
   string idempotencyKey = 6;
+
+  // M35 (ADR-0028). See main.tsp's CreateTaskRequest.
+  optional int32 priority = 7;
+  optional string parentTaskId = 8;
+  repeated string blockedBy = 9;
+  optional string discoveredFromTaskId = 10;
 }
 
 message CreateTaskResponse {
@@ -776,6 +786,8 @@ message ClaimNextTaskRequest {
   string projectId = 1;
   optional string taskTypeId = 2;
   optional string idempotencyKey = 3;
+  // M35.
+  optional string labelId = 4;
 }
 
 message ClaimNextTaskResponse {
@@ -879,6 +891,12 @@ message ListTasksRequest {
   // Agent self-service (M14-T05): "unassigned" finds claimable work, "me"
   // resolves to the calling principal server-side. Unset returns every task.
   string assigneeFilter = 5;
+
+  // M35 (ADR-0028). See main.tsp's ListTasksRequest.
+  optional bool ready = 6;
+  optional int32 priority = 7;
+  optional string labelId = 8;
+  optional string parentTaskId = 9;
 }
 
 message ListTasksResponse {
@@ -900,6 +918,9 @@ message UpdateTaskRequest {
   optional string title = 2;
   optional string description = 3;
   optional string taskTypeId = 4;
+  // M35.
+  optional int32 priority = 5;
+  optional string parentTaskId = 6;
 }
 message UpdateTaskResponse {
   Task task = 1;
@@ -929,6 +950,44 @@ message PurgeTaskResponse {
   bool success = 1;
 }
 
+// M35 (ADR-0028). See main.tsp.
+message TaskRef {
+  string id = 1;
+  string displayId = 2;
+  string title = 3;
+  string status = 4;
+  string projectId = 5;
+  bool terminal = 6;
+}
+
+message AddTaskLinkRequest {
+  string taskId = 1;
+  string linkedTaskId = 2;
+  string kind = 3;
+}
+message AddTaskLinkResponse {
+  bool success = 1;
+}
+message RemoveTaskLinkRequest {
+  string taskId = 1;
+  string linkedTaskId = 2;
+  string kind = 3;
+}
+message RemoveTaskLinkResponse {
+  bool success = 1;
+}
+message ListTaskLinksRequest {
+  string taskId = 1;
+}
+message ListTaskLinksResponse {
+  repeated TaskRef blockedBy = 1;
+  repeated TaskRef blocks = 2;
+  optional TaskRef discoveredFrom = 3;
+  repeated TaskRef discovered = 4;
+  optional TaskRef parent = 5;
+  repeated TaskRef children = 6;
+}
+
 service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
   rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
@@ -947,6 +1006,9 @@ service TaskService {
   rpc AddTaskReviewer(AddTaskReviewerRequest) returns (AddTaskReviewerResponse);
   rpc RemoveTaskReviewer(RemoveTaskReviewerRequest) returns (RemoveTaskReviewerResponse);
   rpc ListTaskReviewers(ListTaskReviewersRequest) returns (ListTaskReviewersResponse);
+  rpc AddTaskLink(AddTaskLinkRequest) returns (AddTaskLinkResponse);
+  rpc RemoveTaskLink(RemoveTaskLinkRequest) returns (RemoveTaskLinkResponse);
+  rpc ListTaskLinks(ListTaskLinksRequest) returns (ListTaskLinksResponse);
 }
 
 message Folder {

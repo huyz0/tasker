@@ -852,6 +852,15 @@ model Task {
   // was never on the wire model, so the value was silently dropped before
   // the response left the handler (listTasks even sorts by it).
   @field(11) createdAt: string;
+
+  // M35 (ADR-0028). 0 none, 1 urgent, 2 high, 3 medium, 4 low - lower is more
+  // important, and "none" sorts after "low".
+  @field(12) priority: int32;
+  // A task in the same project this one is part of.
+  @field(13) parentTaskId?: string;
+  // Tasks blocking this one that are not finished. Zero means nothing in the
+  // graph stops this task; with no assignee and an open status it is ready.
+  @field(14) blockedByOpenCount: int32;
 }
 
 // ==== Task Services ====
@@ -869,6 +878,15 @@ model CreateTaskRequest {
   // with no collision. Unset behaves exactly as before this field existed -
   // every call creates a new task.
   @field(6) idempotencyKey?: string;
+
+  // M35 (ADR-0028). See Task.priority. Unset is 0 (none).
+  @field(7) priority?: int32;
+  // A task in the same project.
+  @field(8) parentTaskId?: string;
+  // Tasks in the same organization that must finish before this one is ready.
+  @field(9) blockedBy?: string[];
+  // The task whose work turned this one up (an agent recording follow-up work).
+  @field(10) discoveredFromTaskId?: string;
 }
 
 model CreateTaskResponse {
@@ -926,6 +944,9 @@ model ClaimNextTaskRequest {
 
   // Retry-safety, same contract as ClaimTaskRequest.idempotencyKey.
   @field(3) idempotencyKey?: string;
+
+  // M35: only tasks carrying this label - label-based routing.
+  @field(4) labelId?: string;
 }
 
 model ClaimNextTaskResponse {
@@ -1039,6 +1060,14 @@ model ListTasksRequest {
   // id. Unset returns every task regardless of assignment, same as before
   // this field existed.
   @field(5) assigneeFilter?: string;
+
+  // M35 (ADR-0028). Open, unassigned and with no unfinished blocker - exactly
+  // what ClaimNextTask would choose from - ordered as it would choose.
+  @field(6) ready?: boolean;
+  @field(7) priority?: int32;
+  @field(8) labelId?: string;
+  // Direct children of this task.
+  @field(9) parentTaskId?: string;
 }
 
 model ListTasksResponse {
@@ -1060,6 +1089,52 @@ model UpdateTaskRequest {
   @field(2) title?: string;
   @field(3) description?: string;
   @field(4) taskTypeId?: string;
+  // M35. See Task.priority.
+  @field(5) priority?: int32;
+  // Empty string clears the parent.
+  @field(6) parentTaskId?: string;
+}
+
+// M35 (ADR-0028). A task as another task's relation shows it.
+model TaskRef {
+  @field(1) id: string;
+  @field(2) displayId: string;
+  @field(3) title: string;
+  @field(4) status: string;
+  @field(5) projectId: string;
+  // In its type's last status (or "done" for an untyped task).
+  @field(6) terminal: boolean;
+}
+
+// "blocked_by": taskId cannot be ready until linkedTaskId is finished.
+// "discovered_from": taskId was found while working linkedTaskId (one per task).
+model AddTaskLinkRequest {
+  @field(1) taskId: string;
+  @field(2) linkedTaskId: string;
+  @field(3) kind: string;
+}
+model AddTaskLinkResponse {
+  @field(1) success: boolean;
+}
+model RemoveTaskLinkRequest {
+  @field(1) taskId: string;
+  @field(2) linkedTaskId: string;
+  @field(3) kind: string;
+}
+model RemoveTaskLinkResponse {
+  @field(1) success: boolean;
+}
+model ListTaskLinksRequest {
+  @field(1) taskId: string;
+}
+// Each list is capped at 200, most recent first.
+model ListTaskLinksResponse {
+  @field(1) blockedBy: TaskRef[];
+  @field(2) blocks: TaskRef[];
+  @field(3) discoveredFrom?: TaskRef;
+  @field(4) discovered: TaskRef[];
+  @field(5) parent?: TaskRef;
+  @field(6) children: TaskRef[];
 }
 
 model UpdateTaskResponse {
@@ -1112,6 +1187,9 @@ interface TaskService {
   listTaskReviewers(
     request: ListTaskReviewersRequest,
   ): ListTaskReviewersResponse;
+  addTaskLink(request: AddTaskLinkRequest): AddTaskLinkResponse;
+  removeTaskLink(request: RemoveTaskLinkRequest): RemoveTaskLinkResponse;
+  listTaskLinks(request: ListTaskLinksRequest): ListTaskLinksResponse;
 }
 
 // ==== Artifacts ====

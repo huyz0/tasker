@@ -1,12 +1,12 @@
 ---
 id: M35
 title: Work Graph
-status: todo
+status: in-progress
 goal: Tasks carry a priority, can block one another, nest under a parent and record the task they were discovered from — and an agent asking for the next piece of work gets the most important task whose prerequisites are finished.
 depends_on: [M33]
 surfaces: [contract, backend, cli, gui, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-10-02
 completed_at: null
 ---
 
@@ -71,7 +71,7 @@ impossible.
 
 ## 5. Task Breakdown
 
-- [ ] **M35-T01** — ADR-0028; contract and schema: `priority`, `parent_task_id`, `task_links`.
+- [x] **M35-T01** — ADR-0028; contract and schema: `priority`, `parent_task_id`, `task_links`.
   - **Files**: `.specs/adr/ADR-0028-*.md`, `packages/shared-contract/*`,
     `apps/backend/src/db/schema.*.ts`, migrations
 - [ ] **M35-T02** — Priority: create, update, list filter and sort.

@@ -405,10 +405,33 @@ export const tasks = sqliteTable("tasks", {
   description: text("description"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
+  // M35 (ADR-0028): 0 none, 1 urgent .. 4 low.
+  priority: integer("priority").notNull().default(0),
+  // M35: a task in the same project. No FK - a purged parent leaves children
+  // pointing at nothing, which the handler treats as no parent.
+  parentTaskId: text("parent_task_id"),
 }, (table) => {
   return {
     projectIdIdx: index("tasks_project_id_idx").on(table.projectId),
     taskTypeIdIdx: index("tasks_task_type_id_idx").on(table.taskTypeId),
+    parentTaskIdIdx: index("tasks_parent_task_id_idx").on(table.parentTaskId),
+  };
+});
+
+// M35 (ADR-0028). One row per directed relation: `kind` "blocked_by" means
+// task_id cannot be ready until linked_task_id is finished; "discovered_from"
+// means task_id was found while working linked_task_id.
+export const taskLinks = sqliteTable("task_links", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull(),
+  linkedTaskId: text("linked_task_id").notNull(),
+  kind: text("kind").notNull(),
+  createdBy: text("created_by"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => {
+  return {
+    taskKindIdx: uniqueIndex("task_links_task_linked_kind_idx").on(table.taskId, table.linkedTaskId, table.kind),
+    linkedIdx: index("task_links_linked_task_id_idx").on(table.linkedTaskId, table.kind),
   };
 });
 

@@ -253,6 +253,14 @@ const (
 	// TaskServiceListTaskReviewersProcedure is the fully-qualified name of the TaskService's
 	// ListTaskReviewers RPC.
 	TaskServiceListTaskReviewersProcedure = "/tasker.health.v1.TaskService/ListTaskReviewers"
+	// TaskServiceAddTaskLinkProcedure is the fully-qualified name of the TaskService's AddTaskLink RPC.
+	TaskServiceAddTaskLinkProcedure = "/tasker.health.v1.TaskService/AddTaskLink"
+	// TaskServiceRemoveTaskLinkProcedure is the fully-qualified name of the TaskService's
+	// RemoveTaskLink RPC.
+	TaskServiceRemoveTaskLinkProcedure = "/tasker.health.v1.TaskService/RemoveTaskLink"
+	// TaskServiceListTaskLinksProcedure is the fully-qualified name of the TaskService's ListTaskLinks
+	// RPC.
+	TaskServiceListTaskLinksProcedure = "/tasker.health.v1.TaskService/ListTaskLinks"
 	// ArtifactServiceCreateFolderProcedure is the fully-qualified name of the ArtifactService's
 	// CreateFolder RPC.
 	ArtifactServiceCreateFolderProcedure = "/tasker.health.v1.ArtifactService/CreateFolder"
@@ -555,6 +563,9 @@ var (
 	taskServiceAddTaskReviewerMethodDescriptor                    = taskServiceServiceDescriptor.Methods().ByName("AddTaskReviewer")
 	taskServiceRemoveTaskReviewerMethodDescriptor                 = taskServiceServiceDescriptor.Methods().ByName("RemoveTaskReviewer")
 	taskServiceListTaskReviewersMethodDescriptor                  = taskServiceServiceDescriptor.Methods().ByName("ListTaskReviewers")
+	taskServiceAddTaskLinkMethodDescriptor                        = taskServiceServiceDescriptor.Methods().ByName("AddTaskLink")
+	taskServiceRemoveTaskLinkMethodDescriptor                     = taskServiceServiceDescriptor.Methods().ByName("RemoveTaskLink")
+	taskServiceListTaskLinksMethodDescriptor                      = taskServiceServiceDescriptor.Methods().ByName("ListTaskLinks")
 	artifactServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
 	artifactServiceCreateFolderMethodDescriptor                   = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
 	artifactServiceUpdateFolderMethodDescriptor                   = artifactServiceServiceDescriptor.Methods().ByName("UpdateFolder")
@@ -2264,6 +2275,9 @@ type TaskServiceClient interface {
 	AddTaskReviewer(context.Context, *connect.Request[v1.AddTaskReviewerRequest]) (*connect.Response[v1.AddTaskReviewerResponse], error)
 	RemoveTaskReviewer(context.Context, *connect.Request[v1.RemoveTaskReviewerRequest]) (*connect.Response[v1.RemoveTaskReviewerResponse], error)
 	ListTaskReviewers(context.Context, *connect.Request[v1.ListTaskReviewersRequest]) (*connect.Response[v1.ListTaskReviewersResponse], error)
+	AddTaskLink(context.Context, *connect.Request[v1.AddTaskLinkRequest]) (*connect.Response[v1.AddTaskLinkResponse], error)
+	RemoveTaskLink(context.Context, *connect.Request[v1.RemoveTaskLinkRequest]) (*connect.Response[v1.RemoveTaskLinkResponse], error)
+	ListTaskLinks(context.Context, *connect.Request[v1.ListTaskLinksRequest]) (*connect.Response[v1.ListTaskLinksResponse], error)
 }
 
 // NewTaskServiceClient constructs a client for the tasker.health.v1.TaskService service. By
@@ -2378,6 +2392,24 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(taskServiceListTaskReviewersMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		addTaskLink: connect.NewClient[v1.AddTaskLinkRequest, v1.AddTaskLinkResponse](
+			httpClient,
+			baseURL+TaskServiceAddTaskLinkProcedure,
+			connect.WithSchema(taskServiceAddTaskLinkMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		removeTaskLink: connect.NewClient[v1.RemoveTaskLinkRequest, v1.RemoveTaskLinkResponse](
+			httpClient,
+			baseURL+TaskServiceRemoveTaskLinkProcedure,
+			connect.WithSchema(taskServiceRemoveTaskLinkMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listTaskLinks: connect.NewClient[v1.ListTaskLinksRequest, v1.ListTaskLinksResponse](
+			httpClient,
+			baseURL+TaskServiceListTaskLinksProcedure,
+			connect.WithSchema(taskServiceListTaskLinksMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -2400,6 +2432,9 @@ type taskServiceClient struct {
 	addTaskReviewer    *connect.Client[v1.AddTaskReviewerRequest, v1.AddTaskReviewerResponse]
 	removeTaskReviewer *connect.Client[v1.RemoveTaskReviewerRequest, v1.RemoveTaskReviewerResponse]
 	listTaskReviewers  *connect.Client[v1.ListTaskReviewersRequest, v1.ListTaskReviewersResponse]
+	addTaskLink        *connect.Client[v1.AddTaskLinkRequest, v1.AddTaskLinkResponse]
+	removeTaskLink     *connect.Client[v1.RemoveTaskLinkRequest, v1.RemoveTaskLinkResponse]
+	listTaskLinks      *connect.Client[v1.ListTaskLinksRequest, v1.ListTaskLinksResponse]
 }
 
 // CreateTask calls tasker.health.v1.TaskService.CreateTask.
@@ -2487,6 +2522,21 @@ func (c *taskServiceClient) ListTaskReviewers(ctx context.Context, req *connect.
 	return c.listTaskReviewers.CallUnary(ctx, req)
 }
 
+// AddTaskLink calls tasker.health.v1.TaskService.AddTaskLink.
+func (c *taskServiceClient) AddTaskLink(ctx context.Context, req *connect.Request[v1.AddTaskLinkRequest]) (*connect.Response[v1.AddTaskLinkResponse], error) {
+	return c.addTaskLink.CallUnary(ctx, req)
+}
+
+// RemoveTaskLink calls tasker.health.v1.TaskService.RemoveTaskLink.
+func (c *taskServiceClient) RemoveTaskLink(ctx context.Context, req *connect.Request[v1.RemoveTaskLinkRequest]) (*connect.Response[v1.RemoveTaskLinkResponse], error) {
+	return c.removeTaskLink.CallUnary(ctx, req)
+}
+
+// ListTaskLinks calls tasker.health.v1.TaskService.ListTaskLinks.
+func (c *taskServiceClient) ListTaskLinks(ctx context.Context, req *connect.Request[v1.ListTaskLinksRequest]) (*connect.Response[v1.ListTaskLinksResponse], error) {
+	return c.listTaskLinks.CallUnary(ctx, req)
+}
+
 // TaskServiceHandler is an implementation of the tasker.health.v1.TaskService service.
 type TaskServiceHandler interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
@@ -2506,6 +2556,9 @@ type TaskServiceHandler interface {
 	AddTaskReviewer(context.Context, *connect.Request[v1.AddTaskReviewerRequest]) (*connect.Response[v1.AddTaskReviewerResponse], error)
 	RemoveTaskReviewer(context.Context, *connect.Request[v1.RemoveTaskReviewerRequest]) (*connect.Response[v1.RemoveTaskReviewerResponse], error)
 	ListTaskReviewers(context.Context, *connect.Request[v1.ListTaskReviewersRequest]) (*connect.Response[v1.ListTaskReviewersResponse], error)
+	AddTaskLink(context.Context, *connect.Request[v1.AddTaskLinkRequest]) (*connect.Response[v1.AddTaskLinkResponse], error)
+	RemoveTaskLink(context.Context, *connect.Request[v1.RemoveTaskLinkRequest]) (*connect.Response[v1.RemoveTaskLinkResponse], error)
+	ListTaskLinks(context.Context, *connect.Request[v1.ListTaskLinksRequest]) (*connect.Response[v1.ListTaskLinksResponse], error)
 }
 
 // NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -2616,6 +2669,24 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(taskServiceListTaskReviewersMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskServiceAddTaskLinkHandler := connect.NewUnaryHandler(
+		TaskServiceAddTaskLinkProcedure,
+		svc.AddTaskLink,
+		connect.WithSchema(taskServiceAddTaskLinkMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceRemoveTaskLinkHandler := connect.NewUnaryHandler(
+		TaskServiceRemoveTaskLinkProcedure,
+		svc.RemoveTaskLink,
+		connect.WithSchema(taskServiceRemoveTaskLinkMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceListTaskLinksHandler := connect.NewUnaryHandler(
+		TaskServiceListTaskLinksProcedure,
+		svc.ListTaskLinks,
+		connect.WithSchema(taskServiceListTaskLinksMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskServiceCreateTaskProcedure:
@@ -2652,6 +2723,12 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceRemoveTaskReviewerHandler.ServeHTTP(w, r)
 		case TaskServiceListTaskReviewersProcedure:
 			taskServiceListTaskReviewersHandler.ServeHTTP(w, r)
+		case TaskServiceAddTaskLinkProcedure:
+			taskServiceAddTaskLinkHandler.ServeHTTP(w, r)
+		case TaskServiceRemoveTaskLinkProcedure:
+			taskServiceRemoveTaskLinkHandler.ServeHTTP(w, r)
+		case TaskServiceListTaskLinksProcedure:
+			taskServiceListTaskLinksHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -2727,6 +2804,18 @@ func (UnimplementedTaskServiceHandler) RemoveTaskReviewer(context.Context, *conn
 
 func (UnimplementedTaskServiceHandler) ListTaskReviewers(context.Context, *connect.Request[v1.ListTaskReviewersRequest]) (*connect.Response[v1.ListTaskReviewersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListTaskReviewers is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) AddTaskLink(context.Context, *connect.Request[v1.AddTaskLinkRequest]) (*connect.Response[v1.AddTaskLinkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.AddTaskLink is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) RemoveTaskLink(context.Context, *connect.Request[v1.RemoveTaskLinkRequest]) (*connect.Response[v1.RemoveTaskLinkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.RemoveTaskLink is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ListTaskLinks(context.Context, *connect.Request[v1.ListTaskLinksRequest]) (*connect.Response[v1.ListTaskLinksResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListTaskLinks is not implemented"))
 }
 
 // ArtifactServiceClient is a client for the tasker.health.v1.ArtifactService service.
