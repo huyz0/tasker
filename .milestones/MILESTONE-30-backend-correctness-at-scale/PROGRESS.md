@@ -125,3 +125,25 @@
   written to absorb "parent already purged", which is now an explicit `null`
   from the lookup — log what they catch, so a real failure is visible.
 - **Next**: M30-T08
+
+## M30-T08 — One broker subscription, bounded client queues
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/events/events.handler.ts`,
+  `events.handler.test.ts`
+- **Verified**: `bun test src/modules/events` — 47 pass; the shared-subscription
+  and bounded-queue tests failed first (a second `nc.subscribe`, and all ten
+  events held for a client that never read).
+- **Notes**: A hub owns the single `domain.>` subscription — opened with the
+  first client, closed with the last — decodes each message once and offers
+  the envelope to every listener. A listener pre-filters synchronously with
+  `shouldDeliver` against its scope, so another org's traffic never occupies
+  its queue; membership events always pass, because the generator re-resolves
+  scope from them before its own (authoritative) `shouldDeliver`. The queue
+  holds 1,000 and drops the oldest; a client that fell behind is logged with
+  its drop count when it disconnects. Ordering per client is preserved: the
+  only `await` is in the client's own generator. Per-org NATS subjects would
+  also remove the decode-and-offer work per process, but they change every
+  publisher and the audit projector — out of scope, recorded in §4.
+- **Next**: M30-T09

@@ -63,19 +63,34 @@ const CLOSED = Symbol("closed");
 const IDLE = Symbol("idle");
 
 /**
- * A one-reader queue between the NATS pump and the generator.
+ * A one-reader queue between the shared NATS pump and one client's generator.
  *
  * The generator cannot simply `for await` the subscription, because it also has
  * to wake on a timer to emit a heartbeat. This is the smallest thing that lets
  * it wait for "next message, or nothing for a while, whichever comes first".
+ *
+ * Bounded (M30-T08): the feed "would rather drop than block", and until this
+ * queue had a limit it did neither - a client that stopped reading grew the
+ * process's memory without bound. When full it drops the *oldest* entry: a
+ * client that fell behind wants current state, and it reconciles the gap by
+ * refetching, which is what every event already triggers.
  */
-function createOutbox<T>() {
+function createOutbox<T>(maxQueue: number) {
   const queue: T[] = [];
   let wake: (() => void) | null = null;
   let closed = false;
+  let dropped = 0;
 
   return {
+    get dropped() {
+      return dropped;
+    },
     push(item: T) {
+      if (closed) return;
+      if (queue.length >= maxQueue) {
+        queue.shift();
+        dropped++;
+      }
       queue.push(item);
       wake?.();
     },
@@ -106,11 +121,83 @@ function createOutbox<T>() {
   };
 }
 
-export function createEventsHandler(db: any, nc: any, opts: { heartbeatMs?: number } = {}) {
-  const heartbeatMs = opts.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
+type Envelope = NonNullable<ReturnType<typeof toEnvelope>>;
+interface QueuedEvent {
+  event: Envelope;
+  occurredAt: string;
+}
+interface Listener {
+  /** Synchronous pre-filter against the client's current scope. */
+  offer(item: QueuedEvent): void;
+  close(): void;
+}
+
+const DEFAULT_MAX_QUEUE = 1_000;
+
+/**
+ * One broker subscription for every client of this process (M30-T08).
+ *
+ * Each client used to open its own `domain.>` subscription and parse every
+ * event of every org itself, so N connected agents meant every event decoded
+ * N times. Now the hub decodes once and offers the envelope to each listener,
+ * which keeps only what its scope can deliver. Subscribed with the first
+ * client and unsubscribed with the last, so an idle process holds nothing.
+ */
+function createHub(nc: any) {
+  const listeners = new Set<Listener>();
+  let sub: any = null;
+
+  function start() {
+    sub = nc.subscribe(FEED_SUBJECT);
+    const current = sub;
+    (async () => {
+      for await (const msg of current) {
+        let payload: unknown;
+        try {
+          payload = JSON.parse(new TextDecoder().decode(msg.data));
+        } catch {
+          // One malformed message must not take the connection down with it.
+          continue;
+        }
+        const event = toEnvelope(msg.subject, payload);
+        if (!event) continue;
+        const item = { event, occurredAt: occurredAtOf(payload) };
+        for (const l of listeners) l.offer(item);
+      }
+    })()
+      .catch((err) => logger.error({ err }, "events.pump_failed"))
+      .finally(() => {
+        // The subscription ended under us (broker gone, or the last client
+        // left): every client's stream ends, and their backoff reconnects.
+        if (sub === current) sub = null;
+        for (const l of listeners) l.close();
+        listeners.clear();
+      });
+  }
 
   return {
-    async *subscribeEvents(req: any, ctx: any) {
+    add(listener: Listener) {
+      listeners.add(listener);
+      if (!sub) start();
+    },
+    remove(listener: Listener) {
+      listeners.delete(listener);
+      if (listeners.size === 0 && sub) {
+        const s = sub;
+        sub = null;
+        s.unsubscribe();
+      }
+    },
+  };
+}
+
+export function createEventsHandler(db: any, nc: any, opts: { heartbeatMs?: number; maxQueue?: number } = {}) {
+  const heartbeatMs = opts.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
+  const maxQueue = opts.maxQueue ?? DEFAULT_MAX_QUEUE;
+  let hub: ReturnType<typeof createHub> | null = null;
+
+  return {
+    async *subscribeEvents(req: any, ctx: any): AsyncGenerator<any> {
       const principal = requirePrincipal(ctx?.values);
 
       // M26-T02 (ADR-0023): an agent must hold events:read to open the feed
@@ -138,57 +225,47 @@ export function createEventsHandler(db: any, nc: any, opts: { heartbeatMs?: numb
         ...(principal.kind === "agent" ? { agentScopes: new Set(principal.scopes) } : {}),
       };
 
-      const sub = nc.subscribe(FEED_SUBJECT);
-      const outbox = createOutbox<any>();
+      hub ??= createHub(nc);
+      const outbox = createOutbox<QueuedEvent>(maxQueue);
+      const listener: Listener = {
+        offer(item) {
+          // Cheap and synchronous, so another org's traffic never occupies
+          // this client's queue. A membership event always passes: the
+          // generator re-resolves scope from it before deciding.
+          if (invalidatesScope(item.event) || shouldDeliver(item.event, scope)) outbox.push(item);
+        },
+        close: () => outbox.close(),
+      };
+      const activeHub = hub;
+      activeHub.add(listener);
 
-      // The stream ends when the client goes away — a closed tab must not leave
-      // a NATS subscription behind for the life of the process.
-      const onAbort = () => sub.unsubscribe();
+      // The stream ends when the client goes away — a closed tab must not keep
+      // a listener (or, if it was the last, the broker subscription) alive.
+      const onAbort = () => outbox.close();
       ctx?.signal?.addEventListener?.("abort", onAbort, { once: true });
-
-      const pump = (async () => {
-        for await (const msg of sub) {
-          let payload: unknown;
-          try {
-            payload = JSON.parse(new TextDecoder().decode(msg.data));
-          } catch {
-            // One malformed message must not take the connection down with it.
-            continue;
-          }
-
-          const event = toEnvelope(msg.subject, payload);
-          if (!event) continue;
-
-          // Re-resolve before deciding, not after: a removal event is exactly
-          // the message that must not be delivered under the stale answer.
-          if (invalidatesScope(event)) {
-            scope = { ...scope, authorizedOrgIds: await resolveAuthorizedOrgIds(db, principal) };
-          }
-
-          if (!shouldDeliver(event, scope)) continue;
-
-          outbox.push({
-            subject: event.subject,
-            orgId: event.orgId!,
-            projectId: event.projectId ?? undefined,
-            occurredAt: occurredAtOf(payload),
-          });
-        }
-      })()
-        .catch((err) => logger.error({ err }, "events.pump_failed"))
-        .finally(() => outbox.close());
 
       try {
         yield control(READY_SUBJECT);
         while (true) {
           const next = await outbox.take(heartbeatMs);
           if (next === CLOSED) return;
-          yield next === IDLE ? control(HEARTBEAT_SUBJECT) : next;
+          if (next === IDLE) {
+            yield control(HEARTBEAT_SUBJECT);
+            continue;
+          }
+          const { event, occurredAt } = next;
+          // Re-resolve before deciding, not after: a removal event is exactly
+          // the message that must not be delivered under the stale answer.
+          if (invalidatesScope(event)) {
+            scope = { ...scope, authorizedOrgIds: await resolveAuthorizedOrgIds(db, principal) };
+          }
+          if (!shouldDeliver(event, scope)) continue;
+          yield { subject: event.subject, orgId: event.orgId!, projectId: event.projectId ?? undefined, occurredAt };
         }
       } finally {
         ctx?.signal?.removeEventListener?.("abort", onAbort);
-        sub.unsubscribe();
-        await pump;
+        activeHub.remove(listener);
+        if (outbox.dropped > 0) logger.warn({ dropped: outbox.dropped }, "events.client_fell_behind");
         logger.debug({ principal: principal.kind }, "events.subscription_closed");
       }
     },

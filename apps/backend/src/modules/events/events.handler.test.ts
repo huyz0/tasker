@@ -387,3 +387,54 @@ describe('subscribeEvents agent scope gate (M26-T02)', () => {
     expect(msg.subject).toBe('domain.artifact.created');
   });
 });
+
+describe('subscribeEvents at fleet scale (M30-T08)', () => {
+  it('shares one broker subscription across clients, and drops it with the last one', async () => {
+    const sub = fakeSubscription();
+    let subscribes = 0;
+    const nc = { isClosed: () => false, subscribe: () => { subscribes++; return sub; } };
+    const handler = createEventsHandler(fakeDb(['org-1']), nc);
+
+    const a = handler.subscribeEvents({}, ctxFor({ kind: 'user', userId: 'usr-a' }).ctx);
+    const b = handler.subscribeEvents({}, ctxFor({ kind: 'user', userId: 'usr-b' }).ctx);
+    expect((await a.next()).value.subject).toBe('stream.ready');
+    expect((await b.next()).value.subject).toBe('stream.ready');
+
+    sub.push('domain.task.created', { orgId: 'org-1', projectId: 'p1' });
+    expect((await a.next()).value.projectId).toBe('p1');
+    expect((await b.next()).value.projectId).toBe('p1');
+    expect(subscribes).toBe(1);
+
+    await a.return(undefined as any);
+    expect(sub.unsubscribed).toBe(false);
+    await b.return(undefined as any);
+    expect(sub.unsubscribed).toBe(true);
+  });
+
+  it("bounds a slow client's queue, dropping the oldest events", async () => {
+    const sub = fakeSubscription();
+    const handler = createEventsHandler(fakeDb(['org-1']), fakeNats(sub), { maxQueue: 3 });
+    const iter = handler.subscribeEvents({}, ctxFor({ kind: 'user', userId: 'usr-1' }).ctx);
+    expect((await iter.next()).value.subject).toBe('stream.ready');
+
+    for (let i = 1; i <= 10; i++) sub.push('domain.task.created', { orgId: 'org-1', projectId: `p${i}` });
+    // Let the pump run all ten through before the client reads anything.
+    await new Promise((r) => setTimeout(r, 10));
+    sub.end();
+    const got = (await drain(iter)).map((m) => m.projectId);
+    expect(got).toEqual(['p8', 'p9', 'p10']);
+  });
+
+  it("does not queue another org's traffic for a client at all", async () => {
+    const sub = fakeSubscription();
+    const handler = createEventsHandler(fakeDb(['org-1']), fakeNats(sub), { maxQueue: 2 });
+    const iter = handler.subscribeEvents({}, ctxFor({ kind: 'user', userId: 'usr-1' }).ctx);
+    expect((await iter.next()).value.subject).toBe('stream.ready');
+
+    sub.push('domain.task.created', { orgId: 'org-1', projectId: 'mine' });
+    for (let i = 0; i < 50; i++) sub.push('domain.task.created', { orgId: 'org-2', projectId: `theirs${i}` });
+    await new Promise((r) => setTimeout(r, 10));
+    sub.end();
+    expect((await drain(iter)).map((m) => m.projectId)).toEqual(['mine']);
+  });
+});

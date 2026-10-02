@@ -67,7 +67,7 @@ for the list query every board load and agent poll runs.
   M07-T09 on SQLite; on MySQL 8 the composite was measured and the optimiser
   kept its filesort — see M30-T05's journal entry. Not re-added.)
 - [x] An agent token used N times within a minute is written at most once.
-- [ ] One slow event-feed client holds a bounded queue; the oldest events are
+- [x] One slow event-feed client holds a bounded queue; the oldest events are
   dropped and counted, never unbounded growth.
 - [ ] `moon run backend:typecheck backend:test` green, and CI green on `main`.
 
@@ -109,7 +109,7 @@ for the list query every board load and agent poll runs.
 - [x] **M30-T07** — The retention sweep reads ids only, never artifact content.
   - **Files**: `lib/retentionSweep.ts`
   - **Verify**: `retentionSweep.test.ts`.
-- [ ] **M30-T08** — Event-feed clients share one NATS subscription and hold a bounded, drop-oldest queue.
+- [x] **M30-T08** — Event-feed clients share one NATS subscription and hold a bounded, drop-oldest queue.
   - **Files**: `modules/events/events.handler.ts`
   - **Verify**: events handler tests.
 - [ ] **M30-T09** — Idempotency keys bind to their request; `purgeTask` is atomic; dashboard open-task counts are one terminal-aware query.
