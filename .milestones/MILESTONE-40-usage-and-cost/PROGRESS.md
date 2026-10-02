@@ -94,3 +94,15 @@
   the Agent spend card on Reports. `:docs-lint`, `:doc-drift` green.
 - **Notes**: Exit criteria met; CI on `main` verified after the push.
 - **Next**: M41-T01
+
+## M40 follow-up — e2e panel count
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `tests/e2e/reports.spec.ts` (eight panels, Agent spend
+  included), `tests/e2e/dashboard.spec.ts` (panel count retried, not read
+  once).
+- **Verified**: full Playwright suite on a fresh seed: 50 passed.
+- **Notes**: The Reports e2e counted panels and still expected seven; the
+  Agent spend card is the eighth. The dashboard count raced a re-render in a
+  full run (read 0 with the heading visible) - now a retrying assertion.

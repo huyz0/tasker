@@ -40,8 +40,10 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('heading', { name: 'Waiting on you', level: 2 })).toBeVisible();
 
     const panels = page.locator('section').filter({ has: page.getByRole('heading', { level: 2 }) });
-    const count = await panels.count();
-    expect(count).toBe(4);
+    // Retried, not read once: the heading can be visible while the shell is
+    // still re-rendering around it (a single count read 0 in a full run).
+    await expect(panels).toHaveCount(4);
+    const count = 4;
 
     for (let i = 0; i < count; i++) {
       // Heading + subtitle is two lines; anything real adds a third. Polled,

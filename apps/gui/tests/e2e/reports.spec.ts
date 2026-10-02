@@ -77,7 +77,7 @@ test.describe('Reports', () => {
     expect(calls.some((u) => u.includes(TRENDS_RPC))).toBe(true);
   });
 
-  test('renders all seven panels, none of them blank', async ({ page }) => {
+  test('renders all eight panels, none of them blank', async ({ page }) => {
     await openReports(page);
 
     // The four exception cards…
@@ -87,6 +87,9 @@ test.describe('Reports', () => {
     // …the stalled card's two sections…
     await expect(page.getByRole('heading', { name: 'Claimed and silent', level: 3 })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Waiting unclaimed', level: 3 })).toBeVisible();
+
+    // …agent spend (M40), which says why it is empty when nothing was reported…
+    await expect(page.getByRole('heading', { name: 'Agent spend', level: 2 })).toBeVisible({ timeout: 15_000 });
 
     // …and the three trend cards, each with its named chart image.
     for (const panel of ['Autonomy and rework', 'Created vs completed', 'Flow']) {
@@ -100,8 +103,8 @@ test.describe('Reports', () => {
     // empty — never blank. Heading + subtitle is two lines; anything real
     // (rows, an empty-state sentence, a chart legend) adds a third.
     const panels = page.locator('section').filter({ has: page.getByRole('heading', { level: 2 }) });
-    await expect(panels).toHaveCount(7);
-    for (let i = 0; i < 7; i++) {
+    await expect(panels).toHaveCount(8);
+    for (let i = 0; i < 8; i++) {
       const body = await panels.nth(i).innerText();
       expect(body.split('\n').filter((l) => l.trim()).length).toBeGreaterThan(2);
     }
