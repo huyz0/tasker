@@ -60,6 +60,17 @@ a raw hex, a raw palette utility, or a token pair below WCAG AA 4.5:1 in either
 theme. A genuine exception — a third-party brand colour, or user-chosen entity
 data — carries `design-lint-disable-next-line tokens — <reason>`.
 
+### Brand and surfaces
+
+- The brand is a calm violet (`262 56% 50%` light, `262 80% 78%` dark), not
+  the fully saturated `271 100% 60%` it replaced: links and active rows should
+  read as ink, not compete with content.
+- In dark mode `card` and `popover` sit one and two steps above `background`.
+  A panel is a lifted surface, not a border drawn on the page colour.
+- The `@theme` block is `@theme static`: every token is emitted even when no
+  utility class names it, because some (the chart series) are read at runtime
+  via `var(--color-…)`. `design-lint` fails a runtime reference otherwise.
+
 ## 2. Typography
 
 - **Font Family**: System UI / Sans-Serif (`sans`). Do not import custom web fonts unless explicitly defined by brand guidelines.
@@ -69,6 +80,15 @@ data — carries `design-lint-disable-next-line tokens — <reason>`.
   - `h3`: `text-xl font-medium tracking-tight`
 - **Body**: `text-base` for standard read, `text-sm` for dense data tables and secondary text.
 - **Data/Code**: Use `font-mono` for metrics, telemetry `id`s, or command line references.
+
+- **Micro text**: `text-2xs` (10px) for counters and dense badges — a token,
+  not `text-[10px]`.
+- **Headings balance**: `h1`–`h3` get `text-wrap: balance` from the base layer;
+  do not add it per call site.
+- **Page title**: every routed screen opens with `<PageHeader title
+  description? actions? />` (`components/ui/PageHeader.tsx`). Do not hand-write
+  the page `h1`, and do not wrap the page in its own `p-4` — `main` owns the
+  gutter.
 
 ## 3. Spacing & Sizing Scale
 

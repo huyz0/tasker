@@ -8,9 +8,10 @@ The default authenticated or primary application interface.
 
 - **Location**: `apps/gui/src/App.tsx` (Top-level router wrapping).
 - **Structure**:
-  - **Sidebar (Left)**: Fixed width (`w-64`), containing primary navigation links (Dashboard, Modules, Settings). Collapsible on mobile via a Hamburger menu.
+  - **Sidebar (Left)**: Fixed width (`w-sidebar`), sticky at viewport height on desktop (`md:sticky md:top-0 md:h-dvh`) so navigation and the account footer never scroll away with a long page. Collapsible on mobile via a Hamburger menu. The theme toggle lives in its footer at every width.
   - **Header (Top - Mobile Only)**: Fixed `h-14` header replacing the sidebar on mobile (`< md`), containing logo and toggle.
-  - **Main Content Area**: The `<main>` tag. Fluid width taking up the remainder of the screen.
+  - **Main Content Area**: The `<main id="main">` tag, target of the skip link. Fluid width taking up the remainder of the screen.
+  - **Master–detail views** (an explorer list beside a detail pane) stack below `md` (`flex-col md:flex-row`) and hide the empty detail placeholder until something is selected.
 
 ### Layout Padding and Containers
 
@@ -29,14 +30,15 @@ When creating a new route/view (e.g., `apps/gui/src/pages/NewFeature.tsx`):
 export function ExampleRoute() {
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Feature Title</h1>
-        <p className="text-muted-foreground mt-1">Brief description of the feature.</p>
-      </div>
+      <PageHeader
+        title="Feature title"
+        description="What this screen is for, in one plain sentence."
+        actions={<Button>Create thing</Button>}
+      />
 
       {/* Feature Content */}
       <div className="p-6 border rounded-lg bg-card text-card-foreground shadow-sm">
-         Content goes here...
+         Content goes here…
       </div>
     </div>
   )
