@@ -129,6 +129,15 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     // task in the organization - or take itself off one it was given. Revisit
     // with M10, which owns delegation.
   },
+  // M42 (ADR-0035): an agent may read workflow templates and start one -
+  // starting one only creates tasks, which tasks:write already allows.
+  // Defining or deleting a template is a person's (createWorkflowTemplate,
+  // updateWorkflowTemplate, deleteWorkflowTemplate are human-only).
+  workflows: {
+    getWorkflowTemplate: 'tasks:read',
+    listWorkflowTemplates: 'tasks:read',
+    instantiateWorkflow: 'tasks:write',
+  },
   taskNotes: {
     listTaskNotes: 'tasks:read',
     createTaskNote: 'comments:write',

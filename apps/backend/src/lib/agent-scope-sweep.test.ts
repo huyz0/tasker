@@ -15,6 +15,7 @@ import { createCommentsHandler } from '../modules/comments/comments.handler';
 import { createLabelsHandler } from '../modules/labels/labels.handler';
 import { createRepositoriesHandler } from '../modules/repositories/repositories.handler';
 import { createWebhooksHandler } from '../modules/webhooks/webhooks.handler';
+import { createWorkflowsHandler } from '../modules/workflows/workflows.handler';
 import { createMemoryHandler } from '../modules/memory/memory.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
@@ -103,6 +104,14 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
   },
   audit: {
     listAuditEvents: { orgId: ids.org },
+  },
+  workflows: {
+    createWorkflowTemplate: { orgId: ids.org, name: 'W', steps: [{ key: 'a', title: 'A' }] },
+    updateWorkflowTemplate: { id: 'wft-scope-sweep', name: 'W2', steps: [{ key: 'a', title: 'A' }] },
+    getWorkflowTemplate: { id: 'wft-scope-sweep' },
+    listWorkflowTemplates: { orgId: ids.org },
+    deleteWorkflowTemplate: { id: 'wft-scope-sweep' },
+    instantiateWorkflow: { templateId: 'wft-scope-sweep', projectId: ids.project },
   },
   webhooks: {
     createWebhook: { orgId: ids.org, url: 'https://hooks.example.com/x', events: ['*'] },
@@ -335,6 +344,7 @@ beforeAll(async () => {
   await db.insert(schema.taskStatuses).values({ id: ids.taskStatus, taskTypeId: ids.taskType, name: 'todo' });
   await db.insert(schema.tasks).values({ id: ids.task, projectId: ids.project, title: 'T', status: 'todo', createdAt: now });
   await db.insert(schema.inputRequests).values({ id: 'ir-scope-sweep', taskId: ids.task, orgId: ids.org, projectId: ids.project, question: 'Which?', options: '[]', createdAt: now });
+  await db.insert(schema.workflowTemplates).values({ id: 'wft-scope-sweep', orgId: ids.org, name: 'W', steps: JSON.stringify([{ key: 'a', title: 'A', description: '', priority: 0, dependsOn: [] }]), createdAt: now, updatedAt: now });
   await db.insert(schema.transitionApprovals).values({ id: 'apr-scope-sweep', taskId: ids.task, orgId: ids.org, projectId: ids.project, fromStatus: 'todo', toStatus: 'done', status: 'pending', requestedByAgentId: ids.agent, createdAt: now });
   await db.insert(schema.folders).values({ id: ids.folder, projectId: ids.project, name: 'F', createdAt: now });
   await db.insert(schema.artifacts).values({ id: ids.artifact, folderId: ids.folder, name: 'A', createdAt: now });
@@ -360,6 +370,7 @@ beforeAll(async () => {
     // M37 (ADR-0030). Human-only: a token that could register a webhook could
     // copy every event in the organization elsewhere.
     webhooks: createWebhooksHandler(db, null),
+    workflows: createWorkflowsHandler(db, null),
     orgs: createOrgsHandler(db, null),
     auth: createAuthHandler(db),
     projects: createProjectsHandler(db, null),

@@ -15,6 +15,7 @@ import { createTeamsHandler } from '../modules/teams/teams.handler';
 import { createRolesHandler } from '../modules/roles/roles.handler';
 import { createRepositoriesHandler } from '../modules/repositories/repositories.handler';
 import { createWebhooksHandler } from '../modules/webhooks/webhooks.handler';
+import { createWorkflowsHandler } from '../modules/workflows/workflows.handler';
 import { createHealthHandler } from '../modules/health/health.handler';
 import { createAuthHandler } from '../modules/auth/auth.handler';
 import createDashboardHandler from '../modules/dashboard/dashboard.handler';
@@ -50,6 +51,7 @@ const READS: Record<string, string[]> = {
   // Same read-only reasoning as dashboard. getReportTrends is M24-T06's
   // still-unimplemented stub - a genuine read once it exists, and today a
   // viewer calling it gets Unimplemented, not data.
+  workflows: ['getWorkflowTemplate', 'listWorkflowTemplates'],
   reports: ['getReportExceptions', 'getReportTrends', 'getUsageReport'],
   search: ['universalSearch'],
   taskNotes: ['listTaskNotes', 'listHandoffNotes'],
@@ -103,6 +105,7 @@ const ids = {
   webhook: 'wh-viewer-sweep',
   inputRequest: 'ir-viewer-sweep',
   approval: 'apr-viewer-sweep',
+  workflow: 'wft-viewer-sweep',
   invitation: 'inv-viewer-sweep',
   apiToken: 'tok-viewer-sweep',
   team: 'team-viewer-sweep',
@@ -239,6 +242,12 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     revokeGrant: { grantId: ids.grant },
     listGrants: { scopeType: 'organization', scopeId: ids.org },
   },
+  workflows: {
+    createWorkflowTemplate: { orgId: ids.org, name: 'W', steps: [{ key: 'a', title: 'A' }] },
+    updateWorkflowTemplate: { id: ids.workflow, name: 'W2', steps: [{ key: 'a', title: 'A' }] },
+    deleteWorkflowTemplate: { id: ids.workflow },
+    instantiateWorkflow: { templateId: ids.workflow, projectId: ids.project },
+  },
   webhooks: {
     createWebhook: { orgId: ids.org, url: 'https://hooks.example.com/x', events: ['*'] },
     listWebhooks: { orgId: ids.org },
@@ -320,6 +329,10 @@ beforeAll(async () => {
   await db.insert(schema.inputRequests).values({
     id: ids.inputRequest, taskId: ids.task, orgId: ids.org, projectId: ids.project, question: 'Which?', options: '[]', createdAt: now,
   });
+  await db.insert(schema.workflowTemplates).values({
+    id: ids.workflow, orgId: ids.org, name: 'W', createdAt: now, updatedAt: now,
+    steps: JSON.stringify([{ key: 'a', title: 'A', description: '', priority: 0, dependsOn: [] }]),
+  });
   await db.insert(schema.transitionApprovals).values({
     id: ids.approval, taskId: ids.task, orgId: ids.org, projectId: ids.project, fromStatus: 'todo', toStatus: 'done',
     status: 'pending', requestedByAgentId: ids.agent, createdAt: now,
@@ -358,6 +371,7 @@ beforeAll(async () => {
     repositories: createRepositoriesHandler(db, nc),
     // M37: admin-only throughout - a viewer reads no webhook, not even the list.
     webhooks: createWebhooksHandler(db, nc),
+    workflows: createWorkflowsHandler(db, nc),
     health: createHealthHandler(db, nc),
     auth: createAuthHandler(db),
     // These two register onto a ConnectRouter rather than returning their

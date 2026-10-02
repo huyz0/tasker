@@ -1,6 +1,6 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService, NotificationService, EventService, WebhookService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService, NotificationService, EventService, WebhookService, WorkflowService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
@@ -28,6 +28,7 @@ import { createAuditHandler } from "./modules/audit/audit.handler";
 import { createNotificationHandler } from "./modules/notifications/notifications.handler";
 import { createEventsHandler } from "./modules/events/events.handler";
 import { createWebhooksHandler } from "./modules/webhooks/webhooks.handler";
+import { createWorkflowsHandler } from "./modules/workflows/workflows.handler";
 import { createWebhookSink } from "./modules/webhooks/outbox";
 import { runWebhookSweep, httpSender } from "./modules/webhooks/delivery";
 import { allowPrivateTargets } from "./modules/webhooks/urlSafety";
@@ -221,6 +222,7 @@ const handler = connectNodeAdapter({
     router.service(EventService as any, createEventsHandler(db, nc));
     router.service(RepositoryService as any, createRepositoriesHandler(db, nc));
     router.service(WebhookService as any, createWebhooksHandler(db, nc, { onChange: webhookSink.invalidate }));
+    router.service(WorkflowService as any, createWorkflowsHandler(db, nc));
     createSearchHandler(router, db);
     createDashboardHandler(router, db);
     createReportsHandler(router, db);
