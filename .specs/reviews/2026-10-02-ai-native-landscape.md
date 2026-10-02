@@ -37,7 +37,8 @@ against Tasker after M34. It is the evidence behind M35–M38.
 7. Approval gates on agent transitions → **M39**; cost/token accounting →
    **M40**; compaction of old tasks → **M41** (as summaries and digests - Tasker
    has no model to summarize with, and deleting history is not on offer).
-   First left unscheduled, then planned at the user's request.
+   First left unscheduled, then planned at the user's request; all three
+   delivered (ADR-0032, ADR-0033, ADR-0034).
 
 Also: `ListTasks` has no label filter, so label-based routing is impossible
 — folded into M35.

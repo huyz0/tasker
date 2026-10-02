@@ -19,6 +19,10 @@ import (
 func printSummary(cmd *cobra.Command, s *healthv1.TaskSummary) {
 	cmd.Printf("Summary (by %s, %s):\n", s.AuthorName, s.UpdatedAt)
 	for _, line := range strings.Split(s.Text, "\n") {
+		if line == "" {
+			cmd.Println()
+			continue
+		}
 		cmd.Printf("  %s\n", line)
 	}
 }

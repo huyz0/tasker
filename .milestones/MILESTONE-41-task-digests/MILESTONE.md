@@ -1,13 +1,13 @@
 ---
 id: M41
 title: Task Digests
-status: in-progress
+status: done
 goal: An agent that needs an old or long task's context gets it in one compact read - a summary written once by whoever closed it, plus the facts Tasker already knows - instead of replaying the whole history.
 depends_on: [M38, M40]
 surfaces: [contract, backend, cli, gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M41 — Task Digests
@@ -31,13 +31,13 @@ origin; the origin's full history is the expensive way to read it.
 
 ## 3. Exit Criteria
 
-- [ ] `SetTaskSummary` (≤ 4,000 chars, `tasks:write`) and the summary on
+- [x] `SetTaskSummary` (≤ 4,000 chars, `tasks:write`) and the summary on
   GetTask.
-- [ ] `GetTaskDigest` is bounded (latest handoff, ≤ 20 answered questions,
+- [x] `GetTaskDigest` is bounded (latest handoff, ≤ 20 answered questions,
   ≤ 50 relations per kind) and costs a fixed number of queries.
-- [ ] `ListCompactionCandidates` returns only terminal, unsummarized tasks
+- [x] `ListCompactionCandidates` returns only terminal, unsummarized tasks
   finished before the cutoff.
-- [ ] CLI, MCP tools, GUI summary panel; CI green on `main`.
+- [x] CLI, MCP tools, GUI summary panel; CI green on `main`.
 
 ## 4. Scope
 
@@ -50,7 +50,7 @@ summaries server-side (Tasker has no model; agents write them).
 - [x] **M41-T02** — Summary, digest and candidates RPCs.
 - [x] **M41-T03** — CLI and MCP.
 - [x] **M41-T04** — GUI.
-- [ ] **M41-T05** — Docs and close.
+- [x] **M41-T05** — Docs and close.
 
 ## 6. Verification
 

@@ -1,8 +1,8 @@
 ---
 active_milestone: M41
-active_task: M41-T05
+active_task: null
 last_updated: 2026-10-02
-last_commit: e5d86fd
+last_commit: 6b49ef2
 blocked: false
 blocker: null
 ---
@@ -57,6 +57,13 @@ moved (ADR-0032). CLI, MCP, GUI editor flag, task dialog and queue.
 agents report tokens and cost (integer micro-dollars, idempotent by key)
 against a task; people see task totals and an Agent spend report by agent,
 project and day (ADR-0033). CLI, MCP `report_usage`, GUI.
+
+**M41 (Task Digests) complete: 5/5 tasks, 4/4 exit criteria** — agents
+write a durable summary when they finish a task; `GetTaskDigest` gives a
+bounded, fixed-cost read of a task's context assembled at read time; a
+compaction work list finds finished, unsummarized tasks; nothing is deleted
+(ADR-0034). CLI, MCP, GUI. **M39–M41 are all delivered** — every item the
+landscape review raised is now shipped.
 
 **M39–M41 planned** from the review's unscheduled items, at the user's request:
 approval gates on agent transitions (M39), agent usage and cost (M40), and task
@@ -1806,9 +1813,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M38 | Agent Plan and Input Requests   | done   | M35        | 6     | 6    |
 | M39 | Approval Gates on Agent Transitions | done | M38 | 5 | 5 |
 | M40 | Agent Usage and Cost            | done   | M35        | 5     | 5    |
-| M41 | Task Digests                    | in-progress | M38, M40 | 5   | 4    |
+| M41 | Task Digests                    | done   | M38, M40   | 5     | 5    |
 
-**Total: 313 tasks across 35 milestones — 311 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 313 tasks across 35 milestones — 312 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

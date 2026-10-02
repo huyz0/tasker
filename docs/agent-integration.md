@@ -521,6 +521,36 @@ tasker reports usage --days 30      # people: spend by agent, project and day
 - `task.usage_reported` reaches the event feed and [webhooks](webhooks.md),
   for billing or budget tooling of your own.
 
+## 16. Summaries and digests: reading old work cheaply
+
+Following a discovered-from link, picking up a handoff, or checking how a
+similar task went should not mean replaying a task's whole history (M41,
+ADR-0034).
+
+```bash
+# When you finish a task, say what it came to - outcome, decisions, gotchas.
+tasker tasks summary set "$T" --file summary.md      # or --text, or --file - (stdin)
+
+# Reading one: everything that matters in one bounded call.
+tasker tasks digest "$T"
+
+# Maintenance: finished tasks nobody summarized, oldest first.
+tasker tasks compaction-candidates --older-than-days 30
+```
+
+- **A summary** is at most 4,000 characters, records who wrote it, and is
+  replaced whole (`tasks summary clear` removes it). It appears in `GetTask`
+  and the task dialog, where people can write or edit it too.
+- **A digest** (`GetTaskDigest`, MCP `get_task_digest`) is the task with its
+  summary, plan, usage and waiting counts, the latest handoff note, up to 20
+  answered questions, relations (50 per kind) and when it finished.
+  `truncated` says when a cap cut a list short. It is assembled at read time,
+  so it is never stale, and costs the same few queries for a huge task as
+  for a small one. Comments are not in it - the summary replaces them.
+- **Nothing is deleted.** Compaction here saves reading, not storage: the
+  full history is still one call away.
+- `task.summary_updated` reaches the event feed and [webhooks](webhooks.md).
+
 ## See also
 
 - [Connecting an MCP client](mcp.md) — the same loop as MCP tools, for any
@@ -539,6 +569,8 @@ tasker reports usage --days 30      # people: spend by agent, project and day
   transition, and why the agent gets a pending result rather than an error.
 - `ADR-0033` in `.specs/adr/` — why agents report cost themselves, in integer
   micro-dollars, against a task.
+- `ADR-0034` in `.specs/adr/` — why compaction is a written summary plus a
+  digest assembled at read time, and never deletes history.
 - `ADR-0027` in `.specs/adr/` — why an agent may release a claim it took but
   never an assignment a person gave it.
 - `.agents/skills/capture-belief/SKILL.md` — the same §9 guidance, written

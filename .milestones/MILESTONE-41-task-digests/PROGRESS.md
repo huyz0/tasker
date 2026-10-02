@@ -81,3 +81,19 @@
   into the next task opened. The digest and the candidate list are agent
   reads; the dialog already shows every part of a digest.
 - **Next**: M41-T05
+
+## M41-T05 — Docs and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/agent-integration.md` §16; the landscape review notes
+  M39-M41 delivered; `cmd/tasks_digest.go` (blank summary lines print
+  without indentation); milestone closed, STATE.
+- **Verified**: live smoke on the seeded standalone backend - an agent lists
+  52 candidates from the seed, pipes a summary in on stdin, the task drops
+  off the list (51), and `tasks digest` shows the summary, finish time,
+  usage and relations; GUI (Playwright on the dev server): the summary in
+  the dialog, and a person writing one on another task. `:docs-lint`,
+  `:doc-drift` green.
+- **Notes**: Exit criteria met; CI on `main` verified after the push.
+- **Next**: none - M39-M41 delivered.
