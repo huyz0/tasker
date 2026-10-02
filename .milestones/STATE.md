@@ -1,8 +1,8 @@
 ---
 active_milestone: M34
-active_task: M34-T04
+active_task: null
 last_updated: 2026-10-02
-last_commit: 6d3856e
+last_commit: 1815c88
 blocked: false
 blocker: null
 ---
@@ -26,8 +26,11 @@ dead links and failed loads say so, pickers offer only legal moves, agents
 appear by name.
 **M33 (Agent Work Queue) complete: 7/7 tasks, 6/6 exit criteria** — claim-next,
 self-release with a handoff note (ADR-0027), my-tasks across the org, and
-`whoami` for agents; proven end to end with the real binary. M34 (Milestone and Doc Truth) in
-progress.
+`whoami` for agents; proven end to end with the real binary.
+**M34 (Milestone and Doc Truth) complete: 4/4 tasks, 6/6 exit criteria** — M10's
+criteria proven (owner rule through `can()`), frontmatter and ledger match
+the boxes, `doc-drift` now fails when they drift, and the testing standard
+no longer forbids MSW.
 A deep
 review (three parallel read-only reviews of backend, GUI and CLI; every
 finding re-verified in code) produced five milestones, delivered in order and
@@ -1748,9 +1751,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M31 | CLI Output Truth                | done   | —          | 6     | 6    |
 | M32 | Task Workspace Correctness      | done   | M30        | 8     | 8    |
 | M33 | Agent Work Queue                | done   | M30, M31   | 7     | 7    |
-| M34 | Milestone and Doc Truth         | in-progress | —     | 4     | 3    |
+| M34 | Milestone and Doc Truth         | done   | —          | 4     | 4    |
 
-**Total: 273 tasks across 28 milestones — 271 done, 1 dropped.** Every milestone is closed. Binary *signing* was scoped out of M09 and M12 as a
+**Total: 273 tasks across 28 milestones — 272 done, 1 dropped.** Every milestone is closed. Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

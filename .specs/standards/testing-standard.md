@@ -24,9 +24,13 @@
 ## 3. Focus Areas
 
 - **Unit (Vitest)**: Fast, single-purpose testing. Bulk of the coverage.
-- **Integration**: Boundary tests — handlers against a real SQLite database,
-  React against the generated ConnectRPC clients mocked directly. **MSW is not
-  installed**; do not reach for it.
+- **Integration**: Boundary tests — handlers against a real SQLite database;
+  React against the real generated ConnectRPC clients and transport, with only
+  the network intercepted by **MSW** (M12-T01). Register responses with
+  `mockRpc(Service, 'Method', json)` from `apps/gui/src/test/mockRpc.ts`; the
+  shared server runs with `onUnhandledRequest: 'error'`, so an RPC a test did
+  not expect fails it. Do not mock `createClient` or a service object — a stub
+  that never serializes cannot catch contract drift.
 - **E2E (Playwright)**: Critical 'Happy Paths' only. Do not rely heavily on E2E
   for percentage goals due to runtime costs.
 

@@ -59,3 +59,19 @@
   verification checklists never trip it. Each rule has a fixture reproducing
   the drift M34 found (M08, M10, M12, M21–M23).
 - **Next**: M34-T04
+
+## M34-T04 — Testing standard tells the truth about MSW; close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `.specs/standards/testing-standard.md` §3 (Integration),
+  `.milestones/STATE.md`
+- **Verified**: `apps/gui/package.json` carries `msw`; `src/setupTests.ts`
+  starts `src/test/mockRpc.ts`'s server with `onUnhandledRequest: 'error'`;
+  38 GUI files use `mockRpc`, none mocks `createClient`. `moon run :doc-drift
+  :docs-lint :spec-drift :skills-check :knip` green.
+- **Notes**: The standard said "MSW is not installed; do not reach for it" and
+  told readers to mock the generated clients directly — the exact practice
+  M12-T01 removed because a stub that never serializes cannot catch contract
+  drift. It now names the helper and why. M34 closed: 4/4 tasks, 6/6 criteria.
+- **Next**: none — M34 closed.

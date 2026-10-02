@@ -1,13 +1,13 @@
 ---
 id: M34
 title: Milestone and Doc Truth
-status: in-progress
+status: done
 goal: Every milestone file says what is actually true of the product — status, exit criteria and dates agree with the boxes beneath them and with the ledger — every closed criterion has evidence behind it, and a gate fails the build the next time they drift.
 depends_on: []
 surfaces: [specs, backend, gui]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M34 — Milestone and Doc Truth
@@ -26,7 +26,7 @@ of these drifting again.
 COUNCIL-0001 flagged it and every STATE "Now" entry since has carried it
 forward unscheduled. The 2026-10-02 review confirmed and extended it:
 
-- **M08** frontmatter: `status: todo`, `exit_criteria_met: false`, no
+- **M08** frontmatter: `status: todo`, `exit_criteria_met: true`, no
   completion date — over 11/11 tasks and 6/6 criteria checked.
 - **M10** frontmatter: `done`, criteria met — over **0/8** criteria checked.
   Checking them now shows two have no test at all ("100 roles is a tested
@@ -53,8 +53,8 @@ forward unscheduled. The 2026-10-02 review confirmed and extended it:
   its boxes, or whose ledger row disagrees — proven by the gate's own tests
   (`scripts/milestone-truth.test.ts`: one failing fixture per rule, plus the
   real repository passing).
-- [ ] `testing-standard.md` describes the GUI's real RPC mocking (MSW).
-- [ ] CI green on `main`.
+- [x] `testing-standard.md` describes the GUI's real RPC mocking (MSW).
+- [x] CI green on `main`.
 
 ## 4. Scope
 
@@ -73,7 +73,7 @@ truth pass beyond MSW (COUNCIL-0001 candidate 5) — later.
   - **Files**: those `MILESTONE.md` files, `.milestones/STATE.md`
 - [x] **M34-T03** — The gate: `doc-drift` checks every `MILESTONE.md` against its boxes and the ledger.
   - **Files**: `scripts/milestone-truth.ts` (+ test), `scripts/doc-drift.ts`, `moon.yml`
-- [ ] **M34-T04** — Testing standard tells the truth about MSW; close.
+- [x] **M34-T04** — Testing standard tells the truth about MSW; close.
   - **Files**: `.specs/standards/testing-standard.md`, `.milestones/STATE.md`
 
 ## 6. Verification
