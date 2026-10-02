@@ -39,3 +39,23 @@
   one `toWireTask`, which also replaces six copies of the `createdAt` ISO
   conversion. `ListMyTasks` sorts by priority too.
 - **Next**: M35-T03
+
+## M35-T03 — Links and parents
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/tasks/{taskGraph.ts,tasks.handler.ts}`
+  (+ `workGraph.test.ts`), `lib/cascadePurge.ts`, `lib/scopes.ts`,
+  `lib/{viewer-denial,agent-scope-sweep}.test.ts`
+- **Verified**: backend `bun test` 1896 pass; knip, typecheck green.
+- **Notes**: `AddTaskLink`/`RemoveTaskLink` (idempotent, `tasks:write`) and
+  `ListTaskLinks` (`tasks:read`) - blockers, dependents, origin, discovered,
+  parent, children, each as a `TaskRef` with a `terminal` flag. `CreateTask`
+  takes `parentTaskId`, `blockedBy` and `discoveredFromTaskId`, all validated
+  before the insert, so a bad blocker leaves no task behind (tested by count).
+  `UpdateTask.parentTaskId` sets, or with "" clears. Refused: self links,
+  other organizations, missing tasks, a blocking cycle (bounded BFS), a second
+  origin, a parent in another project or below the task. Purging a task removes
+  its links both ways and orphans its children; purging a project removes links
+  that cross out of it. Agents may link (ADR-0028).
+- **Next**: M35-T04

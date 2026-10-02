@@ -76,7 +76,7 @@ impossible.
     `apps/backend/src/db/schema.*.ts`, migrations
 - [x] **M35-T02** — Priority: create, update, list filter and sort.
   - **Files**: `apps/backend/src/modules/tasks/tasks.handler.ts` (+ test)
-- [ ] **M35-T03** — Links: add, remove, list; parent; cycle and tenancy checks.
+- [x] **M35-T03** — Links: add, remove, list; parent; cycle and tenancy checks.
   - **Files**: `apps/backend/src/modules/tasks/taskLinks.ts` (+ test), handler
 - [ ] **M35-T04** — Ready work: `blockedByOpenCount`, list filters, claim-next order, `domain.task.unblocked`.
   - **Files**: as T02, `taskActivity.ts`

@@ -97,6 +97,11 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     // caller's own row, and only one it claimed. A handoff note in the same
     // call additionally needs comments:write, checked in the handler.
     releaseTask: 'tasks:write',
+    // M35 (ADR-0028): recording that tasks block one another, or where a task
+    // was found, is part of breaking work down - what agents do.
+    addTaskLink: 'tasks:write',
+    removeTaskLink: 'tasks:write',
+    listTaskLinks: 'tasks:read',
     // assignTask and unassignTask are deliberately absent. Deciding which
     // worker picks up a piece of work is an orchestration decision, and a token
     // that can reassign work to itself is a token that can help itself to any

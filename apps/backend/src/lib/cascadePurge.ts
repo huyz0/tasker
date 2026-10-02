@@ -1,4 +1,4 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, or, inArray } from "drizzle-orm";
 import * as schemaMysql from "../db/schema.mysql";
 import * as schemaSqlite from "../db/schema.sqlite";
 
@@ -43,6 +43,9 @@ export async function purgeTaskCascade(db: any, taskId: string): Promise<void> {
   await db.delete(schema.comments).where(and(eq(schema.comments.entityId, taskId), eq(schema.comments.entityType, "task")));
   await db.delete(schema.entityLabels).where(and(eq(schema.entityLabels.entityId, taskId), eq(schema.entityLabels.entityType, "task")));
   await db.update(schema.remotePullRequests).set({ taskId: null }).where(eq(schema.remotePullRequests.taskId, taskId));
+  // M35 (ADR-0028): links in both directions, and children lose their parent.
+  await db.delete(schema.taskLinks).where(or(eq(schema.taskLinks.taskId, taskId), eq(schema.taskLinks.linkedTaskId, taskId)));
+  await db.update(schema.tasks).set({ parentTaskId: null }).where(eq(schema.tasks.parentTaskId, taskId));
   await db.delete(schema.tasks).where(eq(schema.tasks.id, taskId));
 }
 
@@ -135,6 +138,8 @@ export async function purgeProjectCascade(db: any, projectId: string): Promise<v
     await db.delete(schema.comments).where(and(inArray(schema.comments.entityId, taskIds), eq(schema.comments.entityType, "task")));
     await db.delete(schema.entityLabels).where(and(inArray(schema.entityLabels.entityId, taskIds), eq(schema.entityLabels.entityType, "task")));
     await db.update(schema.remotePullRequests).set({ taskId: null }).where(inArray(schema.remotePullRequests.taskId, taskIds));
+    // M35 (ADR-0028): links may cross projects, so both directions go.
+    await db.delete(schema.taskLinks).where(or(inArray(schema.taskLinks.taskId, taskIds), inArray(schema.taskLinks.linkedTaskId, taskIds)));
     await db.delete(schema.tasks).where(inArray(schema.tasks.id, taskIds));
   }
 

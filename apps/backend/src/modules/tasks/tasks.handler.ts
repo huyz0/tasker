@@ -11,7 +11,7 @@ import { withIdempotency } from "../../lib/idempotency";
 import { getLatestHandoffNote, recordTaskNote } from "./task_notes.handler";
 import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal, terminalStatusSql } from "./taskActivity";
 import { purgeTaskCascade } from "../../lib/cascadePurge";
-import { MAX_PRIORITY, priorityRankSql } from "./taskGraph";
+import { MAX_PRIORITY, priorityRankSql, LINK_KINDS, assertLinkAllowed, openBlockerCounts, assertParentAllowed, insertLink, deleteLink, listLinks } from "./taskGraph";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // Distinguishes a real DB-level unique-constraint violation (a concurrent
@@ -69,6 +69,19 @@ const CreateTaskSchema = z.object({
   idempotencyKey: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(256).optional()),
   // M35 (ADR-0028). 0 none, 1 urgent .. 4 low.
   priority: z.number().int().min(0).max(MAX_PRIORITY).optional().default(0),
+  parentTaskId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  blockedBy: z.array(z.string().min(1)).max(50).optional().default([]),
+  discoveredFromTaskId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+});
+
+const TaskLinkSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
+  linkedTaskId: z.string().min(1, "linkedTaskId is required"),
+  kind: z.enum(LINK_KINDS, { message: `kind must be one of ${LINK_KINDS.join(", ")}` }),
+});
+
+const ListTaskLinksSchema = z.object({
+  taskId: z.string().min(1, "taskId is required"),
 });
 
 /** M35: the columns every task list returns - description stays out (M07-T01). */
@@ -217,6 +230,8 @@ const UpdateTaskSchema = z.object({
   taskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().nullable().optional()),
   // M35. Proto3 `optional`, so 0 ("none") is a real value, not "unset".
   priority: z.number().int().min(0).max(MAX_PRIORITY).optional(),
+  // M35. "" clears the parent; unset leaves it.
+  parentTaskId: z.string().optional(),
 });
 
 const DeleteTaskSchema = z.object({
@@ -711,6 +726,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     return byTask;
   };
 
+  async function openBlockerCount(taskId: string): Promise<number> {
+    return (await openBlockerCounts(db, isStandalone, [taskId])).get(taskId) ?? 0;
+  }
+
   return {
     async createTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
@@ -739,6 +758,15 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           }
         }
         await validateStatusForTaskType(db, isStandalone, parsed.taskTypeId || null, null, parsed.status);
+        // M35 (ADR-0028): every relation is checked before anything is
+        // written, so a bad blocker cannot leave a half-linked task behind.
+        // A new task cannot close a cycle - nothing points at it yet.
+        if (parsed.parentTaskId) await assertParentAllowed(db, isStandalone, null, parsed.projectId, parsed.parentTaskId);
+        const newLinks = [
+          ...[...new Set(parsed.blockedBy)].map((id) => ({ linkedTaskId: id, kind: "blocked_by" as const })),
+          ...(parsed.discoveredFromTaskId ? [{ linkedTaskId: parsed.discoveredFromTaskId, kind: "discovered_from" as const }] : []),
+        ];
+        for (const l of newLinks) await assertLinkAllowed(db, isStandalone, orgId, null, l.linkedTaskId, l.kind);
 
         const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
         const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
@@ -808,9 +836,13 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           description: parsed.description,
           createdAt: new Date(),
           priority: parsed.priority,
+          parentTaskId: parsed.parentTaskId ?? null,
         };
 
         await insertRecord(db, tasks, payload, isStandalone, false);
+        for (const l of newLinks) {
+          await insertLink(db, isStandalone, { taskId: newId, ...l, createdBy: principal.kind === "user" ? principal.userId : principal.agentId });
+        }
 
         // M24-T04 (ADR-0020): inside the withIdempotency callback, so a
         // replayed create replays the stored response without re-recording.
@@ -827,7 +859,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
         });
 
         publishDomainEvent(nc, "domain.task.created", payload);
-        return { task: { ...payload, createdAt: payload.createdAt.toISOString(), assignees: [] } };
+        return { task: toWireTask(payload, { assignees: [], blockedByOpenCount: parsed.blockedBy.length > 0 ? await openBlockerCount(newId) : 0 }) };
       });
     },
     /**
@@ -1225,6 +1257,42 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       }
       return { success: true, ...(handoffNote ? { handoffNote } : {}) };
     },
+    /**
+     * M35 (ADR-0028): record that one task blocks another, or where a task was
+     * discovered. Idempotent - an existing identical link is success.
+     */
+    async addTaskLink(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = TaskLinkSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
+      await assertLinkAllowed(db, isStandalone, orgId, parsed.taskId, parsed.linkedTaskId, parsed.kind);
+      const added = await insertLink(db, isStandalone, {
+        taskId: parsed.taskId,
+        linkedTaskId: parsed.linkedTaskId,
+        kind: parsed.kind,
+        createdBy: principal.kind === "user" ? principal.userId : principal.agentId,
+      });
+      if (added) publishDomainEvent(nc, "domain.task.linked", { taskId: parsed.taskId, linkedTaskId: parsed.linkedTaskId, kind: parsed.kind });
+      return { success: true };
+    },
+    async removeTaskLink(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = TaskLinkSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
+      if (await deleteLink(db, isStandalone, parsed.taskId, parsed.linkedTaskId, parsed.kind)) {
+        publishDomainEvent(nc, "domain.task.unlinked", { taskId: parsed.taskId, linkedTaskId: parsed.linkedTaskId, kind: parsed.kind });
+      }
+      return { success: true };
+    },
+    async listTaskLinks(req: unknown, { values: contextValues }: { values: any }) {
+      const principal = requirePrincipal(contextValues);
+      const parsed = ListTaskLinksSchema.parse(req);
+      const orgId = await getTaskOrgId(db, parsed.taskId);
+      await authorizePrincipal(db, principal, orgId, { scope: "tasks:read", permission: "task:read" });
+      return listLinks(db, isStandalone, parsed.taskId);
+    },
     async addTaskReviewer(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = AddTaskReviewerSchema.parse(req);
@@ -1321,6 +1389,10 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       if (parsed.description !== undefined) updates.description = parsed.description;
       if (parsed.taskTypeId !== undefined) updates.taskTypeId = parsed.taskTypeId;
       if (parsed.priority !== undefined) updates.priority = parsed.priority;
+      if (parsed.parentTaskId !== undefined) {
+        if (parsed.parentTaskId) await assertParentAllowed(db, isStandalone, parsed.taskId, existing[0].projectId, parsed.parentTaskId);
+        updates.parentTaskId = parsed.parentTaskId || null;
+      }
 
       await db.update(tasks).set(updates).where(eq((tasks as any).id, parsed.taskId));
 
