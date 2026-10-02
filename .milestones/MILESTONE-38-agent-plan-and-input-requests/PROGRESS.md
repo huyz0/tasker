@@ -91,3 +91,31 @@
   The architecture's service count had been one short since before M37; it
   now matches `index.ts`.
 - **Next**: M38-T05
+
+## M38-T05 — GUI
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/gui/src/features/Tasks/{TaskPlan.tsx,InputRequests.tsx,PriorityBadge.tsx,index.tsx}`
+  (+ tests and stories), `apps/gui/src/lib/eventQueryKeys.ts` (+ test)
+- **Verified**: `moon run gui:lint gui:design-lint gui:typecheck gui:test
+  gui:build gui:storybook-test` green - 1271 tests, 98.4% / 95.2%; storybook
+  a11y 0 violations and no overflow at 375px across 134 stories. **Live**, on
+  the restarted backend: an agent set a plan and asked a question over MCP;
+  `tasks get` showed the plan and "Waiting on a person"; a person answered
+  through the CLI; the agent's own attempt to answer over RPC was
+  `permission_denied`; the agent read the answer back over MCP; the admin's
+  bell had "MCP Scout asks on SEED-162"; the webhook receiver verified
+  `task.plan_updated`, `task.input_requested`, `task.input_answered`.
+- **Notes**: The task dialog opens with the task's questions (open first,
+  each with option chips that fill the answer and a free-text box, then past
+  answers and withdrawn ones) and shows the agent's plan with a progress bar
+  that counts done and skipped. Cards and table rows get "Needs input". The
+  Tasks header's "Waiting on people" opens the organization's open-question
+  queue, each linked to its task. `inputRequests` joins the task entity's
+  event keys. Two catches: my insertion anchor first put the queue dialog
+  inside `TaskNotesPanel` (every dialog test crashed on `showQuestions is not
+  defined`) - a plain `tsc -p .` in apps/gui does not typecheck `src`, so
+  `moon run gui:typecheck` is the check to trust; and design-lint refused
+  `transition-all` on the progress bar.
+- **Next**: M38-T06

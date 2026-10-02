@@ -54,7 +54,7 @@ policy choice), agent-to-agent questions.
 - [x] **M38-T02** — Plan RPC.
 - [x] **M38-T03** — Input requests: RPCs, notifications, events.
 - [x] **M38-T04** — CLI and MCP tools.
-- [ ] **M38-T05** — GUI.
+- [x] **M38-T05** — GUI.
 - [ ] **M38-T06** — Docs and close.
 
 ## 6. Verification

@@ -98,6 +98,8 @@ describe('TasksWorkbench', () => {
     // task it opens.
     mockRpc(ArtifactService, 'ListTaskArtifactLinks', { links: [] });
     mockRpc(SearchService, 'UniversalSearch', { results: [] });
+    // M38: every open task asks for its questions.
+    mockRpc(TaskService, 'ListInputRequests', { inputRequests: [], page: {} });
   });
 
   it('titles the page "Tasks" and says what the screen is for', async () => {
@@ -1610,6 +1612,28 @@ describe('TasksWorkbench', () => {
       renderPage('/tasks/t-1');
       fireEvent.change(await screen.findByLabelText('Priority'), { target: { value: '2' } });
       expect(await screen.findByText(/Failed to update priority/)).toBeInTheDocument();
+    });
+
+    it('shows the agent\'s plan and flags a task waiting on a person (M38)', async () => {
+      withTasks([{ id: 't-1', displayId: 'T-1', title: 'Fix bug', status: 'todo', openInputRequestCount: 1,
+        plan: [{ title: 'Reproduce', status: 'done' }, { title: 'Patch', status: 'in_progress' }] }]);
+      renderPage();
+      const card = (await screen.findByText('Fix bug')).closest('[draggable]') as HTMLElement;
+      expect(within(card).getByText('Needs input')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('Fix bug'));
+      expect(await screen.findByRole('progressbar', { name: 'Plan progress' })).toHaveAttribute('aria-valuenow', '1');
+      expect(screen.getByText('Patch')).toBeInTheDocument();
+    });
+
+    it('opens the queue of questions waiting on people', async () => {
+      withTasks([]);
+      mockRpc(TaskService, 'ListInputRequests', { inputRequests: [{ id: 'ir-1', taskId: 't-1', taskDisplayId: 'T-1', taskTitle: 'Fix bug', projectId: 'proj-1',
+        question: 'Which DB?', options: [], status: 'open', askedByName: 'Planner', createdAt: '2026-10-02T10:00:00Z' }], page: {} });
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Waiting on people' }));
+      expect(await screen.findByText('Which DB?')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Close questions' }));
+      await waitFor(() => expect(screen.queryByText('Which DB?')).toBeNull());
     });
 
     it('shows the task\'s relations in the detail panel', async () => {

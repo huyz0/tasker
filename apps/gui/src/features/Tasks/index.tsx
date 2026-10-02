@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useScopedTo } from '../../hooks/useScope';
-import { PriorityBadge, BlockedBadge } from './PriorityBadge';
+import { PriorityBadge, BlockedBadge, NeedsInputBadge } from './PriorityBadge';
+import { TaskPlan } from './TaskPlan';
+import { TaskInputRequests, QuestionsQueue } from './InputRequests';
 import { PRIORITY_OPTIONS } from './priority';
 import { TaskRelations } from './TaskRelations';
 import { useScopeLabels } from '../../hooks/useScopeLabels';
@@ -408,6 +410,7 @@ function BoardColumn({
               <span className="text-xs text-muted-foreground font-mono">{task.displayId}</span>
               <PriorityBadge priority={task.priority ?? 0} />
               <BlockedBadge count={task.blockedByOpenCount ?? 0} />
+              <NeedsInputBadge count={task.openInputRequestCount ?? 0} />
             </div>
             <h4 className="mb-2">
               <button
@@ -486,6 +489,7 @@ export function TasksWorkbench() {
   const [debouncedSearch] = useDebounce(search, 250);
   const [priorityFilter, setPriorityFilter] = useState('');
   const [readyOnly, setReadyOnly] = useState(false);
+  const [showQuestions, setShowQuestions] = useState(false);
   const facets: TaskFacets = { priority: priorityFilter === '' ? undefined : Number(priorityFilter), ready: readyOnly };
   // Table-view bulk selection. Applies only to loaded rows - the table
   // virtualizes, so "select all" means all rows fetched so far, not every
@@ -880,6 +884,12 @@ export function TasksWorkbench() {
             >
               Ready only
             </button>
+            <button
+              onClick={() => setShowQuestions(true)}
+              className="px-3 py-2 rounded-md border text-sm font-medium bg-background text-muted-foreground hover:text-foreground"
+            >
+              Waiting on people
+            </button>
           </>
         }
       />
@@ -1002,6 +1012,7 @@ export function TasksWorkbench() {
                       <div role="cell" className="px-4 py-2 flex items-center gap-2 min-w-0">
                         <span className="truncate">{task.title}</span>
                         <BlockedBadge count={task.blockedByOpenCount ?? 0} />
+                        <NeedsInputBadge count={task.openInputRequestCount ?? 0} />
                       </div>
                       <div role="cell" className="px-4 py-2">
                         <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
@@ -1201,6 +1212,9 @@ export function TasksWorkbench() {
              ) : (
                <h3 className="text-xl font-bold mb-4">{expandedTask.title}</h3>
              )}
+             <div className="mb-4">
+               <TaskInputRequests taskId={expandedTask.id} />
+             </div>
              {!isEditingTask && (
                <div className="prose prose-sm dark:prose-invert max-w-none">
                   {expandedTask.description ? (
@@ -1210,6 +1224,10 @@ export function TasksWorkbench() {
                   )}
                </div>
              )}
+             <div className="mt-8">
+               <h3 className="text-lg font-semibold tracking-tight mb-3">Agent plan</h3>
+               <TaskPlan steps={expandedTask.plan ?? []} />
+             </div>
              <div className="mt-8">
                <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>
                <Comment.Provider entityId={expandedTask.id} entityType="task">
@@ -1291,6 +1309,20 @@ export function TasksWorkbench() {
              </div>
            </div>
            </div>
+        </Dialog>
+      )}
+      {showQuestions && (
+        <Dialog
+          open
+          onClose={() => setShowQuestions(false)}
+          title="Waiting on people"
+          className="w-full max-w-2xl max-h-[85vh]"
+          headerRight={<button onClick={() => setShowQuestions(false)} aria-label="Close questions" className="text-muted-foreground hover:text-foreground">✕</button>}
+        >
+          <div className="p-6 overflow-y-auto">
+            <p className="text-sm text-muted-foreground mb-4">Questions agents in this organization asked and are waiting on a person to answer.</p>
+            <QuestionsQueue orgId={activeOrgId} />
+          </div>
         </Dialog>
       )}
       {confirmDialog}

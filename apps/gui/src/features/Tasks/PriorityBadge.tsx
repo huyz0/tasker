@@ -31,3 +31,20 @@ export function BlockedBadge({ count }: BlockedBadgeProps) {
     </span>
   );
 }
+
+interface NeedsInputBadgeProps {
+  count: number;
+}
+
+/** An agent on this task is waiting for a person's answer (M38). Nothing when none is. */
+export function NeedsInputBadge({ count }: NeedsInputBadgeProps) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={`text-xs font-medium px-2 py-0.5 rounded-full ${TONE_CLASSES.info}`}
+      title={`${count} open question${count === 1 ? '' : 's'} from an agent`}
+    >
+      Needs input{count > 1 ? ` · ${count}` : ''}
+    </span>
+  );
+}
