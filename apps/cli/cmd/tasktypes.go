@@ -9,6 +9,7 @@ import (
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 var taskTypesCmd = &cobra.Command{
@@ -75,10 +76,20 @@ var taskTypesListCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskTypeServiceClient()
-		res, err := client.ListTaskTypes(context.Background(), connect.NewRequest(&healthv1.ListTaskTypesRequest{
+		listReq := connect.NewRequest(&healthv1.ListTaskTypesRequest{
 			OrgId: orgID,
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
-		}))
+		})
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
+				r, err := client.ListTaskTypes(context.Background(), listReq)
+				if err != nil {
+					return nil, err
+				}
+				return r.Msg, nil
+			})
+		}
+		res, err := client.ListTaskTypes(context.Background(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list task types: %w", err)
 		}
@@ -92,6 +103,7 @@ var taskTypesListCmd = &cobra.Command{
 				cmd.Printf("  - %s (id: %s)\n", t.Name, t.Id)
 			}
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -213,6 +225,7 @@ func init() {
 	taskTypesListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 	taskTypesListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	taskTypesListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	taskTypesListCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
 
 	taskTypesCreateStatusCmd.Flags().String("name", "", "Status name (e.g. open, in_review, closed)")
 

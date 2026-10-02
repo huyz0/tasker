@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
@@ -61,7 +62,17 @@ var commentListCmd = &cobra.Command{
 			Page:       &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 		})
 
-		res, err := client.ListComments(context.Background(), req)
+		listReq := req
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
+				r, err := client.ListComments(context.Background(), listReq)
+				if err != nil {
+					return nil, err
+				}
+				return r.Msg, nil
+			})
+		}
+		res, err := client.ListComments(context.Background(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list comments: %w", err)
 		}
@@ -78,6 +89,7 @@ var commentListCmd = &cobra.Command{
 		for _, c := range res.Msg.Comments {
 			cmd.Printf("- [%s] %s\n", c.Id, c.Content)
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -152,6 +164,7 @@ func init() {
 	commentListCmd.Flags().StringVar(&entityType, "type", "task", "Entity type")
 	commentListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	commentListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	commentListCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
 
 	commentUpdateCmd.Flags().StringVar(&content, "content", "", "New markdown content of the comment")
 	commentUpdateCmd.MarkFlagRequired("content")

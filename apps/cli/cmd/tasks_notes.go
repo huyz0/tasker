@@ -8,6 +8,7 @@ import (
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 var tasksNoteAddCmd = &cobra.Command{
@@ -159,10 +160,20 @@ var tasksHandoffsCmd = &cobra.Command{
 		}
 
 		client := backend.NewTaskNoteServiceClient()
-		res, err := client.ListHandoffNotes(context.Background(), connect.NewRequest(&healthv1.ListHandoffNotesRequest{
+		listReq := connect.NewRequest(&healthv1.ListHandoffNotesRequest{
 			ProjectId: projectID,
 			Page:      &healthv1.PageRequest{Limit: limit, Cursor: cursor},
-		}))
+		})
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
+				r, err := client.ListHandoffNotes(context.Background(), listReq)
+				if err != nil {
+					return nil, err
+				}
+				return r.Msg, nil
+			})
+		}
+		res, err := client.ListHandoffNotes(context.Background(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list handoffs: %w", err)
 		}
@@ -182,6 +193,7 @@ var tasksHandoffsCmd = &cobra.Command{
 				cmd.Printf("(more available - pass --cursor %s)\n", res.Msg.Page.NextCursor)
 			}
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -203,4 +215,5 @@ func init() {
 	tasksHandoffsCmd.Flags().String("project", "", "Project ID (or set TASKER_PROJECT_ID)")
 	tasksHandoffsCmd.Flags().Int32("limit", 0, "Max rows to return")
 	tasksHandoffsCmd.Flags().String("cursor", "", "Page cursor from a previous response")
+	tasksHandoffsCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
 }

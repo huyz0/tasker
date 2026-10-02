@@ -9,6 +9,7 @@ import (
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 var teamsCmd = &cobra.Command{
@@ -27,11 +28,21 @@ var teamsListCmd = &cobra.Command{
 		onlyDeleted, _ := cmd.Flags().GetBool("only-deleted")
 
 		client := backend.NewTeamServiceClient()
-		res, err := client.ListTeams(context.Background(), connect.NewRequest(&healthv1.ListTeamsRequest{
+		listReq := connect.NewRequest(&healthv1.ListTeamsRequest{
 			OrgId:       args[0],
 			Page:        &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 			OnlyDeleted: onlyDeleted,
-		}))
+		})
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
+				r, err := client.ListTeams(context.Background(), listReq)
+				if err != nil {
+					return nil, err
+				}
+				return r.Msg, nil
+			})
+		}
+		res, err := client.ListTeams(context.Background(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list teams: %w", err)
 		}
@@ -50,6 +61,7 @@ var teamsListCmd = &cobra.Command{
 		for _, t := range res.Msg.Teams {
 			cmd.Printf("- %s (id: %s)\n", t.Name, t.Id)
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -199,10 +211,20 @@ var teamsListMembersCmd = &cobra.Command{
 		cursor, _ := cmd.Flags().GetString("cursor")
 
 		client := backend.NewTeamServiceClient()
-		res, err := client.ListTeamMembers(context.Background(), connect.NewRequest(&healthv1.ListTeamMembersRequest{
+		listReq := connect.NewRequest(&healthv1.ListTeamMembersRequest{
 			TeamId: args[0],
 			Page:   &healthv1.PageRequest{Limit: limit, Cursor: cursor},
-		}))
+		})
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
+				r, err := client.ListTeamMembers(context.Background(), listReq)
+				if err != nil {
+					return nil, err
+				}
+				return r.Msg, nil
+			})
+		}
+		res, err := client.ListTeamMembers(context.Background(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list team members: %w", err)
 		}
@@ -221,6 +243,7 @@ var teamsListMembersCmd = &cobra.Command{
 		for _, m := range res.Msg.Members {
 			cmd.Printf("- %s <%s> (id: %s)\n", m.Name, m.Email, m.UserId)
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -238,9 +261,11 @@ func init() {
 
 	teamsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	teamsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	teamsListCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
 	teamsListCmd.Flags().Bool("only-deleted", false, "List only archived (binned) teams")
 	teamsCreateCmd.Flags().String("name", "", "Team name")
 	teamsRenameCmd.Flags().String("name", "", "New team name")
 	teamsListMembersCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	teamsListMembersCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	teamsListMembersCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
 }

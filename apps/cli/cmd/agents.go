@@ -9,6 +9,7 @@ import (
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 var agentsCmd = &cobra.Command{
@@ -35,11 +36,21 @@ var agentsListCmd = &cobra.Command{
 		}
 
 		client := backend.NewAgentServiceClient()
-		res, err := client.ListAgents(context.Background(), connect.NewRequest(&healthv1.ListAgentsRequest{
+		listReq := connect.NewRequest(&healthv1.ListAgentsRequest{
 			OrgId:       orgID,
 			OnlyDeleted: onlyDeleted,
 			Page:        &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
-		}))
+		})
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
+				r, err := client.ListAgents(context.Background(), listReq)
+				if err != nil {
+					return nil, err
+				}
+				return r.Msg, nil
+			})
+		}
+		res, err := client.ListAgents(context.Background(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list agents: %w", err)
 		}
@@ -54,6 +65,7 @@ var agentsListCmd = &cobra.Command{
 				cmd.Printf(" - %s [Role: %s] (%s)\n", a.Name, a.AgentRoleId, a.Id)
 			}
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -187,10 +199,20 @@ var agentsListRolesCmd = &cobra.Command{
 		cursor, _ := cmd.Flags().GetString("cursor")
 
 		client := backend.NewAgentServiceClient()
-		res, err := client.ListAgentRoles(context.Background(), connect.NewRequest(&healthv1.ListAgentRolesRequest{
+		listReq := connect.NewRequest(&healthv1.ListAgentRolesRequest{
 			OrgId: orgID,
 			Page:  &healthv1.PageRequest{Limit: limit, Cursor: cursor, Filter: filter, Sort: sort},
-		}))
+		})
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
+				r, err := client.ListAgentRoles(context.Background(), listReq)
+				if err != nil {
+					return nil, err
+				}
+				return r.Msg, nil
+			})
+		}
+		res, err := client.ListAgentRoles(context.Background(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list agent roles: %w", err)
 		}
@@ -205,6 +227,7 @@ var agentsListRolesCmd = &cobra.Command{
 				cmd.Printf(" - %s (id: %s)\n", r.Name, r.Id)
 			}
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -335,12 +358,14 @@ func init() {
 	agentsListCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 	agentsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	agentsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	agentsListCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
 	agentsListCmd.Flags().Bool("only-deleted", false, "List only agents in the bin, instead of active ones")
 	agentsListRolesCmd.Flags().String("org", "", "Organization ID whose roles to list (required)")
 	agentsListRolesCmd.Flags().StringP("filter", "f", "", "Substring match against role name")
 	agentsListRolesCmd.Flags().StringP("sort", "s", "", "Sort as \"name\" or \"name:desc\" (works with --cursor for paging)")
 	agentsListRolesCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	agentsListRolesCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	agentsListRolesCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
 	agentsCreateRoleCmd.Flags().String("org", "", "Organization the role belongs to (required)")
 	agentsCreateRoleCmd.Flags().String("name", "", "Role name")
 	agentsCreateRoleCmd.Flags().String("system-prompt", "", "System prompt for the role")

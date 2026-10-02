@@ -13,6 +13,7 @@ import (
 
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	"github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1/v1connect"
+	"github.com/spf13/cobra"
 )
 
 // fakeTaskLister answers ListTasks with a fixed page, or with err when set.
@@ -211,5 +212,139 @@ func TestOrgsListHonoursJSONAndShowsIDs(t *testing.T) {
 	runCLI([]string{"orgs", "list"}, &stdout, &stderr)
 	if !strings.Contains(stdout.String(), "org-1") {
 		t.Errorf("expected the text listing to show the id, got %q", stdout.String())
+	}
+}
+
+// threePageTasks serves tasks t1..t3 one per page, keyed by cursor, and
+// records the cursors it was asked for.
+type threePageTasks struct {
+	v1connect.UnimplementedTaskServiceHandler
+	asked []string
+	loop  bool
+}
+
+func (f *threePageTasks) ListTasks(
+	_ context.Context,
+	req *connect.Request[healthv1.ListTasksRequest],
+) (*connect.Response[healthv1.ListTasksResponse], error) {
+	cursor := req.Msg.GetPage().GetCursor()
+	f.asked = append(f.asked, cursor)
+	next := map[string]string{"": "c2", "c2": "c3", "c3": ""}[cursor]
+	if f.loop {
+		next = "c2"
+	}
+	id := map[string]string{"": "t1", "c2": "t2", "c3": "t3"}[cursor]
+	return connect.NewResponse(&healthv1.ListTasksResponse{
+		Tasks: []*healthv1.Task{{Id: id, Title: "T " + id}},
+		Page:  &healthv1.PageResponse{NextCursor: next},
+	}), nil
+}
+
+func serveThreePages(t *testing.T, h *threePageTasks) {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.Handle(v1connect.NewTaskServiceHandler(h))
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	t.Setenv("TASKER_BACKEND_URL", srv.URL)
+	rootCmd.AddCommand(tasksCmd)
+}
+
+// M31-T04: --page-all walks every page and streams one item per line.
+func TestPageAllStreamsEveryItemAsNDJSON(t *testing.T) {
+	resetAllFlags(t)
+	h := &threePageTasks{}
+	serveThreePages(t, h)
+
+	var stdout, stderr bytes.Buffer
+	if code := runCLI([]string{"tasks", "list", "--project", "p1", "--page-all"}, &stdout, &stderr); code != exitOK {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected 3 NDJSON lines, got %d: %q", len(lines), stdout.String())
+	}
+	for i, line := range lines {
+		var item map[string]any
+		if err := json.Unmarshal([]byte(line), &item); err != nil {
+			t.Fatalf("line %d is not JSON: %q", i, line)
+		}
+		if want := []string{"t1", "t2", "t3"}[i]; item["id"] != want {
+			t.Errorf("line %d: expected id %s, got %v", i, want, item["id"])
+		}
+	}
+	if strings.Join(h.asked, ",") != ",c2,c3" {
+		t.Errorf("expected cursors '', c2, c3 in order, got %q", h.asked)
+	}
+}
+
+func TestPageAllStartsFromTheGivenCursor(t *testing.T) {
+	resetAllFlags(t)
+	h := &threePageTasks{}
+	serveThreePages(t, h)
+
+	var stdout, stderr bytes.Buffer
+	runCLI([]string{"tasks", "list", "--project", "p1", "--page-all", "--cursor", "c2"}, &stdout, &stderr)
+	if got := strings.Count(strings.TrimSpace(stdout.String()), "\n") + 1; got != 2 {
+		t.Errorf("expected the last two items, got %q", stdout.String())
+	}
+}
+
+func TestPageAllStopsOnARepeatedCursor(t *testing.T) {
+	resetAllFlags(t)
+	serveThreePages(t, &threePageTasks{loop: true})
+
+	var stdout, stderr bytes.Buffer
+	code := runCLI([]string{"tasks", "list", "--project", "p1", "--page-all"}, &stdout, &stderr)
+	if code == exitOK || !strings.Contains(stderr.String(), "twice") {
+		t.Errorf("expected a non-zero exit naming the repeated cursor, got %d / %q", code, stderr.String())
+	}
+}
+
+// M31-T03: a text listing that stopped at its page size used to read as the
+// whole list.
+func TestTextListingNamesTheNextPageOnlyWhenThereIsOne(t *testing.T) {
+	resetAllFlags(t)
+	serveThreePages(t, &threePageTasks{})
+
+	var stdout, stderr bytes.Buffer
+	runCLI([]string{"tasks", "list", "--project", "p1"}, &stdout, &stderr)
+	if !strings.Contains(stdout.String(), "--cursor c2") {
+		t.Errorf("expected the first page to name --cursor c2, got %q", stdout.String())
+	}
+
+	resetAllFlags(t)
+	stdout.Reset()
+	runCLI([]string{"tasks", "list", "--project", "p1", "--cursor", "c3"}, &stdout, &stderr)
+	if strings.Contains(stdout.String(), "More results") {
+		t.Errorf("expected no hint on the last page, got %q", stdout.String())
+	}
+
+	resetAllFlags(t)
+	stdout.Reset()
+	runCLI([]string{"tasks", "list", "--project", "p1", "--json"}, &stdout, &stderr)
+	var doc map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &doc); err != nil {
+		t.Errorf("--json output must stay one JSON document, got %q", stdout.String())
+	}
+}
+
+// Every list command takes --page-all, and every one of them has --cursor:
+// a list command added later without it fails here.
+func TestEveryCursorCommandOffersPageAll(t *testing.T) {
+	resetAllFlags(t)
+	var missing []string
+	var walk func(c *cobra.Command)
+	walk = func(c *cobra.Command) {
+		if c.Flags().Lookup("cursor") != nil && c.Flags().Lookup("page-all") == nil {
+			missing = append(missing, c.CommandPath())
+		}
+		for _, sub := range c.Commands() {
+			walk(sub)
+		}
+	}
+	walk(rootCmd)
+	if len(missing) > 0 {
+		t.Errorf("commands with --cursor but no --page-all: %v", missing)
 	}
 }

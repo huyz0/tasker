@@ -9,6 +9,7 @@ import (
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 // M21 (ADR-0014/0015/0016). `memory search` is the primary command - a
@@ -210,7 +211,17 @@ var memoryListCmd = &cobra.Command{
 		}
 
 		client := backend.NewMemoryServiceClient()
-		res, err := client.ListBeliefs(context.Background(), connect.NewRequest(req))
+		listReq := connect.NewRequest(req)
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
+				r, err := client.ListBeliefs(context.Background(), listReq)
+				if err != nil {
+					return nil, err
+				}
+				return r.Msg, nil
+			})
+		}
+		res, err := client.ListBeliefs(context.Background(), listReq)
 		if err != nil {
 			return fmt.Errorf("failed to list beliefs: %w", err)
 		}
@@ -231,6 +242,7 @@ var memoryListCmd = &cobra.Command{
 		if res.Msg.Page != nil && res.Msg.Page.NextCursor != "" {
 			cmd.Printf("More results available; re-run with --cursor %s\n", res.Msg.Page.NextCursor)
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -564,6 +576,7 @@ func init() {
 
 	memoryListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	memoryListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	memoryListCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
 	memoryListCmd.Flags().String("status", "", "Filter by status: active, superseded, or retracted")
 	memoryListCmd.Flags().String("confidence", "", "Filter by confidence: low, medium, or high")
 

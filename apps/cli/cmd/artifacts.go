@@ -13,6 +13,7 @@ import (
 	healthv1 "github.com/huyz0/tasker/apps/cli/gen/tasker/health/v1"
 	"github.com/huyz0/tasker/apps/cli/internal/backend"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 var artifactsCmd = &cobra.Command{
@@ -49,11 +50,21 @@ var artifactsListCmd = &cobra.Command{
 		client := backend.NewArtifactServiceClient()
 
 		if folderID != "" {
-			res, err := client.ListArtifacts(context.Background(), connect.NewRequest(&healthv1.ListArtifactsRequest{
+			listReq := connect.NewRequest(&healthv1.ListArtifactsRequest{
 				FolderId:    folderID,
 				Page:        &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 				OnlyDeleted: onlyDeleted,
-			}))
+			})
+			if pageAllRequested(cmd) {
+				return pageAll(cmd, listReq.Msg, func() (proto.Message, error) {
+					r, err := client.ListArtifacts(context.Background(), listReq)
+					if err != nil {
+						return nil, err
+					}
+					return r.Msg, nil
+				})
+			}
+			res, err := client.ListArtifacts(context.Background(), listReq)
 			if err != nil {
 				return fmt.Errorf("failed to list artifacts: %w", err)
 			}
@@ -73,11 +84,21 @@ var artifactsListCmd = &cobra.Command{
 		if projectID == "" {
 			return errors.New("--project or --folder is required (or set TASKER_PROJECT_ID)")
 		}
-		res, err := client.ListFolders(context.Background(), connect.NewRequest(&healthv1.ListFoldersRequest{
+		listReq2 := connect.NewRequest(&healthv1.ListFoldersRequest{
 			ProjectId:   projectID,
 			Page:        &healthv1.PageRequest{Limit: limit, Cursor: cursor},
 			OnlyDeleted: onlyDeleted,
-		}))
+		})
+		if pageAllRequested(cmd) {
+			return pageAll(cmd, listReq2.Msg, func() (proto.Message, error) {
+				r, err := client.ListFolders(context.Background(), listReq2)
+				if err != nil {
+					return nil, err
+				}
+				return r.Msg, nil
+			})
+		}
+		res, err := client.ListFolders(context.Background(), listReq2)
 		if err != nil {
 			return fmt.Errorf("failed to list folders: %w", err)
 		}
@@ -91,6 +112,7 @@ var artifactsListCmd = &cobra.Command{
 				cmd.Printf(" - (dir) %s/ (id: %s)\n", f.Name, f.Id)
 			}
 		}
+		printNextPageHint(cmd, res.Msg)
 		return nil
 	},
 }
@@ -595,6 +617,7 @@ func init() {
 	artifactsListCmd.Flags().String("folder", "", "Folder ID to list artifacts within")
 	artifactsListCmd.Flags().Int32P("limit", "l", 50, "Maximum number of items to return")
 	artifactsListCmd.Flags().StringP("cursor", "c", "", "Pagination cursor to fetch the next set")
+	artifactsListCmd.Flags().Bool("page-all", false, "Fetch every page, printing one JSON object per item per line (NDJSON)")
 	artifactsListCmd.Flags().Bool("only-deleted", false, "List only archived (binned) folders/artifacts, instead of active ones")
 	artifactsCreateCmd.Flags().String("folder", "", "Folder ID to create the artifact in")
 	artifactsCreateCmd.Flags().String("name", "", "Artifact name")

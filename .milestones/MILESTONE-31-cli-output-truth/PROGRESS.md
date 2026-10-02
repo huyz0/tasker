@@ -56,3 +56,32 @@
   - The documented `jq -r .plaintext` token capture still works:
     `CreateAgentTokenResponse` has a `plaintext` field under protojson too.
 - **Next**: M31-T03
+
+## M31-T03 — Text listings name the next page
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/output.go` (`printNextPageHint`), 18 list commands
+- **Verified**: `TestTextListingNamesTheNextPageOnlyWhenThereIsOne` — hint on a
+  paged response, none on the last page, and `--json` output still parses as
+  one document (the first run of the full suite caught exactly that: the hint
+  had landed after the JSON branch too, so it is suppressed under `--json`).
+- **Next**: M31-T04
+
+## M31-T04 — `--page-all` streams every item as NDJSON
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/output.go` (`pageAll`, `setPageCursor`,
+  `pageItems`), 18 list commands, `cmd/output_contract_test.go`
+- **Verified**: `moon run cli:format cli:vet cli:test cli:coverage-gate` green.
+- **Notes**: One implementation for all eighteen: the helpers find the request's
+  `page.cursor` and the response's repeated message field and
+  `page.next_cursor` by protobuf reflection, so each command only wraps its
+  existing RPC call in a closure. It starts from `--cursor` when given, stops
+  on an empty cursor, refuses a cursor it has already seen (a server bug would
+  otherwise loop forever), and caps at 10,000 pages. A structural test walks
+  the command tree and fails for any command that has `--cursor` but not
+  `--page-all`. Committed together with T03 — they are one change to the same
+  eighteen call sites.
+- **Next**: M31-T05

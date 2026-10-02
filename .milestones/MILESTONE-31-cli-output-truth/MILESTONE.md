@@ -56,7 +56,7 @@ not agent-first.
   6 invalid argument, 7 unavailable or rate limited, 1 anything else.
 - [x] Every command honours `--json`; JSON is `protojson` of the RPC response
   (camelCase, zero values present), so every list carries `page`.
-- [ ] `--page-all` on list commands emits one JSON object per line for every
+- [x] `--page-all` on list commands emits one JSON object per line for every
   item across every page.
 - [ ] `auth whoami` reports the identity of whatever credential the command
   would actually use, and exits non-zero when there is none.
@@ -84,10 +84,10 @@ not agent-first.
 - [x] **M31-T02** — One JSON writer: `protojson` of the whole response, used by every command.
   - **Files**: `apps/cli/cmd/output.go` (new), every `cmd/*.go`
   - **Verify**: `output_test.go`; list JSON carries `page.nextCursor`.
-- [ ] **M31-T03** — Text output of a list names the next page.
+- [x] **M31-T03** — Text output of a list names the next page.
   - **Files**: `apps/cli/cmd/output.go`, list commands
   - **Verify**: tests for a paged and a final page.
-- [ ] **M31-T04** — `--page-all` streams every item as NDJSON.
+- [x] **M31-T04** — `--page-all` streams every item as NDJSON.
   - **Files**: `apps/cli/cmd/output.go`, list commands
   - **Verify**: a fake server with three pages yields every item once.
 - [ ] **M31-T05** — `whoami` and `debug session` use the resolved credential; the login callback binds loopback only.
