@@ -856,8 +856,10 @@ model Task {
   // M35 (ADR-0028). 0 none, 1 urgent, 2 high, 3 medium, 4 low - lower is more
   // important, and "none" sorts after "low".
   @field(12) priority: int32;
+
   // A task in the same project this one is part of.
   @field(13) parentTaskId?: string;
+
   // Tasks blocking this one that are not finished. Zero means nothing in the
   // graph stops this task; with no assignee and an open status it is ready.
   @field(14) blockedByOpenCount: int32;
@@ -881,10 +883,13 @@ model CreateTaskRequest {
 
   // M35 (ADR-0028). See Task.priority. Unset is 0 (none).
   @field(7) priority?: int32;
+
   // A task in the same project.
   @field(8) parentTaskId?: string;
+
   // Tasks in the same organization that must finish before this one is ready.
   @field(9) blockedBy?: string[];
+
   // The task whose work turned this one up (an agent recording follow-up work).
   @field(10) discoveredFromTaskId?: string;
 }
@@ -1064,8 +1069,10 @@ model ListTasksRequest {
   // M35 (ADR-0028). Open, unassigned and with no unfinished blocker - exactly
   // what ClaimNextTask chooses from. Sort "priority:asc" for urgent first.
   @field(6) ready?: boolean;
+
   @field(7) priority?: int32;
   @field(8) labelId?: string;
+
   // Direct children of this task.
   @field(9) parentTaskId?: string;
 }
@@ -1089,8 +1096,10 @@ model UpdateTaskRequest {
   @field(2) title?: string;
   @field(3) description?: string;
   @field(4) taskTypeId?: string;
+
   // M35. See Task.priority.
   @field(5) priority?: int32;
+
   // Empty string clears the parent.
   @field(6) parentTaskId?: string;
 }
@@ -1102,6 +1111,7 @@ model TaskRef {
   @field(3) title: string;
   @field(4) status: string;
   @field(5) projectId: string;
+
   // In its type's last status (or "done" for an untyped task).
   @field(6) terminal: boolean;
 }
