@@ -82,7 +82,7 @@ impossible.
   - **Files**: as T02, `taskActivity.ts`
 - [x] **M35-T05** — CLI.
   - **Files**: `apps/cli/cmd/tasks*.go`, `docs/cli-reference.md`
-- [ ] **M35-T06** — GUI: priority everywhere, relations panel, filters.
+- [x] **M35-T06** — GUI: priority everywhere, relations panel, filters.
   - **Files**: `apps/gui/src/features/Tasks/*`
 - [ ] **M35-T07** — Docs, skill, E2E and close.
   - **Files**: `docs/agent-integration.md`, `.specs/product/architecture.md`,

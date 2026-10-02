@@ -101,3 +101,28 @@
   argument errors share the server's exit code. Lists show `{urgent, blocked
   by 2}` only when there is something to say.
 - **Next**: M35-T06
+
+## M35-T06 — GUI
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/gui/src/features/Tasks/{index.tsx,priority.ts,PriorityBadge.tsx,TaskRelations.tsx}`
+  (+ tests and stories), `apps/gui/src/lib/eventQueryKeys.ts` (+ test)
+- **Verified**: `moon run gui:lint gui:design-lint gui:typecheck gui:test
+  gui:build gui:storybook-test` green - 1251 tests, coverage 98.5% statements
+  / 95.4% branches.
+- **Notes**: Board cards and table rows show a priority pill (urgent
+  destructive, high warning, medium info, low neutral - the documented status
+  scale, no new colours) and "Blocked · N"; neither renders for the common
+  case. The table gains a sortable Priority column (`priority:asc` =
+  urgent-first). The header's priority select and "Ready only" toggle apply to
+  every board column and the table. The task dialog edits priority and shows
+  a Relations panel: parent, blockers, dependents, subtasks, origin and
+  discovered, each a link to that task, finished ones struck through;
+  blockers and the parent are editable through a bounded project search that
+  never offers the task itself or a current blocker. `taskLinks` joins the
+  task entity's event keys, so a link, unlink or unblock elsewhere refreshes
+  an open dialog. The first priority-change test failed because the fixture's
+  GetTask never changed and the post-update refetch brought the old value
+  back - the mock now writes through, as the server does.
+- **Next**: M35-T07

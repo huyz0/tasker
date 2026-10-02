@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useScopedTo } from '../../hooks/useScope';
+import { PriorityBadge, BlockedBadge } from './PriorityBadge';
+import { PRIORITY_OPTIONS } from './priority';
+import { TaskRelations } from './TaskRelations';
 import { useScopeLabels } from '../../hooks/useScopeLabels';
 import { useLayoutStore } from '../../store/layout';
 import { PullRequestBadge } from '../../components/ui/repositories/PullRequestBadge';
@@ -224,10 +227,13 @@ function HandoffsSummary({ taskId }: { taskId: string }) {
 // Fixed-width ID/Status columns keep those cells snug around their content;
 // Title takes the remaining space and Pull Requests gets enough room for a
 // couple of badges before wrapping.
-const TABLE_COLUMN_WIDTHS = '32px 110px minmax(200px, 1fr) 140px minmax(180px, 260px)';
+const TABLE_COLUMN_WIDTHS = '32px 110px 110px minmax(200px, 1fr) 140px minmax(180px, 260px)';
 
 /** Carries a dragged card's own status, so a drop on its own column is a no-op. */
 const DRAG_STATUS_TYPE = 'application/x-tasker-status';
+
+type SortKey = 'displayId' | 'priority' | 'title' | 'status';
+const SORT_LABELS: Record<SortKey, string> = { displayId: 'ID', priority: 'Priority', title: 'Title', status: 'Status' };
 
 /** One screenful of cards. A column is a queue to work, not a catalogue. */
 const COLUMN_PAGE = 20;
@@ -252,12 +258,27 @@ const DEFAULT_STATUS_OPTIONS = [
  * belongs to the component instance, so columns can appear and disappear
  * without violating the rules of hooks.
  */
+/** M35: filters the header applies to every list on the screen. */
+interface TaskFacets {
+  priority?: number;
+  ready: boolean;
+}
+
+/** The facets as `listTasks` fields - unset ones absent, not false or 0. */
+function facetRequest(facets: TaskFacets) {
+  return {
+    ...(facets.priority !== undefined ? { priority: facets.priority } : {}),
+    ...(facets.ready ? { ready: true } : {}),
+  };
+}
+
 function BoardColumn({
   status,
   display,
   projectId,
   orgId,
   filter,
+  facets,
   isAdding,
   onStartAdding,
   onCancelAdding,
@@ -272,6 +293,8 @@ function BoardColumn({
   projectId: string;
   orgId: string;
   filter?: string;
+  /** M35: the header's priority and ready-only filters, applied per column. */
+  facets: TaskFacets;
   isAdding: boolean;
   onStartAdding: () => void;
   onCancelAdding: () => void;
@@ -290,12 +313,13 @@ function BoardColumn({
   // not a replacement for it.
   const [isDragOver, setIsDragOver] = useState(false);
   const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: ['tasks', projectId, 'column', status, filter],
+    queryKey: ['tasks', projectId, 'column', status, filter, facets.priority, facets.ready],
     queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
       taskClient.listTasks({
         projectId,
         status,
         page: { cursor: pageParam, limit: COLUMN_PAGE, filter: filter || undefined },
+        ...facetRequest(facets),
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
@@ -380,7 +404,11 @@ function BoardColumn({
             }}
             className="bg-card border rounded-md p-3 shadow-sm hover:border-primary cursor-grab active:cursor-grabbing transition-colors focus-within:border-primary"
           >
-            <div className="text-xs text-muted-foreground mb-1 font-mono">{task.displayId}</div>
+            <div className="flex flex-wrap items-center gap-1.5 mb-1">
+              <span className="text-xs text-muted-foreground font-mono">{task.displayId}</span>
+              <PriorityBadge priority={task.priority ?? 0} />
+              <BlockedBadge count={task.blockedByOpenCount ?? 0} />
+            </div>
             <h4 className="mb-2">
               <button
                 type="button"
@@ -453,14 +481,17 @@ export function TasksWorkbench() {
   const [addingToColumnId, setAddingToColumnId] = useState<string | null>(null);
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
-  const [sort, setSort] = useState<{ key: 'displayId' | 'title' | 'status'; dir: 'asc' | 'desc' } | null>(null);
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' } | null>(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebounce(search, 250);
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [readyOnly, setReadyOnly] = useState(false);
+  const facets: TaskFacets = { priority: priorityFilter === '' ? undefined : Number(priorityFilter), ready: readyOnly };
   // Table-view bulk selection. Applies only to loaded rows - the table
   // virtualizes, so "select all" means all rows fetched so far, not every
   // task in the project; the count in the toolbar makes that explicit.
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
-  useEffect(() => { setSelectedTaskIds(new Set()); }, [activeProjectId, debouncedSearch]);
+  useEffect(() => { setSelectedTaskIds(new Set()); }, [activeProjectId, debouncedSearch, priorityFilter, readyOnly]);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -480,8 +511,11 @@ export function TasksWorkbench() {
   // The server sorts by column name; the ID header maps to createdAt because
   // displayId is a string ("SEED-100" sorts before "SEED-99") and ids are
   // assigned in creation order, so createdAt is that ordering done correctly.
-  const SORT_FIELDS: Record<'displayId' | 'title' | 'status', string> = {
+  const SORT_FIELDS: Record<SortKey, string> = {
     displayId: 'createdAt',
+    // M35: the server ranks "no priority" after "low", so ascending is
+    // most-important-first.
+    priority: 'priority',
     title: 'title',
     status: 'status',
   };
@@ -504,13 +538,13 @@ export function TasksWorkbench() {
   } = useInfiniteQuery({
     // Filter and sort belong in the key: they change which rows come back, so
     // a shared key would serve one query's results for another's question.
-    queryKey: ['tasks', activeProjectId, 'table', debouncedSearch, sortParam],
+    queryKey: ['tasks', activeProjectId, 'table', debouncedSearch, sortParam, facets.priority, facets.ready],
     queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
       // Sent on every page, not just the first: the cursor records which field
       // it was built for, and a page requested without them is a page of a
       // different query.
       const page = { cursor: pageParam, filter: debouncedSearch || undefined, sort: sortParam };
-      return taskClient.listTasks({ projectId: activeProjectId, page });
+      return taskClient.listTasks({ projectId: activeProjectId, page, ...facetRequest(facets) });
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
@@ -698,6 +732,16 @@ export function TasksWorkbench() {
     },
   });
 
+  const updatePriorityMutation = useMutation({
+    mutationFn: async (variables: { taskId: string; priority: number }) => {
+      await taskClient.updateTask(variables);
+    },
+    onSuccess: (_r, variables) => {
+      patchOpenTask(variables.taskId, { priority: variables.priority });
+      queryClient.invalidateQueries({ queryKey: ['tasks', activeProjectId] });
+    },
+  });
+
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
       await taskClient.deleteTask({ taskId });
@@ -750,7 +794,7 @@ export function TasksWorkbench() {
   // page's worth of a paginated set and call the result sorted.
   const sortedTasks = tasksData ?? [];
 
-  const toggleSort = (key: 'displayId' | 'title' | 'status') => {
+  const toggleSort = (key: SortKey) => {
     setSort(prev => {
       if (!prev || prev.key !== key) return { key, dir: 'asc' };
       if (prev.dir === 'asc') return { key, dir: 'desc' };
@@ -818,6 +862,24 @@ export function TasksWorkbench() {
                 className="w-full px-3 py-2 rounded-md border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
+            <label className="sr-only" htmlFor="task-priority-filter">Filter by priority</label>
+            <select
+              id="task-priority-filter"
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="px-3 py-2 rounded-md border bg-background text-sm"
+            >
+              <option value="">Any priority</option>
+              {PRIORITY_OPTIONS.map((o) => <option key={o.value} value={String(o.value)}>{o.label}</option>)}
+            </select>
+            <button
+              onClick={() => setReadyOnly((v) => !v)}
+              aria-pressed={readyOnly}
+              title="Open, unassigned, and nothing unfinished blocking it"
+              className={`px-3 py-2 rounded-md border text-sm font-medium ${readyOnly ? 'bg-secondary text-secondary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
+            >
+              Ready only
+            </button>
           </>
         }
       />
@@ -869,14 +931,14 @@ export function TasksWorkbench() {
                 }}
               />
             </div>
-            {(['displayId', 'title', 'status'] as const).map(key => (
+            {(['displayId', 'priority', 'title', 'status'] as const).map(key => (
               <button
                 key={key}
                 role="columnheader"
                 onClick={() => toggleSort(key)}
                 className="px-4 py-2 font-medium text-left flex items-center gap-1 hover:text-foreground"
               >
-                {key === 'displayId' ? 'ID' : key === 'title' ? 'Title' : 'Status'}
+                {SORT_LABELS[key]}
                 {sort?.key === key && <span>{sort.dir === 'asc' ? '▲' : '▼'}</span>}
               </button>
             ))}
@@ -936,7 +998,11 @@ export function TasksWorkbench() {
                         />
                       </div>
                       <div role="cell" className="px-4 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">{task.displayId}</div>
-                      <div role="cell" className="px-4 py-2 truncate">{task.title}</div>
+                      <div role="cell" className="px-4 py-2"><PriorityBadge priority={task.priority ?? 0} /></div>
+                      <div role="cell" className="px-4 py-2 flex items-center gap-2 min-w-0">
+                        <span className="truncate">{task.title}</span>
+                        <BlockedBadge count={task.blockedByOpenCount ?? 0} />
+                      </div>
                       <div role="cell" className="px-4 py-2">
                         <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
                           {statusDisplay(task.status || 'todo')}
@@ -977,6 +1043,7 @@ export function TasksWorkbench() {
               projectId={activeProjectId}
               orgId={activeOrgId}
               filter={debouncedSearch}
+              facets={facets}
               isAdding={addingToColumnId === col.id}
               onStartAdding={() => setAddingToColumnId(col.id)}
               onCancelAdding={() => setAddingToColumnId(null)}
@@ -1171,6 +1238,22 @@ export function TasksWorkbench() {
                 {updateStatusMutation.isError && (
                   <p className="text-destructive text-xs">Failed to update status: {(updateStatusMutation.error as Error).message}</p>
                 )}
+                <div className="flex justify-between items-center">
+                  <span className="w-20">Priority:</span>
+                  <select
+                    name="priority"
+                    aria-label="Priority"
+                    value={String(expandedTask.priority ?? 0)}
+                    disabled={updatePriorityMutation.isPending}
+                    onChange={(e) => updatePriorityMutation.mutate({ taskId: expandedTask.id, priority: Number(e.target.value) })}
+                    className="text-foreground bg-transparent border rounded-md px-2 py-1 text-sm"
+                  >
+                    {PRIORITY_OPTIONS.map((o) => <option key={o.value} value={String(o.value)}>{o.label}</option>)}
+                  </select>
+                </div>
+                {updatePriorityMutation.isError && (
+                  <p className="text-destructive text-xs">Failed to update priority: {(updatePriorityMutation.error as Error).message}</p>
+                )}
                 {/* Was a hardcoded "Unassigned", shown whether or not the task
                     had assignees — the detail view's version of M05-T02's chip. */}
                 <div className="flex justify-between gap-3">
@@ -1179,6 +1262,10 @@ export function TasksWorkbench() {
                     <AssigneePicker taskId={expandedTask.id} orgId={activeOrgId} assignees={(expandedTask as any).assignees ?? []} />
                   </div>
                 </div>
+             </div>
+             <div>
+               <h3 className="text-sm font-semibold tracking-tight mb-3">Relations</h3>
+               <TaskRelations taskId={expandedTask.id} projectId={expandedTask.projectId} />
              </div>
              <div>
                <h3 className="text-sm font-semibold tracking-tight mb-3">Reviewers</h3>

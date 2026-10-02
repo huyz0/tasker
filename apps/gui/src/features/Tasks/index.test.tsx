@@ -88,6 +88,8 @@ describe('TasksWorkbench', () => {
     mockRpc(OrgService, 'ListOrgMembers', { members: [], page: {} });
     mockRpc(AgentService, 'ListAgents', { agents: [], page: {} });
     mockRpc(TaskService, 'ListTaskReviewers', { reviewers: [] });
+    // TaskRelations (M35) renders in every detail panel.
+    mockRpc(TaskService, 'ListTaskLinks', { blockedBy: [], blocks: [], discovered: [], children: [] });
     mockRpc(TaskService, 'AssignTask', {});
     mockRpc(TaskService, 'UnassignTask', {});
     mockRpc(TaskService, 'AddTaskReviewer', {});
@@ -1547,6 +1549,78 @@ describe('TasksWorkbench', () => {
       expect(await within(notes).findByText('Scout')).toBeInTheDocument();
       expect(within(notes).getByText('Tried:').tagName).toBe('STRONG');
       expect(within(notes).getByRole('listitem')).toHaveTextContent('blocked on review');
+    });
+  });
+  describe('the work graph (M35)', () => {
+    it('shows priority and blocked state on the board, and only when there is something to say', async () => {
+      withTasks([
+        { id: 't-1', displayId: 'T-1', title: 'Urgent stuck', status: 'todo', priority: 1, blockedByOpenCount: 2 },
+        { id: 't-2', displayId: 'T-2', title: 'Plain', status: 'todo', priority: 0, blockedByOpenCount: 0 },
+      ]);
+      renderPage();
+      const card = (await screen.findByText('Urgent stuck')).closest('[draggable]') as HTMLElement;
+      expect(within(card).getByText('Urgent')).toBeInTheDocument();
+      expect(within(card).getByText('Blocked · 2')).toBeInTheDocument();
+      const plain = screen.getByText('Plain').closest('[draggable]') as HTMLElement;
+      expect(within(plain).queryByText(/Blocked|Urgent|High|Medium|Low/)).toBeNull();
+    });
+
+    it('filters every list by priority and to ready work', async () => {
+      const requests = withTasks([{ id: 't-1', title: 'One', status: 'todo' }]);
+      renderPage();
+      await screen.findByText('One');
+      requests.length = 0;
+      fireEvent.change(screen.getByLabelText('Filter by priority'), { target: { value: '2' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Ready only' }));
+      await waitFor(() => expect(requests.some((r) => r.priority === 2 && r.ready === true && r.status === 'todo')).toBe(true));
+      expect(screen.getByRole('button', { name: 'Ready only' })).toHaveAttribute('aria-pressed', 'true');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+      await waitFor(() => expect(requests.some((r) => !r.status && r.priority === 2 && r.ready === true)).toBe(true));
+    });
+
+    it('sorts the table most-important-first by priority', async () => {
+      const requests = withTasks([{ id: 't-1', title: 'One', status: 'todo', priority: 3 }]);
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+      await screen.findByText('One');
+      expect(screen.getByRole('row', { name: /One/ })).toHaveTextContent('Medium');
+      fireEvent.click(screen.getByRole('columnheader', { name: 'Priority' }));
+      await waitFor(() => expect(requests.some((r) => r.page?.sort === 'priority:asc')).toBe(true));
+    });
+
+    it('changes priority from the detail panel and shows it at once', async () => {
+      const task = { id: 't-1', title: 'Fix bug', status: 'todo', priority: 0 };
+      withTasks([task]);
+      const updates: any[] = [];
+      // Writes through to the fixture GetTask reads, as the server would - the
+      // dialog's refetch after the change must not bring the old value back.
+      mockRpc(TaskService, 'UpdateTask', (body) => { updates.push(body); task.priority = body.priority; return { task }; });
+      renderPage('/tasks/t-1');
+      const select = await screen.findByLabelText('Priority');
+      expect(select).toHaveValue('0');
+      fireEvent.change(select, { target: { value: '1' } });
+      await waitFor(() => expect(updates).toContainEqual({ taskId: 't-1', priority: 1 }));
+      await waitFor(() => expect(screen.getByLabelText('Priority')).toHaveValue('1'));
+    });
+
+    it('reports a failed priority change', async () => {
+      withTasks([{ id: 't-1', title: 'Fix bug', status: 'todo' }]);
+      mockRpcError(TaskService, 'UpdateTask', 'permission_denied', 'viewers cannot edit');
+      renderPage('/tasks/t-1');
+      fireEvent.change(await screen.findByLabelText('Priority'), { target: { value: '2' } });
+      expect(await screen.findByText(/Failed to update priority/)).toBeInTheDocument();
+    });
+
+    it('shows the task\'s relations in the detail panel', async () => {
+      withTasks([{ id: 't-1', title: 'Fix bug', status: 'todo', blockedByOpenCount: 1 }]);
+      mockRpc(TaskService, 'ListTaskLinks', {
+        blockedBy: [{ id: 't-0', displayId: 'T-0', title: 'Schema first', status: 'todo', terminal: false }],
+        blocks: [], discovered: [], children: [],
+      });
+      renderPage('/tasks/t-1');
+      expect(await screen.findByText('Schema first')).toBeInTheDocument();
+      expect(screen.getByText('Blocked by')).toBeInTheDocument();
     });
   });
 });
