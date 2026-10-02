@@ -20,6 +20,7 @@ export function ListState({
   emptyMessage,
   emptyAction,
   onRetry,
+  errorLabel = 'Could not load this list',
   children,
 }: {
   isLoading: boolean;
@@ -32,6 +33,8 @@ export function ListState({
   emptyAction?: ReactNode;
   /** Refetch. Without it a failed list is a dead end until a full reload. */
   onRetry?: () => void;
+  /** What could not be loaded, for a view that is not a list (a task, a thread). */
+  errorLabel?: string;
   /** Rendered when there is something to show. */
   children?: ReactNode;
 }) {
@@ -44,7 +47,7 @@ export function ListState({
       <div role="alert" className="p-4 rounded-md bg-destructive-subtle text-destructive-subtle-foreground text-sm flex flex-col items-center gap-2">
         {/* The server's own words. "Something went wrong" tells a user nothing
             they can act on and nothing they can report. */}
-        <p>Could not load this list: {(error as Error)?.message ?? 'the request failed'}</p>
+        <p>{errorLabel}: {(error as Error)?.message ?? 'the request failed'}</p>
         {onRetry && (
           <button
             onClick={onRetry}

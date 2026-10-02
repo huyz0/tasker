@@ -15,18 +15,31 @@ export interface CommentData {
   createdAt: string;
 }
 
+/** A failed edit or delete, and the comment it happened to (M32-T04). */
+interface CommentFailure {
+  commentId: string;
+  error: Error;
+}
+
 interface CommentState {
   comments: CommentData[];
   isLoadingComments: boolean;
+  /** The thread could not be loaded - distinct from an empty one. */
+  listError: Error | null;
+  /** A post is in flight. */
   isLoading: boolean;
+  /** The last post failed. Edits and deletes report separately, on their comment. */
   isError: boolean;
   error: Error | null;
+  editFailure: CommentFailure | null;
+  deleteFailure: CommentFailure | null;
 }
 
 interface CommentActions {
   addComment: (content: string) => Promise<void>;
   editComment: (commentId: string, content: string) => Promise<void>;
   deleteComment: (commentId: string) => Promise<void>;
+  retryLoad: () => void;
 }
 
 export interface CommentContextValue {
@@ -55,7 +68,7 @@ export function CommentProvider({ entityId, entityType, children }: CommentProvi
   const queryClient = useQueryClient();
   const queryKey = ['comments', entityType, entityId];
 
-  const { data, isLoading: isLoadingList } = useQuery({
+  const { data, isLoading: isLoadingList, error: listError, refetch } = useQuery({
     queryKey,
     queryFn: async () => {
       // Every comment must be visible, not just the first page, or the
@@ -95,12 +108,21 @@ export function CommentProvider({ entityId, entityType, children }: CommentProvi
   });
 
   const value = useMemo<CommentContextValue>(() => ({
+    // Each operation reports its own failure. They used to be merged, so a
+    // failed edit or delete read "Failed to post comment" under the composer.
     state: {
       comments: data ?? [],
       isLoadingComments: isLoadingList,
+      listError: (listError as Error | null) ?? null,
       isLoading: addCommentMutation.isPending,
-      isError: addCommentMutation.isError || editCommentMutation.isError || deleteCommentMutation.isError,
-      error: (addCommentMutation.error || editCommentMutation.error || deleteCommentMutation.error) as Error | null,
+      isError: addCommentMutation.isError,
+      error: addCommentMutation.error as Error | null,
+      editFailure: editCommentMutation.isError && editCommentMutation.variables
+        ? { commentId: editCommentMutation.variables.commentId, error: editCommentMutation.error as Error }
+        : null,
+      deleteFailure: deleteCommentMutation.isError && deleteCommentMutation.variables
+        ? { commentId: deleteCommentMutation.variables, error: deleteCommentMutation.error as Error }
+        : null,
     },
     actions: {
       addComment: async (content: string) => {
@@ -112,8 +134,9 @@ export function CommentProvider({ entityId, entityType, children }: CommentProvi
       deleteComment: async (commentId: string) => {
         await deleteCommentMutation.mutateAsync(commentId);
       },
+      retryLoad: () => { void refetch(); },
     },
-  }), [data, isLoadingList, addCommentMutation, editCommentMutation, deleteCommentMutation]);
+  }), [data, isLoadingList, listError, refetch, addCommentMutation, editCommentMutation, deleteCommentMutation]);
 
   return (
     <CommentContext.Provider value={value}>

@@ -323,4 +323,48 @@ describe('Comment Compound Component', () => {
     expect(() => render(<Consumer />)).toThrow('useComments must be used within a CommentProvider');
     spy.mockRestore();
   });
+
+  describe('failures are reported as what they are (M32-T04)', () => {
+    const own = { id: 'cmt-1', userId: 'user-1', content: 'My own comment', createdAt: new Date().toISOString() };
+
+    test('a thread that failed to load says so, and can be retried', async () => {
+      // It used to read "No comments yet" - an empty thread and a broken one
+      // looked identical.
+      mockRpcError(CommentService, 'ListComments', 'unavailable', 'backend down');
+      renderWithProvider(<Comment.List />);
+      expect(await screen.findByText(/Could not load comments: .*backend down/)).toBeInTheDocument();
+      expect(screen.queryByText(/No comments yet/)).toBeNull();
+
+      withListComments({ comments: [own] });
+      fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+      expect(await screen.findByText('My own comment')).toBeInTheDocument();
+    });
+
+    test('a failed edit is reported on that comment, not as a failed post', async () => {
+      withListComments({ comments: [own] });
+      mockRpcError(CommentService, 'UpdateComment', 'permission_denied', 'not yours');
+      renderWithProvider(<><Comment.List /><Comment.Composer /></>);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+      fireEvent.change(screen.getByPlaceholderText('Edit your comment…'), { target: { value: 'changed' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect(await screen.findByText(/Failed to save this comment: .*not yours/)).toBeInTheDocument();
+      expect(screen.queryByText(/Failed to post comment/)).toBeNull();
+      // Still editing: the text the user wrote is not thrown away.
+      expect(screen.getByPlaceholderText('Edit your comment…')).toHaveValue('changed');
+    });
+
+    test('a failed delete is reported on that comment, not as a failed post', async () => {
+      withListComments({ comments: [own] });
+      mockRpcError(CommentService, 'DeleteComment', 'permission_denied', 'not yours');
+      renderWithProvider(<><Comment.List /><Comment.Composer /></>);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+      await confirmAction();
+
+      expect(await screen.findByText(/Failed to delete this comment: .*not yours/)).toBeInTheDocument();
+      expect(screen.queryByText(/Failed to post comment/)).toBeNull();
+    });
+  });
 });

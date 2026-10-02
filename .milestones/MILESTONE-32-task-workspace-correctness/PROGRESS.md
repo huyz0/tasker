@@ -53,3 +53,23 @@
     test now looks the page heading up with `hidden` — the modal correctly
     hides the page behind it.
 - **Next**: M32-T04
+
+## M32-T04 — Comment load and mutation errors are reported truthfully
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/gui/src/components/ui/comments/{CommentContext,CommentList,
+  CommentItem}.tsx`, `Comment.test.tsx`, `components/ui/ListState.tsx`,
+  `features/Tasks/index.tsx`
+- **Verified**: GUI gates green, 1217 tests; the three new tests failed first.
+- **Notes**: The provider never read the list query's `error`, so a thread
+  that failed to load rendered "No comments yet. Start the conversation!".
+  It now renders the error with Try again. Post, edit and delete errors were
+  merged into one `isError`, shown under the composer as "Failed to post
+  comment" whatever had failed; edit and delete now report on the comment
+  they happened to, via the mutation's own `variables`. A failed edit keeps
+  the editor open with the user's text — it used to reject unhandled and
+  leave the editor open with no message at all. `ListState` gained an
+  `errorLabel`, because "Could not load this list" was the wrong sentence for
+  a comment thread and for T03's unopenable task.
+- **Next**: M32-T05

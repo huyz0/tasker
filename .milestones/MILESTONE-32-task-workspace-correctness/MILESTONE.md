@@ -56,7 +56,7 @@ the server); no E2E asserted it rendered a row.
 - [x] Escape on a dialog layered over the task dialog closes only that layer.
 - [x] `/tasks/<missing-id>` renders an error with a way out; a slow load
   renders a loading state.
-- [ ] A failed comment load renders an error with retry; edit/delete failures
+- [x] A failed comment load renders an error with retry; edit/delete failures
   are labelled as such.
 - [ ] The detail status select offers only the current status and its allowed
   targets.
@@ -88,7 +88,7 @@ review's deferred items that are defects (`formatDateTime` helper, raw
   - **Files**: `apps/gui/src/features/Tasks/index.tsx` (+ test)
 - [x] **M32-T03** — Escape belongs to the topmost layer; a deep link that fails or loads says so.
   - **Files**: `apps/gui/src/features/Tasks/index.tsx` (+ test)
-- [ ] **M32-T04** — Comment load and mutation errors are reported truthfully.
+- [x] **M32-T04** — Comment load and mutation errors are reported truthfully.
   - **Files**: `apps/gui/src/components/ui/comments/*` (+ test)
 - [ ] **M32-T05** — Status pickers offer only allowed transitions.
   - **Files**: `apps/gui/src/features/Tasks/index.tsx` (+ test)

@@ -989,6 +989,7 @@ export function TasksWorkbench() {
               isEmpty={false}
               emptyMessage=""
               loadingMessage="Loading task…"
+              errorLabel="Could not open this task"
               onRetry={() => expandedTaskQuery.refetch()}
             />
           </div>
