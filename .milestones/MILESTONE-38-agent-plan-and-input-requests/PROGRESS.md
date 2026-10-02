@@ -68,3 +68,26 @@
   permission gates first returned NotFound on a placeholder id - they now run
   against seeded questions, so the scope check is what they test.
 - **Next**: M38-T04
+
+## M38-T04 — CLI and MCP tools
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/cli/cmd/{tasks_plan.go,tasks.go}` (+ `tasks_plan_test.go`),
+  `docs/cli-reference.md`, `apps/backend/src/modules/mcp/tools.ts` (+ test),
+  `docs/mcp.md`, `.specs/product/architecture.md` (service count)
+- **Verified**: `moon run cli:format cli:vet cli:test cli:docs-check
+  cli:coverage-gate :knip backend:typecheck :docs-lint` green (CLI coverage
+  94.5%); `bun test src/modules/mcp` 14 pass.
+- **Notes**: CLI: `tasks plan set <task> --step "[status:]title"...` (a
+  prefix only counts when it is a real status, so "Note: x" stays a title;
+  no steps clears), `tasks plan show`, `tasks ask --question --option`,
+  `tasks answer`, `tasks question`, `tasks cancel-question`, `tasks questions
+  [--org|--task] [--status]`; `tasks get` now shows the plan and open
+  questions. MCP: `set_task_plan`, `request_input`, `get_input_request`,
+  `list_input_requests`, `cancel_input_request` (25 tools) - and a test that
+  no tool maps to AnswerInputRequest. The MCP validator learned arrays of
+  objects (shape, enums, no stray fields), with the error naming the shape.
+  The architecture's service count had been one short since before M37; it
+  now matches `index.ts`.
+- **Next**: M38-T05

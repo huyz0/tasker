@@ -74,6 +74,10 @@ the same endpoint, using `TASKER_TOKEN` (or a saved `tasker auth login`) and
 | `add_comment` | A comment for the people watching a task | `CreateComment` |
 | `link_tasks` / `unlink_tasks` | `blocked_by` / `discovered_from` links | `AddTaskLink` / `RemoveTaskLink` |
 | `list_task_links` | Parent, subtasks, blockers, dependents, origin | `ListTaskLinks` |
+| `set_task_plan` | Replace your plan for a task: `[{title, status}]` | `SetTaskPlan` |
+| `request_input` | Ask a person a question; reviewers or admins are notified | `RequestInput` |
+| `get_input_request` / `list_input_requests` | A question's status and answer; a task's or the org's open questions | `GetInputRequest` / `ListInputRequests` |
+| `cancel_input_request` | Withdraw a question you asked | `CancelInputRequest` |
 | `get_task_type` | A type's statuses and legal transitions | `GetTaskType` |
 | `search_memory` | Search shared beliefs | `SearchBeliefs` |
 | `record_belief` | Record a durable fact | `RecordBelief` |

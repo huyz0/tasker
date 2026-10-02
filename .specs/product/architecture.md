@@ -44,8 +44,8 @@ One process serves everything (`apps/backend/src/index.ts`):
 
 - A `node:http` server on port 8080 is the listener (`index.ts:157`).
 - Connect-RPC handlers are mounted through `connectNodeAdapter` from
-  `@connectrpc/connect-node`. Twenty-one services are registered from the
-  generated contract (`index.ts:3`) — eighteen through `router.service(...)`
+  `@connectrpc/connect-node`. Twenty-three services are registered from the
+  generated contract (`index.ts:3`) — twenty through `router.service(...)`
   plus `search`, `dashboard` and `reports`, which take the router and register
   themselves.
 - **Elysia handles two route groups only**, not the whole surface:

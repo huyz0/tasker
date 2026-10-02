@@ -54,7 +54,10 @@ function schema(properties: Args, required: string[] = []): Tool["inputSchema"] 
  * misspelt field is told so, rather than having it silently ignored.
  */
 function validate(tool: Tool, args: Args): void {
-  const props = tool.inputSchema.properties as Record<string, { type: string; enum?: readonly string[]; minimum?: number; maximum?: number }>;
+  const props = tool.inputSchema.properties as Record<string, {
+    type: string; enum?: readonly string[]; minimum?: number; maximum?: number;
+    items?: { type: string; properties?: Record<string, { type: string; enum?: readonly string[] }>; required?: string[] };
+  }>;
   for (const key of tool.inputSchema.required ?? []) {
     if (args[key] === undefined || args[key] === null || args[key] === "") throw new InvalidToolArguments(`${key} is required`);
   }
@@ -66,11 +69,26 @@ function validate(tool: Tool, args: Args): void {
       p.type === "string" ? typeof value === "string" :
       p.type === "boolean" ? typeof value === "boolean" :
       p.type === "integer" ? Number.isInteger(value) && (p.minimum === undefined || (value as number) >= p.minimum) && (p.maximum === undefined || (value as number) <= p.maximum) :
+      p.type === "array" && p.items?.type === "object" ? Array.isArray(value) && value.every((v) => objectMatches(v, p.items!)) :
       p.type === "array" ? Array.isArray(value) && value.every((v) => typeof v === "string") :
       false;
-    if (!ok) throw new InvalidToolArguments(`${key} must be ${p.type === "integer" ? `an integer from ${p.minimum} to ${p.maximum}` : `a ${p.type}`}`);
+    if (!ok) {
+      const shape = p.type === "integer" ? `an integer from ${p.minimum} to ${p.maximum}`
+        : p.items?.type === "object" ? `an array of {${Object.entries(p.items.properties ?? {}).map(([k, v]) => `${k}: ${v.enum ? v.enum.join("|") : v.type}`).join(", ")}}`
+        : `a ${p.type}`;
+      throw new InvalidToolArguments(`${key} must be ${shape}`);
+    }
     if (p.enum && !p.enum.includes(value as string)) throw new InvalidToolArguments(`${key} must be one of: ${p.enum.join(", ")}`);
   }
+}
+
+/** An array item against `{type: "object", properties, required}`: string fields only, enums honoured, nothing extra. */
+function objectMatches(value: unknown, schema: { properties?: Record<string, { type: string; enum?: readonly string[] }>; required?: string[] }): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const obj = value as Record<string, unknown>;
+  const props = schema.properties ?? {};
+  if ((schema.required ?? []).some((k) => obj[k] === undefined)) return false;
+  return Object.entries(obj).every(([k, v]) => props[k] !== undefined && typeof v === "string" && (!props[k]!.enum || props[k]!.enum!.includes(v)));
 }
 
 /** Drops undefined values, so an absent argument is absent on the wire too. */
@@ -229,6 +247,49 @@ export const TOOL_SPECS: ToolSpec[] = [
     description: "A task's parent, subtasks, blockers, dependents and where it was discovered.",
     inputSchema: schema({ task_id: str("Task id") }, ["task_id"]), annotations: readOnly,
     service: TaskService, method: "ListTaskLinks", request: (a) => ({ taskId: a.task_id }),
+  },
+  {
+    name: "set_task_plan", title: "Set your plan for a task",
+    description: "Replaces your plan for a task - send every step, every time; [] clears it. People watching the task see your progress.",
+    inputSchema: schema({
+      task_id: str("Task id"),
+      steps: {
+        type: "array",
+        description: "Every step, in order",
+        items: {
+          type: "object",
+          properties: { title: { type: "string" }, status: { type: "string", enum: ["pending", "in_progress", "done", "skipped"] } },
+          required: ["title", "status"],
+        },
+      },
+    }, ["task_id", "steps"]),
+    annotations: { idempotentHint: true },
+    service: TaskService, method: "SetTaskPlan", request: (a) => ({ taskId: a.task_id, steps: a.steps }),
+  },
+  {
+    name: "request_input", title: "Ask a person",
+    description: "Asks a person a question on a task when you need a decision you should not make yourself. The task's reviewers (or the org's admins) are notified. Check for the answer with get_input_request.",
+    inputSchema: schema({ task_id: str("Task id"), question: str("What needs deciding, with the context a person needs"), options: strArray("Suggested answers (at most 10)") }, ["task_id", "question"]),
+    service: TaskService, method: "RequestInput", request: (a) => defined({ taskId: a.task_id, question: a.question, options: a.options }),
+  },
+  {
+    name: "get_input_request", title: "Get a question",
+    description: "A question you asked: its status, and once answered, the answer.",
+    inputSchema: schema({ input_request_id: str("Question id from request_input") }, ["input_request_id"]), annotations: readOnly,
+    service: TaskService, method: "GetInputRequest", request: (a) => ({ id: a.input_request_id }),
+  },
+  {
+    name: "list_input_requests", title: "List questions",
+    description: "Questions on one task, or your organization's questions still waiting on people.",
+    inputSchema: schema({ task_id: str("Only this task's questions"), status: str("Status", { enum: ["open", "answered", "cancelled", "all"] }), limit, cursor }),
+    annotations: readOnly,
+    service: TaskService, method: "ListInputRequests", request: (a) => defined({ taskId: a.task_id, status: a.status, ...page(a) }),
+  },
+  {
+    name: "cancel_input_request", title: "Withdraw a question",
+    description: "Withdraws a question you asked that no longer needs an answer.",
+    inputSchema: schema({ input_request_id: str("Question id") }, ["input_request_id"]),
+    service: TaskService, method: "CancelInputRequest", request: (a) => ({ id: a.input_request_id }),
   },
   {
     name: "get_task_type", title: "Get a task type",

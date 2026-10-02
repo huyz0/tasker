@@ -1605,7 +1605,10 @@ Usage:
   tasker tasks [command]
 
 Available Commands:
+  answer          Answer a question an agent asked (people only)
+  ask             Ask a person a question on a task; its reviewers (or org admins) are notified
   assign          Assign a task to an agent or user
+  cancel-question Withdraw a question you asked (or, as an admin, close any)
   claim           Atomically claim an unassigned task for the calling principal (agent self-service)
   claim-next      Claim the most important ready task in a project (agent self-service)
   comment-add     Add a comment to a task
@@ -1621,7 +1624,10 @@ Available Commands:
   note-delete     Delete an agent note (author only, requires an agent token)
   note-update     Update an agent note's content (author only, requires an agent token)
   notes           List AI agent notes on a task
+  plan            Show or replace the working agent's plan for a task
   purge           Permanently delete an already-binned task and its dependent records (requires org admin)
+  question        Show one question and, once given, its answer
+  questions       Questions waiting on people - the organization's queue, or one task's
   release         Give back a task you claimed, optionally leaving a handoff note
   restore         Restore a task from the bin (requires org admin)
   reviewer-add    Add a reviewer to a task
@@ -1633,6 +1639,33 @@ Available Commands:
 
 Flags:
   -h, --help   help for tasks
+```
+
+#### `tasker tasks answer`
+
+```
+Answer a question an agent asked (people only)
+
+Usage:
+  tasker tasks answer [question_id] [flags]
+
+Flags:
+      --answer string   Your answer
+  -h, --help            help for answer
+```
+
+#### `tasker tasks ask`
+
+```
+Ask a person a question on a task; its reviewers (or org admins) are notified
+
+Usage:
+  tasker tasks ask [task_id] [flags]
+
+Flags:
+  -h, --help                 help for ask
+      --option stringArray   A suggested answer; repeat for each (at most 10)
+      --question string      What you need decided
 ```
 
 #### `tasker tasks assign`
@@ -1647,6 +1680,18 @@ Flags:
       --agent string   Agent ID to assign
   -h, --help           help for assign
       --user string    User ID to assign
+```
+
+#### `tasker tasks cancel-question`
+
+```
+Withdraw a question you asked (or, as an admin, close any)
+
+Usage:
+  tasker tasks cancel-question [question_id] [flags]
+
+Flags:
+  -h, --help   help for cancel-question
 ```
 
 #### `tasker tasks claim`
@@ -1878,6 +1923,22 @@ Flags:
   -h, --help   help for notes
 ```
 
+#### `tasker tasks plan`
+
+```
+Show or replace the working agent's plan for a task
+
+Usage:
+  tasker tasks plan [command]
+
+Available Commands:
+  set         Replace a task's plan with the given steps (no steps clears it)
+  show        Show a task's plan
+
+Flags:
+  -h, --help   help for plan
+```
+
 #### `tasker tasks purge`
 
 ```
@@ -1888,6 +1949,36 @@ Usage:
 
 Flags:
   -h, --help   help for purge
+```
+
+#### `tasker tasks question`
+
+```
+Show one question and, once given, its answer
+
+Usage:
+  tasker tasks question [question_id] [flags]
+
+Flags:
+  -h, --help   help for question
+```
+
+#### `tasker tasks questions`
+
+```
+Questions waiting on people - the organization's queue, or one task's
+
+Usage:
+  tasker tasks questions [flags]
+
+Flags:
+  -c, --cursor string   Pagination cursor to fetch the next set
+  -h, --help            help for questions
+  -l, --limit int32     Maximum number of items to return (default 50)
+      --org string      Organization (or set TASKER_ORG_ID; an agent's is implied)
+      --page-all        Fetch every page, printing one JSON object per item per line (NDJSON)
+      --status string   open (default), answered, cancelled or all
+      --task string     Only this task's questions
 ```
 
 #### `tasker tasks release`

@@ -12,7 +12,9 @@ import { InvalidToolArguments } from "./protocol";
 function sampleArgs(tool: (typeof TOOL_SPECS)[number]) {
   const args: Record<string, unknown> = {};
   for (const [key, p] of Object.entries(tool.inputSchema.properties) as [string, any][]) {
-    args[key] = p.enum ? p.enum[0] : p.type === "boolean" ? true : p.type === "integer" ? p.minimum : p.type === "array" ? ["x"] : "x";
+    args[key] = p.enum ? p.enum[0] : p.type === "boolean" ? true : p.type === "integer" ? p.minimum
+      : p.type === "array" && p.items?.type === "object" ? [{ title: "x", status: "pending" }]
+      : p.type === "array" ? ["x"] : "x";
   }
   return args;
 }
@@ -39,7 +41,11 @@ describe("MCP tool catalogue (M36-T02)", () => {
       }
     }
     // The agent loop, at least.
-    for (const n of ["whoami", "claim_next_task", "set_task_status", "release_task", "create_task", "link_tasks", "search_memory"]) expect(names.has(n)).toBe(true);
+    for (const n of ["whoami", "claim_next_task", "set_task_status", "release_task", "create_task", "link_tasks", "search_memory",
+      "set_task_plan", "request_input", "get_input_request"]) expect(names.has(n)).toBe(true);
+    // Answering is a person's job (ADR-0031); no tool offers it.
+    expect(names.has("answer_input_request")).toBe(false);
+    expect(TOOL_SPECS.some((t) => t.method === "AnswerInputRequest")).toBe(false);
   });
 
   it("validates arguments against the advertised schema", async () => {
@@ -54,6 +60,12 @@ describe("MCP tool catalogue (M36-T02)", () => {
     await refuse("list_tasks", { project_id: "p", priority: "critical" }, /priority must be one of/);
     await refuse("create_task", { project_id: "p", title: "t", blocked_by: [1] }, /blocked_by must be a array/);
     await expect(host.call("whoami", { extra: 1 })).rejects.toBeInstanceOf(InvalidToolArguments);
+    // Arrays of objects: shape, enum and no stray fields.
+    const plan = (steps: unknown) => host.call("set_task_plan", { task_id: "t", steps });
+    await expect(plan([{ title: "a", status: "done" }])).resolves.toBeDefined();
+    for (const bad of [[{ title: "a" }], [{ title: "a", status: "blocked" }], [{ title: "a", status: "done", extra: "x" }], ["a"], [{ title: 1, status: "done" }]]) {
+      await expect(plan(bad)).rejects.toThrow(/steps must be an array of \{title: string, status: pending\|in_progress\|done\|skipped\}/);
+    }
   });
 
   it("sends the mapped request and returns the response as structured content", async () => {

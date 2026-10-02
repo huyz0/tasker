@@ -113,6 +113,12 @@ var tasksGetCmd = &cobra.Command{
 			if p := res.Msg.Task.GetParentTaskId(); p != "" {
 				cmd.Printf("Parent: %s\n", p)
 			}
+			if n := res.Msg.Task.OpenInputRequestCount; n > 0 {
+				cmd.Printf("Waiting on a person: %d open question(s) - `tasker tasks questions --task %s`\n", n, res.Msg.Task.Id)
+			}
+			if len(res.Msg.Task.Plan) > 0 {
+				printPlan(cmd, res.Msg.Task.Plan)
+			}
 			if res.Msg.Task.Description != "" {
 				cmd.Printf("\n%s\n", res.Msg.Task.Description)
 			}
