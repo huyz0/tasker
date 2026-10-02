@@ -268,7 +268,7 @@ describe('Comment Compound Component', () => {
     fireEvent.change(textarea, { target: { value: 'Hello' } });
     fireEvent.click(screen.getByRole('button', { name: /post/i }));
 
-    await waitFor(() => expect(screen.getByText('Posting...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Posting…')).toBeInTheDocument());
     pending.resolve({ comment: { id: 'cmt-1', userId: 'user-1', content: 'Hello', createdAt: new Date().toISOString() } });
   });
 

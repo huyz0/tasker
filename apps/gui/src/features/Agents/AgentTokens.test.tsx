@@ -234,7 +234,7 @@ describe('AgentTokens', () => {
   it('shows a loading line while the query is in flight', async () => {
     mockRpcPending(AgentService, 'ListAgentTokens');
     renderPanel();
-    expect(await screen.findByText('Loading tokens...')).toBeInTheDocument();
+    expect(await screen.findByText('Loading tokens…')).toBeInTheDocument();
   });
 
   it('unchecking a scope removes it', async () => {
@@ -265,7 +265,7 @@ describe('AgentTokens', () => {
 
     // Double-submitting here issues two credentials, and the second one's
     // plaintext replaces the first on screen before anyone has copied it.
-    expect(await screen.findByRole('button', { name: 'Creating...' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Creating…' })).toBeDisabled();
   });
 
   it('describes remaining life in days, and gets the singular right', async () => {

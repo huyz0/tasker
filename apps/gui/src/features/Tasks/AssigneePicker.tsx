@@ -165,7 +165,7 @@ export function AssigneePicker({ taskId, orgId, assignees }: { taskId: string; o
 
           {people.length > 0 && (
             <>
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">People</span>
+              <span className="text-2xs uppercase tracking-wider text-muted-foreground mt-1">People</span>
               {people.map((m: any) => (
                 <button
                   key={m.userId}
@@ -181,7 +181,7 @@ export function AssigneePicker({ taskId, orgId, assignees }: { taskId: string; o
 
           {agents.length > 0 && (
             <>
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Agents</span>
+              <span className="text-2xs uppercase tracking-wider text-muted-foreground mt-1">Agents</span>
               {agents.map((a: any) => (
                 <button
                   key={a.id}

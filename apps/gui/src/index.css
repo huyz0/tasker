@@ -75,6 +75,13 @@
   --color-chart-5: hsl(var(--chart-5));
   --color-chart-6: hsl(var(--chart-6));
 
+  /* A micro step below `text-xs`, for counters and dense badges. It was being
+     spelled `text-2xs` in a dozen places — an arbitrary value the lint
+     cannot see, and one that drifted to `text-2xs` the first time someone
+     eyeballed it. */
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.875rem;
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -99,6 +106,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -108,12 +116,16 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 271 100% 60%;
-    --primary-foreground: 210 40% 98%;
+    /* Was 271 100% 60% — a fully saturated violet, the single most common
+       colour of generated "AI" interfaces, and loud enough that every link and
+       active row competed with the content beside it. Same hue family, pulled
+       down in saturation and lightness so it reads as ink, not neon. */
+    --primary: 262 56% 50%;
+    --primary-foreground: 0 0% 100%;
     /* A lighter wash and a darker ink than the brand colour — the same shape as
        every other subtle pair, and 7.4:1 rather than 4.2:1. */
-    --primary-subtle: 271 100% 96%;
-    --primary-subtle-foreground: 271 85% 33%;
+    --primary-subtle: 262 60% 96%;
+    --primary-subtle-foreground: 262 55% 32%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -121,7 +133,7 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 45%;
 
-    --accent: 271 100% 61% / 0.1;
+    --accent: 262 56% 50% / 0.08;
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 48%;
@@ -155,12 +167,15 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 271 100% 60%;
+    --ring: 262 56% 50%;
 
     /* Chart series hues (ADR-0021): anchored to the palette above — 1 is the
        brand violet, 5 the info blue, 6 the success green — and validated as a
        set for adjacent-pair colourblind separation and ≥3:1 contrast on the
-       light background. Order is part of the contract; do not reshuffle. */
+       light background. Order is part of the contract; do not reshuffle.
+       chart-1 stays at its validated 271° step although the brand moved to
+       262° — close enough to read as the same family, and re-stepping one
+       series means re-validating all six. */
     --chart-1: 271 76% 53%;
     --chart-2: 187 95% 34%;
     --chart-3: 32 92% 45%;
@@ -177,21 +192,26 @@
      than one per trigger. Two copies of every dark token is two copies that
      drift, and the second copy is the one nobody updates. */
   :root[data-theme='dark'] {
-    --background: 222.2 84% 4.9%;
+    /* Card and popover used to be the page colour exactly, so in dark mode a
+       panel was a border floating on nothing and an open menu was
+       indistinguishable from the page under it. One step of lift each; the
+       page itself is a little less saturated than the stock navy-black. */
+    color-scheme: dark;
+    --background: 224 32% 6%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 224 26% 9%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 224 24% 11%;
     --popover-foreground: 210 40% 98%;
-    --primary: 271 100% 75%;
-    --primary-foreground: 271 80% 12%;
-    --primary-subtle: 271 45% 18%;
-    --primary-subtle-foreground: 271 95% 85%;
+    --primary: 262 80% 78%;
+    --primary-foreground: 262 60% 14%;
+    --primary-subtle: 262 35% 20%;
+    --primary-subtle-foreground: 262 90% 86%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 271 100% 75% / 0.15;
+    --accent: 262 80% 78% / 0.12;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
@@ -215,7 +235,7 @@
     --neutral-subtle-foreground: 214 32% 80%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 271 100% 75%;
+    --ring: 262 80% 78%;
     /* The same six hues re-stepped for the dark background — lighter and less
        saturated so they hold ≥3:1 contrast and colourblind separation there;
        a straight copy of the light steps would sink into the surface. */
@@ -235,6 +255,27 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     @apply antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Balanced headings: a page title wrapping to leave one orphaned word on
+     its second line is the commonest way a heading looks unfinished at 375px.
+     Set once here rather than on sixty-one call sites. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  /* No 300ms double-tap-zoom delay on controls. */
+  a,
+  button,
+  [role='button'],
+  input,
+  select,
+  textarea,
+  label {
+    touch-action: manipulation;
   }
 
   /* WCAG 2.3.3. Eleven files animate; none of them checked whether the visitor

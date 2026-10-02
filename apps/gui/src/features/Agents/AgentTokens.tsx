@@ -101,7 +101,7 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
   // section and then removes it - worse than never showing it (M03-T13).
   if (!tokensQuery.isSuccess) {
     return tokensQuery.isLoading
-      ? <div className="p-3 text-sm text-muted-foreground">Loading tokens...</div>
+      ? <div className="p-3 text-sm text-muted-foreground">Loading tokens…</div>
       : null;
   }
 
@@ -213,7 +213,7 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
             disabled={createMutation.isPending || !name.trim() || scopes.length === 0 || expiryError(expiresInDays) !== null}
             className="self-end px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-xs font-medium disabled:bg-muted disabled:text-muted-foreground"
           >
-            {createMutation.isPending ? 'Creating...' : 'Create'}
+            {createMutation.isPending ? 'Creating…' : 'Create'}
           </button>
         </form>
       )}

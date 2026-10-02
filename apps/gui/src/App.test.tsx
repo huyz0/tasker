@@ -203,7 +203,7 @@ describe('App', () => {
     it('/oauth/callback renders its in-progress state', async () => {
       healthQueryResult = { data: undefined, error: null, isLoading: false };
       renderApp('/oauth/callback');
-      expect(await screen.findByText('Linking Repository...')).toBeInTheDocument();
+      expect(await screen.findByText('Linking Repository…')).toBeInTheDocument();
     });
   });
 });

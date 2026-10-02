@@ -15,7 +15,7 @@ interface RepositoryIntegrationConfigProps {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider border ${TONE_CLASSES[buildTone(status)]}`}>
+    <span className={`text-2xs px-2 py-0.5 rounded uppercase font-bold tracking-wider border ${TONE_CLASSES[buildTone(status)]}`}>
       {status}
     </span>
   );
@@ -30,7 +30,7 @@ function DeploymentsList({ buildId, repositoryLinkId, commitSha }: { buildId: st
     },
   });
 
-  if (isLoading) return <p className="text-xs text-muted-foreground pl-4 py-1">Loading deployments...</p>;
+  if (isLoading) return <p className="text-xs text-muted-foreground pl-4 py-1">Loading deployments…</p>;
   if (!deployments || deployments.length === 0) return <p className="text-xs text-muted-foreground pl-4 py-1">No deployments for this build.</p>;
 
   return (
@@ -62,7 +62,7 @@ function BuildsPanel({ repositoryLinkId }: { repositoryLinkId: string }) {
     },
   });
 
-  if (isLoading) return <p className="text-xs text-muted-foreground pl-3 py-2">Loading builds...</p>;
+  if (isLoading) return <p className="text-xs text-muted-foreground pl-3 py-2">Loading builds…</p>;
   if (error) return <p className="text-xs text-destructive pl-3 py-2">Failed to load builds</p>;
   if (!builds || builds.length === 0) return <p className="text-xs text-muted-foreground pl-3 py-2">No builds found.</p>;
 
@@ -161,7 +161,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
     <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm mt-4">
       <h3 className="text-lg font-semibold mb-4">Repository Integrations</h3>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {error && <p className="text-sm text-destructive">Error loading links</p>}
 
       {data && data.length > 0 && (
@@ -183,7 +183,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                     disabled={syncMutation.isPending}
                     className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded hover:bg-secondary/80 disabled:opacity-50"
                   >
-                    {syncMutation.isPending ? 'Syncing...' : 'Sync PRs'}
+                    {syncMutation.isPending ? 'Syncing…' : 'Sync PRs'}
                   </button>
                   <button
                     onClick={async () => {
@@ -231,7 +231,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
               {pullRequests.map(pr => (
                 <li key={pr.id} className="text-sm flex items-center justify-between px-3 py-2 rounded bg-muted/20">
                   <span>#{pr.remotePrId}: {pr.title}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider border ${TONE_CLASSES[pullRequestTone(pr.status)]}`}>
+                  <span className={`text-2xs px-2 py-0.5 rounded uppercase font-bold tracking-wider border ${TONE_CLASSES[pullRequestTone(pr.status)]}`}>
                     {pr.status}
                   </span>
                 </li>
@@ -312,7 +312,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
             onClick={() => addLinkMutation.mutate()}
             className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground transition-colors"
           >
-            {addLinkMutation.isPending ? 'Linking...' : 'Link with API token'}
+            {addLinkMutation.isPending ? 'Linking…' : 'Link with API token'}
           </button>
           {addLinkMutation.isError && (
             <p className="text-sm text-destructive">Failed to link: {(addLinkMutation.error as Error).message}</p>

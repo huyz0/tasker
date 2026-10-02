@@ -87,7 +87,7 @@ const TeamRow = memo(function TeamRow({
           >
             <span className="truncate">{team.name}</span>
             {archived && (
-              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Archived</span>
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-muted-foreground">Archived</span>
             )}
           </button>
         )}
@@ -325,7 +325,7 @@ function TeamDetail({ team, orgId }: { team: Team; orgId: string }) {
         <h2 className="text-lg font-semibold flex items-center gap-2">
           {team.name}
           {team.deletedAt && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">Archived</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-muted-foreground">Archived</span>
           )}
         </h2>
         <p className="text-xs text-muted-foreground">ID: {team.id}</p>

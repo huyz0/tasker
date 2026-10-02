@@ -69,7 +69,7 @@ describe('LabelProvider', () => {
     const requests = withListLabels({ labels: [] });
     renderPicker();
     await waitFor(() => expect(requests.length).toBeGreaterThan(0));
-    expect(screen.queryByText('Attach a label...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Attach a label…')).not.toBeInTheDocument();
   });
 
   it('attaches a label selected from the dropdown', async () => {
@@ -78,7 +78,7 @@ describe('LabelProvider', () => {
     const requests = withAttachLabel();
     renderPicker();
 
-    await waitFor(() => expect(screen.getByText('Attach a label...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Attach a label…')).toBeInTheDocument());
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'lbl-1' } });
 
     await waitFor(() => expect(requests).toContainEqual({ entityId: 'task-1', entityType: 'task', labelId: 'lbl-1' }));
@@ -122,7 +122,7 @@ describe('LabelProvider', () => {
     mockRpcError(LabelService, 'AttachLabel', 'unknown', 'label already attached');
     renderPicker();
 
-    await waitFor(() => expect(screen.getByText('Attach a label...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Attach a label…')).toBeInTheDocument());
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'lbl-1' } });
 
     await waitFor(() => expect(screen.getByText(/Failed to update labels/)).toBeInTheDocument());
@@ -155,7 +155,7 @@ describe('LabelProvider', () => {
     const requests = withAttachLabel();
     renderPicker();
 
-    await waitFor(() => expect(screen.getByText('Attach a label...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Attach a label…')).toBeInTheDocument());
     fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } });
 
     expect(requests).toHaveLength(0);

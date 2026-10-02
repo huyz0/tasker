@@ -226,7 +226,12 @@ const WIG = [
   [/user-scalable\s*=\s*no|maximum-scale\s*=\s*1/, 'zoom disabled — never block pinch zoom'],
   [/onPaste=\{[^}]*preventDefault/, 'paste blocked — never prevent paste'],
   [/<img(?![^>]*\salt=)[^>]*>/, '<img> without alt'],
-  [/(?<![.\w])\.\.\.(?=["'`\s]|$)/, '"..." — use the ellipsis character …'],
+  // Three dots that end a run of text — before a closing quote, a tag, or the
+  // line end. Spread and rest (`{...props}`, `[...a]`, `(...args)`) are always
+  // followed by an identifier, so they never match. The lookbehind used to
+  // refuse a preceding letter too, which excluded exactly the strings this rule
+  // exists for: "Loading...", "Saving...".
+  [/(?<!\.)\.\.\.(?=\s*["'`<]|\s*$)/, '"..." — use the ellipsis character …'],
 ];
 
 /**
@@ -238,6 +243,21 @@ const WIG = [
  */
 const RE_CLASSNAME = /className=(?:"([^"]*)"|\{`([^`]*)`\})/g;
 const FOCUS_REPLACEMENT = /focus(?:-visible)?:(?:ring|outline|border|shadow|bg|text)-|focus-visible:/;
+
+/**
+ * The text of the JSX opening tag that starts on line `i`, up to the line that
+ * closes it (a bare `>`/`/>`, or a `>` that is not an arrow) — at most 20
+ * lines, so an unterminated match cannot swallow the file.
+ */
+function openingTag(lines, i) {
+  const out = [];
+  for (let j = i; j < Math.min(lines.length, i + 20); j++) {
+    out.push(lines[j]);
+    const rest = j === i ? lines[j].slice(lines[j].search(/<(?:div|span)\b/)) : lines[j];
+    if (/(?<!=)>/.test(rest.replace(/=>/g, ''))) break;
+  }
+  return out.join('\n');
+}
 
 function checkWig(file, lines) {
   lines.forEach((line, i) => {
@@ -254,9 +274,18 @@ function checkWig(file, lines) {
     // A click handler on a non-interactive element is unreachable by keyboard.
     // An overlay/backdrop is the documented exception, and must be paired with
     // an Escape handler rather than silently excused.
-    const div = line.match(/<(?:div|span)[^>]*\sonClick=/);
-    if (div && !/aria-hidden|role="presentation"/.test(line)) {
-      const isBackdrop = /\b(?:fixed|absolute)\b/.test(line) && /\binset-0\b/.test(line);
+    // The opening tag is read as a unit: a formatter puts each attribute on its
+    // own line once there are a few, and a line-at-a-time match never saw an
+    // `onClick` that was not on the `<div` line.
+    if (!/<(?:div|span)\b/.test(line)) return;
+    const tag = openingTag(lines, i);
+    const div = /<(?:div|span)\b[\s\S]*\sonClick=/.test(tag);
+    // An element that declares a role, is focusable and handles keys is the
+    // ARIA-pattern way to make a non-button interactive (a grid row) — the
+    // keyboard can reach it, which is all this rule is protecting.
+    const keyboardOperable = /\srole="/.test(tag) && /\stabIndex=/.test(tag) && /\sonKey(?:Down|Up)=/.test(tag);
+    if (div && !keyboardOperable && !/aria-hidden|role="presentation"/.test(tag)) {
+      const isBackdrop = /\b(?:fixed|absolute)\b/.test(tag) && /\binset-0\b/.test(tag);
       if (!isBackdrop) add('wig', file, i + 1, '<div>/<span> with onClick — use <button>');
       else if (!/\bEscape\b/.test(lines.join('\n')))
         add('wig', file, i + 1, 'backdrop closes on click but nothing handles Escape');

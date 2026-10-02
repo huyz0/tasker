@@ -185,6 +185,35 @@ test('wig: flags a click handler on a div', () => {
   assert.ok(found.some((f) => /use <button>/.test(f.msg)));
 });
 
+test('wig: flags "..." trailing a word in a string or JSX text', () => {
+  // The common case — "Loading...", "Saving..." — was the one the rule could
+  // not see: its lookbehind refused any `...` that followed a letter.
+  for (const src of [
+    `export const T = () => <span>Loading...</span>;`,
+    `export const s = 'Saving...';`,
+    `export const T = () => <input placeholder="Search tasks..." />;`,
+  ]) {
+    const found = lint(src, { only: 'wig' });
+    assert.ok(found.some((f) => /ellipsis/.test(f.msg)), `expected an ellipsis finding for ${src}`);
+  }
+});
+
+test('wig: does not mistake spread or rest syntax for an ellipsis', () => {
+  const found = lint(`export const T = (...args: string[]) => <A {...props} items={[...a, ...b]} />;`, { only: 'wig' });
+  assert.deepEqual(found, []);
+});
+
+test('wig: flags a click handler on a div whose onClick is on a later line', () => {
+  const found = lint(`export const T = () => (\n  <div\n    className="p-2"\n    onClick={() => {}}\n  >x</div>\n);`, { only: 'wig' });
+  assert.ok(found.some((f) => /use <button>/.test(f.msg)), `got ${JSON.stringify(found)}`);
+});
+
+test('wig: accepts a click handler on an element with a role and keyboard handler', () => {
+  // A virtualised grid row: role="row", focusable, and Enter/Space handled.
+  const found = lint(`export const T = () => (\n  <div\n    role="row"\n    tabIndex={0}\n    onClick={() => {}}\n    onKeyDown={() => {}}\n  >x</div>\n);`, { only: 'wig' });
+  assert.deepEqual(found, []);
+});
+
 test('reduced motion: flags animation when the stylesheet has no escape', () => {
   const found = lint(`export const T = () => <div className="animate-pulse" />;`, { only: 'wig', css: ':root { --background: 0 0% 100%; --foreground: 0 0% 10%; }' });
   assert.ok(found.some((f) => /reduced/i.test(f.msg)), `expected a reduced-motion finding, got ${JSON.stringify(found)}`);

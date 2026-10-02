@@ -79,12 +79,12 @@ const CONFIDENCE_BADGE: Record<string, string> = {
 function StatusBadge({ status }: { status: string }) {
   if (status === 'active') return null;
   const className = status === 'retracted' ? 'bg-destructive-subtle text-destructive-subtle-foreground' : 'bg-muted text-muted-foreground';
-  return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${className}`}>{status}</span>;
+  return <span className={`shrink-0 rounded-full px-2 py-0.5 text-2xs font-medium capitalize ${className}`}>{status}</span>;
 }
 
 function ConfidenceBadge({ confidence }: { confidence: string }) {
   return (
-    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${CONFIDENCE_BADGE[confidence] ?? 'bg-muted text-muted-foreground'}`}>
+    <span className={`shrink-0 rounded-full px-2 py-0.5 text-2xs font-medium capitalize ${CONFIDENCE_BADGE[confidence] ?? 'bg-muted text-muted-foreground'}`}>
       {confidence} confidence
     </span>
   );
@@ -525,7 +525,7 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
                 className="max-h-48 overflow-y-auto"
                 renderRow={(relation) => (
                   <div key={relation.id} className="flex items-center gap-2 border-b px-3 text-sm">
-                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium capitalize">{relation.relationType.replace('_', ' ')}</span>
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-2xs font-medium capitalize">{relation.relationType.replace('_', ' ')}</span>
                     <button onClick={() => onSelect(otherIdOf(relation))} className="min-w-0 flex-1 truncate text-left text-primary hover:underline">
                       {otherIdOf(relation)}
                     </button>

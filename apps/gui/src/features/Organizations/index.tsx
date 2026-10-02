@@ -416,7 +416,7 @@ export function OrganizationsDashboard() {
             disabled={!editName.trim() || !editSlug.trim() || updateOrgMutation.isPending}
             className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
           >
-            {updateOrgMutation.isPending ? 'Saving...' : 'Save'}
+            {updateOrgMutation.isPending ? 'Saving…' : 'Save'}
           </button>
           <button
             type="button"
@@ -580,7 +580,7 @@ export function OrganizationsDashboard() {
                     disabled={!newOrgName.trim() || createOrgMutation.isPending}
                     className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-sm font-medium transition-colors"
                   >
-                    {createOrgMutation.isPending ? 'Creating...' : 'Create'}
+                    {createOrgMutation.isPending ? 'Creating…' : 'Create'}
                   </button>
                 </form>
               )}
@@ -651,7 +651,7 @@ export function OrganizationsDashboard() {
                       disabled={setRetentionMutation.isPending}
                       className="px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-sm font-medium disabled:opacity-50"
                     >
-                      {setRetentionMutation.isPending ? 'Saving...' : 'Save'}
+                      {setRetentionMutation.isPending ? 'Saving…' : 'Save'}
                     </button>
                   </form>
                   {!(parseInt(retentionDaysInput, 10) > 0) && (
@@ -753,7 +753,7 @@ export function OrganizationsDashboard() {
                       })}
                     </div>
                     {isFetchingMoreMembers && (
-                      <div className="p-3 text-sm text-center text-muted-foreground">Loading more...</div>
+                      <div className="p-3 text-sm text-center text-muted-foreground">Loading more…</div>
                     )}
                   </div>
                 ) : debouncedMemberSearch || roleFacet ? (
@@ -826,7 +826,7 @@ export function OrganizationsDashboard() {
                       disabled={inviteMutation.isPending || !inviteEmail.trim()}
                       className="text-sm rounded-md bg-primary text-primary-foreground px-4 py-2 disabled:bg-muted disabled:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
-                      {inviteMutation.isPending ? 'Sending...' : 'Send invite'}
+                      {inviteMutation.isPending ? 'Sending…' : 'Send invite'}
                     </button>
                   </form>
                   {inviteMutation.isError && (

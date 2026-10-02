@@ -82,7 +82,7 @@ const RoleRow = memo(function RoleRow({
           </button>
         )}
         {role.isSystem && (
-          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">System</span>
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-muted-foreground">System</span>
         )}
       </div>
       {permissions.map((p) => (

@@ -204,7 +204,7 @@ describe('OrganizationsDashboard', () => {
     fireEvent.change(input, { target: { value: '10' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    await waitFor(() => expect(screen.getByText('Saving...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Saving…')).toBeInTheDocument());
     pending.resolve({ success: true });
   });
 
@@ -387,7 +387,7 @@ describe('OrganizationsDashboard', () => {
     fireEvent.change(screen.getByPlaceholderText('Organization name'), { target: { value: 'Pending Co' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
-    await waitFor(() => expect(screen.getByText('Creating...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Creating…')).toBeInTheDocument());
     pending.resolve({ organization: { id: 'org-new', name: 'Pending Co', slug: 'pending-co' } });
   });
 
@@ -505,7 +505,7 @@ describe('OrganizationsDashboard', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }));
     fireEvent.click(screen.getAllByText('Save')[0]);
 
-    await waitFor(() => expect(screen.getByText('Saving...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Saving…')).toBeInTheDocument());
     pending.resolve({ organization: { id: 'org-1', name: 'Root Co', slug: 'root-co' } });
   });
 

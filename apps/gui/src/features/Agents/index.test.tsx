@@ -261,7 +261,7 @@ describe('AgentsDashboard', () => {
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'role-1' } });
     fireEvent.click(screen.getByText('Deploy'));
 
-    await waitFor(() => expect(screen.getByText('Deploying...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Deploying…')).toBeInTheDocument());
     pending.resolve({ agent: { id: 'agent-2', name: 'New Agent', agentRoleId: 'role-1' } });
   });
 
@@ -273,7 +273,7 @@ describe('AgentsDashboard', () => {
     await waitFor(() => expect(screen.getByText('No agent instances deployed yet.')).toBeDefined());
     fireEvent.click(screen.getByText('Deploy Agent'));
 
-    expect(screen.getByText('Select a role...')).toBeInTheDocument();
+    expect(screen.getByText('Select a role…')).toBeInTheDocument();
   });
 
   it('cancels the deploy form', async () => {

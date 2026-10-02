@@ -4,7 +4,25 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>gui</title>
+    <meta name="description" content="Tasker coordinates work between people and AI agents." />
+    <!-- Browser chrome (mobile address bar, PWA title bar) matches the page
+         background in each theme: --background, light and dark. -->
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0d14" media="(prefers-color-scheme: dark)" />
+    <title>Tasker</title>
+    <!-- Resolve the theme before first paint. Without this, a dark-mode user
+         saw a white flash on every load until main.tsx ran applyTheme().
+         Mirrors loadTheme()/applyTheme() in src/store/layout.ts. -->
+    <script>
+      (function () {
+        var t = 'system';
+        try { t = localStorage.getItem('tasker.theme') || 'system'; } catch (e) {}
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

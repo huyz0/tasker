@@ -32,7 +32,7 @@ export function LabelPicker() {
           }}
           className="text-xs bg-transparent border rounded-md px-2 py-1"
         >
-          <option value="">Attach a label...</option>
+          <option value="">Attach a label…</option>
           {unattached.map((l) => (
             <option key={l.id} value={l.id}>{l.name}</option>
           ))}

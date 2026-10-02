@@ -432,15 +432,15 @@ describe('ProjectsWizard', () => {
 
     fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
     fireEvent.click(screen.getByRole('button', { name: 'Use Template' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Creating...' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Creating…' })).toBeInTheDocument());
     pendingProject.resolve({ project: { id: 'proj-new', name: 'X' } });
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Creating...' })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Creating…' })).toBeNull());
 
     const pendingTemplate = mockRpcPending(ProjectTemplateService, 'CreateTemplate');
     fireEvent.click(screen.getByText('+ New Template'));
     fireEvent.change(screen.getByPlaceholderText('Template name'), { target: { value: 'Tmpl' } });
     fireEvent.click(screen.getByText('Create Template'));
-    await waitFor(() => expect(screen.getByText('Creating...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Creating…')).toBeInTheDocument());
     pendingTemplate.resolve({ template: { id: 'tpl-new', name: 'Tmpl' } });
   });
 
@@ -461,7 +461,7 @@ describe('ProjectsWizard', () => {
     fireEvent.change(screen.getByPlaceholderText('New project name'), { target: { value: 'X' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Use Template' })[0]);
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Creating...' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Creating…' })).toBeInTheDocument());
     const untouchedButton = screen.getByRole('button', { name: 'Use Template' });
     expect(untouchedButton).not.toBeDisabled();
 
@@ -650,7 +650,7 @@ describe('ProjectsWizard', () => {
     fireEvent.click(screen.getByText('Edit'));
     fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(screen.getByText('Saving...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Saving…')).toBeInTheDocument());
     pending.resolve({ project: { id: 'proj-1', name: 'Existing Project' } });
   });
 
@@ -723,7 +723,7 @@ describe('ProjectsWizard', () => {
     fireEvent.click(screen.getByText('Edit'));
     fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(screen.getByText('Saving...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Saving…')).toBeInTheDocument());
     pending.resolve({ template: { id: 'tpl-1', name: 'Software', description: 'desc' } });
   });
 

@@ -248,7 +248,7 @@ describe('OrgProjectSwitcher', () => {
     renderSwitcher();
 
     await waitFor(() => expect(screen.getByText('No organizations')).toBeDefined());
-    expect(screen.queryByText('Loading organizations...')).toBeNull();
+    expect(screen.queryByText('Loading organizations…')).toBeNull();
   });
 
   it('lets the user switch the active project', async () => {

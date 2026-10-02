@@ -104,7 +104,7 @@ export function LabelsManager() {
             disabled={createLabelMutation.isPending || !newLabelName.trim() || !activeOrgId}
             className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md font-medium disabled:bg-muted disabled:text-muted-foreground"
           >
-            {createLabelMutation.isPending ? 'Creating...' : 'Create'}
+            {createLabelMutation.isPending ? 'Creating…' : 'Create'}
           </button>
         </form>
         {createLabelMutation.isError && (

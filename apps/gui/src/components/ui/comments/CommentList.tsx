@@ -5,7 +5,7 @@ export function CommentList({ emptyMessage = "No comments yet. Start the convers
   const { state } = useComments();
 
   if (state.isLoadingComments) {
-    return <p className="text-sm text-muted-foreground text-center py-4">Loading comments...</p>;
+    return <p className="text-sm text-muted-foreground text-center py-4">Loading comments…</p>;
   }
 
   return (

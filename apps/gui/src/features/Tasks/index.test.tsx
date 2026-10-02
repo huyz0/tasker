@@ -426,7 +426,7 @@ describe('TasksWorkbench', () => {
     const deleteButton = await screen.findByRole('button', { name: 'Delete' });
     fireEvent.click(deleteButton);
     await confirmAction();
-    await waitFor(() => expect(screen.getByText('Moving to bin...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Moving to bin…')).toBeInTheDocument());
     pendingDelete.resolve({ success: true });
   });
 
@@ -574,7 +574,7 @@ describe('TasksWorkbench', () => {
     fireEvent.click(screen.getByText('Edit'));
     fireEvent.click(screen.getByText('Save'));
 
-    await waitFor(() => expect(screen.getByText('Saving...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Saving…')).toBeInTheDocument());
     pending.resolve({ task: { id: 'task-1', title: 'Fix bug', status: 'todo', description: '' } });
   });
 

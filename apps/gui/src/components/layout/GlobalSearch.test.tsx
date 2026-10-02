@@ -44,7 +44,7 @@ function renderSearch() {
 }
 
 /** The trigger is rendered twice, as in the shell. */
-const clickTrigger = () => fireEvent.click(screen.getAllByText('Search tasks, artifacts...')[0]);
+const clickTrigger = () => fireEvent.click(screen.getAllByText('Search tasks, artifacts…')[0]);
 
 describe('GlobalSearch', () => {
   beforeEach(() => {
@@ -55,7 +55,7 @@ describe('GlobalSearch', () => {
 
   it('renders the closed search button by default', () => {
     renderSearch();
-    expect(screen.getAllByText('Search tasks, artifacts...')).toHaveLength(2);
+    expect(screen.getAllByText('Search tasks, artifacts…')).toHaveLength(2);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -114,7 +114,7 @@ describe('GlobalSearch', () => {
     clickTrigger();
     fireEvent.change(screen.getByPlaceholderText('Search tasks, artifacts, projects, agents…'), { target: { value: 'foo' } });
 
-    await waitFor(() => expect(screen.getByText('Searching...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Searching…')).toBeInTheDocument());
     pending.resolve({ results: [] });
   });
 

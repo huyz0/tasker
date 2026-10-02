@@ -157,7 +157,7 @@ describe('LabelsManager', () => {
     fireEvent.change(screen.getByPlaceholderText('Label name'), { target: { value: 'feature' } });
     fireEvent.click(screen.getByText('Create'));
 
-    await waitFor(() => expect(screen.getByText('Creating...')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Creating…')).toBeInTheDocument());
     pending.resolve({ label: { id: 'lbl-2', name: 'feature', color: '#3b82f6' } });
   });
 

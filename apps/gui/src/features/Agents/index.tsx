@@ -240,7 +240,7 @@ export function AgentsDashboard() {
                 required
                 className="text-sm bg-transparent border rounded-md px-2 py-1"
               >
-                <option value="">Select a role...</option>
+                <option value="">Select a role…</option>
                 {(rolesData ?? []).map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
@@ -253,7 +253,7 @@ export function AgentsDashboard() {
                 disabled={createAgentMutation.isPending || !newAgentName.trim() || !newAgentRoleId}
                 className="self-end px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium disabled:bg-muted disabled:text-muted-foreground"
               >
-                {createAgentMutation.isPending ? 'Deploying...' : 'Deploy'}
+                {createAgentMutation.isPending ? 'Deploying…' : 'Deploy'}
               </button>
             </form>
           )}
@@ -482,7 +482,7 @@ export function AgentsDashboard() {
               }
               className="self-end px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium disabled:bg-muted disabled:text-muted-foreground"
             >
-              {createAgentRoleMutation.isPending ? 'Creating...' : 'Create role'}
+              {createAgentRoleMutation.isPending ? 'Creating…' : 'Create role'}
             </button>
           </form>
         )}
@@ -552,7 +552,7 @@ export function AgentsDashboard() {
                       }
                       className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
                     >
-                      {updateAgentRoleMutation.isPending ? 'Saving...' : 'Save'}
+                      {updateAgentRoleMutation.isPending ? 'Saving…' : 'Save'}
                     </button>
                     <button
                       type="button"

@@ -468,7 +468,7 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
               disabled={isRestoring || isPurging}
               className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium disabled:opacity-50"
             >
-              {isRestoring ? 'Restoring...' : 'Restore'}
+              {isRestoring ? 'Restoring…' : 'Restore'}
             </button>
             {onPurge && (
               <button
@@ -485,7 +485,7 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
                 disabled={isRestoring || isPurging}
                 className="px-3 py-1 bg-destructive-subtle text-destructive-subtle-foreground hover:bg-destructive hover:text-destructive-foreground rounded-md text-xs font-medium disabled:opacity-50"
               >
-                {isPurging ? 'Deleting...' : 'Delete Forever'}
+                {isPurging ? 'Deleting…' : 'Delete Forever'}
               </button>
             )}
           </div>

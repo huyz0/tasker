@@ -38,7 +38,7 @@ function HandoffRow({ entry, onSelect }: { entry: HandoffEntry; onSelect: (taskI
     >
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-sm font-medium">{entry.taskTitle}</p>
-        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-2xs font-medium capitalize text-muted-foreground">
           {entry.taskStatus}
         </span>
       </div>

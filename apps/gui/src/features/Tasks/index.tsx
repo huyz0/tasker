@@ -197,7 +197,7 @@ function HandoffsSummary({ taskId }: { taskId: string }) {
         {handoffs.slice(0, 3).map((n) => (
           <div key={n.id} className="rounded-lg border bg-muted/50 p-2">
             <p className="line-clamp-2 text-xs">{n.content}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-2xs text-muted-foreground">
               Agent {n.agentId} · {new Date(n.createdAt).toLocaleString()}
             </p>
           </div>
@@ -964,7 +964,7 @@ export function TasksWorkbench() {
                  disabled={deleteTaskMutation.isPending}
                  className="text-destructive hover:text-destructive/80 text-sm font-medium disabled:opacity-50"
                >
-                 {deleteTaskMutation.isPending ? 'Moving to bin...' : 'Delete'}
+                 {deleteTaskMutation.isPending ? 'Moving to bin…' : 'Delete'}
                </button>
               <button onClick={() => setExpandedTaskId(null)} aria-label="Close task details" className="text-muted-foreground hover:text-foreground">✕</button>
             </div>
@@ -1022,7 +1022,7 @@ export function TasksWorkbench() {
                      disabled={!editTitle.trim() || updateTaskMutation.isPending}
                      className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium"
                    >
-                     {updateTaskMutation.isPending ? 'Saving...' : 'Save'}
+                     {updateTaskMutation.isPending ? 'Saving…' : 'Save'}
                    </button>
                    <button
                      type="button"

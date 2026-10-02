@@ -114,10 +114,10 @@ export function GlobalSearchTrigger({ compact = false }: { compact?: boolean }) 
     >
       <span className="flex items-center gap-2">
         <Search className="w-4 h-4 shrink-0" />
-        <span className={compact ? 'sr-only' : undefined}>Search tasks, artifacts...</span>
+        <span className={compact ? 'sr-only' : undefined}>Search tasks, artifacts…</span>
       </span>
       {!compact && (
-        <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+        <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-2xs font-medium text-muted-foreground opacity-100">
           <span className="text-xs">⌘</span>K
         </kbd>
       )}
@@ -283,7 +283,7 @@ export function GlobalSearch() {
               </div>
             </div>
           )}
-          {isLoading && <p className="p-4 text-center text-sm text-muted-foreground">Searching...</p>}
+          {isLoading && <p className="p-4 text-center text-sm text-muted-foreground">Searching…</p>}
           {!isLoading && data && data.length === 0 && debouncedQuery && (
             <p className="p-4 text-center text-sm text-muted-foreground">No results found.</p>
           )}

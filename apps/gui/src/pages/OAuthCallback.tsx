@@ -94,7 +94,7 @@ export function OAuthCallback() {
 
   return (
     <div className="p-8 max-w-md mx-auto mt-10 text-center">
-      <h2 className="text-xl font-bold mb-2 text-primary">Linking Repository...</h2>
+      <h2 className="text-xl font-bold mb-2 text-primary">Linking Repository…</h2>
       <p className="text-muted-foreground mb-4">Please wait while we complete the integration with your provider.</p>
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
     </div>
