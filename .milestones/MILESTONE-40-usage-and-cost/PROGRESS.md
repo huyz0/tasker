@@ -58,3 +58,24 @@
   as an integer for the same reason; its description gives the conversion.
   Bad input exits 6 before any request.
 - **Next**: M40-T04
+
+## M40-T04 — GUI
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `lib/format.ts` (`formatMicros`, `formatCount`),
+  `features/Tasks/TaskUsage.tsx` (new, in the task dialog under the plan),
+  `features/Reports/AgentSpendCard.tsx` (new, on Reports under the
+  exception cards, following the window selector), tests and stories for
+  both; MSW mocks for the new read in the Reports tests;
+  `scripts/rpc-coverage.mjs` exceptions for `reportUsage` and
+  `listUsageRecords`.
+- **Verified**: `gui:test` 1287 pass (coverage thresholds held);
+  `gui:typecheck`, `gui:lint`, `gui:design-lint`, `gui:rpc-coverage`,
+  `gui:query-error-coverage` green.
+- **Notes**: Money is formatted with bigint arithmetic end to end. The spend
+  card is its own query, so a failure there never blanks the exception cards
+  - the same isolation the trends have; the daily bars are plain elements
+  scaled to the window's most expensive day, with each day's amount in its
+  title.
+- **Next**: M40-T05

@@ -111,6 +111,7 @@ describe('Reports trend cards', () => {
     mockActiveOrgId = 'org-1';
     mockActiveProjectId = 'proj-1';
     mockRpc(ReportService, 'GetReportExceptions', EXCEPTIONS_RESPONSE);
+    mockRpc(ReportService, 'GetUsageReport', { totals: { reports: '0' }, byAgent: [], byProject: [], byDay: [], since: '' });
     mockRpc(ReportService, 'GetReportTrends', TRENDS);
   });
 

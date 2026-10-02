@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatDateTime, formatStatus } from './format';
+import { formatDateTime, formatStatus, formatMicros, formatCount } from './format';
 
 describe('formatDateTime', () => {
   it("formats in the reader's locale, to the minute", () => {
@@ -30,5 +30,20 @@ describe('formatStatus', () => {
     expect(formatStatus('in-progress')).toBe('In progress');
     expect(formatStatus('todo')).toBe('Todo');
     expect(formatStatus('')).toBe('');
+  });
+});
+
+describe('formatMicros (M40)', () => {
+  it('shows dollars with only significant fractional digits, at least cents', () => {
+    expect(formatMicros(0n)).toBe('$0.00');
+    expect(formatMicros(15000n)).toBe('$0.015');
+    expect(formatMicros(1_500_000n)).toBe('$1.50');
+    expect(formatMicros(1n)).toBe('$0.000001');
+    expect(formatMicros(1_234_567_890_000n)).toBe('$1,234,567.89');
+    expect(formatMicros(-2_500_000n)).toBe('-$2.50');
+  });
+
+  it('groups token counts', () => {
+    expect(formatCount(1234567n)).toBe('1,234,567');
   });
 });

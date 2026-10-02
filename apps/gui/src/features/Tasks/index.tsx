@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useScopedTo } from '../../hooks/useScope';
 import { PriorityBadge, BlockedBadge, NeedsInputBadge, AwaitingApprovalBadge } from './PriorityBadge';
 import { TaskPlan } from './TaskPlan';
+import { TaskUsage } from './TaskUsage';
 import { TaskInputRequests, QuestionsQueue } from './InputRequests';
 import { TaskApprovals, ApprovalsQueue } from './Approvals';
 import { PRIORITY_OPTIONS } from './priority';
@@ -1231,6 +1232,10 @@ export function TasksWorkbench() {
              <div className="mt-8">
                <h3 className="text-lg font-semibold tracking-tight mb-3">Agent plan</h3>
                <TaskPlan steps={expandedTask.plan ?? []} />
+             </div>
+             <div className="mt-8">
+               <h3 className="text-lg font-semibold tracking-tight mb-3">Usage and cost</h3>
+               <TaskUsage usage={expandedTask.usage} />
              </div>
              <div className="mt-8">
                <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>

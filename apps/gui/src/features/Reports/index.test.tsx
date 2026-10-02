@@ -106,6 +106,7 @@ describe('ReportsScreen', () => {
     mockActiveProjectId = 'proj-1';
     mockRpc(ReportService, 'GetReportExceptions', RESPONSE);
     mockRpc(ReportService, 'GetReportTrends', EMPTY_TRENDS);
+    mockRpc(ReportService, 'GetUsageReport', { totals: { reports: '0' }, byAgent: [], byProject: [], byDay: [], since: '' });
   });
 
   it('asks the user to select an organization when none is active', () => {
@@ -165,7 +166,7 @@ describe('ReportsScreen', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Flow' })).toBeInTheDocument());
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual([
-      'Stalled work', 'Went backwards', 'Churning tasks', 'Fleet scorecard',
+      'Stalled work', 'Went backwards', 'Churning tasks', 'Fleet scorecard', 'Agent spend',
       'Autonomy and rework', 'Created vs completed', 'Flow',
     ]);
   });

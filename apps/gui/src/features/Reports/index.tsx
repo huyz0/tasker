@@ -8,6 +8,7 @@ import { WentBackwardsCard } from './WentBackwardsCard';
 import { ChurningTasksCard } from './ChurningTasksCard';
 import { FleetScorecardCard } from './FleetScorecardCard';
 import { TrendsSection } from './TrendsSection';
+import { AgentSpendCard } from './AgentSpendCard';
 import { PageHeader } from '../../components/ui/PageHeader';
 
 /**
@@ -120,6 +121,9 @@ export function ReportsScreen() {
           </div>
         )}
       </ListState>
+
+      {/* M40: spend is its own read, like the trends. */}
+      <AgentSpendCard projectId={activeProjectId} windowDays={windowDays} />
 
       {/* Beneath the exceptions on purpose (urgency order, shape.md): trends
           inform the retro, exceptions demand action today. Its own query, so
