@@ -12,6 +12,7 @@ import {
   Tag,
   Workflow,
   ListChecks,
+  CalendarClock,
   Settings,
   ShieldCheck,
   Users,
@@ -57,6 +58,7 @@ const NAV_GROUPS = [
     items: [
       { name: 'Task Types', path: '/task-types', icon: Workflow },
       { name: 'Workflows', path: '/workflows', icon: ListChecks },
+      { name: 'Schedules', path: '/schedules', icon: CalendarClock },
       { name: 'Labels', path: '/labels', icon: Tag },
       { name: 'Organizations', path: '/organizations', icon: Building2 },
       { name: 'Teams', path: '/teams', icon: Users },

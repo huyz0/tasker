@@ -52,7 +52,7 @@ event-triggered schedules (webhooks already cover reacting to events).
 - [x] **M43-T02** — Schedule CRUD and next-run computation.
 - [x] **M43-T03** — The sweep, Run now and run history.
 - [x] **M43-T04** — CLI and MCP.
-- [ ] **M43-T05** — GUI.
+- [x] **M43-T05** — GUI.
 - [ ] **M43-T06** — Docs and close.
 
 ## 6. Verification

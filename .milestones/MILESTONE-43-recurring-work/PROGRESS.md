@@ -75,3 +75,21 @@
   it was not given, with `--pause`/`--resume`. No MCP tool defines a
   schedule; agents list and run them.
 - **Next**: M43-T05
+
+## M43-T05 — GUI
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `features/Schedules/` (new: `SchedulesScreen` at `/schedules`
+  and `/schedules/:scheduleId`, `ScheduleForm`), tests and stories;
+  `App.tsx` route, `AppShell.tsx` sidebar entry under Configuration.
+- **Verified**: `gui:test` 1324 pass, branch coverage 95.13%; `gui:build`,
+  `gui:typecheck`, `gui:lint`, `gui:design-lint`, `gui:rpc-coverage`,
+  `gui:query-error-coverage` green.
+- **Notes**: The form states the cadence back in one line ("Every Mon, Thu
+  at 09:00 UTC") as it is edited, offers only workflows usable in the chosen
+  project, and locks the project of an existing schedule. The detail shows
+  the next run (or Paused), what it creates, Run now with its outcome,
+  Pause/Resume, and the recent runs with skip/failure reasons and links to
+  the tasks they made.
+- **Next**: M43-T06

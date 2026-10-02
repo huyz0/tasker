@@ -1,8 +1,8 @@
 ---
 active_milestone: M43
-active_task: M43-T05
+active_task: M43-T06
 last_updated: 2026-10-02
-last_commit: 5882c98
+last_commit: c95c946
 blocked: false
 blocker: null
 ---
@@ -1824,9 +1824,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M40 | Agent Usage and Cost            | done   | M35        | 5     | 5    |
 | M41 | Task Digests                    | done   | M38, M40   | 5     | 5    |
 | M42 | Workflow Templates              | done   | M35        | 6     | 6    |
-| M43 | Recurring Work                  | in-progress | M42   | 6     | 4    |
+| M43 | Recurring Work                  | in-progress | M42   | 6     | 5    |
 
-**Total: 325 tasks across 37 milestones — 322 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 325 tasks across 37 milestones — 323 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
