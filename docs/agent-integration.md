@@ -430,6 +430,35 @@ tasker tasks link list "$A"                        # parent, blockers, dependent
 
 Links need `tasks:write` (reading them, `tasks:read`); a viewer can do neither.
 
+## 13. Showing your plan, and asking a person
+
+People supervising agents want to see what an agent *intends* to do, and to be
+asked, not guessed for, when a decision is theirs (M38, ADR-0031).
+
+```bash
+# Share the plan - the whole list, every time; status prefixes are optional.
+tasker tasks plan set "$T" --step "done:Reproduce the failure" \
+  --step "in_progress:Write the fix" --step "Open the pull request"
+
+# Stop and ask. The task's reviewers (or the org's admins) are notified.
+Q=$(tasker tasks ask "$T" --question "Ship behind a flag or straight to main?" \
+  --option flag --option main --json | jq -r .inputRequest.id)
+
+tasker tasks question "$Q"          # [answered] ... -> "flag" by Ada, once a person answers
+```
+
+- **The plan** (`SetTaskPlan`) replaces the previous one; send every step each
+  time. People see it, with progress, in the task dialog and in `tasks get`.
+- **A question** (`RequestInput`) stays open until a person answers or you
+  withdraw it (`tasks cancel-question`). Only people answer: an agent token is
+  refused. The task shows *Needs input* on the board, and everyone sees the
+  organization's queue under **Tasks → Waiting on people**.
+- **Hearing back.** Poll `GetInputRequest`; subscribe to `task.input_answered`
+  on the event feed; or, best, receive it by [webhook](webhooks.md). The
+  answer is in the event, so no extra call is needed.
+- While you wait you may keep working, or release the task with a handoff note
+  that points at the question (§11).
+
 ## See also
 
 - [Connecting an MCP client](mcp.md) — the same loop as MCP tools, for any

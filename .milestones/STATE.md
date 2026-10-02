@@ -1,6 +1,6 @@
 ---
 active_milestone: M38
-active_task: M38-T06
+active_task: null
 last_updated: 2026-10-02
 last_commit: 1815c88
 blocked: false
@@ -40,7 +40,14 @@ clients; `docs/mcp.md`.
 **M37 (Outbound Webhooks) complete: 7/7 tasks, 6/6 exit criteria** — signed,
 retried, leased delivery of task events from an in-process outbox (works
 without NATS), SSRF-safe targets vetted at connect time, auto-disable with an
-admin notification (ADR-0030); CLI, GUI and `docs/webhooks.md`. Next: M38.
+admin notification (ADR-0030); CLI, GUI and `docs/webhooks.md`.
+**M38 (Agent Plan and Input Requests) complete: 6/6 tasks, 5/5 exit
+criteria** — agents publish a plan people watch with progress, and ask
+questions that notify reviewers and that only people answer, heard back via
+the feed, webhooks or polling (ADR-0031); CLI, MCP tools, GUI. All four
+landscape milestones are delivered; next candidates are the review's
+unscheduled items (approval gates on agent transitions, cost accounting,
+compaction of old tasks).
 
 **2026-10-02 — M30 (Backend Correctness at Scale) complete: 10/11 tasks
 (T05 dropped — the index already existed), 8/8 exit criteria.**
@@ -1782,9 +1789,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M35 | Work Graph                      | done   | M33        | 7     | 7    |
 | M36 | MCP Server                      | done   | M35        | 5     | 5    |
 | M37 | Outbound Webhooks               | done   | M35        | 7     | 7    |
-| M38 | Agent Plan and Input Requests   | in-progress | M35   | 6     | 5    |
+| M38 | Agent Plan and Input Requests   | done   | M35        | 6     | 6    |
 
-**Total: 298 tasks across 32 milestones — 296 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 298 tasks across 32 milestones — 297 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
@@ -1974,7 +1981,7 @@ lead, with M10 following.
    keeps the migration from touching every other table's `userId` foreign key
    — the alternative (mint a new internal id, re-point every FK) would have
    made this a second M10-sized rewrite for no behavioural gain.
-3. **M08 was not started** (`active_task: M38-T06`, no commits recorded against
+3. **M08 was not started** (`active_task: null`, no commits recorded against
    it) when this re-plan landed, so re-sequencing ahead of it abandoned no
    in-flight work. It resumes in its prior position once M13 and M10 close.
 4. Full plan, exit criteria and task breakdown:

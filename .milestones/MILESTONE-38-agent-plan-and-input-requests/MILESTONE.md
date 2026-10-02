@@ -1,13 +1,13 @@
 ---
 id: M38
 title: Agent Plan and Input Requests
-status: in-progress
+status: done
 goal: A person watching a task sees the agent's plan and how far through it the agent is, and when an agent cannot proceed without a human it asks a question on the task, the right person is notified, and the answer reaches the agent.
 depends_on: [M35]
 surfaces: [contract, backend, cli, gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M38 — Agent Plan and Input Requests
@@ -32,16 +32,16 @@ only way to ask is a free-text comment nobody is notified of.
 
 ## 3. Exit Criteria
 
-- [ ] `SetTaskPlan` replaces the plan atomically; `GetTask` returns it; steps
+- [x] `SetTaskPlan` replaces the plan atomically; `GetTask` returns it; steps
   are bounded (≤ 50, each ≤ 500 chars).
-- [ ] `RequestInput` / `AnswerInputRequest` / `ListInputRequests`; only a
+- [x] `RequestInput` / `AnswerInputRequest` / `ListInputRequests`; only a
   human answers; an answered request cannot be answered twice.
-- [ ] Opening a request notifies through the notification registry (a new
+- [x] Opening a request notifies through the notification registry (a new
   renderer, no type branches); answering publishes an event the asking agent
   receives.
-- [ ] GUI: plan with progress in the task dialog; an input request banner with
+- [x] GUI: plan with progress in the task dialog; an input request banner with
   an answer form; an "Waiting on you" list.
-- [ ] CLI and MCP tools for all of it; CI green on `main`.
+- [x] CLI and MCP tools for all of it; CI green on `main`.
 
 ## 4. Scope
 
@@ -55,7 +55,7 @@ policy choice), agent-to-agent questions.
 - [x] **M38-T03** — Input requests: RPCs, notifications, events.
 - [x] **M38-T04** — CLI and MCP tools.
 - [x] **M38-T05** — GUI.
-- [ ] **M38-T06** — Docs and close.
+- [x] **M38-T06** — Docs and close.
 
 ## 6. Verification
 

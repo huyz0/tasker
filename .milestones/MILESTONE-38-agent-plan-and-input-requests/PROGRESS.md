@@ -119,3 +119,17 @@
   `moon run gui:typecheck` is the check to trust; and design-lint refused
   `transition-all` on the progress bar.
 - **Next**: M38-T06
+
+## M38-T06 — Docs and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/agent-integration.md` (new §13), `.specs/product/architecture.md`,
+  `.milestones/STATE.md`
+- **Verified**: `moon run :docs-lint :doc-drift` green.
+- **Notes**: §13 is the agent's side of the loop - share a plan, ask, hear back
+  by polling, the event feed or a webhook, and keep working or hand off while
+  waiting. M38 closed: 6/6 tasks, 5/5 criteria, each a test in
+  `planAndInput.test.ts`, the MCP/CLI suites, the GUI suites, or the live T05
+  run.
+- **Next**: none - M35-M38 delivered.

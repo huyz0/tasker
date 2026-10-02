@@ -83,6 +83,11 @@ One process serves everything (`apps/backend/src/index.ts`):
   retries with backoff and disables a webhook after 20 consecutive failures;
   target addresses are vetted inside the connection's DNS lookup
   (`urlSafety.ts`).
+- **Agents show their plan and ask people** (M38, ADR-0031): `tasks.plan` is
+  one JSON column replaced whole by `SetTaskPlan`; `input_requests`
+  (`modules/tasks/inputRequests.ts`) holds questions an agent asks and only a
+  person answers - notification through the registry, `task.input_*` events
+  that the feed and webhooks carry, and `openInputRequestCount` on every task.
 
 Cross-cutting behaviour is implemented as Connect interceptors in `index.ts`:
 session resolution, request logging (`lib/requestLogging.ts`) and per-method
