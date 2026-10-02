@@ -37,3 +37,22 @@
   implies them. The per-team loop costs one grant read in total because
   `can()` memoizes a user's grants per request.
 - **Next**: M30-T03
+
+## M30-T03 — Terminal tasks are not claimable work
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `apps/backend/src/modules/tasks/{taskActivity,tasks.handler}.ts`,
+  `tasks.test.ts`, `packages/shared-contract/main.tsp` (comments only)
+- **Verified**: `bun test src/modules/tasks` — 109 pass; the new test failed
+  first (a done task came back from `assigneeFilter="unassigned"`).
+- **Notes**: "Terminal" is `isTerminalStatus`'s rule, not a literal `"done"`:
+  a typed task is terminal at its type's highest-position status, so the test
+  pins a type where `done` is a *middle* status and stays claimable.
+  `terminalStatusSql` is that rule as a SQL predicate, so the list filter and
+  its `totalCount` stay in the database. The claim checks before its atomic
+  insert rather than inside it — a task finishing at the same instant it is
+  claimed is benign, and the caller needs to be told *why* it lost.
+  Not done here, deliberately: agent self-release and claim leases — new API,
+  owned by M33.
+- **Next**: M30-T04

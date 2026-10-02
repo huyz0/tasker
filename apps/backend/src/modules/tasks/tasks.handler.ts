@@ -8,7 +8,7 @@ import { requireUser, getProjectOrgId, getTaskOrgId, requirePrincipal, authorize
 import { assertCan } from "../../lib/policy";
 import { withIdempotency } from "../../lib/idempotency";
 import { getLatestHandoffNote } from "./task_notes.handler";
-import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal } from "./taskActivity";
+import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal, terminalStatusSql } from "./taskActivity";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // Distinguishes a real DB-level unique-constraint violation (a concurrent
@@ -751,7 +751,8 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       let assigneeFacet: any = undefined;
       if (parsed.assigneeFilter === "unassigned") {
         const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
-        assigneeFacet = sql`NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id})`;
+        // M30-T03: a finished task is not claimable work.
+        assigneeFacet = sql`NOT EXISTS (SELECT 1 FROM ${assignments} WHERE ${(assignments as any).taskId} = ${(tasks as any).id}) AND NOT ${terminalStatusSql(tasks, isStandalone)}`;
       } else if (parsed.assigneeFilter === "me") {
         const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
         const selfColumn = principal.kind === "user" ? (assignments as any).userId : (assignments as any).agentId;
@@ -952,6 +953,16 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       return withIdempotency(db, isStandalone, principal, "claimTask", parsed.idempotencyKey, async () => {
         const orgId = await getTaskOrgId(db, parsed.taskId);
         await authorizePrincipal(db, principal, orgId, { scope: "tasks:write", permission: "task:write" });
+
+        // M30-T03: a finished task is not work. Checked before the insert
+        // rather than inside it: a task finishing concurrently with its own
+        // claim is a benign race, and the error must say why the claim lost.
+        const tasksTable = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
+        const [current] = await db.select({ taskTypeId: (tasksTable as any).taskTypeId, status: (tasksTable as any).status })
+          .from(tasksTable).where(eq((tasksTable as any).id, parsed.taskId)).limit(1);
+        if (current && await isTerminalStatus(db, isStandalone, current.taskTypeId ?? null, current.status)) {
+          throw new ConnectError(`task is in terminal status "${current.status}" - only open tasks can be claimed`, Code.FailedPrecondition);
+        }
 
         const assignments = isStandalone ? schemaSqlite.taskAssignments : schemaMysql.taskAssignments;
         const newId = `ta-${crypto.randomUUID()}`;

@@ -57,7 +57,7 @@ for the list query every board load and agent poll runs.
   timestamp aggregate typed as a number.)
 - [x] `UniversalSearch` by an org member who holds no grant on team T returns
   none of T's beliefs; a member of T still finds them.
-- [ ] `ClaimTask` on a task in a terminal status fails with
+- [x] `ClaimTask` on a task in a terminal status fails with
   `FailedPrecondition`, and `ListTasks(assigneeFilter="unassigned")` excludes
   terminal tasks.
 - [ ] A stalled-claim candidate whose dedup row already exists (another
@@ -92,7 +92,7 @@ for the list query every board load and agent poll runs.
 - [x] **M30-T02** — Universal search filters beliefs to scopes the caller can read.
   - **Files**: `modules/search/search.handler.ts`
   - **Verify**: search test with a team-scoped belief and a non-member caller.
-- [ ] **M30-T03** — Terminal tasks are not claimable and not offered as unassigned work.
+- [x] **M30-T03** — Terminal tasks are not claimable and not offered as unassigned work.
   - **Files**: `modules/tasks/tasks.handler.ts`
   - **Verify**: tasks handler tests.
 - [ ] **M30-T04** — The stalled-claim sweep skips candidates another replica already recorded.

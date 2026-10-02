@@ -879,7 +879,8 @@ model AssignTaskResponse {
 // only, atomically - there is no field to name a different assignee, unlike
 // AssignTaskRequest. Succeeds only if the task currently has no assignee at
 // all; a second caller racing the same task gets FailedPrecondition rather
-// than a second, silent assignment.
+// than a second, silent assignment. A task in a terminal status is not
+// claimable either (M30-T03): FailedPrecondition.
 model ClaimTaskRequest {
   @field(1) taskId: string;
 
@@ -964,8 +965,9 @@ model ListTasksRequest {
   // by the database (M07-T03).
   @field(4) status?: string;
 
-  // Agent self-service (M14-T05): "unassigned" returns tasks with no
-  // assignee at all - the query an agent runs to find claimable work.
+  // Agent self-service (M14-T05): "unassigned" returns open tasks with no
+  // assignee at all - the query an agent runs to find claimable work. Tasks
+  // in a terminal status are excluded (M30-T03): they are not work.
   // "me" returns tasks assigned to the calling principal (human or agent),
   // resolved server-side from the credential rather than trusting a passed
   // id. Unset returns every task regardless of assignment, same as before

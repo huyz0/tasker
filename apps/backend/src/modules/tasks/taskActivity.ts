@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { logger } from "../../lib/logger";
@@ -89,6 +89,26 @@ export async function isTerminalStatus(
   if (!row) return false; // A status that predates the type's state machine is never terminal.
   const maxPosition = configured.reduce((max: number, s: any) => Math.max(max, Number(s.position ?? 0)), 0);
   return Number(row.position ?? 0) === maxPosition;
+}
+
+/**
+ * `isTerminalStatus` as a SQL predicate over a `tasks` row, for queries that
+ * must filter terminal tasks in the database rather than per row in memory
+ * (M30-T03: the agent's "unassigned" find-work query). Same rule: an untyped
+ * task, or a type with no statuses configured, is terminal at "done"; a typed
+ * task is terminal at its type's highest-position status.
+ */
+export function terminalStatusSql(tasks: any, isStandalone: boolean) {
+  const st = isStandalone ? schemaSqlite.taskStatuses : schemaMysql.taskStatuses;
+  const typeId = tasks.taskTypeId;
+  return sql`(
+    (${tasks.status} = 'done' AND NOT EXISTS (SELECT 1 FROM ${st} WHERE ${(st as any).taskTypeId} = ${typeId}))
+    OR EXISTS (
+      SELECT 1 FROM ${st} AS ts_last
+      WHERE ts_last.task_type_id = ${typeId} AND ts_last.name = ${tasks.status}
+        AND ts_last.position = (SELECT MAX(ts_max.position) FROM ${st} AS ts_max WHERE ts_max.task_type_id = ${typeId})
+    )
+  )`;
 }
 
 /**

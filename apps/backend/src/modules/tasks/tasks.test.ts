@@ -775,6 +775,54 @@ describe("Tasks Handler Integration Tests", () => {
     await expect(handler.listTasks({ projectId, assigneeFilter: "bogus" }, ctx)).rejects.toMatchObject({ code: Code.InvalidArgument });
   });
 
+  // M30-T03: "unassigned" is the agent's find-work query, so a finished task
+  // is not work; and claiming one would put a done task back in someone's
+  // queue. Terminal means what `isTerminalStatus` says: the last status of the
+  // task's type, or "done" for an untyped task.
+  test("terminal tasks are neither offered as unassigned work nor claimable", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const stamp = Date.now() + "-" + Math.random().toString(36).slice(2);
+    const orgId = "org-term-" + stamp;
+    const adminId = "user-term-" + stamp;
+    const projectId = "proj-term-" + stamp;
+    const agentId = "agent-term-" + stamp;
+    const typeId = "type-term-" + stamp;
+
+    await seedOrgWithAdmin(db, { orgId, userId: adminId, name: "Terminal Org" });
+    await seedProject(db, { orgId, userId: adminId, templateId: "tmpl-term-" + stamp, projectId, name: "P" });
+    await db.insert(schemaSqlite.agentRoles).values({ id: "role-term-" + stamp, orgId, name: "Role", systemPrompt: "p", capabilities: "[]" });
+    await db.insert(schemaSqlite.agents).values({ id: agentId, orgId, agentRoleId: "role-term-" + stamp, name: "Agent" });
+    await db.insert(schemaSqlite.taskTypes).values({ id: typeId, orgId, name: "Pipeline", createdAt: new Date() });
+    await db.insert(schemaSqlite.taskStatuses).values([
+      { id: "st-a-" + stamp, taskTypeId: typeId, name: "open", position: 0 },
+      { id: "st-b-" + stamp, taskTypeId: typeId, name: "done", position: 1 },
+      { id: "st-c-" + stamp, taskTypeId: typeId, name: "shipped", position: 2 },
+    ]);
+
+    const ctx = makeAuthContext(adminId);
+    const handler = createTaskManagementHandler(db, nc);
+    const agentCtx = { values: (() => {
+      const v = createContextValues();
+      v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-test", scopes: ["tasks:read", "tasks:write"] });
+      return v;
+    })() } as any;
+
+    const open = await handler.createTask({ projectId, title: "Open", status: "todo", description: "" }, ctx);
+    const doneUntyped = await handler.createTask({ projectId, title: "Done", status: "done", description: "" }, ctx);
+    const typedMiddle = await handler.createTask({ projectId, title: "Typed done-named middle", status: "done", taskTypeId: typeId }, ctx);
+    const typedLast = await handler.createTask({ projectId, title: "Shipped", status: "shipped", taskTypeId: typeId }, ctx);
+
+    const resp = await handler.listTasks({ projectId, assigneeFilter: "unassigned" }, agentCtx);
+    expect(resp.tasks.map((t: any) => t.id).sort()).toEqual([open.task.id, typedMiddle.task.id].sort());
+    expect(Number(resp.page.totalCount)).toBe(2);
+
+    await expect(handler.claimTask({ taskId: doneUntyped.task.id }, agentCtx)).rejects.toMatchObject({ code: Code.FailedPrecondition });
+    await expect(handler.claimTask({ taskId: typedLast.task.id }, agentCtx)).rejects.toMatchObject({ code: Code.FailedPrecondition });
+    // "done" is not terminal in a type whose pipeline continues past it.
+    const claimed = await handler.claimTask({ taskId: typedMiddle.task.id }, agentCtx);
+    expect(claimed.task.id).toBe(typedMiddle.task.id);
+  });
+
   // M14-T06: the atomic claim primitive - the missing half of "an agent can
   // discover and take work with no human broker". claimTask always assigns
   // the *calling* principal; there is no field to claim on someone else's
