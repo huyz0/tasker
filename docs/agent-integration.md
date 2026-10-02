@@ -459,6 +459,40 @@ tasker tasks question "$Q"          # [answered] ... -> "flag" by Ada, once a pe
 - While you wait you may keep working, or release the task with a handoff note
   that points at the question (§11).
 
+## 14. Moves that need a person's approval
+
+An organization can require a person's yes before an agent's move takes
+effect — into Done or Released, say (M39, ADR-0032). The rule is a flag on a
+transition of a task type: **Task Types → Transitions → Needs approval**, or
+
+```bash
+tasker task-types gate-transition "$TYPE" "$TRANSITION"        # --off lifts it
+```
+
+When an agent makes a gated move, nothing changes yet:
+
+```bash
+tasker tasks update-status "$T" --status done
+# Task tsk-... stays review - moving it to done needs a person's approval (request apr-...)
+```
+
+- `UpdateTaskStatus` succeeds and returns the task **unchanged** with
+  `pendingApproval`. It is not an error, so check for it: an agent that
+  ignores it will believe a move happened that did not. Asking again for the
+  same move returns the same request.
+- The task's reviewers (else the org's admins) are notified; the task shows
+  *Awaiting approval*, and the request is in **Waiting on people** and
+  `tasker tasks approvals`.
+- **Only people decide** (`tasker tasks approve|reject <id> [--reason]`).
+  Approving applies the move as the approver. If the task moved meanwhile,
+  the request closes as `stale` instead of jumping the task.
+- **Hearing back.** Poll `GetTransitionApproval` (`tasks approval`, MCP
+  `get_transition_approval`), or receive `task.approval_decided` by
+  [webhook](webhooks.md) or on the event feed; it carries `approved` and the
+  reason.
+- People are never gated — a person making the move *is* the approval.
+  Untyped tasks have no transitions, so they cannot be gated.
+
 ## See also
 
 - [Connecting an MCP client](mcp.md) — the same loop as MCP tools, for any
@@ -473,6 +507,8 @@ tasker tasks question "$Q"          # [answered] ... -> "flag" by Ada, once a pe
   form, and why retrieval is lexical by default.
 - `ADR-0017` in `.specs/adr/` — why handoff notes are a typed distinction on
   the existing `TaskNote`, not a new entity.
+- `ADR-0032` in `.specs/adr/` — why an approval gate is a flag on the
+  transition, and why the agent gets a pending result rather than an error.
 - `ADR-0027` in `.specs/adr/` — why an agent may release a claim it took but
   never an assignment a person gave it.
 - `.agents/skills/capture-belief/SKILL.md` — the same §9 guidance, written

@@ -79,3 +79,17 @@
   one question); each now has a reasoned exception, as does
   `getTransitionApproval`.
 - **Next**: M39-T05
+
+## M39-T05 — Docs and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/agent-integration.md` §14; milestone closed, STATE.
+- **Verified**: live smoke on a seeded standalone backend - CLI: gate a
+  transition, agent `update-status` held (exit 0, task unchanged, "Awaiting"
+  on `get`), agent `approve` refused (exit 3), person approves with a reason,
+  task moves to done, agent reads the decision; GUI (Playwright against the
+  dev server): the request in "Waiting on people" and the task dialog, Approve
+  moves the task to done in place. `:docs-lint`, `:doc-drift` green.
+- **Notes**: Exit criteria all met; CI on `main` verified after the push.
+- **Next**: M40-T01

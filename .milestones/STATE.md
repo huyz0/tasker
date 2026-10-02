@@ -1,8 +1,8 @@
 ---
-active_milestone: M39
-active_task: M39-T05
+active_milestone: M40
+active_task: M40-T01
 last_updated: 2026-10-02
-last_commit: 186037a
+last_commit: de59caa
 blocked: false
 blocker: null
 ---
@@ -46,6 +46,12 @@ criteria** — agents publish a plan people watch with progress, and ask
 questions that notify reviewers and that only people answer, heard back via
 the feed, webhooks or polling (ADR-0031); CLI, MCP tools, GUI. All four
 landscape milestones are delivered.
+
+**M39 (Approval Gates on Agent Transitions) complete: 5/5 tasks, 5/5 exit
+criteria** — a transition flagged "needs approval" holds an agent's move as a
+pending request (not an error), notifies reviewers, and only a person decides;
+approving applies the move as the approver, or closes it stale if the task
+moved (ADR-0032). CLI, MCP, GUI editor flag, task dialog and queue.
 
 **M39–M41 planned** from the review's unscheduled items, at the user's request:
 approval gates on agent transitions (M39), agent usage and cost (M40), and task
@@ -1793,11 +1799,11 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M36 | MCP Server                      | done   | M35        | 5     | 5    |
 | M37 | Outbound Webhooks               | done   | M35        | 7     | 7    |
 | M38 | Agent Plan and Input Requests   | done   | M35        | 6     | 6    |
-| M39 | Approval Gates on Agent Transitions | in-progress | M38 | 5   | 4    |
+| M39 | Approval Gates on Agent Transitions | done | M38 | 5 | 5 |
 | M40 | Agent Usage and Cost            | todo   | M35        | 5     | 0    |
 | M41 | Task Digests                    | todo   | M38, M40   | 5     | 0    |
 
-**Total: 313 tasks across 35 milestones — 301 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 313 tasks across 35 milestones — 302 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

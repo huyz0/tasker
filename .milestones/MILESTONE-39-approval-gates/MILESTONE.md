@@ -1,13 +1,13 @@
 ---
 id: M39
 title: Approval Gates on Agent Transitions
-status: in-progress
+status: done
 goal: An organization can mark a task-type transition as needing a person's approval when an agent makes it, so an agent can propose "move to Done" but only a person can let it happen - without slowing the transitions nobody needs to watch.
 depends_on: [M38]
 surfaces: [contract, backend, cli, gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M39 — Approval Gates on Agent Transitions
@@ -29,16 +29,16 @@ reviewer reading it after the fact.
 
 ## 3. Exit Criteria
 
-- [ ] An agent's `UpdateTaskStatus` across a gated edge leaves the status
+- [x] An agent's `UpdateTaskStatus` across a gated edge leaves the status
   unchanged and returns the pending approval; a person's does not.
-- [ ] Only a person decides; approving applies the move (refused if the task
+- [x] Only a person decides; approving applies the move (refused if the task
   moved meanwhile), rejecting records the reason; a decided approval cannot be
   decided again.
-- [ ] Reviewers (else admins) are notified; `task.approval_requested`,
+- [x] Reviewers (else admins) are notified; `task.approval_requested`,
   `task.approval_decided` reach the feed and webhooks.
-- [ ] Gate flag editable in the task-type editor; approvals answerable in the
+- [x] Gate flag editable in the task-type editor; approvals answerable in the
   task dialog and the "Waiting on people" queue; CLI and MCP surface them.
-- [ ] CI green on `main`.
+- [x] CI green on `main`.
 
 ## 4. Scope
 
@@ -50,7 +50,7 @@ reviewer reading it after the fact.
 - [x] **M39-T02** — Gated `UpdateTaskStatus`, decide/list RPCs, notifications, events.
 - [x] **M39-T03** — CLI and MCP.
 - [x] **M39-T04** — GUI: editor flag, dialog banner, queue.
-- [ ] **M39-T05** — Docs and close.
+- [x] **M39-T05** — Docs and close.
 
 ## 6. Verification
 
