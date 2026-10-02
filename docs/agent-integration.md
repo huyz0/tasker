@@ -353,7 +353,7 @@ The whole loop an unattended agent runs (M33):
 
 ```bash
 tasker auth whoami                                   # which agent, which org, which scopes
-tasker tasks claim-next --project "$P" --json        # take the oldest open task, or nothing
+tasker tasks claim-next --project "$P" --json        # take the most important ready task, or nothing
 #   ... work on it ...
 tasker tasks update-status <task-id> --status done   # finish it, or:
 tasker tasks release <task-id> --handoff "Tried … Blocked on … Next: …"
@@ -361,9 +361,11 @@ tasker tasks mine                                    # what you still hold, acro
 ```
 
 **Taking work.** `tasker tasks claim-next --project <id>` (`ClaimNextTask`)
-claims the oldest open, unassigned task in the project in one call, optionally
-`--type <task-type-id>`. There is no list-then-claim race to lose: concurrent
-agents are spread across the oldest candidates and each gets a different task.
+claims a **ready** task — open, unassigned, and with nothing unfinished blocking
+it (§12) — in one call: the highest priority first, and among equals one of the
+oldest. Narrow it with `--type <task-type-id>` or `--label <label-id>`. There is
+no list-then-claim race to lose: concurrent agents are spread across the oldest
+candidates of the top priority and each gets a different task.
 With nothing open the response carries no task and the command exits 0
 (`--json` prints `{}`); in the rare case every candidate went to another agent
 first it exits 5 — retry. A task in its type's terminal status (the last status
@@ -393,6 +395,40 @@ never reuse a key for a new request. Keys are kept for 24 hours.
 
 Every exit code, the `--json` shape and `--page-all` are in the
 [CLI reference](cli-reference.md#output-errors-and-exit-codes).
+
+## 12. Breaking work down: priority, dependencies, subtasks
+
+An agent that plans work, or finds more of it, records the shape of that work
+so the next claim is the right one (M35, ADR-0028):
+
+```bash
+# Split a task: subtasks under it, the second waiting on the first.
+A=$(tasker tasks create --title "Migrate the schema" --parent "$EPIC" --priority high --json | jq -r .task.id)
+tasker tasks create --title "Switch readers to v2" --parent "$EPIC" --blocked-by "$A"
+
+# Record follow-up work found along the way, and where it came from.
+tasker tasks create --title "Drop the v1 column" --discovered-from "$CURRENT" --priority low
+
+tasker tasks list --ready --sort priority          # what claim-next would choose from
+tasker tasks link list "$A"                        # parent, blockers, dependents, subtasks, origin
+```
+
+- **Priority** is `urgent`, `high`, `medium`, `low` or none (0–4 on the wire,
+  0 = none). `claim-next` and `--sort priority` take urgent first and none
+  last.
+- **Blocked by** (`--blocked-by`, or `tasker tasks link add <task> <blocker>`)
+  joins any two tasks in the organization, across projects. A link that would
+  make tasks block each other is refused (exit 6). A blocker stops blocking when
+  it reaches its type's final status — or is binned.
+- **Parent** (`--parent`; `tasks update --parent ""` clears it) is a task in
+  the same project. Parent and children are not tied by status.
+- **Discovered from** (`--discovered-from`) records the one task whose work
+  turned this one up.
+- When a task finishes, each task it was the last blocker of is announced as
+  `domain.task.unblocked` on the event feed — an idle agent can wait for that
+  instead of polling.
+
+Links need `tasks:write` (reading them, `tasks:read`); a viewer can do neither.
 
 ## See also
 

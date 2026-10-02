@@ -126,3 +126,24 @@
   GetTask never changed and the post-update refetch brought the old value
   back - the mock now writes through, as the server does.
 - **Next**: M35-T07
+
+## M35-T07 — Docs, E2E and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/agent-integration.md` (§11 claim order; new §12),
+  `.specs/product/architecture.md`, `apps/gui/tests/e2e/work-graph.spec.ts`,
+  two stale "oldest open" comments, `.milestones/STATE.md`
+- **Verified**: Playwright, all 49 specs, against a freshly seeded standalone
+  backend - the new spec sets priority and a blocker in the dialog, sees both
+  on the board, and "Ready only" hides the blocked task. **End to end with the
+  built CLI against that backend**: created a low-priority task, an urgent task
+  blocked by it and a subtask discovered from it; `list --ready --sort
+  priority` left the blocked urgent task out; `link list` showed blocks,
+  subtasks and discovered; the reverse link was refused (exit 6); finishing the
+  blocker made the urgent task the only ready urgent one; a bad priority exited
+  6 before any request. `moon run :docs-lint :doc-drift :spec-drift
+  :skills-check` green.
+- **Notes**: Every exit criterion is checked against a test or the run above.
+  M35 closed: 7/7 tasks, 8/8 criteria.
+- **Next**: M36-T01

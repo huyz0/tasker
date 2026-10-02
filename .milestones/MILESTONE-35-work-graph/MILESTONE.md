@@ -1,13 +1,13 @@
 ---
 id: M35
 title: Work Graph
-status: in-progress
+status: done
 goal: Tasks carry a priority, can block one another, nest under a parent and record the task they were discovered from — and an agent asking for the next piece of work gets the most important task whose prerequisites are finished.
 depends_on: [M33]
 surfaces: [contract, backend, cli, gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M35 — Work Graph
@@ -37,25 +37,25 @@ impossible.
 
 ## 3. Exit Criteria
 
-- [ ] `ClaimNextTask` never claims a task with an unfinished blocker, and
+- [x] `ClaimNextTask` never claims a task with an unfinished blocker, and
   among ready tasks claims strictly by priority (urgent first, none last),
   choosing among the oldest of that priority — proven by tests on both.
-- [ ] A blocking link that would create a cycle, cross organizations or point
+- [x] A blocking link that would create a cycle, cross organizations or point
   at the task itself is `InvalidArgument`; a parent that would create a cycle
   or cross projects likewise.
-- [ ] `ListTasks` filters `ready`, `priority`, `labelId` and `parentTaskId`;
+- [x] `ListTasks` filters `ready`, `priority`, `labelId` and `parentTaskId`;
   each `Task` carries `priority`, `parentTaskId` and `blockedByOpenCount`.
-- [ ] Moving a task to a terminal status publishes `domain.task.unblocked`
+- [x] Moving a task to a terminal status publishes `domain.task.unblocked`
   for each dependent it left with no open blocker.
-- [ ] Links and priority are covered by the agent-scope and viewer-denial
+- [x] Links and priority are covered by the agent-scope and viewer-denial
   gates; a viewer cannot change either.
-- [ ] CLI: `tasks create/update --priority --parent`, `tasks create
+- [x] CLI: `tasks create/update --priority --parent`, `tasks create
   --blocked-by --discovered-from`, `tasks link add|remove|list`, `tasks list
   --ready --priority --label --parent`.
-- [ ] GUI: priority shown in list and board and editable in the task dialog;
+- [x] GUI: priority shown in list and board and editable in the task dialog;
   the dialog lists blockers, dependents, subtasks and origin, and edits
   blockers and parent; list filters by priority and ready.
-- [ ] `docs/agent-integration.md` describes the ready-work loop; CI green on
+- [x] `docs/agent-integration.md` describes the ready-work loop; CI green on
   `main`.
 
 ## 4. Scope
@@ -84,7 +84,7 @@ impossible.
   - **Files**: `apps/cli/cmd/tasks*.go`, `docs/cli-reference.md`
 - [x] **M35-T06** — GUI: priority everywhere, relations panel, filters.
   - **Files**: `apps/gui/src/features/Tasks/*`
-- [ ] **M35-T07** — Docs, skill, E2E and close.
+- [x] **M35-T07** — Docs, skill, E2E and close.
   - **Files**: `docs/agent-integration.md`, `.specs/product/architecture.md`,
     `apps/gui/tests/e2e/*`, `.milestones/STATE.md`
 

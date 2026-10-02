@@ -90,7 +90,7 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     // any assignee", so it is safe to open under the same tasks:write
     // scope that already covers creating and updating tasks.
     claimTask: 'tasks:write',
-    // M33-T02: claimTask over the oldest open task in a project - the same
+    // M33-T02: claimTask over the next ready task in a project - the same
     // grant, choosing the task instead of naming it.
     claimNextTask: 'tasks:write',
     // M33-T03 (ADR-0027): claimTask's exact inverse - it can only remove the

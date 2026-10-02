@@ -1216,7 +1216,8 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       });
     },
     /**
-     * M33-T02: the oldest open, unassigned task in the project, claimed in one
+     * M33-T02: the next open, unassigned task in the project (M35: ready and
+     * most important first, ADR-0028), claimed in one
      * call. An agent no longer lists and then races everyone else for the same
      * rows; a lost race moves on to the next candidate. Nothing to claim is an
      * empty response, not an error - the normal answer for an idle queue.
