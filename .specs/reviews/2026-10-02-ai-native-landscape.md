@@ -34,9 +34,10 @@ against Tasker after M34. It is the evidence behind M35–M38.
    back *in*. → **M38**
 6. **Subtasks and discovered-from links** — GitHub, Linear, Beads,
    Taskmaster. → **M35**
-7. Approval gates on agent transitions; cost/token accounting; compaction of
-   old tasks — not scheduled. Approval is partly served by reviewers; cost and
-   compaction lack a demand signal in this product yet.
+7. Approval gates on agent transitions → **M39**; cost/token accounting →
+   **M40**; compaction of old tasks → **M41** (as summaries and digests - Tasker
+   has no model to summarize with, and deleting history is not on offer).
+   First left unscheduled, then planned at the user's request.
 
 Also: `ListTasks` has no label filter, so label-based routing is impossible
 — folded into M35.
