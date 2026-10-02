@@ -354,6 +354,26 @@ function checkReducedMotion(files) {
   }
 }
 
+/**
+ * A token named in a runtime string — `var(--color-chart-${n})` — is invisible
+ * to Tailwind, which prunes every theme variable no utility class uses. Unless
+ * the theme block is `@theme static`, such a variable silently does not exist
+ * and the element renders with no colour (the chart kit lost four of its six
+ * series this way).
+ */
+function checkRuntimeTokens(files) {
+  const css = existsSync(CSS) ? readFileSync(CSS, 'utf8') : '';
+  if (/@theme\s+static\b/.test(css)) return;
+  for (const f of files) {
+    if (isFixture(f)) continue;
+    readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+      if (/var\(--color-[\w-]*\$\{/.test(line)) {
+        add('tokens', f, i + 1, 'runtime var(--color-*) reference — Tailwind prunes it unless the theme is `@theme static`');
+      }
+    });
+  }
+}
+
 // ── run ──────────────────────────────────────────────────────────────────────
 const files = [...walk(SRC)];
 const run = (name) => !only || only === name;
@@ -366,6 +386,7 @@ for (const file of files) {
 }
 if (run('contrast')) checkContrast();
 if (run('wig')) checkReducedMotion(files);
+if (run('tokens')) checkRuntimeTokens(files);
 
 if (json) {
   console.log(JSON.stringify({ findings }, null, 2));

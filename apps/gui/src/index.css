@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
-@theme {
+/* `static`: emit every token, used by a utility or not. Tailwind v4 otherwise
+   prunes theme variables no class names, and the chart kit reads its series
+   colours at runtime (`chartColor()` builds `var(--color-chart-N)`), so only
+   chart-1 and chart-6 — the two some utility happened to use — existed. The
+   other four series rendered with no colour at all: a missing "Created" line,
+   a black "in progress" band. */
+@theme static {
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));

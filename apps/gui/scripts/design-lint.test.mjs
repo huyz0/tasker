@@ -214,6 +214,14 @@ test('wig: accepts a click handler on an element with a role and keyboard handle
   assert.deepEqual(found, []);
 });
 
+test('tokens: flags a runtime var(--color-*) reference when the theme block is pruned', () => {
+  const src = 'export const c = (n: number) => `var(--color-chart-${n})`;';
+  const pruned = lint(src, { only: 'tokens', css: '@theme { --color-chart-1: red; }' });
+  assert.ok(pruned.some((f) => /@theme static/.test(f.msg)), `got ${JSON.stringify(pruned)}`);
+  const kept = lint(src, { only: 'tokens', css: '@theme static { --color-chart-1: red; }' });
+  assert.ok(!kept.some((f) => /@theme static/.test(f.msg)));
+});
+
 test('reduced motion: flags animation when the stylesheet has no escape', () => {
   const found = lint(`export const T = () => <div className="animate-pulse" />;`, { only: 'wig', css: ':root { --background: 0 0% 100%; --foreground: 0 0% 10%; }' });
   assert.ok(found.some((f) => /reduced/i.test(f.msg)), `expected a reduced-motion finding, got ${JSON.stringify(found)}`);
