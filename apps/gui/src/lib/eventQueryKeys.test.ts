@@ -19,7 +19,17 @@ describe('queryKeysForSubject', () => {
   });
 
   it('routes a note to the handoff and task queries, not the board', () => {
-    expect(roots('domain.tasknote.created')).toEqual(['handoffNotes', 'task', 'reports', 'auditEvents']);
+    expect(roots('domain.tasknote.created')).toEqual(['handoffNotes', 'taskNotes', 'task', 'reports', 'auditEvents']);
+  });
+
+  it("refreshes an open task's notes panel when an agent writes a note (M32-T01)", () => {
+    // React Query matches key *elements*: the 'task' root never matched the
+    // panel's ['taskNotes', id], so a supervisor watching a task saw nothing
+    // until they refocused the window.
+    const notesPanelKey = ['taskNotes', 'task-1'];
+    const matches = (queryKeysForSubject('domain.tasknote.created') ?? [])
+      .some((prefix) => prefix.every((part, i) => notesPanelKey[i] === part));
+    expect(matches).toBe(true);
   });
 
   it('keeps the report cards live for the events they derive from, and only those', () => {

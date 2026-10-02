@@ -23,7 +23,10 @@ const KEYS_BY_ENTITY: Record<string, string[]> = {
   // changes, handoff notes, comment churn — so those three entities keep the
   // exception and trend queries live; nothing else re-runs two report RPCs.
   task: ['tasks', 'task', 'dashboard', 'reports'],
-  tasknote: ['handoffNotes', 'task', 'reports'],
+  // 'taskNotes' (M32-T01) is the open task's notes panel and handoff summary.
+  // Keys match by whole element, so 'task' never covered it and the panel
+  // supervisors watch agents in did not live-update.
+  tasknote: ['handoffNotes', 'taskNotes', 'task', 'reports'],
   task_type: ['taskTypes', 'taskType'],
   task_status: ['taskTypes', 'taskType'],
   task_status_transition: ['taskTypes', 'taskType'],
