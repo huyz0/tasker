@@ -13,6 +13,7 @@ import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincip
 import { purgeTaskCascade } from "../../lib/cascadePurge";
 import { createInputRequestHandlers, waitingOnPeopleCounts } from "./inputRequests";
 import { createApprovalHandlers, isGatedTransition } from "./approvals";
+import { createUsageHandlers, taskUsageTotals } from "./usage";
 import { MAX_PRIORITY, priorityRankSql, LINK_KINDS, assertLinkAllowed, openBlockerCounts, hasOpenBlockerSql, newlyUnblocked, assertParentAllowed, insertLink, deleteLink, listLinks } from "./taskGraph";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -864,6 +865,8 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
     decideTransitionApproval: approvals.decideTransitionApproval,
     getTransitionApproval: approvals.getTransitionApproval,
     listTransitionApprovals: approvals.listTransitionApprovals,
+    // M40 (ADR-0033): what agents report their work cost.
+    ...createUsageHandlers(db, nc, isStandalone),
     async createTask(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = CreateTaskSchema.parse(req);
@@ -1021,6 +1024,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
           assignees: assignees.get(t.id) ?? [],
           blockedByOpenCount: await openBlockerCount(t.id),
           ...(await waitingOnPeopleCounts(db, isStandalone, [t.id])).get(t.id),
+          usage: await taskUsageTotals(db, isStandalone, t.id),
         }),
         ...(latestHandoffNote ? { latestHandoffNote } : {}),
       };

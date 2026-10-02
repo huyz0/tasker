@@ -44,13 +44,13 @@ const READS: Record<string, string[]> = {
   projects: ['getProject', 'listProjects'],
   projectTemplates: ['getTemplate', 'listTemplates'],
   tasks: ['getTaskType', 'listTaskTypes'],
-  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks', 'listTaskLinks', 'getInputRequest', 'listInputRequests', 'getTransitionApproval', 'listTransitionApprovals'],
+  taskManagement: ['listTasks', 'getTask', 'listTaskReviewers', 'listMyTasks', 'listTaskLinks', 'getInputRequest', 'listInputRequests', 'getTransitionApproval', 'listTransitionApprovals', 'listUsageRecords'],
   // Read-only supervision console; a viewer may look at it.
   dashboard: ['getDashboard'],
   // Same read-only reasoning as dashboard. getReportTrends is M24-T06's
   // still-unimplemented stub - a genuine read once it exists, and today a
   // viewer calling it gets Unimplemented, not data.
-  reports: ['getReportExceptions', 'getReportTrends'],
+  reports: ['getReportExceptions', 'getReportTrends', 'getUsageReport'],
   search: ['universalSearch'],
   taskNotes: ['listTaskNotes', 'listHandoffNotes'],
   agents: ['listAgentRoles', 'listAgents'],
@@ -168,6 +168,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     answerInputRequest: { id: ids.inputRequest, answer: 'A' },
     cancelInputRequest: { id: ids.inputRequest },
     decideTransitionApproval: { id: ids.approval, approve: true },
+    reportUsage: { taskId: ids.task, inputTokens: 1n, outputTokens: 0n, costMicros: 0n },
     addTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     removeTaskReviewer: { taskId: ids.task, userId: ids.viewer },
     updateTask: { taskId: ids.task, title: 'T2' },

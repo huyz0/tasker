@@ -157,6 +157,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
   reports: {
     getReportExceptions: { projectId: ids.project, windowDays: 7 },
     getReportTrends: { projectId: ids.project, windowDays: 7 },
+    getUsageReport: { orgId: ids.org },
   },
   projects: {
     getProject: { id: ids.project },
@@ -205,6 +206,8 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
     decideTransitionApproval: { id: 'apr-scope-sweep', approve: false },
     getTransitionApproval: { id: 'apr-scope-sweep' },
     listTransitionApprovals: { taskId: ids.task },
+    reportUsage: { taskId: ids.task, inputTokens: 1n, outputTokens: 0n, costMicros: 0n },
+    listUsageRecords: { taskId: ids.task },
     addTaskReviewer: { taskId: ids.task, userId: ids.user },
     removeTaskReviewer: { taskId: ids.task, userId: ids.user },
     listTaskReviewers: { taskId: ids.task },

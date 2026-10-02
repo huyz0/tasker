@@ -17,3 +17,26 @@
   (ReportService), `Task.usage`. The field is `modelName` - `model` is a
   TypeSpec keyword. Idempotency is a unique (task, key) index.
 - **Next**: M40-T02
+
+## M40-T02 — ReportUsage, task totals, usage report
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `src/modules/tasks/usage.ts` (new: `ReportUsage`,
+  `ListUsageRecords`, shared SUM helpers), `tasks.handler.ts` (`GetTask`
+  carries `usage`), `src/modules/reports/usage.ts` (new) and
+  `reports.handler.ts` (`GetUsageReport`), `lib/scopes.ts`,
+  `lib/cascadePurge.ts`, `modules/webhooks/events.ts` (`task.usage_reported`),
+  both gate sweeps, GUI webhook event list, `docs/webhooks.md`;
+  `src/modules/tasks/usage.test.ts` (9 tests).
+- **Verified**: backend `bun test` 1996 pass; `backend:typecheck`,
+  `gui:typecheck`, `:knip` green.
+- **Notes**: Values arrive as bigint (Connect), number or string (JSON) and
+  are checked as safe whole numbers in range; an empty report is refused. A
+  replayed key returns the original record (`replayed: true`); two retries
+  racing on one key settle on the unique index and the loser returns the
+  winner. The report runs four queries (totals, by agent, by project, by
+  epoch-day - the existing dialect-split helper) plus two name lookups,
+  independent of volume; agents and projects ranked by spend, capped at 50;
+  empty days filled. Person-filed reports share one "People" row.
+- **Next**: M40-T03

@@ -8,7 +8,7 @@ import { createHmac } from "node:crypto";
 export const WEBHOOK_EVENT_TYPES = [
   "task.created", "task.updated", "task.status_updated", "task.claimed", "task.released",
   "task.deleted", "task.restored", "task.purged", "task.unblocked", "task.linked", "task.unlinked", "task.stalled", "task.plan_updated",
-  "task.input_requested", "task.input_answered", "task.input_cancelled", "task.approval_requested", "task.approval_decided",
+  "task.input_requested", "task.input_answered", "task.input_cancelled", "task.approval_requested", "task.approval_decided", "task.usage_reported",
   "tasknote.created", "tasknote.updated", "tasknote.deleted",
 ] as const;
 

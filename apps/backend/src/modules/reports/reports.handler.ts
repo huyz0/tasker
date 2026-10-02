@@ -8,6 +8,7 @@ import { requireUser } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
 import { buildReportExceptions } from "./exceptions";
 import { buildReportTrends } from "./trends";
+import { buildUsageReport } from "./usage";
 
 /**
  * M24-T05/T06 - the Reports screen's two RPCs: the exception panels and the
@@ -41,6 +42,13 @@ const GetReportTrendsSchema = GetReportExceptionsSchema.extend({
   // "untyped" selects the fixed vocabulary of untyped tasks (contract).
   taskTypeId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
 });
+
+// M40 (ADR-0033): an org, or one project of it, over 1-365 days.
+const GetUsageReportSchema = z.object({
+  orgId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  projectId: z.preprocess((v) => (v === "" ? undefined : v), z.string().optional()),
+  days: z.preprocess((v) => (v == null || v === 0 ? 30 : v), z.number().int().min(1, "days must be from 1 to 365").max(365, "days must be from 1 to 365")),
+}).refine((r) => r.orgId || r.projectId, { message: "orgId or projectId is required" });
 
 export default (router: ConnectRouter, db: any) => {
   const isStandalone = process.env.STANDALONE === "true";
@@ -130,6 +138,29 @@ export default (router: ConnectRouter, db: any) => {
         windowDays: parsed.windowDays,
         taskTypeId: parsed.taskTypeId,
       });
+    },
+
+    // M40 (ADR-0033): the same ladder - people only, Zod, NotFound, assertCan.
+    async getUsageReport(req: any, { values: contextValues }: { values: any }) {
+      const userId = requireUser(contextValues);
+      const parsedResult = GetUsageReportSchema.safeParse(req);
+      if (!parsedResult.success) {
+        throw new ConnectError(parsedResult.error.issues[0]?.message ?? "invalid request", Code.InvalidArgument);
+      }
+      const parsed = parsedResult.data;
+      let orgId = parsed.orgId;
+      if (parsed.projectId) {
+        const { projects } = schema;
+        const [project] = await db.select({ orgId: projects.orgId }).from(projects)
+          .where(and(eq(projects.id, parsed.projectId), isNull(projects.deletedAt))).limit(1);
+        // A project named alongside a different org is the same "not here" as a missing one.
+        if (!project || (orgId && project.orgId !== orgId)) throw new ConnectError("project not found", Code.NotFound);
+        orgId = project.orgId;
+        await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "dashboard:read");
+      } else {
+        await assertCan(db, { kind: "user", userId }, { type: "organization", id: orgId! }, "dashboard:read");
+      }
+      return buildUsageReport(db, isStandalone, { orgId: orgId!, projectId: parsed.projectId, days: parsed.days });
     },
   });
 };

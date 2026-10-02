@@ -114,6 +114,10 @@ export const AGENT_RPC_SCOPES: Record<string, Record<string, string>> = {
     // one (decideTransitionApproval) is human-only, like answering a question.
     getTransitionApproval: 'tasks:read',
     listTransitionApprovals: 'tasks:read',
+    // M40 (ADR-0033): an agent reports what its work cost, and reads a
+    // task's reports back. The org-wide spend report is a person's (Reports).
+    reportUsage: 'tasks:write',
+    listUsageRecords: 'tasks:read',
     // assignTask and unassignTask are deliberately absent. Deciding which
     // worker picks up a piece of work is an orchestration decision, and a token
     // that can reassign work to itself is a token that can help itself to any

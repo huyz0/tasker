@@ -49,6 +49,7 @@ export async function purgeTaskCascade(db: any, taskId: string): Promise<void> {
   // M38 (ADR-0031): a task's questions go with it.
   await db.delete(schema.inputRequests).where(eq(schema.inputRequests.taskId, taskId));
   await db.delete(schema.transitionApprovals).where(eq(schema.transitionApprovals.taskId, taskId));
+  await db.delete(schema.usageRecords).where(eq(schema.usageRecords.taskId, taskId));
   await db.delete(schema.tasks).where(eq(schema.tasks.id, taskId));
 }
 
@@ -145,6 +146,7 @@ export async function purgeProjectCascade(db: any, projectId: string): Promise<v
     await db.delete(schema.taskLinks).where(or(inArray(schema.taskLinks.taskId, taskIds), inArray(schema.taskLinks.linkedTaskId, taskIds)));
     await db.delete(schema.inputRequests).where(inArray(schema.inputRequests.taskId, taskIds));
     await db.delete(schema.transitionApprovals).where(inArray(schema.transitionApprovals.taskId, taskIds));
+    await db.delete(schema.usageRecords).where(inArray(schema.usageRecords.taskId, taskIds));
     await db.delete(schema.tasks).where(inArray(schema.tasks.id, taskIds));
   }
 
