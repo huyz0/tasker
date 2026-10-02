@@ -1735,7 +1735,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M29 | In-App Notifications            | done   | —          | 9     | 9    |
 | M30 | Backend Correctness at Scale    | done   | —          | 10    | 10   |
 
-**Total: 247 tasks across 24 milestones — 246 done (1 dropped).** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
+**Total: 247 tasks across 24 milestones — 245 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
