@@ -398,6 +398,42 @@ describe('TaskTypesEditor', () => {
     expect(await screen.findByText(/Failed to add transition/)).toBeInTheDocument();
   });
 
+  it('gates a transition for agents, and lifts the gate (M39)', async () => {
+    withGetType({
+      taskType: { id: 'tt-1', name: 'Bug' },
+      statuses,
+      transitions: [
+        { id: 'tr-1', taskTypeId: 'tt-1', fromStatusId: 'st-1', toStatusId: 'st-2' },
+        { id: 'tr-2', taskTypeId: 'tt-1', fromStatusId: 'st-2', toStatusId: 'st-3', requiresApproval: true },
+      ],
+    });
+    const requests: any[] = [];
+    mockRpc(TaskTypeService, 'SetTransitionApproval', (body) => { requests.push(body); return { transition: {} }; });
+    renderEditor();
+    await openBug();
+    const open = await screen.findByLabelText('Agents need approval to move from todo to in progress');
+    const gated = screen.getByLabelText('Agents need approval to move from in progress to done');
+    expect(open).not.toBeChecked();
+    expect(gated).toBeChecked();
+    fireEvent.click(open);
+    await waitFor(() => expect(requests).toContainEqual({ taskTypeId: 'tt-1', transitionId: 'tr-1', requiresApproval: true }));
+    fireEvent.click(gated);
+    await waitFor(() => expect(requests).toContainEqual({ taskTypeId: 'tt-1', transitionId: 'tr-2' }));
+  });
+
+  it('reports a failed gate change', async () => {
+    withGetType({
+      taskType: { id: 'tt-1', name: 'Bug' },
+      statuses,
+      transitions: [{ id: 'tr-1', taskTypeId: 'tt-1', fromStatusId: 'st-1', toStatusId: 'st-2' }],
+    });
+    mockRpcError(TaskTypeService, 'SetTransitionApproval', 'permission_denied', 'no');
+    renderEditor();
+    await openBug();
+    fireEvent.click(await screen.findByLabelText(/Agents need approval/));
+    expect(await screen.findByText(/Failed to change the approval gate/)).toBeInTheDocument();
+  });
+
   it('reports a failed transition removal', async () => {
     withGetType({
       taskType: { id: 'tt-1', name: 'Bug' },

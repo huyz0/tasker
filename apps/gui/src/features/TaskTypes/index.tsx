@@ -109,6 +109,13 @@ export function TaskTypesEditor() {
     onSuccess: refreshDetail,
   });
 
+  // M39 (ADR-0032): an agent's move across a gated edge waits for a person.
+  const setGate = useMutation({
+    mutationFn: async ({ transitionId, requiresApproval }: { transitionId: string; requiresApproval: boolean }) =>
+      await typeClient.setTransitionApproval({ taskTypeId: selectedId!, transitionId, requiresApproval }),
+    onSuccess: refreshDetail,
+  });
+
   const setRoot = useMutation({
     mutationFn: async (templateId: string) =>
       await templateClient.updateTemplate({ id: templateId, rootTaskTypeId: selectedId! }),
@@ -290,11 +297,24 @@ export function TaskTypesEditor() {
                       {transitions.map((tr: any) => (
                         <li key={tr.id} className="flex items-center gap-2 text-sm">
                           <span>{nameOf(tr.fromStatusId)} → {nameOf(tr.toStatusId)}</span>
+                          <label
+                            className="ml-auto flex items-center gap-1 text-xs text-muted-foreground"
+                            title="When an agent makes this move, it waits until a person approves it"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!tr.requiresApproval}
+                              disabled={setGate.isPending}
+                              onChange={(e) => setGate.mutate({ transitionId: tr.id, requiresApproval: e.target.checked })}
+                              aria-label={`Agents need approval to move from ${nameOf(tr.fromStatusId)} to ${nameOf(tr.toStatusId)}`}
+                            />
+                            Needs approval
+                          </label>
                           <button
                             aria-label={`Remove the transition from ${nameOf(tr.fromStatusId)} to ${nameOf(tr.toStatusId)}`}
                             onClick={() => removeTransition.mutate(tr.id)}
                             disabled={removeTransition.isPending}
-                            className="ml-auto text-muted-foreground hover:text-destructive disabled:opacity-50"
+                            className="text-muted-foreground hover:text-destructive disabled:opacity-50"
                           >
                             ✕
                           </button>
@@ -302,6 +322,7 @@ export function TaskTypesEditor() {
                       ))}
                     </ul>
                   )}
+                  {setGate.isError && <p className="text-sm text-destructive mt-1">Failed to change the approval gate: {(setGate.error as Error).message}</p>}
                   {statuses.length < 2 ? (
                     <p className="text-sm text-muted-foreground mt-3">A transition needs two statuses.</p>
                   ) : (

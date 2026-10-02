@@ -58,3 +58,24 @@
   read as success either. No MCP tool decides an approval, asserted in the
   tool test alongside answering questions.
 - **Next**: M39-T04
+
+## M39-T04 — GUI: editor flag, dialog banner, queue
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `features/Tasks/Approvals.tsx` (new: `TaskApprovals`,
+  `ApprovalsQueue`) with tests and stories; `PriorityBadge.tsx`
+  (`AwaitingApprovalBadge`); `features/Tasks/index.tsx` (badge on board and
+  table, approvals above questions in the task dialog, an Approvals section
+  in "Waiting on people"); `features/TaskTypes/index.tsx` ("Needs approval"
+  per transition); `scripts/rpc-coverage.mjs` exceptions.
+- **Verified**: `gui:test` 1280 pass (coverage thresholds held),
+  `gui:typecheck`, `gui:lint`, `gui:design-lint`, `gui:rpc-coverage`,
+  `gui:query-error-coverage` green.
+- **Notes**: Approve and reject sit on the pending item itself, with an
+  optional reason; any outcome (including a stale refusal) refetches the
+  task, board and lists. `rpc-coverage` - not in CI - had been red since M33
+  on agent-only RPCs (claim-next, release, my-tasks, plan, ask, withdraw, get
+  one question); each now has a reasoned exception, as does
+  `getTransitionApproval`.
+- **Next**: M39-T05

@@ -48,3 +48,21 @@ export function NeedsInputBadge({ count }: NeedsInputBadgeProps) {
     </span>
   );
 }
+
+interface AwaitingApprovalBadgeProps {
+  /** Pending approvals on the task (M39). Nothing renders at zero. */
+  count: number;
+}
+
+/** An agent asked to move this task across a gated transition; a person must decide. */
+export function AwaitingApprovalBadge({ count }: AwaitingApprovalBadgeProps) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={`text-xs font-medium px-2 py-0.5 rounded-full ${TONE_CLASSES.warning}`}
+      title={`${count} status change${count === 1 ? '' : 's'} waiting for approval`}
+    >
+      Awaiting approval{count > 1 ? ` · ${count}` : ''}
+    </span>
+  );
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { PriorityBadge, BlockedBadge, NeedsInputBadge } from './PriorityBadge';
+import { PriorityBadge, BlockedBadge, NeedsInputBadge, AwaitingApprovalBadge } from './PriorityBadge';
 import { priorityLabel, priorityTone, PRIORITY_OPTIONS } from './priority';
 
 describe('PriorityBadge (M35)', () => {
@@ -40,5 +40,16 @@ describe('NeedsInputBadge (M38)', () => {
     expect(screen.getByText('Needs input')).toHaveAttribute('title', '1 open question from an agent');
     render(<NeedsInputBadge count={2} />);
     expect(screen.getByText('Needs input · 2')).toBeInTheDocument();
+  });
+});
+
+describe('AwaitingApprovalBadge (M39)', () => {
+  it('says nothing with nothing pending, and counts only above one', () => {
+    const { container } = render(<AwaitingApprovalBadge count={0} />);
+    expect(container).toBeEmptyDOMElement();
+    render(<AwaitingApprovalBadge count={1} />);
+    expect(screen.getByText('Awaiting approval')).toHaveAttribute('title', '1 status change waiting for approval');
+    render(<AwaitingApprovalBadge count={3} />);
+    expect(screen.getByText('Awaiting approval · 3')).toHaveAttribute('title', '3 status changes waiting for approval');
   });
 });

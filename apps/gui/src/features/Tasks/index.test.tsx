@@ -100,6 +100,7 @@ describe('TasksWorkbench', () => {
     mockRpc(SearchService, 'UniversalSearch', { results: [] });
     // M38: every open task asks for its questions.
     mockRpc(TaskService, 'ListInputRequests', { inputRequests: [], page: {} });
+    mockRpc(TaskService, 'ListTransitionApprovals', { approvals: [], page: {} });
   });
 
   it('titles the page "Tasks" and says what the screen is for', async () => {
@@ -1615,11 +1616,12 @@ describe('TasksWorkbench', () => {
     });
 
     it('shows the agent\'s plan and flags a task waiting on a person (M38)', async () => {
-      withTasks([{ id: 't-1', displayId: 'T-1', title: 'Fix bug', status: 'todo', openInputRequestCount: 1,
+      withTasks([{ id: 't-1', displayId: 'T-1', title: 'Fix bug', status: 'todo', openInputRequestCount: 1, pendingApprovalCount: 1,
         plan: [{ title: 'Reproduce', status: 'done' }, { title: 'Patch', status: 'in_progress' }] }]);
       renderPage();
       const card = (await screen.findByText('Fix bug')).closest('[draggable]') as HTMLElement;
       expect(within(card).getByText('Needs input')).toBeInTheDocument();
+      expect(within(card).getByText('Awaiting approval')).toBeInTheDocument();
       fireEvent.click(screen.getByText('Fix bug'));
       expect(await screen.findByRole('progressbar', { name: 'Plan progress' })).toHaveAttribute('aria-valuenow', '1');
       expect(screen.getByText('Patch')).toBeInTheDocument();
@@ -1629,9 +1631,13 @@ describe('TasksWorkbench', () => {
       withTasks([]);
       mockRpc(TaskService, 'ListInputRequests', { inputRequests: [{ id: 'ir-1', taskId: 't-1', taskDisplayId: 'T-1', taskTitle: 'Fix bug', projectId: 'proj-1',
         question: 'Which DB?', options: [], status: 'open', askedByName: 'Planner', createdAt: '2026-10-02T10:00:00Z' }], page: {} });
+      mockRpc(TaskService, 'ListTransitionApprovals', { approvals: [{ id: 'apr-1', taskId: 't-2', taskDisplayId: 'T-2', taskTitle: 'Release',
+        projectId: 'proj-1', fromStatus: 'review', toStatus: 'done', status: 'pending', requestedByAgentId: 'a1', requestedByName: 'Shipper',
+        createdAt: '2026-10-02T10:00:00Z' }], page: {} });
       renderPage();
       fireEvent.click(screen.getByRole('button', { name: 'Waiting on people' }));
       expect(await screen.findByText('Which DB?')).toBeInTheDocument();
+      expect(await screen.findByRole('link', { name: 'T-2 — Release' })).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Close questions' }));
       await waitFor(() => expect(screen.queryByText('Which DB?')).toBeNull());
     });

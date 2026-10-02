@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useScopedTo } from '../../hooks/useScope';
-import { PriorityBadge, BlockedBadge, NeedsInputBadge } from './PriorityBadge';
+import { PriorityBadge, BlockedBadge, NeedsInputBadge, AwaitingApprovalBadge } from './PriorityBadge';
 import { TaskPlan } from './TaskPlan';
 import { TaskInputRequests, QuestionsQueue } from './InputRequests';
+import { TaskApprovals, ApprovalsQueue } from './Approvals';
 import { PRIORITY_OPTIONS } from './priority';
 import { TaskRelations } from './TaskRelations';
 import { useScopeLabels } from '../../hooks/useScopeLabels';
@@ -411,6 +412,7 @@ function BoardColumn({
               <PriorityBadge priority={task.priority ?? 0} />
               <BlockedBadge count={task.blockedByOpenCount ?? 0} />
               <NeedsInputBadge count={task.openInputRequestCount ?? 0} />
+              <AwaitingApprovalBadge count={task.pendingApprovalCount ?? 0} />
             </div>
             <h4 className="mb-2">
               <button
@@ -1013,6 +1015,7 @@ export function TasksWorkbench() {
                         <span className="truncate">{task.title}</span>
                         <BlockedBadge count={task.blockedByOpenCount ?? 0} />
                         <NeedsInputBadge count={task.openInputRequestCount ?? 0} />
+                        <AwaitingApprovalBadge count={task.pendingApprovalCount ?? 0} />
                       </div>
                       <div role="cell" className="px-4 py-2">
                         <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
@@ -1212,7 +1215,8 @@ export function TasksWorkbench() {
              ) : (
                <h3 className="text-xl font-bold mb-4">{expandedTask.title}</h3>
              )}
-             <div className="mb-4">
+             <div className="mb-4 flex flex-col gap-4">
+               <TaskApprovals taskId={expandedTask.id} />
                <TaskInputRequests taskId={expandedTask.id} />
              </div>
              {!isEditingTask && (
@@ -1320,6 +1324,10 @@ export function TasksWorkbench() {
           headerRight={<button onClick={() => setShowQuestions(false)} aria-label="Close questions" className="text-muted-foreground hover:text-foreground">✕</button>}
         >
           <div className="p-6 overflow-y-auto">
+            <h3 className="text-sm font-semibold tracking-tight mb-2">Approvals</h3>
+            <p className="text-sm text-muted-foreground mb-4">Status changes agents made across a gated transition, held until a person approves.</p>
+            <ApprovalsQueue orgId={activeOrgId} />
+            <h3 className="text-sm font-semibold tracking-tight mt-6 mb-2">Questions</h3>
             <p className="text-sm text-muted-foreground mb-4">Questions agents in this organization asked and are waiting on a person to answer.</p>
             <QuestionsQueue orgId={activeOrgId} />
           </div>

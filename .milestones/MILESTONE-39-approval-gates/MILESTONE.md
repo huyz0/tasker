@@ -49,7 +49,7 @@ reviewer reading it after the fact.
 - [x] **M39-T01** — ADR-0032; contract and schema.
 - [x] **M39-T02** — Gated `UpdateTaskStatus`, decide/list RPCs, notifications, events.
 - [x] **M39-T03** — CLI and MCP.
-- [ ] **M39-T04** — GUI: editor flag, dialog banner, queue.
+- [x] **M39-T04** — GUI: editor flag, dialog banner, queue.
 - [ ] **M39-T05** — Docs and close.
 
 ## 6. Verification

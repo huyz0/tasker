@@ -25,6 +25,32 @@ export const GUI_SRC = process.env.RPC_COVERAGE_SRC ?? join(HERE, '../src');
  * visible in review.
  */
 export const EXCEPTIONS = {
+  'TaskService.claimNextTask':
+    'Agent work queue (M33, ADR-0027): "give me the next ready task" is how an ' +
+    'autonomous worker pulls work. A person picks a task by looking at the ' +
+    'board, and assigns it through the assignee picker.',
+  'TaskService.releaseTask':
+    "claimTask's inverse (M33): it removes only the caller's own claim. The " +
+    'GUI does not claim, so it has nothing to release; people unassign.',
+  'TaskService.listMyTasks':
+    'An agent\'s "what am I holding" across the organization (M33). A person ' +
+    'sees their work on the board with the assignee filter.',
+  'TaskService.setTaskPlan':
+    'The working agent\'s own plan (M38, ADR-0031), replaced whole on each ' +
+    'update. The GUI shows it read-only; a person editing it would be ' +
+    'overwritten by the agent\'s next update.',
+  'TaskService.requestInput':
+    'Agents ask people (M38, ADR-0031); people answer. A person with a ' +
+    'question comments instead.',
+  'TaskService.cancelInputRequest':
+    'The asking agent withdraws its own question (M38). The GUI answers ' +
+    'questions; it does not ask them, so it has none to withdraw.',
+  'TaskService.getInputRequest':
+    'For an agent following one question it asked (M38). The GUI lists a ' +
+    "task's or the organization's questions, which already carry every field.",
+  'TaskService.getTransitionApproval':
+    'For an agent following the one move it asked for (M39, ADR-0032). The ' +
+    "GUI lists a task's or the organization's approvals, which carry every field.",
   'TaskNoteService.createTaskNote':
     'Agent-only by design. task_notes.agent_id is NOT NULL, so a note has no ' +
     'human author; M04 made the handler refuse a user principal outright, ' +
