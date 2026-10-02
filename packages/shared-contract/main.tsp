@@ -892,6 +892,68 @@ model Task {
 
   // M40 (ADR-0033): what agents reported this task cost. GetTask only.
   @field(18) usage?: UsageTotals;
+
+  // M41 (ADR-0034): the durable summary of this task. GetTask only.
+  @field(19) summary?: TaskSummary;
+}
+
+// M41 (ADR-0034): what a task came to - outcome, decisions, gotchas - in a
+// few paragraphs, written by whoever finished it (usually its agent).
+// Replaced whole; history is never deleted to make room for it.
+model TaskSummary {
+  @field(1) text: string;
+  @field(2) authorName: string;
+  @field(3) agentId?: string;
+  @field(4) userId?: string;
+  @field(5) updatedAt: string;
+}
+
+// Empty text clears the summary. At most 4,000 characters.
+model SetTaskSummaryRequest {
+  @field(1) taskId: string;
+  @field(2) text: string;
+}
+model SetTaskSummaryResponse {
+  @field(1) summary?: TaskSummary;
+}
+
+// One bounded read of a task's context, assembled at read time from the same
+// tables the screens read - never stored, so never stale. The task carries its
+// plan, usage and summary; lists are capped (20 answered questions, 50
+// relations per kind) and `truncated` says when a cap cut something off.
+model TaskDigest {
+  @field(1) task: Task;
+  @field(2) latestHandoffNote?: TaskNote;
+  @field(3) answeredQuestions: InputRequest[];
+  @field(4) relations: ListTaskLinksResponse;
+  @field(5) finishedAt?: string;
+  @field(6) truncated: boolean;
+}
+model GetTaskDigestRequest {
+  @field(1) taskId: string;
+}
+model GetTaskDigestResponse {
+  @field(1) digest: TaskDigest;
+}
+
+// Finished (terminal) tasks with no summary that finished more than
+// `olderThanDays` (default 30, 0-3650) ago, oldest first. Summarizing one
+// takes it off the list, so there is no cursor: work from the top.
+model CompactionCandidate {
+  @field(1) taskId: string;
+  @field(2) displayId: string;
+  @field(3) title: string;
+  @field(4) status: string;
+  @field(5) finishedAt: string;
+}
+model ListCompactionCandidatesRequest {
+  @field(1) projectId: string;
+  @field(2) olderThanDays?: int32;
+  @field(3) limit?: int32;
+}
+model ListCompactionCandidatesResponse {
+  @field(1) candidates: CompactionCandidate[];
+  @field(2) totalCount: int32;
 }
 
 // M38 (ADR-0031). status: "pending", "in_progress", "done" or "skipped".
@@ -1442,6 +1504,11 @@ interface TaskService {
   ): ListTransitionApprovalsResponse;
   reportUsage(request: ReportUsageRequest): ReportUsageResponse;
   listUsageRecords(request: ListUsageRecordsRequest): ListUsageRecordsResponse;
+  setTaskSummary(request: SetTaskSummaryRequest): SetTaskSummaryResponse;
+  getTaskDigest(request: GetTaskDigestRequest): GetTaskDigestResponse;
+  listCompactionCandidates(
+    request: ListCompactionCandidatesRequest,
+  ): ListCompactionCandidatesResponse;
 }
 
 // ==== Artifacts ====

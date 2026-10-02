@@ -1,12 +1,12 @@
 ---
 id: M41
 title: Task Digests
-status: todo
+status: in-progress
 goal: An agent that needs an old or long task's context gets it in one compact read - a summary written once by whoever closed it, plus the facts Tasker already knows - instead of replaying the whole history.
 depends_on: [M38, M40]
 surfaces: [contract, backend, cli, gui, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-10-02
 completed_at: null
 ---
 
@@ -46,7 +46,7 @@ summaries server-side (Tasker has no model; agents write them).
 
 ## 5. Task Breakdown
 
-- [ ] **M41-T01** — Contract and schema.
+- [x] **M41-T01** — Contract and schema.
 - [ ] **M41-T02** — Summary, digest and candidates RPCs.
 - [ ] **M41-T03** — CLI and MCP.
 - [ ] **M41-T04** — GUI.

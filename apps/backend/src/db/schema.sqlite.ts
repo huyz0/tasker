@@ -415,6 +415,12 @@ export const tasks = sqliteTable("tasks", {
   // M38 (ADR-0031): the working agent's plan, a JSON array of {title, status},
   // replaced whole on every update.
   plan: text("plan"),
+  // M41 (ADR-0034): what the task came to, written once it is finished.
+  // Lists never select it.
+  summary: text("summary"),
+  summaryUpdatedAt: integer("summary_updated_at", { mode: "timestamp" }),
+  summaryAgentId: text("summary_agent_id"),
+  summaryUserId: text("summary_user_id"),
 }, (table) => {
   return {
     projectIdIdx: index("tasks_project_id_idx").on(table.projectId),

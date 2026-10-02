@@ -740,6 +740,8 @@ message Task {
   int32 pendingApprovalCount = 17;
   // M40 (ADR-0033). GetTask only.
   optional UsageTotals usage = 18;
+  // M41 (ADR-0034). GetTask only.
+  optional TaskSummary summary = 19;
 }
 
 // M38 (ADR-0031). See main.tsp.
@@ -1045,6 +1047,52 @@ message ListTransitionApprovalsResponse {
   PageResponse page = 2;
 }
 
+// M41 (ADR-0034). See main.tsp.
+message TaskSummary {
+  string text = 1;
+  string authorName = 2;
+  optional string agentId = 3;
+  optional string userId = 4;
+  string updatedAt = 5;
+}
+message SetTaskSummaryRequest {
+  string taskId = 1;
+  string text = 2;
+}
+message SetTaskSummaryResponse {
+  optional TaskSummary summary = 1;
+}
+message TaskDigest {
+  Task task = 1;
+  optional TaskNote latestHandoffNote = 2;
+  repeated InputRequest answeredQuestions = 3;
+  ListTaskLinksResponse relations = 4;
+  optional string finishedAt = 5;
+  bool truncated = 6;
+}
+message GetTaskDigestRequest {
+  string taskId = 1;
+}
+message GetTaskDigestResponse {
+  TaskDigest digest = 1;
+}
+message CompactionCandidate {
+  string taskId = 1;
+  string displayId = 2;
+  string title = 3;
+  string status = 4;
+  string finishedAt = 5;
+}
+message ListCompactionCandidatesRequest {
+  string projectId = 1;
+  optional int32 olderThanDays = 2;
+  optional int32 limit = 3;
+}
+message ListCompactionCandidatesResponse {
+  repeated CompactionCandidate candidates = 1;
+  int32 totalCount = 2;
+}
+
 // M40 (ADR-0033). See main.tsp.
 message UsageTotals {
   int64 inputTokens = 1;
@@ -1195,6 +1243,9 @@ service TaskService {
   rpc ListTransitionApprovals(ListTransitionApprovalsRequest) returns (ListTransitionApprovalsResponse);
   rpc ReportUsage(ReportUsageRequest) returns (ReportUsageResponse);
   rpc ListUsageRecords(ListUsageRecordsRequest) returns (ListUsageRecordsResponse);
+  rpc SetTaskSummary(SetTaskSummaryRequest) returns (SetTaskSummaryResponse);
+  rpc GetTaskDigest(GetTaskDigestRequest) returns (GetTaskDigestResponse);
+  rpc ListCompactionCandidates(ListCompactionCandidatesRequest) returns (ListCompactionCandidatesResponse);
 }
 
 message Folder {

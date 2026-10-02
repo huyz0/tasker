@@ -119,7 +119,8 @@ function taskListSelect(tasks: any) {
 
 /** A task row as the wire `Task` carries it. */
 function toWireTask(t: any, extra: Record<string, unknown> = {}) {
-  const { priorityRank: _rank, plan, ...rest } = t;
+  // M41: the summary columns are raw here; GetTask adds the wire summary via `extra`.
+  const { priorityRank: _rank, plan, summary: _summary, summaryUpdatedAt: _su, summaryAgentId: _sa, summaryUserId: _suser, ...rest } = t;
   return {
     ...rest,
     // M38 (ADR-0031): stored as JSON text; lists never select it.

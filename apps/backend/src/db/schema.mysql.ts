@@ -287,6 +287,11 @@ export const tasks = mysqlTable("tasks", {
   parentTaskId: varchar("parent_task_id", { length: 256 }),
   // M38 (ADR-0031). See schema.sqlite.ts.
   plan: text("plan"),
+  // M41 (ADR-0034). See schema.sqlite.ts.
+  summary: text("summary"),
+  summaryUpdatedAt: timestamp("summary_updated_at"),
+  summaryAgentId: varchar("summary_agent_id", { length: 256 }),
+  summaryUserId: varchar("summary_user_id", { length: 256 }),
 }, (table) => {
   return {
     projectIdIdx: index("tasks_project_id_idx").on(table.projectId),
