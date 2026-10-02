@@ -1,7 +1,7 @@
 ---
 id: M22
 title: Task Handoff & Continuity
-status: complete
+status: done
 goal: An agent about to lose its claim on an unfinished task can record what it tried, what's blocked, and what the concrete next step is, and that context is visible to whoever picks the task up next — in the same round trip as claiming or inspecting the task, and browsable across a whole project without opening tasks one at a time.
 depends_on: []
 surfaces: [backend, gui, cli, contract, specs]

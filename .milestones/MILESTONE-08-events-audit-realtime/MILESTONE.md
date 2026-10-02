@@ -1,13 +1,13 @@
 ---
 id: M08
 title: Events, Audit & Real-Time
-status: todo
+status: done
 goal: Domain events are consumed rather than discarded — producing a durable audit trail and a browser that updates without a manual refresh.
 depends_on: [M04, M07]
 surfaces: [backend, gui, infra, contract]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+exit_criteria_met: true
+started_at: 2026-08-20
+completed_at: 2026-08-21
 ---
 
 # M08 — Events, Audit & Real-Time

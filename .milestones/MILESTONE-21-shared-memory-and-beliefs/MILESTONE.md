@@ -1,7 +1,7 @@
 ---
 id: M21
 title: Shared Memory & Belief System
-status: complete
+status: done
 goal: Agents and humans can record project/org-scoped facts with full provenance, find them by search rather than by paging, and promote them across the existing organization/team/project scope hierarchy with an auditable trail of who promoted what and when.
 depends_on: []
 surfaces: [backend, gui, cli, contract, specs]

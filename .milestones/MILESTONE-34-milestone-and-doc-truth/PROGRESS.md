@@ -21,3 +21,21 @@
   combination (a team granted at project scope), now in `policy.test.ts`.
   Each box in M10 names its evidence.
 - **Next**: M34-T02
+
+## M34-T02 — Frontmatter and ledger agree with the boxes
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `.milestones/MILESTONE-08-*/MILESTONE.md` (`todo` → `done`,
+  criteria met, started 2026-08-20 / completed 2026-08-21 from its journal and
+  STATE's close entry), `MILESTONE-{21,22,23}-*/MILESTONE.md` (`complete` →
+  `done`), `.milestones/STATE.md` (M12 row 10 → 11; total line)
+- **Verified**: a script over all 28 files: every `done` has all exit
+  criteria and tasks checked or dropped; the ledger table sums to 273 tasks,
+  269 done, 1 dropped.
+- **Notes**: M12's "single deferred task" was never a task. Binary signing
+  was scoped out of M09 and M12 as a note, and all eleven boxes are checked,
+  so the ledger's 10 undercounted. Writing the total line by hand also
+  produced an off-by-one in this session (270 written for 269) — the reason
+  T03's gate checks the total line too, not only the rows.
+- **Next**: M34-T03

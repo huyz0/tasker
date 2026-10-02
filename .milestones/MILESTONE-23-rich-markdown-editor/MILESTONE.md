@@ -1,7 +1,7 @@
 ---
 id: M23
 title: Rich Markdown Editor
-status: complete
+status: done
 goal: A user can bold, italicize, link, and list-format a task description without ever seeing raw markdown syntax or leaving edit mode to preview it, and the result round-trips as the same plain markdown string the CLI and API already expect.
 depends_on: []
 surfaces: [gui, specs]

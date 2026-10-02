@@ -43,7 +43,7 @@ forward unscheduled. The 2026-10-02 review confirmed and extended it:
 
 ## 3. Exit Criteria
 
-- [ ] Every `MILESTONE.md`'s `status`, `exit_criteria_met` and `completed_at`
+- [x] Every `MILESTONE.md`'s `status`, `exit_criteria_met` and `completed_at`
   agree with its boxes, and its status is one the standard allows.
 - [x] Each of M10's eight criteria is checked with the evidence named, and the
   two untested ones have tests.
@@ -67,7 +67,7 @@ truth pass beyond MSW (COUNCIL-0001 candidate 5) — later.
   - **Files**: `apps/backend/src/modules/orgs/orgs.handler.ts`,
     `modules/roles/roles.test.ts`, `apps/gui/src/features/Roles/index.test.tsx`,
     `.milestones/MILESTONE-10-*/MILESTONE.md`
-- [ ] **M34-T02** — Frontmatter and ledger agree with the boxes (M08, M21–M23, M12's ledger row).
+- [x] **M34-T02** — Frontmatter and ledger agree with the boxes (M08, M21–M23, M12's ledger row).
   - **Files**: those `MILESTONE.md` files, `.milestones/STATE.md`
 - [ ] **M34-T03** — The gate: `doc-drift` checks every `MILESTONE.md` against its boxes and the ledger.
   - **Files**: `scripts/doc-drift.ts` (+ test), `moon.yml`

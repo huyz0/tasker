@@ -1,8 +1,8 @@
 ---
 active_milestone: M34
-active_task: M34-T02
+active_task: M34-T03
 last_updated: 2026-10-02
-last_commit: ab51d80
+last_commit: 6d3856e
 blocked: false
 blocker: null
 ---
@@ -1732,7 +1732,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M09 | Portable Single Binary         | done   | M05, M07   | 9     | 9    |
 | M10 | Teams & Policy-Based RBAC      | done   | M03, M04   | 13    | 13   |
 | M11 | Observability & Deployability  | done   | M08        | 12    | 12   |
-| M12 | Test Depth & Release           | done   | M06,M09,M11| 11    | 10   |
+| M12 | Test Depth & Release           | done   | M06,M09,M11| 11    | 11   |
 | M13 | Local Accounts & Linked Identity| done   | M01, M03   | 15    | 15   |
 | M14 | Task Reliability & Agent Self-Service | done | M04, M05 | 9   | 9    |
 | M21 | Shared Memory & Belief System   | done   | —          | 10    | 10   |
@@ -1748,9 +1748,11 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M31 | CLI Output Truth                | done   | —          | 6     | 6    |
 | M32 | Task Workspace Correctness      | done   | M30        | 8     | 8    |
 | M33 | Agent Work Queue                | done   | M30, M31   | 7     | 7    |
-| M34 | Milestone and Doc Truth         | in-progress | —     | 4     | 1    |
+| M34 | Milestone and Doc Truth         | in-progress | —     | 4     | 2    |
 
-**Total: 273 tasks across 28 milestones — 268 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
+**Total: 273 tasks across 28 milestones — 270 done, 1 dropped.** Every milestone is closed. Binary *signing* was scoped out of M09 and M12 as a
+note, not a task — it needs certificates this project does not have — so M12's
+ledger row counts 11/11 (M34-T02 corrected it from 10).
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;
