@@ -1,12 +1,12 @@
 ---
 id: M39
 title: Approval Gates on Agent Transitions
-status: todo
+status: in-progress
 goal: An organization can mark a task-type transition as needing a person's approval when an agent makes it, so an agent can propose "move to Done" but only a person can let it happen - without slowing the transitions nobody needs to watch.
 depends_on: [M38]
 surfaces: [contract, backend, cli, gui, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-10-02
 completed_at: null
 ---
 
@@ -46,7 +46,7 @@ reviewer reading it after the fact.
 
 ## 5. Task Breakdown
 
-- [ ] **M39-T01** — ADR-0032; contract and schema.
+- [x] **M39-T01** — ADR-0032; contract and schema.
 - [ ] **M39-T02** — Gated `UpdateTaskStatus`, decide/list RPCs, notifications, events.
 - [ ] **M39-T03** — CLI and MCP.
 - [ ] **M39-T04** — GUI: editor flag, dialog banner, queue.

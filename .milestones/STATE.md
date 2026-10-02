@@ -1,6 +1,6 @@
 ---
 active_milestone: M39
-active_task: M39-T01
+active_task: M39-T02
 last_updated: 2026-10-02
 last_commit: 1815c88
 blocked: false
@@ -1793,11 +1793,11 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M36 | MCP Server                      | done   | M35        | 5     | 5    |
 | M37 | Outbound Webhooks               | done   | M35        | 7     | 7    |
 | M38 | Agent Plan and Input Requests   | done   | M35        | 6     | 6    |
-| M39 | Approval Gates on Agent Transitions | todo | M38      | 5     | 0    |
+| M39 | Approval Gates on Agent Transitions | in-progress | M38 | 5   | 1    |
 | M40 | Agent Usage and Cost            | todo   | M35        | 5     | 0    |
 | M41 | Task Digests                    | todo   | M38, M40   | 5     | 0    |
 
-**Total: 313 tasks across 35 milestones — 297 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 313 tasks across 35 milestones — 298 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
@@ -1991,7 +1991,7 @@ lead, with M10 following.
    keeps the migration from touching every other table's `userId` foreign key
    — the alternative (mint a new internal id, re-point every FK) would have
    made this a second M10-sized rewrite for no behavioural gain.
-3. **M08 was not started** (`active_task: M39-T01`, no commits recorded against
+3. **M08 was not started** (`active_task: M39-T02`, no commits recorded against
    it) when this re-plan landed, so re-sequencing ahead of it abandoned no
    in-flight work. It resumes in its prior position once M13 and M10 close.
 4. Full plan, exit criteria and task breakdown:

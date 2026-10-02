@@ -386,6 +386,13 @@
       "when": 1789000000000,
       "tag": "0054_plans_and_input_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "6",
+      "when": 1789100000000,
+      "tag": "0055_approval_gates",
+      "breakpoints": true
     }
   ]
 }

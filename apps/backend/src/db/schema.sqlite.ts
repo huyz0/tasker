@@ -276,6 +276,8 @@ export const taskStatusTransitions = sqliteTable("task_status_transitions", {
   taskTypeId: text("task_type_id").notNull().references(() => taskTypes.id),
   fromStatusId: text("from_status_id").notNull().references(() => taskStatuses.id),
   toStatusId: text("to_status_id").notNull().references(() => taskStatuses.id),
+  // M39 (ADR-0032): an agent's move along this edge waits for a person.
+  requiresApproval: integer("requires_approval", { mode: "boolean" }).notNull().default(false),
 }, (table) => {
   return {
     taskTypeIdIdx: index("task_status_transitions_task_type_id_idx").on(table.taskTypeId),
@@ -1014,5 +1016,26 @@ export const inputRequests = sqliteTable("input_requests", {
   return {
     taskStatusIdx: index("input_requests_task_id_status_idx").on(table.taskId, table.status),
     orgStatusIdx: index("input_requests_org_id_status_created_idx").on(table.orgId, table.status, table.createdAt),
+  };
+});
+
+// M39 (ADR-0032). An agent's move across a gated transition, held for a person.
+export const transitionApprovals = sqliteTable("transition_approvals", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull(),
+  orgId: text("org_id").notNull(),
+  projectId: text("project_id").notNull(),
+  fromStatus: text("from_status").notNull(),
+  toStatus: text("to_status").notNull(),
+  status: text("status").notNull().default("pending"),
+  requestedByAgentId: text("requested_by_agent_id").notNull(),
+  decidedByUserId: text("decided_by_user_id"),
+  reason: text("reason"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  decidedAt: integer("decided_at", { mode: "timestamp" }),
+}, (table) => {
+  return {
+    taskStatusIdx: index("transition_approvals_task_id_status_idx").on(table.taskId, table.status),
+    orgStatusIdx: index("transition_approvals_org_id_status_created_idx").on(table.orgId, table.status, table.createdAt),
   };
 });

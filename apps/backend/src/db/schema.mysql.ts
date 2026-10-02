@@ -171,6 +171,8 @@ export const taskStatusTransitions = mysqlTable("task_status_transitions", {
   taskTypeId: varchar("task_type_id", { length: 256 }).notNull().references(() => taskTypes.id),
   fromStatusId: varchar("from_status_id", { length: 256 }).notNull().references(() => taskStatuses.id),
   toStatusId: varchar("to_status_id", { length: 256 }).notNull().references(() => taskStatuses.id),
+  // M39 (ADR-0032). See schema.sqlite.ts.
+  requiresApproval: boolean("requires_approval").notNull().default(false),
 }, (table) => {
   return {
     taskTypeIdIdx: index("task_status_transitions_task_type_id_idx").on(table.taskTypeId),
@@ -789,5 +791,26 @@ export const inputRequests = mysqlTable("input_requests", {
   return {
     taskStatusIdx: index("input_requests_task_id_status_idx").on(table.taskId, table.status),
     orgStatusIdx: index("input_requests_org_id_status_created_idx").on(table.orgId, table.status, table.createdAt),
+  };
+});
+
+// M39 (ADR-0032). See schema.sqlite.ts.
+export const transitionApprovals = mysqlTable("transition_approvals", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  taskId: varchar("task_id", { length: 256 }).notNull(),
+  orgId: varchar("org_id", { length: 256 }).notNull(),
+  projectId: varchar("project_id", { length: 256 }).notNull(),
+  fromStatus: varchar("from_status", { length: 256 }).notNull(),
+  toStatus: varchar("to_status", { length: 256 }).notNull(),
+  status: varchar("status", { length: 16 }).notNull().default("pending"),
+  requestedByAgentId: varchar("requested_by_agent_id", { length: 256 }).notNull(),
+  decidedByUserId: varchar("decided_by_user_id", { length: 256 }),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").notNull(),
+  decidedAt: timestamp("decided_at"),
+}, (table) => {
+  return {
+    taskStatusIdx: index("transition_approvals_task_id_status_idx").on(table.taskId, table.status),
+    orgStatusIdx: index("transition_approvals_org_id_status_created_idx").on(table.orgId, table.status, table.createdAt),
   };
 });

@@ -364,6 +364,19 @@ model TaskStatusTransition {
   @field(2) taskTypeId: string;
   @field(3) fromStatusId: string;
   @field(4) toStatusId: string;
+
+  // M39 (ADR-0032): an agent's move along this edge waits for a person.
+  @field(5) requiresApproval: boolean;
+}
+
+// M39 (ADR-0032).
+model SetTransitionApprovalRequest {
+  @field(1) taskTypeId: string;
+  @field(2) transitionId: string;
+  @field(3) requiresApproval: boolean;
+}
+model SetTransitionApprovalResponse {
+  @field(1) transition: TaskStatusTransition;
 }
 
 // ==== Task Types Services ====
@@ -460,6 +473,9 @@ interface TaskTypeService {
   reorderTaskStatuses(
     request: ReorderTaskStatusesRequest,
   ): ReorderTaskStatusesResponse;
+  setTransitionApproval(
+    request: SetTransitionApprovalRequest,
+  ): SetTransitionApprovalResponse;
 }
 
 // ==== Project Models ====
@@ -870,6 +886,9 @@ model Task {
 
   // Questions on this task still waiting for a person's answer.
   @field(16) openInputRequestCount: int32;
+
+  // M39 (ADR-0032): agent moves on this task waiting for approval.
+  @field(17) pendingApprovalCount: int32;
 }
 
 // M38 (ADR-0031). status: "pending", "in_progress", "done" or "skipped".
@@ -1182,6 +1201,61 @@ model UpdateTaskStatusRequest {
 
 model UpdateTaskStatusResponse {
   @field(1) task: Task;
+
+  // M39 (ADR-0032): set when an agent's move waits for a person; the task's
+  // status is then unchanged.
+  @field(2) pendingApproval?: TransitionApproval;
+}
+
+// M39 (ADR-0032). An agent's gated move, waiting for or decided by a person.
+model TransitionApproval {
+  @field(1) id: string;
+  @field(2) taskId: string;
+  @field(3) taskDisplayId: string;
+  @field(4) taskTitle: string;
+  @field(5) projectId: string;
+  @field(6) fromStatus: string;
+  @field(7) toStatus: string;
+
+  // "pending", "approved", "rejected" or "stale" (the task moved first).
+  @field(8) status: string;
+
+  @field(9) requestedByAgentId: string;
+  @field(10) requestedByName: string;
+  @field(11) decidedByUserId?: string;
+  @field(12) decidedByName?: string;
+  @field(13) reason?: string;
+  @field(14) createdAt: string;
+  @field(15) decidedAt?: string;
+}
+
+// People only.
+model DecideTransitionApprovalRequest {
+  @field(1) id: string;
+  @field(2) approve: boolean;
+  @field(3) reason?: string;
+}
+model DecideTransitionApprovalResponse {
+  @field(1) approval: TransitionApproval;
+}
+
+model GetTransitionApprovalRequest {
+  @field(1) id: string;
+}
+model GetTransitionApprovalResponse {
+  @field(1) approval: TransitionApproval;
+}
+
+// status defaults to "pending"; "all" lists every status.
+model ListTransitionApprovalsRequest {
+  @field(1) orgId?: string;
+  @field(2) taskId?: string;
+  @field(3) status?: string;
+  @field(4) page?: PageRequest;
+}
+model ListTransitionApprovalsResponse {
+  @field(1) approvals: TransitionApproval[];
+  @field(2) page: PageResponse;
 }
 
 model UpdateTaskRequest {
@@ -1305,6 +1379,15 @@ interface TaskService {
   listInputRequests(
     request: ListInputRequestsRequest,
   ): ListInputRequestsResponse;
+  decideTransitionApproval(
+    request: DecideTransitionApprovalRequest,
+  ): DecideTransitionApprovalResponse;
+  getTransitionApproval(
+    request: GetTransitionApprovalRequest,
+  ): GetTransitionApprovalResponse;
+  listTransitionApprovals(
+    request: ListTransitionApprovalsRequest,
+  ): ListTransitionApprovalsResponse;
 }
 
 // ==== Artifacts ====

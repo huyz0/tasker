@@ -286,6 +286,17 @@ message TaskStatusTransition {
   string taskTypeId = 2;
   string fromStatusId = 3;
   string toStatusId = 4;
+  // M39 (ADR-0032).
+  bool requiresApproval = 5;
+}
+
+message SetTransitionApprovalRequest {
+  string taskTypeId = 1;
+  string transitionId = 2;
+  bool requiresApproval = 3;
+}
+message SetTransitionApprovalResponse {
+  TaskStatusTransition transition = 1;
 }
 
 message GetTaskTypeRequest {
@@ -380,6 +391,7 @@ service TaskTypeService {
   rpc CreateTaskStatusTransition(CreateTaskStatusTransitionRequest) returns (CreateTaskStatusTransitionResponse);
   rpc DeleteTaskStatusTransition(DeleteTaskStatusTransitionRequest) returns (DeleteTaskStatusTransitionResponse);
   rpc ReorderTaskStatuses(ReorderTaskStatusesRequest) returns (ReorderTaskStatusesResponse);
+  rpc SetTransitionApproval(SetTransitionApprovalRequest) returns (SetTransitionApprovalResponse);
 }
 
 message ProjectTemplate {
@@ -724,6 +736,8 @@ message Task {
   // M38 (ADR-0031). See main.tsp's Task.
   repeated PlanStep plan = 15;
   int32 openInputRequestCount = 16;
+  // M39 (ADR-0032).
+  int32 pendingApprovalCount = 17;
 }
 
 // M38 (ADR-0031). See main.tsp.
@@ -982,6 +996,51 @@ message UpdateTaskStatusRequest {
 
 message UpdateTaskStatusResponse {
   Task task = 1;
+  // M39 (ADR-0032).
+  optional TransitionApproval pendingApproval = 2;
+}
+
+// M39 (ADR-0032). See main.tsp.
+message TransitionApproval {
+  string id = 1;
+  string taskId = 2;
+  string taskDisplayId = 3;
+  string taskTitle = 4;
+  string projectId = 5;
+  string fromStatus = 6;
+  string toStatus = 7;
+  string status = 8;
+  string requestedByAgentId = 9;
+  string requestedByName = 10;
+  optional string decidedByUserId = 11;
+  optional string decidedByName = 12;
+  optional string reason = 13;
+  string createdAt = 14;
+  optional string decidedAt = 15;
+}
+message DecideTransitionApprovalRequest {
+  string id = 1;
+  bool approve = 2;
+  optional string reason = 3;
+}
+message DecideTransitionApprovalResponse {
+  TransitionApproval approval = 1;
+}
+message GetTransitionApprovalRequest {
+  string id = 1;
+}
+message GetTransitionApprovalResponse {
+  TransitionApproval approval = 1;
+}
+message ListTransitionApprovalsRequest {
+  optional string orgId = 1;
+  optional string taskId = 2;
+  optional string status = 3;
+  PageRequest page = 4;
+}
+message ListTransitionApprovalsResponse {
+  repeated TransitionApproval approvals = 1;
+  PageResponse page = 2;
 }
 
 message UpdateTaskRequest {
@@ -1086,6 +1145,9 @@ service TaskService {
   rpc CancelInputRequest(CancelInputRequestRequest) returns (CancelInputRequestResponse);
   rpc GetInputRequest(GetInputRequestRequest) returns (GetInputRequestResponse);
   rpc ListInputRequests(ListInputRequestsRequest) returns (ListInputRequestsResponse);
+  rpc DecideTransitionApproval(DecideTransitionApprovalRequest) returns (DecideTransitionApprovalResponse);
+  rpc GetTransitionApproval(GetTransitionApprovalRequest) returns (GetTransitionApprovalResponse);
+  rpc ListTransitionApprovals(ListTransitionApprovalsRequest) returns (ListTransitionApprovalsResponse);
 }
 
 message Folder {

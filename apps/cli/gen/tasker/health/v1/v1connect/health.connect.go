@@ -148,6 +148,9 @@ const (
 	// TaskTypeServiceReorderTaskStatusesProcedure is the fully-qualified name of the TaskTypeService's
 	// ReorderTaskStatuses RPC.
 	TaskTypeServiceReorderTaskStatusesProcedure = "/tasker.health.v1.TaskTypeService/ReorderTaskStatuses"
+	// TaskTypeServiceSetTransitionApprovalProcedure is the fully-qualified name of the
+	// TaskTypeService's SetTransitionApproval RPC.
+	TaskTypeServiceSetTransitionApprovalProcedure = "/tasker.health.v1.TaskTypeService/SetTransitionApproval"
 	// ProjectTemplateServiceGetTemplateProcedure is the fully-qualified name of the
 	// ProjectTemplateService's GetTemplate RPC.
 	ProjectTemplateServiceGetTemplateProcedure = "/tasker.health.v1.ProjectTemplateService/GetTemplate"
@@ -280,6 +283,15 @@ const (
 	// TaskServiceListInputRequestsProcedure is the fully-qualified name of the TaskService's
 	// ListInputRequests RPC.
 	TaskServiceListInputRequestsProcedure = "/tasker.health.v1.TaskService/ListInputRequests"
+	// TaskServiceDecideTransitionApprovalProcedure is the fully-qualified name of the TaskService's
+	// DecideTransitionApproval RPC.
+	TaskServiceDecideTransitionApprovalProcedure = "/tasker.health.v1.TaskService/DecideTransitionApproval"
+	// TaskServiceGetTransitionApprovalProcedure is the fully-qualified name of the TaskService's
+	// GetTransitionApproval RPC.
+	TaskServiceGetTransitionApprovalProcedure = "/tasker.health.v1.TaskService/GetTransitionApproval"
+	// TaskServiceListTransitionApprovalsProcedure is the fully-qualified name of the TaskService's
+	// ListTransitionApprovals RPC.
+	TaskServiceListTransitionApprovalsProcedure = "/tasker.health.v1.TaskService/ListTransitionApprovals"
 	// ArtifactServiceCreateFolderProcedure is the fully-qualified name of the ArtifactService's
 	// CreateFolder RPC.
 	ArtifactServiceCreateFolderProcedure = "/tasker.health.v1.ArtifactService/CreateFolder"
@@ -559,6 +571,7 @@ var (
 	taskTypeServiceCreateTaskStatusTransitionMethodDescriptor     = taskTypeServiceServiceDescriptor.Methods().ByName("CreateTaskStatusTransition")
 	taskTypeServiceDeleteTaskStatusTransitionMethodDescriptor     = taskTypeServiceServiceDescriptor.Methods().ByName("DeleteTaskStatusTransition")
 	taskTypeServiceReorderTaskStatusesMethodDescriptor            = taskTypeServiceServiceDescriptor.Methods().ByName("ReorderTaskStatuses")
+	taskTypeServiceSetTransitionApprovalMethodDescriptor          = taskTypeServiceServiceDescriptor.Methods().ByName("SetTransitionApproval")
 	projectTemplateServiceServiceDescriptor                       = v1.File_tasker_health_v1_health_proto.Services().ByName("ProjectTemplateService")
 	projectTemplateServiceGetTemplateMethodDescriptor             = projectTemplateServiceServiceDescriptor.Methods().ByName("GetTemplate")
 	projectTemplateServiceCreateTemplateMethodDescriptor          = projectTemplateServiceServiceDescriptor.Methods().ByName("CreateTemplate")
@@ -612,6 +625,9 @@ var (
 	taskServiceCancelInputRequestMethodDescriptor                 = taskServiceServiceDescriptor.Methods().ByName("CancelInputRequest")
 	taskServiceGetInputRequestMethodDescriptor                    = taskServiceServiceDescriptor.Methods().ByName("GetInputRequest")
 	taskServiceListInputRequestsMethodDescriptor                  = taskServiceServiceDescriptor.Methods().ByName("ListInputRequests")
+	taskServiceDecideTransitionApprovalMethodDescriptor           = taskServiceServiceDescriptor.Methods().ByName("DecideTransitionApproval")
+	taskServiceGetTransitionApprovalMethodDescriptor              = taskServiceServiceDescriptor.Methods().ByName("GetTransitionApproval")
+	taskServiceListTransitionApprovalsMethodDescriptor            = taskServiceServiceDescriptor.Methods().ByName("ListTransitionApprovals")
 	artifactServiceServiceDescriptor                              = v1.File_tasker_health_v1_health_proto.Services().ByName("ArtifactService")
 	artifactServiceCreateFolderMethodDescriptor                   = artifactServiceServiceDescriptor.Methods().ByName("CreateFolder")
 	artifactServiceUpdateFolderMethodDescriptor                   = artifactServiceServiceDescriptor.Methods().ByName("UpdateFolder")
@@ -1345,6 +1361,7 @@ type TaskTypeServiceClient interface {
 	CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error)
 	DeleteTaskStatusTransition(context.Context, *connect.Request[v1.DeleteTaskStatusTransitionRequest]) (*connect.Response[v1.DeleteTaskStatusTransitionResponse], error)
 	ReorderTaskStatuses(context.Context, *connect.Request[v1.ReorderTaskStatusesRequest]) (*connect.Response[v1.ReorderTaskStatusesResponse], error)
+	SetTransitionApproval(context.Context, *connect.Request[v1.SetTransitionApprovalRequest]) (*connect.Response[v1.SetTransitionApprovalResponse], error)
 }
 
 // NewTaskTypeServiceClient constructs a client for the tasker.health.v1.TaskTypeService service. By
@@ -1405,6 +1422,12 @@ func NewTaskTypeServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(taskTypeServiceReorderTaskStatusesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		setTransitionApproval: connect.NewClient[v1.SetTransitionApprovalRequest, v1.SetTransitionApprovalResponse](
+			httpClient,
+			baseURL+TaskTypeServiceSetTransitionApprovalProcedure,
+			connect.WithSchema(taskTypeServiceSetTransitionApprovalMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1418,6 +1441,7 @@ type taskTypeServiceClient struct {
 	createTaskStatusTransition *connect.Client[v1.CreateTaskStatusTransitionRequest, v1.CreateTaskStatusTransitionResponse]
 	deleteTaskStatusTransition *connect.Client[v1.DeleteTaskStatusTransitionRequest, v1.DeleteTaskStatusTransitionResponse]
 	reorderTaskStatuses        *connect.Client[v1.ReorderTaskStatusesRequest, v1.ReorderTaskStatusesResponse]
+	setTransitionApproval      *connect.Client[v1.SetTransitionApprovalRequest, v1.SetTransitionApprovalResponse]
 }
 
 // GetTaskType calls tasker.health.v1.TaskTypeService.GetTaskType.
@@ -1460,6 +1484,11 @@ func (c *taskTypeServiceClient) ReorderTaskStatuses(ctx context.Context, req *co
 	return c.reorderTaskStatuses.CallUnary(ctx, req)
 }
 
+// SetTransitionApproval calls tasker.health.v1.TaskTypeService.SetTransitionApproval.
+func (c *taskTypeServiceClient) SetTransitionApproval(ctx context.Context, req *connect.Request[v1.SetTransitionApprovalRequest]) (*connect.Response[v1.SetTransitionApprovalResponse], error) {
+	return c.setTransitionApproval.CallUnary(ctx, req)
+}
+
 // TaskTypeServiceHandler is an implementation of the tasker.health.v1.TaskTypeService service.
 type TaskTypeServiceHandler interface {
 	GetTaskType(context.Context, *connect.Request[v1.GetTaskTypeRequest]) (*connect.Response[v1.GetTaskTypeResponse], error)
@@ -1470,6 +1499,7 @@ type TaskTypeServiceHandler interface {
 	CreateTaskStatusTransition(context.Context, *connect.Request[v1.CreateTaskStatusTransitionRequest]) (*connect.Response[v1.CreateTaskStatusTransitionResponse], error)
 	DeleteTaskStatusTransition(context.Context, *connect.Request[v1.DeleteTaskStatusTransitionRequest]) (*connect.Response[v1.DeleteTaskStatusTransitionResponse], error)
 	ReorderTaskStatuses(context.Context, *connect.Request[v1.ReorderTaskStatusesRequest]) (*connect.Response[v1.ReorderTaskStatusesResponse], error)
+	SetTransitionApproval(context.Context, *connect.Request[v1.SetTransitionApprovalRequest]) (*connect.Response[v1.SetTransitionApprovalResponse], error)
 }
 
 // NewTaskTypeServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -1526,6 +1556,12 @@ func NewTaskTypeServiceHandler(svc TaskTypeServiceHandler, opts ...connect.Handl
 		connect.WithSchema(taskTypeServiceReorderTaskStatusesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskTypeServiceSetTransitionApprovalHandler := connect.NewUnaryHandler(
+		TaskTypeServiceSetTransitionApprovalProcedure,
+		svc.SetTransitionApproval,
+		connect.WithSchema(taskTypeServiceSetTransitionApprovalMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskTypeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskTypeServiceGetTaskTypeProcedure:
@@ -1544,6 +1580,8 @@ func NewTaskTypeServiceHandler(svc TaskTypeServiceHandler, opts ...connect.Handl
 			taskTypeServiceDeleteTaskStatusTransitionHandler.ServeHTTP(w, r)
 		case TaskTypeServiceReorderTaskStatusesProcedure:
 			taskTypeServiceReorderTaskStatusesHandler.ServeHTTP(w, r)
+		case TaskTypeServiceSetTransitionApprovalProcedure:
+			taskTypeServiceSetTransitionApprovalHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1583,6 +1621,10 @@ func (UnimplementedTaskTypeServiceHandler) DeleteTaskStatusTransition(context.Co
 
 func (UnimplementedTaskTypeServiceHandler) ReorderTaskStatuses(context.Context, *connect.Request[v1.ReorderTaskStatusesRequest]) (*connect.Response[v1.ReorderTaskStatusesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.ReorderTaskStatuses is not implemented"))
+}
+
+func (UnimplementedTaskTypeServiceHandler) SetTransitionApproval(context.Context, *connect.Request[v1.SetTransitionApprovalRequest]) (*connect.Response[v1.SetTransitionApprovalResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskTypeService.SetTransitionApproval is not implemented"))
 }
 
 // ProjectTemplateServiceClient is a client for the tasker.health.v1.ProjectTemplateService service.
@@ -2338,6 +2380,9 @@ type TaskServiceClient interface {
 	CancelInputRequest(context.Context, *connect.Request[v1.CancelInputRequestRequest]) (*connect.Response[v1.CancelInputRequestResponse], error)
 	GetInputRequest(context.Context, *connect.Request[v1.GetInputRequestRequest]) (*connect.Response[v1.GetInputRequestResponse], error)
 	ListInputRequests(context.Context, *connect.Request[v1.ListInputRequestsRequest]) (*connect.Response[v1.ListInputRequestsResponse], error)
+	DecideTransitionApproval(context.Context, *connect.Request[v1.DecideTransitionApprovalRequest]) (*connect.Response[v1.DecideTransitionApprovalResponse], error)
+	GetTransitionApproval(context.Context, *connect.Request[v1.GetTransitionApprovalRequest]) (*connect.Response[v1.GetTransitionApprovalResponse], error)
+	ListTransitionApprovals(context.Context, *connect.Request[v1.ListTransitionApprovalsRequest]) (*connect.Response[v1.ListTransitionApprovalsResponse], error)
 }
 
 // NewTaskServiceClient constructs a client for the tasker.health.v1.TaskService service. By
@@ -2506,37 +2551,58 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(taskServiceListInputRequestsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		decideTransitionApproval: connect.NewClient[v1.DecideTransitionApprovalRequest, v1.DecideTransitionApprovalResponse](
+			httpClient,
+			baseURL+TaskServiceDecideTransitionApprovalProcedure,
+			connect.WithSchema(taskServiceDecideTransitionApprovalMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getTransitionApproval: connect.NewClient[v1.GetTransitionApprovalRequest, v1.GetTransitionApprovalResponse](
+			httpClient,
+			baseURL+TaskServiceGetTransitionApprovalProcedure,
+			connect.WithSchema(taskServiceGetTransitionApprovalMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		listTransitionApprovals: connect.NewClient[v1.ListTransitionApprovalsRequest, v1.ListTransitionApprovalsResponse](
+			httpClient,
+			baseURL+TaskServiceListTransitionApprovalsProcedure,
+			connect.WithSchema(taskServiceListTransitionApprovalsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // taskServiceClient implements TaskServiceClient.
 type taskServiceClient struct {
-	createTask         *connect.Client[v1.CreateTaskRequest, v1.CreateTaskResponse]
-	assignTask         *connect.Client[v1.AssignTaskRequest, v1.AssignTaskResponse]
-	unassignTask       *connect.Client[v1.UnassignTaskRequest, v1.UnassignTaskResponse]
-	claimTask          *connect.Client[v1.ClaimTaskRequest, v1.ClaimTaskResponse]
-	claimNextTask      *connect.Client[v1.ClaimNextTaskRequest, v1.ClaimNextTaskResponse]
-	releaseTask        *connect.Client[v1.ReleaseTaskRequest, v1.ReleaseTaskResponse]
-	listMyTasks        *connect.Client[v1.ListMyTasksRequest, v1.ListMyTasksResponse]
-	getTask            *connect.Client[v1.GetTaskRequest, v1.GetTaskResponse]
-	listTasks          *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
-	updateTask         *connect.Client[v1.UpdateTaskRequest, v1.UpdateTaskResponse]
-	updateTaskStatus   *connect.Client[v1.UpdateTaskStatusRequest, v1.UpdateTaskStatusResponse]
-	deleteTask         *connect.Client[v1.DeleteTaskRequest, v1.DeleteTaskResponse]
-	restoreTask        *connect.Client[v1.RestoreTaskRequest, v1.RestoreTaskResponse]
-	purgeTask          *connect.Client[v1.PurgeTaskRequest, v1.PurgeTaskResponse]
-	addTaskReviewer    *connect.Client[v1.AddTaskReviewerRequest, v1.AddTaskReviewerResponse]
-	removeTaskReviewer *connect.Client[v1.RemoveTaskReviewerRequest, v1.RemoveTaskReviewerResponse]
-	listTaskReviewers  *connect.Client[v1.ListTaskReviewersRequest, v1.ListTaskReviewersResponse]
-	addTaskLink        *connect.Client[v1.AddTaskLinkRequest, v1.AddTaskLinkResponse]
-	removeTaskLink     *connect.Client[v1.RemoveTaskLinkRequest, v1.RemoveTaskLinkResponse]
-	listTaskLinks      *connect.Client[v1.ListTaskLinksRequest, v1.ListTaskLinksResponse]
-	setTaskPlan        *connect.Client[v1.SetTaskPlanRequest, v1.SetTaskPlanResponse]
-	requestInput       *connect.Client[v1.RequestInputRequest, v1.RequestInputResponse]
-	answerInputRequest *connect.Client[v1.AnswerInputRequestRequest, v1.AnswerInputRequestResponse]
-	cancelInputRequest *connect.Client[v1.CancelInputRequestRequest, v1.CancelInputRequestResponse]
-	getInputRequest    *connect.Client[v1.GetInputRequestRequest, v1.GetInputRequestResponse]
-	listInputRequests  *connect.Client[v1.ListInputRequestsRequest, v1.ListInputRequestsResponse]
+	createTask               *connect.Client[v1.CreateTaskRequest, v1.CreateTaskResponse]
+	assignTask               *connect.Client[v1.AssignTaskRequest, v1.AssignTaskResponse]
+	unassignTask             *connect.Client[v1.UnassignTaskRequest, v1.UnassignTaskResponse]
+	claimTask                *connect.Client[v1.ClaimTaskRequest, v1.ClaimTaskResponse]
+	claimNextTask            *connect.Client[v1.ClaimNextTaskRequest, v1.ClaimNextTaskResponse]
+	releaseTask              *connect.Client[v1.ReleaseTaskRequest, v1.ReleaseTaskResponse]
+	listMyTasks              *connect.Client[v1.ListMyTasksRequest, v1.ListMyTasksResponse]
+	getTask                  *connect.Client[v1.GetTaskRequest, v1.GetTaskResponse]
+	listTasks                *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
+	updateTask               *connect.Client[v1.UpdateTaskRequest, v1.UpdateTaskResponse]
+	updateTaskStatus         *connect.Client[v1.UpdateTaskStatusRequest, v1.UpdateTaskStatusResponse]
+	deleteTask               *connect.Client[v1.DeleteTaskRequest, v1.DeleteTaskResponse]
+	restoreTask              *connect.Client[v1.RestoreTaskRequest, v1.RestoreTaskResponse]
+	purgeTask                *connect.Client[v1.PurgeTaskRequest, v1.PurgeTaskResponse]
+	addTaskReviewer          *connect.Client[v1.AddTaskReviewerRequest, v1.AddTaskReviewerResponse]
+	removeTaskReviewer       *connect.Client[v1.RemoveTaskReviewerRequest, v1.RemoveTaskReviewerResponse]
+	listTaskReviewers        *connect.Client[v1.ListTaskReviewersRequest, v1.ListTaskReviewersResponse]
+	addTaskLink              *connect.Client[v1.AddTaskLinkRequest, v1.AddTaskLinkResponse]
+	removeTaskLink           *connect.Client[v1.RemoveTaskLinkRequest, v1.RemoveTaskLinkResponse]
+	listTaskLinks            *connect.Client[v1.ListTaskLinksRequest, v1.ListTaskLinksResponse]
+	setTaskPlan              *connect.Client[v1.SetTaskPlanRequest, v1.SetTaskPlanResponse]
+	requestInput             *connect.Client[v1.RequestInputRequest, v1.RequestInputResponse]
+	answerInputRequest       *connect.Client[v1.AnswerInputRequestRequest, v1.AnswerInputRequestResponse]
+	cancelInputRequest       *connect.Client[v1.CancelInputRequestRequest, v1.CancelInputRequestResponse]
+	getInputRequest          *connect.Client[v1.GetInputRequestRequest, v1.GetInputRequestResponse]
+	listInputRequests        *connect.Client[v1.ListInputRequestsRequest, v1.ListInputRequestsResponse]
+	decideTransitionApproval *connect.Client[v1.DecideTransitionApprovalRequest, v1.DecideTransitionApprovalResponse]
+	getTransitionApproval    *connect.Client[v1.GetTransitionApprovalRequest, v1.GetTransitionApprovalResponse]
+	listTransitionApprovals  *connect.Client[v1.ListTransitionApprovalsRequest, v1.ListTransitionApprovalsResponse]
 }
 
 // CreateTask calls tasker.health.v1.TaskService.CreateTask.
@@ -2669,6 +2735,21 @@ func (c *taskServiceClient) ListInputRequests(ctx context.Context, req *connect.
 	return c.listInputRequests.CallUnary(ctx, req)
 }
 
+// DecideTransitionApproval calls tasker.health.v1.TaskService.DecideTransitionApproval.
+func (c *taskServiceClient) DecideTransitionApproval(ctx context.Context, req *connect.Request[v1.DecideTransitionApprovalRequest]) (*connect.Response[v1.DecideTransitionApprovalResponse], error) {
+	return c.decideTransitionApproval.CallUnary(ctx, req)
+}
+
+// GetTransitionApproval calls tasker.health.v1.TaskService.GetTransitionApproval.
+func (c *taskServiceClient) GetTransitionApproval(ctx context.Context, req *connect.Request[v1.GetTransitionApprovalRequest]) (*connect.Response[v1.GetTransitionApprovalResponse], error) {
+	return c.getTransitionApproval.CallUnary(ctx, req)
+}
+
+// ListTransitionApprovals calls tasker.health.v1.TaskService.ListTransitionApprovals.
+func (c *taskServiceClient) ListTransitionApprovals(ctx context.Context, req *connect.Request[v1.ListTransitionApprovalsRequest]) (*connect.Response[v1.ListTransitionApprovalsResponse], error) {
+	return c.listTransitionApprovals.CallUnary(ctx, req)
+}
+
 // TaskServiceHandler is an implementation of the tasker.health.v1.TaskService service.
 type TaskServiceHandler interface {
 	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.CreateTaskResponse], error)
@@ -2697,6 +2778,9 @@ type TaskServiceHandler interface {
 	CancelInputRequest(context.Context, *connect.Request[v1.CancelInputRequestRequest]) (*connect.Response[v1.CancelInputRequestResponse], error)
 	GetInputRequest(context.Context, *connect.Request[v1.GetInputRequestRequest]) (*connect.Response[v1.GetInputRequestResponse], error)
 	ListInputRequests(context.Context, *connect.Request[v1.ListInputRequestsRequest]) (*connect.Response[v1.ListInputRequestsResponse], error)
+	DecideTransitionApproval(context.Context, *connect.Request[v1.DecideTransitionApprovalRequest]) (*connect.Response[v1.DecideTransitionApprovalResponse], error)
+	GetTransitionApproval(context.Context, *connect.Request[v1.GetTransitionApprovalRequest]) (*connect.Response[v1.GetTransitionApprovalResponse], error)
+	ListTransitionApprovals(context.Context, *connect.Request[v1.ListTransitionApprovalsRequest]) (*connect.Response[v1.ListTransitionApprovalsResponse], error)
 }
 
 // NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -2861,6 +2945,24 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(taskServiceListInputRequestsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskServiceDecideTransitionApprovalHandler := connect.NewUnaryHandler(
+		TaskServiceDecideTransitionApprovalProcedure,
+		svc.DecideTransitionApproval,
+		connect.WithSchema(taskServiceDecideTransitionApprovalMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceGetTransitionApprovalHandler := connect.NewUnaryHandler(
+		TaskServiceGetTransitionApprovalProcedure,
+		svc.GetTransitionApproval,
+		connect.WithSchema(taskServiceGetTransitionApprovalMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	taskServiceListTransitionApprovalsHandler := connect.NewUnaryHandler(
+		TaskServiceListTransitionApprovalsProcedure,
+		svc.ListTransitionApprovals,
+		connect.WithSchema(taskServiceListTransitionApprovalsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/tasker.health.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskServiceCreateTaskProcedure:
@@ -2915,6 +3017,12 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceGetInputRequestHandler.ServeHTTP(w, r)
 		case TaskServiceListInputRequestsProcedure:
 			taskServiceListInputRequestsHandler.ServeHTTP(w, r)
+		case TaskServiceDecideTransitionApprovalProcedure:
+			taskServiceDecideTransitionApprovalHandler.ServeHTTP(w, r)
+		case TaskServiceGetTransitionApprovalProcedure:
+			taskServiceGetTransitionApprovalHandler.ServeHTTP(w, r)
+		case TaskServiceListTransitionApprovalsProcedure:
+			taskServiceListTransitionApprovalsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -3026,6 +3134,18 @@ func (UnimplementedTaskServiceHandler) GetInputRequest(context.Context, *connect
 
 func (UnimplementedTaskServiceHandler) ListInputRequests(context.Context, *connect.Request[v1.ListInputRequestsRequest]) (*connect.Response[v1.ListInputRequestsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListInputRequests is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) DecideTransitionApproval(context.Context, *connect.Request[v1.DecideTransitionApprovalRequest]) (*connect.Response[v1.DecideTransitionApprovalResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.DecideTransitionApproval is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) GetTransitionApproval(context.Context, *connect.Request[v1.GetTransitionApprovalRequest]) (*connect.Response[v1.GetTransitionApprovalResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.GetTransitionApproval is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ListTransitionApprovals(context.Context, *connect.Request[v1.ListTransitionApprovalsRequest]) (*connect.Response[v1.ListTransitionApprovalsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("tasker.health.v1.TaskService.ListTransitionApprovals is not implemented"))
 }
 
 // ArtifactServiceClient is a client for the tasker.health.v1.ArtifactService service.
