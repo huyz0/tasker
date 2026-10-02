@@ -1,6 +1,6 @@
 ---
-active_milestone: M34
-active_task: null
+active_milestone: M35
+active_task: M35-T01
 last_updated: 2026-10-02
 last_commit: 1815c88
 blocked: false
@@ -14,6 +14,19 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-10-02 — M35–M38 planned from a landscape review**
+(`.specs/reviews/2026-10-02-ai-native-landscape.md`): what agent-first trackers
+(Linear, GitHub, Jira/Rovo, Asana, Plane, Taskmaster, Backlog.md, Beads) give an
+agent that Tasker does not. Delivered in order, each merged to `main` with CI
+green before the next:
+
+| Id | Milestone | Why |
+|----|-----------|-----|
+| M35 | Work Graph | Priority, blockers, parents, discovered-from; claim-next hands out only ready work, most important first. |
+| M36 | MCP Server | The default way agents reach a tracker now; Tasker had none. |
+| M37 | Outbound Webhooks | Wake external runners on events instead of a held-open stream. |
+| M38 | Agent Plan and Input Requests | Agents show their plan and ask a human a question that someone is notified of. |
 
 **2026-10-02 — M30 (Backend Correctness at Scale) complete: 10/11 tasks
 (T05 dropped — the index already existed), 8/8 exit criteria.**
@@ -1752,8 +1765,12 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M32 | Task Workspace Correctness      | done   | M30        | 8     | 8    |
 | M33 | Agent Work Queue                | done   | M30, M31   | 7     | 7    |
 | M34 | Milestone and Doc Truth         | done   | —          | 4     | 4    |
+| M35 | Work Graph                      | todo   | M33        | 7     | 0    |
+| M36 | MCP Server                      | todo   | M35        | 5     | 0    |
+| M37 | Outbound Webhooks               | todo   | M35        | 7     | 0    |
+| M38 | Agent Plan and Input Requests   | todo   | M35        | 6     | 0    |
 
-**Total: 273 tasks across 28 milestones — 272 done, 1 dropped.** Every milestone is closed. Binary *signing* was scoped out of M09 and M12 as a
+**Total: 298 tasks across 32 milestones — 272 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
@@ -1789,6 +1806,10 @@ graph LR
   M03 --> M13
   M04 --> M14[M14 Task Reliability & Agent Self-Service]
   M05 --> M14
+  M33[M33 Agent Work Queue] --> M35[M35 Work Graph]
+  M35 --> M36[M36 MCP Server]
+  M35 --> M37[M37 Webhooks]
+  M35 --> M38[M38 Plan & Input]
 ```
 
 Milestones with no dependency edge between them may run in parallel on separate
@@ -1939,7 +1960,7 @@ lead, with M10 following.
    keeps the migration from touching every other table's `userId` foreign key
    — the alternative (mint a new internal id, re-point every FK) would have
    made this a second M10-sized rewrite for no behavioural gain.
-3. **M08 was not started** (`active_task: null`, no commits recorded against
+3. **M08 was not started** (`active_task: M35-T01`, no commits recorded against
    it) when this re-plan landed, so re-sequencing ahead of it abandoned no
    in-flight work. It resumes in its prior position once M13 and M10 close.
 4. Full plan, exit criteria and task breakdown:
