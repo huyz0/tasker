@@ -481,6 +481,34 @@ describe("Organizations Handler Integration Logic", () => {
     await expect(handler.updateOrgMemberRole({ orgId: org.organization.id, userId: "no-such-user", role: "member" }, makeAuthContext(adminId))).rejects.toThrow();
   });
 
+  // M34-T01 (M10 exit criterion 3): the owner rule is a permission, not a
+  // role name. It compared the caller's membership tier to "owner", so
+  // `org:owner` held through a grant - the policy model ADR-0013 built - did
+  // not count.
+  test("updateOrgMemberRole honours org:owner held through a grant, not only the owner tier", async () => {
+    const { db, nc } = await setupIntegrationTest();
+    const handler = createOrgsHandler(db, nc);
+    const stamp = Date.now();
+    const ownerId = "user-grant-owner-" + stamp;
+    const grantedId = "user-grant-admin-" + stamp;
+    const memberId = "user-grant-member-" + stamp;
+    for (const id of [ownerId, grantedId, memberId]) {
+      await db.insert(schemaSqlite.users).values({ id, email: `${id}@foo.com`, name: id, createdAt: new Date() });
+    }
+    const org = await handler.seedOrg({ name: "Grant Org", slug: "grant-org-" + stamp }, makeAuthContext(ownerId));
+    const orgId = org.organization.id;
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: grantedId, role: "admin", joinedAt: new Date() });
+    await db.insert(schemaSqlite.organizationMembers).values({ orgId, userId: memberId, role: "member", joinedAt: new Date() });
+    // Admin by membership tier, owner by grant.
+    await db.insert(schemaSqlite.grants).values({
+      id: "grant-owner-" + stamp, subjectType: "user", subjectId: grantedId,
+      scopeType: "organization", scopeId: orgId, roleId: "role-owner", createdAt: new Date(),
+    });
+
+    const res = await handler.updateOrgMemberRole({ orgId, userId: memberId, role: "owner" }, makeAuthContext(grantedId));
+    expect(res.member.role).toBe("owner");
+  });
+
   test("updateOrgMemberRole lets an owner grant/revoke ownership, but never demotes the last owner", async () => {
     const { db, nc } = await setupIntegrationTest();
     const handler = createOrgsHandler(db, nc);

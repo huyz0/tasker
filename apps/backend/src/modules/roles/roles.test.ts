@@ -225,4 +225,20 @@ describe("Roles Handler Integration Logic", () => {
     await expect(handler.listGrants({ scopeType: "organization", scopeId: orgId }, makeAuthContext(memberId)))
       .rejects.toMatchObject({ code: Code.PermissionDenied });
   });
+
+  // M34-T01 (M10 exit criterion 1): "100 roles in one organization is a
+  // tested configuration" - it had never been tested.
+  test("an organization with 100 custom roles creates, lists and pages them all", async () => {
+    for (let i = 0; i < 100; i++) {
+      await handler.createRole({ orgId, name: `Role ${String(i).padStart(3, "0")}`, permissionKeys: i % 2 ? ["task:read"] : ["task:write", "artifact:read"] }, ctx);
+    }
+    const seen = new Set<string>();
+    let cursor: string | undefined;
+    do {
+      const res: any = await handler.listRoles({ orgId, page: { limit: 40, cursor } }, ctx);
+      for (const r of res.roles) if (/^Role \d{3}$/.test(r.name)) seen.add(r.name);
+      cursor = res.page?.nextCursor || undefined;
+    } while (cursor);
+    expect(seen.size).toBe(100);
+  });
 });

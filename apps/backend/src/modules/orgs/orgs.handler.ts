@@ -5,7 +5,7 @@ import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, getOrgMemberRole, countOrgOwners } from "../../lib/authz";
-import { assertCan } from "../../lib/policy";
+import { assertCan, can } from "../../lib/policy";
 import { ConnectError, Code } from "@connectrpc/connect";
 import { renderInviteEmail } from "../../lib/inviteEmail";
 import { logger } from "../../lib/logger";
@@ -476,7 +476,6 @@ export const createOrgsHandler = (db: any, nc: any = null, mailer: Mailer | null
       const parsed = UpdateOrgMemberRoleSchema.parse(req);
       await assertCan(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:admin");
 
-      const actorRole = await getOrgMemberRole(db, userId, parsed.orgId);
       const targetRole = await getOrgMemberRole(db, parsed.userId, parsed.orgId);
       if (!targetRole) {
         throw new ConnectError("user is not a member of this organization", Code.NotFound);
@@ -484,7 +483,12 @@ export const createOrgsHandler = (db: any, nc: any = null, mailer: Mailer | null
 
       // Only an owner can grant ownership or touch another owner's role -
       // a plain admin can manage admin/member/viewer but not the owner tier.
-      if (actorRole !== "owner" && (parsed.role === "owner" || targetRole === "owner")) {
+      // Asked of the policy (`org:owner`), not the caller's tier name
+      // (M34-T01, M10 exit criterion 3): ownership held through a grant counts.
+      // `targetRole` stays a tier comparison - it is the membership being
+      // changed, not the caller's authority.
+      const touchesOwnership = parsed.role === "owner" || targetRole === "owner";
+      if (touchesOwnership && !(await can(db, { kind: "user", userId }, { type: "organization", id: parsed.orgId }, "org:owner"))) {
         throw new ConnectError("owner role required to change an owner's role or grant ownership", Code.PermissionDenied);
       }
 

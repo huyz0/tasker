@@ -94,6 +94,25 @@ describe('RolesManager', () => {
     expect(await screen.findByText('owner')).toBeInTheDocument();
   });
 
+  // M34-T01 (M10 exit criterion 7): "renders 100 roles against the full
+  // permission vocabulary without a performance cliff". The matrix's rows are
+  // virtualized, so the cost of a render is the viewport's rows, not the
+  // org's role count; this pins that a 104-role org still mounts only a
+  // window of rows, each with every permission's cell.
+  it('mounts only a window of rows for an organization with 100 custom roles', async () => {
+    const custom = Array.from({ length: 100 }, (_, i) => ({
+      id: `role-c${i}`, orgId: 'org-1', name: `Custom ${i}`, isSystem: false, permissionKeys: ['task:read'], createdAt: '',
+    }));
+    withListRoles({ roles: [...SYSTEM_ROLES, ...custom], page: {} });
+    renderPage();
+    await screen.findByText('owner');
+    const rows = screen.getAllByLabelText(/: task:read$/);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBeLessThan(104);
+    // Every mounted row carries the whole vocabulary.
+    expect(screen.getAllByLabelText(/: org:owner$/)).toHaveLength(rows.length);
+  });
+
   it('titles the page with a single h1 and puts the matrix in a keyboard-scrollable region', async () => {
     renderPage();
     expect(screen.getByRole('heading', { level: 1, name: 'Roles' })).toBeInTheDocument();

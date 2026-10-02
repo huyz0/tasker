@@ -1,8 +1,8 @@
 ---
 active_milestone: M34
-active_task: null
+active_task: M34-T02
 last_updated: 2026-10-02
-last_commit: c98fc30
+last_commit: ab51d80
 blocked: false
 blocker: null
 ---
@@ -26,7 +26,8 @@ dead links and failed loads say so, pickers offer only legal moves, agents
 appear by name.
 **M33 (Agent Work Queue) complete: 7/7 tasks, 6/6 exit criteria** — claim-next,
 self-release with a handoff note (ADR-0027), my-tasks across the org, and
-`whoami` for agents; proven end to end with the real binary. Next: M34.
+`whoami` for agents; proven end to end with the real binary. M34 (Milestone and Doc Truth) in
+progress.
 A deep
 review (three parallel read-only reviews of backend, GUI and CLI; every
 finding re-verified in code) produced five milestones, delivered in order and
@@ -1747,8 +1748,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M31 | CLI Output Truth                | done   | —          | 6     | 6    |
 | M32 | Task Workspace Correctness      | done   | M30        | 8     | 8    |
 | M33 | Agent Work Queue                | done   | M30, M31   | 7     | 7    |
+| M34 | Milestone and Doc Truth         | in-progress | —     | 4     | 1    |
 
-**Total: 269 tasks across 27 milestones — 267 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
+**Total: 273 tasks across 28 milestones — 268 done, 1 dropped.** Every milestone before M29 is closed except M12's single deferred task (signed binaries, blocked on certificates this project does not have). M29 is closed.
 
 M15–M20 were informal review-and-fix rounds over existing features (no
 `MILESTONE-NN` folder, no numeric ledger slot) and are not counted here;

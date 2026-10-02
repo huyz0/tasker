@@ -40,21 +40,44 @@ needing a username fallback.
 
 ## 3. Exit Criteria
 
-- [ ] An organization can create, edit and delete custom roles; 100 roles in one
+Checked in M34-T01 (2026-10-02), each against evidence that exists. Until then
+every box here was unchecked under `exit_criteria_met: true`; checking them
+found two with no test and one that was false, all three fixed in M34-T01.
+
+- [x] An organization can create, edit and delete custom roles; 100 roles in one
       organization is a tested configuration.
-- [ ] Permissions are a fixed, documented vocabulary; roles are compositions of them.
-- [ ] `can(principal, scope, permission)` is the single authorization entry
+      *(`roles.test.ts` CRUD tests; "an organization with 100 custom roles
+      creates, lists and pages them all" — added M34-T01.)*
+- [x] Permissions are a fixed, documented vocabulary; roles are compositions of them.
+      *(Seeded by `drizzle-sqlite/0034_seed_system_roles_and_migrate_grants.sql`,
+      tabled in ADR-0013, served by `ListPermissions`; `createRole` rejects an
+      unknown key — `roles.test.ts`.)*
+- [x] `can(principal, scope, permission)` is the single authorization entry
       point, and no handler calls a role name directly.
-- [ ] The four current tiers exist as seeded system roles and every existing
+      *(`lib/policy.ts`. Was false: `updateOrgMemberRole` compared the caller's
+      tier to `"owner"`; now `can(…, "org:owner")` — M34-T01, pinned by
+      `orgs.test.ts` "honours org:owner held through a grant". The remaining
+      `"owner"` comparisons are on the membership being changed, not the
+      caller's authority.)*
+- [x] The four current tiers exist as seeded system roles and every existing
       organization behaves identically after migration.
-- [ ] Teams can be created, populated, nested under an organization, and granted
+      *(`db/migrate-seed-system-roles-and-grants.test.ts`; `lib/viewer-denial.test.ts`.)*
+- [x] Teams can be created, populated, nested under an organization, and granted
       a role at organization or project scope.
-- [ ] A grant at project scope does not leak to sibling projects, proven by an
+      *(`teams.test.ts`; `roles.test.ts` team grant at org scope;
+      `policy.test.ts` "a team granted a role at one project…" — added M34-T01.)*
+- [x] A grant at project scope does not leak to sibling projects, proven by an
       exhaustive test matrix.
-- [ ] The permission matrix UI renders 100 roles against the full permission
+      *(`policy.test.ts` "a grant at one project does not leak to a sibling
+      project" and M10-T13's role × permission × scope matrix.)*
+- [x] The permission matrix UI renders 100 roles against the full permission
       vocabulary without a performance cliff.
-- [ ] Organization hierarchy depth is no longer capped at two levels, and
+      *(Rows are virtualized; `Roles/index.test.tsx` "mounts only a window of
+      rows for an organization with 100 custom roles" — added M34-T01.)*
+- [x] Organization hierarchy depth is no longer capped at two levels, and
       inheritance rules are documented.
+      *(M10-T09; `policy.test.ts` ancestor-chain tests via `seedChildOrg`;
+      ADR-0013 §resolution and `lib/policy.ts`'s `can()` doc comment.)*
 
 ## 4. Scope
 

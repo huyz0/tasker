@@ -254,6 +254,25 @@ describe('can() - project scope climbs to its owning organization', () => {
     expect(await can(db, { kind: 'user', userId: 'user-2' }, { type: 'project', id: projectB }, 'task:admin')).toBe(false);
   });
 
+  // M34-T01 (M10 exit criterion 5): a *team* granted a role at *project*
+  // scope - the one combination the criterion names that no test exercised.
+  it('a team granted a role at one project gives its members that project, and not its sibling', async () => {
+    const { db } = await setupIntegrationTest();
+    const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
+    await seedUser(db, 'user-2');
+    const { projectId: projectA } = await seedProject(db, { orgId, userId, templateId: 'tmpl-1', projectId: 'proj-a' });
+    await db.insert(schema.projectTemplates).values({ id: 'tmpl-2', orgId, name: 'Template 2', createdAt: new Date() });
+    await db.insert(schema.projects).values({
+      id: 'proj-b', orgId, templateId: 'tmpl-2', ownerId: userId, name: 'Project B', key: 'B', createdAt: new Date(),
+    });
+    await seedTeam(db, { teamId: 'team-p', orgId });
+    await addTeamMember(db, { teamId: 'team-p', userId: 'user-2' });
+    await seedGrant(db, { subjectType: 'team', subjectId: 'team-p', scopeType: 'project', scopeId: projectA, roleId: 'role-member' });
+
+    expect(await can(db, { kind: 'user', userId: 'user-2' }, { type: 'project', id: projectA }, 'task:write')).toBe(true);
+    expect(await can(db, { kind: 'user', userId: 'user-2' }, { type: 'project', id: 'proj-b' }, 'task:write')).toBe(false);
+  });
+
   it('a project-scope grant does not, in reverse, satisfy an organization-scope check', async () => {
     const { db } = await setupIntegrationTest();
     const { orgId, userId } = await seedBareOrgAndUser(db, { orgId: 'org-1', userId: 'user-1' });
