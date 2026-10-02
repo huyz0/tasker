@@ -1,13 +1,13 @@
 ---
 id: M30
 title: Backend Correctness at Scale
-status: in-progress
+status: done
 goal: Every report and dashboard read works on MySQL, nothing a caller cannot read leaks through search, a claim means what the agent API says it means, and the hot paths an agent fleet hits on every call stop scaling with the size of the fleet or the history.
 depends_on: []
 surfaces: [backend, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-10-02
-completed_at: null
+completed_at: 2026-10-02
 ---
 
 # M30 — Backend Correctness at Scale
@@ -69,7 +69,7 @@ for the list query every board load and agent poll runs.
 - [x] An agent token used N times within a minute is written at most once.
 - [x] One slow event-feed client holds a bounded queue; the oldest events are
   dropped and counted, never unbounded growth.
-- [ ] `moon run backend:typecheck backend:test` green, and CI green on `main`.
+- [x] `moon run backend:typecheck backend:test` green, and CI green on `main`.
 
 ## 4. Scope
 
@@ -115,7 +115,7 @@ for the list query every board load and agent poll runs.
 - [x] **M30-T09** — Idempotency keys bind to their request; `purgeTask` is atomic; dashboard open-task counts are one terminal-aware query.
   - **Files**: `lib/idempotency.ts`, `modules/tasks/tasks.handler.ts`, `modules/dashboard/dashboard.handler.ts`
   - **Verify**: respective tests.
-- [ ] **M30-T10** — Documentation and close.
+- [x] **M30-T10** — Documentation and close.
   - **Files**: `.specs/product/architecture.md`, `.milestones/STATE.md`
   - **Verify**: `moon run :doc-drift :spec-drift`.
 

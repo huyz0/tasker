@@ -181,3 +181,29 @@
     reviewer's queue never drained on a type ending in "shipped". All three
     use `terminalStatusSql` now.
 - **Next**: M30-T10
+
+## M30-T10 — Documentation and close
+
+- **Status**: done
+- **Date**: 2026-10-02
+- **Changed**: `docs/agent-integration.md` (new §11 — claiming work and
+  retrying safely; `last used` precision), `.specs/product/architecture.md`
+  (event feed fan-out)
+- **Verified**: `moon run :knip :doc-drift :spec-drift :docs-lint
+  :skills-check backend:typecheck backend:build-standalone` green;
+  `scripts/smoke-standalone.sh` ok (the binary applies migration 0050 to a
+  fresh database); `bun test` 1859 pass.
+- **Notes**: `docs/quickstart.md` has said "idempotency … are in
+  agent-integration.md" since M14, and they were not — §11 is the first place
+  they are documented at all.
+
+## Milestone closed
+
+- **Date**: 2026-10-02
+- **Exit criteria**: 8/8. The task-index criterion is met by M07-T09's
+  existing SQLite composites, with the MySQL decision unchanged (T05).
+- **Found on the way, beyond the review**: `purgeTask`'s drifted copy of the
+  cascade (orphaned alert rows); the review queue and "claimed done" panel
+  keyed on the literal `"done"`; the missing idempotency documentation.
+- **Not done, deliberately**: per-org NATS subjects; a MySQL service in CI;
+  claim-next, self-release and claim leases (M33).

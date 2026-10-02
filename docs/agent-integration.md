@@ -171,7 +171,8 @@ tok_3c4d…  tskr_bR2xK…  revoked   Old runner  expires 2026-09-01T00:00:00.00
 ```
 
 `last used` is how you tell a live integration from an abandoned one before
-revoking it.
+revoking it. It is recorded at most once a minute per token, so read it to the
+minute, not the second.
 
 ### Rotating without downtime
 
@@ -345,6 +346,27 @@ One row per task — the latest handoff note only, not the full history.
 unchanged by this milestone. This is the one direction the usual "humans
 can do more" pattern reverses: the problem a handoff note solves doesn't
 apply to a human in the first place.
+
+## 11. Claiming work and retrying safely
+
+**Finding work.** `tasker tasks list --project <id> --assignee-filter
+unassigned` (`ListTasks` with `assigneeFilter: "unassigned"`) returns open
+tasks nobody holds. A task in its type's terminal status — the last status of
+its pipeline, or `done` for an untyped task — is not work, and is never
+returned.
+
+**Taking it.** `tasker tasks claim <task-id>` (`ClaimTask`) assigns the task to
+the caller in a single statement, so of several agents racing one task exactly
+one wins; the others get `FailedPrecondition`. Claiming a task in a terminal
+status is refused the same way, with a message that says so.
+
+**Retrying.** `CreateTask` and `ClaimTask` accept an `idempotencyKey`. Send the
+same key when you retry a call whose response you never saw, and you get the
+original response back instead of a second task or a lost claim. A key is
+bound to the request it was first used with: the same key with *different*
+arguments is refused with `InvalidArgument` rather than answered with the
+first request's result, so never reuse a key for a new request. Keys are kept
+for 24 hours, which is far longer than any retry should take.
 
 ## See also
 

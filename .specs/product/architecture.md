@@ -54,7 +54,10 @@ One process serves everything (`apps/backend/src/index.ts`):
   URL prefix and caps request bodies at 256 KiB before any handler runs.
 - **All RPCs are unary except one.** `EventService.SubscribeEvents` is
   server-streaming (`modules/events/events.handler.ts`); nothing is
-  bi-directionally streaming.
+  bi-directionally streaming. Every client of one process shares a single
+  `domain.>` subscription: each event is decoded once and offered to every
+  client, which keeps what its scope allows in a 1,000-entry queue that drops
+  the oldest when the client falls behind (M30-T08).
 
 Cross-cutting behaviour is implemented as Connect interceptors in `index.ts`:
 session resolution, request logging (`lib/requestLogging.ts`) and per-method
