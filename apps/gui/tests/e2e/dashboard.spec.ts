@@ -44,9 +44,13 @@ test.describe('Dashboard', () => {
     expect(count).toBe(4);
 
     for (let i = 0; i < count; i++) {
-      const body = await panels.nth(i).innerText();
-      // Heading + subtitle is two lines; anything real adds a third.
-      expect(body.split('\n').filter((l) => l.trim()).length).toBeGreaterThan(2);
+      // Heading + subtitle is two lines; anything real adds a third. Polled,
+      // not read once: a panel still loading shows skeletons with no text, and
+      // a single read raced the data - it failed once in a full local run and
+      // passed alone (M38-T06).
+      await expect
+        .poll(async () => (await panels.nth(i).innerText()).split('\n').filter((l) => l.trim()).length, { timeout: 15_000 })
+        .toBeGreaterThan(2);
     }
   });
 
