@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { transactionConflict } from './errors';
 
 type CommitCallback = () => void | Promise<void>;
 interface DatabaseState {
@@ -142,4 +143,12 @@ export function afterCommit(callback: CommitCallback): boolean {
   if (!scope?.transaction) return false;
   scope.committed.push(callback);
   return true;
+}
+
+/** Includes permission checks and response replay in the operation's unit. */
+export function transactionalOperation<Args extends unknown[], Result>(
+  db: any, operation: (...args: Args) => Promise<Result>,
+): (...args: Args) => Promise<Result> {
+  return (...args) => withUnitOfWork(db, () => operation(...args))
+    .catch(error => { throw transactionConflict(error) ?? error; });
 }

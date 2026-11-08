@@ -8,6 +8,7 @@ import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restor
 import { requireUser, getProjectOrgId, getTaskOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
 import { withIdempotency } from "../../lib/idempotency";
+import { transactionalOperation } from "../../db/access";
 import { getLatestHandoffNote, recordTaskNote } from "./task_notes.handler";
 import { recordTaskActivity, isTerminalStatus, currentAssignee, actorFromPrincipal, terminalStatusSql } from "./taskActivity";
 import { purgeTaskCascade } from "../../lib/cascadePurge";
@@ -1724,7 +1725,11 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
   };
   // M41 (ADR-0034): the digest is assembled from GetTask and ListInputRequests
   // themselves, so it reads exactly what those screens read.
-  return Object.assign(handlers, createDigestHandlers(db, nc, isStandalone, {
+  return Object.assign(handlers, {
+    createTask: transactionalOperation(db, handlers.createTask),
+    claimTask: transactionalOperation(db, handlers.claimTask),
+    claimNextTask: transactionalOperation(db, handlers.claimNextTask),
+  }, createDigestHandlers(db, nc, isStandalone, {
     getTask: (req, ctx) => handlers.getTask(req, ctx),
     listInputRequests: (req, ctx) => handlers.listInputRequests(req, ctx),
   }));

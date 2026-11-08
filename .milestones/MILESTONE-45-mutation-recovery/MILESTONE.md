@@ -43,7 +43,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/db/access.ts; apps/backend/src/db/db.ts; apps/backend/src/modules/tasks/tasks.handler.ts.
   - **Verify**: Existing task and queue tests pass; injected mid-operation failure leaves no partial task, assignment or counter update.
 
-- [ ] **M45-T03** — Reserve idempotency keys and commit the mutation plus response atomically.
+- [x] **M45-T03** — Reserve idempotency keys and commit the mutation plus response atomically.
   - **Files**: apps/backend/src/lib/idempotency.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/; apps/backend/scripts/generate-embedded-migrations.ts.
   - **Verify**: Concurrent identical keys return one outcome or an explicit processing response; differing payloads fail; storage failure cannot silently discard retry protection; run against SQLite and MySQL.
 

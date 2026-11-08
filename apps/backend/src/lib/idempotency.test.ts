@@ -50,3 +50,77 @@ describe("withIdempotency (M30-T09)", () => {
     expect(left).not.toContain("idem-old");
   });
 });
+
+describe('atomic retry execution (M45)', () => {
+  it('commits one mutation for overlapping requests carrying the same key', async () => {
+    const { db } = await setupIntegrationTest();
+    let runs = 0;
+    const call = () => withIdempotency(db, true, principal, 'overlap', 'one', { title: 'same' }, async () => {
+      const n = ++runs;
+      await db.insert(schema.users).values({ id: `mutation-${n}`, createdAt: new Date() });
+      return { n };
+    });
+    const results = await Promise.all([call(), call(), call()]);
+    expect(runs).toBe(1);
+    expect(results).toEqual([{ n: 1 }, { n: 1 }, { n: 1 }]);
+    expect(await db.select().from(schema.users)).toHaveLength(1);
+  });
+
+  it('rolls back the mutation and its events when storing the completed response fails', async () => {
+    const { sql } = await import('drizzle-orm');
+    const { publishDomainEvent } = await import('./natsCorrelation');
+    const { db, nc } = await setupIntegrationTest();
+    // Permit an uncommitted reservation, fail both old-style response inserts
+    // and new-style response updates. This reproduces the actual storage gap
+    // without mocking the helper's choice of write statement.
+    await db.run(sql.raw(`CREATE TRIGGER fail_response_insert BEFORE INSERT ON idempotency_keys
+      WHEN NEW.response_json != 'null' BEGIN SELECT RAISE(ABORT, 'response storage unavailable'); END`));
+    await db.run(sql.raw(`CREATE TRIGGER fail_response_update BEFORE UPDATE ON idempotency_keys
+      WHEN NEW.response_json != 'null' BEGIN SELECT RAISE(ABORT, 'response storage unavailable'); END`));
+    await expect(withIdempotency(db, true, principal, 'storage', 'one', {}, async () => {
+      await db.insert(schema.users).values({ id: 'must-rollback', createdAt: new Date() });
+      publishDomainEvent(nc, 'domain.task.created', { id: 'must-rollback' });
+      return { id: 'must-rollback' };
+    })).rejects.toThrow();
+    expect(await db.select().from(schema.users)).toEqual([]);
+    expect(await db.select().from(schema.idempotencyKeys)).toEqual([]);
+    expect(nc.publishedMessages).toEqual([]);
+  });
+
+  it('makes an unkeyed multi-statement task operation atomic too', async () => {
+    const { db } = await setupIntegrationTest();
+    await expect(withIdempotency(db, true, principal, 'unkeyed', undefined, {}, async () => {
+      await db.insert(schema.users).values({ id: 'must-rollback', createdAt: new Date() });
+      throw new Error('operation interrupted');
+    })).rejects.toThrow('operation interrupted');
+    expect(await db.select().from(schema.users)).toEqual([]);
+  });
+});
+
+const mysqlTest = process.env.TASKER_MYSQL_INTEGRATION === '1' ? it : it.skip;
+mysqlTest('reserves one key across independent MySQL pools before executing a mutation', async () => {
+  const { setupDatabase } = await import('../db/db');
+  const S = await import('../db/schema.mysql');
+  const { eq, and, inArray } = await import('drizzle-orm');
+  const first: any = await setupDatabase('mysql'), second: any = await setupDatabase('mysql');
+  const key = crypto.randomUUID(), created: string[] = [];
+  const call = (db: any) => withIdempotency(db, false, principal, 'cross-pool', key, { title: 'same' }, async () => {
+    const id = `mutation-${crypto.randomUUID()}`;
+    created.push(id);
+    await db.insert(S.users).values({ id });
+    return { id };
+  });
+  try {
+    const results = await Promise.allSettled([call(first), call(second), call(first)]);
+    expect(results.filter(r => r.status === 'fulfilled').length).toBeGreaterThan(0);
+    for (const r of results) if (r.status === 'rejected') expect(r.reason).toMatchObject({ code: Code.Aborted });
+    expect(created).toHaveLength(1);
+    expect(await call(second)).toEqual({ id: created[0]! });
+    expect(created).toHaveLength(1);
+  } finally {
+    if (created.length) await first.delete(S.users).where(inArray(S.users.id, created));
+    await first.delete(S.idempotencyKeys).where(and(eq(S.idempotencyKeys.method, 'cross-pool'), eq(S.idempotencyKeys.idempotencyKey, key)));
+    await first.$client.end();
+    await second.$client.end();
+  }
+}, 30_000);

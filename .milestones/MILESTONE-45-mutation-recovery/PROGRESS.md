@@ -26,3 +26,12 @@
 - **Verified**: Fresh utf8mb4 MySQL 8.4 migration fails with ER_TOO_LONG_KEY on notifications(user_id varchar256, type varchar128, dedupe_key varchar512): 3584 bytes exceeds 3072.
 - **Notes**: An earlier 5-second test timeout also interrupted DDL on the first disposable database; that database is retained for diagnosis, not silently repaired or reset. A second fresh database reproduces the independent oversized-index defect. T06 is a prerequisite to completing T02's real-MySQL check. Green: fresh database migrated; full keys with shared prefixes and Unicode persist; duplicates reject. Real MySQL tests 9 pass; full local 35-task gates pass. Review CODE-REVIEW-v1.md approved.
 - **Next**: Fresh default-charset MySQL migration and full-key dedupe verification passed; then resume T02.
+
+## M45-T03 — Atomic keyed mutations
+
+- **Status**: done
+- **Date**: 2026-11-08
+- **Changed**: idempotency helper, task operation entry points, event buffering and retry regressions.
+- **Verified**: Red: overlapping calls ran 3 mutations, response-store failure committed data, unkeyed failure left data. Green: 57 focused task/replay/queue tests pass; real MySQL retry/task concurrency run 10 pass across independent pools. `moon check --all`: 35 completed. Review CODE-REVIEW-v2.md approved.
+- **Notes**: Reserve before execution inside one unit; serialize SQLite and use MySQL unique-key reservation with retryable refusal for a concurrent loser. Authorize inside the task unit before replay. Defer volatile publication until commit; durable capture remains M46.
+- **Next**: M45-T04 workflow rollback.

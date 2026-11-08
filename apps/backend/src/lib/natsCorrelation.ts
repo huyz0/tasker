@@ -1,4 +1,5 @@
 import { getRequestContext } from './requestContext';
+import { afterCommit } from '../db/access';
 import { injectTraceContext } from './telemetry/otel';
 import { recordBusinessEvent } from './businessEvents';
 
@@ -104,6 +105,9 @@ export function withRequestCorrelation<T extends { publish: (subject: string, da
  * debug in.
  */
 export function publishDomainEvent(nc: { publish: (subject: string, data?: any) => void } | null, subject: string, payload: unknown): void {
+  // Do not announce provisional task/workflow writes. M46 makes this buffer
+  // durable; this boundary already prevents events from rolled-back work.
+  if (afterCommit(() => publishDomainEvent(nc, subject, payload))) return;
   recordBusinessEvent(subject);
   if (nc) nc.publish(subject, Buffer.from(JSON.stringify(payload)));
   // M37 (ADR-0030): the webhook outbox, fed in-process so it works with or
