@@ -42,3 +42,24 @@ test('mobile task content and properties share usable scrolling and preserve his
   await page.goBack();
   await expect(page.getByRole('dialog')).toBeVisible();
 });
+
+for (const theme of ['light', 'dark']) {
+  test(`task states have distinct, consistent board/table treatments in ${theme} mode`, async ({ page }) => {
+    await page.addInitScript(value => localStorage.setItem('tasker.theme', value), theme);
+    await openSeededWork(page);
+    await page.getByRole('button', { name: 'Table', exact: true }).click();
+    const colors: Record<string, string> = {};
+    for (const state of ['Todo', 'In Progress', 'Done']) {
+      const badge = page.getByRole('cell').getByText(state, { exact: true }).first();
+      await expect(badge).toBeVisible();
+      colors[state] = await badge.evaluate(element => getComputedStyle(element).backgroundColor);
+    }
+    expect(new Set(Object.values(colors)).size).toBe(3);
+    await page.getByRole('button', { name: 'Board', exact: true }).click();
+    for (const state of ['Todo', 'In Progress', 'Done']) {
+      const badge = page.getByText(state, { exact: true }).first();
+      await expect(badge).toBeVisible();
+      expect(await badge.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(colors[state]);
+    }
+  });
+}

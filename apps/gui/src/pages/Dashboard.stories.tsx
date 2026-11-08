@@ -18,6 +18,7 @@ const meta = {
   component: Dashboard,
   parameters: {
     layout: 'padded',
+    docs: { description: { component: 'Shared panel surfaces and section-title roles keep supervision content readable in both themes.' } },
   },
   decorators: [
     (Story) => (

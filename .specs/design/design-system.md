@@ -111,3 +111,26 @@ data — carries `design-lint-disable-next-line tokens — <reason>`.
   `components/ui/Dialog.tsx` is the one overlay primitive; a new dropdown or
   tab set is a new Radix-backed primitive in `ui/`, not a bespoke
   `useState` toggle inside a feature.
+
+## 6. Operational visual roles (M51)
+
+The interface keeps its restrained violet and system sans stack. Typography expresses the working hierarchy rather than introducing a second display face. Font aliases `font-ui` and `font-data` point to the installed sans and monospace stacks; no network font is required. Color is selected independently from typography so status meaning cannot be overwritten by a caption style.
+
+| Role class | Scale and weight | Use |
+|---|---|---|
+| `type-page-title` | `text-ui-page`, 28/36, semibold | Routed page title |
+| `type-section-title` | `text-ui-section`, 18/24, semibold | Panels and task sections |
+| `type-detail-title` | `text-ui-detail`, 20/28, semibold | Open task title |
+| `type-item-title` | `text-ui-body`, 14/22, medium | List item titles |
+| `type-body` | `text-ui-body`, 14/22, regular | Compact operational content |
+| `type-label` | `text-ui-body`, 14/22, medium | Form and control labels |
+| `type-caption` | `text-ui-caption`, 12/16, regular | Secondary metadata and text in status badges |
+| `type-code` | `font-data`, `text-ui-caption` | Identifiers and code |
+
+Long descriptions continue to use the existing readable body treatment. The 10px micro role is only for incidental counters, never primary controls or explanatory content.
+
+Surface aliases `bg-surface-canvas`, `bg-surface-panel` and `bg-surface-raised` map to `background`, `card` and `popover`. The light canvas has a restrained neutral tint so a white panel can be distinguished without a generic shadow on every box; dark layers keep their existing progression. Foreground/state token pairs remain the contrast contract. Do not use surface colors as workflow-state colors.
+
+Density aliases `h-control` (36px), `min-h-row` (44px) and `p-panel` (16px) express common control, operational row and panel spacing. Use ordinary layout gaps between sections rather than inventing per-screen padding scales.
+
+Built-in task states share one `taskTone` mapping in `components/ui/statusStyles.ts`: todo is neutral, in-progress is information, done is success. Both board headers and table badges use the same subtle pairs and retain visible state text. Custom workflow states use neutral unless their semantic role is explicitly known; a name alone must not imply completion.

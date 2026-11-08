@@ -18,7 +18,7 @@ type Story = StoryObj<typeof meta>;
 const ContentSimulator = () => (
   <div className="flex flex-col gap-6">
     <div>
-      <h1 className="text-3xl font-semibold tracking-tight">Dashboard Overview</h1>
+      <h1 className="type-page-title">Dashboard Overview</h1>
       <p className="text-muted-foreground mt-1">Daily work, knowledge and automation stay above collapsible workspace settings.</p>
     </div>
     <div className="p-12 border rounded-lg bg-card text-muted-foreground flex items-center justify-center border-dashed">

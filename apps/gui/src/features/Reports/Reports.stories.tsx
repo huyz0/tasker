@@ -21,7 +21,7 @@ const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString
 
 const meta = {
   title: 'Features/Reports',
-  parameters: { layout: 'padded' },
+  parameters: { layout: 'padded', docs: { description: { component: 'Report panels use the same surface and section-heading roles as the dashboard.' } } },
   decorators: [
     (Story) => (
       <QueryClientProvider client={queryClient}>

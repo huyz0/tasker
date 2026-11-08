@@ -6,6 +6,7 @@ const meta = {
   component: Dialog,
   parameters: {
     layout: 'fullscreen',
+    docs: { description: { component: 'Raised surface role above the workspace canvas, with shared focus and scroll behavior.' } },
   },
   args: {
     open: true,

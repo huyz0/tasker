@@ -24,7 +24,7 @@ The rendered review found a 48px task-content region at 375px and collapsed head
 
 - [x] Task titles, descriptions, metadata and actions remain reachable at 375px; headers and filters remain readable at 768px and 1024px.
 - [x] Daily navigation is grouped by activity with all existing destinations and URL scope preserved; mobile identifies its current project.
-- [ ] Typography, density, surface and task-status roles are documented and applied consistently in light and dark themes.
+- [x] Typography, density, surface and task-status roles are documented and applied consistently in light and dark themes.
 - [ ] Workflow/schedule empty states have a clear creation action; optional empty task content and report exceptions no longer overwhelm the screen.
 - [ ] Browser regressions, GUI coverage and local gates pass, with screenshots and remaining limitations recorded.
 
@@ -46,7 +46,7 @@ In scope: the seven tasks below, existing routes and server contracts, documenta
   - **Files**: apps/gui/src/components/layout/AppShell.tsx; AppShell.test.tsx; AppShell.stories.tsx
   - **Verify**: Group Work, Agents, Knowledge, Automation, Reports and Settings; preserve every route, scoped query string, active indication, keyboard access and mobile dismissal; expose current project in the header.
 
-- [ ] **M51-T04** — Introduce shared typography, density and surface roles with consistent task status semantics.
+- [x] **M51-T04** — Introduce shared typography, density and surface roles with consistent task status semantics.
   - **Files**: apps/gui/src/index.css; .specs/design/design-system.md; apps/gui/src/components/ui/; apps/gui/src/features/Tasks/
   - **Verify**: Preserve the violet identity and system font; distinguish canvas/panel/raised surfaces, page/section/item/body/caption roles and status colors in both themes; color contrast gate passes.
 

@@ -51,3 +51,12 @@ export function pullRequestTone(status: string): StatusTone {
     default: return 'neutral';
   }
 }
+
+/** Built-in task states; custom workflow names retain a readable neutral fallback. */
+export function taskTone(status: string): StatusTone {
+  switch (status) {
+    case 'done': return 'success';
+    case 'in-progress': return 'info';
+    default: return 'neutral';
+  }
+}

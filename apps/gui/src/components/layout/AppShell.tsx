@@ -114,7 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-dvh w-full flex-col md:flex-row bg-background">
+    <div className="flex min-h-dvh w-full flex-col md:flex-row bg-surface-canvas">
       {/* First focusable element on every page: a keyboard user otherwise tabs
           through search, bell, two switchers and sixteen nav links to reach
           the page they opened. */}

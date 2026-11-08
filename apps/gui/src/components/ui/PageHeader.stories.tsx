@@ -5,7 +5,7 @@ import { Button } from './button';
 const meta = {
   title: 'UI/PageHeader',
   component: PageHeader,
-  parameters: { layout: 'padded' },
+  parameters: { layout: 'padded', docs: { description: { component: 'Shared page-title type role with primary actions and an independent wrapping toolbar.' } } },
 } satisfies Meta<typeof PageHeader>;
 
 export default meta;

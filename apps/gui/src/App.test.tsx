@@ -1,11 +1,16 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, configure } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 import { resultRoute } from './components/layout/GlobalSearch';
 
 // Routing tests do not exercise a broker stream; the hook has its own real-transport suite.
 vi.mock('./hooks/useLiveEvents', () => ({ useLiveEvents: () => ({ status: 'connecting' }) }));
+
+// Real lazy route chunks can take more than one second to transform under coverage.
+// Keep the assertions bounded while allowing the actual route to finish loading.
+beforeAll(() => configure({ asyncUtilTimeout: 5000 }));
+afterAll(() => configure({ asyncUtilTimeout: 1000 }));
 
 // -------------------------------------------------------------------
 // Mock @tanstack/react-query so we control what useQuery returns.

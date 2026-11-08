@@ -26,3 +26,21 @@
 - **Verified**: Three navigation scenarios and the settings-group label assertion failed before their fixes; focused App/AppShell suite passes 39 tests. Two new navigation journeys and 27 existing layout/dashboard/addressable/audit/webhook journeys pass; 35 local gates pass.
 - **Notes**: Existing route URLs and scoped links remain the navigation contract.
 - **Next**: M51-T04.
+
+## M51-T04 — Shared visual roles
+
+- **Status**: done
+- **Date**: 2026-11-08
+- **Changed**: Planned typography, density and surface aliases; consistent task status semantics across board and table.
+- **Verified**: Both status-appearance regressions failed before implementation; all five layout/status browser checks pass in light/dark. Sixteen inspected captures have no console errors/overflow, contrast gate reports zero findings, standalone build and all 35 local gates pass.
+- **Notes**: The full suite exposed another one-second lazy-route assertion timeout under coverage; routing-fixture waits are now uniformly bounded at five seconds and the assertions are retained. Preserve system sans and violet; reuse existing state token pairs and retain neutral fallback for custom statuses.
+- **Next**: M51-T05.
+
+## M51-T05 — Purposeful empty collection screens
+
+- **Status**: in-progress
+- **Date**: 2026-11-08
+- **Changed**: Planned empty-state regressions for workflow and schedule screens.
+- **Verified**: Pending browser reproduction of the redundant empty list/detail composition.
+- **Notes**: Preserve loading/error/retry and existing new-item routes; one creation action should lead into the same editor.
+- **Next**: Reproduce the empty state, then implement after T04 verification.

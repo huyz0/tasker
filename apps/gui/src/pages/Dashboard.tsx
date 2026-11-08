@@ -34,10 +34,10 @@ function Panel({ title, subtitle, action, children }: {
   children: ReactNode;
 }) {
   return (
-    <section className="border rounded-lg bg-card shadow-sm flex flex-col">
-      <div className="p-4 border-b flex items-start justify-between gap-3">
+    <section className="border rounded-lg bg-surface-panel flex flex-col">
+      <div className="p-panel border-b flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-medium">{title}</h2>
+          <h2 className="type-section-title">{title}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
         {action}
