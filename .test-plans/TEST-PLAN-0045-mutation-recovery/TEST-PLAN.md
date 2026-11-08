@@ -41,3 +41,14 @@ Run: `cd apps/backend && bun test src/lib/idempotency.test.ts src/modules/tasks/
 Run the cross-process recovery harness against SQLite and real MySQL, then
 `moon check --all` and the real wire/broker tests. Retain exact counts and
 commands in PROGRESS.md; do not infer crash safety from Promise.all alone.
+
+## MySQL bootstrap prerequisite (T06)
+
+- Given a fresh utf8mb4 MySQL 8.4 database, when embedded migrations run, then
+  notification index creation succeeds without changing the database charset.
+- Given two 512-character dedupe keys sharing their first 511 characters, when
+  notifications are written for one recipient and type, then both persist.
+- Given an exact duplicate full key, then the second notification is rejected.
+- Given a Unicode dedupe key, then it persists without character loss.
+
+Run: `cd apps/backend && TASKER_MYSQL_INTEGRATION=1 bun test src/db/notificationDedupe.mysql.test.ts` with a disposable database configured through DB_HOST/DB_NAME/DB_USER/DB_PASSWORD.

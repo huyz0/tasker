@@ -36,7 +36,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 ## 5. Task Breakdown
 
 - [ ] **M46-T01** — Specify event identity, transactional capture, relay leases and retention.
-  - **Files**: .specs/adr/ADR-0039-transactional-domain-events.md; .test-plans/TEST-PLAN-0046-durable-domain-events/.
+  - **Files**: .specs/adr/ADR-0040-transactional-domain-events.md; .test-plans/TEST-PLAN-0046-durable-domain-events/.
   - **Verify**: Define at-least-once delivery and consumer deduplication; choose acknowledged JetStream publication over fire-and-forget and document brokerless standalone behavior.
 
 - [ ] **M46-T02** — Add event storage in both dialects and capture events in the mutation unit of work.

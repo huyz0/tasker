@@ -36,7 +36,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 ## 5. Task Breakdown
 
 - [ ] **M47-T01** — Design occurrence identity, lease recovery, manual runs and update/delete races.
-  - **Files**: .specs/adr/ADR-0040-recoverable-schedules.md; .test-plans/TEST-PLAN-0047-recoverable-schedules/.
+  - **Files**: .specs/adr/ADR-0041-recoverable-schedules.md; .test-plans/TEST-PLAN-0047-recoverable-schedules/.
   - **Verify**: Define unique schedule-plus-slot identity, frozen execution inputs, lease owner/version, failed retry policy and intentional missed-slot semantics.
 
 - [ ] **M47-T02** — Persist due occurrences atomically with advancing the schedule.

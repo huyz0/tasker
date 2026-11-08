@@ -8,3 +8,21 @@
 - **Verified**: Existing Drizzle/Bun nested synchronous transactions were exercised inside an explicit BEGIN and correctly rolled back. `moon check --all`: 35 completed (33 cached); docs and ledger checks pass. Design documents SQLite isolation, MySQL connection ownership, legacy responses, retry conflicts and buffered events.
 - **Notes**: Prefer a database-owned async unit over separately committed processing reservations; no schema change is required for idempotency. M46 still owns crash-safe event publication.
 - **Next**: M45-T02 failing database isolation/rollback tests.
+
+## M45-T02 — Transaction-owned database access
+
+- **Status**: in-progress
+- **Date**: 2026-11-08
+- **Changed**: db/access.ts, db/db.ts and database isolation tests.
+- **Verified**: Database boundary regressions pass; deliberate gate bypass makes the concurrent-reader test expose provisional data and fail. Restored code: real MySQL access/index tests 9 pass; existing MySQL task concurrency 2 pass; related SQLite reports/retention/access tests 40 pass / 1 skip. `moon check --all`: 35 completed. Review CODE-REVIEW-v1.md approved.
+- **Notes**: Explicit SQLite BEGIN and a reentrant access gate; actual pooled MySQL transactions; nested operations reuse the owner.
+- **Next**: M45-T03 keyed reservation and response commit.
+
+## M45-T06 — Repair MySQL clean-install prerequisite
+
+- **Status**: done
+- **Date**: 2026-11-08
+- **Changed**: MySQL notification bootstrap index, forward hash-index migration, schema and embedded manifest.
+- **Verified**: Fresh utf8mb4 MySQL 8.4 migration fails with ER_TOO_LONG_KEY on notifications(user_id varchar256, type varchar128, dedupe_key varchar512): 3584 bytes exceeds 3072.
+- **Notes**: An earlier 5-second test timeout also interrupted DDL on the first disposable database; that database is retained for diagnosis, not silently repaired or reset. A second fresh database reproduces the independent oversized-index defect. T06 is a prerequisite to completing T02's real-MySQL check. Green: fresh database migrated; full keys with shared prefixes and Unicode persist; duplicates reject. Real MySQL tests 9 pass; full local 35-task gates pass. Review CODE-REVIEW-v1.md approved.
+- **Next**: Fresh default-charset MySQL migration and full-key dedupe verification passed; then resume T02.

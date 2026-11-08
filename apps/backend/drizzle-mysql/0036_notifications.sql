@@ -1,3 +1,6 @@
+-- Bootstrap prefix keeps the historical CREATE valid under utf8mb4.
+-- 0047 replaces this temporary index with full-key SHA-256 deduplication
+-- before the backend starts serving requests.
 CREATE TABLE `notifications` (
 	`id` varchar(256) NOT NULL,
 	`user_id` varchar(256) NOT NULL,
@@ -11,7 +14,7 @@ CREATE TABLE `notifications` (
 	`created_at` timestamp NOT NULL,
 	`read_at` timestamp NULL,
 	CONSTRAINT `notifications_id` PRIMARY KEY(`id`),
-	CONSTRAINT `notifications_user_id_type_dedupe_key_idx` UNIQUE(`user_id`,`type`,`dedupe_key`)
+	CONSTRAINT `notifications_user_id_type_dedupe_key_idx` UNIQUE(`user_id`,`type`,`dedupe_key`(384))
 );
 --> statement-breakpoint
 CREATE INDEX `notifications_user_id_created_at_idx` ON `notifications` (`user_id`,`created_at`);--> statement-breakpoint

@@ -109,6 +109,7 @@ import path103 from '../../drizzle-mysql/0043_usage_records.sql' with { type: 'f
 import path104 from '../../drizzle-mysql/0044_task_summaries.sql' with { type: 'file' };
 import path105 from '../../drizzle-mysql/0045_workflow_templates.sql' with { type: 'file' };
 import path106 from '../../drizzle-mysql/0046_schedules.sql' with { type: 'file' };
+import path107 from '../../drizzle-mysql/0047_notification_dedupe_hash.sql' with { type: 'file' };
 
 export const EMBEDDED_SQLITE_MIGRATIONS: EmbeddedMigration[] = [
   { tag: "0000_mushy_kulan_gath", when: 1775866918648, hash: "337fc90e67c91e887a3596fc6c376ad0cede36ddb1ee2bbcd503b3690ec4a676", path: path0 },
@@ -210,7 +211,7 @@ export const EMBEDDED_MYSQL_MIGRATIONS: EmbeddedMigration[] = [
   { tag: "0033_backfill_task_activity", when: 1788200000000, hash: "8f361a2695fa075c1eb282b43d6a8bf7d15dd225ed67ea2f564709a2a2f5eae5", path: path93 },
   { tag: "0034_stalled_claim_alerts", when: 1788300000000, hash: "c090803e8679e557146ea8193e5502c2d972aaa5a45ab440e68a36130c4c1379", path: path94 },
   { tag: "0035_repair_audit_log", when: 1788400000000, hash: "e60eff4bcd8f1c0cfc8f0f0f8e14c1a3128efc61efb5b0eb78562f96a6442646", path: path95 },
-  { tag: "0036_notifications", when: 1788500000000, hash: "869082cf5867951c9c065fbff112e5e92fc7283f497c3b82b99074b9de679458", path: path96 },
+  { tag: "0036_notifications", when: 1788500000000, hash: "371cf26c18b23b704ba2e0851df4747a865536e5c8a21783c1ea8c145f86c126", path: path96 },
   { tag: "0037_idempotency_request_hash", when: 1788600000000, hash: "4b433a45fe593746b12cd5d7ceae8097e090e3151e850b8e357d4aeaca14a6c1", path: path97 },
   { tag: "0038_task_assignment_source", when: 1788700000000, hash: "5e7747bc75b950bafdfe2a0825fb98ea696c1c812db42b49bc2559c2cd9168e7", path: path98 },
   { tag: "0039_work_graph", when: 1788800000000, hash: "184c5b2ab3dc660d1fadf652dba8abfa4d40fe9f20f0f8ba3a4cdab0cf51e43d", path: path99 },
@@ -221,4 +222,5 @@ export const EMBEDDED_MYSQL_MIGRATIONS: EmbeddedMigration[] = [
   { tag: "0044_task_summaries", when: 1789300000000, hash: "a636a51a3cebf62ad6df66916ccd812eb35b99bb7fd516e87535f6ba674af2fd", path: path104 },
   { tag: "0045_workflow_templates", when: 1789400000000, hash: "204dca42bdfbe3e1d279ceddd2730c7c0dab15522555a772e07e419588caf7a1", path: path105 },
   { tag: "0046_schedules", when: 1789500000000, hash: "99c63a10005e95adcd1fd13197e86aa8f44627c545f93709d199128b5adf99ce", path: path106 },
+  { tag: "0047_notification_dedupe_hash", when: 1794096000000, hash: "917b1b25dc4b76ffe412df224bd92c2f2417dd723ed58ae4607c296610d39d10", path: path107 },
 ];

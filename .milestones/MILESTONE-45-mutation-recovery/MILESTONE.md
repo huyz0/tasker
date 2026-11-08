@@ -55,6 +55,10 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: .test-plans/TEST-PLAN-0045-mutation-recovery/; .milestones/MILESTONE-45-mutation-recovery/reviews/.
   - **Verify**: Use two processes against the same database, kill one at defined boundaries, retry and assert a single durable outcome; full backend suite and typecheck.
 
+- [x] **M45-T06** — Repair the notification dedupe index so a fresh default-charset MySQL database migrates successfully while preserving full keys.
+  - **Files**: apps/backend/drizzle-mysql/0036_notifications.sql, apps/backend/drizzle-mysql/0047_notification_dedupe_hash.sql, apps/backend/src/db/schema.mysql.ts, embedded migration manifest.
+  - **Verify**: The real MySQL access test reproduces ER_TOO_LONG_KEY before the repair; a new utf8mb4 database migrates and supports distinct keys sharing a long prefix after it; existing SQLite/backend regressions remain green.
+
 ## 6. Verification
 
 1. Reproduce the stated failure with an observable regression test before implementation.
