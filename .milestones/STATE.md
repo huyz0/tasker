@@ -1833,7 +1833,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M41 | Task Digests                    | done   | M38, M40   | 5     | 5    |
 | M42 | Workflow Templates              | done   | M35        | 6     | 6    |
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
-| M44 | Authorization Lifecycle | in-progress | — | 4 | 1 |
+| M44 | Authorization Lifecycle | in-progress | — | 4 | 2 |
 | M45 | Mutation Recovery | todo | M44 | 5 | 0 |
 | M46 | Durable Domain Events | todo | M45 | 5 | 0 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
@@ -1841,7 +1841,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 
-**Total: 355 tasks across 44 milestones — 325 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 355 tasks across 44 milestones — 326 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

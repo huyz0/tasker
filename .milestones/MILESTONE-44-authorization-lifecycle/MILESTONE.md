@@ -39,7 +39,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: .specs/adr/ADR-0037-authorization-lifecycle.md; .test-plans/TEST-PLAN-0044-authorization-lifecycle/TEST-PLAN.md; .milestones/STATE.md.
   - **Verify**: bun run scripts/doc-drift.ts; review acceptance scenarios against the affected call sites.
 
-- [ ] **M44-T02** — Authorize keyed task mutations before both cache replay and execution.
+- [x] **M44-T02** — Authorize keyed task mutations before both cache replay and execution.
   - **Files**: apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/lib/idempotency.test.ts.
   - **Verify**: Regression tests deny replay after membership removal, role reduction, or replacement with a narrower agent token; legitimate same-key replay still succeeds.
 
