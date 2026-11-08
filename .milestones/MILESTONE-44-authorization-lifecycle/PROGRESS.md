@@ -26,3 +26,12 @@
 - **Verified**: Red: idle/busy streams continued instead of rejecting. Green: 34 feed tests pass, including real stored token revocation/expiry and session logout; handler coverage 100%. Full `moon check --all`: 35 completed, backend 2053 pass / 28 skip; existing real JetStream realtime integration: 1 pass.
 - **Notes**: Connect HandlerContext already supplies requestHeader, so the handler can re-resolve original credentials directly without adding an interceptor context key. Tests inject a resolver and clock; production uses resolvePrincipal and Date.now. Corrected M49 to extend the existing NATS CI workflow instead of duplicating it.
 - **Next**: M44-T04 complete verification and security review.
+
+## M44-T04 — Verify authorization lifecycle and security review
+
+- **Status**: done
+- **Date**: 2026-11-08
+- **Changed**: wire subscription logout scenario, agent integration guide, four-lens review.
+- **Verified**: `moon check --all`: 35 completed, backend 2053 pass / 29 skip, GUI 1324 pass. Real NATS mutation/feed/audit: 1 pass. Real socket suite: 10 pass, open feed closes after logout at ~30 seconds. Deliberately setting the production validation interval to an hour makes the socket test fail with Canceled instead of Unauthenticated; restoring 30 seconds yields 10 pass again. Typecheck and doc-drift pass.
+- **Notes**: No authorization or credential payload added to the wire contract. Optional gh/act execution was skipped by the existing root task because those tools are absent; all 35 direct local tasks pass.
+- **Next**: M45-T01 atomic mutation design. Review: reviews/CODE-REVIEW-v1.md approved across correctness, coverage, architecture and security.

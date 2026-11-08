@@ -643,3 +643,17 @@ tasker schedules runs "$S"            # created / skipped / failed, with reasons
   as a skill for a harness that supports invoking one.
 - `.agents/skills/handoff-task/SKILL.md` — the same §10 guidance, written
   as a skill for a harness that supports invoking one.
+
+## Event subscription credential lifetime
+
+An open event feed rechecks its original credential at least every 30 seconds,
+including while idle or receiving continuous traffic. Logout, expiry or token
+revocation closes the feed with `Unauthenticated`; losing `events:read` closes
+it with `PermissionDenied`. Organization membership is refreshed on that same
+schedule as well as on membership events. Revocation does not depend on the
+revocation event reaching the subscriber.
+
+After rotating a token, reconnect with the replacement credential. An existing
+feed continues to use the credential it opened with. A retry of a keyed task
+mutation also checks current permissions before returning its saved response;
+a prior successful request never grants permission to replay its result.

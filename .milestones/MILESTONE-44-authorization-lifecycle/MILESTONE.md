@@ -1,13 +1,13 @@
 ---
 id: M44
 title: Authorization Lifecycle
-status: in-progress
+status: done
 goal: Current permissions govern every cached response and every long-lived subscription.
 depends_on: []
 surfaces: [backend, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-08
-completed_at: null
+completed_at: 2026-11-08
 ---
 
 # M44 — Authorization Lifecycle
@@ -22,10 +22,10 @@ Revocation must take effect even when a request reuses an old idempotency key or
 
 ## 3. Exit Criteria
 
-- [ ] Removed or demoted users cannot retrieve a cached mutating RPC response.
-- [ ] A narrower replacement agent token cannot reuse a broader credential's authorization.
-- [ ] Revoked or expired credentials stop receiving event metadata within the documented revalidation bound.
-- [ ] Existing authorized subscriptions and same-key retries continue to work.
+- [x] Removed or demoted users cannot retrieve a cached mutating RPC response.
+- [x] A narrower replacement agent token cannot reuse a broader credential's authorization.
+- [x] Revoked or expired credentials stop receiving event metadata within the documented revalidation bound.
+- [x] Existing authorized subscriptions and same-key retries continue to work.
 
 ## 4. Scope
 
@@ -47,7 +47,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/modules/events/events.handler.ts; apps/backend/src/modules/auth/session.ts; apps/backend/src/index.ts.
   - **Verify**: Tests revoke an agent token and a human session while their streams remain open; subsequent events are refused, including under continuous event traffic.
 
-- [ ] **M44-T04** — Verify authorization lifecycle behavior and record the security review.
+- [x] **M44-T04** — Verify authorization lifecycle behavior and record the security review.
   - **Files**: apps/backend/src/modules/events/events.handler.test.ts; .milestones/MILESTONE-44-authorization-lifecycle/reviews/.
   - **Verify**: Run the full backend suite and typecheck; review correctness, coverage, architecture and security; record exact failures rather than weakening checks.
 
