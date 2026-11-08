@@ -18,6 +18,7 @@ export function ListState({
   isEmpty,
   loadingMessage = 'Loading…',
   emptyMessage,
+  emptyTitle,
   emptyAction,
   onRetry,
   errorLabel = 'Could not load this list',
@@ -29,6 +30,8 @@ export function ListState({
   loadingMessage?: string;
   /** What this list would hold, and why it is empty. */
   emptyMessage: string;
+  /** A purposeful introduction for a genuinely empty collection. */
+  emptyTitle?: string;
   /** The way out of an empty list — usually the control that fills it. */
   emptyAction?: ReactNode;
   /** Refetch. Without it a failed list is a dead end until a full reload. */
@@ -62,7 +65,8 @@ export function ListState({
 
   if (isEmpty) {
     return (
-      <div className="p-4 text-sm text-center text-muted-foreground flex flex-col items-center gap-2">
+      <div className={`p-panel text-sm text-muted-foreground flex flex-col ${emptyTitle ? 'items-start gap-3 rounded-lg border bg-surface-panel text-left' : 'items-center gap-2 text-center'}`}>
+        {emptyTitle && <h2 className="type-section-title text-foreground">{emptyTitle}</h2>}
         <p>{emptyMessage}</p>
         {emptyAction}
       </div>

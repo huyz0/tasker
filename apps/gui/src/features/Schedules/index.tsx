@@ -133,6 +133,12 @@ export function SchedulesScreen() {
 
   if (!activeOrgId) return <p className="p-4 text-sm text-muted-foreground">Select an organization to see its schedules.</p>;
   const schedules = list.data ?? [];
+  const showCollectionState = !scheduleId && (list.isLoading || !!list.error || schedules.length === 0);
+  const createAction = (
+    <button onClick={() => navigate(scopedTo('/schedules/new'))} className="inline-flex min-h-control items-center justify-center rounded-md bg-primary px-3 type-label text-primary-foreground hover:bg-primary/90">
+      New schedule
+    </button>
+  );
   const projectName = (id: string) => (projects.data ?? []).find((p) => p.id === id)?.name ?? id;
   const templateName = (id: string) => (templates.data ?? []).find((t) => t.id === id)?.name ?? id;
   const form = (initial: ScheduleDraft, onCancel: () => void, locked: boolean) => (
@@ -154,30 +160,31 @@ export function SchedulesScreen() {
         title="Schedules"
         description="Routine work that puts itself on the queue - a task or a whole workflow, daily, weekly or monthly."
       />
-      <div className="flex flex-col gap-6 md:flex-row md:items-start">
-        <aside className="w-full md:w-64 shrink-0 flex flex-col gap-1">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <aside className={`${scheduleId ? 'hidden lg:flex' : 'flex'} ${showCollectionState ? 'w-full max-w-xl' : 'w-full lg:w-64'} shrink-0 flex-col gap-1`}>
           <ListState isLoading={list.isLoading} error={list.error} isEmpty={schedules.length === 0} loadingMessage="Loading schedules…"
-            emptyMessage="No schedules yet." onRetry={() => list.refetch()}>
+            emptyTitle={showCollectionState ? 'No schedules yet.' : undefined}
+            emptyMessage={showCollectionState ? 'Put routine work on a daily, weekly or monthly cadence. For example, schedule a weekly triage task.' : 'No schedules yet.'}
+            emptyAction={showCollectionState ? createAction : undefined} onRetry={() => list.refetch()}>
             {schedules.map((s) => (
-              <button
+              <Link
                 key={s.id}
-                onClick={() => navigate(scopedTo(`/schedules/${s.id}`))}
-                aria-current={scheduleId === s.id ? 'true' : undefined}
+                to={scopedTo(`/schedules/${s.id}`)}
+                aria-current={scheduleId === s.id ? 'page' : undefined}
                 className={`text-sm text-left px-3 py-2 rounded-md border ${scheduleId === s.id ? 'bg-primary-subtle text-primary-subtle-foreground border-primary/40' : 'border-transparent hover:bg-muted'}`}
               >
                 <span className="block">{s.name}</span>
                 <span className="block text-xs text-muted-foreground">{s.active ? cadenceText(s) : 'Paused'}</span>
-              </button>
+              </Link>
             ))}
           </ListState>
-          <button onClick={() => navigate(scopedTo('/schedules/new'))} className="mt-2 text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground">
-            New schedule
-          </button>
+          {!showCollectionState && createAction}
         </aside>
 
-        <div className={`${scheduleId ? 'block' : 'hidden md:block'} flex-1 min-w-0`}>
+        <div className={`${scheduleId ? 'block' : 'hidden lg:block'} flex-1 min-w-0`}>
+          {scheduleId && !isNew && !editing && <Link to={scopedTo('/schedules')} className="mb-4 inline-flex lg:hidden type-label text-primary hover:underline">All schedules</Link>}
           {!scheduleId ? (
-            <p className="text-sm text-muted-foreground">Choose a schedule on the left, or create one.</p>
+            !showCollectionState && <p className="type-body text-muted-foreground">Choose a schedule on the left, or create one.</p>
           ) : isNew ? (
             form(draftFromSchedule(undefined, activeProjectId ?? ''), () => navigate(scopedTo('/schedules')), false)
           ) : detail.isLoading || detail.error || !detail.data ? (
@@ -186,7 +193,7 @@ export function SchedulesScreen() {
             form(draftFromSchedule(detail.data, detail.data.projectId), () => setEditing(false), true)
           ) : (
             <div className="flex flex-col gap-6">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
                 <div className="flex flex-col gap-1">
                   <h2 className="text-lg font-semibold tracking-tight">{detail.data.name}</h2>
                   <p className="text-sm">{cadenceText(detail.data)} in {projectName(detail.data.projectId)}</p>

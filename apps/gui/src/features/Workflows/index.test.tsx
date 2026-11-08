@@ -43,7 +43,7 @@ describe('WorkflowsScreen (M42)', () => {
 
   it('lists templates and shows one with its steps in order', async () => {
     renderScreen();
-    fireEvent.click(await screen.findByRole('button', { name: /Release/ }));
+    fireEvent.click(await screen.findByRole('link', { name: /Release/ }));
     const steps = await screen.findByRole('list', { name: 'Workflow steps' });
     expect(within(steps).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['1.BuildHigh', '2.Shipafter Build']);
   });
@@ -149,10 +149,10 @@ describe('WorkflowsScreen (M42)', () => {
     renderScreen();
     fireEvent.click(await screen.findByRole('button', { name: /retry|try again/i }));
     expect(await screen.findByText('No workflows yet.')).toBeInTheDocument();
-    expect(screen.getByText('Choose a workflow on the left, or create one.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'No workflows yet.' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'New workflow' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
-    expect(await screen.findByText('Choose a workflow on the left, or create one.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'No workflows yet.' })).toBeInTheDocument();
   });
 
   it('retries a failed template, shows one with no description, and a one-step start', async () => {
@@ -208,4 +208,33 @@ describe('WorkflowsScreen (M42)', () => {
     rerender();
     expect(await screen.findByText('Choose a workflow on the left, or create one.')).toBeInTheDocument();
   });
+  it('offers one purposeful empty introduction and enters the existing create flow', async () => {
+    mockRpc(WorkflowService, 'ListWorkflowTemplates', { templates: [], page: {} });
+    renderScreen();
+    expect(await screen.findByRole('heading', { level: 2, name: 'No workflows yet.' })).toBeInTheDocument();
+    expect(screen.queryByText('Choose a workflow on the left, or create one.')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'New workflow' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'New workflow' }));
+    expect(await screen.findByLabelText('Name')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'No workflows yet.' })).toBeInTheDocument();
+  });
+
+  it('keeps loading distinct from an empty collection without a choose-detail prompt', async () => {
+    mockRpcPending(WorkflowService, 'ListWorkflowTemplates');
+    renderScreen();
+    expect(await screen.findByText('Loading workflows…')).toBeInTheDocument();
+    expect(screen.queryByText('Choose a workflow on the left, or create one.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New workflow' })).not.toBeInTheDocument();
+  });
+
+  it('reports denied reads with retry rather than an empty collection or creation prompt', async () => {
+    mockRpcError(WorkflowService, 'ListWorkflowTemplates', 'permission_denied', 'No access to these workflows');
+    renderScreen();
+    expect(await screen.findByRole('alert')).toHaveTextContent('No access to these workflows');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByText('Choose a workflow on the left, or create one.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New workflow' })).not.toBeInTheDocument();
+  });
+
 });

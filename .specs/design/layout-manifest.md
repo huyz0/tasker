@@ -11,7 +11,7 @@ The default authenticated or primary application interface.
   - **Sidebar (Left)**: Fixed width (`w-sidebar`), sticky at viewport height on desktop (`md:sticky md:top-0 md:h-dvh`) so navigation and the account footer never scroll away with a long page. Collapsible on mobile via a Hamburger menu. The theme toggle lives in its footer at every width.
   - **Header (Top - Mobile Only)**: Fixed `h-14` header replacing the sidebar on mobile (`< md`), containing logo and toggle.
   - **Main Content Area**: The `<main id="main">` tag, target of the skip link. Fluid width taking up the remainder of the screen.
-  - **Master–detail views** (an explorer list beside a detail pane) stack below `md` (`flex-col md:flex-row`) and hide the empty detail placeholder until something is selected.
+  - **Master–detail views** use a breakpoint based on the remaining content width after the application sidebar. Automation lists and editors split at `lg`; below it the collection or selected detail owns the full width. A genuinely empty collection has one introduction and creation action, not a second choose-detail prompt. Selected read-only views provide an All workflows/schedules link; edit/create views retain their explicit Cancel action.
 
 ### Layout Padding and Containers
 
@@ -49,3 +49,11 @@ export function ExampleRoute() {
 
 - Always design for `md:` (768px - Tablet) and `lg:` (1024px - Desktop).
 - The default state (`className="..."`) without prefixes applies to mobile (`< 768px`). Ensure mobile involves stacked layouts (`flex-col`) instead of side-by-side (`flex-row`).
+
+## 4. Workbench headers and automation states
+
+PageHeader primary actions sit with the title; growing filters and view controls use its separate `toolbar` slot. The toolbar wraps independently at intermediate widths, so the title never collapses to make room for controls.
+
+Automation screens use ListState's `emptyTitle`, description and creation action for an empty collection. Loading and failed/denied reads keep their own state and Retry action instead of pretending that the collection is empty. Existing selected-item routes remain addressable, and collection items are links supporting normal browser navigation. Creation forms avoid a second narrow list column below `lg`.
+
+Automation screen stories use their own MemoryRouter and deterministic public query-cache fixtures through `parameters.router: false`. The default Storybook decorator still supplies routing for existing primitive stories. Fixture scopes are synthetic, and no credentials or backend writes are required to render empty, loading, denied, populated and create states.

@@ -22,7 +22,10 @@ test.describe('Schedules', () => {
     await page.getByLabel(/Task title/).fill(`${name} task`);
     await page.getByRole('button', { name: 'Save schedule' }).click();
 
-    await expect(page.getByRole('heading', { name })).toBeVisible();
+    await page.setViewportSize({ width: 375, height: 900 });
+    const heading = page.getByRole('heading', { name });
+    await expect(heading).toBeVisible();
+    expect((await heading.boundingBox())!.width).toBeGreaterThan(240);
     await page.getByRole('button', { name: 'Run now' }).click();
     await expect(page.getByText(/Ran now: created/)).toBeVisible();
     const runs = page.getByRole('list', { name: 'Runs' });

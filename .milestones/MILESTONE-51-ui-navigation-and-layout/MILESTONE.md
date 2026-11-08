@@ -50,7 +50,7 @@ In scope: the seven tasks below, existing routes and server contracts, documenta
   - **Files**: apps/gui/src/index.css; .specs/design/design-system.md; apps/gui/src/components/ui/; apps/gui/src/features/Tasks/
   - **Verify**: Preserve the violet identity and system font; distinguish canvas/panel/raised surfaces, page/section/item/body/caption roles and status colors in both themes; color contrast gate passes.
 
-- [ ] **M51-T05** — Give workflow and schedule empty states a clear first action and usable creation layout.
+- [x] **M51-T05** — Give workflow and schedule empty states a clear first action and usable creation layout.
   - **Files**: apps/gui/src/features/Workflows/; apps/gui/src/features/Schedules/
   - **Verify**: Empty views offer one coherent introduction and creation action; populated master-detail and new-item routes remain usable at 375/768/1280px; loading/error/retry remain distinct.
 

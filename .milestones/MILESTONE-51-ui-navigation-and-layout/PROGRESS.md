@@ -38,9 +38,9 @@
 
 ## M51-T05 — Purposeful empty collection screens
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-08
 - **Changed**: Planned empty-state regressions for workflow and schedule screens.
-- **Verified**: Pending browser reproduction of the redundant empty list/detail composition.
+- **Verified**: 37 focused tests and eight real-browser journeys pass; empty/create/cancel covers 375/768/1280px. Six component regressions and the mobile heading regression failed before fixes; deliberate breakpoint reversal fails both tablet editor scenarios. Twenty Storybook state captures render without overflow; existing addon script 404 is documented. All 35 local gates pass.
 - **Notes**: Preserve loading/error/retry and existing new-item routes; one creation action should lead into the same editor.
-- **Next**: Reproduce the empty state, then implement after T04 verification.
+- **Next**: M51-T06.
