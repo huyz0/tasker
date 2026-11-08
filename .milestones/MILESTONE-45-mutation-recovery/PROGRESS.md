@@ -44,3 +44,12 @@
 - **Verified**: Deliberately disabling the outer unit leaks 2 task-created events and advances the counter to 3; restored code rolls back failures at all 3 step positions. Racing identical keys return one graph; deliberately bypassing replay produces different parent IDs and fails. Full `moon check --all`: 35 completed. Review CODE-REVIEW-v3.md approved.
 - **Notes**: Replace compensating deletes with the shared unit; a later step's domain validation can fail after parent and prior steps were written. Check the counter and event stream as well as task rows.
 - **Next**: M45-T05 process interruption and final verification.
+
+## M45-T05 — Cross-process interruption evidence
+
+- **Status**: done
+- **Date**: 2026-11-08
+- **Changed**: real task creation recovery harness, SQLite/MySQL process tests, operating notes and closing review.
+- **Verified**: Separate workers on one SQLite file and real MySQL 8.4.13: 4 pass. Killing after the task write rolls back the task, counter and key; a new worker and parent replay recover one task. Deliberately removing transaction ownership makes both crash cases fail with a partial task, advanced counter and null response. Restored code: 4 pass. Real socket/auth/feed plus JetStream/audit: 11 pass. `moon check --all`: 35 completed, backend 2067 pass / 36 skip / 0 fail. Review CODE-REVIEW-v4.md approved.
+- **Notes**: Kill a worker after actual task creation but before the completed keyed response is stored. Retry with the same user, request and key from a new process; verify task count, project counter and stored response. Use only disposable fixture IDs and temporary files.
+- **Next**: Close M45, then M46 durable domain events.

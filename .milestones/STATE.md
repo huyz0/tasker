@@ -1,8 +1,8 @@
 ---
-active_milestone: M45
+active_milestone: M46
 active_task: null
 last_updated: 2026-11-08
-last_commit: 679f07c
+last_commit: 986101a
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-08 — M45 complete:** database-owned async units, current authorization inside task units, atomic retry reservation/result, workflow rollback and deferred events. Separate-process overlap and SIGKILL recovery pass on SQLite and MySQL 8.4.13; deliberate transaction removal fails both crash tests. A fresh utf8mb4 MySQL boot defect was also repaired (T06). All 35 local tasks pass; real socket/broker suites pass. M46 owns the remaining post-commit event-loss gap.
 
 **2026-11-08 — M44 complete:** current authorization before keyed response replay; event feeds revalidate original credentials and membership every 30 seconds. Local 35-task gates pass; real broker and real socket logout scenarios pass; deliberate-break check fails as expected. M45 is next.
 
@@ -1836,14 +1838,14 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M42 | Workflow Templates              | done   | M35        | 6     | 6    |
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
-| M45 | Mutation Recovery | in-progress | M44 | 6 | 5 |
+| M45 | Mutation Recovery | done | M44 | 6 | 6 |
 | M46 | Durable Domain Events | todo | M45 | 5 | 0 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
 | M48 | Client Recovery | todo | M44 | 4 | 0 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 
-**Total: 356 tasks across 44 milestones — 333 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 356 tasks across 44 milestones — 334 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

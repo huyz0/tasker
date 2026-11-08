@@ -1,13 +1,13 @@
 ---
 id: M45
 title: Mutation Recovery
-status: in-progress
+status: done
 goal: Concurrent and interrupted keyed mutations produce one committed outcome and a retry can recover that outcome.
 depends_on: [M44]
 surfaces: [backend, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-08
-completed_at: null
+completed_at: 2026-11-08
 ---
 
 # M45 — Mutation Recovery
@@ -22,10 +22,10 @@ Agent retries are normal operation; a response cache written after the mutation 
 
 ## 3. Exit Criteria
 
-- [ ] Overlapping identical create, claim and workflow requests cannot create duplicate outcomes.
-- [ ] A crash cannot commit the mutation without its recoverable keyed response.
-- [ ] Failed workflows leave no partial graph or externally delivered task events.
-- [ ] Preexisting completed idempotency records remain readable under current authorization.
+- [x] Overlapping identical create, claim and workflow requests cannot create duplicate outcomes.
+- [x] A crash cannot commit the mutation without its recoverable keyed response.
+- [x] Failed workflows leave no partial graph or externally delivered task events.
+- [x] Preexisting completed idempotency records remain readable under current authorization.
 
 ## 4. Scope
 
@@ -51,7 +51,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/modules/workflows/workflows.handler.ts; apps/backend/src/modules/workflows/*.test.ts.
   - **Verify**: Fail each step in a multi-step workflow and prove no visible partial graph; race identical instantiation keys and prove one graph.
 
-- [ ] **M45-T05** — Verify interrupted and concurrent mutation recovery and record the review.
+- [x] **M45-T05** — Verify interrupted and concurrent mutation recovery and record the review.
   - **Files**: .test-plans/TEST-PLAN-0045-mutation-recovery/; .milestones/MILESTONE-45-mutation-recovery/reviews/.
   - **Verify**: Use two processes against the same database, kill one at defined boundaries, retry and assert a single durable outcome; full backend suite and typecheck.
 
