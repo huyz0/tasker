@@ -1,6 +1,6 @@
 ---
 active_milestone: M45
-active_task: M45-T02
+active_task: null
 last_updated: 2026-11-08
 last_commit: 679f07c
 blocked: false
@@ -1836,14 +1836,14 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M42 | Workflow Templates              | done   | M35        | 6     | 6    |
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
-| M45 | Mutation Recovery | in-progress | M44 | 6 | 2 |
+| M45 | Mutation Recovery | in-progress | M44 | 6 | 3 |
 | M46 | Durable Domain Events | todo | M45 | 5 | 0 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
 | M48 | Client Recovery | todo | M44 | 4 | 0 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 
-**Total: 356 tasks across 44 milestones — 330 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 356 tasks across 44 milestones — 331 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

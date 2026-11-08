@@ -193,7 +193,7 @@ export async function buildReportTrends(
     WHERE status IS NOT NULL
     GROUP BY day, status`;
   const deltaRows: { day: number; status: string; delta: number }[] = isStandalone
-    ? db.all(deltaQuery)
+    ? await db.all(deltaQuery)
     : (await db.execute(deltaQuery))[0];
 
   const deltasByStatus = new Map<string, Map<string, number>>();

@@ -11,7 +11,7 @@
 
 ## M45-T02 — Transaction-owned database access
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-08
 - **Changed**: db/access.ts, db/db.ts and database isolation tests.
 - **Verified**: Database boundary regressions pass; deliberate gate bypass makes the concurrent-reader test expose provisional data and fail. Restored code: real MySQL access/index tests 9 pass; existing MySQL task concurrency 2 pass; related SQLite reports/retention/access tests 40 pass / 1 skip. `moon check --all`: 35 completed. Review CODE-REVIEW-v1.md approved.

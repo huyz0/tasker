@@ -39,7 +39,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: .specs/adr/ADR-0038-atomic-mutations.md; apps/backend/src/lib/idempotency.ts; apps/backend/src/db/db.ts.
   - **Verify**: Document SQLite synchronous transaction constraints, MySQL connection ownership, crash recovery, legacy rows and request-hash conflicts before code.
 
-- [ ] **M45-T02** — Introduce transaction-owned database access shared by task creation, claiming and workflow operations.
+- [x] **M45-T02** — Introduce transaction-owned database access shared by task creation, claiming and workflow operations.
   - **Files**: apps/backend/src/db/access.ts; apps/backend/src/db/db.ts; apps/backend/src/modules/tasks/tasks.handler.ts.
   - **Verify**: Existing task and queue tests pass; injected mid-operation failure leaves no partial task, assignment or counter update.
 

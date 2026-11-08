@@ -62,6 +62,10 @@ transaction, and buffer events until commit.
 - The access layer wraps only database/query builders, not returned rows or
   schema objects. Tests cover fluent queries, awaited access, synchronous
   transaction use, nested operations, rollback, and concurrent readers.
+- Direct SQL helpers (`db.run`, `db.all`, `db.get`, `db.values`) are awaited
+  outside owned synchronous transactions. The report trend query is updated
+  to await its result; fluent synchronous `.all()` remains a guarded native
+  escape hatch for existing synchronous transaction callbacks.
 - Root connection access and an escaped transaction must never be handed to an
   external caller. Background work and streaming revalidation use the same
   managed database handle.

@@ -10,6 +10,7 @@ import * as schemaSqlite from "./schema.sqlite";
 import { applyEmbeddedMigrations, sqliteRunner, mysqlRunner } from "./embeddedMigrations";
 import { EMBEDDED_SQLITE_MIGRATIONS, EMBEDDED_MYSQL_MIGRATIONS } from "./embeddedMigrations.generated";
 import { sql } from "drizzle-orm";
+import { manageDatabase } from "./access";
 
 export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlitePath: string = ".data/local.sqlite") {
   if (driver === "sqlite") {
@@ -34,7 +35,7 @@ export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlite
     // somewhere else (M09-T01). The bookkeeping is byte-compatible, so a
     // database migrated by either one stays usable by the other.
     await applyEmbeddedMigrations(sqliteRunner(sqlite), EMBEDDED_SQLITE_MIGRATIONS);
-    return db;
+    return manageDatabase(db, true);
   }
 
   // A pool, not a single connection: db.transaction() needs a dedicated
@@ -66,5 +67,5 @@ export async function setupDatabase(driver: "mysql" | "sqlite" = "mysql", sqlite
   // way: the container image has no `./drizzle-mysql` to read, so the first
   // boot of the compose stack died before it listened (M11-T07).
   await applyEmbeddedMigrations(mysqlRunner(db, sql.raw.bind(sql)), EMBEDDED_MYSQL_MIGRATIONS);
-  return db;
+  return manageDatabase(db, false);
 }
