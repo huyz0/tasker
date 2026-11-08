@@ -18,7 +18,7 @@ CI exercises production dependencies and reproducible multi-instance measurement
 
 ## 2. Why Now
 
-SQLite unit tests do not establish MySQL concurrency correctness or broker outage recovery.
+SQLite unit tests do not establish MySQL concurrency correctness or broker outage recovery. `.github/workflows/integration.yml` already provisions JetStream for realtime tests; extend that coverage rather than claiming NATS CI is absent.
 
 ## 3. Exit Criteria
 
@@ -35,7 +35,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 
 ## 5. Task Breakdown
 
-- [ ] **M49-T01** — Provision isolated MySQL and JetStream CI services and enable opt-in integration tests.
+- [ ] **M49-T01** — Add isolated MySQL coverage and extend the existing JetStream integration job to the recovery paths.
   - **Files**: .github/workflows/ci.yml; apps/backend/moon.yml; apps/backend/src/modules/tasks/tasks.mysql.test.ts.
   - **Verify**: Run the jobs against real services with readiness probes and unique databases; deliberately break a MySQL claim assertion and prove the job fails.
 

@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 import * as schemaMysql from "../../db/schema.mysql";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { requirePrincipal } from "../../lib/authz";
+import { resolvePrincipal } from "../../lib/authenticate";
+import type { Principal } from "../auth/session";
 import { logger } from "../../lib/logger";
 import { shouldDeliver, invalidatesScope, toEnvelope, type SubscriptionScope } from "./eventScope";
 
@@ -191,14 +193,24 @@ function createHub(nc: any) {
   };
 }
 
-export function createEventsHandler(db: any, nc: any, opts: { heartbeatMs?: number; maxQueue?: number } = {}) {
+export function createEventsHandler(db: any, nc: any, opts: {
+  heartbeatMs?: number;
+  maxQueue?: number;
+  revalidateMs?: number;
+  now?: () => number;
+  reauthenticate?: (ctx: any) => Promise<Principal | null>;
+} = {}) {
   const heartbeatMs = opts.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
   const maxQueue = opts.maxQueue ?? DEFAULT_MAX_QUEUE;
+  // Bounded even on idle streams or a busy feed; event-triggered membership
+  // refresh alone cannot enforce expiry or a missed revocation event.
+  const revalidateMs = opts.revalidateMs ?? 30_000;
+  const now = opts.now ?? Date.now;
   let hub: ReturnType<typeof createHub> | null = null;
 
   return {
     async *subscribeEvents(req: any, ctx: any): AsyncGenerator<any> {
-      const principal = requirePrincipal(ctx?.values);
+      let principal = requirePrincipal(ctx?.values);
 
       // M26-T02 (ADR-0023): an agent must hold events:read to open the feed
       // at all. Deliberately ahead of the broker check below — a token that
@@ -225,6 +237,35 @@ export function createEventsHandler(db: any, nc: any, opts: { heartbeatMs?: numb
         ...(principal.kind === "agent" ? { agentScopes: new Set(principal.scopes) } : {}),
       };
 
+      const headers = {
+        cookie: ctx?.requestHeader?.get("cookie") ?? null,
+        authorization: ctx?.requestHeader?.get("authorization") ?? null,
+      };
+      let revalidateAt = now() + revalidateMs;
+      async function revalidate() {
+        if (now() < revalidateAt) return;
+        const fresh = await (opts.reauthenticate ? opts.reauthenticate(ctx) : resolvePrincipal(db, headers));
+        const sameIdentity = fresh && fresh.kind === principal.kind && (
+          fresh.kind === "user" && principal.kind === "user"
+            ? fresh.userId === principal.userId
+            : fresh.kind === "agent" && principal.kind === "agent"
+              && fresh.agentId === principal.agentId && fresh.tokenId === principal.tokenId && fresh.orgId === principal.orgId
+        );
+        if (!fresh || !sameIdentity) {
+          throw new ConnectError("subscription credentials expired or were revoked", Code.Unauthenticated);
+        }
+        if (fresh.kind === "agent" && !fresh.scopes.includes("events:read")) {
+          throw new ConnectError("this token lacks the events:read scope", Code.PermissionDenied);
+        }
+        principal = fresh;
+        scope = {
+          ...scope,
+          authorizedOrgIds: await resolveAuthorizedOrgIds(db, principal),
+          ...(principal.kind === "agent" ? { agentScopes: new Set(principal.scopes) } : {}),
+        };
+        revalidateAt = now() + revalidateMs;
+      }
+
       hub ??= createHub(nc);
       const outbox = createOutbox<QueuedEvent>(maxQueue);
       const listener: Listener = {
@@ -247,8 +288,13 @@ export function createEventsHandler(db: any, nc: any, opts: { heartbeatMs?: numb
       try {
         yield control(READY_SUBJECT);
         while (true) {
-          const next = await outbox.take(heartbeatMs);
+          if (ctx?.signal?.aborted) return;
+          await revalidate();
+          const next = await outbox.take(Math.min(heartbeatMs, Math.max(1, revalidateAt - now())));
           if (next === CLOSED) return;
+          // An event or timer can wake us after the credential deadline.
+          // Check before yielding either domain data or another heartbeat.
+          await revalidate();
           if (next === IDLE) {
             yield control(HEARTBEAT_SUBJECT);
             continue;

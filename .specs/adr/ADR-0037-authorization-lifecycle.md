@@ -26,7 +26,7 @@ Authorize each keyed operation before cache lookup, and reauthenticate open even
 - Replay retains its existing principal/method/key identity, request hash and response compatibility, but never substitutes for authorization.
 - Stream revalidation checks expiry/revocation through `resolvePrincipal`, verifies that the identity is unchanged, and refreshes membership and agent scopes. Failure closes the stream with Unauthenticated or PermissionDenied rather than continuing with stale authority.
 - No raw credential is logged, serialized to the event broker, or persisted in a database. The original headers remain in the existing request lifetime only.
-- A request-scoped authentication callback bridges interceptor and stream handler. Tests can supply the callback directly without opening a socket. Production installs it for every RPC request.
+- Connect HandlerContext supplies the original request headers to the handler. Production reuses `resolvePrincipal` directly; tests can inject a resolver without opening a socket. No new interceptor context key is needed.
 - Validation occurs on elapsed wall time, with the queue wait capped at the next validation deadline. A busy stream cannot defer checks and an idle one cannot wait beyond the bound.
 - Membership events remain a fast-path refresh; periodic revalidation also repairs missed membership events.
 - Authorization failure does not delete a cached outcome; a later properly authorized retry can recover it.

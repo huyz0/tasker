@@ -17,3 +17,12 @@
 - **Verified**: Red: all 3 authorization regressions resolved when they should reject. Green: 21 task/queue/idempotency tests pass. `moon check --all`: 35 completed; backend 2051 pass / 28 skip; GUI 1324 pass; CLI, builds, typechecks, lint and doc gates pass. gh/act optional execution skipped because tools are absent.
 - **Notes**: Keep existing current resource-policy checks; move them before cache access without changing key identity or terminal-task retry behavior.
 - **Next**: M44-T03 stream lifecycle.
+
+## M44-T03 — Bound event subscription authorization lifetime
+
+- **Status**: done
+- **Date**: 2026-11-08
+- **Changed**: event handler and lifecycle regression tests.
+- **Verified**: Red: idle/busy streams continued instead of rejecting. Green: 34 feed tests pass, including real stored token revocation/expiry and session logout; handler coverage 100%. Full `moon check --all`: 35 completed, backend 2053 pass / 28 skip; existing real JetStream realtime integration: 1 pass.
+- **Notes**: Connect HandlerContext already supplies requestHeader, so the handler can re-resolve original credentials directly without adding an interceptor context key. Tests inject a resolver and clock; production uses resolvePrincipal and Date.now. Corrected M49 to extend the existing NATS CI workflow instead of duplicating it.
+- **Next**: M44-T04 complete verification and security review.

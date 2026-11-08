@@ -43,7 +43,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/lib/idempotency.test.ts.
   - **Verify**: Regression tests deny replay after membership removal, role reduction, or replacement with a narrower agent token; legitimate same-key replay still succeeds.
 
-- [ ] **M44-T03** — Revalidate credentials and membership on bounded intervals for event subscribers.
+- [x] **M44-T03** — Revalidate credentials and membership on bounded intervals for event subscribers.
   - **Files**: apps/backend/src/modules/events/events.handler.ts; apps/backend/src/modules/auth/session.ts; apps/backend/src/index.ts.
   - **Verify**: Tests revoke an agent token and a human session while their streams remain open; subsequent events are refused, including under continuous event traffic.
 
