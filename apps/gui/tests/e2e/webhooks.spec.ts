@@ -1,3 +1,4 @@
+import { openWorkspaceSettings } from './workspaceSettings';
 import { test, expect } from '@playwright/test';
 import { selectSeededOrg } from './selectSeededOrg';
 
@@ -11,6 +12,7 @@ import { selectSeededOrg } from './selectSeededOrg';
 test.describe('Webhooks', () => {
   test('an admin adds, pauses and deletes a webhook, and its secret is shown once', async ({ page }) => {
     await selectSeededOrg(page);
+    await openWorkspaceSettings(page);
     await page.getByRole('link', { name: 'Organizations' }).first().click();
     await page.getByRole('tab', { name: 'Webhooks' }).click();
     const panel = page.getByRole('tabpanel', { name: 'Webhooks' });

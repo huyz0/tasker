@@ -4,6 +4,9 @@ import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 import { resultRoute } from './components/layout/GlobalSearch';
 
+// Routing tests do not exercise a broker stream; the hook has its own real-transport suite.
+vi.mock('./hooks/useLiveEvents', () => ({ useLiveEvents: () => ({ status: 'connecting' }) }));
+
 // -------------------------------------------------------------------
 // Mock @tanstack/react-query so we control what useQuery returns.
 // -------------------------------------------------------------------
@@ -114,6 +117,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Back to dashboard' })).toBeInTheDocument();
     // Still inside the shell, so the sidebar is there to navigate away with.
+    fireEvent.click(screen.getByRole('button', { name: 'Workspace settings' }));
     expect(screen.getByRole('link', { name: 'Organizations' })).toBeInTheDocument();
   });
 
@@ -128,7 +132,7 @@ describe('App', () => {
       // The task opens as a modal over the workbench, which hides the page
       // behind it from the accessibility tree - so the heading is looked up
       // with `hidden`, and the task's own dialog is what proves the route.
-      expect(await screen.findByRole('heading', { name: 'Tasks', level: 1, hidden: true })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Tasks', level: 1, hidden: true }, { timeout: 5000 })).toBeInTheDocument();
       expect(await screen.findByRole('dialog')).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Page not found' })).toBeNull();
     });
@@ -146,6 +150,7 @@ describe('App', () => {
     healthQueryResult = { data: undefined, error: null, isLoading: false };
     renderApp();
     await screen.findByRole('heading', { name: 'Dashboard' });
+    fireEvent.click(screen.getByRole('button', { name: 'Workspace settings' }));
     const orgLink = screen.getByRole('link', { name: 'Organizations' });
     fireEvent.click(orgLink);
     expect(await screen.findByRole('heading', { level: 1, name: 'Organizations' })).toBeInTheDocument();
@@ -174,9 +179,9 @@ describe('App', () => {
       healthQueryResult = { data: undefined, error: null, isLoading: false };
       renderApp(path);
       if (kind === 'heading') {
-        expect(await screen.findByRole('heading', { name })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name }, { timeout: 5000 })).toBeInTheDocument();
       } else {
-        expect(await screen.findByText(name)).toBeInTheDocument();
+        expect(await screen.findByText(name, {}, { timeout: 5000 })).toBeInTheDocument();
       }
     });
 

@@ -20,9 +20,9 @@
 
 ## M51-T03 — Activity navigation
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-08
 - **Changed**: Navigation regression scenarios for grouped daily work and settings disclosure.
-- **Verified**: Pending red run before implementation.
+- **Verified**: Three navigation scenarios and the settings-group label assertion failed before their fixes; focused App/AppShell suite passes 39 tests. Two new navigation journeys and 27 existing layout/dashboard/addressable/audit/webhook journeys pass; 35 local gates pass.
 - **Notes**: Existing route URLs and scoped links remain the navigation contract.
-- **Next**: Implement grouping and verify focus, scope and mobile navigation.
+- **Next**: M51-T04.

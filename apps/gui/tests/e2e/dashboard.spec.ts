@@ -1,3 +1,4 @@
+import { openWorkspaceSettings } from './workspaceSettings';
 import { test, expect } from '@playwright/test';
 
 // The dashboard is the one screen where the unit tests prove the least. Every
@@ -74,8 +75,9 @@ test.describe('Dashboard', () => {
   // deleted rather than relocated. Navigating by click is what proves it.
   test('reaches System Health from the sidebar, not just by typing the URL', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('link', { name: 'Settings' }).click();
-    await expect(page.getByRole('heading', { name: 'System health', level: 2 })).toBeVisible();
+    await openWorkspaceSettings(page);
+    await page.getByRole('link', { name: 'Account & system' }).click();
+    await expect(page.getByRole('heading', { name: 'Account & system', level: 2 })).toBeVisible();
   });
 
   test('serves backend telemetry at /settings, off the home screen', async ({ page }) => {
@@ -83,7 +85,7 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('button', { name: 'Ping backend' })).toHaveCount(0);
 
     await page.goto('/settings');
-    await expect(page.getByRole('heading', { name: 'System health', level: 2 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Account & system', level: 2 })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Ping backend' })).toBeVisible();
     await expect(page.getByText(/placeholder area/)).toHaveCount(0);
   });

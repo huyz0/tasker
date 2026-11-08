@@ -1,3 +1,4 @@
+import { openWorkspaceSettings } from './workspaceSettings';
 import { test, expect } from '@playwright/test';
 import { selectSeededOrg } from './selectSeededOrg';
 
@@ -18,6 +19,7 @@ import { selectSeededOrg } from './selectSeededOrg';
 test.describe('Audit trail', () => {
   test('renders the organization\'s events, newest first, from the real backend', async ({ page }) => {
     await selectSeededOrg(page);
+    await openWorkspaceSettings(page);
     await page.getByRole('link', { name: 'Organizations' }).first().click();
     await page.getByRole('tab', { name: 'Audit trail' }).click();
 

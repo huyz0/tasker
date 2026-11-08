@@ -23,7 +23,7 @@ The rendered review found a 48px task-content region at 375px and collapsed head
 ## 3. Exit Criteria
 
 - [x] Task titles, descriptions, metadata and actions remain reachable at 375px; headers and filters remain readable at 768px and 1024px.
-- [ ] Daily navigation is grouped by activity with all existing destinations and URL scope preserved; mobile identifies its current project.
+- [x] Daily navigation is grouped by activity with all existing destinations and URL scope preserved; mobile identifies its current project.
 - [ ] Typography, density, surface and task-status roles are documented and applied consistently in light and dark themes.
 - [ ] Workflow/schedule empty states have a clear creation action; optional empty task content and report exceptions no longer overwhelm the screen.
 - [ ] Browser regressions, GUI coverage and local gates pass, with screenshots and remaining limitations recorded.
@@ -42,7 +42,7 @@ In scope: the seven tasks below, existing routes and server contracts, documenta
   - **Files**: apps/gui/src/components/ui/PageHeader.tsx; apps/gui/src/features/Tasks/index.tsx; apps/gui/tests/e2e/ui-layout.spec.ts
   - **Verify**: At 375px the task title and description occupy usable space and all properties are reachable; at 768/1024px the heading and every toolbar action remain visible without overlap.
 
-- [ ] **M51-T03** — Group navigation by daily activity and keep project context visible on mobile.
+- [x] **M51-T03** — Group navigation by daily activity and keep project context visible on mobile.
   - **Files**: apps/gui/src/components/layout/AppShell.tsx; AppShell.test.tsx; AppShell.stories.tsx
   - **Verify**: Group Work, Agents, Knowledge, Automation, Reports and Settings; preserve every route, scoped query string, active indication, keyboard access and mobile dismissal; expose current project in the header.
 

@@ -18,9 +18,10 @@ import {
   Users,
   Brain,
   Handshake,
-  LogOut
+  LogOut,
+  ChevronDown
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useScopeSync, useScopedTo } from '../../hooks/useScope';
 import { useLayoutStore } from '../../store/layout';
@@ -32,51 +33,50 @@ import { OrgProjectSwitcher } from './OrgProjectSwitcher';
 import { LiveStatusIndicator } from './LiveStatusIndicator';
 import { NotificationBell } from './NotificationBell';
 import { useLiveEvents } from '../../hooks/useLiveEvents';
+import { useScopeLabels } from '../../hooks/useScopeLabels';
 import { logout } from '../../lib/authSession';
 
-// Ten routes, flat, in table-creation order, used to read as an admin
-// panel's model list rather than an app someone works in all day — Labels,
-// Task Types, Bin and Organizations sat at the exact same visual weight as
-// Tasks, which is what a person actually opens this for. Two groups instead:
-// what you touch daily, and what you set up once and rarely revisit.
+// Daily activities precede occasional administration; URLs remain stable.
 const NAV_GROUPS = [
-  {
-    label: 'Workspace',
-    items: [
-      { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-      { name: 'Reports', path: '/reports', icon: BarChart3 },
-      { name: 'Projects', path: '/projects', icon: FolderKanban },
-      { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-      { name: 'AI Agents', path: '/agents', icon: Bot },
-      { name: 'Artifacts', path: '/artifacts', icon: FileBox },
-      { name: 'Memory', path: '/memory', icon: Brain },
-      { name: 'Handoffs', path: '/handoffs', icon: Handshake },
-    ],
-  },
-  {
-    label: 'Configuration',
-    items: [
-      { name: 'Task Types', path: '/task-types', icon: Workflow },
-      { name: 'Workflows', path: '/workflows', icon: ListChecks },
-      { name: 'Schedules', path: '/schedules', icon: CalendarClock },
-      { name: 'Labels', path: '/labels', icon: Tag },
-      { name: 'Organizations', path: '/organizations', icon: Building2 },
-      { name: 'Teams', path: '/teams', icon: Users },
-      { name: 'Roles', path: '/roles', icon: ShieldCheck },
-      { name: 'Bin', path: '/bin', icon: Trash2 },
-      // System Health lives here now. `/settings` was routable but unlinked,
-      // so moving backend telemetry off the dashboard would otherwise have
-      // hidden it behind a URL nobody types.
-      { name: 'Settings', path: '/settings', icon: Settings },
-    ],
-  },
+  { label: 'Work', items: [
+    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'Tasks', path: '/tasks', icon: CheckSquare },
+    { name: 'Handoffs', path: '/handoffs', icon: Handshake },
+  ] },
+  { label: 'Agents', items: [{ name: 'AI Agents', path: '/agents', icon: Bot }] },
+  { label: 'Knowledge', items: [
+    { name: 'Artifacts', path: '/artifacts', icon: FileBox },
+    { name: 'Memory', path: '/memory', icon: Brain },
+  ] },
+  { label: 'Automation', items: [
+    { name: 'Workflows', path: '/workflows', icon: ListChecks },
+    { name: 'Schedules', path: '/schedules', icon: CalendarClock },
+  ] },
+  { label: 'Insights', items: [{ name: 'Reports', path: '/reports', icon: BarChart3 }] },
+  { label: 'Workspace settings', items: [
+    { name: 'Projects', path: '/projects', icon: FolderKanban },
+    { name: 'Task Types', path: '/task-types', icon: Workflow },
+    { name: 'Labels', path: '/labels', icon: Tag },
+    { name: 'Organizations', path: '/organizations', icon: Building2 },
+    { name: 'Teams', path: '/teams', icon: Users },
+    { name: 'Roles', path: '/roles', icon: ShieldCheck },
+    { name: 'Bin', path: '/bin', icon: Trash2 },
+    { name: 'Account & system', path: '/settings', icon: Settings },
+  ] },
 ];
+const isSettingsPath = (path: string) => NAV_GROUPS[NAV_GROUPS.length - 1].items
+  .some(item => path === item.path || path.startsWith(`${item.path}/`));
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { sidebarOpen, toggleSidebar } = useLayoutStore();
   const setSidebarOpen = useLayoutStore((s) => s.setSidebarOpen);
   const location = useLocation();
   const navigate = useNavigate();
+  const [settingsExpanded, setSettingsExpanded] = useState(() => isSettingsPath(location.pathname));
+  const { projectName, hasProject } = useScopeLabels();
+  useEffect(() => {
+    if (isSettingsPath(location.pathname)) setSettingsExpanded(true);
+  }, [location.pathname]);
   const sidebarRef = useRef<HTMLElement | null>(null);
   // M28-T03 (ADR-0025): the single point where the URL's scope becomes the
   // store's. One direction only — anything that *changes* scope writes the
@@ -137,9 +137,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5" aria-hidden="true" />
             <span className="sr-only">Toggle Sidebar</span>
           </button>
-          <div className="font-semibold text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" aria-hidden="true" />
-            Tasker
+          <div className="min-w-0">
+            <div className="font-semibold text-sm flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+              Tasker
+            </div>
+            <p className="max-w-28 truncate text-xs text-muted-foreground" aria-label="Current project" title={hasProject ? projectName : 'No project selected'}>
+              {hasProject ? projectName : 'No project selected'}
+            </p>
           </div>
         </div>
         {/* min-w-0 so this group can shrink rather than forcing the document
@@ -198,22 +203,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <OrgProjectSwitcher />
-          <nav className="flex-1 space-y-4 overflow-y-auto scrollbar-thin p-4">
+          <nav className="flex-1 space-y-3 overflow-y-auto scrollbar-thin p-4">
             {NAV_GROUPS.map((group) => (
-              <div key={group.label} role="group" aria-labelledby={`nav-group-${group.label}`}>
-                <div
-                  id={`nav-group-${group.label}`}
-                  className="px-3 pb-1 text-xs font-medium text-muted-foreground"
-                >
-                  {group.label}
-                </div>
-                <div className="space-y-0.5">
+              <div key={group.label} role="group" aria-labelledby={`nav-group-${group.label.replaceAll(' ', '-')}`}>
+                {group.label === 'Workspace settings' ? (
+                  <button
+                    id={`nav-group-${group.label.replaceAll(' ', '-')}`}
+                    aria-expanded={settingsExpanded}
+                    aria-controls="workspace-settings-links"
+                    onClick={() => setSettingsExpanded(open => !open)}
+                    className="w-full flex items-center justify-between rounded-md px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    Workspace settings
+                    <ChevronDown aria-hidden="true" className={`h-3 w-3 ${settingsExpanded ? 'rotate-180' : ''}`} />
+                  </button>
+                ) : (
+                  <div id={`nav-group-${group.label.replaceAll(' ', '-')}`} className="px-3 pb-1 text-xs font-medium text-muted-foreground">{group.label}</div>
+                )}
+                <div id={group.label === 'Workspace settings' ? 'workspace-settings-links' : undefined} hidden={group.label === 'Workspace settings' && !settingsExpanded} className="space-y-0.5">
                   {group.items.map((item) => {
                     const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
                     return (
                       <Link
                         key={item.name}
                         to={scopedTo(item.path)}
+                        aria-current={isActive ? 'page' : undefined}
                         // On the click as well as on the path change: tapping the link
                         // for the page you are already on navigates nowhere, so the
                         // pathname effect never fires and the drawer stayed open over
