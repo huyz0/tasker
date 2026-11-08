@@ -27,22 +27,23 @@ const dashboardClient = createClient(DashboardService, transport);
  * server does the joins rather than the browser doing four round trips.
  */
 
-function Panel({ title, subtitle, action, children }: {
+function Panel({ title, subtitle, action, children, density = 'default' }: {
   title: string;
   subtitle: string;
+  density?: 'default' | 'compact';
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="border rounded-lg bg-surface-panel flex flex-col">
-      <div className="p-panel border-b flex items-start justify-between gap-3">
+      <div className={`${density === 'compact' ? 'px-4 py-3' : 'p-panel'} border-b flex items-start justify-between gap-3`}>
         <div>
           <h2 className="type-section-title">{title}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+          {density !== 'compact' && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
         {action}
       </div>
-      <div className="p-2 flex-1">{children}</div>
+      <div className={density === 'compact' ? 'flex-1' : 'p-2 flex-1'}>{children}</div>
     </section>
   );
 }
@@ -118,12 +119,13 @@ export function Dashboard() {
       )}
 
       {!isLoading && !error && data && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-6">
           <Panel
             title="Waiting on you"
+            density={data.awaitingReview.length ? 'default' : 'compact'}
             subtitle="Tasks you are a reviewer on that are not finished"
             action={
-              <span className="text-2xl font-semibold tabular-nums">{Number(data.awaitingReviewCount)}</span>
+              <span className={`${data.awaitingReview.length ? 'text-2xl font-semibold' : 'type-label text-muted-foreground'} tabular-nums`}>{Number(data.awaitingReviewCount)}</span>
             }
           >
             <ListState
@@ -143,9 +145,10 @@ export function Dashboard() {
 
           <Panel
             title="Done, but the PR is open"
+            density={data.disagreements.length ? 'default' : 'compact'}
             subtitle="Where the recorded status contradicts the pull request"
             action={
-              <span className="text-2xl font-semibold tabular-nums">{Number(data.disagreementCount)}</span>
+              <span className={`${data.disagreements.length ? 'text-2xl font-semibold' : 'type-label text-muted-foreground'} tabular-nums`}>{Number(data.disagreementCount)}</span>
             }
           >
             <ListState
@@ -165,7 +168,7 @@ export function Dashboard() {
             </ListState>
           </Panel>
 
-          <Panel title="Agents" subtitle="When each was last heard from, and what it is holding">
+          <Panel density={data.agents.length ? 'default' : 'compact'} title="Agents" subtitle="When each was last heard from, and what it is holding">
             <ListState
               isLoading={false}
               error={null}
@@ -202,7 +205,7 @@ export function Dashboard() {
             </ListState>
           </Panel>
 
-          <Panel title="Recent agent activity" subtitle="Notes and comments your agents have written">
+          <Panel density={data.recentActivity.length ? 'default' : 'compact'} title="Recent agent activity" subtitle="Notes and comments your agents have written">
             <ListState
               isLoading={false}
               error={null}

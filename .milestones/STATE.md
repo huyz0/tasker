@@ -1,8 +1,8 @@
 ---
 active_milestone: M51
-active_task: M51-T06
+active_task: M51-T07
 last_updated: 2026-11-08
-last_commit: 8fa1638
+last_commit: 6fbb96a
 blocked: false
 blocker: null
 ---
@@ -1847,9 +1847,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 
-| M51 | UI Navigation and Layout | in-progress | — | 7 | 5 |
+| M51 | UI Navigation and Layout | in-progress | — | 7 | 6 |
 
-**Total: 363 tasks across 45 milestones — 341 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 363 tasks across 45 milestones — 342 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

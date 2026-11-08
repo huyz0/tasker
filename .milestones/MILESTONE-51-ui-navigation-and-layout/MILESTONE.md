@@ -25,7 +25,7 @@ The rendered review found a 48px task-content region at 375px and collapsed head
 - [x] Task titles, descriptions, metadata and actions remain reachable at 375px; headers and filters remain readable at 768px and 1024px.
 - [x] Daily navigation is grouped by activity with all existing destinations and URL scope preserved; mobile identifies its current project.
 - [x] Typography, density, surface and task-status roles are documented and applied consistently in light and dark themes.
-- [ ] Workflow/schedule empty states have a clear creation action; optional empty task content and report exceptions no longer overwhelm the screen.
+- [x] Workflow/schedule empty states have a clear creation action; optional empty task content and report exceptions no longer overwhelm the screen.
 - [ ] Browser regressions, GUI coverage and local gates pass, with screenshots and remaining limitations recorded.
 
 ## 4. Scope
@@ -54,7 +54,7 @@ In scope: the seven tasks below, existing routes and server contracts, documenta
   - **Files**: apps/gui/src/features/Workflows/; apps/gui/src/features/Schedules/
   - **Verify**: Empty views offer one coherent introduction and creation action; populated master-detail and new-item routes remain usable at 375/768/1280px; loading/error/retry remain distinct.
 
-- [ ] **M51-T06** — Reduce empty task-detail sections and bound report exceptions while retaining access to every item.
+- [x] **M51-T06** — Reduce empty task-detail sections and bound report exceptions while retaining access to every item.
   - **Files**: apps/gui/src/features/Tasks/; apps/gui/src/features/Reports/; apps/gui/src/pages/Dashboard.tsx
   - **Verify**: Empty optional task context is disclosed on demand; populated content remains visible; reports show a bounded exception preview with accessible expand/collapse; dashboard avoids equally prominent empty panels.
 

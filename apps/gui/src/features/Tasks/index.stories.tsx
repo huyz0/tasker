@@ -5,6 +5,7 @@ import { TasksWorkbench } from './index';
 const meta: Meta<typeof TasksWorkbench> = {
   title: 'Features/TasksWorkbench',
   component: TasksWorkbench,
+  parameters: { docs: { description: { component: 'Optional context is previewed independently in Features/Tasks/Optional context; assembled task routes and native keyboard disclosure are verified in ui-layout.spec.ts.' } } },
 };
 export default meta;
 export const Default: StoryObj<typeof TasksWorkbench> = {};

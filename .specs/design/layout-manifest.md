@@ -57,3 +57,9 @@ PageHeader primary actions sit with the title; growing filters and view controls
 Automation screens use ListState's `emptyTitle`, description and creation action for an empty collection. Loading and failed/denied reads keep their own state and Retry action instead of pretending that the collection is empty. Existing selected-item routes remain addressable, and collection items are links supporting normal browser navigation. Creation forms avoid a second narrow list column below `lg`.
 
 Automation screen stories use their own MemoryRouter and deterministic public query-cache fixtures through `parameters.router: false`. The default Storybook decorator still supplies routing for existing primitive stories. Fixture scopes are synthetic, and no credentials or backend writes are required to render empty, loading, denied, populated and create states.
+
+## Optional context and exception density (M51)
+
+Task details keep description and conversation primary. Summary, agent plan and usage are native keyboard-operable disclosures: empty content starts closed, populated content starts open, and closing a section retains its mounted draft. Switching tasks resets that task's disclosure state.
+
+The Stalled work report previews five loaded exceptions, preserving claim-first order. A count-bearing Show all/Show fewer control exposes every loaded claim and waiting task; hidden waiting work retains a count. This does not change the server's existing response limits. Empty dashboard panels retain titles, guidance and actions with compact spacing and subdued zero counts; grid rows do not stretch them to match populated neighbors.

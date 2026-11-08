@@ -44,3 +44,12 @@
 - **Verified**: 37 focused tests and eight real-browser journeys pass; empty/create/cancel covers 375/768/1280px. Six component regressions and the mobile heading regression failed before fixes; deliberate breakpoint reversal fails both tablet editor scenarios. Twenty Storybook state captures render without overflow; existing addon script 404 is documented. All 35 local gates pass.
 - **Notes**: Preserve loading/error/retry and existing new-item routes; one creation action should lead into the same editor.
 - **Next**: M51-T06.
+
+## M51-T06 — Reading density and progressive disclosure
+
+- **Status**: done
+- **Date**: 2026-11-08
+- **Changed**: Planned native task-context disclosure, bounded report preview and compact dashboard empty summaries.
+- **Verified**: Three component regressions and the 169px empty-panel browser regression failed before fixes; deliberate forced-closed context fails the populated test. All 127 focused tests, seven browser layout/keyboard/history scenarios and 14 settled light/dark Storybook accessibility/state checks pass. Sixteen captures have no page exceptions or document overflow; all 35 local gates pass.
+- **Notes**: Retain every report row and all task summary actions; populated context opens normally.
+- **Next**: M51-T07.

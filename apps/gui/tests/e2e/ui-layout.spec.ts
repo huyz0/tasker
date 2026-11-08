@@ -63,3 +63,47 @@ for (const theme of ['light', 'dark']) {
     }
   });
 }
+
+
+test('empty dashboard summaries use compact space beside populated panels', async ({ page }) => {
+  await openSeededWork(page);
+  const scope = new URL(page.url()).search;
+  await page.route('**/tasker.health.v1.DashboardService/GetDashboard', route => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ awaitingReview: [], awaitingReviewCount: '0', disagreements: [], disagreementCount: '0',
+      agents: Array.from({ length: 6 }, (_, i) => ({ id: `agent-${i}`, name: `Active agent ${i}`, openTaskCount: '1', lastUsedAt: new Date().toISOString() })), recentActivity: [] }),
+  }));
+  await page.goto(`/${scope}`);
+  await expect(page.getByText('Nothing is waiting on your review.')).toBeVisible();
+  const empty = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Waiting on you', exact: true }) });
+  expect((await empty.boundingBox())!.height).toBeLessThan(140);
+  const agents = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Agents', exact: true }) });
+  expect((await agents.boundingBox())!.height).toBeGreaterThan((await empty.boundingBox())!.height);
+  await expect(page.getByText('Active agent 5', { exact: true })).toBeVisible();
+});
+
+test('optional task context supports native keyboard disclosure and retains a summary draft', async ({ page }) => {
+  await page.route('**/tasker.health.v1.TaskService/GetTask', async route => {
+    const response = await route.fetch();
+    const data = await response.json();
+    delete data.task.summary; delete data.task.plan; delete data.task.usage;
+    await route.fulfill({ response, json: data });
+  });
+  await openSeededWork(page);
+  await page.getByRole('heading', { level: 4 }).getByRole('button').first().click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('The agent has not shared a plan.')).toBeHidden();
+  const plan = dialog.locator('summary').filter({ hasText: 'Agent plan' });
+  await plan.focus();
+  await page.keyboard.press('Space');
+  await expect(dialog.getByText('The agent has not shared a plan.')).toBeVisible();
+  const summary = dialog.locator('summary').filter({ hasText: /^Summary$/ });
+  await summary.click();
+  await dialog.getByRole('button', { name: 'Write a summary' }).click();
+  const draft = dialog.getByRole('textbox', { name: 'Summary', exact: true });
+  await draft.fill('Keep this draft when collapsed');
+  await summary.click();
+  await expect(draft).toBeHidden();
+  await summary.click();
+  await expect(draft).toHaveValue('Keep this draft when collapsed');
+});

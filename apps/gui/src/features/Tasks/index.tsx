@@ -3,9 +3,7 @@ import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useScopedTo } from '../../hooks/useScope';
 import { PriorityBadge, BlockedBadge, NeedsInputBadge, AwaitingApprovalBadge } from './PriorityBadge';
-import { TaskPlan } from './TaskPlan';
-import { TaskUsage } from './TaskUsage';
-import { TaskSummaryPanel } from './TaskSummary';
+import { TaskContext } from './TaskContext';
 import { TaskInputRequests, QuestionsQueue } from './InputRequests';
 import { TaskApprovals, ApprovalsQueue } from './Approvals';
 import { PRIORITY_OPTIONS } from './priority';
@@ -1231,18 +1229,7 @@ export function TasksWorkbench() {
                   )}
                </div>
              )}
-             <div className="mt-8">
-               <h3 className="type-section-title mb-3">Summary</h3>
-               <TaskSummaryPanel key={expandedTask.id} taskId={expandedTask.id} summary={expandedTask.summary} />
-             </div>
-             <div className="mt-8">
-               <h3 className="type-section-title mb-3">Agent plan</h3>
-               <TaskPlan steps={expandedTask.plan ?? []} />
-             </div>
-             <div className="mt-8">
-               <h3 className="type-section-title mb-3">Usage and cost</h3>
-               <TaskUsage usage={expandedTask.usage} />
-             </div>
+             <TaskContext key={expandedTask.id} taskId={expandedTask.id} summary={expandedTask.summary} plan={expandedTask.plan} usage={expandedTask.usage} />
              <div className="mt-8">
                <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>
                <Comment.Provider entityId={expandedTask.id} entityType="task">
