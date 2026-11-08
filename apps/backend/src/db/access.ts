@@ -16,6 +16,7 @@ interface AccessScope {
   db: any;
   transaction: boolean;
   committed: CommitCallback[];
+  pending: CommitCallback[];
 }
 const current = new AsyncLocalStorage<AccessScope>();
 const stateKey = Symbol('tasker.database.access');
@@ -33,7 +34,7 @@ async function access<T>(state: DatabaseState, fn: () => T | PromiseLike<T>): Pr
   await before;
   state.busy = true;
   try {
-    return await current.run({ state, db: state.raw, transaction: false, committed: [] }, async () => await fn());
+    return await current.run({ state, db: state.raw, transaction: false, committed: [], pending: [] }, async () => await fn());
   } finally {
     state.busy = false;
     release();
@@ -109,14 +110,20 @@ export async function withUnitOfWork<T>(db: any, fn: () => Promise<T>): Promise<
   const parent = owned(state);
   if (parent?.transaction) return fn();
   const callbacks: CommitCallback[] = [];
+  const pending: CommitCallback[] = [];
+  const execute = (connection: any) => current.run({ state, db: connection, transaction: true, committed: callbacks, pending }, async () => {
+    const value = await fn();
+    for (const callback of pending) await callback();
+    return value;
+  });
   const result = await access(state, async () => {
     if (!state.sqlite) {
-      return state.raw.transaction((tx: any) => current.run({ state, db: tx, transaction: true, committed: callbacks }, fn));
+      return state.raw.transaction(execute);
     }
     state.raw.run(sql.raw('BEGIN IMMEDIATE'));
     state.transaction = true;
     try {
-      const value = await current.run({ state, db: state.raw, transaction: true, committed: callbacks }, fn);
+      const value = await execute(state.raw);
       state.raw.run(sql.raw('COMMIT'));
       return value;
     } catch (error) {
@@ -151,4 +158,18 @@ export function transactionalOperation<Args extends unknown[], Result>(
 ): (...args: Args) => Promise<Result> {
   return (...args) => withUnitOfWork(db, () => operation(...args))
     .catch(error => { throw transactionConflict(error) ?? error; });
+}
+
+/** Capture/storage failures here abort the still-open domain transaction. */
+export function beforeCommit(callback: CommitCallback): boolean {
+  const scope = current.getStore();
+  if (!scope?.transaction) return false;
+  scope.pending.push(callback);
+  return true;
+}
+
+/** Internal capture context, never exposed to transport callers. */
+export function currentUnitOfWork(): { db: any; sqlite: boolean } | undefined {
+  const scope = current.getStore();
+  return scope?.transaction ? { db: scope.db, sqlite: scope.state.sqlite } : undefined;
 }

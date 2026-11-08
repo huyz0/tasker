@@ -1134,3 +1134,25 @@ export const scheduleRuns = sqliteTable("schedule_runs", {
     scheduleRanIdx: index("schedule_runs_schedule_id_ran_idx").on(table.scheduleId, table.ranAt),
   };
 });
+
+// M46 (ADR-0040): source events commit with the domain mutation. No foreign
+// keys: the recovery/audit source must survive an entity or tenant purge.
+export const domainEvents = sqliteTable("domain_events", {
+  id: text("id").primaryKey(),
+  subject: text("subject").notNull(),
+  orgId: text("org_id"),
+  projectId: text("project_id"),
+  payload: text("payload").notNull(),
+  occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  brokerRequired: integer("broker_required", { mode: "boolean" }).notNull(),
+  deliveredAt: integer("delivered_at", { mode: "timestamp" }),
+  nextAttemptAt: integer("next_attempt_at", { mode: "timestamp" }).notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  leaseToken: text("lease_token"),
+  claimedUntil: integer("claimed_until", { mode: "timestamp" }),
+  lastError: text("last_error"),
+}, table => ({
+  pendingIdx: index("domain_events_pending_idx").on(table.deliveredAt, table.nextAttemptAt, table.claimedUntil),
+  orgCreatedIdx: index("domain_events_org_created_idx").on(table.orgId, table.createdAt),
+}));

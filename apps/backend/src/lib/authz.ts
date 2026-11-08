@@ -4,7 +4,7 @@ import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
 import { currentUserIdKey, currentPrincipalKey, type Principal } from '../modules/auth/session';
 import { assertCan, type Scope } from './policy';
-import { setRequestOrg } from './requestContext';
+import { setRequestOrg, setRequestProject } from './requestContext';
 
 // Resolved lazily inside each function rather than once at module load, since
 // STANDALONE is set at test/runtime, not import time - freezing it here caused
@@ -225,6 +225,7 @@ export async function getProjectOrgId(db: any, projectId: string, includeDeleted
   if (!rows || rows.length === 0) {
     throw new ConnectError('Project not found', Code.NotFound);
   }
+  setRequestProject(projectId);
   return rows[0].orgId;
 }
 

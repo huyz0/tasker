@@ -39,7 +39,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: .specs/adr/ADR-0040-transactional-domain-events.md; .test-plans/TEST-PLAN-0046-durable-domain-events/.
   - **Verify**: Define at-least-once delivery and consumer deduplication; choose acknowledged JetStream publication over fire-and-forget and document brokerless standalone behavior.
 
-- [ ] **M46-T02** — Add event storage in both dialects and capture events in the mutation unit of work.
+- [x] **M46-T02** — Add event storage in both dialects and capture events in the mutation unit of work.
   - **Files**: apps/backend/src/lib/natsCorrelation.ts; apps/backend/src/db/schema.*.ts; apps/backend/src/modules/**; apps/backend/drizzle-*/.
   - **Verify**: Mutation rollback produces no event; commit produces an event with stable ID, occurredAt, tenant, actor and trace metadata; migrate old databases and build the standalone binary.
 

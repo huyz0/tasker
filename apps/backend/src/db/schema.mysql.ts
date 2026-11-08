@@ -907,3 +907,24 @@ export const scheduleRuns = mysqlTable("schedule_runs", {
     scheduleRanIdx: index("schedule_runs_schedule_id_ran_idx").on(table.scheduleId, table.ranAt),
   };
 });
+
+// M46 (ADR-0040): retained transactional source for audit and broker delivery.
+export const domainEvents = mysqlTable("domain_events", {
+  id: varchar("id", { length: 256 }).primaryKey(),
+  subject: varchar("subject", { length: 256 }).notNull(),
+  orgId: varchar("org_id", { length: 256 }),
+  projectId: varchar("project_id", { length: 256 }),
+  payload: longtext("payload").notNull(),
+  occurredAt: timestamp("occurred_at").notNull(),
+  createdAt: timestamp("created_at").notNull(),
+  brokerRequired: boolean("broker_required").notNull(),
+  deliveredAt: timestamp("delivered_at"),
+  nextAttemptAt: timestamp("next_attempt_at").notNull(),
+  attempts: int("attempts").notNull().default(0),
+  leaseToken: varchar("lease_token", { length: 128 }),
+  claimedUntil: timestamp("claimed_until"),
+  lastError: text("last_error"),
+}, table => ({
+  pendingIdx: index("domain_events_pending_idx").on(table.deliveredAt, table.nextAttemptAt, table.claimedUntil),
+  orgCreatedIdx: index("domain_events_org_created_idx").on(table.orgId, table.createdAt),
+}));

@@ -13,7 +13,9 @@ M45 makes task/workflow mutations atomic and buffers events until commit, but
 an API process can die after commit and before publication. The webhook sink
 also queues deliveries asynchronously. JetStream cannot recover an event never
 published to it. Background stalled-claim detection and scheduled-run recording
-publish outside ordinary RPC handlers and need explicit boundaries too.
+publish outside ordinary RPC handlers and need explicit boundaries too. Artifact
+creation emits its full content and accepts 15 million characters
+(`artifacts.handler.ts`), exceeding the default NATS payload limit.
 
 ## Options
 
