@@ -22,7 +22,7 @@ The rendered review found a 48px task-content region at 375px and collapsed head
 
 ## 3. Exit Criteria
 
-- [ ] Task titles, descriptions, metadata and actions remain reachable at 375px; headers and filters remain readable at 768px and 1024px.
+- [x] Task titles, descriptions, metadata and actions remain reachable at 375px; headers and filters remain readable at 768px and 1024px.
 - [ ] Daily navigation is grouped by activity with all existing destinations and URL scope preserved; mobile identifies its current project.
 - [ ] Typography, density, surface and task-status roles are documented and applied consistently in light and dark themes.
 - [ ] Workflow/schedule empty states have a clear creation action; optional empty task content and report exceptions no longer overwhelm the screen.
@@ -38,7 +38,7 @@ In scope: the seven tasks below, existing routes and server contracts, documenta
   - **Files**: design/UX-DESIGN.md; .test-plans/TEST-PLAN-0051-ui-navigation-and-layout/TEST-PLAN.md; apps/backend/src/modules/webhooks/delivery.test.ts
   - **Verify**: Compare the direction with captured screens and external primary guidance; define navigation, typography, surface and density roles before implementation.
 
-- [ ] **M51-T02** — Restore usable task detail and header layouts at mobile, tablet and small laptop widths.
+- [x] **M51-T02** — Restore usable task detail and header layouts at mobile, tablet and small laptop widths.
   - **Files**: apps/gui/src/components/ui/PageHeader.tsx; apps/gui/src/features/Tasks/index.tsx; apps/gui/tests/e2e/ui-layout.spec.ts
   - **Verify**: At 375px the task title and description occupy usable space and all properties are reachable; at 768/1024px the heading and every toolbar action remain visible without overlap.
 

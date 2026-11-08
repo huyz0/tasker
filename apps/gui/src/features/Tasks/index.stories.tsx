@@ -8,3 +8,8 @@ const meta: Meta<typeof TasksWorkbench> = {
 };
 export default meta;
 export const Default: StoryObj<typeof TasksWorkbench> = {};
+
+/** The assembled 375px task dialog is also covered by ui-layout.spec.ts. */
+export const MobileWorkbench: StoryObj<typeof TasksWorkbench> = {
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+};

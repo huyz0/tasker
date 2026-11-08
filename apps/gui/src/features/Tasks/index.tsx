@@ -839,7 +839,7 @@ export function TasksWorkbench() {
       <PageHeader
         title="Tasks"
         description="Every task in this project, by status."
-        actions={
+        toolbar={
           <>
             <div className="flex rounded-md border overflow-hidden text-sm font-medium">
               <button
@@ -1167,8 +1167,8 @@ export function TasksWorkbench() {
            {deleteTaskMutation.isError && (
              <p className="text-sm text-destructive px-4 pt-2 shrink-0">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
            )}
-           <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+           <div className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden flex flex-col md:flex-row">
+           <div className="flex-none md:flex-1 md:min-w-0 p-6 overflow-visible md:overflow-y-auto custom-scrollbar">
              <div className="text-sm text-primary font-medium mb-1">{expandedTask.displayId}</div>
              {isEditingTask ? (
                <form
@@ -1250,7 +1250,7 @@ export function TasksWorkbench() {
                </Comment.Provider>
              </div>
            </div>
-           <div className="w-full md:w-72 shrink-0 border-t md:border-t-0 md:border-l p-6 overflow-y-auto custom-scrollbar space-y-6 bg-muted/20">
+           <div className="w-full md:w-72 shrink-0 border-t md:border-t-0 md:border-l p-6 overflow-visible md:overflow-y-auto custom-scrollbar space-y-6 bg-muted/20">
              <div className="space-y-3 text-sm text-muted-foreground">
                 <div className="flex justify-between items-center">
                   <span className="w-20">Status:</span>

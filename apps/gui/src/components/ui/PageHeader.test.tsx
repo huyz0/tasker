@@ -18,6 +18,12 @@ describe('PageHeader', () => {
     expect(container.querySelector('p')).toBeNull();
   });
 
+  it('keeps toolbar controls and primary actions available together', () => {
+    render(<PageHeader title="Tasks" actions={<button>New task</button>} toolbar={<input aria-label="Filter tasks" />} />);
+    expect(screen.getByRole('button', { name: 'New task' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Filter tasks' })).toBeInTheDocument();
+  });
+
   it('renders actions beside the title', () => {
     render(<PageHeader title="Roles" actions={<button>Create role</button>} />);
     expect(screen.getByRole('button', { name: 'Create role' })).toBeInTheDocument();

@@ -11,12 +11,12 @@
 
 ## M51-T02 — Responsive task layouts
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-08
 - **Changed**: Browser regression scenarios for task heading/filter visibility and mobile task content scrolling.
-- **Verified**: Three Playwright scenarios failed before implementation: heading widths 0 at 768/1024px; mobile content height 48px.
+- **Verified**: Three browser regressions failed before the fix and pass after it; 100 focused task/header tests pass, 19 dashboard/navigation/layout journeys pass, and all 35 local gates pass. Six mobile/tablet light/dark captures have no console errors or document overflow.
 - **Notes**: Filters use an explicit toolbar slot; the mobile task body owns scrolling. Desktop retains two independently scrollable columns.
-- **Next**: Implement, capture and run regression gates.
+- **Next**: M51-T03.
 
 ## M51-T03 — Activity navigation
 
