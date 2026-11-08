@@ -35,3 +35,12 @@
 - **Verified**: Red: overlapping calls ran 3 mutations, response-store failure committed data, unkeyed failure left data. Green: 57 focused task/replay/queue tests pass; real MySQL retry/task concurrency run 10 pass across independent pools. `moon check --all`: 35 completed. Review CODE-REVIEW-v2.md approved.
 - **Notes**: Reserve before execution inside one unit; serialize SQLite and use MySQL unique-key reservation with retryable refusal for a concurrent loser. Authorize inside the task unit before replay. Defer volatile publication until commit; durable capture remains M46.
 - **Next**: M45-T04 workflow rollback.
+
+## M45-T04 — Workflow unit ownership
+
+- **Status**: done
+- **Date**: 2026-11-08
+- **Changed**: workflow transaction entry point and late-step failure regression.
+- **Verified**: Deliberately disabling the outer unit leaks 2 task-created events and advances the counter to 3; restored code rolls back failures at all 3 step positions. Racing identical keys return one graph; deliberately bypassing replay produces different parent IDs and fails. Full `moon check --all`: 35 completed. Review CODE-REVIEW-v3.md approved.
+- **Notes**: Replace compensating deletes with the shared unit; a later step's domain validation can fail after parent and prior steps were written. Check the counter and event stream as well as task rows.
+- **Next**: M45-T05 process interruption and final verification.

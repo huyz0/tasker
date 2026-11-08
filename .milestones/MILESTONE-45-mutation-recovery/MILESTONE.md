@@ -47,7 +47,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/lib/idempotency.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/; apps/backend/scripts/generate-embedded-migrations.ts.
   - **Verify**: Concurrent identical keys return one outcome or an explicit processing response; differing payloads fail; storage failure cannot silently discard retry protection; run against SQLite and MySQL.
 
-- [ ] **M45-T04** — Make workflow instantiation reuse the transaction rather than compensating published tasks.
+- [x] **M45-T04** — Make workflow instantiation reuse the transaction rather than compensating published tasks.
   - **Files**: apps/backend/src/modules/workflows/workflows.handler.ts; apps/backend/src/modules/workflows/*.test.ts.
   - **Verify**: Fail each step in a multi-step workflow and prove no visible partial graph; race identical instantiation keys and prove one graph.
 

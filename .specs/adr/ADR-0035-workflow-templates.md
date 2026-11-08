@@ -56,3 +56,11 @@ a later step still fails.
 - An instance drifts from its template by design; there is no "sync".
 - A failed instantiate briefly shows tasks that then disappear (and emits
   their `task.created` events); validation up front makes this rare.
+
+## Atomicity amendment — 2026-11-08
+
+[ADR-0038](ADR-0038-atomic-mutations.md) replaces compensating task deletion
+with a shared database unit of work. Workflow validation, keyed replay, parent
+creation and every step now share the transaction; failed runs roll back their
+counter changes and buffered events as well as task rows. The template graph,
+permissions and task/parent representation in this decision remain unchanged.
