@@ -1,12 +1,12 @@
 ---
 id: M45
 title: Mutation Recovery
-status: todo
+status: in-progress
 goal: Concurrent and interrupted keyed mutations produce one committed outcome and a retry can recover that outcome.
 depends_on: [M44]
 surfaces: [backend, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-08
 completed_at: null
 ---
 
@@ -35,12 +35,12 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 
 ## 5. Task Breakdown
 
-- [ ] **M45-T01** — Design a dialect-aware unit of work with idempotency reservation and nested operation semantics.
+- [x] **M45-T01** — Design a dialect-aware unit of work with idempotency reservation and nested operation semantics.
   - **Files**: .specs/adr/ADR-0038-atomic-mutations.md; apps/backend/src/lib/idempotency.ts; apps/backend/src/db/db.ts.
   - **Verify**: Document SQLite synchronous transaction constraints, MySQL connection ownership, crash recovery, legacy rows and request-hash conflicts before code.
 
-- [ ] **M45-T02** — Extract task creation and claiming application operations with explicit transaction ownership.
-  - **Files**: apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/modules/tasks/taskOperations.ts.
+- [ ] **M45-T02** — Introduce transaction-owned database access shared by task creation, claiming and workflow operations.
+  - **Files**: apps/backend/src/db/access.ts; apps/backend/src/db/db.ts; apps/backend/src/modules/tasks/tasks.handler.ts.
   - **Verify**: Existing task and queue tests pass; injected mid-operation failure leaves no partial task, assignment or counter update.
 
 - [ ] **M45-T03** — Reserve idempotency keys and commit the mutation plus response atomically.
