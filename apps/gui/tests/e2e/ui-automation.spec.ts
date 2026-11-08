@@ -26,7 +26,7 @@ for (const width of [375, 768, 1280]) {
       await page.getByRole('button', { name: `New ${kind}`, exact: true }).click();
       const name = page.getByRole('textbox', { name: 'Name', exact: true });
       await expect(name).toBeVisible();
-      expect((await name.boundingBox())!.width).toBeGreaterThan(240);
+      await expect.poll(async () => (await name.boundingBox())?.width ?? 0).toBeGreaterThan(240);
       expect((await name.boundingBox())!.x + (await name.boundingBox())!.width).toBeLessThanOrEqual(width);
       await page.getByRole('button', { name: 'Cancel', exact: true }).click();
       await expect(page.getByRole('heading', { level: 2, name: `No ${kind}s yet.` })).toBeVisible();

@@ -14,7 +14,7 @@ Keep existing route URLs. Order daily work first: Dashboard, Tasks and Handoffs 
 
 The page title and descriptive text own one row. A growing set of filters belongs below, wraps within available space and never competes with the title's minimum width. Mobile task detail uses one scroll owner, content followed by metadata; desktop retains content and property columns. All controls must be reachable through ordinary scrolling and keyboard navigation. The board intentionally scrolls horizontally; its toolbar must not.
 
-Workflow and schedule screens use one empty introduction with one primary creation action. Once populated, a bounded master list sits beside detail on desktop and stacks on mobile. Error states explain failure with Retry, loading retains a status indicator, and access-denied errors remain errors rather than empty collections. Permission handling stays with the existing server and shared error components.
+Workflow and schedule screens use one empty introduction with one primary creation action. Once populated, a bounded master list sits beside detail from 1024px. Below that width, selection opens full-width detail or editor; a collection return link is visible on read views and Cancel retains the editor route behavior. Error states explain failure with Retry, loading retains a status indicator, and access-denied errors remain errors rather than empty collections. Permission handling stays with the existing server and shared error components.
 
 ## Visual roles
 

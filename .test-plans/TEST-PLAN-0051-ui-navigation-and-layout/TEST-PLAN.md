@@ -21,9 +21,12 @@
 
 - Given no workflows or schedules, when opened, then one coherent empty introduction and one primary creation action render, without an empty detail placeholder beside it.
 - Given a loading or failed list, when opened, then loading and error/retry remain distinct from a true empty state.
+- Given a selected schedule at 375px, when its detail renders, then title/description retain usable width and actions remain reachable below them.
 - Given an optional task section with no data, when expanded, then its existing empty guidance and actions are reachable; populated sections remain exposed by default.
 - Given more report exceptions than the preview limit, when initially rendered, then only the preview is shown and a count-bearing expansion exposes all rows; collapse restores the preview.
 - Given empty dashboard summaries alongside populated activity, when rendered, then empty summaries use less space without hiding their labels or actions.
+
+- Given a signed-in account at a narrow width, when the visible account name is hidden, then assistive technology can identify the account through a valid named group.
 
 ## Regression and review
 

@@ -1,0 +1,562 @@
+[
+  {
+    "id": "features-workflows-screen--empty",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-workflows-screen--loading",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-workflows-screen--permission-denied",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-workflows-screen--populated",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-workflows-screen--create",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-schedules-screen--empty",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-schedules-screen--loading",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-schedules-screen--permission-denied",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-schedules-screen--populated",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-schedules-screen--create",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasksworkbench--default",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasksworkbench--empty",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasksworkbench--loading",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasksworkbench--permission-denied",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasks-optional-context--empty",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasks-optional-context--populated",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "pages-dashboard--no-org-selected",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "pages-dashboard--empty",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "pages-dashboard--loading",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "pages-dashboard--permission-denied",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "pages-dashboard--with-org-selected",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-reports--stalled-long-preview",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "design-system-visual-roles--operational-workspace",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-pageheader--title-only",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-pageheader--with-description",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-pageheader--with-actions",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-pageheader--with-toolbar",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-liststate--loading",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-liststate--error-state",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-liststate--empty",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-liststate--populated",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-liststate--collection-introduction",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-workflows-screen--empty",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-workflows-screen--loading",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-workflows-screen--permission-denied",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-workflows-screen--populated",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-workflows-screen--create",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-schedules-screen--empty",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-schedules-screen--loading",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-schedules-screen--permission-denied",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-schedules-screen--populated",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-schedules-screen--create",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasksworkbench--default",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasksworkbench--empty",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasksworkbench--loading",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasksworkbench--permission-denied",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasks-optional-context--empty",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-tasks-optional-context--populated",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "pages-dashboard--no-org-selected",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "pages-dashboard--empty",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "pages-dashboard--loading",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "pages-dashboard--permission-denied",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "pages-dashboard--with-org-selected",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "features-reports--stalled-long-preview",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "design-system-visual-roles--operational-workspace",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-pageheader--title-only",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-pageheader--with-description",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-pageheader--with-actions",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-pageheader--with-toolbar",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-liststate--loading",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-liststate--error-state",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-liststate--empty",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-liststate--populated",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "ui-liststate--collection-introduction",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "layout-appshell--desktop",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "layout-appshell--mobile-drawer-open",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "layout-currentuser--default",
+    "width": 1280,
+    "theme": "light",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "layout-appshell--desktop",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "layout-appshell--mobile-drawer-open",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  },
+  {
+    "id": "layout-currentuser--default",
+    "width": 375,
+    "theme": "dark",
+    "errors": [],
+    "violations": [],
+    "overflow": []
+  }
+]

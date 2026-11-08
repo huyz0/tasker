@@ -73,22 +73,13 @@ data — carries `design-lint-disable-next-line tokens — <reason>`.
 
 ## 2. Typography
 
-- **Font Family**: System UI / Sans-Serif (`sans`). Do not import custom web fonts unless explicitly defined by brand guidelines.
-- **Headings**:
-  - `h1`: `text-3xl font-semibold tracking-tight` (or larger `text-4xl text-5xl` for marketing/hero spots).
-  - `h2`: `text-2xl font-semibold tracking-tight`
-  - `h3`: `text-xl font-medium tracking-tight`
-- **Body**: `text-base` for standard read, `text-sm` for dense data tables and secondary text.
-- **Data/Code**: Use `font-mono` for metrics, telemetry `id`s, or command line references.
+Use the operational role table in section 6 as the canonical type scale. Routed titles use `PageHeader` and `type-page-title`; panels use `type-section-title`, and open task titles use `type-detail-title`. Keep heading levels semantic rather than choosing a level for its default size.
 
-- **Micro text**: `text-2xs` (10px) for counters and dense badges — a token,
-  not `text-[10px]`.
-- **Headings balance**: `h1`–`h3` get `text-wrap: balance` from the base layer;
-  do not add it per call site.
-- **Page title**: every routed screen opens with `<PageHeader title
-  description? actions? />` (`components/ui/PageHeader.tsx`). Do not hand-write
-  the page `h1`, and do not wrap the page in its own `p-4` — `main` owns the
-  gutter.
+- **Font**: One system sans stack for interface and reading; `font-data` for identifiers/code. Numeric values may use tabular figures without changing the typeface. No downloaded font is required.
+- **Body**: `type-body` for compact operational content; retain the existing readable prose treatment for long descriptions.
+- **Small text**: `type-caption` (12px) for secondary metadata. The 10px micro role is limited to incidental counters, never essential controls or explanatory content.
+- **Headings**: The base layer balances `h1`–`h3`; do not add this independently at each call site.
+- **Page composition**: Every routed screen opens with `PageHeader` (`components/ui/PageHeader.tsx`). Use its toolbar slot for wrapping filters. The application `main` owns the page gutter.
 
 ## 3. Spacing & Sizing Scale
 

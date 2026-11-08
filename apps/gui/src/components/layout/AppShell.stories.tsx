@@ -1,14 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { AppShell } from './AppShell';
-import { useLayoutStore } from '../../store/layout';
+import { WorkbenchPreview } from '../../../.storybook/WorkbenchPreview';
 
 const meta = {
   title: 'Layout/AppShell',
   component: AppShell,
   parameters: {
     layout: 'fullscreen',
+    router: false,
+    docs: { description: { component: 'Synthetic query fixtures render the shell without credentials. The live connection indicator uses the real transport and may show offline when Storybook has no event service.' } },
   },
   tags: ['autodocs'],
+  decorators: [(Story, context) => <WorkbenchPreview drawerOpen={context.parameters.drawerOpen === true}><Story /></WorkbenchPreview>],
 } satisfies Meta<typeof AppShell>;
 
 export default meta;
@@ -38,15 +41,10 @@ export const MobileDrawerOpen: Story = {
     children: <ContentSimulator />,
   },
   parameters: {
+    drawerOpen: true,
     viewport: {
       defaultViewport: 'mobile1',
     },
   },
-  decorators: [
-    (StoryFn) => {
-      // Force store to emulate open sidebar drawer on mobile load
-      useLayoutStore.setState({ sidebarOpen: true });
-      return <StoryFn />;
-    },
-  ],
+
 };

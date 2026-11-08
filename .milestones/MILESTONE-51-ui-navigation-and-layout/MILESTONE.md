@@ -1,13 +1,13 @@
 ---
 id: M51
 title: UI Navigation and Layout
-status: in-progress
+status: done
 goal: People can navigate, read and supervise agent work through a coherent interface at mobile, tablet and desktop sizes.
 depends_on: []
 surfaces: [backend, gui, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-08
-completed_at: null
+completed_at: 2026-11-08
 ---
 
 # M51 — UI Navigation and Layout
@@ -26,7 +26,7 @@ The rendered review found a 48px task-content region at 375px and collapsed head
 - [x] Daily navigation is grouped by activity with all existing destinations and URL scope preserved; mobile identifies its current project.
 - [x] Typography, density, surface and task-status roles are documented and applied consistently in light and dark themes.
 - [x] Workflow/schedule empty states have a clear creation action; optional empty task content and report exceptions no longer overwhelm the screen.
-- [ ] Browser regressions, GUI coverage and local gates pass, with screenshots and remaining limitations recorded.
+- [x] Browser regressions, GUI coverage and local gates pass, with screenshots and remaining limitations recorded.
 
 ## 4. Scope
 
@@ -58,7 +58,7 @@ In scope: the seven tasks below, existing routes and server contracts, documenta
   - **Files**: apps/gui/src/features/Tasks/; apps/gui/src/features/Reports/; apps/gui/src/pages/Dashboard.tsx
   - **Verify**: Empty optional task context is disclosed on demand; populated content remains visible; reports show a bounded exception preview with accessible expand/collapse; dashboard avoids equally prominent empty panels.
 
-- [ ] **M51-T07** — Verify all delivered layouts, navigation journeys and documentation against the browser and full gates.
+- [x] **M51-T07** — Verify all delivered layouts, navigation journeys and documentation against the browser and full gates.
   - **Files**: apps/gui/tests/e2e/ui-layout.spec.ts; design/; reviews/; .milestones/STATE.md
   - **Verify**: Capture desktop/tablet/mobile in both themes, run GUI coverage and browser journeys, run moon check --all, inspect console errors and record four-lens review with exact evidence.
 

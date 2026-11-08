@@ -72,6 +72,6 @@ describe('CurrentUser', () => {
   it('exposes the account to assistive technology as a labelled group', async () => {
     mockRpc(AuthService, 'GetIdentity', identity());
     renderIt();
-    expect(await screen.findByLabelText('Signed in as Ada Lovelace')).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: 'Signed in as Ada Lovelace' })).toBeInTheDocument();
   });
 });
