@@ -1,8 +1,8 @@
 ---
-active_milestone: M46
-active_task: null
+active_milestone: M51
+active_task: M51-T02
 last_updated: 2026-11-08
-last_commit: 986101a
+last_commit: 655a889
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-08 — M51 UI delivery active in an isolated worktree.** Seven tasks cover responsive task layouts, activity-based navigation, shared visual roles, purposeful empty states and bounded screen density. M46–M50 remain unfinished and independently tracked.
 
 **2026-11-08 — M45 complete:** database-owned async units, current authorization inside task units, atomic retry reservation/result, workflow rollback and deferred events. Separate-process overlap and SIGKILL recovery pass on SQLite and MySQL 8.4.13; deliberate transaction removal fails both crash tests. A fresh utf8mb4 MySQL boot defect was also repaired (T06). All 35 local tasks pass; real socket/broker suites pass. M46 owns the remaining post-commit event-loss gap.
 
@@ -1845,7 +1847,9 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 
-**Total: 356 tasks across 44 milestones — 336 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+| M51 | UI Navigation and Layout | in-progress | — | 7 | 1 |
+
+**Total: 363 tasks across 45 milestones — 337 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

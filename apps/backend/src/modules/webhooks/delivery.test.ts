@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, setSystemTime } from "bun:test";
 import * as http from "node:http";
 import type { AddressInfo } from "node:net";
 import { createHmac } from "node:crypto";
@@ -36,9 +36,15 @@ describe("webhook outbox and delivery (M37-T04)", () => {
     tasks = createTaskManagementHandler(db, nc);
     hooks = createWebhooksHandler(db, nc, { resolve: publicDns, allowPrivate: false });
     clock = Date.now();
+    // Delivery creation and the sweep must agree on time. Crossing a real
+    // second after freezing only the sweep used to leave a new row not due.
+    setSystemTime(clock);
   });
 
-  afterEach(() => setDomainEventSink(null));
+  afterEach(() => {
+    setSystemTime();
+    setDomainEventSink(null);
+  });
 
   const webhook = async (extra: Record<string, unknown> = {}) =>
     hooks.createWebhook({ orgId, url: "https://hooks.example.com/in", events: ["task.*"], ...extra }, admin);
