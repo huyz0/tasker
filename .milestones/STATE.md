@@ -1,7 +1,7 @@
 ---
-active_milestone: M43
+active_milestone: M44
 active_task: null
-last_updated: 2026-10-02
+last_updated: 2026-11-08
 last_commit: 0c5e508
 blocked: false
 blocker: null
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-08 — Reliability review delivery authorized.** M44–M50 define 30 tasks covering current authorization on replay/streams, atomic keyed mutations, transactional events, recoverable schedule occurrences, browser/CLI recovery, production integration/load evidence, and documentation. Deliver in dependency order; M48 depends only on M44. No remote merge or production deployment is implied. The first task records the design and acceptance scenarios.
 
 **2026-10-02 — M35–M38 planned from a landscape review**
 (`.specs/reviews/2026-10-02-ai-native-landscape.md`): what agent-first trackers
@@ -1831,8 +1833,15 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M41 | Task Digests                    | done   | M38, M40   | 5     | 5    |
 | M42 | Workflow Templates              | done   | M35        | 6     | 6    |
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
+| M44 | Authorization Lifecycle | in-progress | — | 4 | 1 |
+| M45 | Mutation Recovery | todo | M44 | 5 | 0 |
+| M46 | Durable Domain Events | todo | M45 | 5 | 0 |
+| M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
+| M48 | Client Recovery | todo | M44 | 4 | 0 |
+| M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
+| M50 | Operational Truth | todo | M49 | 3 | 0 |
 
-**Total: 325 tasks across 37 milestones — 324 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 355 tasks across 44 milestones — 325 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
