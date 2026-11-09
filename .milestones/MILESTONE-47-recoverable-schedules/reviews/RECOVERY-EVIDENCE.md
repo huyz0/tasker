@@ -134,3 +134,9 @@ pair passes while preserving draft/retry behavior. The added alert story passes
 light/dark375/1280 WCAG/overflow checks; Storybook rebuild contains174 stories.
 The prior173-story complete checks remain recorded separately from this targeted
 new-state proof and mandatory final-head CI. Final full gates are still pending.
+
+Final local checks pass all35 tasks (23 cached): backend2175 pass /46 gated skip
+/zero failures, functions95.80% /lines96.69%; GUI1360/95.34% branches; CLI coverage
+gate93.8%. The gated real dependency suites are not inferred from these skips:
+new SQLite/MySQL process/upgrade evidence is the explicit153-assertion run above.
+Knip's stale helper export and obsolete axe-core ignore are corrected.

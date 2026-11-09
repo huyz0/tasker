@@ -47,7 +47,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/modules/schedules/schedules.handler.ts; apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/modules/workflows/workflows.handler.ts.
   - **Verify**: Kill before the atomic work/receipt commit and recover one complete graph; kill after commit and retain the original task beyond retry-key expiry; enforce skip-if-open across manual and scheduled execution.
 
-- [ ] **M47-T04** — Verify recovery, sweep isolation and schedule observability.
+- [x] **M47-T04** — Verify recovery, sweep isolation and schedule observability.
   - **Files**: apps/backend/src/modules/schedules/schedules.test.ts; apps/gui/src/features/Schedules/; packages/shared-contract/main.tsp; apps/cli/cmd/schedules.go; docs/mcp.md; docs/standalone.md; .milestones/MILESTONE-47-recoverable-schedules/reviews/.
   - **Verify**: Inject one run-record write failure and prove other due schedules proceed; run two-process SQLite/MySQL recovery scenarios; full backend gates.
 
