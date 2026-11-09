@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { Dialog } from './Dialog';
 import { expectNoA11yViolations } from '../../test/a11y';
@@ -12,13 +12,13 @@ import { expectNoA11yViolations } from '../../test/a11y';
  */
 
 /** A realistic host: a trigger that opens the dialog, so focus has somewhere to return to. */
-function Host({ children, hideTitle = false }: { children?: React.ReactNode; hideTitle?: boolean }) {
+function Host({ children, hideTitle = false, headerRight }: { children?: React.ReactNode; hideTitle?: boolean; headerRight?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
       <button onClick={() => setOpen(true)}>Open the dialog</button>
       <button>A button on the page behind</button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Task Details" hideTitle={hideTitle}>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Task Details" hideTitle={hideTitle} headerRight={headerRight}>
         {children ?? (
           <>
             <button>First</button>
@@ -65,6 +65,18 @@ describe('Dialog — the ADR-0009 contract', () => {
     // The search palette's own input is its visible heading; the name still has
     // to exist for anyone not looking at it.
     expect(screen.getByRole('dialog', { name: 'Task Details' })).toBeInTheDocument();
+  });
+
+  it.each([false, true])('2c. names only the title while header actions remain usable (hidden=%s)', async (hideTitle) => {
+    const edit = vi.fn();
+    render(<Host hideTitle={hideTitle} headerRight={<button onClick={edit}>Edit task</button>} />);
+    const dialog = await open();
+    expect(dialog).toHaveAccessibleName('Task Details');
+    const action = within(dialog).getByRole('button', { name: 'Edit task' });
+    expect(action).toBeVisible();
+    fireEvent.click(action);
+    expect(edit).toHaveBeenCalledOnce();
+    expect(dialog).toBeInTheDocument();
   });
 
   it('3. moves focus into the dialog on open', async () => {

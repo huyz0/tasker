@@ -1,13 +1,13 @@
 ---
 id: M53
 title: Workflow Correctness
-status: todo
+status: done
 goal: Every existing question, approval, search result and task edit keeps the correct scope, exposes all pending work and preserves user intent.
 depends_on: [M28, M51]
-surfaces: [backend, gui, cli, specs]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+surfaces: [backend, gui, cli, contract, specs]
+exit_criteria_met: true
+started_at: 2026-11-09
+completed_at: 2026-11-09
 ---
 
 # M53 — Workflow Correctness
@@ -22,11 +22,11 @@ Confirmed route, pagination, error-state and draft defects are foundations for t
 
 ## 3. Exit Criteria
 
-- [ ] Project A cannot be presented as the owner of an authorized project B entity; Back/reload retain correct context.
-- [ ] Every supported search type appears and failed reads offer retry instead of an empty-success state.
-- [ ] All open task and organization questions/approvals remain reachable regardless of history volume.
-- [ ] Every summary dismissal protects a dirty draft and MCP can explicitly clear a summary.
-- [ ] Real browser regressions and affected full suites pass; workflow docs match current claim semantics.
+- [x] Project A cannot be presented as the owner of an authorized project B entity; Back/reload retain correct context.
+- [x] Every supported search type appears and failed reads offer retry instead of an empty-success state.
+- [x] All open task and organization questions/approvals remain reachable regardless of history volume.
+- [x] Every summary dismissal protects a dirty draft and MCP can explicitly clear a summary.
+- [x] Real browser regressions and affected full suites pass; workflow docs match current claim semantics.
 
 ## 4. Scope
 
@@ -36,32 +36,32 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
 
 ## 5. Task Breakdown
 
-- [ ] **M53-T01** — Design canonical entity navigation and the pending/history interaction contract.
-  - **Files**: .milestones/MILESTONE-53-workflow-correctness/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0053-workflow-correctness/.
+- [x] **M53-T01** — Design canonical entity navigation and the pending/history interaction contract.
+  - **Files**: .specs/adr/ADR-0047-authorized-navigation-and-bounded-history.md; .milestones/MILESTONE-53-workflow-correctness/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0053-workflow-correctness/.
   - **Verify**: Review cross-project queues, direct task/artifact/Memory links, Back/reload, org Memory tier, inaccessible entities and every loading/empty/error state; record acceptance fixtures before code.
 
-- [ ] **M53-T02** — Resolve entity navigation from authorized resource scope across queues, search and detail screens.
-  - **Files**: apps/gui/src/hooks/useScope.ts; apps/gui/src/components/layout/GlobalSearch.tsx; apps/gui/src/features/Tasks/; apps/gui/src/features/Memory/; apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx.
+- [x] **M53-T02** — Resolve entity navigation from authorized resource scope across queues, search and detail screens.
+  - **Files**: packages/shared-contract/main.tsp; apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/modules/artifacts/artifacts.handler.ts; apps/gui/src/hooks/useScope.ts; apps/gui/src/components/layout/GlobalSearch.tsx; apps/gui/src/features/Tasks/; apps/gui/src/features/Memory/; apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx.
   - **Verify**: Open project B entities from project A, missing/conflicting scope links and org Memory; URL, sidebar, breadcrumbs and actions agree; Back preserves origin; inaccessible resources expose no metadata.
 
-- [ ] **M53-T03** — Show every supported search type with distinct loading, no-match and recoverable failure states.
+- [x] **M53-T03** — Show every supported search type with distinct loading, no-match and recoverable failure states.
   - **Files**: apps/gui/src/components/layout/GlobalSearch.tsx; apps/gui/src/components/layout/GlobalSearch.test.tsx; apps/backend/src/modules/search/.
   - **Verify**: Task/artifact/project/agent/belief fixtures remain actionable; initial and subsequent failed queries show retry; out-of-order requests cannot replace current results; keyboard navigation remains usable; test both SQL dialects for requested types.
 
-- [ ] **M53-T04** — Separate open requests from paginated history and make all organization pending rows reachable.
-  - **Files**: apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx; apps/gui/src/features/Tasks/; apps/gui/tests/e2e/.
+- [x] **M53-T04** — Separate open requests from paginated history and make all organization pending rows reachable.
+  - **Files**: apps/backend/src/modules/tasks/inputRequests.ts; apps/backend/src/modules/tasks/approvals.ts; apps/backend/src/db/query-builder.ts; apps/backend/src/modules/mcp/tools.ts; packages/shared-contract/main.tsp; apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx; apps/gui/src/features/Tasks/; apps/gui/tests/e2e/.
   - **Verify**: An old open question beyond 20 newer closed rows and approval beyond 10 remain visible; more than 50 organization pending rows are reachable by bounded paging; next-page errors retry without hiding earlier rows; source decisions reconcile both sections.
 
-- [ ] **M53-T05** — Protect task summary drafts through every dismissal path and failed save.
-  - **Files**: apps/gui/src/features/Tasks/TaskSummary.tsx; apps/gui/src/features/Tasks/index.tsx; apps/gui/tests/e2e/.
+- [x] **M53-T05** — Protect task summary drafts through every dismissal path and failed save.
+  - **Files**: apps/gui/src/features/Tasks/TaskSummary.tsx; apps/gui/src/features/Tasks/summaryDrafts.ts; apps/gui/src/features/Tasks/SummaryDraftGuard.tsx; apps/gui/src/features/Tasks/TaskContext.tsx; apps/gui/src/features/Tasks/index.tsx; apps/gui/src/components/auth/ProtectedRoute.tsx; apps/gui/src/components/layout/AppShell.tsx; apps/gui/src/features/Auth/; apps/gui/src/lib/authSession.ts; apps/gui/src/lib/establishPasswordSession.ts; apps/gui/tests/e2e/; apps/backend/src/modules/events/events.handler.ts; apps/backend/src/modules/events/events.handler.test.ts (session CI repair).
   - **Verify**: Escape, backdrop, close, route navigation and task switch follow one discard/restoration policy; background refresh and failed save retain text; A draft never appears on B; explicit cancel discards; successful save clears dirty state.
 
-- [ ] **M53-T06** — Honor explicit empty MCP summaries and document actual workflow/template semantics.
+- [x] **M53-T06** — Honor explicit empty MCP summaries and document actual workflow/template semantics.
   - **Files**: apps/backend/src/modules/mcp/tools.ts; apps/backend/src/modules/mcp/tools.test.ts; docs/agent-integration.md; docs/mcp.md.
   - **Verify**: Empty summary reaches exactly one existing RPC; missing/null/non-string text, empty IDs and oversized text still fail; example never promises project-wide claim-next selects one step; template org/project visibility and ordinary parent claimability are accurate.
 
-- [ ] **M53-T07** — Verify existing human workflows end to end and close the correctness review.
-  - **Files**: apps/gui/tests/e2e/; .milestones/MILESTONE-53-workflow-correctness/reviews/; docs/.
+- [x] **M53-T07** — Verify existing human workflows end to end and close the correctness review.
+  - **Files**: apps/gui/tests/e2e/; apps/gui/src/components/; apps/gui/src/features/; apps/gui/.storybook/; apps/gui/scripts/; .specs/design/design-system.md; .milestones/MILESTONE-53-workflow-correctness/reviews/; docs/.
   - **Verify**: Run full GUI coverage, backend/MCP suites, scoped browser journeys and moon check --all; review notification links and task dialogs without reviving disproved dialog-masking claim.
 
 ## 6. Verification

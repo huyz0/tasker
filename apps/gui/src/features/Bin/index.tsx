@@ -438,10 +438,10 @@ function BinList({ isLoading, error, onRetry, items, total, onLoadMore, hasMore,
   return (
     <div className="border rounded-md divide-y">
       {restoreError && (
-        <p className="text-sm text-destructive p-3">Failed to restore: {restoreError.message}</p>
+        <p className="text-sm text-destructive-subtle-foreground p-3">Failed to restore: {restoreError.message}</p>
       )}
       {purgeError && (
-        <p className="text-sm text-destructive p-3">Failed to delete forever: {purgeError.message}</p>
+        <p className="text-sm text-destructive-subtle-foreground p-3">Failed to delete forever: {purgeError.message}</p>
       )}
       {/* Virtualized: the bin holds everything ever deleted in the org, which
           is unbounded and grows with use (M07-T14). */}

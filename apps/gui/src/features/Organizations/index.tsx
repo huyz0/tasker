@@ -79,7 +79,7 @@ const MemberRow = memo(function MemberRow({ member, index, top, roleBusy, remove
         <button
           onClick={() => onRemove(member.userId, label)}
           disabled={removeBusy}
-          className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+          className="text-muted-foreground hover:text-destructive-subtle-foreground text-xs disabled:opacity-50"
         >
           Remove
         </button>
@@ -595,13 +595,13 @@ export function OrganizationsDashboard() {
                 </form>
               )}
               {createOrgMutation.isError && (
-                <p className="text-sm text-destructive mb-4">Failed to create organization: {(createOrgMutation.error as Error).message}</p>
+                <p className="text-sm text-destructive-subtle-foreground mb-4">Failed to create organization: {(createOrgMutation.error as Error).message}</p>
               )}
               {archiveOrgMutation.isError && (
-                <p className="text-sm text-destructive mb-4">Failed to delete organization: {(archiveOrgMutation.error as Error).message}</p>
+                <p className="text-sm text-destructive-subtle-foreground mb-4">Failed to delete organization: {(archiveOrgMutation.error as Error).message}</p>
               )}
               {updateOrgMutation.isError && (
-                <p className="text-sm text-destructive mb-4">Failed to update organization: {(updateOrgMutation.error as Error).message}</p>
+                <p className="text-sm text-destructive-subtle-foreground mb-4">Failed to update organization: {(updateOrgMutation.error as Error).message}</p>
               )}
               <div className="border rounded-md divide-y">
                  <div className="p-3 text-sm flex justify-between items-center bg-muted/30">
@@ -666,10 +666,10 @@ export function OrganizationsDashboard() {
                     </button>
                   </form>
                   {!(parseInt(retentionDaysInput, 10) > 0) && (
-                    <p className="text-sm text-destructive mt-2">Enter a number of days greater than 0.</p>
+                    <p className="text-sm text-destructive-subtle-foreground mt-2">Enter a number of days greater than 0.</p>
                   )}
                   {setRetentionMutation.isError && (
-                    <p className="text-sm text-destructive mt-2">Failed to update retention: {(setRetentionMutation.error as Error).message}</p>
+                    <p className="text-sm text-destructive-subtle-foreground mt-2">Failed to update retention: {(setRetentionMutation.error as Error).message}</p>
                   )}
                 </div>
               )}
@@ -791,10 +791,10 @@ export function OrganizationsDashboard() {
                 <strong className="text-foreground">Owner</strong> has full control (always at least one required). <strong className="text-foreground">Admin</strong> manages members and org settings. <strong className="text-foreground">Member</strong> is a normal contributor. <strong className="text-foreground">Viewer</strong> is read-only.
               </p>
               {removeMemberMutation.isError && (
-                <p className="text-sm text-destructive mt-2">Failed to remove member: {(removeMemberMutation.error as Error).message}</p>
+                <p className="text-sm text-destructive-subtle-foreground mt-2">Failed to remove member: {(removeMemberMutation.error as Error).message}</p>
               )}
               {updateMemberRoleMutation.isError && (
-                <p className="text-sm text-destructive mt-2">Failed to update role: {(updateMemberRoleMutation.error as Error).message}</p>
+                <p className="text-sm text-destructive-subtle-foreground mt-2">Failed to update role: {(updateMemberRoleMutation.error as Error).message}</p>
               )}
 
               {canManageInvites && (
@@ -841,7 +841,7 @@ export function OrganizationsDashboard() {
                     </button>
                   </form>
                   {inviteMutation.isError && (
-                    <p className="text-sm text-destructive mt-2">Failed to send invite: {(inviteMutation.error as Error).message}</p>
+                    <p className="text-sm text-destructive-subtle-foreground mt-2">Failed to send invite: {(inviteMutation.error as Error).message}</p>
                   )}
 
                   {(invitationsQuery.data?.length ?? 0) > 0 ? (
@@ -875,7 +875,7 @@ export function OrganizationsDashboard() {
                                     revokeInviteMutation.mutate(inv.id);
                                   }
                                 }}
-                                className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
+                                className="text-muted-foreground hover:text-destructive-subtle-foreground text-xs disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
                               >
                                 Revoke
                               </button>
@@ -884,7 +884,7 @@ export function OrganizationsDashboard() {
                         ))}
                       </div>
                       {revokeInviteMutation.isError && (
-                        <p className="text-sm text-destructive mt-2">Failed to revoke: {(revokeInviteMutation.error as Error).message}</p>
+                        <p className="text-sm text-destructive-subtle-foreground mt-2">Failed to revoke: {(revokeInviteMutation.error as Error).message}</p>
                       )}
                     </div>
                   ) : null}

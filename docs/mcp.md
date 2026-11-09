@@ -80,7 +80,7 @@ the same endpoint, using `TASKER_TOKEN` (or a saved `tasker auth login`) and
 | `cancel_input_request` | Withdraw a question you asked | `CancelInputRequest` |
 | `get_transition_approval` / `list_transition_approvals` | Follow a held move: pending, approved (applied), rejected (with a reason) or stale | `GetTransitionApproval` / `ListTransitionApprovals` |
 | `report_usage` | Record the tokens and cost (micro-dollars) of your work on a task; idempotent by key | `ReportUsage` |
-| `set_task_summary` | What a finished task came to (≤ 4,000 chars); replaces the last one | `SetTaskSummary` |
+| `set_task_summary` | What a finished task came to (≤ 4,000 chars); replaces the last one; explicit `text: ""` clears it | `SetTaskSummary` |
 | `get_task_digest` | One bounded read of a task: summary, plan, usage, latest handoff, answered questions, relations | `GetTaskDigest` |
 | `list_compaction_candidates` | A project's finished tasks with no summary, oldest first | `ListCompactionCandidates` |
 | `list_workflow_templates` / `get_workflow_template` | Repeatable multi-step workflows and their step graphs | `ListWorkflowTemplates` / `GetWorkflowTemplate` |
@@ -89,6 +89,20 @@ the same endpoint, using `TASKER_TOKEN` (or a saved `tasker auth login`) and
 | `get_task_type` | A type's statuses and legal transitions | `GetTaskType` |
 | `search_memory` | Search shared beliefs | `SearchBeliefs` |
 | `record_belief` | Record a durable fact | `RecordBelief` |
+
+`set_task_summary` always requires both `task_id` and `text`. To clear a summary,
+call it with `{"task_id":"<task-id>","text":""}`. Missing/null/non-string text,
+more than 4,000 characters or an empty task ID is invalid; only explicit empty
+summary text has this clearing meaning.
+
+Workflow dependencies determine step readiness. `claim_next_task` selects from
+all eligible tasks in the project, including an ordinary workflow parent; it
+does not target one workflow or promise a named step. Use `claim_task` with the
+step's task ID when selecting that step, after checking its readiness. Named
+claims do not enforce blockers; `claim_next_task` does. Organization-wide
+templates and a project's own templates appear in project-scoped lists; organization-scoped
+lists include all templates in that organization. See the
+[workflow example](agent-integration.md#17-workflows-repeatable-multi-step-work).
 
 `run_schedule` accepts a new creation intent on every call. An accepted queued
 or interrupted result recovers automatically; calling it again creates another

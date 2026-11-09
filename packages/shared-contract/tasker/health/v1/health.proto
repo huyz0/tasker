@@ -967,6 +967,7 @@ message GetTaskResponse {
   Task task = 1;
   // M22-T02: same field, same reasoning, as ClaimTaskResponse.latestHandoffNote.
   TaskNote latestHandoffNote = 2;
+  optional string org_id = 3;
 }
 
 message ListTasksRequest {
@@ -1294,6 +1295,8 @@ message GetArtifactRequest {
 
 message GetArtifactResponse {
   Artifact artifact = 1;
+  optional string org_id = 2;
+  optional string project_id = 3;
 }
 
 message GetArtifactContentRequest {

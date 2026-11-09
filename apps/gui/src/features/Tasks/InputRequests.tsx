@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
+import { actionErrorMessage } from '../../lib/actionErrorMessage';
 import { TaskService, type InputRequest } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
-import { ListState } from '../../components/ui/ListState';
+import { WorkPages, WorkHistory, WorkNotice, useWorkPages, useWorkNotice } from './WorkPages';
 import { TONE_CLASSES } from '../../components/ui/statusStyles';
 import { formatDateTime } from '../../lib/format';
 import { useScopedTo } from '../../hooks/useScope';
@@ -23,15 +24,19 @@ function useInvalidateQuestions() {
 
 interface AnswerFormProps {
   request: InputRequest;
+  onNotice: (message: string) => void;
 }
 
 /** Answers one open question. The suggested options fill the answer; any text will do. */
-function AnswerForm({ request }: AnswerFormProps) {
+function AnswerForm({ request, onNotice }: AnswerFormProps) {
   const [answer, setAnswer] = useState('');
   const invalidate = useInvalidateQuestions();
   const submit = useMutation({
     mutationFn: async (text: string) => taskClient.answerInputRequest({ id: request.id, answer: text }),
-    onSuccess: () => { setAnswer(''); invalidate(); },
+    onMutate: () => onNotice(''),
+    onSuccess: () => setAnswer(''),
+    onError: (error) => onNotice(`Failed to answer: ${actionErrorMessage(error)}`),
+    onSettled: invalidate,
   });
   const fieldId = `answer-${request.id}`;
   return (
@@ -63,7 +68,6 @@ function AnswerForm({ request }: AnswerFormProps) {
         placeholder="Your answer"
         className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
       />
-      {submit.isError && <p className="text-xs text-destructive">Failed to answer: {(submit.error as Error).message}</p>}
       <button
         type="submit"
         disabled={!answer.trim() || submit.isPending}
@@ -79,13 +83,14 @@ interface QuestionProps {
   request: InputRequest;
   /** Show which task it is on - for the org-wide queue, not a task's own panel. */
   showTask?: boolean;
+  onNotice: (message: string) => void;
 }
 
-function Question({ request, showTask }: QuestionProps) {
+function Question({ request, showTask, onNotice }: QuestionProps) {
   const scopedTo = useScopedTo();
   const open = request.status === 'open';
   return (
-    <li className={`rounded-md p-3 flex flex-col gap-2 text-sm ${open ? TONE_CLASSES.warning : 'border'}`}>
+    <li className={`min-w-0 rounded-md p-3 flex flex-col gap-2 text-sm [overflow-wrap:anywhere] ${open ? TONE_CLASSES.warning : 'border'}`}>
       <div className="flex flex-wrap items-baseline gap-x-2 text-xs">
         <span className="font-medium">{request.askedByName}</span>
         <span>asks{showTask ? ' on ' : ''}</span>
@@ -96,9 +101,9 @@ function Question({ request, showTask }: QuestionProps) {
         )}
         <span className="opacity-80">{formatDateTime(request.createdAt)}</span>
       </div>
-      <p className="whitespace-pre-wrap">{request.question}</p>
+      <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{request.question}</p>
       {open ? (
-        <AnswerForm request={request} />
+        <AnswerForm request={request} onNotice={onNotice} />
       ) : request.status === 'answered' ? (
         <p className="text-xs"><span className="font-medium">{request.answeredByName}</span> answered: {request.answer}</p>
       ) : (
@@ -112,61 +117,50 @@ interface TaskInputRequestsProps {
   taskId: string;
 }
 
-/**
- * A task's questions (M38, ADR-0031): open ones first, each with an answer
- * form, then what was already answered. Renders nothing for a task nobody
- * has asked about - the common case says nothing.
- */
+/** Pending work and closed history have independent bounded source pages. */
 export function TaskInputRequests({ taskId }: TaskInputRequestsProps) {
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['inputRequests', 'task', taskId],
-    queryFn: async () => (await taskClient.listInputRequests({ taskId, status: 'all', page: { limit: 20 } })).inputRequests,
+  const [notice, onNotice] = useWorkNotice(taskId);
+  const pending = useWorkPages(['inputRequests', 'task', taskId, 'open'], async cursor => {
+    const response = await taskClient.listInputRequests({ taskId, status: 'open', page: { limit: 20, cursor } });
+    return { items: response.inputRequests, page: response.page };
   });
-  if (isLoading || error) {
-    return (
-      <ListState isLoading={isLoading} error={error} isEmpty={false} emptyMessage="" loadingMessage="Loading questions…"
-        errorLabel="Could not load this task's questions" onRetry={() => refetch()} />
-    );
-  }
-  const requests = [...(data ?? [])].sort((a, b) => Number(b.status === 'open') - Number(a.status === 'open'));
-  if (requests.length === 0) return null;
-  const openCount = requests.filter((r) => r.status === 'open').length;
+  const history = useWorkPages(['inputRequests', 'task', taskId, 'closed'], async cursor => {
+    const response = await taskClient.listInputRequests({ taskId, status: 'closed', page: { limit: 20, cursor } });
+    return { items: response.inputRequests, page: response.page };
+  });
+  if (pending.isSuccess && history.isSuccess && !pending.items.length && !history.items.length && !notice) return null;
   return (
     <section aria-label="Questions from agents" className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold tracking-tight">
-        {openCount > 0 ? `Waiting on you · ${openCount}` : 'Questions'}
-      </h3>
-      <ul className="flex flex-col gap-2">
-        {requests.map((r) => <Question key={r.id} request={r} />)}
-      </ul>
+      <h3 className="text-sm font-semibold tracking-tight">{pending.totalCount > 0 ? `Waiting on you · ${pending.totalCount}` : 'Questions'}</h3>
+      <WorkNotice message={notice} />
+      <WorkPages query={pending} kind="pending" listLabel="Open questions" loadingMessage="Loading questions…"
+        errorLabel="Could not load this task's questions" emptyMessage="No agent is waiting on a person.">
+        {pending.items.map(request => <Question key={request.id} request={request} onNotice={onNotice} />)}
+      </WorkPages>
+      <WorkHistory key={taskId} query={history}>
+        <WorkPages query={history} kind="closed" listLabel="Closed questions" loadingMessage="Loading question history…"
+          errorLabel="Could not load question history" emptyMessage="No closed questions yet.">
+          {history.items.map(request => <Question key={request.id} request={request} onNotice={onNotice} />)}
+        </WorkPages>
+      </WorkHistory>
     </section>
   );
 }
 
-interface QuestionsQueueProps {
-  orgId: string;
-}
+interface QuestionsQueueProps { orgId: string; }
 
-/** The organization's open questions - the queue of agents waiting on people. */
+/** The organization's open questions across every project, fifty per page. */
 export function QuestionsQueue({ orgId }: QuestionsQueueProps) {
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['inputRequests', 'org', orgId],
-    enabled: !!orgId,
-    queryFn: async () => (await taskClient.listInputRequests({ orgId, status: 'open', page: { limit: 50 } })).inputRequests,
-  });
-  return (
-    <ListState
-      isLoading={isLoading}
-      error={error}
-      isEmpty={(data ?? []).length === 0}
-      loadingMessage="Loading questions…"
-      errorLabel="Could not load questions"
-      emptyMessage="No agent is waiting on a person."
-      onRetry={() => refetch()}
-    >
-      <ul className="flex flex-col gap-2" aria-label="Open questions">
-        {(data ?? []).map((r) => <Question key={r.id} request={r} showTask />)}
-      </ul>
-    </ListState>
-  );
+  const [notice, onNotice] = useWorkNotice(orgId);
+  const pending = useWorkPages(['inputRequests', 'org', orgId, 'open'], async cursor => {
+    const response = await taskClient.listInputRequests({ orgId, status: 'open', page: { limit: 50, cursor } });
+    return { items: response.inputRequests, page: response.page };
+  }, !!orgId, 15_000);
+  return <div className="flex flex-col gap-2">
+    <WorkNotice message={notice} />
+    <WorkPages query={pending} kind="pending" listLabel="Open questions" loadingMessage="Loading questions…"
+      errorLabel="Could not load questions" emptyMessage="No agent is waiting on a person.">
+      {pending.items.map(request => <Question key={request.id} request={request} onNotice={onNotice} showTask />)}
+    </WorkPages>
+  </div>;
 }

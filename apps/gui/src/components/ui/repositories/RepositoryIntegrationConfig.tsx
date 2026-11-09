@@ -83,7 +83,7 @@ function BuildsPanel({ repositoryLinkId }: { repositoryLinkId: string }) {
   });
 
   if (isLoading) return <p className="text-xs text-muted-foreground pl-3 py-2">Loading builds…</p>;
-  if (error) return <p className="text-xs text-destructive pl-3 py-2">Failed to load builds</p>;
+  if (error) return <p className="text-xs text-destructive-subtle-foreground pl-3 py-2">Failed to load builds</p>;
   if (!builds || builds.length === 0) return <p className="text-xs text-muted-foreground pl-3 py-2">No builds found.</p>;
 
   return (
@@ -182,7 +182,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
       <h3 className="text-lg font-semibold mb-4">Repository integrations</h3>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {error && <p className="text-sm text-destructive">Error loading links</p>}
+      {error && <p className="text-sm text-destructive-subtle-foreground">Error loading links</p>}
 
       {data && data.length > 0 && (
         <ul className="mb-4 space-y-2">
@@ -224,7 +224,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
                     // one project-wide action shared across every row, so
                     // its blanket isPending is correct as-is).
                     disabled={removeLinkMutation.isPending && removeLinkMutation.variables === link.id}
-                    className="text-xs text-muted-foreground hover:text-destructive px-2 py-1 disabled:opacity-50"
+                    className="text-xs text-muted-foreground hover:text-destructive-subtle-foreground px-2 py-1 disabled:opacity-50"
                   >
                     Unlink
                   </button>
@@ -237,10 +237,10 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
       )}
 
       {syncMutation.isError && (
-        <p className="text-sm text-destructive mb-4">Failed to sync pull requests: {(syncMutation.error as Error).message}</p>
+        <p className="text-sm text-destructive-subtle-foreground mb-4">Failed to sync pull requests: {(syncMutation.error as Error).message}</p>
       )}
       {removeLinkMutation.isError && (
-        <p className="text-sm text-destructive mb-4">Failed to unlink repository: {(removeLinkMutation.error as Error).message}</p>
+        <p className="text-sm text-destructive-subtle-foreground mb-4">Failed to unlink repository: {(removeLinkMutation.error as Error).message}</p>
       )}
 
       {data && data.length > 0 && (
@@ -342,7 +342,7 @@ export function RepositoryIntegrationConfig({ projectId }: RepositoryIntegration
             {addLinkMutation.isPending ? 'Linking…' : 'Link with API token'}
           </Button>
           {addLinkMutation.isError && (
-            <p className="text-sm text-destructive">Failed to link: {(addLinkMutation.error as Error).message}</p>
+            <p className="text-sm text-destructive-subtle-foreground">Failed to link: {(addLinkMutation.error as Error).message}</p>
           )}
         </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useScopedTo } from '../../hooks/useScope';
+import { useScopeLabels } from '../../hooks/useScopeLabels';
+import { useCanonicalResourceScope, useScopedTo } from '../../hooks/useScope';
 import { useLayoutStore } from '../../store/layout';
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,7 +11,7 @@ import { Comment } from "../../components/ui/comments";
 import { ArtifactUpload } from "./ArtifactUpload";
 import { Breadcrumbs } from "../../components/layout/Breadcrumbs";
 import { transport } from "../../lib/connectTransport";
-import { ArtifactService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { ArtifactService, ProjectService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Label } from '../../components/ui/labels';
 import { Folder, FolderOpen, FileText, X } from 'lucide-react';
 import { fetchAllPages } from '../../lib/fetchAllPages';
@@ -27,11 +28,13 @@ import { PageHeader } from '../../components/ui/PageHeader';
 const ARTIFACT_ROW_HEIGHT = 28;
 
 const artifactClient = createClient(ArtifactService, transport);
+const projectClient = createClient(ProjectService, transport);
 
 export function ArtifactsBrowser() {
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const { projectName, hasProject } = useScopeLabels();
   const scopedTo = useScopedTo();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   useEffect(() => setActivePageTitle('Artifacts'), [setActivePageTitle]);
@@ -86,7 +89,7 @@ export function ArtifactsBrowser() {
     setSelectedFolderId(null);
     setExpandedFolderIds(new Set());
     setIsEditingContent(false);
-    if (artifactId) navigate(scopedTo('/artifacts'));
+    // Explicit scope selection closes detail in useSetScope; normalization keeps it.
     // Deliberately only activeProjectId/activeOrgId: this resets the
     // selection when the *scope* changes, not on every ordinary navigation
     // within it (which would fight the very selection the user just made).
@@ -140,23 +143,50 @@ export function ArtifactsBrowser() {
   // every folder in the project and every page of each until the row turned up
   // — O(folders x pages) requests to find one. `getArtifact` answers it in one
   // (M07-T12), and it returns the folderId that the tree needs to expand.
-  const { data: locatedArtifact } = useQuery({
+  const locatedQuery = useQuery({
     queryKey: ['artifactLocate', artifactId],
     queryFn: async () => {
-      const resp = await artifactClient.getArtifact({ artifactId: artifactId! });
-      return resp.artifact ? { artifact: resp.artifact, folderId: resp.artifact.folderId } : null;
+      const response = await artifactClient.getArtifact({ artifactId: artifactId! });
+      return response.artifact ? { artifact: response.artifact, folderId: response.artifact.folderId,
+        orgId: response.orgId, projectId: response.projectId } : null;
     },
-    enabled: !!artifactId && !artifactsData?.some(a => a.id === artifactId),
+    enabled: !!artifactId,
   });
+  const locatedArtifact = locatedQuery.data;
+  // Older servers can resolve a known folder from this authorized project
+  // catalogue. Never search every project to guess a missing owner.
+  const legacyFolder = foldersData?.find(folder => folder.id === locatedArtifact?.folderId);
+  const ownerProjectId = locatedArtifact?.projectId || legacyFolder?.projectId;
+  const legacyOwner = useQuery({
+    queryKey: ['project', ownerProjectId],
+    enabled: !!ownerProjectId && !locatedArtifact?.orgId && !locatedQuery.error,
+    queryFn: async () => (await projectClient.getProject({ id: ownerProjectId! })).project,
+  });
+  const ownerOrgId = locatedArtifact?.orgId
+    || (legacyOwner.data?.id === ownerProjectId ? legacyOwner.data?.orgId : undefined);
+  const owner = locatedArtifact?.artifact.id === artifactId && ownerProjectId && ownerOrgId
+    ? { orgId: ownerOrgId, projectId: ownerProjectId } : undefined;
+  const ownerReadSucceeded = locatedQuery.isSuccess && !locatedQuery.isFetching
+    && (!!locatedArtifact?.orgId || (legacyOwner.isSuccess && !legacyOwner.isFetching));
+  const artifactScopeReady = useCanonicalResourceScope(artifactId ? `artifact:${artifactId}` : null, owner, ownerReadSucceeded, locatedQuery.error || (!locatedArtifact?.orgId && legacyOwner.error));
+  const ownerError = locatedQuery.error || (!locatedArtifact?.orgId && legacyOwner.error)
+    || (!locatedArtifact?.projectId && foldersError)
+    || (locatedQuery.isSuccess && !locatedQuery.isFetching && !isLoadingFolders
+      && !legacyOwner.isFetching && !owner ? new Error('Could not resolve this artifact’s workspace.') : null);
+  const retryArtifactOwner = () => {
+    locatedQuery.refetch();
+    if (ownerProjectId && !locatedArtifact?.orgId) legacyOwner.refetch();
+    if (activeProjectId && !locatedArtifact?.projectId) refetchFolders();
+  };
 
   useEffect(() => {
-    if (locatedArtifact && selectedFolderId !== locatedArtifact.folderId) {
+    if (artifactScopeReady && locatedArtifact && selectedFolderId !== locatedArtifact.folderId) {
       setSelectedFolderId(locatedArtifact.folderId);
     }
-  }, [locatedArtifact, selectedFolderId]);
+  }, [artifactScopeReady, locatedArtifact, selectedFolderId]);
 
-  const selectedArtifact = artifactId
-    ? (artifactsData?.find(a => a.id === artifactId) ?? locatedArtifact?.artifact ?? null)
+  const selectedArtifact = artifactId && artifactScopeReady
+    ? (locatedArtifact?.artifact ?? artifactsData?.find(a => a.id === artifactId) ?? null)
     : null;
 
   // The body, fetched only for the artifact actually open. `listArtifacts` no
@@ -164,7 +194,7 @@ export function ArtifactsBrowser() {
   // cost 2,008 KB for 50 images (M07-T01/T02).
   const contentQuery = useQuery({
     queryKey: ['artifactContent', artifactId],
-    enabled: !!artifactId,
+    enabled: !!artifactId && artifactScopeReady,
     queryFn: async () => artifactClient.getArtifactContent({ artifactId: artifactId! }),
   });
   const artifactContent = contentQuery.data?.content ?? '';
@@ -353,6 +383,7 @@ export function ArtifactsBrowser() {
     return [
       // Scoped, for the reason `Tasks`' trail is: a bare path here sends the
       // explorer to whichever project the switcher auto-selects (M28-T08).
+      ...(hasProject ? [{ label: projectName, to: scopedTo('/projects') }] : []),
       { label: 'Artifacts', to: scopedTo('/artifacts') },
       ...path.map((f: any) => ({ label: f.name })),
       { label: selectedArtifact.name },
@@ -426,7 +457,7 @@ export function ArtifactsBrowser() {
                     }}
                     disabled={archiveFolderMutation.isPending}
                     aria-label={`Delete folder ${folder.name}`}
-                    className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                    className="text-muted-foreground hover:text-destructive-subtle-foreground text-xs disabled:opacity-50"
                   >
                     <X aria-hidden="true" className="w-3.5 h-3.5" />
                   </button>
@@ -438,7 +469,7 @@ export function ArtifactsBrowser() {
               {selectedFolderId === folder.id && (
                 <div className="pl-6 mt-1 space-y-1">
                   {artifactMutationError && (
-                    <p className="text-xs text-destructive px-2">
+                    <p className="text-xs text-destructive-subtle-foreground px-2">
                       Failed to {artifactMutationError.label}: {(artifactMutationError.error as Error).message}
                     </p>
                   )}
@@ -488,7 +519,7 @@ export function ArtifactsBrowser() {
                           }}
                           disabled={archiveArtifactMutation.isPending}
                           aria-label={`Delete artifact ${artifact.name}`}
-                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-destructive disabled:opacity-50"
+                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-destructive-subtle-foreground disabled:opacity-50"
                         >
                           <X aria-hidden="true" className="w-3.5 h-3.5" />
                         </button>
@@ -560,6 +591,13 @@ export function ArtifactsBrowser() {
             </div>
   );
 
+  if (artifactId && !artifactScopeReady) return <div className="flex flex-col gap-6">
+    <PageHeader title="Artifacts" description="Files kept for this project, in folders." />
+    <ListState isLoading={!ownerError} error={ownerError} isEmpty={false} emptyMessage=""
+      loadingMessage="Loading this artifact…" errorLabel="Could not open this artifact"
+      onRetry={retryArtifactOwner} />
+  </div>;
+
   return (
     // From `md:` up the explorer and the open artifact sit side by side and
     // fill the viewport (less `main`'s padding), each scrolling on its own.
@@ -567,6 +605,7 @@ export function ArtifactsBrowser() {
     // beside the detail pane left the detail one word wide on a phone.
     <div className="flex flex-col gap-6 md:h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-6rem)]">
       <PageHeader title="Artifacts" description="Files kept for this project, in folders." />
+      {ownerError && ownerError !== foldersError && <ListState isLoading={false} error={ownerError} isEmpty={false} emptyMessage="" errorLabel="Could not refresh this artifact" onRetry={retryArtifactOwner} />}
       <div className="flex flex-col gap-6 md:flex-row md:flex-1 md:min-h-0">
       {/* File Tree Left Sidebar */}
       <div className="w-full md:w-64 shrink-0 flex flex-col bg-card border rounded-lg overflow-hidden shadow-sm">
@@ -582,7 +621,7 @@ export function ArtifactsBrowser() {
         </div>
         <div className="p-2 space-y-1 text-sm overflow-y-auto scrollbar-thin">
           {folderMutationError && (
-            <p className="text-xs text-destructive px-1">
+            <p className="text-xs text-destructive-subtle-foreground px-1">
               Failed to {folderMutationError.label}: {(folderMutationError.error as Error).message}
             </p>
           )}
@@ -657,7 +696,7 @@ export function ArtifactsBrowser() {
             )}
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
                {updateContentMutation.isError && (
-                 <p className="text-sm text-destructive mb-3">Failed to save: {(updateContentMutation.error as Error).message}</p>
+                 <p className="text-sm text-destructive-subtle-foreground mb-3">Failed to save: {(updateContentMutation.error as Error).message}</p>
                )}
                {isEditingContent ? (
                  // M23's follow-up reaches artifact content, but only where
@@ -711,18 +750,18 @@ export function ArtifactsBrowser() {
                  {/* The backend has accepted entityType "artifact" since M01;
                      nothing mounted it, so the comments existed and were
                      unreachable. */}
-                 <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>
+                 <h2 className="text-lg font-semibold tracking-tight mb-4">Comments</h2>
                  <Comment.Provider entityId={selectedArtifact.id} entityType="artifact">
                    <Comment.List />
                    <Comment.Composer />
                  </Comment.Provider>
                </div>
                <div className="mt-6 not-prose">
-                 <h3 className="text-sm font-semibold tracking-tight mb-3">Tasks</h3>
+                 <h2 className="text-sm font-semibold tracking-tight mb-3">Tasks</h2>
                  <TaskArtifactLinks artifactId={selectedArtifact.id} orgId={activeOrgId} />
                </div>
                <div className="mt-6 not-prose">
-                 <h3 className="text-sm font-semibold tracking-tight mb-3">Labels</h3>
+                 <h2 className="text-sm font-semibold tracking-tight mb-3">Labels</h2>
                  <Label.Provider entityId={selectedArtifact.id} entityType="artifact" orgId={activeOrgId}>
                    <Label.Chips />
                    <div className="mt-3">

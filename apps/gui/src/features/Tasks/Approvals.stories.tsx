@@ -1,35 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
-import { TaskApprovals, ApprovalsQueue } from './Approvals';
-
-// Fetched on mount through a real client - the same documented gap as
-// TaskRelations' stories: no MSW in Storybook, so this is the real
-// loading-then-error path. Pending, decided and empty states are covered by
-// Approvals.test.tsx against MSW.
-const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+import { TaskApprovals } from './Approvals';
+import { WorkPreview } from '../../../.storybook/WorkPreview';
 
 const meta = {
   title: 'Features/Tasks/Approvals',
   component: TaskApprovals,
-  parameters: { layout: 'padded' },
-  decorators: [
-    (Story) => (
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <div className="max-w-xl"><Story /></div>
-        </MemoryRouter>
-      </QueryClientProvider>
-    ),
-  ],
+  args: { taskId: 'task-storybook' },
+  parameters: { layout: 'fullscreen', router: false },
 } satisfies Meta<typeof TaskApprovals>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const OnATask: Story = { args: { taskId: 'task-storybook' } };
-
-export const OrganizationQueue: Story = {
-  args: { taskId: 'task-storybook' },
-  render: () => <ApprovalsQueue orgId="org-storybook" />,
-};
+export const OnATask: Story = { render: () => <WorkPreview kind="approvals" state="populated" /> };
+export const Empty: Story = { render: () => <WorkPreview kind="approvals" state="empty" organization /> };
+export const Loading: Story = { render: () => <WorkPreview kind="approvals" state="loading" /> };
+export const Unavailable: Story = { render: () => <WorkPreview kind="approvals" state="error" /> };
+export const Denied: Story = { render: () => <WorkPreview kind="approvals" state="denied" /> };
+export const NextPageError: Story = { render: () => <WorkPreview kind="approvals" state="next-error" /> };
+export const RefreshError: Story = { render: () => <WorkPreview kind="approvals" state="refresh-error" /> };
+export const OrganizationQueue: Story = { render: () => <WorkPreview kind="approvals" state="populated" organization /> };
+export const DeniedCached: Story = { render: () => <WorkPreview kind="approvals" state="denied-cached" /> };

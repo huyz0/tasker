@@ -187,7 +187,7 @@ function CreateRoleDialog({ open, onClose, orgId, permissions }: {
           </div>
         </fieldset>
         {createMutation.isError && (
-          <p className="text-sm text-destructive">Failed to create role: {(createMutation.error as Error).message}</p>
+          <p className="text-sm text-destructive-subtle-foreground">Failed to create role: {(createMutation.error as Error).message}</p>
         )}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -267,12 +267,12 @@ export function RolesManager() {
       />
 
       {updateMutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-subtle-foreground">
           Failed to save: {(updateMutation.error as Error).message}
         </p>
       )}
       {deleteMutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-subtle-foreground">
           Failed to delete role: {(deleteMutation.error as Error).message}
         </p>
       )}

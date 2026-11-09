@@ -36,6 +36,18 @@ describe("executePaginatedQuery cursor-cached totalCount", () => {
     expect(page2.totalCount).toBe(3);
   });
 
+  it("reuses a pre-existing facet cursor count for unrelated lists without changing its delimiter", async () => {
+    const { db } = await setupIntegrationTest();
+    const projectId = "proj-legacy-facet-" + crypto.randomUUID();
+    await seedTasks(db, 3, projectId);
+    const cursor = encodeCursor(Date.now() + 60_000, "later", "createdAt", 3, String.fromCharCode(0) + "todo");
+    await db.insert(schemaSqlite.tasks).values({ id: `${projectId}-extra`, projectId, title: "Extra", status: "todo", createdAt: new Date() });
+    const page = await executePaginatedQuery(db, schemaSqlite.tasks, eq(schemaSqlite.tasks.projectId, projectId), { limit: 2, cursor }, {
+      extraCacheKey: "todo", select: { id: schemaSqlite.tasks.id, createdAt: schemaSqlite.tasks.createdAt },
+    });
+    expect(page.totalCount).toBe(3);
+  });
+
   it("propagates the cached totalCount into page 2's own nextCursor for page 3 to reuse", async () => {
     const { db } = await setupIntegrationTest();
     const projectId = "proj-cache-prop-" + Date.now();

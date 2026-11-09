@@ -31,3 +31,21 @@ export const OperationalWorkspace: Story = {
     </div>
   ),
 };
+
+/** Standalone error/action ink stays readable; destructive fill is separate. */
+export const ErrorInkOnSurfaces: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4">
+      {[
+        ['Canvas', 'bg-surface-canvas'], ['Panel', 'bg-surface-panel'],
+        ['Raised', 'bg-surface-raised'], ['Callout', 'bg-destructive-subtle'],
+      ].map(([label, surface]) => (
+        <section key={label} className={`${surface} rounded-md border p-panel`}>
+          <h2 className="type-section-title">{label}</h2>
+          <p className="type-body text-destructive-subtle-foreground">Could not save this change. Your writing is retained.</p>
+          <button className="type-label text-destructive-subtle-foreground hover:underline focus-visible:ring-2 focus-visible:ring-primary">Delete draft</button>
+        </section>
+      ))}
+    </div>
+  ),
+};

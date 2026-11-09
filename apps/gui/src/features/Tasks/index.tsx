@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from 'use-debounce';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useScopedTo } from '../../hooks/useScope';
+import { useCanonicalResourceScope, useScopedTo } from '../../hooks/useScope';
 import { PriorityBadge, BlockedBadge, NeedsInputBadge, AwaitingApprovalBadge } from './PriorityBadge';
 import { TaskContext } from './TaskContext';
 import { TaskInputRequests, QuestionsQueue } from './InputRequests';
@@ -15,7 +15,7 @@ import { useQuery, useQueries, useInfiniteQuery, useMutation, useQueryClient } f
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
-import { TaskService, RepositoryService, TaskTypeService, TaskNoteService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { TaskService, RepositoryService, TaskTypeService, TaskNoteService, ProjectService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { MarkdownRenderer } from '../../components/ui/MarkdownRenderer';
 import { Comment } from '../../components/ui/comments';
 import { Label } from '../../components/ui/labels';
@@ -38,6 +38,7 @@ const taskClient = createClient(TaskService, transport);
 const repositoryClient = createClient(RepositoryService, transport);
 const taskTypeClient = createClient(TaskTypeService, transport);
 const taskNoteClient = createClient(TaskNoteService, transport);
+const projectClient = createClient(ProjectService, transport);
 
 
 /** A note's author: the name the server resolved, or the id if the agent is gone. */
@@ -118,7 +119,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
               className="text-sm rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
             />
             {updateNoteMutation.isError && (
-              <p className="text-xs text-destructive">Failed to update note: {(updateNoteMutation.error as Error).message}</p>
+              <p className="text-xs text-destructive-subtle-foreground">Failed to update note: {(updateNoteMutation.error as Error).message}</p>
             )}
             <div className="flex gap-2 self-end">
               <button type="submit" disabled={!editNoteContent.trim() || updateNoteMutation.isPending} className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium">Save</button>
@@ -147,7 +148,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
                       deleteNoteMutation.mutate(note.id);
                     }
                   }}
-                  className="text-muted-foreground hover:text-destructive text-xs"
+                  className="text-muted-foreground hover:text-destructive-subtle-foreground text-xs"
                 >
                   Delete
                 </button>
@@ -161,7 +162,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
         )
       ))}
       {deleteNoteMutation.isError && (
-        <p className="text-xs text-destructive">Failed to delete note: {(deleteNoteMutation.error as Error).message}</p>
+        <p className="text-xs text-destructive-subtle-foreground">Failed to delete note: {(deleteNoteMutation.error as Error).message}</p>
       )}
       {confirmDialog}
     </div>
@@ -365,10 +366,10 @@ function BoardColumn({
       className={`flex-1 basis-80 min-w-70 max-w-sm snap-start flex flex-col md:min-h-0 bg-muted/30 rounded-lg p-3 border-2 transition-colors ${isDragOver ? 'border-primary' : 'border-transparent'}`}
     >
       <div className="flex shrink-0 items-center justify-between mb-3 font-medium text-sm">
-        <span className="flex items-center gap-2">
+        <h2 className="flex items-center gap-2">
           <span className={`type-caption rounded-full px-2 py-0.5 ${TONE_CLASSES[taskTone(status)]}`}>{display}</span>
           <span className="text-xs bg-muted text-muted-foreground px-2 rounded-full">{count}</span>
-        </span>
+        </h2>
         <button
           aria-label={`Add task to ${display}`}
           onClick={onStartAdding}
@@ -415,7 +416,7 @@ function BoardColumn({
               <NeedsInputBadge count={task.openInputRequestCount ?? 0} />
               <AwaitingApprovalBadge count={task.pendingApprovalCount ?? 0} />
             </div>
-            <h4 className="mb-2">
+            <h3 className="mb-2">
               <button
                 type="button"
                 onClick={() => onOpenTask(task.id)}
@@ -423,7 +424,7 @@ function BoardColumn({
               >
                 {task.title}
               </button>
-            </h4>
+            </h3>
 
             <div className="mb-3">
               <AssigneePicker taskId={task.id} orgId={orgId} assignees={task.assignees ?? []} />
@@ -567,9 +568,31 @@ export function TasksWorkbench() {
   const expandedTaskQuery = useQuery({
     queryKey: ['task', expandedTaskId],
     enabled: !!expandedTaskId,
-    queryFn: async () => (await taskClient.getTask({ taskId: expandedTaskId! })).task,
+    queryFn: async () => {
+      const response = await taskClient.getTask({ taskId: expandedTaskId! });
+      return response.task ? { ...response.task, ownerOrgId: response.orgId } : undefined;
+    },
   });
   const expandedTask = expandedTaskQuery.data ?? null;
+  const legacyOwner = useQuery({
+    queryKey: ['project', expandedTask?.projectId],
+    enabled: !!expandedTask?.projectId && !expandedTask.ownerOrgId && !expandedTaskQuery.error,
+    queryFn: async () => (await projectClient.getProject({ id: expandedTask!.projectId })).project,
+  });
+  const ownerOrgId = expandedTask?.ownerOrgId
+    || (legacyOwner.data?.id === expandedTask?.projectId ? legacyOwner.data?.orgId : undefined);
+  const taskOwner = expandedTask?.id === expandedTaskId && expandedTask.projectId && ownerOrgId
+    ? { orgId: ownerOrgId, projectId: expandedTask.projectId } : undefined;
+  const ownerReadSucceeded = expandedTaskQuery.isSuccess && !expandedTaskQuery.isFetching
+    && (!!expandedTask?.ownerOrgId || (legacyOwner.isSuccess && !legacyOwner.isFetching));
+  const taskScopeReady = useCanonicalResourceScope(expandedTaskId ? `task:${expandedTaskId}` : null, taskOwner, ownerReadSucceeded, expandedTaskQuery.error || (!expandedTask?.ownerOrgId && legacyOwner.error));
+  const ownerError = expandedTaskQuery.error || (!expandedTask?.ownerOrgId && legacyOwner.error)
+    || (expandedTask && expandedTaskQuery.isSuccess && !expandedTaskQuery.isFetching
+      && !legacyOwner.isFetching && !taskOwner ? new Error('Could not resolve this task’s workspace.') : null);
+  const retryTaskOwner = () => {
+    expandedTaskQuery.refetch();
+    if (expandedTask?.projectId && !expandedTask.ownerOrgId) legacyOwner.refetch();
+  };
 
   // The project's own name, for the breadcrumb. Resolved by `useScopeLabels`,
   // which is where this query moved (M28-T07) once Memory needed the same
@@ -578,42 +601,8 @@ export function TasksWorkbench() {
 
   useEffect(() => setIsEditingTask(false), [expandedTaskId]);
 
-  // M19-T05: the open task lives in the URL, so switching the active
-  // project/org left it open across the switch - `getTask` kept resolving
-  // (or failing) against a task that belongs to whatever project/org was
-  // active when the link was followed, not the one now showing in the
-  // sidebar. Closes the panel so a stale task can't be edited under the
-  // wrong project's identity.
-  //
-  // Skipped while the scope is still arriving: a deep link
-  // (`/tasks/:taskId`) has to survive mounting into whatever the active
-  // project/org turns out to be, not get redirected away before it renders.
-  //
-  // Guarding only the first render was not enough, which is the bug this
-  // replaces. On a hard reload of `/tasks/:taskId` the store starts empty and
-  // hydrates a tick later, so the scope changes from '' to the real project
-  // *after* the first-render flag has already been spent — the effect fired,
-  // saw a task open, and threw the deep link away. Every reload of a task URL
-  // bounced to the board.
-  //
-  // Comparing against the previous scope tells the two apart: hydrating from
-  // "nothing selected yet" is not a switch, while genuinely moving between
-  // two projects is.
-  const previousScope = useRef<string | null>(null);
-  useEffect(() => {
-    const scope = `${activeOrgId}/${activeProjectId}`;
-    const previous = previousScope.current;
-    previousScope.current = scope;
-
-    // Nothing to compare against yet, or the scope was still empty — this is
-    // hydration, not navigation.
-    if (previous === null || !previous.split('/')[1]) return;
-    if (previous !== scope && expandedTaskId) navigate(scopedTo('/tasks'));
-    // Deliberately only activeProjectId/activeOrgId: this resets the panel
-    // when the *scope* changes, not on every ordinary navigation within it
-    // (which would fight the very task the user just opened).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeProjectId, activeOrgId]);
+  // Explicit scope selection closes incompatible detail in useSetScope.
+  // Hydration, Back and authorized ownership normalization retain the entity.
 
   // Task types can define their own custom status sets/state machines
   // (see tasks.handler.ts's validateStatusForTaskType) - fetch each distinct
@@ -922,7 +911,7 @@ export function TasksWorkbench() {
             </div>
           )}
           {bulkStatusMutation.isError && (
-            <p className="text-sm text-destructive">{(bulkStatusMutation.error as Error).message}</p>
+            <p className="text-sm text-destructive-subtle-foreground">{(bulkStatusMutation.error as Error).message}</p>
           )}
           {/* The rows are virtualized, so the table always needs a bounded
               height: the rest of the screen from `md:`, most of a dynamic
@@ -1045,7 +1034,7 @@ export function TasksWorkbench() {
       ) : (
       <>
       {updateStatusMutation.isError && (
-        <p className="text-sm text-destructive mb-3">
+        <p className="text-sm text-destructive-subtle-foreground mb-3">
           Failed to move task: {(updateStatusMutation.error as Error).message}
         </p>
       )}
@@ -1073,7 +1062,7 @@ export function TasksWorkbench() {
       </>
       )}
       {createTaskMutation.isError && (
-        <p className="text-sm text-destructive">Failed to create task: {(createTaskMutation.error as Error).message}</p>
+        <p className="text-sm text-destructive-subtle-foreground">Failed to create task: {(createTaskMutation.error as Error).message}</p>
       )}
 
       {/* Focused task-detail overlay (Jira/Linear pattern): takes over most
@@ -1084,7 +1073,7 @@ export function TasksWorkbench() {
       {/* A task link that is still loading, or names a task that cannot be
           loaded (deleted, or outside what the caller can see), used to render
           nothing at all: the URL changed and the screen did not (M32-T03). */}
-      {expandedTaskId && !expandedTask && (
+      {expandedTaskId && (!expandedTask || !taskScopeReady) && (
         <Dialog
           open
           onClose={() => setExpandedTaskId(null)}
@@ -1096,18 +1085,18 @@ export function TasksWorkbench() {
         >
           <div className="p-6">
             <ListState
-              isLoading={expandedTaskQuery.isLoading}
-              error={expandedTaskQuery.error ?? new Error('This task could not be found.')}
+              isLoading={expandedTaskQuery.isLoading || (!ownerError && !!expandedTask && !taskScopeReady)}
+              error={ownerError ?? (!expandedTask && !expandedTaskQuery.isLoading ? new Error('This task could not be found.') : null)}
               isEmpty={false}
               emptyMessage=""
               loadingMessage="Loading task…"
               errorLabel="Could not open this task"
-              onRetry={() => expandedTaskQuery.refetch()}
+              onRetry={retryTaskOwner}
             />
           </div>
         </Dialog>
       )}
-      {expandedTask && (
+      {expandedTask && taskScopeReady && (
         <Dialog
           open
           onClose={closeTask}
@@ -1139,7 +1128,7 @@ export function TasksWorkbench() {
                    }
                  }}
                  disabled={deleteTaskMutation.isPending}
-                 className="text-destructive hover:text-destructive/80 text-sm font-medium disabled:opacity-50"
+                 className="rounded-md bg-destructive-subtle px-3 py-1 text-destructive-subtle-foreground hover:opacity-90 text-sm font-medium disabled:opacity-50"
                >
                  {deleteTaskMutation.isPending ? 'Moving to bin…' : 'Delete'}
                </button>
@@ -1147,6 +1136,7 @@ export function TasksWorkbench() {
             </div>
           }
         >
+           {ownerError && <ListState isLoading={false} error={ownerError} isEmpty={false} emptyMessage="" errorLabel="Could not refresh this task" onRetry={retryTaskOwner} />}
            {/* A task reached by a deep link has no history behind it: the
                browser's Back button leaves the app. */}
            <Breadcrumbs
@@ -1164,7 +1154,7 @@ export function TasksWorkbench() {
              ]}
            />
            {deleteTaskMutation.isError && (
-             <p className="text-sm text-destructive px-4 pt-2 shrink-0">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
+             <p className="text-sm text-destructive-subtle-foreground px-4 pt-2 shrink-0">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
            )}
            <div className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden flex flex-col md:flex-row">
            <div className="flex-none md:flex-1 md:min-w-0 p-6 overflow-visible md:overflow-y-auto custom-scrollbar">
@@ -1194,7 +1184,7 @@ export function TasksWorkbench() {
                    placeholder="Description (Markdown supported)"
                  />
                  {updateTaskMutation.isError && (
-                   <p className="text-destructive text-xs">Failed to update task: {(updateTaskMutation.error as Error).message}</p>
+                   <p className="text-destructive-subtle-foreground text-xs">Failed to update task: {(updateTaskMutation.error as Error).message}</p>
                  )}
                  <div className="flex gap-2">
                    <button
@@ -1256,7 +1246,7 @@ export function TasksWorkbench() {
                   </select>
                 </div>
                 {updateStatusMutation.isError && (
-                  <p className="text-destructive text-xs">Failed to update status: {(updateStatusMutation.error as Error).message}</p>
+                  <p className="text-destructive-subtle-foreground text-xs">Failed to update status: {(updateStatusMutation.error as Error).message}</p>
                 )}
                 <div className="flex justify-between items-center">
                   <span className="w-20">Priority:</span>
@@ -1272,7 +1262,7 @@ export function TasksWorkbench() {
                   </select>
                 </div>
                 {updatePriorityMutation.isError && (
-                  <p className="text-destructive text-xs">Failed to update priority: {(updatePriorityMutation.error as Error).message}</p>
+                  <p className="text-destructive-subtle-foreground text-xs">Failed to update priority: {(updatePriorityMutation.error as Error).message}</p>
                 )}
                 {/* Was a hardcoded "Unassigned", shown whether or not the task
                     had assignees — the detail view's version of M05-T02's chip. */}

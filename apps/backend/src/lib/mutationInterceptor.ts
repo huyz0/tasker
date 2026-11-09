@@ -33,8 +33,10 @@ const READS: Record<string, readonly string[]> = {
 
 // These handlers explicitly own narrow units after external preparation or
 // around schedule admission/execution; an outer unit would hold SQL locks over I/O
-// or establish a snapshot before schedule mutation locking reads.
+// or establish a snapshot before schedule mutation locking reads. Approval
+// decisions commit an intentional stale closure before presenting its RPC error.
 const LOCAL_UNITS: Record<string, readonly string[]> = {
+  TaskService: ['DecideTransitionApproval'],
   RepositoryService: ['AddRepositoryLink', 'SyncPullRequests'],
   ScheduleService: ['CreateSchedule', 'UpdateSchedule', 'DeleteSchedule', 'RunSchedule'],
 };

@@ -81,7 +81,7 @@ function StartPanel({ template, orgId, activeProjectId }: StartPanelProps) {
           {start.isPending ? 'Starting…' : 'Start workflow'}
         </button>
       </form>
-      {start.isError && <p className="text-sm text-destructive">Could not start: {(start.error as Error).message}</p>}
+      {start.isError && <p className="text-sm text-destructive-subtle-foreground">Could not start: {(start.error as Error).message}</p>}
       {start.data?.parent && (
         <p className="text-sm">
           Started{' '}
@@ -233,13 +233,13 @@ export function WorkflowsScreen() {
                   <button
                     onClick={() => remove.mutate()}
                     disabled={remove.isPending}
-                    className="text-sm font-medium text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    className="text-sm font-medium text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
                   >
                     Delete
                   </button>
                 </div>
               </div>
-              {remove.isError && <p className="text-sm text-destructive">Could not delete: {(remove.error as Error).message}</p>}
+              {remove.isError && <p className="text-sm text-destructive-subtle-foreground">Could not delete: {(remove.error as Error).message}</p>}
               <ol className="flex flex-col gap-2" aria-label="Workflow steps">
                 {detail.data.steps.map((s, i) => {
                   const after = s.dependsOn.map((k) => detail.data!.steps.find((o) => o.key === k)?.title ?? k);

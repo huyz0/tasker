@@ -1,3 +1,4 @@
+import { Code, ConnectError } from '@connectrpc/connect';
 import { useCallback, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLayoutStore } from '../store/layout';
@@ -95,7 +96,7 @@ export function useSetScope() {
   const latest = useRef(location);
   latest.current = location;
   return useCallback(
-    (next: Partial<Scope>, options?: { replace?: boolean }) => {
+    (next: Partial<Scope>, options?: { replace?: boolean; intent?: 'selection' | 'normalization' }) => {
       const { pathname, search, hash } = currentLocation(latest.current);
       const updated = new URLSearchParams(search);
       const apply = (key: string, value: string | undefined) => {
@@ -105,8 +106,26 @@ export function useSetScope() {
       };
       apply(ORG_PARAM, next.orgId);
       apply(PROJECT_PARAM, next.projectId);
+      const before = new URLSearchParams(search);
+      const changed = before.get(ORG_PARAM) !== updated.get(ORG_PARAM)
+        || before.get(PROJECT_PARAM) !== updated.get(PROJECT_PARAM);
+      if (!changed) return;
+      // Existing replace callers fill/correct scope automatically. Explicit
+      // selection leaves incompatible detail in the same navigation, rather
+      // than relying on a later store effect that also closes deep links.
+      const intent = options?.intent ?? (options?.replace ? 'normalization' : 'selection');
+      let destination = pathname;
+      if (intent === 'selection') {
+        const detail = /^\/(tasks|artifacts)\/[^/]+\/?$/.exec(pathname);
+        if (detail) destination = `/${detail[1]}`;
+        if (pathname === '/memory' || pathname.startsWith('/memory/')) {
+          destination = '/memory';
+          if (next.projectId) updated.set('scope', 'project');
+          else if (updated.get('scope') === 'team') updated.set('scope', 'organization');
+        }
+      }
       const query = updated.toString();
-      navigate({ pathname, search: query ? `?${query}` : '', hash }, { replace: options?.replace ?? false });
+      navigate({ pathname: destination, search: query ? `?${query}` : '', hash }, { replace: options?.replace ?? false });
     },
     // Empty on purpose: the target is absolute and read from the ref, so the
     // first render's `navigate` is as correct as any later one.
@@ -121,13 +140,10 @@ export function useSetScope() {
  * Called from `AppShell` — the only component guaranteed mounted for the
  * session, and already the holder of the single live-event subscription.
  *
- * The one-tick delay between the first render and this effect is not an
- * artefact to optimise away: `Tasks`'s `previousScope` guard tells hydration
- * from a genuine project switch by whether the *previous* project was empty,
- * which is only true while the store starts empty and the URL fills it
- * afterwards. Making this synchronous would kill that discriminator and
- * reopen the M23 bug, where reloading a task URL silently dropped you back to
- * the list.
+ * Entity readers wait for both the URL and this store to match the authorized
+ * owner before exposing content/actions. Deliberate selection is encoded by
+ * the URL writer in one navigation; hydration and normalization therefore
+ * never masquerade as a new selection or dismiss a direct-linked resource.
  */
 export function useScopeSync(): void {
   const { orgId, projectId } = useScope();
@@ -141,6 +157,53 @@ export function useScopeSync(): void {
   useEffect(() => {
     setActiveProjectId(projectId);
   }, [projectId, setActiveProjectId]);
+}
+
+/** Normalize an entity entry from a successful authorized read, preserving Back. */
+export function useCanonicalResourceScope(
+  resourceKey: string | null,
+  owner: (Scope & { memoryTier?: 'project' | 'organization' | 'team' }) | undefined,
+  readSucceeded: boolean,
+  readError?: unknown,
+): boolean {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeOrgId = useLayoutStore(s => s.activeOrgId);
+  const activeProjectId = useLayoutStore(s => s.activeProjectId);
+  const latest = useRef(location);
+  latest.current = location;
+  const failureCode = readError ? ConnectError.from(readError).code : undefined;
+  const accessUnavailable = failureCode === Code.PermissionDenied || failureCode === Code.Unauthenticated || failureCode === Code.NotFound;
+  const accepted = useRef<{ key: string | null; owner?: typeof owner }>({ key: null });
+  if (accepted.current.key !== resourceKey) accepted.current = { key: resourceKey };
+  // A known access loss revokes previous acceptance until a fresh read wins.
+  // A later network error must never resurrect the old accepted owner.
+  if (accessUnavailable) accepted.current.owner = undefined;
+  if (resourceKey && readSucceeded && !accessUnavailable && owner?.orgId
+    && (owner.projectId || owner.memoryTier === 'organization' || owner.memoryTier === 'team')) {
+    accepted.current.owner = owner;
+  }
+  const resolved = accepted.current.owner;
+  const params = new URLSearchParams(location.search);
+  const matches = !!resolved && params.get(ORG_PARAM) === resolved.orgId
+    && (params.get(PROJECT_PARAM) ?? '') === resolved.projectId
+    && (!resolved.memoryTier || params.get('scope') === resolved.memoryTier);
+
+  useEffect(() => {
+    if (!resourceKey || !readSucceeded || !resolved || matches) return;
+    const current = currentLocation(latest.current);
+    if (current.pathname !== location.pathname || current.search !== location.search) return;
+    const next = new URLSearchParams(current.search);
+    next.set(ORG_PARAM, resolved.orgId);
+    if (resolved.projectId) next.set(PROJECT_PARAM, resolved.projectId);
+    else next.delete(PROJECT_PARAM);
+    if (resolved.memoryTier) next.set('scope', resolved.memoryTier);
+    navigate({ pathname: current.pathname, search: next.toString(), hash: current.hash }, { replace: true });
+  }, [resourceKey, readSucceeded, resolved, matches, location.pathname, location.search, navigate]);
+
+  // Keep an already-resolved editor mounted during background reads. A new
+  // entity must earn its own authorized owner before content/actions appear.
+  return !resourceKey || (!accessUnavailable && matches && activeOrgId === resolved?.orgId && activeProjectId === resolved?.projectId);
 }
 
 /**

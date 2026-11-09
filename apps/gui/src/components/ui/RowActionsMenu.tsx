@@ -83,7 +83,7 @@ export function RowActionsMenu({ label, actions }: { label: string; actions: Row
               // `focus-visible:ring` is the same belt-and-suspenders the rest
               // of this codebase uses everywhere else `outline-none` appears.
               className={`flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 ${
-                action.destructive ? 'text-destructive data-[highlighted]:text-destructive-foreground data-[highlighted]:bg-destructive' : ''
+                action.destructive ? 'text-destructive-subtle-foreground data-[highlighted]:text-destructive-foreground data-[highlighted]:bg-destructive' : ''
               }`}
             >
               {action.label}

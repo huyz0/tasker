@@ -1,13 +1,23 @@
 import { test, expect, type Page } from '@playwright/test';
 import { selectSeededOrg } from './selectSeededOrg';
 
+test.beforeEach(async ({ context }) => {
+  const backend = process.env.TASKER_E2E_BACKEND_URL;
+  if (backend) await context.route('http://localhost:8080/**', async route => {
+    const url = new URL(route.request().url());
+    const response = await route.fetch({ url: new URL(url.pathname + url.search, backend).href });
+    await route.fulfill({ response });
+  });
+});
+test.afterEach(async ({ context }) => context.unrouteAll({ behavior: 'ignoreErrors' }));
+
 async function openSeededWork(page: Page) {
   await page.setViewportSize({ width: 1280, height: 900 });
   await selectSeededOrg(page);
   await page.getByRole('button', { name: 'Active project', exact: true }).click();
   await page.getByRole('combobox', { name: 'Search active project' }).fill('Seed Project');
   await page.getByRole('option', { name: 'Seed Project', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 4 }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { level: 3 }).first()).toBeVisible();
 }
 
 for (const width of [768, 1024]) {
@@ -24,7 +34,7 @@ for (const width of [768, 1024]) {
 
 test('mobile task content and properties share usable scrolling and preserve history', async ({ page }) => {
   await openSeededWork(page);
-  await page.getByRole('heading', { level: 4 }).getByRole('button').first().click();
+  await page.getByRole('heading', { level: 3 }).getByRole('button').first().click();
   const taskUrl = page.url();
   await page.setViewportSize({ width: 375, height: 900 });
   const dialog = page.getByRole('dialog');
@@ -84,13 +94,15 @@ test('empty dashboard summaries use compact space beside populated panels', asyn
 
 test('optional task context supports native keyboard disclosure and retains a summary draft', async ({ page }) => {
   await page.route('**/tasker.health.v1.TaskService/GetTask', async route => {
-    const response = await route.fetch();
+    const backend = process.env.TASKER_E2E_BACKEND_URL;
+    const url = new URL(route.request().url());
+    const response = await route.fetch(backend ? { url: new URL(url.pathname + url.search, backend).href } : {});
     const data = await response.json();
     delete data.task.summary; delete data.task.plan; delete data.task.usage;
     await route.fulfill({ response, json: data });
   });
   await openSeededWork(page);
-  await page.getByRole('heading', { level: 4 }).getByRole('button').first().click();
+  await page.getByRole('heading', { level: 3 }).getByRole('button').first().click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('The agent has not shared a plan.')).toBeHidden();
   const plan = dialog.locator('summary').filter({ hasText: 'Agent plan' });

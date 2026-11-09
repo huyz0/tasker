@@ -26,6 +26,11 @@ its base/ledger before publication. All remaining dependency and acceptance
 boundaries below stay in force. Current counts live in STATE.md rather than the
 historical planning baseline above.
 
+M47 is now published in PR #5 aseeca274 after all ten final-head jobs passed.
+M53 has7/7 tasks and5/5 criteria verified locally, including final217-story
+lifecycle matrices,42 browser journeys and35 source checks. PR #6 still requires
+all final-head remote jobs before merge. M54 design is next;31 tasks remain.
+
 ## Recommendation-to-task mapping
 
 | Finding / accepted improvement | Task owner | Observable proof |

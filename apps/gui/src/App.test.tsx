@@ -32,6 +32,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: (opts: unknown) => mockUseQuery(opts as { queryKey: unknown[] }),
   useQueries: () => [],
   useMutation: () => mockUseMutation(),
+  useMutationState: () => [],
   useQueryClient: () => mockUseQueryClient(),
   useInfiniteQuery: () => mockUseInfiniteQuery(),
 }));
@@ -146,7 +147,10 @@ describe('App', () => {
       healthQueryResult = { data: undefined, error: null, isLoading: false };
       renderApp(resultRoute({ type: 'artifact', id: 'art-1' })!);
 
-      expect(await screen.findByText('Artifacts Explorer')).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Artifacts', level: 1 })).toBeInTheDocument();
+      // Resource reads are deliberately unavailable in this routing-only
+      // fixture. The actual owner/content flow has real RPC integration tests.
+      expect(screen.getByText('Loading this artifact…')).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Page not found' })).toBeNull();
     });
   });

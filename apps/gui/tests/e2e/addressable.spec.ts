@@ -57,8 +57,8 @@ async function selectProject(page: Page, search: string, option: RegExp): Promis
 /** The first card on the board, whatever the seed happens to have ordered first. */
 function firstTaskCard(page: Page) {
   // The task title *is* the button (see comments.spec.ts on why the card
-  // stopped being a `role="button"` div), and it lives in the card's h4.
-  return page.getByRole('heading', { level: 4 }).getByRole('button').first();
+  // stopped being a `role="button"` div), inside its level-three heading.
+  return page.getByRole('heading', { level: 3 }).getByRole('button').first();
 }
 
 test.describe('Addressable screens', () => {

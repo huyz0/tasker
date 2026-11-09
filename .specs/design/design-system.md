@@ -29,6 +29,14 @@ and a subtle pair for tinted callouts:
 | neutral | Neither good nor bad — draft, todo, archived, unknown | `bg-neutral text-neutral-foreground` | `bg-neutral-subtle text-neutral-subtle-foreground` |
 | destructive | It failed, or this action destroys something | `bg-destructive text-destructive-foreground` | `bg-destructive-subtle text-destructive-subtle-foreground` |
 
+For standalone failure text or destructive action text on canvas, panel and
+raised surfaces (including overlays), use `text-destructive-subtle-foreground`, including hover ink.
+`destructive` is a fill role; `text-destructive` is too dark on dark surfaces.
+Keep `bg-destructive text-destructive-foreground` for solid controls and
+highlighted menu items. Never lighten the fill or override the text utility to
+compensate for a mismatched role. The error-ink surface story checks this in both
+themes alongside the paired status roles.
+
 **There is no `danger`.** The failure step is `destructive`, which is also the
 delete-action colour, and the two have never needed to differ. A separate
 `danger` token would have to be introduced everywhere `destructive` is already

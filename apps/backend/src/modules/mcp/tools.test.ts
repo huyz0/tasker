@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { TOOL_SPECS, createToolHost, loopbackCaller, ConnectFailure, type ConnectCaller } from "./tools";
-import { InvalidToolArguments } from "./protocol";
+import { handleMcpMessage, InvalidToolArguments, JSONRPC } from "./protocol";
 
 /**
  * M36-T02 (ADR-0029). The catalogue is a set of mappings onto RPCs that
@@ -52,6 +52,66 @@ describe("MCP tool catalogue (M36-T02)", () => {
     expect(TOOL_SPECS.some((t) => t.method === "CreateWorkflowTemplate" || t.method === "DeleteWorkflowTemplate")).toBe(false);
     // So is defining schedules (ADR-0036); agents may only run one now.
     expect(TOOL_SPECS.some((t) => ["CreateSchedule", "UpdateSchedule", "DeleteSchedule"].includes(t.method))).toBe(false);
+  });
+
+  it.each(["list_input_requests", "list_transition_approvals"])("%s advertises and forwards the closed list selector", async (name) => {
+    const tool = TOOL_SPECS.find(t => t.name === name)!;
+    expect((tool.inputSchema.properties.status as any).enum).toContain("closed");
+    const sent: any[] = [];
+    const host = createToolHost(async (_service, method, request) => { sent.push({ method, request }); return {}; });
+    await host.call(name, { task_id: "task-1", status: "closed", limit: 10, cursor: "next" });
+    expect(sent).toEqual([{ method: tool.method, request: { taskId: "task-1", status: "closed", page: { limit: 10, cursor: "next" } } }]);
+  });
+
+  it.each([0, 4000])("forwards a %i-character summary through MCP as exactly one existing RPC", async (length) => {
+    const sent: any[] = [];
+    const fake = (async (url: string, init: RequestInit) => {
+      sent.push({ url, body: JSON.parse(init.body as string) });
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+    const host = createToolHost(loopbackCaller("http://127.0.0.1:8080", "Bearer tk_fixture", fake));
+    const text = "x".repeat(length);
+    const result: any = await handleMcpMessage({ jsonrpc: "2.0", id: 1, method: "tools/call",
+      params: { name: "set_task_summary", arguments: { task_id: "task-a", text } },
+    }, host);
+    expect(result.error).toBeUndefined();
+    expect(result.result.structuredContent).toEqual({});
+    expect(sent).toEqual([{ url: "http://127.0.0.1:8080/tasker.health.v1.TaskService/SetTaskSummary",
+      body: { taskId: "task-a", text } }]);
+    const schema = host.tools.find(tool => tool.name === "set_task_summary")!.inputSchema;
+    expect(schema.required).toContain("text");
+    expect(schema.properties.text).toMatchObject({ type: "string", minLength: 0, maxLength: 4000 });
+  });
+
+  it.each([
+    { task_id: "task-a" }, { task_id: "task-a", text: null },
+    { task_id: "task-a", text: 1 }, { task_id: "task-a", text: false },
+    { task_id: "task-a", text: [] }, { task_id: "task-a", text: {} },
+    { task_id: "task-a", text: "x".repeat(4001) }, { task_id: "", text: "" },
+  ])("rejects malformed summary arguments before calling an RPC %#", async (args) => {
+    let calls = 0;
+    const host = createToolHost(async () => { calls++; return {}; });
+    const result: any = await handleMcpMessage({ jsonrpc: "2.0", id: 1, method: "tools/call",
+      params: { name: "set_task_summary", arguments: args },
+    }, host);
+    expect(result.error.code).toBe(JSONRPC.invalidParams);
+    expect(calls).toBe(0);
+  });
+
+  it("keeps every other required string nonempty", async () => {
+    let calls = 0, checked = 0;
+    const host = createToolHost(async () => { calls++; return {}; });
+    for (const tool of TOOL_SPECS) {
+      for (const key of tool.inputSchema.required ?? []) {
+        if ((tool.inputSchema.properties[key] as any).type !== "string"
+          || (tool.name === "set_task_summary" && key === "text")) continue;
+        await expect(host.call(tool.name, { ...sampleArgs(tool), [key]: "" }))
+          .rejects.toBeInstanceOf(InvalidToolArguments);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(30);
+    expect(calls).toBe(0);
   });
 
   it("validates arguments against the advertised schema", async () => {

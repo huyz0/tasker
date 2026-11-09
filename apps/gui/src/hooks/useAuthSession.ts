@@ -10,6 +10,8 @@ export function useAuthSession() {
 
   return {
     isLoading: query.isLoading,
+    isFetching: query.isFetching ?? false,
+    error: query.error ?? null,
     authenticated: query.data?.authenticated ?? false,
     userId: query.data?.userId ?? null,
     mustChangePassword: query.data?.mustChangePassword ?? false,

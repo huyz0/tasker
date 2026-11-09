@@ -44,7 +44,7 @@ describe('BeliefCrumbs', () => {
     // The tier travels with the crumb: a belief read under organization scope
     // must return to the organization list, not to the project one.
     expect(within(trail()).getByRole('link', { name: 'Memory' })).toHaveAttribute(
-      'href', '/memory?org=org-1&project=proj-1&scope=organization',
+      'href', '/memory?org=org-1&scope=organization',
     );
   });
 

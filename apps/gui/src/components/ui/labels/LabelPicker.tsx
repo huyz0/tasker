@@ -18,7 +18,7 @@ export function LabelPicker() {
   return (
     <div className="flex flex-col gap-2">
       {state.isError && (
-        <p className="text-xs text-destructive">Failed to update labels: {state.error?.message}</p>
+        <p className="text-xs text-destructive-subtle-foreground">Failed to update labels: {state.error?.message}</p>
       )}
       {unattached.length > 0 && (
         <select

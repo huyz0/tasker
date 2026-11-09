@@ -1,9 +1,13 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { TaskService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { Code, createContextValues } from "@connectrpc/connect";
 import { setupIntegrationTest, makeAuthContext, seedOrgWithAdmin, seedProject } from "../../test/setup";
 import * as schemaSqlite from "../../db/schema.sqlite";
 import { currentPrincipalKey } from "../auth/session";
 import { createTaskManagementHandler, createTasksHandler } from "./tasks.handler";
+import { setDurableDomainEventCapture } from "../../lib/natsCorrelation";
+import { captureDomainEvent } from "../../lib/domainEventOutbox";
+import { createMutationInterceptor } from "../../lib/mutationInterceptor";
 import { purgeTaskCascade } from "../../lib/cascadePurge";
 
 /** M39 (ADR-0032): an agent's move across a gated transition waits for a person. */
@@ -54,6 +58,8 @@ describe("approval gates (M39)", () => {
     expect(actual).toBe(code);
     if (message) expect(err.message).toMatch(message);
   }
+
+  afterEach(() => setDurableDomainEventCapture(null));
 
   const status = async (id: string) => (await handler.getTask({ taskId: id }, ctx)).task.status;
 
@@ -172,6 +178,50 @@ describe("approval gates (M39)", () => {
       await expectCode(handler.decideTransitionApproval({ id: approval.id, approve: true }, ctx), Code.FailedPrecondition, /moved since/);
       expect(await status(t.id)).toBe("review");
       expect((await handler.getTransitionApproval({ id: approval.id }, ctx)).approval.status).toBe("stale");
+    });
+
+    it("durably closes a stale approval through the real mutation interceptor", async () => {
+      const { t, approval } = await held();
+      await handler.updateTaskStatus({ taskId: t.id, status: "review" }, ctx);
+      nc.clear();
+      const call = createMutationInterceptor(db)(async () =>
+        handler.decideTransitionApproval({ id: approval.id, approve: true }, ctx));
+      await expectCode(call({ stream: false, method: TaskService.methods.find(method => method.name === "DecideTransitionApproval") } as any), Code.FailedPrecondition, /closed as stale/);
+      expect((await handler.getTransitionApproval({ id: approval.id }, ctx)).approval.status).toBe("stale");
+      expect(await status(t.id)).toBe("review");
+      expect((await handler.getTask({ taskId: t.id }, ctx)).task.pendingApprovalCount).toBe(0);
+      expect((await handler.listTransitionApprovals({ taskId: t.id }, ctx)).approvals).toHaveLength(0);
+      expect(nc.publishedMessages.some((m: any) => ["domain.task.status_updated", "domain.task.approval_decided"].includes(m.subject))).toBe(false);
+    });
+
+    it("rolls back both the decision and task change if durable capture fails after the task CAS", async () => {
+      const { t, approval } = await held();
+      const activityBefore = await db.select().from(S.taskActivity);
+      nc.clear();
+      setDurableDomainEventCapture(async (tx, standalone, event) => {
+        await captureDomainEvent(tx, standalone, event, { brokerRequired: false });
+        throw new Error("capture storage unavailable");
+      });
+      const call = createMutationInterceptor(db)(async () => handler.decideTransitionApproval({ id: approval.id, approve: true }, ctx));
+      await expect(call({ stream: false, method: TaskService.methods.find(method => method.name === "DecideTransitionApproval") } as any)).rejects.toThrow("capture storage unavailable");
+      expect(await status(t.id)).toBe("todo");
+      expect((await handler.getTransitionApproval({ id: approval.id }, ctx)).approval.status).toBe("pending");
+      expect(await db.select().from(S.taskActivity)).toHaveLength(activityBefore.length);
+      expect(await db.select().from(S.domainEvents)).toHaveLength(0);
+      expect(nc.publishedMessages).toHaveLength(0);
+    });
+
+    it("concurrent decision losers cannot overwrite the winning atomic outcome", async () => {
+      const { t, approval } = await held();
+      nc.clear();
+      const invoke = (approve: boolean) => createMutationInterceptor(db)(async () => handler.decideTransitionApproval({ id: approval.id, approve }, ctx))({ stream: false, method: TaskService.methods.find(method => method.name === "DecideTransitionApproval") } as any);
+      const outcomes = await Promise.allSettled([invoke(true), invoke(false)]);
+      expect(outcomes.filter(r => r.status === "fulfilled")).toHaveLength(1);
+      const loser = outcomes.find(r => r.status === "rejected") as PromiseRejectedResult;
+      expect(loser.reason.code).toBe(Code.FailedPrecondition);
+      const row = (await handler.getTransitionApproval({ id: approval.id }, ctx)).approval;
+      expect(await status(t.id)).toBe(row.status === "approved" ? "done" : "todo");
+      expect(nc.publishedMessages.filter((m: any) => m.subject === "domain.task.approval_decided")).toHaveLength(1);
     });
 
     it("is for people with task:write only", async () => {

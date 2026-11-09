@@ -99,7 +99,7 @@ export function TaskArtifactLinks({ taskId, artifactId, orgId }: { taskId?: stri
                 aria-label={`Unlink ${nameOf(l)}`}
                 onClick={() => unlinkMutation.mutate(l)}
                 disabled={unlinkMutation.isPending}
-                className="ml-auto text-muted-foreground hover:text-destructive disabled:opacity-50"
+                className="ml-auto text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
               >
                 ✕
               </button>
@@ -165,10 +165,10 @@ export function TaskArtifactLinks({ taskId, artifactId, orgId }: { taskId?: stri
       )}
 
       {linkMutation.isError && (
-        <span className="text-xs text-destructive">Failed to link: {(linkMutation.error as Error).message}</span>
+        <span className="text-xs text-destructive-subtle-foreground">Failed to link: {(linkMutation.error as Error).message}</span>
       )}
       {unlinkMutation.isError && (
-        <span className="text-xs text-destructive">Failed to unlink: {(unlinkMutation.error as Error).message}</span>
+        <span className="text-xs text-destructive-subtle-foreground">Failed to unlink: {(unlinkMutation.error as Error).message}</span>
       )}
     </div>
   );

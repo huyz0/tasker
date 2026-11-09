@@ -33,7 +33,7 @@ async function openSeededProject(page: Page) {
   await page.getByRole('combobox', { name: 'Search active project' }).fill('Seed Project');
   await page.getByRole('option', { name: /^Seed Project/i }).first().click();
   await expect(page.getByRole('button', { name: 'Add task to Todo' }).first()).toBeVisible();
-  await expect(page.getByRole('heading', { level: 4 }).getByRole('button').first()).toBeVisible();
+  await expect(page.getByRole('heading', { level: 3 }).getByRole('button').first()).toBeVisible();
 }
 
 async function expectTaskRead(page: Page, action: () => Promise<unknown>) {

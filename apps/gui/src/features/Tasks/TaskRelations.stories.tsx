@@ -13,7 +13,7 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false 
 const meta = {
   title: 'Features/Tasks/TaskRelations',
   component: TaskRelations,
-  parameters: { layout: 'padded' },
+  parameters: { router: false, layout: 'padded' },
   decorators: [
     (Story) => (
       <QueryClientProvider client={queryClient}>

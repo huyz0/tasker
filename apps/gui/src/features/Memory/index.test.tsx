@@ -5,7 +5,7 @@ import { mockRpc, mockRpcError } from '../../test/mockRpc';
 import { MemoryExplorer } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
 import { expectNoA11yViolations } from '../../test/a11y';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { renderScoped } from '../../test/renderScoped';
 
 let mockActiveOrgId = 'org-1';
@@ -16,6 +16,8 @@ vi.mock('../../store/layout', () => ({
     get activeProjectId() { return mockActiveProjectId; },
   })),
 }));
+
+const beliefCatalog = new Map<string, object>();
 
 const BELIEFS = [
   {
@@ -41,8 +43,16 @@ function BackProbe() {
   return <button onClick={() => navigate(-1)}>Go back</button>;
 }
 
+function ScopedMemoryFixture() {
+  const params = new URLSearchParams(useLocation().search);
+  if (params.has('org')) mockActiveOrgId = params.get('org')!;
+  if (['organization', 'team'].includes(params.get('scope') ?? '')) mockActiveProjectId = '';
+  else if (params.has('project')) mockActiveProjectId = params.get('project')!;
+  return <><MemoryExplorer /><BackProbe /></>;
+}
+
 function renderPage(initialEntry = '/memory') {
-  return renderScoped(<><MemoryExplorer /><BackProbe /></>, {
+  return renderScoped(<ScopedMemoryFixture />, {
     paths: ['/memory', '/memory/:beliefId'],
     initialEntry,
   });
@@ -58,7 +68,11 @@ function withRpc(method: string, response: object | ((body: any) => object)) {
   const requests: any[] = [];
   mockRpc(MemoryService, method, (body) => {
     requests.push(body);
-    return typeof response === 'function' ? response(body) : response;
+    const result = typeof response === 'function' ? response(body) : response;
+    if (method === 'SearchBeliefs' || method === 'ListBeliefs') {
+      for (const belief of (result as { beliefs?: { id: string }[] }).beliefs ?? []) beliefCatalog.set(belief.id, belief);
+    }
+    return result;
   });
   return requests;
 }
@@ -71,7 +85,9 @@ describe('MemoryExplorer', () => {
     withRpc('ListBeliefs', { beliefs: BELIEFS, page: {} });
     withRpc('ListBeliefRelations', { relations: [] });
     withRpc('ListBeliefPromotions', { promotions: [] });
-    withRpc('GetBelief', { belief: BELIEFS[0] });
+    beliefCatalog.clear();
+    for (const belief of BELIEFS) beliefCatalog.set(belief.id, belief);
+    withRpc('GetBelief', (body: { id: string }) => ({ belief: beliefCatalog.get(body.id) }));
     // M28-T07: the belief trail names the project, so every case that opens a
     // belief now resolves its name (`onUnhandledRequest: 'error'` would fail
     // them otherwise).
@@ -116,7 +132,7 @@ describe('MemoryExplorer', () => {
   it('shows agent provenance and the linked task for an agent-recorded belief', async () => {
     renderPage();
     await searchFor('CI');
-    fireEvent.click(screen.getByText('CI always runs migrations against MySQL'));
+    fireEvent.click(await screen.findByText('CI always runs migrations against MySQL'));
 
     const detail = within(await screen.findByRole('region', { name: 'Belief detail' }));
     expect(detail.getByText(/Recorded by an agent/)).toBeInTheDocument();
@@ -156,7 +172,7 @@ describe('MemoryExplorer', () => {
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Supersede'));
     const textarea = await screen.findByLabelText('New statement');
     fireEvent.change(textarea, { target: { value: 'Corrected statement' } });
@@ -173,7 +189,7 @@ describe('MemoryExplorer', () => {
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Promote'));
     fireEvent.click(await screen.findByRole('button', { name: 'Promote' }));
     await confirmAction();
@@ -189,7 +205,7 @@ describe('MemoryExplorer', () => {
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Promote'));
     fireEvent.click(await screen.findByRole('button', { name: 'Promote' }));
     await cancelAction();
@@ -270,7 +286,7 @@ describe('MemoryExplorer', () => {
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Archive'));
     await confirmAction();
 
@@ -286,7 +302,7 @@ describe('MemoryExplorer', () => {
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     expect(await screen.findByText('Restore')).toBeInTheDocument();
     expect(screen.getByText('Delete permanently')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Delete permanently'));
@@ -343,7 +359,7 @@ describe('MemoryExplorer', () => {
     });
     renderPage();
     await searchFor('CI');
-    fireEvent.click(screen.getByText('CI always runs migrations against MySQL'));
+    fireEvent.click(await screen.findByText('CI always runs migrations against MySQL'));
 
     const detail = within(await screen.findByRole('region', { name: 'Belief detail' }));
     expect(detail.getByText('retracted')).toBeInTheDocument();
@@ -414,7 +430,7 @@ describe('MemoryExplorer', () => {
     withRpc('ListBeliefRelations', {
       relations: [{ id: 'rel-1', beliefAId: 'blf-1', beliefBId: 'blf-2', relationType: 'relates_to', createdBy: 'user-1', createdAt: '' }],
     });
-    const requests = withRpc('GetBelief', { belief: BELIEFS[1] });
+    const requests = withRpc('GetBelief', (body: { id: string }) => ({ belief: beliefCatalog.get(body.id) }));
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
@@ -431,7 +447,7 @@ describe('MemoryExplorer', () => {
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Restore'));
 
     await waitFor(() => expect(requests).toContainEqual({ id: 'blf-1' }));
@@ -443,7 +459,7 @@ describe('MemoryExplorer', () => {
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Promote'));
     fireEvent.change(await screen.findByLabelText(/Note/), { target: { value: 'Widely applicable' } });
     fireEvent.click(screen.getByRole('button', { name: 'Promote' }));
@@ -509,7 +525,7 @@ describe('MemoryExplorer', () => {
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Supersede'));
     fireEvent.change(await screen.findByLabelText('New statement'), { target: { value: 'x' } });
     fireEvent.click(screen.getByRole('button', { name: 'Supersede' }));
@@ -588,7 +604,7 @@ describe('MemoryExplorer', () => {
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Promote'));
     fireEvent.click(await screen.findByRole('button', { name: 'Promote' }));
     await confirmAction();
@@ -601,7 +617,7 @@ describe('MemoryExplorer', () => {
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Archive'));
     await cancelAction();
 
@@ -613,7 +629,7 @@ describe('MemoryExplorer', () => {
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Archive'));
     await confirmAction();
 
@@ -627,7 +643,7 @@ describe('MemoryExplorer', () => {
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Delete permanently'));
     await cancelAction();
 
@@ -641,7 +657,7 @@ describe('MemoryExplorer', () => {
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Delete permanently'));
     await confirmAction();
 
@@ -655,7 +671,7 @@ describe('MemoryExplorer', () => {
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Restore'));
 
     await screen.findByText(/Failed to restore:.*boom/);
@@ -666,7 +682,7 @@ describe('MemoryExplorer', () => {
     renderPage();
     await searchFor('Tests');
     fireEvent.click(screen.getByText('Tests must pass before merge'));
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
     fireEvent.click(await screen.findByText('Supersede'));
     fireEvent.change(await screen.findByLabelText('New statement'), { target: { value: 'x' } });
     fireEvent.change(screen.getByLabelText('Confidence'), { target: { value: 'low' } });
@@ -718,7 +734,7 @@ describe('MemoryExplorer', () => {
   // project and showed a different set of beliefs under the same URL.
   describe('the scope toggle is in the URL', () => {
     it('survives a reload of the URL the screen produced', async () => {
-      const requests = withRpc('SearchBeliefs', { beliefs: BELIEFS });
+      const requests = withRpc('SearchBeliefs', { beliefs: BELIEFS.map(b => ({ ...b, scopeType: 'organization', scopeId: 'org-1' })) });
 
       const first = renderPage();
       fireEvent.click(screen.getByRole('button', { name: 'organization' }));
@@ -770,23 +786,24 @@ describe('MemoryExplorer', () => {
     };
     const FOREIGN_PROJECT_BELIEF = { ...FOREIGN_ORG_BELIEF, id: 'blf-8', orgId: 'org-1', scopeId: 'proj-9' };
 
-    it('says so rather than rendering it under the active organization', async () => {
+    it('normalizes the organization to the authorized belief owner', async () => {
       withRpc('GetBelief', { belief: FOREIGN_ORG_BELIEF });
-      renderPage('/memory/blf-9');
+      const view = renderPage('/memory/blf-9');
 
       const detail = within(await screen.findByRole('region', { name: 'Belief detail' }));
-      expect(detail.getByText(/different organization/i)).toBeInTheDocument();
-      // Labelled with the organization it actually belongs to, not org-1.
-      expect(detail.getByText(/org-2/)).toBeInTheDocument();
+      expect(detail.queryByText(/different organization/i)).not.toBeInTheDocument();
+      expect(new URLSearchParams(view.location.search).get('org')).toBe('org-2');
+      expect(mockActiveOrgId).toBe('org-2');
     });
 
-    it('says so when only the project differs', async () => {
+    it('normalizes the project to the authorized belief owner', async () => {
       withRpc('GetBelief', { belief: FOREIGN_PROJECT_BELIEF });
-      renderPage('/memory/blf-8');
+      const view = renderPage('/memory/blf-8');
 
       const detail = within(await screen.findByRole('region', { name: 'Belief detail' }));
-      expect(detail.getByText(/different project/i)).toBeInTheDocument();
-      expect(detail.getByText(/proj-9/)).toBeInTheDocument();
+      expect(detail.queryByText(/different project/i)).not.toBeInTheDocument();
+      expect(new URLSearchParams(view.location.search).get('project')).toBe('proj-9');
+      expect(mockActiveProjectId).toBe('proj-9');
     });
 
     it('promotes it into its own organization, never the active one', async () => {
@@ -795,7 +812,7 @@ describe('MemoryExplorer', () => {
       renderPage('/memory/blf-9');
       await screen.findByRole('region', { name: 'Belief detail' });
 
-      fireEvent.pointerDown(screen.getByRole('button', { name: 'Belief actions' }), { button: 0 });
+      fireEvent.pointerDown(await screen.findByRole('button', { name: 'Belief actions' }), { button: 0 });
       fireEvent.click(await screen.findByText('Promote'));
       fireEvent.click(await screen.findByRole('button', { name: 'Promote' }));
       await confirmAction();
@@ -823,7 +840,7 @@ describe('MemoryExplorer', () => {
     fireEvent.click(screen.getByText('Tests must pass before merge'));
     await waitFor(() => expect(location.pathname).toBe('/memory/blf-1'));
 
-    fireEvent.click(screen.getByText('CI always runs migrations against MySQL'));
+    fireEvent.click(await screen.findByText('CI always runs migrations against MySQL'));
     await waitFor(() => expect(location.pathname).toBe('/memory/blf-2'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Go back' }));

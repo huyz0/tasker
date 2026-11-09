@@ -25,7 +25,7 @@ const KEYS_BY_ENTITY: Record<string, string[]> = {
   // 'taskLinks' (M35): a link, unlink or unblock changes the open task's
   // relations panel as well as the board's blocked badges.
   // 'inputRequests' (M38): a question asked or answered on any task.
-  task: ['tasks', 'task', 'taskLinks', 'inputRequests', 'dashboard', 'reports'],
+  task: ['tasks', 'task', 'taskLinks', 'inputRequests', 'approvals', 'dashboard', 'reports'],
   // 'taskNotes' (M32-T01) is the open task's notes panel and handoff summary.
   // Keys match by whole element, so 'task' never covered it and the panel
   // supervisors watch agents in did not live-update.

@@ -1,10 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, afterEach, describe, it, expect } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { create } from '@bufbuild/protobuf';
 import { TaskService, TaskSummarySchema } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 import { renderScoped } from '../../test/renderScoped';
 import { TaskSummaryPanel } from './TaskSummary';
+import { useSummaryDrafts } from './summaryDrafts';
+
+beforeEach(() => { useSummaryDrafts.getState().endSession(); useSummaryDrafts.getState().setAccount('summary-user'); });
+afterEach(() => useSummaryDrafts.getState().endSession());
 
 const summary = create(TaskSummarySchema, { text: 'Shipped behind a **flag**.', authorName: 'Closer', updatedAt: '2026-10-02T10:00:00Z' });
 
@@ -43,7 +47,7 @@ describe('TaskSummaryPanel (M41)', () => {
     renderScoped(<TaskSummaryPanel taskId="t-1" summary={summary} />);
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.change(screen.getByLabelText('Summary'), { target: { value: 'x'.repeat(4001) } });
-    expect(screen.getByText('4001 / 4000')).toHaveClass('text-destructive');
+    expect(screen.getByText('4001 / 4000')).toHaveAttribute('role', 'alert');
     expect(screen.getByRole('button', { name: 'Save summary' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));

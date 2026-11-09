@@ -1,4 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { within, userEvent, expect } from 'storybook/test';
+import { useLayoutStore } from '../../store/layout';
+import { LogoutPreview } from '../../../.storybook/LogoutPreview';
 import { AppShell } from './AppShell';
 import { WorkbenchPreview } from '../../../.storybook/WorkbenchPreview';
 
@@ -11,7 +14,7 @@ const meta = {
     docs: { description: { component: 'Synthetic query fixtures render the shell without credentials. The live connection indicator uses the real transport and may show offline when Storybook has no event service.' } },
   },
   tags: ['autodocs'],
-  decorators: [(Story, context) => <WorkbenchPreview drawerOpen={context.parameters.drawerOpen === true}><Story /></WorkbenchPreview>],
+  decorators: [(Story, context) => context.parameters.logoutPreview ? <Story /> : <WorkbenchPreview drawerOpen={context.parameters.drawerOpen === true}><Story /></WorkbenchPreview>],
 } satisfies Meta<typeof AppShell>;
 
 export default meta;
@@ -47,4 +50,16 @@ export const MobileDrawerOpen: Story = {
     },
   },
 
+};
+
+export const SignOutUnavailable: Story = {
+  args: { children: <ContentSimulator /> },
+  parameters: { logoutPreview: true },
+  render: args => <LogoutPreview>{args.children}</LogoutPreview>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Log out' }));
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Local summary drafts were discarded');
+    useLayoutStore.setState({ sidebarOpen: true });
+  },
 };

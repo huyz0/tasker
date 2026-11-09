@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Dialog } from './Dialog';
+import { expect, within } from 'storybook/test';
 
 const meta = {
   title: 'UI/Dialog',
@@ -39,11 +40,18 @@ export const WithHeaderActions: Story = {
     headerRight: (
       <div className="flex items-center gap-3">
         <button className="text-muted-foreground hover:text-foreground text-sm font-medium">Edit</button>
-        <button className="text-destructive hover:text-destructive/80 text-sm font-medium">Delete</button>
+        <button className="rounded-md bg-destructive-subtle px-3 py-1 text-destructive-subtle-foreground hover:opacity-90 text-sm font-medium">Delete</button>
         <button aria-label="Close task details" className="text-muted-foreground hover:text-foreground">✕</button>
       </div>
     ),
     children: <div className="p-6 text-sm text-muted-foreground">Dialog content goes here.</div>,
+  },
+  play: async ({ canvasElement }) => {
+    const portal = within(canvasElement.ownerDocument.body);
+    await expect(portal.getByRole('dialog', { name: 'Task Details' })).toBeVisible();
+    await expect(portal.getByRole('button', { name: 'Edit' })).toBeVisible();
+    await expect(portal.getByRole('button', { name: 'Delete' })).toBeVisible();
+    await expect(portal.getByRole('button', { name: 'Close task details' })).toBeVisible();
   },
 };
 

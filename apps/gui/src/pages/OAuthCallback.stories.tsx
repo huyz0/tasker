@@ -3,10 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { OAuthCallback } from './OAuthCallback';
 
-// Owns a real createClient(...) call (RepositoryService.addRepositoryLink),
-// only reached once a valid code+state land in the URL. No global
-// QueryClientProvider decorator exists in .storybook/preview.tsx, and no
-// MSW is wired in.
+// Owns a repository client only reached once valid code/state land in the URL.
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
@@ -14,7 +11,7 @@ const queryClient = new QueryClient({
 const meta = {
   title: 'Pages/OAuthCallback',
   component: OAuthCallback,
-  parameters: {
+  parameters: { router: false,
     layout: 'padded',
   },
   decorators: [
@@ -44,7 +41,7 @@ export const MissingAuthorizationCode: Story = {
 // A valid code+state, with sessionStorage's nonce set to match (the same
 // CSRF check the real flow performs) before mount - real, unmocked
 // addRepositoryLink call against an unreachable-in-Storybook backend, so
-// this shows the "Linking repository..." state, which never resolves here.
+// this settles into the real unavailable-link error in the static audit.
 const nonce = 'storybook-nonce';
 const state = btoa(JSON.stringify({ nonce, projectId: 'proj-storybook', provider: 'github', remoteName: 'origin' }));
 

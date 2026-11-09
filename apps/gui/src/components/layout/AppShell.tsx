@@ -34,6 +34,9 @@ import { LiveStatusIndicator } from './LiveStatusIndicator';
 import { NotificationBell } from './NotificationBell';
 import { useLiveEvents } from '../../hooks/useLiveEvents';
 import { useScopeLabels } from '../../hooks/useScopeLabels';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SESSION_LOGOUT, useSummaryDrafts } from '../../features/Tasks/summaryDrafts';
+import { ListState } from '../ui/ListState';
 import { logout } from '../../lib/authSession';
 
 // Daily activities precede occasional administration; URLs remain stable.
@@ -108,9 +111,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+  const queryClient = useQueryClient();
+  const signOut = useMutation({
+    mutationKey: SESSION_LOGOUT,
+    mutationFn: logout,
+    onSuccess: () => {
+      useSummaryDrafts.getState().endSession();
+      queryClient.setQueryData(['authSession'], { authenticated: false, userId: null, mustChangePassword: false });
+      navigate('/login');
+    },
+  });
+  const handleLogout = () => {
+    // Rotate before any asynchronous work: an old save cannot restore discarded intent.
+    useSummaryDrafts.getState().discardSessionDrafts();
+    signOut.mutate();
   };
 
   return (
@@ -258,12 +272,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <CurrentUser />
                 <button
                   onClick={handleLogout}
+                  disabled={signOut.isPending}
                   aria-label="Log out"
                   className="rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground"
                 >
                   <LogOut className="h-4 w-4" aria-hidden="true" />
                 </button>
              </div>
+             {signOut.error && <ListState isLoading={false} error={signOut.error} isEmpty={false} emptyMessage=""
+               errorLabel="Could not sign out. Local summary drafts were discarded" onRetry={handleLogout} />}
              {/* One home for the theme toggle at every width: the drawer on
                  mobile, the column on desktop. */}
              <div className="flex items-center justify-between gap-3 px-3 pt-1">

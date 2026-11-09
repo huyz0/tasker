@@ -126,7 +126,7 @@ export function AssigneePicker({ taskId, orgId, assignees }: { taskId: string; o
                 aria-label={`Remove ${a.name} from this task`}
                 onClick={() => unassignMutation.mutate(a)}
                 disabled={unassignMutation.isPending}
-                className="ml-auto text-muted-foreground hover:text-destructive disabled:opacity-50"
+                className="ml-auto text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
               >
                 ✕
               </button>
@@ -225,10 +225,10 @@ export function AssigneePicker({ taskId, orgId, assignees }: { taskId: string; o
       )}
 
       {assignMutation.isError && (
-        <span className="text-xs text-destructive">Failed to assign: {(assignMutation.error as Error).message}</span>
+        <span className="text-xs text-destructive-subtle-foreground">Failed to assign: {(assignMutation.error as Error).message}</span>
       )}
       {unassignMutation.isError && (
-        <span className="text-xs text-destructive">Failed to remove: {(unassignMutation.error as Error).message}</span>
+        <span className="text-xs text-destructive-subtle-foreground">Failed to remove: {(unassignMutation.error as Error).message}</span>
       )}
     </div>
   );

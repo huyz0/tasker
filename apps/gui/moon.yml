@@ -99,10 +99,12 @@ tasks:
   # missing `process.exit(1)`, `runInCI` dropped, CI no longer calling it. Cheap
   # and cached, so it runs in `moon check` where the four-minute gate cannot.
   storybook-a11y-config:
-    script: 'node scripts/storybook-a11y.test.mjs'
+    script: 'bun test scripts/storybook-a11y.test.mjs scripts/storybook-ready.test.mjs'
     inputs:
       - 'scripts/storybook-a11y.mjs'
       - 'scripts/storybook-a11y.test.mjs'
+      - 'scripts/storybook-ready.mjs'
+      - 'scripts/storybook-ready.test.mjs'
       - '.storybook/preview.tsx'
       - 'moon.yml'
       - '/.github/workflows/ci.yml'
@@ -111,10 +113,11 @@ tasks:
   # storybook-a11y-config above: cheap and cached, so it can run in
   # `moon check` where the browser gate below cannot.
   mobile-overflow-config:
-    script: 'node scripts/mobile-overflow.test.mjs'
+    script: 'bun test scripts/mobile-overflow.test.mjs'
     inputs:
       - 'scripts/mobile-overflow.mjs'
       - 'scripts/mobile-overflow.test.mjs'
+      - 'scripts/storybook-ready.mjs'
       - 'moon.yml'
       - '/.github/workflows/ci.yml'
 
@@ -131,12 +134,13 @@ tasks:
     deps:
       - 'shared-contract:install-deps'
     type: 'run'
-    script: 'bunx storybook build -o storybook-static --quiet && node scripts/storybook-a11y.mjs && node scripts/mobile-overflow.mjs'
+    script: 'bunx storybook build -o storybook-static --quiet && bun scripts/storybook-a11y.mjs && bun scripts/mobile-overflow.mjs'
     inputs:
       - 'src/**/*'
       - '.storybook/**/*'
       - 'scripts/storybook-a11y.mjs'
       - 'scripts/mobile-overflow.mjs'
+      - 'scripts/storybook-ready.mjs'
       - 'package.json'
     options:
       cache: false

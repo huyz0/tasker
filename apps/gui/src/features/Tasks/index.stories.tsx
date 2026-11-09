@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { ResourceNavigationPreview } from '../../../.storybook/ResourceNavigationPreview';
 import { WorkbenchPreview } from '../../../.storybook/WorkbenchPreview';
 import { TasksWorkbench } from './index';
 
@@ -13,3 +14,6 @@ export const Empty: Story = { render: () => <WorkbenchPreview state="empty"><Tas
 export const Loading: Story = { render: () => <WorkbenchPreview state="loading"><TasksWorkbench /></WorkbenchPreview> };
 export const PermissionDenied: Story = { render: () => <WorkbenchPreview state="error"><TasksWorkbench /></WorkbenchPreview> };
 export const MobileWorkbench: Story = { ...Default, parameters: { viewport: { defaultViewport: 'mobile1' } } };
+
+export const OpeningTask: Story = { render: () => <ResourceNavigationPreview kind="tasks" state="loading" /> };
+export const UnavailableTask: Story = { render: () => <ResourceNavigationPreview kind="tasks" state="error" /> };

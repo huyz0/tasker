@@ -1026,6 +1026,7 @@ export const createTaskManagementHandler = (db: any, nc: any = null) => {
       // task is inspected, without a separate listTaskNotes call.
       const latestHandoffNote = await getLatestHandoffNote(db, t.id, isStandalone);
       return {
+        orgId,
         task: toWireTask(t, {
           assignees: assignees.get(t.id) ?? [],
           blockedByOpenCount: await openBlockerCount(t.id),

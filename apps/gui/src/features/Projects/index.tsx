@@ -210,7 +210,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
                 // compare against the specific grant id this mutation was
                 // called with.
                 disabled={revokeMutation.isPending && revokeMutation.variables === g.id}
-                className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                className="text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
               >
                 ✕
               </button>
@@ -219,7 +219,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
         </ul>
       </ListState>
       {revokeMutation.isError && (
-        <p className="text-xs text-destructive">Failed to revoke: {(revokeMutation.error as Error).message}</p>
+        <p className="text-xs text-destructive-subtle-foreground">Failed to revoke: {(revokeMutation.error as Error).message}</p>
       )}
 
       {!isPicking ? (
@@ -246,7 +246,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
                 className="rounded-md border bg-background px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary/50"
               />
               {candidatesQuery.isLoading && <span className="text-xs text-muted-foreground">Searching…</span>}
-              {candidatesQuery.error && <span className="text-xs text-destructive">Search failed</span>}
+              {candidatesQuery.error && <span className="text-xs text-destructive-subtle-foreground">Search failed</span>}
               {candidates.map((m: any) => (
                 <button
                   key={m.userId}
@@ -305,7 +305,7 @@ function ProjectMembers({ projectId, orgId }: { projectId: string; orgId: string
             </form>
           )}
           {grantMutation.isError && (
-            <p className="text-xs text-destructive">Failed to grant: {(grantMutation.error as Error).message}</p>
+            <p className="text-xs text-destructive-subtle-foreground">Failed to grant: {(grantMutation.error as Error).message}</p>
           )}
         </div>
       )}
@@ -516,7 +516,7 @@ export function ProjectsWizard() {
               className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
             />
             {createTemplateMutation.isError && (
-              <p className="text-sm text-destructive">Failed to create template: {(createTemplateMutation.error as Error).message}</p>
+              <p className="text-sm text-destructive-subtle-foreground">Failed to create template: {(createTemplateMutation.error as Error).message}</p>
             )}
             <button
               type="submit"
@@ -553,7 +553,7 @@ export function ProjectsWizard() {
           <p className="text-xs text-muted-foreground">Enter a project name, then pick a template below to create it.</p>
         </div>
         {createProjectMutation.isError && (
-          <p className="text-sm text-destructive mb-4">Failed to create project: {(createProjectMutation.error as Error).message}</p>
+          <p className="text-sm text-destructive-subtle-foreground mb-4">Failed to create project: {(createProjectMutation.error as Error).message}</p>
         )}
         <ListState
           isLoading={isLoadingTemplates}
@@ -601,7 +601,7 @@ export function ProjectsWizard() {
                        className="rounded-md border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-primary/50"
                      />
                      {updateTemplateMutation.isError && (
-                       <p className="text-sm text-destructive">Failed to update template: {(updateTemplateMutation.error as Error).message}</p>
+                       <p className="text-sm text-destructive-subtle-foreground">Failed to update template: {(updateTemplateMutation.error as Error).message}</p>
                      )}
                      <div className="flex gap-2">
                        <button
@@ -789,7 +789,7 @@ export function ProjectsWizard() {
                         // against the specific project id this mutation was
                         // called with.
                         disabled={archiveProjectMutation.isPending && archiveProjectMutation.variables === p.id}
-                        className="text-muted-foreground hover:text-destructive text-sm disabled:opacity-50"
+                        className="text-muted-foreground hover:text-destructive-subtle-foreground text-sm disabled:opacity-50"
                       >
                         Delete
                       </button>
@@ -803,7 +803,7 @@ export function ProjectsWizard() {
                     now that Cancel/Edit both reset the mutation, so a stale
                     error can't resurface on an unrelated row either. */}
                 {editingProjectId === p.id && updateProjectMutation.isError && (
-                  <p className="text-sm text-destructive mb-4">Failed to update project: {(updateProjectMutation.error as Error).message}</p>
+                  <p className="text-sm text-destructive-subtle-foreground mb-4">Failed to update project: {(updateProjectMutation.error as Error).message}</p>
                 )}
                 <RepositoryIntegrationConfig projectId={p.id} />
                 <ProjectMembers projectId={p.id} orgId={activeOrgId} />
@@ -812,7 +812,7 @@ export function ProjectsWizard() {
               )}
             />
             {archiveProjectMutation.isError && (
-              <p className="text-sm text-destructive">Failed to delete project: {(archiveProjectMutation.error as Error).message}</p>
+              <p className="text-sm text-destructive-subtle-foreground">Failed to delete project: {(archiveProjectMutation.error as Error).message}</p>
             )}
             <PaginationControls
               nextCursor={nextCursor}

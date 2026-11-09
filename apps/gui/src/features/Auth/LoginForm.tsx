@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { establishPasswordSession } from '../../lib/establishPasswordSession';
 import { Button } from '../../components/ui/button';
 import { loginWithPassword, PasswordAuthError } from '../../lib/passwordAuth';
 
@@ -31,8 +32,8 @@ export function LoginForm() {
 
   const mutation = useMutation({
     mutationFn: () => loginWithPassword(username.trim(), password),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['authSession'] });
+    onSuccess: async (result) => {
+      await establishPasswordSession(queryClient, result);
       navigate('/');
     },
   });
@@ -71,7 +72,7 @@ export function LoginForm() {
           aria-describedby={fieldErrors.username ? 'login-username-error' : undefined}
         />
         {fieldErrors.username && (
-          <p id="login-username-error" className="text-xs text-destructive">{fieldErrors.username}</p>
+          <p id="login-username-error" className="text-xs text-destructive-subtle-foreground">{fieldErrors.username}</p>
         )}
       </div>
       <div className="flex flex-col gap-1">
@@ -92,11 +93,11 @@ export function LoginForm() {
           aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
         />
         {fieldErrors.password && (
-          <p id="login-password-error" className="text-xs text-destructive">{fieldErrors.password}</p>
+          <p id="login-password-error" className="text-xs text-destructive-subtle-foreground">{fieldErrors.password}</p>
         )}
       </div>
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-subtle-foreground">
           {error.status === 429
             ? `${error.message}${error.retryAfterSeconds ? ` Try again in ${error.retryAfterSeconds}s.` : ''}`
             : error.message}

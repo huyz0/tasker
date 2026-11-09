@@ -1,17 +1,21 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderScoped } from '../../test/renderScoped';
-import { expect, test, vi, describe, beforeEach } from 'vitest';
+import { expect, test, vi, describe, beforeEach, afterEach } from 'vitest';
 import { AppShell } from './AppShell';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import * as authSession from '../../lib/authSession';
 import { useLayoutStore } from '../../store/layout';
-import { mockRpc } from '../../test/mockRpc';
-import { ProjectService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { useSummaryDrafts } from '../../features/Tasks/summaryDrafts';
+import { TaskSummaryPanel } from '../../features/Tasks/TaskSummary';
+import { SummaryDraftExitGuard } from '../../features/Tasks/SummaryDraftGuard';
+import { mockRpcPending, mockRpc } from '../../test/mockRpc';
+import { AuthService, OrgService, TaskService, ProjectService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 
 // Navigation/focus tests use the hook's status, not its independently tested broker lifecycle.
 vi.mock('../../hooks/useLiveEvents', () => ({ useLiveEvents: () => ({ status: 'connecting' }) }));
 beforeEach(() => {
+  useSummaryDrafts.getState().endSession();
   useLayoutStore.setState({ activeOrgId: '', activeProjectId: '', sidebarOpen: false, searchOpen: false });
   mockRpc(ProjectService, 'GetProject', { project: { id: 'proj-1', name: 'Seed Project' } });
 });
@@ -38,6 +42,66 @@ test('logs out and clears the session cookie when the logout button is clicked',
   fireEvent.click(screen.getByLabelText('Log out'));
 
   await waitFor(() => expect(logoutSpy).toHaveBeenCalled());
+});
+
+afterEach(() => useSummaryDrafts.getState().endSession());
+
+test('failed logout cannot admit another same-account/task write while its older-generation save is pending', async () => {
+  useSummaryDrafts.getState().setAccount('logout-user');
+  mockRpc(OrgService, 'ListOrgs', { organizations: [], page: {} });
+  mockRpc(AuthService, 'GetIdentity', { user: { id: 'logout-user', name: 'Logout user', email: '' } });
+  const write = mockRpcPending(TaskService, 'SetTaskSummary');
+  let fail!: (error: Error) => void;
+  vi.spyOn(authSession, 'logout').mockImplementation(() => new Promise<void>((_resolve, reject) => { fail = reject; }));
+  const view = renderScoped(<AppShell><TaskSummaryPanel taskId="logout-task" /></AppShell>, { initialEntry: '/tasks' });
+  fireEvent.click(screen.getByRole('button', { name: 'Write a summary' }));
+  fireEvent.change(screen.getByLabelText('Summary'), { target: { value: 'Older save' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save summary' }));
+  await waitFor(() => expect(write.requests).toHaveLength(1));
+  fireEvent.click(screen.getByLabelText('Log out'));
+  await waitFor(() => expect(fail).toBeTypeOf('function'));
+  await act(async () => fail(new Error('Logout did not finish')));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Write a summary' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Write a summary' }));
+  fireEvent.change(screen.getByLabelText('Summary'), { target: { value: 'New session intent' } });
+  expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
+  fireEvent.submit(screen.getByLabelText('Summary').closest('form')!);
+  expect(write.requests).toHaveLength(1);
+  write.resolve({ summary: { text: 'Older save', authorName: 'Old', updatedAt: '' } });
+  await waitFor(() => expect(view.queryClient.isMutating()).toBe(0));
+  expect(screen.getByLabelText('Summary')).toHaveValue('New session intent');
+});
+
+test.each(['success', 'failure'])('discards summary intent synchronously before a delayed logout %s', async outcome => {
+  useSummaryDrafts.getState().setAccount('logout-user');
+  mockRpc(OrgService, 'ListOrgs', { organizations: [], page: {} });
+  mockRpc(AuthService, 'GetIdentity', { user: { id: 'logout-user', name: 'Logout user', email: '' } });
+  const write = mockRpcPending(TaskService, 'SetTaskSummary');
+  let finish!: () => void, fail!: (error: Error) => void;
+  const held = new Promise<void>((resolve, reject) => { finish = resolve; fail = reject; });
+  vi.spyOn(authSession, 'logout').mockImplementation(() => held);
+  const view = renderScoped(<><SummaryDraftExitGuard /><AppShell><TaskSummaryPanel taskId="logout-task" /></AppShell></>, { initialEntry: '/tasks' });
+  fireEvent.click(screen.getByRole('button', { name: 'Write a summary' }));
+  fireEvent.change(screen.getByLabelText('Summary'), { target: { value: 'Old session draft' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save summary' }));
+  await waitFor(() => expect(write.requests).toHaveLength(1));
+  fireEvent.click(screen.getByLabelText('Log out'));
+  expect(screen.queryByLabelText('Summary')).toBeNull();
+  const event = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(false);
+  expect(screen.getByRole('button', { name: 'Write a summary' })).toBeDisabled();
+  write.resolve({ summary: { text: 'Old session draft', authorName: 'Old', updatedAt: '' } });
+  await waitFor(() => expect(view.queryClient.getMutationCache().findAll({ mutationKey: ['summaryWrites'], status: 'pending' })).toHaveLength(0));
+  expect(screen.queryByLabelText('Summary')).toBeNull();
+  if (outcome === 'success') {
+    await act(async () => finish());
+    await waitFor(() => expect(view.location.pathname).toBe('/login'));
+  } else {
+    await act(async () => fail(new Error('Sign out temporarily offline')));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sign out temporarily offline');
+    expect(view.location.pathname).toBe('/tasks');
+    expect(screen.getByRole('button', { name: 'Write a summary' })).toBeEnabled();
+  }
 });
 
 const renderShell = () =>

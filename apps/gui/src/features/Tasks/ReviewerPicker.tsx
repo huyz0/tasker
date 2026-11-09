@@ -81,7 +81,7 @@ export function ReviewerPicker({ taskId, orgId }: { taskId: string; orgId: strin
                 aria-label={`Remove ${r.name} as a reviewer`}
                 onClick={() => removeMutation.mutate(r.userId)}
                 disabled={removeMutation.isPending}
-                className="ml-auto text-muted-foreground hover:text-destructive disabled:opacity-50"
+                className="ml-auto text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
               >
                 ✕
               </button>
@@ -141,10 +141,10 @@ export function ReviewerPicker({ taskId, orgId }: { taskId: string; orgId: strin
       )}
 
       {addMutation.isError && (
-        <span className="text-xs text-destructive">Failed to add reviewer: {(addMutation.error as Error).message}</span>
+        <span className="text-xs text-destructive-subtle-foreground">Failed to add reviewer: {(addMutation.error as Error).message}</span>
       )}
       {removeMutation.isError && (
-        <span className="text-xs text-destructive">Failed to remove reviewer: {(removeMutation.error as Error).message}</span>
+        <span className="text-xs text-destructive-subtle-foreground">Failed to remove reviewer: {(removeMutation.error as Error).message}</span>
       )}
     </div>
   );

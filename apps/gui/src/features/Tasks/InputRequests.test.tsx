@@ -22,18 +22,22 @@ describe('TaskInputRequests (M38)', () => {
     const requests: any[] = [];
     mockRpc(TaskService, 'ListInputRequests', (body) => {
       requests.push(body);
-      return { inputRequests: [
+      const rows = [
         question({ id: 'ir-0', status: 'answered', question: 'Old?', answer: 'yes', answeredByName: 'Ada' }),
         question(),
         question({ id: 'ir-2', status: 'cancelled', question: 'Never mind?' }),
-      ], page: {} };
+      ];
+      const filtered = rows.filter(row => body.status === 'closed' ? row.status !== 'open' : row.status === 'open');
+      return { inputRequests: filtered, page: { totalCount: filtered.length } };
     });
     const answers: any[] = [];
     mockRpc(TaskService, 'AnswerInputRequest', (body) => { answers.push(body); return { inputRequest: question({ status: 'answered', answer: body.answer }) }; });
     renderScoped(<TaskInputRequests taskId="t-1" />);
     const section = await screen.findByRole('region', { name: 'Questions from agents' });
+    await within(section).findByLabelText('Your answer');
     expect(within(section).getByRole('heading')).toHaveTextContent('Waiting on you · 1');
-    expect(requests[0]).toMatchObject({ taskId: 't-1', status: 'all' });
+    expect(requests[0]).toMatchObject({ taskId: 't-1', status: 'open' });
+    fireEvent.click(await within(section).findByText('History · 2'));
     const items = within(section).getAllByRole('listitem');
     expect(items[0]).toHaveTextContent('Flag or main?');
     expect(section).toHaveTextContent('Ada answered: yes');
@@ -49,7 +53,7 @@ describe('TaskInputRequests (M38)', () => {
   });
 
   it('accepts a typed answer, and reports a refused one', async () => {
-    mockRpc(TaskService, 'ListInputRequests', { inputRequests: [question({ options: [] })], page: {} });
+    mockRpc(TaskService, 'ListInputRequests', body => ({ inputRequests: body.status === 'closed' ? [] : [question({ options: [] })], page: {} }));
     mockRpcError(TaskService, 'AnswerInputRequest', 'failed_precondition', 'this question is already answered');
     renderScoped(<TaskInputRequests taskId="t-1" />);
     fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value: '  ship it  ' } });

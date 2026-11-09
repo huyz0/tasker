@@ -1,3 +1,4 @@
+import { z } from 'zod/v4';
 import { BACKEND_URL } from './backendUrl';
 
 /**
@@ -48,6 +49,9 @@ export interface PasswordLoginResult {
   mustChangePassword: boolean;
 }
 
+const LoginResultSchema = z.object({ userId: z.string().min(1), mustChangePassword: z.boolean().default(false) });
+const RegisterResultSchema = LoginResultSchema.pick({ userId: true });
+
 export async function loginWithPassword(username: string, password: string): Promise<PasswordLoginResult> {
   const res = await fetch(`${BACKEND_URL}/api/auth/password/login`, {
     method: 'POST',
@@ -56,7 +60,9 @@ export async function loginWithPassword(username: string, password: string): Pro
     body: JSON.stringify({ username, password }),
   });
   if (!res.ok) await throwProblemDetails(res);
-  return res.json();
+  const result = LoginResultSchema.safeParse(await res.json());
+  if (!result.success) throw new PasswordAuthError('Could not verify the signed-in account. Please try again.', 502);
+  return result.data;
 }
 
 export interface RegisterLocalUserInput {
@@ -74,5 +80,7 @@ export async function registerLocalUser(input: RegisterLocalUserInput): Promise<
     body: JSON.stringify(input),
   });
   if (!res.ok) await throwProblemDetails(res);
-  return res.json();
+  const result = RegisterResultSchema.safeParse(await res.json());
+  if (!result.success) throw new PasswordAuthError('Could not verify the created account. Please try again.', 502);
+  return result.data;
 }

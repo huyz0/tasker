@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from "@connectrpc/connect";
 import { transport } from "../../lib/connectTransport";
 import { SearchService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
-import { Search, CheckSquare, FileBox, FolderKanban, Bot, MessageSquare, X } from 'lucide-react';
+import { Search, CheckSquare, FileBox, FolderKanban, Bot, MessageSquare, Brain, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
 import { useLayoutStore } from '../../store/layout';
 import { Dialog } from '../ui/Dialog';
+import { ListState } from '../ui/ListState';
 
 const searchClient = createClient(SearchService, transport);
 
@@ -18,6 +19,7 @@ const searchClient = createClient(SearchService, transport);
 const ROUTE_BY_RESULT_TYPE: Record<string, (id: string) => string> = {
   task: (id) => `/tasks/${id}`,
   artifact: (id) => `/artifacts/${id}`,
+  belief: (id) => `/memory/${id}`,
   // Neither projects nor agents have a detail screen, so both land on their
   // list. Routing a project to `/projects/<id>` would have matched no route and
   // dropped the user on Not Found — a dead link that looks like a working one.
@@ -74,17 +76,19 @@ const ICON_BY_RESULT_TYPE: Record<string, typeof CheckSquare> = {
   project: FolderKanban,
   agent: Bot,
   comment: MessageSquare,
+  belief: Brain,
 };
 
-/** Section order and heading, so five entity types read as a scan, not a jumble. */
+/** Section order and heading, so six entity types read as a scan, not a jumble. */
 const TYPE_LABEL: Record<string, string> = {
   task: 'Tasks',
   artifact: 'Artifacts',
   project: 'Projects',
   agent: 'Agents',
   comment: 'Comments',
+  belief: 'Memory',
 };
-const TYPE_ORDER = ['task', 'artifact', 'project', 'agent', 'comment'];
+const TYPE_ORDER = ['task', 'artifact', 'project', 'agent', 'comment', 'belief'];
 
 /**
  * The button that opens the palette. Rendered twice — once in the header for
@@ -133,9 +137,15 @@ export function GlobalSearch() {
   const setIsOpen = useLayoutStore((s) => s.setSearchOpen);
   const toggleSearch = useLayoutStore((s) => s.toggleSearch);
   const [query, setQuery] = useState('');
-  const [debouncedQuery] = useDebounce(query, 300);
+  const normalizedQuery = query.trim();
+  const [debouncedQuery] = useDebounce(normalizedQuery, 300);
   const navigate = useNavigate();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
+  const activeProjectId = useLayoutStore((s) => s.activeProjectId);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const waitingForQuery = normalizedQuery !== debouncedQuery;
+  const currentQuery = !!activeOrgId && !!normalizedQuery && !waitingForQuery && isOpen;
   // The result the keyboard (or a mouse hover, which shares this state rather
   // than owning a separate `:hover` treatment) currently points at. Reset
   // whenever the result set changes — carrying an old index into a shorter
@@ -155,27 +165,35 @@ export function GlobalSearch() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [toggleSearch]);
 
-  const { data, isLoading } = useQuery({
+  const { data: responseData, isPending, isFetching, error, refetch } = useQuery({
     queryKey: ['universalSearch', debouncedQuery, activeOrgId],
-    queryFn: async () => {
-      // No empty-query guard here: `enabled` below already gates on
-      // `debouncedQuery.length > 0`, so react-query never calls this with an
-      // empty query. The guard that used to sit here was unreachable.
-      const resp = await searchClient.universalSearch({ query: debouncedQuery, orgId: activeOrgId });
+    queryFn: async ({ signal }) => {
+      // The same current-query predicate gates the request and its results.
+      const resp = await searchClient.universalSearch({ query: debouncedQuery, orgId: activeOrgId }, { signal });
       // Drop anything this build has no route for rather than offering the
       // user a result that does nothing when clicked.
       return resp.results.filter((r) => resultRoute(r) !== null);
     },
-    enabled: debouncedQuery.length > 0 && isOpen,
+    enabled: currentQuery,
+    // Interactive search exposes failures immediately and retries on request.
+    retry: false,
   });
 
+  const isLoading = !!activeOrgId && !!normalizedQuery && (waitingForQuery || isPending || isFetching);
+  const currentError = currentQuery ? error : null;
+  // One ordered result sequence drives display, aria selection and Enter.
+  // While input/debounce/authority changes, old rows cannot capture a keypress.
+  const data = useMemo(() => currentQuery && !isLoading && !currentError && responseData
+    ? TYPE_ORDER.flatMap(type => responseData.filter(result => result.type === type)) : undefined,
+  [currentQuery, isLoading, currentError, responseData]);
+  const activeIndex = Math.min(highlighted, Math.max(0, (data?.length ?? 1) - 1));
   useEffect(() => setHighlighted(0), [data]);
+  useEffect(() => {
+    if (!data?.length) return;
+    resultsRef.current?.querySelector<HTMLElement>(`#search-result-${activeIndex}`)?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeIndex, data]);
 
-  // Grouped for display, in a fixed type order — but each item keeps its
-  // position in the *flat* `data` order (`flatIndex`), which is what
-  // `highlighted` indexes. Arrow keys move through the flat order regardless
-  // of which section a row happens to render under, so Down always means
-  // "the next result", not "the next result in this section".
+  // Group the ordered sequence without changing its keyboard indices.
   const groups = useMemo(() => {
     if (!data) return [];
     const byType = new Map<string, { result: NonNullable<typeof data>[number]; flatIndex: number }[]>();
@@ -189,25 +207,27 @@ export function GlobalSearch() {
 
   const openResult = (result: NonNullable<typeof data>[number]) => {
     setIsOpen(false);
-    navigate(resultRoute(result)!);
+    let destination = resultRoute(result)!;
+    if (result.type === 'project' || result.type === 'agent') {
+      const params = new URLSearchParams({ org: activeOrgId });
+      const projectId = result.type === 'project' ? result.id : activeProjectId;
+      if (projectId) params.set('project', projectId);
+      destination += `?${params.toString()}`;
+    }
+    navigate(destination);
   };
 
   const onInputKeyDown = (e: React.KeyboardEvent) => {
     if (!data || data.length === 0) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlighted((i) => (i + 1) % data.length);
+      setHighlighted(() => (activeIndex + 1) % data.length);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setHighlighted((i) => (i - 1 + data.length) % data.length);
+      setHighlighted(() => (activeIndex - 1 + data.length) % data.length);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      // No fallback: `highlighted` resets to 0 whenever `data` changes and
-      // the arrow branches above always keep it inside `[0, data.length)`,
-      // so `data[highlighted]` is defined whenever this line runs — the
-      // guard this used to have could not be exercised by any real sequence
-      // of key presses, only asserted never to fire.
-      openResult(data[highlighted]!);
+      openResult(data[activeIndex]!);
     }
     // Escape is still `Dialog`'s job — it never reaches this handler because
     // the keydown that closes the dialog is caught on `document`, not here.
@@ -224,12 +244,12 @@ export function GlobalSearch() {
     <Dialog
       open
       onClose={() => setIsOpen(false)}
-      title="Search tasks, artifacts, projects, agents and comments"
+      title="Search tasks, artifacts, projects, agents, comments and Memory"
       hideTitle
       className="w-full max-w-lg self-start mt-[10vh]"
     >
-      <div>
-        <div className="flex items-center border-b px-3">
+      <div className="max-h-[min(348px,calc(90dvh-2rem))] overflow-y-auto scrollbar-thin scroll-pt-12 scroll-pb-2">
+        <div className="sticky top-0 z-10 flex items-center border-b bg-surface-raised px-3">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           {/* No autoFocus: `Dialog` focuses the first control itself, and an
               autoFocus here beat it to the punch — it also stole the capture of
@@ -237,10 +257,12 @@ export function GlobalSearch() {
               user on <body> (M06-T03). */}
           <input
             role="combobox"
+            aria-label="Search workspace"
+            ref={inputRef}
             aria-expanded={hasResults}
             aria-controls="global-search-listbox"
             aria-autocomplete="list"
-            aria-activedescendant={hasResults ? `search-result-${highlighted}` : undefined}
+            aria-activedescendant={hasResults ? `search-result-${activeIndex}` : undefined}
             placeholder="Search tasks, artifacts, projects, agents…"
             className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
             value={query}
@@ -253,21 +275,13 @@ export function GlobalSearch() {
         </div>
 
         <div
-          id="global-search-listbox"
-          role="listbox"
-          aria-label="Search results"
-          // Roughly five rows of the tallest result (one with a snippet,
-          // measured at 52px) before scrolling kicks in. Grouped headings and
-          // a mix of one- and two-line rows mean no fixed height lands on a
-          // row boundary for every possible result set — `scrollbar-thin`
-          // says "more below, scroll for it", and `fade-bottom` keeps
-          // whichever row the boundary happens to land on from reading as an
-          // error rather than a normal, deliberate scroll edge.
-          className="max-h-[296px] min-h-[52px] overflow-y-auto scrollbar-thin fade-bottom p-2"
+          // The bounded scroll owner includes the sticky input above, keeping
+          // keyboard access inside it without adding popup options to Tab order.
+          className="min-h-[52px] p-2"
         >
-          {debouncedQuery.length === 0 && (
+          {activeOrgId && normalizedQuery.length === 0 && (
             <div className="p-3 text-sm text-muted-foreground" role="presentation">
-              <p>Search across tasks, artifacts, projects, agents and comments.</p>
+              <p>Search across tasks, artifacts, projects, agents, comments and Memory.</p>
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                 <span className="flex items-center gap-1">
                   <kbd className="rounded border bg-muted px-1 font-mono">↑</kbd>
@@ -285,19 +299,18 @@ export function GlobalSearch() {
               </div>
             </div>
           )}
-          {isLoading && <p className="p-4 text-center text-sm text-muted-foreground">Searching…</p>}
-          {!isLoading && data && data.length === 0 && debouncedQuery && (
-            <p className="p-4 text-center text-sm text-muted-foreground">No results found.</p>
+          {!activeOrgId && <p role="status" className="p-4 text-center text-sm text-muted-foreground">Select an organization to search its work and knowledge.</p>}
+          {isLoading && <p role="status" className="p-4 text-center text-sm text-muted-foreground">Searching…</p>}
+          {currentError && !isLoading && <ListState isLoading={false} error={currentError} isEmpty={false} emptyMessage="" errorLabel="Could not search this workspace" onRetry={() => { inputRef.current?.focus(); refetch(); }} />}
+          {!isLoading && !currentError && data && data.length === 0 && normalizedQuery && (
+            <p role="status" className="p-4 text-center text-sm text-muted-foreground">No results found.</p>
           )}
-          {!isLoading && hasResults && (
+          {hasResults && <p role="status" className="px-2 pb-1 text-xs text-muted-foreground">
+            {data!.length} result{data!.length === 1 ? '' : 's'}
+          </p>}
+          <div id="global-search-listbox" role="listbox" aria-label="Search results" hidden={!hasResults} ref={resultsRef}>
+          {hasResults && (
             <div className="space-y-1">
-              {/* One number a user can trust at a glance, above the sections
-                  that add up to it — five entity types in one undifferentiated
-                  list gave no sense of how much was cut off by the 300px box,
-                  or how much of it was, say, comments rather than tasks. */}
-              <p className="px-2 pb-1 text-xs text-muted-foreground">
-                {data!.length} result{data!.length === 1 ? '' : 's'}
-              </p>
               {groups.map((group) => (
                 <div key={group.type} role="group" aria-labelledby={`search-group-${group.type}`}>
                   <div
@@ -311,11 +324,12 @@ export function GlobalSearch() {
                       key={result.id}
                       id={`search-result-${flatIndex}`}
                       role="option"
-                      aria-selected={flatIndex === highlighted}
-                      onMouseEnter={() => setHighlighted(flatIndex)}
+                      tabIndex={-1}
+                      aria-selected={flatIndex === activeIndex}
+                      onMouseMove={() => setHighlighted(flatIndex)}
                       onClick={() => openResult(result)}
                       className={`flex w-full items-start gap-3 rounded-md p-2 text-left ${
-                        flatIndex === highlighted ? 'bg-accent text-accent-foreground' : ''
+                        flatIndex === activeIndex ? 'bg-accent text-accent-foreground' : ''
                       }`}
                     >
                       <div className="mt-0.5 text-muted-foreground shrink-0">
@@ -330,7 +344,7 @@ export function GlobalSearch() {
                       </div>
                       <div className="flex flex-col overflow-hidden">
                         <span className="font-medium text-sm truncate">{result.title}</span>
-                        {result.snippet && (
+                        {result.snippet && result.snippet !== result.title && (
                           <span className="text-xs text-muted-foreground truncate">
                             <HighlightedSnippet text={result.snippet} matches={result.snippetMatches ?? []} />
                           </span>
@@ -342,6 +356,7 @@ export function GlobalSearch() {
               ))}
             </div>
           )}
+          </div>
         </div>
       </div>
     </Dialog>

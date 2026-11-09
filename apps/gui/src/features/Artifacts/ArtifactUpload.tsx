@@ -179,9 +179,9 @@ export function ArtifactUpload({ folderId }: { folderId: string }) {
       {preview && (
         <img src={preview.url} alt={`Preview of ${preview.name}`} className="max-h-24 rounded-sm border self-start" />
       )}
-      {tooLarge && <span className="text-xs text-destructive">{tooLarge}</span>}
+      {tooLarge && <span className="text-xs text-destructive-subtle-foreground">{tooLarge}</span>}
       {upload.isError && (
-        <span className="text-xs text-destructive">Upload failed: {(upload.error as Error).message}</span>
+        <span className="text-xs text-destructive-subtle-foreground">Upload failed: {(upload.error as Error).message}</span>
       )}
     </div>
   );

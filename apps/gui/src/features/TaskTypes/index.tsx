@@ -198,7 +198,7 @@ export function TaskTypesEditor() {
             </button>
           </form>
           {createType.isError && (
-            <p className="text-sm text-destructive">Failed to create type: {(createType.error as Error).message}</p>
+            <p className="text-sm text-destructive-subtle-foreground">Failed to create type: {(createType.error as Error).message}</p>
           )}
         </aside>
 
@@ -280,8 +280,8 @@ export function TaskTypesEditor() {
                       Add status
                     </button>
                   </form>
-                  {addStatus.isError && <p className="text-sm text-destructive mt-1">Failed to add status: {(addStatus.error as Error).message}</p>}
-                  {reorder.isError && <p className="text-sm text-destructive mt-1">Failed to reorder: {(reorder.error as Error).message}</p>}
+                  {addStatus.isError && <p className="text-sm text-destructive-subtle-foreground mt-1">Failed to add status: {(addStatus.error as Error).message}</p>}
+                  {reorder.isError && <p className="text-sm text-destructive-subtle-foreground mt-1">Failed to reorder: {(reorder.error as Error).message}</p>}
                 </section>
 
                 <section>
@@ -314,7 +314,7 @@ export function TaskTypesEditor() {
                             aria-label={`Remove the transition from ${nameOf(tr.fromStatusId)} to ${nameOf(tr.toStatusId)}`}
                             onClick={() => removeTransition.mutate(tr.id)}
                             disabled={removeTransition.isPending}
-                            className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                            className="text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
                           >
                             ✕
                           </button>
@@ -322,7 +322,7 @@ export function TaskTypesEditor() {
                       ))}
                     </ul>
                   )}
-                  {setGate.isError && <p className="text-sm text-destructive mt-1">Failed to change the approval gate: {(setGate.error as Error).message}</p>}
+                  {setGate.isError && <p className="text-sm text-destructive-subtle-foreground mt-1">Failed to change the approval gate: {(setGate.error as Error).message}</p>}
                   {statuses.length < 2 ? (
                     <p className="text-sm text-muted-foreground mt-3">A transition needs two statuses.</p>
                   ) : (
@@ -349,8 +349,8 @@ export function TaskTypesEditor() {
                       </button>
                     </form>
                   )}
-                  {addTransition.isError && <p className="text-sm text-destructive mt-1">Failed to add transition: {(addTransition.error as Error).message}</p>}
-                  {removeTransition.isError && <p className="text-sm text-destructive mt-1">Failed to remove transition: {(removeTransition.error as Error).message}</p>}
+                  {addTransition.isError && <p className="text-sm text-destructive-subtle-foreground mt-1">Failed to add transition: {(addTransition.error as Error).message}</p>}
+                  {removeTransition.isError && <p className="text-sm text-destructive-subtle-foreground mt-1">Failed to remove transition: {(removeTransition.error as Error).message}</p>}
                 </section>
               </div>
 
@@ -375,7 +375,7 @@ export function TaskTypesEditor() {
                     {(templates.data ?? []).map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
                 </div>
-                {setRoot.isError && <p className="text-sm text-destructive mt-1">Failed to set root type: {(setRoot.error as Error).message}</p>}
+                {setRoot.isError && <p className="text-sm text-destructive-subtle-foreground mt-1">Failed to set root type: {(setRoot.error as Error).message}</p>}
               </section>
             </div>
           )}

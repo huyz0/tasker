@@ -44,6 +44,11 @@ export function WorkbenchPreview({ children, state = 'populated', drawerOpen = f
     setReady(true);
     return () => { useLayoutStore.setState({ activeOrgId, activeProjectId, activePageTitle, sidebarOpen, searchOpen }); };
   }, [drawerOpen]);
+  // AppShell closes the drawer on its initial route effect. Apply the
+  // synthetic initial open state after that child's mount, once it is ready.
+  useEffect(() => {
+    if (ready && drawerOpen) useLayoutStore.setState({ sidebarOpen: true });
+  }, [ready, drawerOpen]);
   return ready ? (
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={['/tasks?org=org-story&project=project-story']}>

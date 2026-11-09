@@ -1033,7 +1033,7 @@ model GetInputRequestResponse {
 }
 
 // One task's questions, or the whole organization's queue. status defaults
-// to "open"; "all" lists every status.
+// to "open"; "closed" lists answered/cancelled; "all" lists every status.
 model ListInputRequestsRequest {
   @field(1) orgId?: string;
   @field(2) taskId?: string;
@@ -1220,6 +1220,9 @@ model GetTaskResponse {
   // - inspecting a task should surface prior handoff context without a
   // separate listTaskNotes call.
   @field(2) latestHandoffNote?: TaskNote;
+
+  // Authorized owner for canonical navigation; Task.projectId supplies project.
+  @field(3) orgId?: string;
 }
 
 model ListTasksRequest {
@@ -1314,7 +1317,7 @@ model GetTransitionApprovalResponse {
   @field(1) approval: TransitionApproval;
 }
 
-// status defaults to "pending"; "all" lists every status.
+// status defaults to "pending"; "closed" lists approved/rejected/stale; "all" lists every status.
 model ListTransitionApprovalsRequest {
   @field(1) orgId?: string;
   @field(2) taskId?: string;
@@ -1571,6 +1574,11 @@ model GetArtifactRequest {
 
 model GetArtifactResponse {
   @field(1) artifact: Artifact;
+
+  // Derived from the authorized artifact's actual folder/project, without body.
+  @field(2) orgId?: string;
+
+  @field(3) projectId?: string;
 }
 
 model GetArtifactContentRequest {

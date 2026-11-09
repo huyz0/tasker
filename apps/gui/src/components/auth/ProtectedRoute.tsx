@@ -3,6 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthSession } from '../../hooks/useAuthSession';
 import { ensureDevSession } from '../../lib/devAuthBootstrap';
+import { useSummaryDraftIdentity } from '../../features/Tasks/SummaryDraftGuard';
+import { ListState } from '../ui/ListState';
 import { reportError } from '../../lib/errorReporter';
 
 // M13-T12. Where mustChangePassword routes to — account settings, since
@@ -16,7 +18,9 @@ const IS_DEV = import.meta.env.DEV;
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const { isLoading, authenticated, mustChangePassword } = useAuthSession();
+  const session = useAuthSession();
+  const { isLoading, authenticated, mustChangePassword } = session;
+  const draftIdentityReady = useSummaryDraftIdentity(session);
   const location = useLocation();
   const [devAttempted, setDevAttempted] = useState(false);
 
@@ -35,6 +39,12 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (IS_DEV && !authenticated && !devAttempted) {
     return null;
+  }
+
+  if (!draftIdentityReady) {
+    return <ListState isLoading={!session.error} error={session.error} isEmpty={false} emptyMessage=""
+      loadingMessage="Verifying your account…" errorLabel="Could not verify your account"
+      onRetry={() => { void queryClient.invalidateQueries({ queryKey: ['authSession'] }); }} />;
   }
 
   if (!REQUIRE_AUTH) {

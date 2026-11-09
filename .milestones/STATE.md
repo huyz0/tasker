@@ -1,8 +1,8 @@
 ---
-active_milestone: M53
+active_milestone: M54
 active_task: null
 last_updated: 2026-11-09
-last_commit: af98116
+last_commit: fe028d0
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,38 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M53 complete locally:7/7 tasks,5/5 exit criteria.** T07 is committed asfe028d0 after all35 checks,42 actual browser journeys and217-story dual-theme matrices. PR #6 still requires actual final-head remote CI before merge; main remains published through M47. M54-T01 is the next eligible design task (M46/M53 locally complete), with no implementation implied done. Preserve optional field numbers, tasks-only digest access, bounded stored representations and explicit provenance. Overall31 tasks remain.
+
+**2026-11-09 — M53-T07 verified:7/7 tasks.** Final35 source checks pass (GUI1475/95.43% branches, backend2207/zero failures), all217 previews pass868 accessibility/434 overflow scans, and final keyboard/editor/capture checks agree. Forty-two actual browser journeys cover core/notifications, M53, editor/addressable and layout/recovery. CODE-v12/UX-v8 approve after corrected semantic ink, headings and truthful preview lifecycle. Close M53 next; PR #6 remains unpublished until actual final-head remote CI. Overall31 tasks remain.
+
+**2026-11-09 — M53-T07 in progress.** T06 is committed/pushed asc6e3f38. Reproduce shared dialog accessible-name pollution from header actions, retain native focus/masking behavior, then verify notification/core and M53 browser journeys plus full rendered/source gates. Overall32 tasks remain; PR #6 stays draft until final review and actual final-head CI.
+
+**2026-11-09 — M53-T06 verified:6/7 tasks.** Explicit empty MCP summaries now reach one existing RPC while malformed/oversized text, empty IDs and other required strings remain invalid. Source-audited docs describe template visibility, ordinary parents, project-wide claim-next and caller-checked readiness for named claims. CODE-v8 approves;42 focused cases/three restored faults and all35 local checks pass (backend2207/zero failures, GUI1473/95.45% branches). Next T07 verifies existing human workflows/notification/dialog behavior, closes M53 and requires final-head remote CI before merge. Overall32 tasks remain.
+
+**2026-11-09 — M53-T06 in progress.** T05 is committed/pushed asb6afcd6. Drive explicit-empty MCP summary support through the advertised schema while preserving all other required-string boundaries; correct workflow parent/claim/template prose against actual handlers. Overall33 tasks remain; final milestone publication still requires T06/T07 and final-head CI.
+
+**2026-11-09 — M53-T05 verified:5/7 tasks.** Session-memory summary intent, task-wide pending write fences, verified account transitions and route-global native warnings pass all35 local checks; GUI1473/95.45% branches, backend2196/zero failures, four browser journeys and68 settled audits. Independent CODE-v7/UX-v5 approve. Two controlled idle-timer reds also correct T04 remote CI's early-wake scheduler assumption;44 stream tests pass with fixed heartbeat/credential deadlines. Next T06 honors explicit empty MCP summary text and documents ordinary workflow parents/project-wide claims/template scope. Overall33 tasks remain; draft PR #6 still awaits T06/T07 and final-head CI.
+
+**2026-11-09 — M53-T05 in progress.** T04 is committed/pushed as6feb920. Reproduce task/unmount/save races before account-bound draft registry and mutation-cache/native-exit guards. No new persistence or auth scheme; transient session failure cannot count as confirmed logout. Overall34 tasks remain; M53/PR #6 are not ready to merge.
+
+**2026-11-09 — M53-T04 verified:4/7 tasks.** Independent pending/history pages, bound SQL cursors and durable stale closure pass all35 gates, GUI1440/95.45% branches, backend2194/zero failures, SQLite/MySQL16/128 assertions, two browser journeys and18 previews/72 settled audits. Access lifetime/off-feed refresh/late-notice review findings and dark Delete contrast are corrected; CODE-v5/UX-v4 approve. Next T05 protects summary drafts, save revisions and identity/native-exit lifetime. Draft PR #6 still requires T05–T07 and final-head CI. Overall34 tasks remain.
+
+**2026-11-09 — M53-T04 in progress.** T03 is pushed as fc684f9 and draft PR #6 reflects completed navigation/search. First reproduce stale-decision rollback through the real interceptor, then implement bounded closed selectors/cursor identity and reachable pending/history. Overall35 tasks remain.
+
+**2026-11-09 — M53-T03 verified:3/7 tasks.** All six search types, current query/org binding, honest error/retry states, scoped destinations and native keyboard/scroll behavior pass45 focused tests, three actual browser journeys and24 settled story audits. All35 local checks pass; GUI1421/95.31% branches. SQLite36/MySQL6 and deliberate binding faults are observed; independent CODE-v4/UX-v2 approve. Next T04 resolves bounded pending/history and stale-decision atomicity. Draft PR #6 still awaits final milestone/head CI before merge. Overall35 tasks remain.
+
+**2026-11-09 — M53-T03 in progress.** Draft PR #6 contains verified T01/T02 at ad39df7; CI runs while search work starts. Reproduce missing Memory hits, visual/keyboard order, stale debounce Enter and initial/subsequent failed-query states before code. Existing authorized scope resolution remains the destination boundary. Overall36 tasks remain.
+
+**2026-11-09 — M53-T02 verified:2/7 tasks.** Authorized task/artifact/Memory scope, owner-keyed labels, explicit selection and access/error recovery pass64 focused cases, five real browser journeys,100 settled story contrast checks and all35 local gates. GUI1402/95.24% branches; backend2180/zero failures; CLI93.8%. SQLite/MySQL body-bound faults and old-client HTTP JSON/protobuf proofs pass. Independent implementation/UX approval is recorded. Next T03 fixes supported search types/current-query states/keyboard order. Main remains published M47; this M53 candidate is not merged. Overall36 tasks remain.
+
+**2026-11-09 — M47 published.** PR #5 merged as eeca274 after all ten final-head jobs passed (CI42614414075; real integration42614414067), including1360 GUI tests and all174 Storybook checks. M53-T02 metadata/selector foundation passes focused backend/MySQL/contract/GUI tests but canonical resource flow and final gates remain pending. This unpublished branch is rebased onto that main commit; original development work remains preserved. Overall37 tasks remain.
+
+**2026-11-09 — M53-T02 in progress.** T01 is committed as a63dd2f after approved ADR/UX/11 acceptance scenarios and full35 checks. Reproduce authorized ownership metadata/body bounds and canonical navigation before code; projectless Memory and explicit selector transitions must survive settled effects. M47 final PR #5 still awaits its remote GUI/backend checks. Overall37 tasks remain.
+
+**2026-11-09 — M53-T01 verified.** ADR-0047, UX and11 acceptance scenarios receive corrected independent approval. Fresh35 local checks pass after a ledger blank-line correction; source remains the verified M47 candidate. Canonical metadata, projectless switcher behavior, bound pending/history cursors and all-exit version-safe summary drafts are explicit. M53-T02 is next. PR #5 still awaits final remote GUI/backend completion; reconcile M53 onto published main before publication. Overall37 tasks remain.
+
+**2026-11-09 — M53-T01 in progress.** Design authorized canonical entity scope, complete pending/history paging and retained summary intent. M28/M51 are published; this isolated branch starts from final M47 candidatee34924e while PR #5 final-head CI runs. Reconcile against published main before M53 publication. Frontend/security standards, existing tokens/fonts and independent UX judgment apply. Overall38 tasks remain.
 
 **2026-11-09 — M47 complete:4/4 tasks and4/4 exit criteria.** All35 local gates pass with unchanged coverage floors; both-dialect process/upgrade153 assertions and four actual browser journeys pass, including dark alert contrast. Durable occurrence/history and locked current-eligibility purge semantics are documented. PR #5 still requires complete final-head CI before merge. Next M53-T01 may start independently during that wait (M28/M51 published), with base/ledger reconciliation before publication. Overall38 tasks remain.
 
@@ -1894,14 +1926,14 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
-| M53 | Workflow Correctness | todo | M28, M51 | 7 | 0 |
+| M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
 | M54 | Completion Evidence | todo | M46, M53 | 5 | 0 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 358 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 365 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

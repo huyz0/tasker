@@ -1,15 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgentTokens } from './AgentTokens';
+import { useState, type PropsWithChildren } from 'react';
 
-// Owns a real createClient(...) call (AgentService). No global
-// QueryClientProvider decorator exists in .storybook/preview.tsx and no MSW
-// is wired in, so - the same documented gap as Memory/Handoffs' own
-// stories - this shows the real "still loading" state against an
-// unreachable-in-Storybook backend, not a mocked populated one.
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
-});
+// Authorized empty state. A failed admin lookup deliberately hides this panel,
+// so an unreachable backend would be an empty preview instead of useful UI.
+function AuthorizedTokenPreview({ children }: PropsWithChildren) {
+  const [client] = useState(() => {
+    const fixture = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    fixture.setQueryData(['agentTokens', 'agent-storybook'], []);
+    return fixture;
+  });
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 
 const meta = {
   title: 'Features/Agents/AgentTokens',
@@ -19,11 +22,11 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <QueryClientProvider client={queryClient}>
+      <AuthorizedTokenPreview>
         <div className="max-w-lg">
           <Story />
         </div>
-      </QueryClientProvider>
+      </AuthorizedTokenPreview>
     ),
   ],
 } satisfies Meta<typeof AgentTokens>;

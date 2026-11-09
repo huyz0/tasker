@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, spyOn } from 'bun:test';
 import { ConnectError, Code } from '@connectrpc/connect';
 import { createEventsHandler } from './events.handler';
 import { currentPrincipalKey } from '../auth/session';
@@ -581,6 +581,85 @@ describe('subscription credential lifetime (M44)', () => {
     await expect(iter.next()).rejects.toMatchObject({ code: Code.Unauthenticated });
     expect(checks).toBe(1);
     expect(sub.unsubscribed).toBe(true);
+  });
+
+  it('waits through an early idle timer wake before rejecting revoked credentials', async () => {
+    const sub = fakeSubscription();
+    const { ctx, controller } = ctxFor(agent);
+    let now = 0, checks = 0, settled = false;
+    const timers: Array<{ callback: () => void; delay: number }> = [];
+    const realSetTimeout = globalThis.setTimeout;
+    const timer = spyOn(globalThis, 'setTimeout').mockImplementation(((callback: () => void, delay: number) => {
+      timers.push({ callback, delay });
+      return 0;
+    }) as unknown as typeof setTimeout);
+    const flush = () => new Promise<void>(resolve => realSetTimeout(resolve, 0));
+    const handler = createEventsHandler(fakeDb(), fakeNats(sub), {
+      heartbeatMs: 1_000, revalidateMs: 5, now: () => now,
+      reauthenticate: async () => { checks++; return null; },
+    });
+    const iter = handler.subscribeEvents({}, ctx);
+    try {
+      expect((await iter.next()).value.subject).toBe('stream.ready');
+      const next = iter.next();
+      void next.then(() => { settled = true; }, () => { settled = true; });
+      await flush();
+      expect(timers).toHaveLength(1);
+      expect(timers[0]!.delay).toBe(5);
+      now = 4;
+      timers.shift()!.callback();
+      await flush();
+      expect(settled).toBe(false);
+      expect(checks).toBe(0);
+      expect(timers).toHaveLength(1);
+      expect(timers[0]!.delay).toBe(1);
+      now = 5;
+      timers.shift()!.callback();
+      await expect(next).rejects.toMatchObject({ code: Code.Unauthenticated });
+      expect(checks).toBe(1);
+      expect(sub.unsubscribed).toBe(true);
+    } finally {
+      timer.mockRestore();
+      controller.abort();
+      await iter.return(undefined);
+    }
+  });
+
+  it('preserves the heartbeat deadline through an early idle timer wake', async () => {
+    const sub = fakeSubscription();
+    const { ctx, controller } = ctxFor(agent);
+    let now = 0, settled = false;
+    const timers: Array<{ callback: () => void; delay: number }> = [];
+    const realSetTimeout = globalThis.setTimeout;
+    const timer = spyOn(globalThis, 'setTimeout').mockImplementation(((callback: () => void, delay: number) => {
+      timers.push({ callback, delay });
+      return 0;
+    }) as unknown as typeof setTimeout);
+    const flush = () => new Promise<void>(resolve => realSetTimeout(resolve, 0));
+    const iter = createEventsHandler(fakeDb(), fakeNats(sub), {
+      heartbeatMs: 5, revalidateMs: 1_000, now: () => now,
+    }).subscribeEvents({}, ctx);
+    try {
+      await iter.next();
+      const next = iter.next();
+      void next.then(() => { settled = true; }, () => { settled = true; });
+      await flush();
+      expect(timers).toHaveLength(1);
+      expect(timers[0]!.delay).toBe(5);
+      now = 4;
+      timers.shift()!.callback();
+      await flush();
+      expect(settled).toBe(false);
+      expect(timers).toHaveLength(1);
+      expect(timers[0]!.delay).toBe(1);
+      now = 5;
+      timers.shift()!.callback();
+      expect((await next).value.subject).toBe('stream.heartbeat');
+    } finally {
+      timer.mockRestore();
+      controller.abort();
+      await iter.return(undefined);
+    }
   });
 
   it('revalidates a busy stream before delivering the next event', async () => {

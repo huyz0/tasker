@@ -20,12 +20,27 @@ describe('authSession', () => {
     expect(fetch).toHaveBeenCalledWith(`${BACKEND_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
   });
 
+  it('reports a failed logout rather than pretending the session ended', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+    await expect(logout()).rejects.toThrow(/sign out/i);
+  });
+
   it('returns an unauthenticated session when the backend responds with a non-2xx status', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401 }));
 
     const session = await fetchAuthSession();
 
     expect(session).toEqual({ authenticated: false, userId: null, mustChangePassword: false });
+  });
+
+  it('treats a temporary session lookup failure as unknown rather than confirmed logout', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+    await expect(fetchAuthSession()).rejects.toThrow(/verify.*session/i);
+  });
+
+  it('rejects malformed session identity instead of adopting an invalid draft owner', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ authenticated: true, userId: null }) }));
+    await expect(fetchAuthSession()).rejects.toThrow();
   });
 
   /** M13-T12. */

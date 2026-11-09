@@ -23,6 +23,7 @@ import { createRequire } from 'node:module';
 import { availableParallelism } from 'node:os';
 import { join, extname, resolve, dirname } from 'node:path';
 import { chromium } from 'playwright';
+import { waitForStory } from './storybook-ready.mjs';
 
 const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const STATIC = join(ROOT, 'storybook-static');
@@ -68,7 +69,6 @@ const index = JSON.parse(readFileSync(join(STATIC, 'index.json'), 'utf8'));
 const stories = Object.values(index.entries).filter((e) => e.type === 'story');
 const axeSource = readFileSync(AXE, 'utf8');
 
-const browser = await chromium.launch({ headless: true });
 
 /**
  * Stories are audited several at a time, each on its own page.
@@ -89,79 +89,100 @@ const browser = await chromium.launch({ headless: true });
 const CONCURRENCY = Number(process.env.STORYBOOK_CHECK_CONCURRENCY)
   || Math.max(2, Math.min(4, availableParallelism() - 1));
 
-const pages = await Promise.all(
-  Array.from({ length: CONCURRENCY }, async () => {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-    // Several stories (any screen/component with a real, unconditional useQuery
-    // on mount and no MSW to answer it - CurrentUser, OrgProjectSwitcher,
-    // Dashboard, TaskTypesEditor, BinDashboard, SystemHealthPage, and others)
-    // fire a real createClient(...) call against BACKEND_URL
-    // (src/lib/backendUrl.ts). Nothing listens on that port here, and in this
-    // environment a fetch to a closed local port does not fail fast - it hangs
-    // indefinitely rather than rejecting, which never lets `networkidle`
-    // resolve and times out the whole run on the first such story. Aborting it
-    // at the network layer makes it fail immediately instead, matching what a
-    // real "backend unreachable" state looks like without needing every story
-    // to route around this environment's own quirk individually.
-    await page.route('http://localhost:8080/**', (route) => route.abort());
-    return page;
-  }),
-);
-
 const failures = [];
-// A shared cursor rather than fixed per-page slices: story cost varies by an
-// order of magnitude (a Badge against a whole Dashboard), so a static split
-// leaves one page still working while the rest sit idle.
-let cursor = 0;
+let browser;
+try {
+  browser = await chromium.launch({ headless: true });
+  const pages = await Promise.all(
+    Array.from({ length: CONCURRENCY }, async () => {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+      // Several stories (any screen/component with a real, unconditional useQuery
+      // on mount and no MSW to answer it - CurrentUser, OrgProjectSwitcher,
+      // Dashboard, TaskTypesEditor, BinDashboard, SystemHealthPage, and others)
+      // fire a real createClient(...) call against BACKEND_URL
+      // (src/lib/backendUrl.ts). Nothing listens on that port here, and in this
+      // environment a fetch to a closed local port does not fail fast - it hangs
+      // indefinitely rather than rejecting, which never lets `networkidle`
+      // resolve and times out the whole run on the first such story. Aborting it
+      // at the network layer makes it fail immediately instead, matching what a
+      // real "backend unreachable" state looks like without needing every story
+      // to route around this environment's own quirk individually.
+      await page.route('http://localhost:8080/**', (route) => route.abort());
+      return page;
+    }),
+  );
 
-async function auditStories(page) {
-  for (;;) {
-    const story = stories[cursor++];
-    if (!story) return;
+  // A shared cursor rather than fixed per-page slices: story cost varies by an
+  // order of magnitude (a Badge against a whole Dashboard), so a static split
+  // leaves one page still working while the rest sit idle.
+  let cursor = 0;
 
-    await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {
-      waitUntil: 'networkidle',
-      timeout: 60000,
-    });
-    // Storybook renders asynchronously; a story measured before it paints has
-    // nothing for axe to look at and passes for the wrong reason.
-    await page.waitForSelector('#storybook-root > *', { timeout: 20000 }).catch(() => {});
-    await page.waitForTimeout(250);
+  async function auditStories(page) {
+    for (;;) {
+      const story = stories[cursor++];
+      if (!story) return;
 
-    await page.addScriptTag({ content: axeSource });
-    const result = await page.evaluate(async () =>
-      // eslint-disable-next-line no-undef
-      await window.axe.run('#storybook-root', {
-        runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
-      }),
-    );
+      try {
+        await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {
+          waitUntil: 'domcontentloaded',
+          timeout: 60000,
+        });
+        // A live/polling story need not become network-idle. Require Storybook's
+        // rendered state instead; preview errors must never count as empty UI.
+        await page.waitForSelector('#storybook-root', { state: 'attached', timeout: 20000 });
+        // Successful null renders are valid; preview visibility is not completion.
+        await waitForStory(page, story.id);
+        await page.waitForTimeout(250);
 
-    for (const v of result.violations) {
-      failures.push({
-        story: story.title ? `${story.title} › ${story.name}` : story.id,
-        id: v.id,
-        impact: v.impact,
-        help: v.help,
-        nodes: v.nodes.slice(0, 3).map((n) => n.target.join(' ')),
-      });
+        await page.addScriptTag({ content: axeSource });
+        await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' });
+        for (const theme of ['light', 'dark']) {
+          for (const width of [375, 1280]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
+            await page.evaluate(() => document.fonts.ready);
+            await waitForStory(page, story.id);
+            const result = await page.evaluate(async () =>
+              // eslint-disable-next-line no-undef
+              await window.axe.run(document.body, {
+                runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
+              }),
+            );
+
+            await waitForStory(page, story.id);
+            for (const v of result.violations) {
+              failures.push({
+                story: `${story.title} › ${story.name} (${theme}, ${width}px)`,
+                id: v.id,
+                impact: v.impact,
+                help: v.help,
+                nodes: v.nodes.slice(0, 3).map((n) => n.target.join(' ') + ' ' + n.failureSummary),
+              });
+            }
+          }
+        }
+      } catch (error) {
+        failures.push({ story: story.title ? `${story.title} › ${story.name}` : story.id,
+          id: 'story-render', impact: 'serious', help: error.message, nodes: [] });
+      }
     }
   }
-}
 
-await Promise.all(pages.map(auditStories));
+  await Promise.all(pages.map(auditStories));
+
+} finally {
+  try { await browser?.close(); } finally { server.close(); }
+}
 
 // Pages finish out of order, so without this the report reshuffles between
 // runs on an unchanged tree - noise when diffing two CI logs.
 failures.sort((a, b) => a.story.localeCompare(b.story) || a.id.localeCompare(b.id));
 
-await browser.close();
-server.close();
-
 if (failures.length === 0) {
   // Reports the page count too: it is derived from the machine, so this is
   // the only way to see what CI actually chose without guessing at the
   // runner's core count.
-  console.log(`✓ storybook a11y — ${stories.length} stories, 0 violations (${CONCURRENCY} pages)`);
+  console.log(`✓ storybook a11y — ${stories.length} stories ×2themes ×2widths, 0 violations (${CONCURRENCY} pages)`);
   process.exit(0);
 }
 

@@ -89,7 +89,7 @@ export function TaskRelations({ taskId, projectId }: TaskRelationsProps) {
           aria-label={removeLabel}
           onClick={onRemove}
           disabled={removeBlocker.isPending || setParent.isPending}
-          className="ml-auto text-muted-foreground hover:text-destructive disabled:opacity-50"
+          className="ml-auto text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
         >
           ✕
         </button>
@@ -180,7 +180,7 @@ export function TaskRelations({ taskId, projectId }: TaskRelationsProps) {
           )}
         </div>
       )}
-      {error && <span className="text-xs text-destructive">{(error as Error).message}</span>}
+      {error && <span className="text-xs text-destructive-subtle-foreground">{(error as Error).message}</span>}
     </div>
   );
 }

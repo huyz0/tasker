@@ -1,3 +1,4 @@
+import { z } from 'zod/v4';
 import { BACKEND_URL } from './backendUrl';
 
 export interface AuthSession {
@@ -10,16 +11,23 @@ export interface AuthSession {
   mustChangePassword: boolean;
 }
 
+const SessionSchema = z.object({
+  authenticated: z.boolean(), userId: z.string().min(1).nullable().default(null),
+  mustChangePassword: z.boolean().default(false),
+}).refine(session => !session.authenticated || !!session.userId, 'Authenticated session requires an identity');
+
 export async function fetchAuthSession(): Promise<AuthSession> {
   const res = await fetch(`${BACKEND_URL}/api/auth/session`, { credentials: 'include' });
-  if (!res.ok) {
+  if (res.status === 401 || res.status === 403) {
     return { authenticated: false, userId: null, mustChangePassword: false };
   }
-  return res.json();
+  if (!res.ok) throw new Error(`Could not verify your session (${res.status}).`);
+  return SessionSchema.parse(await res.json());
 }
 
 export async function logout(): Promise<void> {
-  await fetch(`${BACKEND_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+  const response = await fetch(`${BACKEND_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+  if (!response.ok) throw new Error(`Could not sign out (${response.status}).`);
 }
 
 /**

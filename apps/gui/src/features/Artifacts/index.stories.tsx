@@ -1,10 +1,14 @@
-// eslint-disable-next-line storybook/no-renderer-packages
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { ResourceNavigationPreview } from '../../../.storybook/ResourceNavigationPreview';
 import { ArtifactsBrowser } from './index';
 
-const meta: Meta<typeof ArtifactsBrowser> = {
-  title: 'Features/ArtifactsBrowser',
-  component: ArtifactsBrowser,
-};
+const meta = {
+  title: 'Features/ArtifactsBrowser', component: ArtifactsBrowser,
+  parameters: { router: false, layout: 'fullscreen' },
+} satisfies Meta<typeof ArtifactsBrowser>;
 export default meta;
-export const Default: StoryObj<typeof ArtifactsBrowser> = {};
+type Story = StoryObj<typeof meta>;
+export const Default: Story = { render: () => <ResourceNavigationPreview kind="artifacts" state="populated" /> };
+export const Empty: Story = { render: () => <ResourceNavigationPreview kind="artifacts" state="empty" /> };
+export const Opening: Story = { render: () => <ResourceNavigationPreview kind="artifacts" state="loading" /> };
+export const Unavailable: Story = { render: () => <ResourceNavigationPreview kind="artifacts" state="error" /> };

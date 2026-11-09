@@ -6,6 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import * as Tabs from '@radix-ui/react-tabs';
 import { transport } from '../../lib/connectTransport';
 import { MemoryService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { useCanonicalResourceScope } from '../../hooks/useScope';
 import { useUrlEnum } from '../../hooks/useUrlEnum';
 import { useLayoutStore } from '../../store/layout';
 import { ListState } from '../../components/ui/ListState';
@@ -67,6 +68,8 @@ const PROMOTION_ROW_HEIGHT = 56;
  * this milestone requires it from the GUI specifically. */
 const SCOPE_TYPES = ['project', 'organization'] as const;
 type ScopeType = (typeof SCOPE_TYPES)[number];
+const MEMORY_TIERS = ['project', 'organization', 'team'] as const;
+type MemoryTier = (typeof MEMORY_TIERS)[number];
 
 const CONFIDENCE_LEVELS = ['low', 'medium', 'high'] as const;
 const STATUSES = ['active', 'superseded', 'retracted'] as const;
@@ -170,7 +173,7 @@ function RecordBeliefDialog({ open, onClose, orgId, scopeType, scopeId }: { open
             {CONFIDENCE_LEVELS.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        {mutation.isError && <p role="alert" className="text-sm text-destructive">Failed to record belief: {(mutation.error as Error).message}</p>}
+        {mutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to record belief: {(mutation.error as Error).message}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={!statement.trim() || mutation.isPending}>{mutation.isPending ? 'Recording…' : 'Record belief'}</Button>
@@ -227,7 +230,7 @@ function SupersedeBeliefDialog({ open, onClose, belief, onSuperseded }: { open: 
             {CONFIDENCE_LEVELS.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        {mutation.isError && <p role="alert" className="text-sm text-destructive">Failed to supersede: {(mutation.error as Error).message}</p>}
+        {mutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to supersede: {(mutation.error as Error).message}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={!statement.trim() || mutation.isPending}>{mutation.isPending ? 'Superseding…' : 'Supersede'}</Button>
@@ -310,7 +313,7 @@ function RelateBeliefPicker({ belief, existingRelatedIds, scopeType, scopeId }: 
       {candidates.isSuccess && debouncedSearch && results.length === 0 && (
         <span className="text-xs text-muted-foreground">No matching beliefs.</span>
       )}
-      {relateMutation.isError && <p role="alert" className="text-xs text-destructive">Failed to relate: {(relateMutation.error as Error).message}</p>}
+      {relateMutation.isError && <p role="alert" className="text-xs text-destructive-subtle-foreground">Failed to relate: {(relateMutation.error as Error).message}</p>}
 
       <button onClick={() => { setIsPicking(false); setSearch(''); }} className="mt-1 self-start text-xs text-muted-foreground">Done</button>
     </div>
@@ -474,7 +477,7 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
           >
             {CONFIDENCE_LEVELS.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          {updateMutation.isError && <p role="alert" className="text-sm text-destructive">Failed to save: {(updateMutation.error as Error).message}</p>}
+          {updateMutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to save: {(updateMutation.error as Error).message}</p>}
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={!draftStatement.trim() || updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save'}</Button>
             <Button type="button" size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
@@ -488,9 +491,9 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
       )}
 
       <ProvenanceLine belief={belief} />
-      {archiveMutation.isError && <p role="alert" className="text-sm text-destructive">Failed to archive: {(archiveMutation.error as Error).message}</p>}
-      {restoreMutation.isError && <p role="alert" className="text-sm text-destructive">Failed to restore: {(restoreMutation.error as Error).message}</p>}
-      {purgeMutation.isError && <p role="alert" className="text-sm text-destructive">Failed to delete: {(purgeMutation.error as Error).message}</p>}
+      {archiveMutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to archive: {(archiveMutation.error as Error).message}</p>}
+      {restoreMutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to restore: {(restoreMutation.error as Error).message}</p>}
+      {purgeMutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to delete: {(purgeMutation.error as Error).message}</p>}
 
       {/* Radix, not a hand-rolled tab pair - `design-system.md` §4 ("Do not
           hand-roll a second overlay, menu, or tab implementation"), the same
@@ -536,7 +539,7 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
                       aria-label="Remove relation"
                       onClick={() => unrelateMutation.mutate(relation.id)}
                       disabled={unrelateMutation.isPending}
-                      className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                      className="text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
                     >
                       ✕
                     </button>
@@ -545,7 +548,7 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
               />
             </div>
           </ListState>
-          {unrelateMutation.isError && <p role="alert" className="text-sm text-destructive">Failed to remove relation: {(unrelateMutation.error as Error).message}</p>}
+          {unrelateMutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to remove relation: {(unrelateMutation.error as Error).message}</p>}
           <RelateBeliefPicker belief={belief} existingRelatedIds={existingRelatedIds} scopeType={belief.scopeType as ScopeType} scopeId={belief.scopeId} />
         </Tabs.Content>
 
@@ -632,7 +635,7 @@ function PromoteBeliefDialog({ open, onClose, belief, orgId }: { open: boolean; 
             className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
-        {mutation.isError && <p role="alert" className="text-sm text-destructive">Failed to promote: {(mutation.error as Error).message}</p>}
+        {mutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to promote: {(mutation.error as Error).message}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="button" onClick={handlePromote} disabled={mutation.isPending}>{mutation.isPending ? 'Promoting…' : 'Promote'}</Button>
@@ -654,7 +657,7 @@ export function MemoryExplorer() {
   // whole organization's — decided the query key and therefore the entire
   // list, so a reload used to show a different set of beliefs under the same
   // URL without saying so.
-  const [scopeType] = useUrlEnum<ScopeType>('scope', SCOPE_TYPES, 'project');
+  const [scopeType] = useUrlEnum<MemoryTier>('scope', MEMORY_TIERS, 'project');
   const [mode, setMode] = useState<'search' | 'browse'>('search');
   const [query, setQuery] = useState('');
   const [debouncedQuery] = useDebounce(query, 300);
@@ -670,7 +673,6 @@ export function MemoryExplorer() {
   // belief the reader had opened and left the screen entirely.
   const selectedBeliefId = routeBeliefId ?? null;
 
-  const scopeId = scopeType === 'project' ? activeProjectId : activeOrgId;
 
   // A direct link (`/memory/:beliefId`, following a link from a task or
   // comment, or opening a search result) resolves the belief on its own via
@@ -682,13 +684,32 @@ export function MemoryExplorer() {
     enabled: !!routeBeliefId,
   });
 
+  const direct = directBeliefQuery.data?.id === routeBeliefId ? directBeliefQuery.data : undefined;
+  const tier: MemoryTier | undefined = direct?.scopeType === 'project' || direct?.scopeType === 'organization' || direct?.scopeType === 'team'
+    ? direct.scopeType : undefined;
+  const owner = direct?.orgId && tier ? {
+    orgId: direct.orgId, projectId: tier === 'project' ? direct.scopeId : '', memoryTier: tier,
+  } : undefined;
+  const beliefScopeReady = useCanonicalResourceScope(routeBeliefId ? `belief:${routeBeliefId}` : null, owner,
+    directBeliefQuery.isSuccess && !directBeliefQuery.isFetching, directBeliefQuery.error);
+  const ownerError = directBeliefQuery.error || (directBeliefQuery.isSuccess && !directBeliefQuery.isFetching
+    && !owner ? new Error('Could not resolve this belief’s workspace.') : null);
+  const scopeId = scopeType === 'project' ? activeProjectId : scopeType === 'organization' ? activeOrgId : direct?.scopeId ?? '';
+  useEffect(() => {
+    if (routeBeliefId || scopeType === 'project') return;
+    const params = new URLSearchParams(search);
+    if (scopeType === 'organization' && !params.has('project')) return;
+    params.set('scope', 'organization'); params.delete('project');
+    navigate({ pathname: '/memory', search: params.toString() }, { replace: true });
+  }, [scopeType, routeBeliefId, search, navigate]);
+
   const searchQuery = useQuery({
     queryKey: ['memoryBeliefs', 'search', scopeType, scopeId, debouncedQuery, statusFilter, confidenceFilter],
     queryFn: () => memoryClient.searchBeliefs({
       scopeType, scopeId, query: debouncedQuery,
       status: statusFilter || undefined, confidence: confidenceFilter || undefined,
     }).then((r) => r.beliefs as Belief[]),
-    enabled: mode === 'search' && !!scopeId && debouncedQuery.length > 0,
+    enabled: scopeType !== 'team' && mode === 'search' && !!scopeId && debouncedQuery.length > 0,
   });
 
   const {
@@ -702,7 +723,7 @@ export function MemoryExplorer() {
     }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.page?.nextCursor || undefined,
-    enabled: mode === 'browse' && !!scopeId,
+    enabled: scopeType !== 'team' && mode === 'browse' && !!scopeId,
   });
   const browseBeliefs = useMemo(() => (browsePages?.pages.flatMap((p) => p.beliefs) ?? []) as Belief[], [browsePages]);
 
@@ -711,7 +732,7 @@ export function MemoryExplorer() {
   const error = mode === 'search' ? searchQuery.error : browseError;
   const retry = mode === 'search' ? () => searchQuery.refetch() : () => refetchBrowse();
 
-  const selectedBelief = beliefs.find((b) => b.id === selectedBeliefId) ?? (directBeliefQuery.data?.id === selectedBeliefId ? directBeliefQuery.data : undefined);
+  const selectedBelief = selectedBeliefId && beliefScopeReady ? direct ?? beliefs.find(b => b.id === selectedBeliefId) : undefined;
 
   // The whole query string, not `useScopedTo`: this is navigation *within* the
   // screen, so it keeps the screen's own `?scope=` as well as the scope the
@@ -734,8 +755,15 @@ export function MemoryExplorer() {
   const selectScopeType = (next: ScopeType) => {
     const params = new URLSearchParams(search);
     params.set('scope', next);
+    if (next === 'organization') params.delete('project');
     navigate({ pathname: '/memory', search: params.toString() });
   };
+
+  if (routeBeliefId && !beliefScopeReady) return <div className="flex flex-col gap-6">
+    <PageHeader title="Memory" description="Shared facts and conventions." />
+    <ListState isLoading={!ownerError} error={ownerError} isEmpty={false} emptyMessage=""
+      loadingMessage="Loading this belief…" errorLabel="Could not open this belief" onRetry={() => directBeliefQuery.refetch()} />
+  </div>;
 
   if (!activeOrgId) {
     return <p className="text-sm text-muted-foreground">Select an organization to browse its shared memory.</p>;
@@ -749,10 +777,11 @@ export function MemoryExplorer() {
       <PageHeader
         title="Memory"
         description="Facts and conventions your team and its agents have learned, kept so nobody has to rediscover them."
-        actions={<Button onClick={() => setRecordOpen(true)}><Plus className="mr-1 h-4 w-4" /> Record belief</Button>}
+        actions={scopeType === 'team' ? undefined : <Button onClick={() => setRecordOpen(true)}><Plus className="mr-1 h-4 w-4" /> Record belief</Button>}
       />
+      {ownerError && <ListState isLoading={false} error={ownerError} isEmpty={false} emptyMessage="" errorLabel="Could not refresh this belief" onRetry={() => directBeliefQuery.refetch()} />}
       <div className="flex flex-col gap-6 md:flex-row">
-        <div className="flex w-full flex-col gap-3 md:w-96 md:shrink-0">
+        {scopeType !== 'team' && <div className="flex w-full flex-col gap-3 md:w-96 md:shrink-0">
 
           <div className="flex items-center gap-1 text-xs">
             {SCOPE_TYPES.map((s) => (
@@ -835,7 +864,7 @@ export function MemoryExplorer() {
               )}
             </div>
           </ListState>
-        </div>
+        </div>}
 
         {/* Only point at the list when it has something to point at; beside an
             empty list the prompt contradicts the list's own empty state. */}
@@ -844,6 +873,7 @@ export function MemoryExplorer() {
             {selectedBelief ? (
               <>
                 <BeliefCrumbs scopeType={scopeType} statement={selectedBelief.statement} />
+                {scopeType === 'team' && <p className="mb-3 type-caption text-muted-foreground">Team memory · <span className="type-code">{selectedBelief.scopeId}</span></p>}
                 <BeliefDetail belief={selectedBelief} onSelect={selectBelief} />
               </>
             ) : (
@@ -853,7 +883,7 @@ export function MemoryExplorer() {
         )}
       </div>
 
-      <RecordBeliefDialog open={recordOpen} onClose={() => setRecordOpen(false)} orgId={activeOrgId} scopeType={scopeType} scopeId={scopeId} />
+      {scopeType !== 'team' && <RecordBeliefDialog open={recordOpen} onClose={() => setRecordOpen(false)} orgId={activeOrgId} scopeType={scopeType} scopeId={scopeId} />}
     </div>
   );
 }

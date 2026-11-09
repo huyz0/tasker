@@ -101,7 +101,7 @@ describe('GlobalSearch', () => {
     // Every shortcut named here has to actually work — a legend for a
     // shortcut that does nothing is the same defect as the placeholder that
     // used to promise "commands" this palette has never had.
-    expect(screen.getByText(/Search across tasks, artifacts, projects, agents and comments\./)).toBeInTheDocument();
+    expect(screen.getByText(/Search across tasks, artifacts, projects, agents, comments and Memory\./)).toBeInTheDocument();
     expect(screen.getByText('to navigate')).toBeInTheDocument();
     expect(screen.getByText('to open')).toBeInTheDocument();
     expect(screen.getByText('to close')).toBeInTheDocument();
@@ -227,7 +227,7 @@ describe('GlobalSearch', () => {
     fireEvent.change(screen.getByPlaceholderText('Search tasks, artifacts, projects, agents…'), { target: { value: 'query' } });
     await waitFor(() => expect(screen.getByText('Second result')).toBeInTheDocument());
 
-    fireEvent.mouseEnter(screen.getByRole('option', { name: /Second result/ }));
+    fireEvent.mouseMove(screen.getByRole('option', { name: /Second result/ }));
     expect(screen.getByRole('option', { name: /Second result/ })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('option', { name: /First result/ })).toHaveAttribute('aria-selected', 'false');
   });

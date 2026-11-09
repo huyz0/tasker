@@ -67,7 +67,7 @@ export function useConfirm() {
     >
       <div className="p-4 flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">{options.consequence}</p>
-        <p className={`text-sm ${options.undo === null ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+        <p className={`text-sm ${options.undo === null ? 'text-destructive-subtle-foreground font-medium' : 'text-muted-foreground'}`}>
           {options.undo ?? 'This cannot be undone.'}
         </p>
         <div className="flex justify-end gap-2 pt-2">
