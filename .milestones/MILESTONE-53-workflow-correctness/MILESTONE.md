@@ -44,7 +44,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: packages/shared-contract/main.tsp; apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/modules/artifacts/artifacts.handler.ts; apps/gui/src/hooks/useScope.ts; apps/gui/src/components/layout/GlobalSearch.tsx; apps/gui/src/features/Tasks/; apps/gui/src/features/Memory/; apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx.
   - **Verify**: Open project B entities from project A, missing/conflicting scope links and org Memory; URL, sidebar, breadcrumbs and actions agree; Back preserves origin; inaccessible resources expose no metadata.
 
-- [ ] **M53-T03** — Show every supported search type with distinct loading, no-match and recoverable failure states.
+- [x] **M53-T03** — Show every supported search type with distinct loading, no-match and recoverable failure states.
   - **Files**: apps/gui/src/components/layout/GlobalSearch.tsx; apps/gui/src/components/layout/GlobalSearch.test.tsx; apps/backend/src/modules/search/.
   - **Verify**: Task/artifact/project/agent/belief fixtures remain actionable; initial and subsequent failed queries show retry; out-of-order requests cannot replace current results; keyboard navigation remains usable; test both SQL dialects for requested types.
 

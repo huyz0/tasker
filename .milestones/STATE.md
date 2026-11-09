@@ -1,8 +1,8 @@
 ---
 active_milestone: M53
-active_task: M53-T03
+active_task: M53-T04
 last_updated: 2026-11-09
-last_commit: ad39df7
+last_commit: d3305e4
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M53-T03 verified:3/7 tasks.** All six search types, current query/org binding, honest error/retry states, scoped destinations and native keyboard/scroll behavior pass45 focused tests, three actual browser journeys and24 settled story audits. All35 local checks pass; GUI1421/95.31% branches. SQLite36/MySQL6 and deliberate binding faults are observed; independent CODE-v4/UX-v2 approve. Next T04 resolves bounded pending/history and stale-decision atomicity. Draft PR #6 still awaits final milestone/head CI before merge. Overall35 tasks remain.
 
 **2026-11-09 — M53-T03 in progress.** Draft PR #6 contains verified T01/T02 at ad39df7; CI runs while search work starts. Reproduce missing Memory hits, visual/keyboard order, stale debounce Enter and initial/subsequent failed-query states before code. Existing authorized scope resolution remains the destination boundary. Overall36 tasks remain.
 
@@ -1906,14 +1908,14 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
-| M53 | Workflow Correctness | in-progress | M28, M51 | 7 | 2 |
+| M53 | Workflow Correctness | in-progress | M28, M51 | 7 | 3 |
 | M54 | Completion Evidence | todo | M46, M53 | 5 | 0 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 360 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 361 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

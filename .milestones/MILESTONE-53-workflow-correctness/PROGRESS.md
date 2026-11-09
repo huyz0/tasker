@@ -132,7 +132,7 @@ Overall36 tasks remain; M53 publication waits for T03–T07 and final-head CI.
 
 ## M53-T03 — Complete supported search and current-query states
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Reproduce omitted Memory hits, grouped/keyboard order mismatch and dishonest failed/debouncing query states before correcting the existing palette.
 - **Verified**: T02 is committed/pushed as ad39df7; draft PR #6 is attached and awaits CI. All35 local checks,1402 GUI tests and100 rendered state audits pass on that completed task.
@@ -164,3 +164,13 @@ groups, scoped project/agent/Memory destinations, Tab/arrows/scroll, debounce,
 subsequent failure and dark-mobile Retry/axe. Four deliberate current-data,
 query/org-key, missing-org and whitespace faults fail their regressions. Restored
 rendered/final full gates and independent final review remain pending.
+
+T03 verified complete: all35 checks pass (24 cached), GUI1421/95.31% branches,
+45 focused tests, real SQLite36/MySQL6 search cases, four failed deliberate binding
+faults, three actual browser journeys, and six preview states/24 settled axe
+audits plus mobile overflow. CODE-v4/UX-v2 and independent source reviews approve.
+The corrected GUI-directory build is evidence; the earlier script-listing command
+and stale preview output are not. No timeout, coverage threshold, contract or
+backend permission change. Next T04 separates pending work from closed history,
+adds bound cursors and preserves intentional stale approval closure through the
+real mutation unit. Overall35 tasks remain; M53 still requires T04–T07 and final CI.
