@@ -161,6 +161,47 @@ export function useScopeSync(): void {
   }, [projectId, setActiveProjectId]);
 }
 
+/** Normalize an entity entry from a successful authorized read, preserving Back. */
+export function useCanonicalResourceScope(
+  resourceKey: string | null,
+  owner: (Scope & { memoryTier?: 'project' | 'organization' | 'team' }) | undefined,
+  readSucceeded: boolean,
+): boolean {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeOrgId = useLayoutStore(s => s.activeOrgId);
+  const activeProjectId = useLayoutStore(s => s.activeProjectId);
+  const latest = useRef(location);
+  latest.current = location;
+  const accepted = useRef<{ key: string | null; owner?: typeof owner }>({ key: null });
+  if (accepted.current.key !== resourceKey) accepted.current = { key: resourceKey };
+  if (resourceKey && readSucceeded && owner?.orgId
+    && (owner.projectId || owner.memoryTier === 'organization' || owner.memoryTier === 'team')) {
+    accepted.current.owner = owner;
+  }
+  const resolved = accepted.current.owner;
+  const params = new URLSearchParams(location.search);
+  const matches = !!resolved && params.get(ORG_PARAM) === resolved.orgId
+    && (params.get(PROJECT_PARAM) ?? '') === resolved.projectId
+    && (!resolved.memoryTier || params.get('scope') === resolved.memoryTier);
+
+  useEffect(() => {
+    if (!resourceKey || !readSucceeded || !resolved || matches) return;
+    const current = currentLocation(latest.current);
+    if (current.pathname !== location.pathname || current.search !== location.search) return;
+    const next = new URLSearchParams(current.search);
+    next.set(ORG_PARAM, resolved.orgId);
+    if (resolved.projectId) next.set(PROJECT_PARAM, resolved.projectId);
+    else next.delete(PROJECT_PARAM);
+    if (resolved.memoryTier) next.set('scope', resolved.memoryTier);
+    navigate({ pathname: current.pathname, search: next.toString(), hash: current.hash }, { replace: true });
+  }, [resourceKey, readSucceeded, resolved, matches, location.pathname, location.search, navigate]);
+
+  // Keep an already-resolved editor mounted during background reads. A new
+  // entity must earn its own authorized owner before content/actions appear.
+  return !resourceKey || (matches && activeOrgId === resolved?.orgId && activeProjectId === resolved?.projectId);
+}
+
 /**
  * Put the current scope onto a path, for links and for navigations.
  *

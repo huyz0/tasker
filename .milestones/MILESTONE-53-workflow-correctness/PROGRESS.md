@@ -59,3 +59,34 @@ M47 PR #5 is now published as eeca2741d1e1e042430c7798aee7a8e0450c81b8 after
 all ten final-head jobs passed (CI42614414075; real integration42614414067).
 Remote GUI logs confirm1360 tests and all174 Storybook axe/375px checks. This
 WIP checkpoint will be rebased onto that published main before further work.
+
+
+### T02 canonical resource checkpoint
+
+The unpublished branch is now rebased onto published main eeca274. Authorized
+owner metadata drives a shared replace-in-place scope resolver; explicit scope
+selection closes incompatible detail in its original navigation. Initial task
+reds pass with direct/legacy/cross-organization/denied/warm-cache cases. Artifact
+and all three Memory tier reds reproduce missing scope; artifact cases pass,
+and Memory reaches owned content (the first assertions needed to account for
+both the breadcrumb and detail containing the statement). Team detail has no
+project, list picker or Record action; its breadcrumb returns to organization
+Memory. A focused existing-screen run exposes underspecified ownership fixtures
+and obsolete store-only selection simulations; these are being updated to use
+the URL writer rather than weakening the canonical gate. Full gates, browser,
+compatibility, fault checks and independent implementation review remain pending.
+
+
+T02 expanded checkpoint: canonical component tests pass task/artifact/project,
+organization and team ownership, legacy task fallback, warm-cache denial and
+explicit Memory tier clearing. Existing Task97 and Artifact57 tests pass after
+fixtures use real owner fields and URL selection; Memory57 passes serially,
+with occasional existing 1s debounce assertions failing under concurrent CPU
+work, so verification remains sequential. App TypeScript passes before the
+latest story/browser additions. A deliberate shared-authorization SELECT *
+fault fails and restored SQLite passes; resource-read agent scopes pass without
+projects:read. Browser artifact and project Memory routes pass real RPC/SQL,
+Back/Forward/reload; browser reds identify artifact missing project trail (now
+corrected) and stale project labels on projectless Memory. Independent read-only
+review identifies same-org re-selection clearing and invisible background read
+failures; new reds are in flight before corrections. No task completion claimed.

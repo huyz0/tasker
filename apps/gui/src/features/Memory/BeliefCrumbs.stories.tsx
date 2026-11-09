@@ -62,3 +62,6 @@ export const LongStatement: Story = {
 export const UnbrokenStatement: Story = {
   args: { scopeType: 'project', statement: 'Supercalifragilisticexpialidocious' },
 };
+
+/** Team detail returns to organization Memory; it has no project parent. */
+export const TeamScope: Story = { args: { scopeType: 'team', statement: 'Run verification before publishing.' } };

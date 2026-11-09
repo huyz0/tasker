@@ -1,6 +1,6 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { ArtifactService, LabelService, SearchService, CommentService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { ArtifactService, ProjectService, LabelService, SearchService, CommentService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { mockRpc, mockRpcError, mockRpcPending } from '../../test/mockRpc';
 
 let mockActiveProjectId = 'proj-1';
@@ -28,13 +28,31 @@ vi.mock('../../components/ui/LazyRichMarkdownEditor', () => ({
 import { ArtifactsBrowser } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
 import { renderScoped, type LocationRef } from '../../test/renderScoped';
+import { useLocation } from 'react-router-dom';
+import { useSetScope } from '../../hooks/useScope';
+
+// Match AppShell's URL-to-store read surface, while retaining this suite's
+// deliberately mocked layout store. Real store hydration is covered by
+// canonicalNavigation/entityNavigation integration regressions.
+function ScopedFixture() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  if (params.has('org')) mockActiveOrgId = params.get('org')!;
+  if (params.has('project')) mockActiveProjectId = params.get('project')!;
+  const select = useSetScope();
+  return <>
+    <button onClick={() => select({ projectId: 'proj-2' })}>Select fixture project</button>
+    <button onClick={() => select({ orgId: 'org-2', projectId: 'proj-2' })}>Select fixture organization</button>
+    <ArtifactsBrowser />
+  </>;
+}
 
 // The open artifact is a route param, so every render needs the same
 // `/artifacts` and `/artifacts/:artifactId` pair the app mounts.
 let lastLocation: LocationRef;
 
 function renderPage(initialEntry = '/artifacts') {
-  const result = renderScoped(<ArtifactsBrowser />, {
+  const result = renderScoped(<ScopedFixture />, {
     paths: ['/artifacts', '/artifacts/:artifactId'],
     initialEntry,
   });
@@ -63,7 +81,7 @@ function withProject(
 ) {
   const folderRequests: any[] = [];
   const artifactRequests: any[] = [];
-  const stripContent = (a: any) => { const { content: _content, ...rest } = a; return rest; };
+  const stripContent = (a: any) => { const { content: _content, ...rest } = a; return { folderId: Array.isArray(folders) ? folders[0]?.id : 'fld-1', ...rest }; };
   const flatArtifacts = Array.isArray(artifacts) ? artifacts : [];
 
   mockRpc(ArtifactService, 'ListFolders', (body) => {
@@ -77,7 +95,7 @@ function withProject(
   });
   mockRpc(ArtifactService, 'GetArtifact', (body: { artifactId: string }) => {
     const match = flatArtifacts.find((a) => a.id === body.artifactId);
-    return { artifact: match ? stripContent(match) : undefined };
+    return { orgId: 'org-1', projectId: 'proj-1', artifact: match ? stripContent(match) : undefined };
   });
   mockRpc(ArtifactService, 'GetArtifactContent', (body: { artifactId: string }) => {
     const match = flatArtifacts.find((a) => a.id === body.artifactId);
@@ -91,6 +109,7 @@ describe('ArtifactsBrowser', () => {
   beforeEach(() => {
     mockActiveProjectId = 'proj-1';
     mockActiveOrgId = 'org-1';
+    mockRpc(ProjectService, 'GetProject', { project: { id: 'proj-1', orgId: 'org-1', name: 'Seed Project' } });
     mockRpc(LabelService, 'ListEntityLabels', { labels: [] });
     mockRpc(LabelService, 'ListLabels', { labels: [] });
     mockRpc(CommentService, 'ListComments', { comments: [] });
@@ -645,7 +664,7 @@ describe('ArtifactsBrowser', () => {
             ? { artifacts: [{ id: 'art-9', name: 'design.md' }] }
             : { artifacts: [{ id: 'art-1', name: 'readme.md' }] },
       );
-      mockRpc(ArtifactService, 'GetArtifact', { artifact: { id: 'art-9', name: 'design.md', folderId: 'fld-2' } });
+      mockRpc(ArtifactService, 'GetArtifact', { orgId: 'org-1', projectId: 'proj-1', artifact: { id: 'art-9', name: 'design.md', folderId: 'fld-2' } });
       mockRpc(ArtifactService, 'GetArtifactContent', { content: 'Second folder content', contentType: 'text/markdown' });
 
       renderPage('/artifacts/art-9');
@@ -744,7 +763,7 @@ describe('ArtifactsBrowser', () => {
         (body: { folderId?: string }) =>
           body.folderId === 'fld-3' ? { artifacts: [{ id: 'art-3', name: 'deep.md' }] } : { artifacts: [] },
       );
-      mockRpc(ArtifactService, 'GetArtifact', { artifact: { id: 'art-3', name: 'deep.md', folderId: 'fld-3' } });
+      mockRpc(ArtifactService, 'GetArtifact', { orgId: 'org-1', projectId: 'proj-1', artifact: { id: 'art-3', name: 'deep.md', folderId: 'fld-3' } });
       mockRpc(ArtifactService, 'GetArtifactContent', { content: 'Down here', contentType: 'text/markdown' });
 
       renderPage('/artifacts/art-3');
@@ -849,7 +868,7 @@ describe('ArtifactsBrowser', () => {
       expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
     });
 
-    it('falls back to the placeholder when the deep-linked artifact exists nowhere', async () => {
+    it('offers a recoverable error when the deep-linked artifact exists nowhere', async () => {
       // GetArtifact answers the deep link in one call and returns the
       // folderId directly (M07-T12) — nothing here ever selects a folder to
       // list, so an unresolvable id never issues a ListArtifacts call at all.
@@ -863,7 +882,8 @@ describe('ArtifactsBrowser', () => {
       renderPage('/artifacts/art-does-not-exist');
 
       await waitFor(() => expect(getArtifactRequests).toContainEqual({ artifactId: 'art-does-not-exist' }));
-      expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
+      expect(await screen.findByRole('alert')).toHaveTextContent('Could not resolve this artifact’s workspace.');
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     });
 
     it('closes the open artifact when its folder is deleted', async () => {
@@ -1092,11 +1112,10 @@ describe('ArtifactsBrowser', () => {
       [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
     );
 
-    const { rerender } = renderPage('/artifacts/art-1');
+    renderPage('/artifacts/art-1');
     await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
 
-    mockActiveProjectId = 'proj-2';
-    rerender();
+    fireEvent.click(screen.getByText('Select fixture project'));
 
     await waitFor(() => expect(lastLocation.pathname).toBe('/artifacts'));
     expect(screen.getByText('Select an artifact from the explorer to view its contents')).toBeInTheDocument();
@@ -1131,11 +1150,10 @@ describe('ArtifactsBrowser', () => {
       [{ id: 'art-1', name: 'readme.md', content: 'Hello world' }],
     );
 
-    const { rerender } = renderPage('/artifacts/art-1');
+    renderPage('/artifacts/art-1');
     await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
 
-    mockActiveOrgId = 'org-2';
-    rerender();
+    fireEvent.click(screen.getByText('Select fixture organization'));
 
     await waitFor(() => expect(lastLocation.pathname).toBe('/artifacts'));
   });

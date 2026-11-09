@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { useNavigate } from 'react-router-dom';
 import { OrgService, ProjectService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { OrgProjectSwitcher } from '../components/layout/OrgProjectSwitcher';
-import { mockRpc } from '../test/mockRpc';
+import { mockRpc, mockRpcPending } from '../test/mockRpc';
 import { renderScoped } from '../test/renderScoped';
 import { useLayoutStore } from '../store/layout';
 import { useScopeSync, useSetScope, type Scope } from './useScope';
@@ -27,7 +27,7 @@ function ScopeWriter({ next, automatic = false }: { next: Partial<Scope>; automa
 function Switcher() {
   useScopeSync();
   const navigate = useNavigate();
-  return <><OrgProjectSwitcher /><button onClick={() => navigate('/tasks?org=o1')}>Open tasks</button></>;
+  return <><OrgProjectSwitcher /><button onClick={() => navigate('/memory?org=o1&scope=organization')}>Organization memory</button><button onClick={() => navigate('/tasks?org=o1')}>Open tasks</button></>;
 }
 
 describe('entity navigation distinguishes explicit selection from owner normalization', () => {
@@ -48,7 +48,7 @@ describe('entity navigation distinguishes explicit selection from owner normaliz
   it('resumes automatic selection after leaving Memory for a screen that requires a project', async () => {
     const view = renderScoped(<Switcher />, { paths, initialEntry: '/memory/belief-1?org=o1&scope=organization' });
     fireEvent.click(await screen.findByRole('button', { name: 'Active project' }));
-    await screen.findByRole('option', { name: 'Project one', exact: true });
+    await screen.findByRole('option', { name: 'Project one' });
     expect(new URLSearchParams(view.location.search).has('project')).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Open tasks' }));
     await waitFor(() => expect(new URLSearchParams(view.location.search).get('project')).toBe('p1'));
@@ -78,11 +78,40 @@ describe('entity navigation distinguishes explicit selection from owner normaliz
     it(`settled project choices do not overwrite intentional projectless ${tier} Memory`, async () => {
       const view = renderScoped(<Switcher />, { paths, initialEntry: `/memory/belief-1?org=o1&scope=${tier}` });
       fireEvent.click(await screen.findByRole('button', { name: 'Active project' }));
-      await screen.findByRole('option', { name: 'Project one', exact: true });
+      await screen.findByRole('option', { name: 'Project one' });
       await waitFor(() => expect(useLayoutStore.getState().activeOrgId).toBe('o1'));
       expect(new URLSearchParams(view.location.search).has('project')).toBe(false);
       expect(useLayoutStore.getState().activeProjectId).toBe('');
       expect(view.location.pathname).toBe('/memory/belief-1');
     });
   }
+});
+
+describe('switcher ownership labels and same-org intent', () => {
+  it('retains the project and task when reselecting the current organization', async () => {
+    const view = renderScoped(<Switcher />, { paths, initialEntry: '/tasks/task-b?org=o1&project=p1' });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Active project' })).toHaveTextContent('Project one'));
+    fireEvent.click(screen.getByRole('button', { name: 'Active organization' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Organization one' }));
+    expect(view.location.url).toBe('/tasks/task-b?org=o1&project=p1');
+    expect(screen.getByRole('button', { name: 'Active project' })).toHaveTextContent('Project one');
+  });
+
+  it('does not interrupt an in-flight initial project choice when reselecting its org', async () => {
+    const pending = mockRpcPending(ProjectService, 'ListProjects');
+    const view = renderScoped(<Switcher />, { paths, initialEntry: '/tasks?org=o1' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Active organization' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Organization one' }));
+    pending.resolve({ projects: [{ id: 'p1', orgId: 'o1', name: 'Project one' }], page: {} });
+    await waitFor(() => expect(view.location.search).toContain('project=p1'));
+    expect(screen.getByRole('button', { name: 'Active project' })).toHaveTextContent('Project one');
+  });
+
+  it('shows a project selection prompt after entering projectless Memory', async () => {
+    const view = renderScoped(<Switcher />, { paths, initialEntry: '/tasks?org=o1&project=p1' });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Active project' })).toHaveTextContent('Project one'));
+    fireEvent.click(screen.getByRole('button', { name: 'Organization memory' }));
+    await waitFor(() => expect(view.location.search).not.toContain('project='));
+    expect(screen.getByRole('button', { name: 'Active project' })).toHaveTextContent('Select project');
+  });
 });

@@ -32,6 +32,24 @@ vi.mock('../../components/ui/RichMarkdownEditor', () => ({
 import { TasksWorkbench } from './index';
 import { confirmAction, cancelAction } from '../../test/confirm';
 import { renderScoped, type LocationRef } from '../../test/renderScoped';
+import { useLocation } from 'react-router-dom';
+import { useSetScope } from '../../hooks/useScope';
+
+// Match AppShell's URL-to-store read surface, while retaining this suite's
+// deliberately mocked layout store. Real store hydration is covered by
+// canonicalNavigation/entityNavigation integration regressions.
+function ScopedFixture() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  if (params.has('org')) mockActiveOrgId = params.get('org')!;
+  if (params.has('project')) mockActiveProjectId = params.get('project')!;
+  const select = useSetScope();
+  return <>
+    <button onClick={() => select({ projectId: 'proj-2' })}>Select fixture project</button>
+    <button onClick={() => select({ orgId: 'org-2', projectId: 'proj-2' })}>Select fixture organization</button>
+    <TasksWorkbench />
+  </>;
+}
 
 // The open task is a route param, so every render needs the same `/tasks` and
 // `/tasks/:taskId` pair the app mounts. `initialEntry` lets a test start on a
@@ -39,7 +57,7 @@ import { renderScoped, type LocationRef } from '../../test/renderScoped';
 let lastLocation: LocationRef;
 
 function renderPage(initialEntry = '/tasks') {
-  const result = renderScoped(<TasksWorkbench />, {
+  const result = renderScoped(<ScopedFixture />, {
     paths: ['/tasks', '/tasks/:taskId'],
     initialEntry,
   });
@@ -64,7 +82,7 @@ function withTasks(tasks: any[], page: object = {}) {
   });
   mockRpc(TaskService, 'GetTask', (body: { taskId: string }) => {
     const match = tasks.find((t) => t.id === body.taskId);
-    return { task: match ?? { id: body.taskId, title: '', status: 'todo', description: '' } };
+    return { orgId: 'org-1', task: { projectId: 'proj-1', ...(match ?? { id: body.taskId, title: '', status: 'todo', description: '' }) } };
   });
   return listRequests;
 }
@@ -77,7 +95,7 @@ describe('TasksWorkbench', () => {
     // not from scanning every task in the project (M07-T03). Default to none;
     // the tests that care declare their own.
     mockRpc(TaskTypeService, 'ListTaskTypes', { taskTypes: [] });
-    mockRpc(ProjectService, 'GetProject', { project: { id: 'proj-1', name: 'Seed Project' } });
+    mockRpc(ProjectService, 'GetProject', { project: { id: 'proj-1', orgId: 'org-1', name: 'Seed Project' } });
     mockRpc(CommentService, 'ListComments', { comments: [] });
     mockRpc(LabelService, 'ListEntityLabels', { labels: [] });
     mockRpc(LabelService, 'ListLabels', { labels: [] });
@@ -336,7 +354,7 @@ describe('TasksWorkbench', () => {
     // away (M07-T01).
     mockRpc(TaskService, 'ListTasks', { tasks: [], page: { totalCount: 0 } });
     mockRpc(TaskService, 'GetTask', {
-      task: { id: 'task-99', title: 'Deep linked task', status: 'todo', description: 'Body only getTask returns', displayId: 'ENG-99' },
+      orgId: 'org-1', task: { projectId: 'proj-1', id: 'task-99', title: 'Deep linked task', status: 'todo', description: 'Body only getTask returns', displayId: 'ENG-99' },
     });
 
     renderPage('/tasks/task-99');
@@ -581,7 +599,7 @@ describe('TasksWorkbench', () => {
     const projectRequests: any[] = [];
     mockRpc(ProjectService, 'GetProject', (body) => {
       projectRequests.push(body);
-      return { project: { id: 'proj-1', name: 'Seed Project' } };
+      return { project: { id: 'proj-1', orgId: 'org-1', name: 'Seed Project' } };
     });
     renderPage('/tasks/task-1');
 
@@ -1371,11 +1389,10 @@ describe('TasksWorkbench', () => {
     it('closes the detail overlay when the active project changes', async () => {
       withTasks([task]);
 
-      const { rerender } = renderPage('/tasks/task-1');
+      renderPage('/tasks/task-1');
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
 
-      mockActiveProjectId = 'proj-2';
-      rerender();
+      fireEvent.click(screen.getByText('Select fixture project'));
 
       await waitFor(() => expect(lastLocation.pathname).toBe('/tasks'));
       expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
@@ -1403,11 +1420,10 @@ describe('TasksWorkbench', () => {
     it('closes the detail overlay when the active org changes', async () => {
       withTasks([task]);
 
-      const { rerender } = renderPage('/tasks/task-1');
+      renderPage('/tasks/task-1');
       await waitFor(() => expect(screen.getByRole('heading', { name: 'Task Details' })).toBeInTheDocument());
 
-      mockActiveOrgId = 'org-2';
-      rerender();
+      fireEvent.click(screen.getByText('Select fixture organization'));
 
       await waitFor(() => expect(lastLocation.pathname).toBe('/tasks'));
       expect(screen.queryByRole('heading', { name: 'Task Details' })).toBeNull();
@@ -1432,10 +1448,10 @@ describe('TasksWorkbench', () => {
     // board's ['tasks', projectId], so the dialog showed the old value until
     // a live event or a 30 s refetch.
     function withMutableTask() {
-      const current = { id: 'task-1', title: 'Fix bug', status: 'todo', description: '' };
+      const current = { projectId: 'proj-1', id: 'task-1', title: 'Fix bug', status: 'todo', description: '' };
       mockRpc(TaskService, 'ListTasks', (body: { status?: string }) =>
         ({ tasks: !body.status || body.status === current.status ? [{ ...current }] : [], page: {} }));
-      mockRpc(TaskService, 'GetTask', () => ({ task: { ...current } }));
+      mockRpc(TaskService, 'GetTask', () => ({ orgId: 'org-1', task: { ...current } }));
       mockRpc(TaskService, 'UpdateTaskStatus', (body: { status: string }) => {
         current.status = body.status;
         return { task: { ...current } };

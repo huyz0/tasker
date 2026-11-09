@@ -1,8 +1,10 @@
 import { expect, it } from 'bun:test';
 import { Code } from '@connectrpc/connect';
+import { eq } from 'drizzle-orm';
 import mysql from 'mysql2/promise';
 import { setupDatabase } from '../../db/db';
 import * as S from '../../db/schema.mysql';
+import { getArtifactOrgId } from '../../lib/authz';
 import { makeAuthContext } from '../../test/setup';
 import { createTaskManagementHandler } from '../tasks/tasks.handler';
 import { createArtifactsHandler } from './artifacts.handler';
@@ -48,11 +50,12 @@ const enabled = process.env.TASKER_MYSQL_INTEGRATION === '1';
     const response = await artifacts.getArtifact({ artifactId, orgId: 'spoofed', projectId: 'spoofed' }, ctx);
     expect(response).toMatchObject({ orgId, projectId, artifact: { id: artifactId, folderId } });
     expect(response.artifact).not.toHaveProperty('content');
+    expect(await getArtifactOrgId(bounded, artifactId)).toBe(orgId);
     await expect(tasks.getTask({ taskId }, foreign)).rejects.toMatchObject({ code: Code.PermissionDenied });
     await expect(artifacts.getArtifact({ artifactId }, foreign)).rejects.toMatchObject({ code: Code.PermissionDenied });
-    await db.update(S.artifacts).set({ deletedAt: now }).where((await import('drizzle-orm')).eq(S.artifacts.id, artifactId));
+    await db.update(S.artifacts).set({ deletedAt: now }).where(eq(S.artifacts.id, artifactId));
     expect(await artifacts.getArtifact({ artifactId }, ctx)).toMatchObject({ orgId, projectId });
-    await db.update(S.projects).set({ deletedAt: now }).where((await import('drizzle-orm')).eq(S.projects.id, projectId));
+    await db.update(S.projects).set({ deletedAt: now }).where(eq(S.projects.id, projectId));
     await expect(artifacts.getArtifact({ artifactId }, ctx)).rejects.toMatchObject({ code: Code.NotFound });
   } finally {
     if (db) await db.$client.end();

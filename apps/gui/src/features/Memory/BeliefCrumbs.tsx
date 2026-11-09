@@ -34,7 +34,7 @@ function excerpt(statement: string): string {
  * `getOrg`-by-id RPC exists, so an organization's name cannot be resolved
  * from the id a deep link carries).
  */
-export function BeliefCrumbs({ scopeType, statement }: { scopeType: 'project' | 'organization'; statement: string }) {
+export function BeliefCrumbs({ scopeType, statement }: { scopeType: 'project' | 'organization' | 'team'; statement: string }) {
   const scopedTo = useScopedTo();
   const { projectName, hasProject } = useScopeLabels();
 
@@ -44,7 +44,8 @@ export function BeliefCrumbs({ scopeType, statement }: { scopeType: 'project' | 
   // organization scope has to return to the organization list.
   const [path, query = ''] = scopedTo('/memory').split('?');
   const listParams = new URLSearchParams(query);
-  listParams.set('scope', scopeType);
+  listParams.set('scope', scopeType === 'team' ? 'organization' : scopeType);
+  if (scopeType !== 'project') listParams.delete('project');
 
   return (
     <Breadcrumbs

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'bun:test';
+import { currentPrincipalKey } from '../auth/session';
+import { getArtifactOrgId } from '../../lib/authz';
 import { Code } from '@connectrpc/connect';
 import * as S from '../../db/schema.sqlite';
 import { setupIntegrationTest, seedOrgWithAdmin, seedProject, makeAuthContext } from '../../test/setup';
@@ -50,6 +52,23 @@ describe('authorized canonical navigation metadata (M53)', () => {
     const response = await createArtifactsHandler(bounded).getArtifact({ artifactId: f.artifactId }, f.ctx);
     expect(response).toMatchObject({ orgId: f.orgId, projectId: f.projectId, artifact: { name: 'Scoped artifact' } });
     expect(response.artifact).not.toHaveProperty('content');
+    // Other artifact commands still use the shared authorization resolver.
+    // Its projection must remain bounded independently of GetArtifact's join.
+    expect(await getArtifactOrgId(bounded, f.artifactId)).toBe(f.orgId);
+  });
+
+  it('returns ownership to resource-read agents without requiring project-read scope', async () => {
+    const f = await fixture();
+    const agent = { kind: 'agent' as const, agentId: 'reader', tokenId: 'reader-token', orgId: f.orgId,
+      scopes: ['tasks:read', 'artifacts:read'] };
+    const ctx = makeAuthContext(null);
+    ctx.values.set(currentPrincipalKey, agent);
+    expect((await createTaskManagementHandler(f.db).getTask({ taskId: f.taskId }, ctx)).orgId).toBe(f.orgId);
+    expect(await createArtifactsHandler(f.db).getArtifact({ artifactId: f.artifactId }, ctx))
+      .toMatchObject({ orgId: f.orgId, projectId: f.projectId });
+    ctx.values.set(currentPrincipalKey, { ...agent, scopes: [] });
+    await expect(createArtifactsHandler(f.db).getArtifact({ artifactId: f.artifactId }, ctx))
+      .rejects.toMatchObject({ code: Code.PermissionDenied });
   });
 
   it('denies foreign readers instead of returning resource ownership', async () => {
