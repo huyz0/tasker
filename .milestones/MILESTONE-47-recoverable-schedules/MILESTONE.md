@@ -1,13 +1,13 @@
 ---
 id: M47
 title: Recoverable Schedules
-status: todo
+status: done
 goal: Every claimed scheduled occurrence can be inspected and safely resumed after a crash without duplicating its work.
 depends_on: [M45, M46]
-surfaces: [backend, specs]
-exit_criteria_met: false
-started_at: null
-completed_at: null
+surfaces: [backend, gui, cli, contract, specs]
+exit_criteria_met: true
+started_at: 2026-11-09
+completed_at: 2026-11-09
 ---
 
 # M47 — Recoverable Schedules
@@ -22,10 +22,10 @@ Advancing the next time is not evidence that the occurrence ran; scheduling need
 
 ## 3. Exit Criteria
 
-- [ ] Advancing a schedule cannot silently lose its claimed occurrence.
-- [ ] Restarting after work creation reuses the original task or workflow.
-- [ ] One failed occurrence cannot abort processing of other due schedules.
-- [ ] History distinguishes created, skipped, failed and interrupted work without changing the UTC cadence contract.
+- [x] Advancing a schedule cannot silently lose its claimed occurrence.
+- [x] Restarting after work creation reuses the original task or workflow.
+- [x] One failed occurrence cannot abort processing of other due schedules.
+- [x] History distinguishes created, skipped, failed and interrupted work without changing the UTC cadence contract.
 
 ## 4. Scope
 
@@ -35,20 +35,20 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
 
 ## 5. Task Breakdown
 
-- [ ] **M47-T01** — Design occurrence identity, lease recovery, manual runs and update/delete races.
+- [x] **M47-T01** — Design occurrence identity, lease recovery, manual runs and update/delete races.
   - **Files**: .specs/adr/ADR-0041-recoverable-schedules.md; .test-plans/TEST-PLAN-0047-recoverable-schedules/.
   - **Verify**: Define unique schedule-plus-slot identity, frozen execution inputs, lease owner/version, failed retry policy and intentional missed-slot semantics.
 
-- [ ] **M47-T02** — Persist due occurrences atomically with advancing the schedule.
+- [x] **M47-T02** — Persist due occurrences atomically with advancing the schedule.
   - **Files**: apps/backend/src/modules/schedules/schedules.handler.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/.
   - **Verify**: Two sweepers create one occurrence; killing the winner after advancement leaves a resumable occurrence; editing/pausing a stale candidate cannot silently overwrite a new schedule.
 
-- [ ] **M47-T03** — Execute leased occurrences through keyed task/workflow operations and durable run recording.
-  - **Files**: apps/backend/src/modules/schedules/schedules.handler.ts; apps/backend/src/modules/tasks/taskOperations.ts.
-  - **Verify**: Kill after task creation but before completion bookkeeping and recover the same task; enforce skip-if-open across manual and scheduled execution.
+- [x] **M47-T03** — Execute leased occurrences through keyed task/workflow operations and durable run recording.
+  - **Files**: apps/backend/src/modules/schedules/schedules.handler.ts; apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/modules/workflows/workflows.handler.ts.
+  - **Verify**: Kill before the atomic work/receipt commit and recover one complete graph; kill after commit and retain the original task beyond retry-key expiry; enforce skip-if-open across manual and scheduled execution.
 
-- [ ] **M47-T04** — Verify recovery, sweep isolation and schedule observability.
-  - **Files**: apps/backend/src/modules/schedules/schedules.test.ts; docs/mcp.md; docs/standalone.md; .milestones/MILESTONE-47-recoverable-schedules/reviews/.
+- [x] **M47-T04** — Verify recovery, sweep isolation and schedule observability.
+  - **Files**: apps/backend/src/modules/schedules/schedules.test.ts; apps/gui/src/features/Schedules/; packages/shared-contract/main.tsp; apps/cli/cmd/schedules.go; docs/mcp.md; docs/standalone.md; .milestones/MILESTONE-47-recoverable-schedules/reviews/.
   - **Verify**: Inject one run-record write failure and prove other due schedules proceed; run two-process SQLite/MySQL recovery scenarios; full backend gates.
 
 ## 6. Verification

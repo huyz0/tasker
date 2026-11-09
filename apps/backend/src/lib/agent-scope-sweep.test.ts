@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { describe, it, expect, beforeAll } from 'bun:test';
 import { createContextValues, ConnectError, Code } from '@connectrpc/connect';
 import { setupIntegrationTest } from '../test/setup';
@@ -324,6 +325,7 @@ const REQUESTS: Record<string, Record<string, unknown>> = {
 };
 
 let handlers: Record<string, any>;
+let db: any;
 
 /** A token holding every scope. If it is still refused, the refusal is not about scopes. */
 const allScopes = (): Principal => ({
@@ -341,13 +343,16 @@ const ctxFor = (principal: Principal) => {
 };
 
 beforeAll(async () => {
-  const { db } = await setupIntegrationTest();
+  ({ db } = await setupIntegrationTest());
   const now = new Date();
   await db.insert(schema.organizations).values({ id: ids.org, name: 'O', slug: ids.org, createdAt: now });
   await db.insert(schema.users).values({ id: ids.user, email: 'u@scope.test', name: 'U', createdAt: now });
   await db.insert(schema.organizationMembers).values({ orgId: ids.org, userId: ids.user, role: 'admin', joinedAt: now });
   await db.insert(schema.agentRoles).values({ id: ids.agentRole, orgId: ids.org, name: 'R', systemPrompt: 'p', capabilities: '[]', createdAt: now });
   await db.insert(schema.agents).values({ id: ids.agent, orgId: ids.org, agentRoleId: ids.agentRole, name: 'A', createdAt: now });
+  await db.insert(schema.apiTokens).values({ id: ids.token, orgId: ids.org, agentId: ids.agent,
+    name: 'Fixture', tokenPrefix: 'fixture', tokenHash: 'a'.repeat(64), scopes: JSON.stringify(AGENT_SCOPES),
+    createdBy: ids.user, createdAt: now, expiresAt: new Date(now.getTime() + 86_400_000) });
   await db.insert(schema.projectTemplates).values({ id: ids.template, orgId: ids.org, name: 'T', createdAt: now });
   await db.insert(schema.projects).values({ id: ids.project, orgId: ids.org, templateId: ids.template, ownerId: ids.user, name: 'P', key: 'PS', createdAt: now });
   await db.insert(schema.taskTypes).values({ id: ids.taskType, orgId: ids.org, projectId: ids.project, name: 'TT', createdAt: now });
@@ -551,6 +556,10 @@ describe('a mapped method checks the specific scope it names', () => {
           ...allScopes(),
           scopes: AGENT_SCOPES.filter((s) => s !== required),
         } as Principal;
+        // Durable operations revalidate the exact stored credential, so the
+        // fixture must agree with the scopes of its authenticated principal.
+        await db.update(schema.apiTokens).set({ scopes: JSON.stringify(principal.kind === 'agent' ? principal.scopes : []) })
+          .where(eq(schema.apiTokens.id, ids.token));
         try {
           await invoke(handlers[name], method, req, ctxFor(principal));
           failures.push(`${name}.${method} allowed without ${required}`);

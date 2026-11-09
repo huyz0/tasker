@@ -1,0 +1,52 @@
+# M47 Progress
+
+## M47-T01 — Design recoverable schedule occurrences
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Define frozen occurrence identity/admission, fenced recovery, atomic work receipts, current authority and update/delete races before implementation.
+- **Verified**: Current handler advances nextRunAt before fire and commits work separately from history; these are the admission and completion crash gaps to remove. Independent reliability/human-workflow design reviews now approve after v1 corrections (silent expiry, action consequences, wording and owned task-link scope). Initial full check hit an existing dashboard setup-hook timeout under concurrent suites; that case passes three isolated repetitions (24 tests / 0 failures). Serial `moon --concurrency 1 check --all` passes all 35 tasks (30 cached); all 96 GUI files pass (1338 tests / 95.25% branches), backend has zero failures. ADR/UX/test plan define identity, frozen inputs, lease ownership, retry and missed-slot semantics. Runtime TDD does not apply to these static design artifacts; T02–T04 must execute their regression scenarios.
+- **Notes**: M45/M46 are published dependencies. This isolated branch starts from main 62a0c3f while M48 PR #4 final-head CI runs. Rebase onto published M48 and reconcile STATE before publication. Expanded planned surfaces to GUI/CLI/contract for history metadata and existing-screen observability; clarified T03 Verify around the stronger atomic work/receipt boundary. Heavy task produces ADR-0041, TEST-PLAN-0047 and UX for run-history states; no runtime code in T01. Existing cadence and external-worker model remain.
+- **Next**: M47-T02 durable admission, after rebasing onto M48 publication when available.
+
+## M47-T02 — Persist frozen due occurrences with advancement
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Add additive occurrence/revision/tombstone schema and an admission core with frozen task/workflow inputs; serialize admission and schedule edits/deletion under current project/schedule locks.
+- **Verified**: Initial real sweep regression fails with nextRunAt advanced and one untracked task after occurrence storage failure; atomic admission fixes it. Frozen-workflow, retained-deletion and queued-event regressions fail before implementation and pass afterward. Independent v1 finds archived cleanup and insufficient rollback proof; archived pause/delete regression fails first, corrected code passes. Removing the owning unit leaves an inserted orphan occurrence and fails the stronger test; restored ten focused/migration tests pass. Actual independent-process contention/post-admission SIGKILL passes SQLite and MySQL (26 assertions). Independent v2 approves. Final serial `moon check --all`: all 35 checks pass (10 cached); backend 2139 pass / 45 gated skip / zero failures, GUI 1350 pass / 95.26% branches, fresh CLI coverage gate 93.7%.
+- **Notes**: ADR-0041 and TEST-PLAN-0047 bind implementation. T02 wires durable admission into the existing firing path; T03 replaces its unfenced, split work/history execution with leased atomic execution. No intermediate worker is published. PR #4 merged as 3f55f55 with all ten jobs green; this branch is rebased onto it with 355 completed tasks/41 pending, preserving the M48 ledger. Workflow snapshot preparation is an internal boundary shared with the public handler, never an arbitrary-graph RPC. Standards: API/security; TDD.
+- **Next**: M47-T03 leased recovery and atomic work/receipt creation. Populated MySQL upgrade evidence remains T04; fresh MySQL migrations/process admission are observed, not substituted for that upgrade proof.
+
+## M47-T03 — Lease recovery and commit work with its terminal receipt
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Resume queued/expired occurrences through fenced leases, current actor authority and private frozen workflow creation; commit work, final receipt, schedule pointer and events in one unit.
+- **Verified**: Four initial behavior reds reproduce lost queued intents, missing frozen recovery, orphan receipt failure and duplicate manual work. Scope-poison red creates two wrong-project tasks before equality checks fix it. Manual-summary, scan-conflict and invalid-expiry reds also pass after correction. Real SQLite/MySQL SIGKILL proofs pass 54 assertions, including task/event rollback before receipt commit and original receipt/work beyond actual key purge. Four representative faults fail; omitted work unit also produces an orphan after actual SIGKILL. Full checks expose an inherited-context regression and nonexistent-token scope fixture; both are corrected without weakening authorization. Independent v6 approves; 73 focused cases plus the mixed manual/scheduled race pass. Final serial `moon check --all`: 35 checks pass (24 cached), backend 2165 pass / 45 gated skip / zero failures, functions 95.80% / lines 96.69%; GUI 1350 / 95.26% branches and CLI gate 93.7% remain green.
+- **Notes**: Heavy task follows accepted ADR-0041 and TC-004–008; no new ADR or UX is needed. Extract execution into an internal module and share the frozen graph core with public workflow instantiation, without adding an arbitrary-graph RPC. Manual calls remain separate intent IDs and do not move cadence. Standards: API/security; TDD. Draft PR #5 contains only verified T01/T02 and must not merge until T03/T04 and final-head CI pass.
+- **Next**: M47-T04 populated MySQL upgrades, full workflow/SIGSTOP process matrix, history observability/CLI/docs, complete verification and milestone closure/publication.
+
+## M47-T04 — Recovery evidence and visible history
+
+- **Status**: done
+- **Date**: 2026-11-09
+- **Changed**: Complete populated MySQL upgrade/full-workflow and SIGSTOP recovery proofs; expose compatible history metadata and truthful GUI/CLI states, bounded refresh and operating guidance.
+- **Verified**: T04 source candidate passes focused history/event/UI/CLI checks and three restored real SQLite/MySQL process/upgrade cases (118 assertions). Full graph SIGKILL/SIGSTOP, populated legacy upgrade and >64 KiB snapshot execute successfully. Deliberate polling/link/draft/uniqueness/fence faults fail; source is restored. Independent UX v3 approves source after draft-loss correction. Browser/rendered and full gates remain pending.
+- **Notes**: Existing ADR/test plan/history UX own this heavy task; amend the approved polling rule after independent human review confirms organization-wide schedule detail can sit outside the selected-project feed. Preserve the single stream and selected scope; use existing authorized reads. Security/frontend standards selected; TDD. No new palette, font family, executor or archive screen.
+- **Review correction**: Independent v7 finds manual purge orphans retained schedule data and shared cleanup is not atomic. Initial regressions reproduce orphan/partial deletion; common project units/current locks and child reads now cover manual/retention/org cleanup. A subsequent restore-wins regression reproduces organization deletion after restore; locked current eligibility fixes it. Restored41 project/retention/purge cases /170 assertions pass; reliability re-review approves. CLI/MCP discovery help and generated reference now explain new intents and retained history; agent-workflow re-review approves. Static help/docs need no runtime prose-mirror test.
+- **Final candidate**: Both-dialect process/upgrade matrix passes3 tests/153 assertions. Omitted purge unit fails rollback and actual concurrent-admission proof; restored SQLite/rollback run passes6 tests/92 assertions. Four actual browser journeys pass, including source reads and dark editor contrast. All173 earlier stories pass axe/375px overflow; added alert story passes all four theme/viewport checks. Dark alert1.93:1 red is corrected with the existing semantic pair; independent UX v6 approves. Final full repository gates pass:35 checks (23 cached), backend2175 pass /46 gated skip /zero failures, functions95.80% /lines96.69%; GUI1360 pass /95.34% branches, CLI coverage gate93.8%.
+- **Final cleanup**: Knip finds a now-private task-type helper still exported after sharing project cleanup. Remove its export and the obsolete axe-core ignore (the new browser regression imports it directly). Static visibility/configuration correction needs no runtime TDD; restored full35 gates pass.
+- **Next**: Close the proven milestone, publish final PR #5 head, and require all remote jobs before merge. WIP checkpoints retain unchecked T04. First interim full run caught TypeSpec formatting; later one caught Go alignment, both corrected. No interrupted/failed run is counted as a pass.
+
+## Closure — 2026-11-09
+
+All4 tasks and4 exit criteria are observed. Durable admission cannot advance
+without an occurrence; real pre/post-commit crash and stale-owner tests retain
+one frozen graph/original task; receipt failure does not stop sibling schedules;
+compatible history distinguishes creation/recovery outcomes and preserves UTC.
+Final source checks pass35 tasks with unchanged coverage gates. Exact process,
+fault, browser and rendered proof is recorded in reviews/RECOVERY-EVIDENCE.md.
+PR #5 must pass final-head remote CI before merge. M53 design can proceed during
+that wait because M28/M51 are already published; reconcile its ledger/base with
+M47 before publication. Overall38 tasks remain; none is implied complete.

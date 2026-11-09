@@ -32,14 +32,14 @@ export function AutomationPreview({ kind, state }: { kind: 'workflows' | 'schedu
   });
   useEffect(() => {
     const { activeOrgId, activeProjectId, activePageTitle } = useLayoutStore.getState();
-    useLayoutStore.setState({ activeOrgId: 'org-story', activeProjectId: 'project-story' });
+    useLayoutStore.setState({ activeOrgId: 'org-story', activeProjectId: kind === 'schedules' ? '' : 'project-story' });
     setReady(true);
     return () => {
       useLayoutStore.setState({ activeOrgId, activeProjectId, activePageTitle });
     };
-  }, [client]);
+  }, [client, kind]);
   const id = kind === 'workflows' ? 'workflow-story' : 'schedule-story';
-  const path = `/${kind}${state === 'new' ? '/new' : state === 'populated' ? `/${id}` : ''}?org=org-story&project=project-story`;
+  const path = `/${kind}${state === 'new' ? '/new' : state === 'populated' ? `/${id}` : ''}?org=org-story${kind === 'schedules' ? '' : '&project=project-story'}`;
   if (!ready) return null;
   const screen = kind === 'workflows' ? <WorkflowsScreen /> : <SchedulesScreen />;
   return (

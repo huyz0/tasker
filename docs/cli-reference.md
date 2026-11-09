@@ -1550,10 +1550,10 @@ Usage:
 
 Available Commands:
   create      Create a schedule (people only): --task or --workflow, with --cadence/--weekdays/--day and --hour (UTC)
-  delete      Delete a schedule and its run history (tasks it created stay)
+  delete      Delete a schedule, cancelling pending creation (history and created tasks stay)
   get         One schedule: what it creates, when, and how its last run went
   list        Schedules of the organization, or one project
-  run         Fire a schedule now, as you; its regular next run is unchanged
+  run         Accept a new creation intent as you; its regular next run is unchanged
   runs        A schedule's run history, newest first
   update      Change a schedule; flags not given keep their value (--pause / --resume to stop and start it)
 
@@ -1587,7 +1587,7 @@ Flags:
 #### `tasker schedules delete`
 
 ```
-Delete a schedule and its run history (tasks it created stay)
+Delete a schedule, cancelling pending creation (history and created tasks stay)
 
 Usage:
   tasker schedules delete [schedule_id] [flags]
@@ -1628,7 +1628,7 @@ Flags:
 #### `tasker schedules run`
 
 ```
-Fire a schedule now, as you; its regular next run is unchanged
+Accept a new creation intent as you; its regular next run is unchanged. Creation may queue or recover automatically. Each call creates another intent: inspect schedules runs instead of repeating this command to poll or retry an accepted request.
 
 Usage:
   tasker schedules run [schedule_id] [flags]

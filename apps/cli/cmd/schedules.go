@@ -275,7 +275,7 @@ var schedulesUpdateCmd = &cobra.Command{
 
 var schedulesDeleteCmd = &cobra.Command{
 	Use:   "delete [schedule_id]",
-	Short: "Delete a schedule and its run history (tasks it created stay)",
+	Short: "Delete a schedule, cancelling pending creation (history and created tasks stay)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		res, err := backend.NewScheduleServiceClient().DeleteSchedule(cmd.Context(), connect.NewRequest(&healthv1.DeleteScheduleRequest{Id: args[0]}))
@@ -292,6 +292,25 @@ var schedulesDeleteCmd = &cobra.Command{
 
 func runLine(r *healthv1.ScheduleRun) string {
 	line := fmt.Sprintf("%s %s (%s)", r.RanAt, r.Outcome, r.Trigger)
+	if r.Attempts != nil {
+		line += fmt.Sprintf("; attempts %d", r.GetAttempts())
+	}
+	if r.DueAt != nil {
+		line += "; scheduled for " + r.GetDueAt()
+	}
+	if r.NextAttemptAt != nil {
+		label := "creation eligible after "
+		if r.Outcome == "interrupted" {
+			label = "recovery eligible after "
+		}
+		line += "; " + label + r.GetNextAttemptAt()
+	}
+	if r.StartedAt != nil {
+		line += "; attempt started " + r.GetStartedAt()
+	}
+	if r.CompletedAt != nil {
+		line += "; completed " + r.GetCompletedAt()
+	}
 	if r.TaskId != nil {
 		line += " task " + r.GetTaskId()
 	}
@@ -303,7 +322,8 @@ func runLine(r *healthv1.ScheduleRun) string {
 
 var schedulesRunCmd = &cobra.Command{
 	Use:   "run [schedule_id]",
-	Short: "Fire a schedule now, as you; its regular next run is unchanged",
+	Short: "Accept a new creation intent as you; its regular next run is unchanged",
+	Long:  "Accept a new creation intent as you; its regular next run is unchanged. Creation may queue or recover automatically. Each call creates another intent: inspect schedules runs instead of repeating this command to poll or retry an accepted request.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		res, err := backend.NewScheduleServiceClient().RunSchedule(cmd.Context(), connect.NewRequest(&healthv1.RunScheduleRequest{Id: args[0]}))

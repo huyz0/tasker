@@ -18,14 +18,13 @@ complete by this planning document.
 ### Execution updates
 
 M46 added T07 after actual CI exposed an obsolete unmanaged database fixture;
-the ledger is now 397 tasks. M46 is complete and published in PR #3 as
-`62a0c3f`, with all ten CI jobs passing. M48 started independently during that
-final browser run because it depends only on M44; it proceeds before M47 and is
-rebased onto the published M46 base. M48 is locally complete (four tasks and
-four exit criteria), with final-head PR #4 CI required before publication;
-M47 design can proceed during that wait. All other dependency and acceptance
-boundaries below remain in force. Current completion counts live in STATE.md,
-not the historical planning baseline above.
+the ledger is now397 tasks. M46 is published in PR #3 as62a0c3f and M48 in
+PR #4 as3f55f55, each after all ten final-head CI jobs passed. M47 is locally
+complete (four tasks/four criteria); final-head PR #5 CI still gates its merge.
+M53 design may proceed during that wait because M28/M51 are published; reconcile
+its base/ledger before publication. All remaining dependency and acceptance
+boundaries below stay in force. Current counts live in STATE.md rather than the
+historical planning baseline above.
 
 ## Recommendation-to-task mapping
 

@@ -378,8 +378,9 @@ export const TOOL_SPECS: ToolSpec[] = [
   },
   {
     name: "run_schedule", title: "Run a schedule now",
-    description: "Fires a schedule immediately, as you, creating its task or workflow now; its regular next run is unchanged. " +
-      "Skipped (and says why) while the previous run's task is still open, if the schedule asks for that.",
+    description: "Accepts a new task/workflow creation intent as you; its regular next run is unchanged. Creation may queue or recover automatically. " +
+      "Every call creates another intent: do not repeat it to poll or retry an accepted request; inspect schedule run history instead. " +
+      "May skip while the previous run's task is still open, if configured. Created work does not mean an external agent has started.",
     inputSchema: schema({ schedule_id: str("Schedule id") }, ["schedule_id"]),
     service: ScheduleService, method: "RunSchedule", request: (a) => ({ id: a.schedule_id }),
   },

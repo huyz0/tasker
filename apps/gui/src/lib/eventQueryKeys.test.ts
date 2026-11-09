@@ -24,6 +24,12 @@ describe('queryKeysForSubject', () => {
     }
   });
 
+  it('refreshes the actual schedule collection, detail and history roots for every run stage', () => {
+    for (const action of ['queued', 'running', 'interrupted', 'ran', 'updated', 'deleted']) {
+      expect(roots(`domain.schedule.${action}`)).toEqual(['schedules', 'schedule', 'scheduleRuns', 'auditEvents']);
+    }
+  });
+
   it('routes a note to the handoff and task queries, not the board', () => {
     expect(roots('domain.tasknote.created')).toEqual(['handoffNotes', 'taskNotes', 'task', 'reports', 'auditEvents']);
   });

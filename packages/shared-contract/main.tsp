@@ -3368,7 +3368,8 @@ model Schedule {
   @field(19) createdAt: string;
 }
 
-// One firing of a schedule. `detail` says why a run was skipped or failed.
+// One admitted intent and its creation result. Outcomes include queued, running,
+// interrupted, created, skipped, failed and cancelled. detail is safe diagnostic text.
 model ScheduleRun {
   @field(1) id: string;
   @field(2) scheduleId: string;
@@ -3379,6 +3380,15 @@ model ScheduleRun {
 
   // "schedule" (the sweep) or "manual" (RunSchedule).
   @field(7) trigger: string;
+
+  // Additive recovery metadata. ranAt remains the stable admission time.
+  @field(8) dueAt?: string;
+
+  @field(9) attempts?: int32;
+  @field(10) nextAttemptAt?: string;
+  @field(11) completedAt?: string;
+  @field(12) claimedUntil?: string;
+  @field(13) startedAt?: string;
 }
 
 model CreateScheduleRequest {
@@ -3441,7 +3451,9 @@ model DeleteScheduleResponse {
   @field(1) success: boolean;
 }
 
-// Fires the schedule now, as the caller, without moving its next run.
+// Accepts a new creation intent as the caller without moving its next run.
+// Creation may queue/recover. Every call is a separate intent; inspect history
+// instead of repeating an accepted call to poll or retry it.
 model RunScheduleRequest {
   @field(1) id: string;
 }

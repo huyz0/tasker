@@ -21,7 +21,7 @@ describe("recurring work (M43)", () => {
 
   function agentCtx(scopes = ["tasks:read", "tasks:write"]) {
     const v = createContextValues();
-    v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-" + agentId, scopes });
+    v.set(currentPrincipalKey, { kind: "agent", agentId, orgId, tokenId: "tok-" + agentId + "-" + (scopes.join("-") || "none"), scopes });
     return { values: v } as any;
   }
 
@@ -36,6 +36,14 @@ describe("recurring work (M43)", () => {
     await seedProject(db, { orgId, userId: adminId, templateId: "tmpl-sc-" + stamp, projectId, name: "P" });
     await db.insert(S.agentRoles).values({ id: "role-sc-" + stamp, orgId, name: "R", systemPrompt: "p", capabilities: "[]" });
     await db.insert(S.agents).values({ id: agentId, orgId, agentRoleId: "role-sc-" + stamp, name: "Ops" });
+    // Durable manual recovery revalidates the original persisted credential.
+    for (const scopes of [["tasks:read", "tasks:write"], ["tasks:read"], []]) {
+      await db.insert(S.apiTokens).values({ id: "tok-" + agentId + "-" + (scopes.join("-") || "none"),
+        orgId, agentId, name: "Fixture", tokenPrefix: "fixture", tokenHash: crypto.randomUUID().replaceAll("-", "").repeat(2),
+        scopes: JSON.stringify(scopes), createdBy: adminId, createdAt: new Date("2026-10-01T00:00:00Z"),
+        expiresAt: new Date("2027-01-01T00:00:00Z"),
+      });
+    }
     ctx = makeAuthContext(adminId);
     now = new Date("2026-10-02T08:30:00Z"); // a Friday
     sched = createSchedulesHandler(db, nc, clock);

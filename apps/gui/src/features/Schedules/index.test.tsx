@@ -49,8 +49,8 @@ describe('SchedulesScreen (M43)', () => {
     expect(await screen.findByText('Every Mon, Thu at 09:00 UTC in Alpha')).toBeInTheDocument();
     expect(screen.getByText(/Creates a task "Triage the inbox", skipping while the last one is unfinished/)).toBeInTheDocument();
     const runs = await screen.findByRole('list', { name: 'Runs' });
-    expect(within(runs).getAllByRole('listitem')[0]).toHaveTextContent(/^created.*on schedule/);
-    expect(within(runs).getByRole('link', { name: 'open task' })).toHaveAttribute('href', expect.stringContaining('/tasks/t1'));
+    expect(within(runs).getAllByRole('listitem')[0]).toHaveTextContent(/^Work created.*on schedule/);
+    expect(within(runs).getByRole('link', { name: 'Open created task' })).toHaveAttribute('href', expect.stringContaining('/tasks/t1'));
     expect(runs).toHaveTextContent('run by hand');
     expect(runs).toHaveTextContent("the previous run's task P-1 is still open");
   });
@@ -64,7 +64,7 @@ describe('SchedulesScreen (M43)', () => {
     mockRpc(ScheduleService, 'DeleteSchedule', (body) => { deletes.push(body); return { success: true }; });
     renderScreen('/schedules/s1');
     fireEvent.click(await screen.findByRole('button', { name: 'Run now' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Ran now: skipped - still open.');
+    expect(await screen.findByRole('status')).toHaveTextContent('Skipped — still open.');
     expect(runs).toEqual([{ id: 's1' }]);
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     await waitFor(() => expect(updates[0]).toMatchObject({ id: 's1', active: false, cadence: 'weekly', weekdays: [1, 4], taskTitle: 'Triage the inbox', taskPriority: 2 }));

@@ -6,7 +6,7 @@ import { eq, and, not } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
-import { bulkPurgeTaskTypes } from "../../lib/cascadePurge";
+import { purgeProjectCascade } from "../../lib/cascadePurge";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 /** Derives a short, human-typeable project key from its name, e.g. "Engineering Docs" -> "ED", "Backend" -> "BACKEN". */
@@ -332,60 +332,22 @@ export const createProjectsHandler = (db: any, nc: any = null) => {
     async purgeProject(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = PurgeProjectSchema.parse(req);
-      const ps = isStandalone ? schemaSqlite.projects : schemaMysql.projects;
-      const result = await db.select().from(ps).where(eq((ps as any).id, parsed.projectId)).limit(1);
-      if (!result || result.length === 0) throw new ConnectError("project not found", Code.NotFound);
-      await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:admin");
-      if (!result[0].deletedAt) {
-        throw new ConnectError("project must be archived before it can be purged", Code.FailedPrecondition);
-      }
-
-      const tasks = isStandalone ? schemaSqlite.tasks : schemaMysql.tasks;
-      const folders = isStandalone ? schemaSqlite.folders : schemaMysql.folders;
-      const repositoryLinks = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
-
-      const [remainingTasks, remainingFolders, remainingRepoLinks] = await Promise.all([
-        db.select().from(tasks).where(eq((tasks as any).projectId, parsed.projectId)),
-        db.select().from(folders).where(eq((folders as any).projectId, parsed.projectId)),
-        db.select().from(repositoryLinks).where(eq((repositoryLinks as any).projectId, parsed.projectId)),
-      ]);
-      if (remainingTasks.length > 0 || remainingFolders.length > 0 || remainingRepoLinks.length > 0) {
-        // M20-T04: this counts *all* rows including already-soft-deleted
-        // ones, so "archive... them first" describes a state that still
-        // fails the same check - archiving a task leaves its row in place.
-        // The workflow that actually clears this precondition is deleting
-        // (soft) and then purging each child, as M14-T03's own test
-        // demonstrates.
-        throw new ConnectError("project still has tasks, folders, or repository links - delete and purge each of them first", Code.FailedPrecondition);
-      }
-
-      // Project-scoped task types have no dedicated delete/archive endpoint
-      // of their own, so - unlike tasks/folders/repositoryLinks above - they
-      // can't be "removed first" by the caller. Force-cascade them here,
-      // same as purgeOrg does for org-scoped task types, instead of leaving
-      // them behind with a dangling projectId once the project is gone.
-      // M20-T04: shares cascadePurge.ts's bulkPurgeTaskTypes rather than
-      // re-implementing the same three deletes as a one-row-at-a-time loop -
-      // this manual version had already drifted (bulk statements vs. N
-      // round trips per task type) from the one purgeOrgCascade/
-      // purgeProjectCascade use.
       const schema = isStandalone ? schemaSqlite : schemaMysql;
-      const taskTypes = schema.taskTypes;
-      const projectTaskTypes = await db.select({ id: (taskTypes as any).id }).from(taskTypes).where(eq((taskTypes as any).projectId, parsed.projectId));
-      await bulkPurgeTaskTypes(db, schema, projectTaskTypes.map((t: any) => t.id));
-
-      // M20-T03: a project-scoped grant (M10-T10) has no delete/archive
-      // endpoint of its own either - revokeGrant/listGrants both resolve
-      // their scope's org via getProjectOrgId, which 404s once the project
-      // is gone. Left behind, the row becomes permanently unrevokable and
-      // unlistable through any RPC: a stale authorization entry nothing can
-      // ever reach again. Cleared here the same way project-scoped task
-      // types are, just above.
-      const grants = isStandalone ? schemaSqlite.grants : schemaMysql.grants;
-      await db.delete(grants).where(and(eq((grants as any).scopeType, "project"), eq((grants as any).scopeId, parsed.projectId)));
-
-      await db.delete(ps).where(eq((ps as any).id, parsed.projectId));
-
+      const purged = await purgeProjectCascade(db, parsed.projectId, async project => {
+        await assertCan(db, { kind: "user", userId }, { type: "project", id: parsed.projectId }, "project:admin");
+        if (!project.deletedAt) throw new ConnectError("project must be archived before it can be purged", Code.FailedPrecondition);
+        const currentRows = (query: any) => isStandalone ? query : query.for("update");
+        const [tasks, folders, links] = await Promise.all([
+          currentRows(db.select({ id: schema.tasks.id }).from(schema.tasks).where(eq(schema.tasks.projectId, parsed.projectId))).limit(1),
+          currentRows(db.select({ id: schema.folders.id }).from(schema.folders).where(eq(schema.folders.projectId, parsed.projectId))).limit(1),
+          currentRows(db.select({ id: schema.repositoryLinks.id }).from(schema.repositoryLinks).where(eq(schema.repositoryLinks.projectId, parsed.projectId))).limit(1),
+        ]);
+        if (tasks.length || folders.length || links.length) {
+          throw new ConnectError("project still has tasks, folders, or repository links - delete and purge each of them first", Code.FailedPrecondition);
+        }
+        return true;
+      });
+      if (!purged) throw new ConnectError("project not found", Code.NotFound);
       publishDomainEvent(nc, "domain.project.purged", { projectId: parsed.projectId });
       return { success: true };
     },

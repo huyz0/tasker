@@ -32,10 +32,11 @@ const READS: Record<string, readonly string[]> = {
 };
 
 // These handlers explicitly own narrow units after external preparation or
-// around schedule bookkeeping; an outer unit would hold SQL locks over I/O.
+// around schedule admission/execution; an outer unit would hold SQL locks over I/O
+// or establish a snapshot before schedule mutation locking reads.
 const LOCAL_UNITS: Record<string, readonly string[]> = {
   RepositoryService: ['AddRepositoryLink', 'SyncPullRequests'],
-  ScheduleService: ['RunSchedule'],
+  ScheduleService: ['CreateSchedule', 'UpdateSchedule', 'DeleteSchedule', 'RunSchedule'],
 };
 
 export function createMutationInterceptor(db: any, lifecycle?: Lifecycle): Interceptor {

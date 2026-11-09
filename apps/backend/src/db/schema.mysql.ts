@@ -883,6 +883,8 @@ export const schedules = mysqlTable("schedules", {
   taskPriority: int("task_priority").notNull().default(0),
   skipIfOpen: boolean("skip_if_open").notNull().default(true),
   active: boolean("active").notNull().default(true),
+  revision: int("revision").notNull().default(1),
+  deletedAt: timestamp("deleted_at"),
   nextRunAt: timestamp("next_run_at").notNull(),
   lastRunAt: timestamp("last_run_at"),
   lastTaskId: varchar("last_task_id", { length: 256 }),
@@ -903,9 +905,24 @@ export const scheduleRuns = mysqlTable("schedule_runs", {
   outcome: varchar("outcome", { length: 16 }).notNull(),
   taskId: varchar("task_id", { length: 256 }),
   detail: text("detail"),
+  slotKey: varchar("slot_key", { length: 96 }),
+  dueAt: timestamp("due_at"),
+  actorJson: text("actor_json"),
+  targetKind: varchar("target_kind", { length: 16 }),
+  targetId: varchar("target_id", { length: 256 }),
+  frozenInputs: longtext("frozen_inputs"),
+  leaseToken: varchar("lease_token", { length: 64 }),
+  claimedUntil: timestamp("claimed_until"),
+  attempts: int("attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
   trigger: varchar("trigger", { length: 16 }).notNull(),
 }, (table) => {
   return {
+    slotIdx: uniqueIndex("schedule_runs_slot_unique").on(table.scheduleId, table.slotKey),
+    recoveryIdx: index("schedule_runs_recovery_idx").on(table.outcome, table.nextAttemptAt),
+    leaseIdx: index("schedule_runs_lease_idx").on(table.outcome, table.claimedUntil),
     scheduleRanIdx: index("schedule_runs_schedule_id_ran_idx").on(table.scheduleId, table.ranAt),
   };
 });

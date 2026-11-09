@@ -143,6 +143,16 @@ describe('agent scope filtering (M26-T02)', () => {
     expect(deliver('domain.comment.created', ['comments:write'])).toBe(false);
   });
 
+  it('gates schedule recovery events with the same task-read scope as history', () => {
+    for (const subject of ['domain.schedule.queued', 'domain.schedule.running', 'domain.schedule.interrupted', 'domain.schedule.ran']) {
+      expect(deliver(subject, ['tasks:read'])).toBe(true);
+      expect(deliver(subject, ['events:read'])).toBe(false);
+      expect(shouldDeliver({ subject, orgId: 'org-1', projectId: 'project-b' }, {
+        authorizedOrgIds: orgs, requestedProjectId: 'project-a', agentScopes: new Set(['tasks:read']),
+      })).toBe(false);
+    }
+  });
+
   it('never delivers administration families — no agent read scope exists for them', () => {
     for (const subject of [
       'domain.org.member_added',
