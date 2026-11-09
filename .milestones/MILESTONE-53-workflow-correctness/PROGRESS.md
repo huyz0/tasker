@@ -60,7 +60,6 @@ all ten final-head jobs passed (CI42614414075; real integration42614414067).
 Remote GUI logs confirm1360 tests and all174 Storybook axe/375px checks. This
 WIP checkpoint will be rebased onto that published main before further work.
 
-
 ### T02 canonical resource checkpoint
 
 The unpublished branch is now rebased onto published main eeca274. Authorized
@@ -76,7 +75,6 @@ and obsolete store-only selection simulations; these are being updated to use
 the URL writer rather than weakening the canonical gate. Full gates, browser,
 compatibility, fault checks and independent implementation review remain pending.
 
-
 T02 expanded checkpoint: canonical component tests pass task/artifact/project,
 organization and team ownership, legacy task fallback, warm-cache denial and
 explicit Memory tier clearing. Existing Task97 and Artifact57 tests pass after
@@ -90,7 +88,6 @@ Back/Forward/reload; browser reds identify artifact missing project trail (now
 corrected) and stale project labels on projectless Memory. Independent read-only
 review identifies same-org re-selection clearing and invisible background read
 failures; new reds are in flight before corrections. No task completion claimed.
-
 
 ### T02 independent revision and restored candidate
 
