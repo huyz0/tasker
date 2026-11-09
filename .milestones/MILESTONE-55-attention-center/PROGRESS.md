@@ -46,3 +46,43 @@ bounded source rows, exact source/parent eligibility, principal/project/cursor
 isolation and silence/date semantics before contract-first implementation. No
 inbox record, new permission, generic Resolve action or unbounded source helper
 is authorized by the accepted design. Existing source actions remain contextual.
+
+## M55-T02 — Bounded current source projection
+
+- **Status**: in-progress
+- **Date**: 2026-11-09
+- **Changed**: Drive source-derived human attention reads through real database authority/eligibility/paging/preview/count regressions before compatible contracts and bounded SQL implementation.
+- **Verified**: T01 committed/pushed as0815b6b with accepted ADR0048/UX/TC001–012 and ARCH-v2/UX-v2; all35 fresh-worktree and closure checks pass. Published base M54 is858e2cf; draft PR #8 is attached.
+- **Notes**: API/security standards plus TDD selected. Accepted design governs this heavy boundary, so no new ADR/UX is needed. Preserve current source rules, archive/restore and organization permission scope. Add one human-only read service, no migration/permission/runner/state machine. Before decoding/shaping, SQL must cap source rows and previews; oldest source position and current counts are principal/org/project/kind bound. Review assignment date remains unknown. SQLite raw timestamp aggregates are epoch seconds; MySQL strings are UTC wall-clock, per sqlTime helper. Stalled strict24h cutoff must preserve sub-second comparisons and exclude only created activity. Extract/reuse the tested literal prefix primitive without changing artifact behavior. A new read RPC may expose the staged GUI parity gap until T03; observe that gate before any exact, task-linked temporary exception, which T03 must remove.
+- **Next**: Observe missing-selector reds, add fresh messages/generate without overwriting old proto annotations, implement minimum bounded queries/current authority, prove both dialects and controlled faults, then full gates/review.
+
+Initial selector regression is observed red: no attention.handler exists, so the
+new source tests cannot load (zero passes/one missing-feature error). Cases cover
+125 sources per kind, bounded raw rows/actor lookup and byte transfer, exact
+terminal/archive/drain semantics, current human/custom-role scope, foreign
+projects, literal Unicode/NUL previews, honest review age, strict24h/sub-second
+raw-date behavior, token-liveness independence, current counts and bound cursors.
+This initial missing-module red is not claimed as individual business-case proof;
+controlled faults and real both-dialect execution remain required after code.
+Fixture inspection corrects the fake token row's required metadata and adds
+unrelated actors to make unbounded name hydration observable before implementation.
+
+Compatible contracts/generated clients and the human-only bounded reader are
+implemented. Actual-process routing is first observed red, then registered and
+passes. SQLite19 cases/7382 assertions and affected artifact/digest/MCP176 cases/
+1215 assertions pass; shared prefix extraction preserves existing imports.
+Real MySQL18 source cases/7901 assertions pass after correcting fixture-only
+column-limit/options-default assumptions. These were setup failures, not claimed
+product regressions. Current raw source transfer, names and literal prefix bounds
+are observed before response shaping. Existing444 message descriptors/1261fields
+are unchanged; old TS/Go clients pass18 JSON/protobuf decode checks.
+
+GUI RPC coverage is observed red for the new method. An exact temporary exception
+links M55-T03 and must be removed when that screen calls the reader; no UI is
+claimed complete. Eight controlled source faults (SQL limit, question status,
+active task, current reviewer, cursor binding, literal prefix, strict cutoff and
+foreign actor names) each produce assertion failures, then source is restored.
+Independent CODE-v1 requests zero/default protobuf page normalization; actual
+empty-page HTTP first fails as reproduced. Omitted/zero now defaults20, negatives
+remain invalid and cursor-only HTTP coverage is added. Final re-runs, review and
+full gates are pending; T02 stays in-progress.

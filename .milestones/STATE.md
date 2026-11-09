@@ -2,7 +2,7 @@
 active_milestone: M55
 active_task: M55-T02
 last_updated: 2026-11-09
-last_commit: cce7d86
+last_commit: 0815b6b
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M55-T02 in progress.** T01 committed/pushed as0815b6b after accepted design/review and all35 fresh/closure checks. Draft PR #8 is attached. Bounded reader, compatible contracts and actual routing implemented; SQLite19/MySQL18 and176 affected cases pass, with eight restored behavioral faults. CODE-v1 identifies protobuf zero/default page validation; actual HTTP reproduces it and a fix/cursor-only regression is under verification. Full gates/re-review pending; temporary GUI exception must be removed by T03. API/security standards plus TDD selected; no new inbox, permissions, migration or generic resolution action. SQLite raw aggregates use epoch seconds, MySQL UTC datetime text; preserve existing strict24h semantics.25 tasks remain.
 
 **2026-11-09 — M55-T01 verified:1/5 tasks.** Accepted ADR0048/UX/TC001–012 define independent bounded source paging, exact current source/active-parent rules, honest missing assignment age and canonical contextual task actions. ARCH-v2/UX-v2 approve after explicit GUI Answer/external cancellation and org-wide in-flight/project-switch access-lifetime amendments. All35 fresh-worktree checks pass (GUI1498/95.13%, backend2282/zero failures, standalone). No M55 runtime behavior exists. T02 next drives bounded SQL/current scope/cursors/silence regressions before compatible contracts. M54 is published858e2cf; two post-merge integration jobs pass.25 tasks remain.
 

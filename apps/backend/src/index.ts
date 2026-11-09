@@ -1,6 +1,6 @@
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import * as http from "node:http";
-import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService, NotificationService, EventService, WebhookService, WorkflowService, ScheduleService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
+import { HealthService, TaskTypeService, AuthService, OrgService, ProjectTemplateService, ProjectService, TaskService, AgentService, ArtifactService, CommentService, TaskNoteService, LabelService, RepositoryService, SearchService, DashboardService, TeamService, RoleService, MemoryService, AuditService, NotificationService, EventService, WebhookService, WorkflowService, ScheduleService, AttentionService } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import type { Interceptor } from "@connectrpc/connect";
 import { createHealthHandler } from "./modules/health/health.handler";
 import { createAuthHandler } from "./modules/auth/auth.handler";
@@ -34,6 +34,7 @@ import { runWebhookSweep, httpSender } from "./modules/webhooks/delivery";
 import { allowPrivateTargets } from "./modules/webhooks/urlSafety";
 import { createRepositoriesHandler } from "./modules/repositories/repositories.handler";
 import createSearchHandler from "./modules/search/search.handler";
+import { createAttentionHandler } from "./modules/attention/attention.handler";
 import createDashboardHandler from "./modules/dashboard/dashboard.handler";
 import createReportsHandler from "./modules/reports/reports.handler";
 import { setupDatabase } from "./db/db";
@@ -230,6 +231,7 @@ const handler = connectNodeAdapter({
     router.service(ScheduleService as any, createSchedulesHandler(db, nc));
     createSearchHandler(router, db);
     createDashboardHandler(router, db);
+    router.service(AttentionService as any, createAttentionHandler(db));
     createReportsHandler(router, db);
   },
 });

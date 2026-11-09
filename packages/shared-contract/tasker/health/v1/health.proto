@@ -2951,3 +2951,36 @@ service ScheduleService {
   rpc RunSchedule(RunScheduleRequest) returns (RunScheduleResponse);
   rpc ListScheduleRuns(ListScheduleRunsRequest) returns (ListScheduleRunsResponse);
 }
+
+// Current human attention from existing source records (M55, ADR-0048).
+message AttentionItem {
+  string kind = 1;
+  string sourceId = 2;
+  string taskId = 3;
+  string taskDisplayId = 4;
+  string taskTitle = 5;
+  string taskStatus = 6;
+  string projectId = 7;
+  string projectName = 8;
+  string reason = 9;
+  optional string since = 10;
+  string sinceKind = 11;
+  optional string actorKind = 12;
+  optional string actorId = 13;
+  optional string actorName = 14;
+  optional bool reasonTruncated = 15;
+}
+message ListAttentionRequest {
+  string orgId = 1;
+  optional string projectId = 2;
+  string kind = 3;
+  PageRequest page = 4;
+}
+message ListAttentionResponse {
+  repeated AttentionItem items = 1;
+  PageResponse page = 2;
+  string observedAt = 3;
+}
+service AttentionService {
+  rpc ListAttention(ListAttentionRequest) returns (ListAttentionResponse);
+}

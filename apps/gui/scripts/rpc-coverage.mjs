@@ -25,6 +25,9 @@ export const GUI_SRC = process.env.RPC_COVERAGE_SRC ?? join(HERE, '../src');
  * visible in review.
  */
 export const EXCEPTIONS = {
+  'AttentionService.listAttention':
+    'M55-T02 introduces the bounded source reader; M55-T03 wires the scoped ' +
+    'Attention screen and must remove this staged exception.',
   'TaskService.getTaskDigest':
     'An agent\'s one-read context for a task (M41, ADR-0034). The task dialog ' +
     'already shows every part of it, each from its own read.',
