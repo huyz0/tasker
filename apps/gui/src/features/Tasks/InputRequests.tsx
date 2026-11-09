@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
+import { actionErrorMessage } from '../../lib/actionErrorMessage';
 import { TaskService, type InputRequest } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { WorkPages, WorkHistory, WorkNotice, useWorkPages, useWorkNotice } from './WorkPages';
 import { TONE_CLASSES } from '../../components/ui/statusStyles';
@@ -34,7 +35,7 @@ function AnswerForm({ request, onNotice }: AnswerFormProps) {
     mutationFn: async (text: string) => taskClient.answerInputRequest({ id: request.id, answer: text }),
     onMutate: () => onNotice(''),
     onSuccess: () => setAnswer(''),
-    onError: (error) => onNotice(`Failed to answer: ${error.message}`),
+    onError: (error) => onNotice(`Failed to answer: ${actionErrorMessage(error)}`),
     onSettled: invalidate,
   });
   const fieldId = `answer-${request.id}`;

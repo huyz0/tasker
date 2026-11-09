@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
+import { actionErrorMessage } from '../../lib/actionErrorMessage';
 import { TaskService, type TransitionApproval } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { WorkPages, WorkHistory, WorkNotice, useWorkPages, useWorkNotice } from './WorkPages';
 import { TONE_CLASSES } from '../../components/ui/statusStyles';
@@ -29,7 +30,7 @@ function Decide({ approval, onNotice }: DecideProps) {
   const decide = useMutation({
     mutationFn: async (approve: boolean) => taskClient.decideTransitionApproval({ id: approval.id, approve, reason: reason.trim() || undefined }),
     onMutate: () => onNotice(''),
-    onError: (error) => onNotice(`Could not decide: ${error.message}`),
+    onError: (error) => onNotice(`Could not decide: ${actionErrorMessage(error)}`),
     onSettled: () => {
       // Approving moves the task; a stale refusal means the list is out of date. Either way, refetch.
       queryClient.invalidateQueries({ queryKey: ['approvals'] });

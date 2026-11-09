@@ -1,6 +1,7 @@
 import type { PlanStep, TaskSummary, UsageTotals } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { TaskPlan } from './TaskPlan';
 import { TaskUsage } from './TaskUsage';
+import { useSummaryDrafts } from './summaryDrafts';
 import { TaskSummaryPanel } from './TaskSummary';
 
 interface TaskContextProps {
@@ -12,9 +13,10 @@ interface TaskContextProps {
 
 /** Empty optional context stays discoverable; native disclosures retain drafts when closed. */
 export function TaskContext({ taskId, summary, plan, usage }: TaskContextProps) {
+  const draft = useSummaryDrafts(state => state.entries[taskId]);
   return (
     <>
-      <details open={!!summary} className="mt-6">
+      <details open={!!summary || !!draft} className="mt-6">
         <summary className="cursor-pointer rounded-sm py-2 focus-visible:ring-2 focus-visible:ring-primary/50"><h3 className="inline type-section-title">Summary</h3></summary>
         <div className="mt-2"><TaskSummaryPanel taskId={taskId} summary={summary} /></div>
       </details>

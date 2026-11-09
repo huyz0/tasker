@@ -224,3 +224,33 @@ CODE-v5/UX-v4 approve. The failed-refresh preview is corrected to transition fro
 a mounted success rather than seed unaccepted failed data. Next T05 protects
 summary intent across every exit/save/identity race. Overall34 tasks remain;
 M53 publication still awaits T05–T07 and final-head remote CI.
+
+## M53-T05 — Preserve summary drafts through every exit and save race
+
+- **Status**: in-progress
+- **Date**: 2026-11-09
+- **Changed**: Reproduce cross-task/local-unmount draft loss and unconditional save-success clearing before introducing account/generation/entry/revision-bound session-memory intent.
+- **Verified**: T04 committed/pushed as6feb920; all35 closure checks pass with1440 GUI tests/95.45% branches,2194 backend tests and standalone build.
+- **Notes**: Frontend/security standards selected, plus TDD. Reuse accepted ADR-0047, UX and TC-007–009. No persistent storage, new dependency, server summary model or executor. Existing mutation cache owns pending/status; a local draft registry coordinates intent across the tree. Identity synchronization must precede protected-route early returns; global native warning remains while panels close. Independent preflight adds logout ordering, Cancel/reopen identity, same-tick Save/Clear exclusion, baseline advancement/revert-while-pending and Summary disclosure discoverability.
+- **Next**: Run existing-panel behavioral reds before code, then guard native/identity lifetime and actual SPA exits. Distinguish transient session lookup errors from confirmed identity loss so temporary failure cannot discard drafts.
+
+T05 foundation checkpoint: six existing-panel reds reproduce task leakage,
+unmount loss, newer/reverted writing cleared by old success, Cancel/reopen
+collision and same-tick duplicate writes. Account/generation/entry/revision intent
+and live mutation-cache Save/Clear fencing pass those cases; a later error-cache
+red adds failed-save restoration. Four native reds drive the route-global warning
+with closed/multiple panels, clean/reverted/pending content and post-unmount save
+completion. Three identity reds and one session-metadata red drive pre-route
+verification; two session-boundary reds distinguish temporary/malformed lookup
+from confirmed logout. Three logout reds drive synchronous generation rotation,
+blocked editing while pending, and honest retryable failure.
+
+The first disclosure assertion matched both label and heading; corrected semantic
+heading/open assertions fail against restored old closed behavior, then pass on
+the candidate. Test-only Playwright-style exact options are removed after TSC
+reports them. Three touched action-message reds remove Connect transport prefixes
+while preserving server explanations. Final focused83 cases and app TypeScript
+pass. No persistence/dependency/backend contract changes. Actual browser, stories,
+deliberate final faults, full gates and independent implementation review remain
+pending. Draft PR #6 contains completed T01–T04; this T05 checkpoint is not ready
+to publish independently.

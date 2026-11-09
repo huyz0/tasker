@@ -2,7 +2,7 @@
 active_milestone: M53
 active_task: M53-T05
 last_updated: 2026-11-09
-last_commit: 04926ab
+last_commit: 6feb920
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M53-T05 in progress.** T04 is committed/pushed as6feb920. Reproduce task/unmount/save races before account-bound draft registry and mutation-cache/native-exit guards. No new persistence or auth scheme; transient session failure cannot count as confirmed logout. Overall34 tasks remain; M53/PR #6 are not ready to merge.
 
 **2026-11-09 — M53-T04 verified:4/7 tasks.** Independent pending/history pages, bound SQL cursors and durable stale closure pass all35 gates, GUI1440/95.45% branches, backend2194/zero failures, SQLite/MySQL16/128 assertions, two browser journeys and18 previews/72 settled audits. Access lifetime/off-feed refresh/late-notice review findings and dark Delete contrast are corrected; CODE-v5/UX-v4 approve. Next T05 protects summary drafts, save revisions and identity/native-exit lifetime. Draft PR #6 still requires T05–T07 and final-head CI. Overall34 tasks remain.
 

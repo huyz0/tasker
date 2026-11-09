@@ -100,6 +100,7 @@ for (const c of cases) describe(`${c.kind} bounded pending/history`, () => {
     resolved = true;
     fireEvent.click(screen.getByRole('button', { name: c.action }));
     expect(await screen.findByRole('alert')).toHaveTextContent('another person already decided');
+    expect(screen.getByRole('alert')).not.toHaveTextContent('[failed_precondition]');
     await screen.findByText('Showing 1 of 1 pending');
     expect(screen.getByLabelText(c.input)).toHaveValue('');
     fireEvent.click(screen.getByText('History · 1'));

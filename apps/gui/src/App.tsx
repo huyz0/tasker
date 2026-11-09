@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
+import { SummaryDraftExitGuard } from './features/Tasks/SummaryDraftGuard';
 import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
@@ -48,6 +49,8 @@ function RouteFallback() {
 
 function App() {
   return (
+    <>
+    <SummaryDraftExitGuard />
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -101,6 +104,7 @@ function App() {
         />
       </Routes>
     </Suspense>
+    </>
   );
 }
 
