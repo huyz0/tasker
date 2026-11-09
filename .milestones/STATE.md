@@ -1,8 +1,8 @@
 ---
 active_milestone: M54
-active_task: M54-T05
+active_task: null
 last_updated: 2026-11-09
-last_commit: f702e2a
+last_commit: 2de4b61
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54-T05 verified:5/5 tasks.** Real MCP socket coverage passes on SQLite/MySQL (7cases/134assertions each), final content/capability/upgrade proof totals216 assertions, all3 Evidence browser journeys and18 old-client decodes pass. CODE-v5 approves coverage/docs;61 focused MCP cases and four restored end-to-end faults pass. All35 source gates pass (GUI1498/95.13%, backend2282/zero failures), including standalone. Close M54 next; draft PR #7 still requires actual final-head CI before main publication. Overall26 tasks remain.
 
 **2026-11-09 — M54-T05 in progress.** T04 committed/pushed asf702e2a after all35 source/closure checks, approved UI/source review,234-story matrices and isolated browser repeats. Commit real HTTP MCP handoff/ambiguous-response/refusal coverage and precise bounded-content/permissions/retry documentation. Existing ADR0042/TC001–010 apply; no new product boundary or dependency. API/security standards plus TDD selected.115-assertion owned-runtime probe passes with revoked memory-only credentials.27 tasks remain; PR #7 stays draft until closure and applicable final-head CI.
 
@@ -1947,13 +1949,13 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
-| M54 | Completion Evidence | in-progress | M46, M53 | 5 | 4 |
+| M54 | Completion Evidence | in-progress | M46, M53 | 5 | 5 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 369 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 370 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

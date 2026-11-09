@@ -51,7 +51,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/gui/src/features/Tasks/; apps/gui/src/components/; apps/gui/tests/e2e/.
   - **Verify**: Review surface identifies author/time/source and accessible artifact links; distinguishes worker-reported evidence from provider-observed signals; handles no evidence, removed/inaccessible artifacts, loading/error and large content; responsive/keyboard stories pass.
 
-- [ ] **M54-T05** — Verify worker-to-human evidence handoff and publish precise integration examples.
+- [x] **M54-T05** — Verify worker-to-human evidence handoff and publish precise integration examples.
   - **Files**: docs/mcp.md; docs/agent-integration.md; .milestones/MILESTONE-54-completion-evidence/reviews/; apps/backend/src/test/wire/.
   - **Verify**: MCP discover/create/link/digest/explicit body read journey with oversized literal and encoded representations; cross-tenant/task denial, legacy digest and retry behavior; full gates, browser checks and standalone packaging pass.
 

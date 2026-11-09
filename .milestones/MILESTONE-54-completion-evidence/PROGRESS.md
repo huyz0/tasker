@@ -261,10 +261,9 @@ real HTTP worker handoff coverage and precise docs, then closes/publishes M54.
 The115-assertion owned-runtime probe already passes with all temporary credentials
 revoked, but does not substitute for committed T05 coverage or publication gates.
 
-
 ## M54-T05 — Verify and document worker-to-human handoff
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Commit real MCP→loopback→current authorization→database handoff coverage and exact integration examples, including ambiguous create discovery and bounded stored representations.
 - **Verified**: T04 committed/pushed asf702e2a after final35 checks and closure35/32cached;1498 GUI/2275 backend cases, rendered234-story matrices, reviewed captures, real MySQL70 assertions,18 old-client decodes and checkpoint90a3965 all8 CI jobs pass.
@@ -299,3 +298,21 @@ valid separate process proof. Documentation adds all6 tools, exact page/prefix/
 UTF-16-create bounds, explicit opt-in, stored representation, mutable references,
 human unlink boundary and discovery-before-create retry examples. Independent
 four-lens review and final source/both-dialect/browser/head CI remain pending.
+
+T05 final source verification passes35 checks (25cached): GUI1498/95.13% branches,
+backend2282/59environment-gated skips/zero failures with95.84% functions/96.75%
+lines, contract/wire, CLI and standalone packaging.61 focused MCP cases/740
+assertions, identical SQLite/MySQL socket suites7/134 each, final MySQL content/
+capability70 assertions, both-dialect upgrade/reopen12 assertions,18 old-client
+decodes preserving442 messages/1241 fields, four restored end-to-end faults and
+all3 final human browser journeys pass. Final both-dialect run totals10 cases/
+216 assertions across MCP/content and upgrade commands; an initially misspelled
+upgrade path is not counted, and the correct upgrade file passes separately.
+CODE-v5 independently approves all four lenses with no blockers. All6 tools and
+precise scope/bounds/representation/mutability/uncertain-create docs are published
+in this source branch. No runtime behavior or dependencies change in T05.
+
+T05 is complete:5/5 M54 tasks,370 done/26 pending overall. Close M54's verified
+exit criteria next, push its final head and require all applicable final-head CI
+before merging draft PR #7. Checkpointf702e2a already passes all8 jobs;2de4b61's
+CI is in progress. This is not yet a claim that M54 is published on main.
