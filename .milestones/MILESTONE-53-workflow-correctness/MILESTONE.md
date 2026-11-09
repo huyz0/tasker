@@ -1,12 +1,12 @@
 ---
 id: M53
 title: Workflow Correctness
-status: todo
+status: in-progress
 goal: Every existing question, approval, search result and task edit keeps the correct scope, exposes all pending work and preserves user intent.
 depends_on: [M28, M51]
-surfaces: [backend, gui, cli, specs]
+surfaces: [backend, gui, cli, contract, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-09
 completed_at: null
 ---
 
@@ -37,11 +37,11 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
 ## 5. Task Breakdown
 
 - [ ] **M53-T01** — Design canonical entity navigation and the pending/history interaction contract.
-  - **Files**: .milestones/MILESTONE-53-workflow-correctness/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0053-workflow-correctness/.
+  - **Files**: .specs/adr/ADR-0047-authorized-navigation-and-bounded-history.md; .milestones/MILESTONE-53-workflow-correctness/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0053-workflow-correctness/.
   - **Verify**: Review cross-project queues, direct task/artifact/Memory links, Back/reload, org Memory tier, inaccessible entities and every loading/empty/error state; record acceptance fixtures before code.
 
 - [ ] **M53-T02** — Resolve entity navigation from authorized resource scope across queues, search and detail screens.
-  - **Files**: apps/gui/src/hooks/useScope.ts; apps/gui/src/components/layout/GlobalSearch.tsx; apps/gui/src/features/Tasks/; apps/gui/src/features/Memory/; apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx.
+  - **Files**: packages/shared-contract/main.tsp; apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/modules/artifacts/artifacts.handler.ts; apps/gui/src/hooks/useScope.ts; apps/gui/src/components/layout/GlobalSearch.tsx; apps/gui/src/features/Tasks/; apps/gui/src/features/Memory/; apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx.
   - **Verify**: Open project B entities from project A, missing/conflicting scope links and org Memory; URL, sidebar, breadcrumbs and actions agree; Back preserves origin; inaccessible resources expose no metadata.
 
 - [ ] **M53-T03** — Show every supported search type with distinct loading, no-match and recoverable failure states.
@@ -49,7 +49,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Verify**: Task/artifact/project/agent/belief fixtures remain actionable; initial and subsequent failed queries show retry; out-of-order requests cannot replace current results; keyboard navigation remains usable; test both SQL dialects for requested types.
 
 - [ ] **M53-T04** — Separate open requests from paginated history and make all organization pending rows reachable.
-  - **Files**: apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx; apps/gui/src/features/Tasks/; apps/gui/tests/e2e/.
+  - **Files**: apps/backend/src/modules/tasks/inputRequests.ts; apps/backend/src/modules/tasks/approvals.ts; apps/backend/src/db/query-builder.ts; apps/backend/src/modules/mcp/tools.ts; packages/shared-contract/main.tsp; apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx; apps/gui/src/features/Tasks/; apps/gui/tests/e2e/.
   - **Verify**: An old open question beyond 20 newer closed rows and approval beyond 10 remain visible; more than 50 organization pending rows are reachable by bounded paging; next-page errors retry without hiding earlier rows; source decisions reconcile both sections.
 
 - [ ] **M53-T05** — Protect task summary drafts through every dismissal path and failed save.

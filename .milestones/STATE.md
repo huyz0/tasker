@@ -1,8 +1,8 @@
 ---
 active_milestone: M53
-active_task: null
+active_task: M53-T01
 last_updated: 2026-11-09
-last_commit: af98116
+last_commit: e34924e
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,9 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M53-T01 in progress.** Design authorized canonical entity scope, complete pending/history paging and retained summary intent. M28/M51 are published; this isolated branch starts from final M47 candidatee34924e while PR #5 final-head CI runs. Reconcile against published main before M53 publication. Frontend/security standards, existing tokens/fonts and independent UX judgment apply. Overall38 tasks remain.
+
 
 **2026-11-09 — M47 complete:4/4 tasks and4/4 exit criteria.** All35 local gates pass with unchanged coverage floors; both-dialect process/upgrade153 assertions and four actual browser journeys pass, including dark alert contrast. Durable occurrence/history and locked current-eligibility purge semantics are documented. PR #5 still requires complete final-head CI before merge. Next M53-T01 may start independently during that wait (M28/M51 published), with base/ledger reconciliation before publication. Overall38 tasks remain.
 
@@ -1894,7 +1897,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
-| M53 | Workflow Correctness | todo | M28, M51 | 7 | 0 |
+| M53 | Workflow Correctness | in-progress | M28, M51 | 7 | 0 |
 | M54 | Completion Evidence | todo | M46, M53 | 5 | 0 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
