@@ -106,3 +106,14 @@ with unknown owner fields. Independent human/product/agent reviewers approve the
 corrected source/tests, subject to full gates and expanded rendered checks.
 The first full run was intentionally interrupted during CLI checks when the
 remaining review cases were found; it is not claimed as a passing full run.
+
+T02 full-suite reconciliation: the first complete GUI run reports1399 passing
+and3 failing tests. The routing-only App fixture mocks every resource read as
+unavailable, so it now asserts the honest artifact opening state rather than
+requiring content. Organization Memory's breadcrumb expectation now drops the
+irrelevant project. The unchanged schedule-history test was still loading runs
+at its assertion; all36 tests across these three files pass in the focused
+rerun. No timeout or coverage threshold changes. Updated the scope-sync comment
+to describe owner convergence rather than the removed scope-change dismiss guard.
+Expanded browser evidence passes all5 journeys with20 light/dark desktop/mobile
+captures and no document overflow. Full checks and rendered stories rerun next.

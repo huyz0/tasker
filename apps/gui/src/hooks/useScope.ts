@@ -140,13 +140,10 @@ export function useSetScope() {
  * Called from `AppShell` — the only component guaranteed mounted for the
  * session, and already the holder of the single live-event subscription.
  *
- * The one-tick delay between the first render and this effect is not an
- * artefact to optimise away: `Tasks`'s `previousScope` guard tells hydration
- * from a genuine project switch by whether the *previous* project was empty,
- * which is only true while the store starts empty and the URL fills it
- * afterwards. Making this synchronous would kill that discriminator and
- * reopen the M23 bug, where reloading a task URL silently dropped you back to
- * the list.
+ * Entity readers wait for both the URL and this store to match the authorized
+ * owner before exposing content/actions. Deliberate selection is encoded by
+ * the URL writer in one navigation; hydration and normalization therefore
+ * never masquerade as a new selection or dismiss a direct-linked resource.
  */
 export function useScopeSync(): void {
   const { orgId, projectId } = useScope();
