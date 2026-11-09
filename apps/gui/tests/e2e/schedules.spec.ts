@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { selectSeededOrg } from './selectSeededOrg';
 
+test.beforeEach(async ({ context }) => {
+  const privateBackend = process.env.TASKER_E2E_BACKEND_URL;
+  if (privateBackend) await context.route('http://localhost:8080/**', async route => {
+    const url = new URL(route.request().url());
+    const response = await route.fetch({ url: new URL(url.pathname + url.search, privateBackend).href });
+    await route.fulfill({ response });
+  });
+});
+
 /**
  * Schedules against the real backend (M43): a person creates a weekly
  * schedule for one task, runs it now, follows the run to the task it made,
@@ -27,15 +36,19 @@ test.describe('Schedules', () => {
     await expect(heading).toBeVisible();
     expect((await heading.boundingBox())!.width).toBeGreaterThan(240);
     await page.getByRole('button', { name: 'Run now' }).click();
-    await expect(page.getByText(/Ran now: created/)).toBeVisible();
+    await expect(page.getByRole('main').getByRole('status')).toContainText('Work created');
     const runs = page.getByRole('list', { name: 'Runs' });
     await expect(runs).toContainText('run by hand');
+    await expect(runs).toContainText('Attempt 1');
+    await expect(runs).toContainText('Accepted');
+    await expect(runs).toContainText('Completed');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
     await page.getByRole('button', { name: 'Run now' }).click();
-    await expect(page.getByText(/Ran now: skipped/)).toBeVisible();
+    await expect(page.getByRole('main').getByRole('status')).toContainText('Skipped');
     await expect(runs).toContainText('is still open');
 
-    await runs.getByRole('link', { name: 'open task' }).first().click();
+    await runs.getByRole('link', { name: 'Open created task' }).first().click();
     await expect(page.getByRole('heading', { name: new RegExp(`${name} task`) })).toBeVisible();
   });
 });

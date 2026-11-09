@@ -90,6 +90,14 @@ the same endpoint, using `TASKER_TOKEN` (or a saved `tasker auth login`) and
 | `search_memory` | Search shared beliefs | `SearchBeliefs` |
 | `record_belief` | Record a durable fact | `RecordBelief` |
 
+`run_schedule` accepts a new creation intent on every call. An accepted queued
+or interrupted result recovers automatically; calling it again creates another
+intent. Inspect the schedule's Recent runs in the GUI, `tasker schedules runs
+<id> --json`, or `ScheduleService.ListScheduleRuns` to follow the original run.
+Schedule events include `runId` for correlation, but current authorized reads
+remain the source of truth. A created result means Tasker created the work;
+external agent execution is separate.
+
 Arguments are validated against each tool's published schema: a missing or
 misspelt argument is a protocol error naming it. When the server refuses a call
 — a missing scope, a task someone else holds, an illegal transition — the tool

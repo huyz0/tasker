@@ -105,7 +105,7 @@ export function createScheduleExecutor(db: any, nc: any = null, clock: () => Dat
     }).where(and(eq(runs.id, row.id), row.leaseToken ? eq(runs.leaseToken, row.leaseToken) : isNull(runs.leaseToken)));
     await db.update(schedules).set({ lastRunAt: now, lastOutcome: outcome, ...(taskId ? { lastTaskId: taskId } : {}) })
       .where(eq(schedules.id, schedule.id));
-    publishDomainEvent(nc, 'domain.schedule.ran', { scheduleId: schedule.id, projectId: schedule.projectId,
+    publishDomainEvent(nc, 'domain.schedule.ran', { scheduleId: schedule.id, runId: row.id, projectId: schedule.projectId,
       outcome, taskId, trigger: row.trigger });
     return result;
   }
@@ -117,10 +117,10 @@ export function createScheduleExecutor(db: any, nc: any = null, clock: () => Dat
       if (schedule.deletedAt) { await finish(row, schedule, 'cancelled', null, 'The schedule was deleted before work creation committed.'); return null; }
       const token = crypto.randomUUID();
       await db.update(runs).set({ outcome: 'running', leaseToken: token, claimedUntil: new Date(now.getTime() + 60_000),
-        attempts: Number(row.attempts ?? 0) + 1, startedAt: now, nextAttemptAt: null,
+        attempts: Number(row.attempts ?? 0) + 1, startedAt: now, nextAttemptAt: null, detail: null,
       }).where(and(eq(runs.id, row.id), eq(runs.outcome, row.outcome),
         row.leaseToken ? eq(runs.leaseToken, row.leaseToken) : isNull(runs.leaseToken)));
-      publishDomainEvent(nc, 'domain.schedule.running', { scheduleId: schedule.id, projectId: schedule.projectId,
+      publishDomainEvent(nc, 'domain.schedule.running', { scheduleId: schedule.id, runId: row.id, projectId: schedule.projectId,
         outcome: 'running', trigger: row.trigger });
       return { id, token };
     });
@@ -187,7 +187,7 @@ export function createScheduleExecutor(db: any, nc: any = null, clock: () => Dat
           await db.update(runs).set({ outcome: 'interrupted', nextAttemptAt, leaseToken: null, claimedUntil: null,
             detail: 'Work creation was interrupted; recovery will retry this intent.',
           }).where(and(eq(runs.id, row.id), eq(runs.leaseToken, lease.token)));
-          publishDomainEvent(nc, 'domain.schedule.interrupted', { scheduleId: schedule.id, projectId: schedule.projectId,
+          publishDomainEvent(nc, 'domain.schedule.interrupted', { scheduleId: schedule.id, runId: row.id, projectId: schedule.projectId,
             outcome: 'interrupted', trigger: row.trigger });
           return { ...row, outcome: 'interrupted', nextAttemptAt, leaseToken: null, claimedUntil: null,
             detail: 'Work creation was interrupted; recovery will retry this intent.' };

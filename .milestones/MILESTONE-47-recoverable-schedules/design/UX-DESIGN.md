@@ -56,3 +56,35 @@ owned by completed M48. No fabricated source records or runtime engine states.
 A regression selects project A, opens project B's schedule and verifies that its
 created-task link carries B. This local history-link fix does not replace M53's
 application-wide canonical-scope work.
+
+## Off-feed refresh amendment — T04
+
+The schedule collection is organization-wide, while the single AppShell feed
+may be narrowed to the selected project. Keep the chosen scope. If a displayed
+schedule is outside feed coverage, refresh its existing detail/history reads
+every 15 seconds, including empty/terminal history. Refresh the organization
+list at the same bounded interval while its feed is project-narrowed. No second
+stream or new endpoint is needed. Stop fallback when the feed covers the
+schedule, on unmount or on permission denial; errors remain visible. Background
+query polling retains the query library's normal visibility behavior.
+
+Terminal-only history stops polling when its stream covers the schedule. Pending
+history still polls for silent lease expiry. M53 owns broader alignment between
+resource scope, navigation and subscriptions; this local fallback keeps schedule
+history truthful now.
+
+Run now acknowledges accepted queued/running/interrupted requests and directs
+people to authoritative Recent runs. Its acknowledgement must not permanently
+claim the initial queued status after recovery has completed. Clear feedback
+when changing schedules. Immediate terminal failures show their safe reason.
+
+Acceptance: select A, open B with empty/terminal history, create B work elsewhere
+without a B event, then observe refreshed history/detail within one interval.
+The task link carries B. Covering B stops terminal fallback; closing detail or
+losing permission stops detail/history polling. Loading/denied/error remain
+distinct, and no accepted request is silently repeated.
+
+Background reads must not unmount an open editor. Keep its typed draft mounted
+when cached authorized detail exists, show a refresh error and Retry, and retain
+the draft when the read recovers. Failed save state remains separate. Initial
+failed/denied reads still show the existing unavailable state.

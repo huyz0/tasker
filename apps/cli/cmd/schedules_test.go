@@ -169,3 +169,20 @@ func TestSchedulesListGetUpdateRunRunsDelete(t *testing.T) {
 		t.Errorf("delete %q", out)
 	}
 }
+
+func TestScheduleRecoveryLineShowsCreationMetadata(t *testing.T) {
+	attempts := int32(2)
+	r := &healthv1.ScheduleRun{RanAt: "accepted", Outcome: "interrupted", Trigger: "manual", Attempts: &attempts,
+		DueAt: strp("due"), NextAttemptAt: strp("retry"), StartedAt: strp("started"), CompletedAt: strp("completed")}
+	line := runLine(r)
+	for _, want := range []string{"interrupted (manual)", "attempts 2", "scheduled for due", "recovery eligible after retry", "attempt started started", "completed completed"} {
+		if !strings.Contains(line, want) {
+			t.Errorf("run line %q lacks %q", line, want)
+		}
+	}
+	zero := int32(0)
+	queued := runLine(&healthv1.ScheduleRun{Outcome: "queued", Trigger: "manual", Attempts: &zero, NextAttemptAt: strp("next")})
+	if !strings.Contains(queued, "attempts 0") || !strings.Contains(queued, "creation eligible after next") {
+		t.Fatalf("queued metadata: %q", queued)
+	}
+}

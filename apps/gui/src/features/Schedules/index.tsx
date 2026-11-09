@@ -1,22 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@connectrpc/connect';
+import { Code, ConnectError, createClient } from '@connectrpc/connect';
 import { transport } from '../../lib/connectTransport';
 import { ProjectService, ScheduleService, WorkflowService, type Schedule } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { useLayoutStore } from '../../store/layout';
 import { useScopedTo } from '../../hooks/useScope';
 import { ListState } from '../../components/ui/ListState';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { TONE_CLASSES } from '../../components/ui/statusStyles';
 import { formatDateTime } from '../../lib/format';
+import { RunHistory, creationResultLabel } from './RunHistory';
 import { ScheduleForm, cadenceText, draftFromSchedule, type ScheduleDraft } from './ScheduleForm';
 
 const scheduleClient = createClient(ScheduleService, transport);
 const projectClient = createClient(ProjectService, transport);
 const workflowClient = createClient(WorkflowService, transport);
 
-const OUTCOME_TONE: Record<string, string> = { created: TONE_CLASSES.success, skipped: TONE_CLASSES.warning, failed: TONE_CLASSES.destructive };
+const REFRESH_MS = 15_000;
+const RECOVERABLE = new Set(['queued', 'running', 'interrupted']);
+const unavailable = (error: unknown) => error instanceof ConnectError
+  && [Code.Unauthenticated, Code.PermissionDenied, Code.NotFound].includes(error.code);
+const coveredByFeed = (schedule: Schedule, orgId: string, projectId: string) =>
+  schedule.orgId === orgId && (!projectId || schedule.projectId === projectId);
 
 /** The fields every save sends - the cadence and target are replaced whole. */
 function body(d: ScheduleDraft) {
@@ -31,29 +36,21 @@ function body(d: ScheduleDraft) {
 }
 
 interface RunsProps {
-  scheduleId: string;
+  schedule: Schedule;
+  feedCoversSchedule: boolean;
 }
 
-function Runs({ scheduleId }: RunsProps) {
-  const scopedTo = useScopedTo();
+function Runs({ schedule, feedCoversSchedule }: RunsProps) {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['scheduleRuns', scheduleId],
-    queryFn: async () => (await scheduleClient.listScheduleRuns({ scheduleId, page: { limit: 20 } })).runs,
+    queryKey: ['scheduleRuns', schedule.id],
+    queryFn: async () => (await scheduleClient.listScheduleRuns({ scheduleId: schedule.id, page: { limit: 20 } })).runs,
+    refetchInterval: (query) => unavailable(query.state.error) ? false
+      : !feedCoversSchedule || query.state.data?.some(run => RECOVERABLE.has(run.outcome)) ? REFRESH_MS : false,
   });
   return (
     <ListState isLoading={isLoading} error={error} isEmpty={(data ?? []).length === 0} loadingMessage="Loading runs…"
       errorLabel="Could not load runs" emptyMessage="It has not run yet." onRetry={() => refetch()}>
-      <ul className="flex flex-col gap-1 text-sm" aria-label="Runs">
-        {(data ?? []).map((r) => (
-          <li key={r.id} className="flex flex-wrap items-baseline gap-x-2">
-            <span className={`text-xs px-1.5 py-0.5 rounded ${OUTCOME_TONE[r.outcome] ?? ''}`}>{r.outcome}</span>
-            <span className="text-muted-foreground">{formatDateTime(r.ranAt)}</span>
-            <span className="text-xs text-muted-foreground">{r.trigger === 'manual' ? 'run by hand' : 'on schedule'}</span>
-            {r.taskId && <Link to={scopedTo(`/tasks/${r.taskId}`)} className="underline text-xs">open task</Link>}
-            {r.detail && <span className="text-xs">{r.detail}</span>}
-          </li>
-        ))}
-      </ul>
+      <RunHistory runs={data ?? []} orgId={schedule.orgId} projectId={schedule.projectId} />
     </ListState>
   );
 }
@@ -86,11 +83,14 @@ export function SchedulesScreen() {
     queryKey: ['schedules', activeOrgId],
     enabled: !!activeOrgId,
     queryFn: async () => (await scheduleClient.listSchedules({ orgId: activeOrgId, page: { limit: 100 } })).schedules,
+    refetchInterval: query => activeProjectId && !unavailable(query.state.error) ? REFRESH_MS : false,
   });
   const detail = useQuery({
     queryKey: ['schedule', scheduleId],
     enabled: !!scheduleId && !isNew,
     queryFn: async () => (await scheduleClient.getSchedule({ id: scheduleId! })).schedule,
+    refetchInterval: query => !unavailable(query.state.error) && query.state.data
+      && !coveredByFeed(query.state.data, activeOrgId, activeProjectId) ? REFRESH_MS : false,
   });
   const projects = useQuery({
     queryKey: ['projects', 'schedules', activeOrgId],
@@ -130,6 +130,9 @@ export function SchedulesScreen() {
     mutationFn: async () => scheduleClient.deleteSchedule({ id: scheduleId! }),
     onSuccess: () => { refresh(); navigate(scopedTo('/schedules')); },
   });
+
+  const resetRunFeedback = runNow.reset;
+  useEffect(() => { resetRunFeedback(); }, [scheduleId, resetRunFeedback]);
 
   if (!activeOrgId) return <p className="p-4 text-sm text-muted-foreground">Select an organization to see its schedules.</p>;
   const schedules = list.data ?? [];
@@ -187,10 +190,16 @@ export function SchedulesScreen() {
             !showCollectionState && <p className="type-body text-muted-foreground">Choose a schedule on the left, or create one.</p>
           ) : isNew ? (
             form(draftFromSchedule(undefined, activeProjectId ?? ''), () => navigate(scopedTo('/schedules')), false)
-          ) : detail.isLoading || detail.error || !detail.data ? (
+          ) : detail.isLoading || !detail.data || (!editing && detail.error) ? (
             <ListState isLoading={detail.isLoading} error={detail.error} isEmpty={false} loadingMessage="Loading this schedule…" emptyMessage="" onRetry={() => detail.refetch()} />
           ) : editing ? (
-            form(draftFromSchedule(detail.data, detail.data.projectId), () => setEditing(false), true)
+            <div className="flex flex-col gap-3">
+              {detail.error && <p className="type-body text-destructive" role="alert">
+                Could not refresh this schedule. Your draft is kept.{' '}
+                <button type="button" onClick={() => detail.refetch()} className="type-label text-primary underline">Try again</button>
+              </p>}
+              {form(draftFromSchedule(detail.data, detail.data.projectId), () => setEditing(false), true)}
+            </div>
           ) : (
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
@@ -206,21 +215,28 @@ export function SchedulesScreen() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3 shrink-0">
-                  <button onClick={() => runNow.mutate()} disabled={runNow.isPending} className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
+                  <button onClick={() => runNow.mutate()} disabled={runNow.isPending} className="inline-flex min-h-11 items-center rounded-md bg-primary px-3 type-label sm:min-h-control text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
                     {runNow.isPending ? 'Running…' : 'Run now'}
                   </button>
-                  <button onClick={() => toggle.mutate(detail.data!)} disabled={toggle.isPending} className="text-sm font-medium text-primary hover:underline disabled:opacity-50">
+                  <button onClick={() => toggle.mutate(detail.data!)} disabled={toggle.isPending} className="inline-flex min-h-11 items-center type-label text-primary hover:underline disabled:opacity-50 sm:min-h-control">
                     {detail.data.active ? 'Pause' : 'Resume'}
                   </button>
-                  <button onClick={() => setEditing(true)} className="text-sm font-medium text-primary hover:underline">Edit</button>
-                  <button onClick={() => remove.mutate()} disabled={remove.isPending} className="text-sm font-medium text-muted-foreground hover:text-destructive disabled:opacity-50">
+                  <button onClick={() => setEditing(true)} className="inline-flex min-h-11 items-center type-label text-primary hover:underline sm:min-h-control">Edit</button>
+                  <button onClick={() => remove.mutate()} disabled={remove.isPending} className="inline-flex min-h-11 items-center type-label text-muted-foreground hover:text-destructive disabled:opacity-50 sm:min-h-control">
                     Delete
                   </button>
                 </div>
               </div>
+              <div className="space-y-1 type-caption text-muted-foreground">
+                <p>Pause stops future scheduled runs; accepted creation and retries continue. Run now remains available.</p>
+                <p>Delete stops new runs and cancels waiting creation. Work already created remains.</p>
+                <p>Each Run now click is a separate request. Recovery retries automatically.</p>
+              </div>
               {runNow.data && (
-                <p className="text-sm" role="status">
-                  Ran now: {runNow.data.outcome}{runNow.data.detail ? ` - ${runNow.data.detail}` : ''}.
+                <p className="type-body" role="status">
+                  {RECOVERABLE.has(runNow.data.outcome)
+                    ? 'Creation request accepted. Follow its current status in Recent runs below.'
+                    : `${creationResultLabel(runNow.data.outcome)}${runNow.data.detail ? ` — ${runNow.data.detail}` : ''}.`}
                 </p>
               )}
               {[runNow, toggle, remove].map((m, i) => m.isError && (
@@ -228,7 +244,7 @@ export function SchedulesScreen() {
               ))}
               <section className="flex flex-col gap-2">
                 <h3 className="text-sm font-semibold tracking-tight">Recent runs</h3>
-                <Runs scheduleId={detail.data.id} />
+                <Runs schedule={detail.data} feedCoversSchedule={coveredByFeed(detail.data, activeOrgId, activeProjectId)} />
               </section>
             </div>
           )}

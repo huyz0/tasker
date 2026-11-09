@@ -100,6 +100,24 @@ When upgrading to durable domain events, stop every old API, audit consumer and
 webhook worker first. The new audit identity and webhook lease fence require
 compatible workers; see the [upgrade and rollback notes](webhooks.md#recovery-and-operations).
 
+For recoverable schedules (ADR-0041), stop **all old schedule/API workers**
+before applying the SQLite 0063 or MySQL 0051 migration. Mixed old and new
+workers are unsupported: an old binary does not understand pending occurrences
+or lease fencing. Back up the stopped database, migrate with the new version,
+then start only compatible workers. Do not roll back to an old worker against
+the upgraded database; restoring a backup also restores its earlier work state
+and requires reconciliation of work created since that backup.
+
+Previously recorded run IDs and history remain readable. Recovery guarantees
+apply to newly admitted occurrences; legacy history cannot recover work that
+an old worker lost before recording it. Pending occurrences retain frozen
+creation inputs until they terminate. Terminal receipts clear those bodies and
+retain outcome, actor/target metadata and created task IDs. Deleting a schedule
+retains its tombstone and receipts until project purge; do not manually prune
+these rows as routine cleanup. Inspect Recent runs or `tasker schedules runs`
+for interrupted creation and current authorization failures. See
+[schedule behavior and controls](agent-integration.md#18-recurring-work-schedules).
+
 ## Building it yourself
 
 ```bash

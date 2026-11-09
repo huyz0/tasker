@@ -95,12 +95,21 @@ function toWire(row: any) {
   };
 }
 
-function runToWire(r: any) {
+function runToWire(r: any, now: Date) {
+  const expired = r.outcome === "running" && r.claimedUntil && new Date(r.claimedUntil).getTime() <= now.getTime();
+  const detail = r.detail ?? (expired ? "Creation was interrupted; recovery is eligible." : undefined);
+  const nextAttemptAt = expired ? r.claimedUntil : r.nextAttemptAt;
   return {
-    id: r.id, scheduleId: r.scheduleId, ranAt: iso(r.ranAt) ?? "", outcome: r.outcome,
+    id: r.id, scheduleId: r.scheduleId, ranAt: iso(r.ranAt) ?? "", outcome: expired ? "interrupted" : r.outcome,
     ...(r.taskId ? { taskId: r.taskId } : {}),
-    ...(r.detail ? { detail: r.detail } : {}),
+    ...(detail ? { detail } : {}),
     trigger: r.trigger,
+    ...(r.slotKey ? { attempts: Number(r.attempts ?? 0) } : {}),
+    ...(r.dueAt ? { dueAt: iso(r.dueAt) } : {}),
+    ...(nextAttemptAt ? { nextAttemptAt: iso(nextAttemptAt) } : {}),
+    ...(r.completedAt ? { completedAt: iso(r.completedAt) } : {}),
+    ...(r.claimedUntil ? { claimedUntil: iso(r.claimedUntil) } : {}),
+    ...(r.startedAt ? { startedAt: iso(r.startedAt) } : {}),
   };
 }
 
@@ -252,17 +261,17 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
       const principal = requirePrincipal(values);
       const { id } = IdSchema.parse(req);
       const run = await admitManualSchedule(id, principal);
-      if (run.outcome !== "queued") return { run: runToWire(run) };
+      if (run.outcome !== "queued") return { run: runToWire(run, clock()) };
       try {
         const lease = await executor.claim(run.id);
         if (lease) await executor.execute(lease);
         const result = await executor.loadRun(run.id);
         if (!result) throw new ConnectError("schedule run no longer exists", Code.NotFound);
-        return { run: runToWire(result) };
+        return { run: runToWire(result, clock()) };
       } catch (error) {
         if (!transactionConflict(error)) throw error;
         logger.warn({ occurrenceId: run.id, failure: "manual_execution_conflict" }, "schedule.manual_deferred");
-        return { run: runToWire(run) };
+        return { run: runToWire(run, clock()) };
       }
     },
 
@@ -274,10 +283,12 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
       const { items, nextCursor, totalCount } = await executePaginatedQuery(db, runs, eq(runs.scheduleId, row.id), parsed.page, {
         sortableColumns: { ranAt: runs.ranAt },
         defaultSort: { field: "ranAt", column: runs.ranAt },
-        select: { id: runs.id, scheduleId: runs.scheduleId, ranAt: runs.ranAt, outcome: runs.outcome, taskId: runs.taskId, detail: runs.detail, trigger: runs.trigger },
+        select: { id: runs.id, scheduleId: runs.scheduleId, ranAt: runs.ranAt, outcome: runs.outcome, taskId: runs.taskId, detail: runs.detail, trigger: runs.trigger,
+          slotKey: runs.slotKey, dueAt: runs.dueAt, attempts: runs.attempts, nextAttemptAt: runs.nextAttemptAt,
+          completedAt: runs.completedAt, claimedUntil: runs.claimedUntil, startedAt: runs.startedAt },
         extraCacheKey: row.id,
       });
-      return { runs: items.map(runToWire), page: { nextCursor, totalCount } };
+      return { runs: items.map((row: any) => runToWire(row, clock())), page: { nextCursor, totalCount } };
     },
   };
 
@@ -341,7 +352,7 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
 
   function admissionEvent(row: any, run: any) {
     publishDomainEvent(nc, run.outcome === "failed" ? "domain.schedule.ran" : "domain.schedule.queued", {
-      scheduleId: row.id, projectId: row.projectId, outcome: run.outcome, trigger: run.trigger,
+      scheduleId: row.id, runId: run.id, projectId: row.projectId, outcome: run.outcome, trigger: run.trigger,
     });
   }
 

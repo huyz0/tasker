@@ -292,6 +292,25 @@ var schedulesDeleteCmd = &cobra.Command{
 
 func runLine(r *healthv1.ScheduleRun) string {
 	line := fmt.Sprintf("%s %s (%s)", r.RanAt, r.Outcome, r.Trigger)
+	if r.Attempts != nil {
+		line += fmt.Sprintf("; attempts %d", r.GetAttempts())
+	}
+	if r.DueAt != nil {
+		line += "; scheduled for " + r.GetDueAt()
+	}
+	if r.NextAttemptAt != nil {
+		label := "creation eligible after "
+		if r.Outcome == "interrupted" {
+			label = "recovery eligible after "
+		}
+		line += "; " + label + r.GetNextAttemptAt()
+	}
+	if r.StartedAt != nil {
+		line += "; attempt started " + r.GetStartedAt()
+	}
+	if r.CompletedAt != nil {
+		line += "; completed " + r.GetCompletedAt()
+	}
 	if r.TaskId != nil {
 		line += " task " + r.GetTaskId()
 	}

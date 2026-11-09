@@ -30,6 +30,7 @@ const KEYS_BY_ENTITY: Record<string, string[]> = {
   // Keys match by whole element, so 'task' never covered it and the panel
   // supervisors watch agents in did not live-update.
   tasknote: ['handoffNotes', 'taskNotes', 'task', 'reports'],
+  schedule: ['schedules', 'schedule', 'scheduleRuns'],
   task_type: ['taskTypes', 'taskType'],
   task_status: ['taskTypes', 'taskType'],
   task_status_transition: ['taskTypes', 'taskType'],

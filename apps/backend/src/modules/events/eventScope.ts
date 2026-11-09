@@ -43,6 +43,7 @@ export interface SubscriptionScope {
  * for the same reason it does in `scopes.ts`.
  */
 const SUBJECT_FAMILY_SCOPE: Readonly<Record<string, string>> = {
+  schedule: 'tasks:read',                // getSchedule, listScheduleRuns
   task: 'tasks:read',                    // listTasks, getTask
   task_type: 'tasks:read',               // listTaskTypes
   task_status: 'tasks:read',

@@ -2836,6 +2836,12 @@ message ScheduleRun {
   optional string taskId = 5;
   optional string detail = 6;
   string trigger = 7;
+  optional string dueAt = 8;
+  optional int32 attempts = 9;
+  optional string nextAttemptAt = 10;
+  optional string completedAt = 11;
+  optional string claimedUntil = 12;
+  optional string startedAt = 13;
 }
 message CreateScheduleRequest {
   string projectId = 1;

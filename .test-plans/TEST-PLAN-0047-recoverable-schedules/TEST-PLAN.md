@@ -132,4 +132,36 @@ moon check --all and actual final-head CI must pass before merge.
 - **Given**: Visible history with a running lease and no subsequent stream events.
 - **When**: The lease expires and the bounded 15-second refresh interval elapses.
 - **Then**: A fresh history response renders interrupted and recovery eligibility,
-  without claiming a retry started; terminal-only history stops this polling.
+  without claiming a retry started; terminal-only history stops this polling
+  when the selected stream covers that schedule.
+
+### TC-012: Off-feed source reconciliation (T04, exit 4)
+
+- **Type**: GUI clock-controlled source-query tests and real-browser journey.
+- **Given**: Project A is selected and B's schedule has empty or terminal history.
+- **When**: A B run is created elsewhere without a B event reaching the A feed.
+- **Then**: Existing authorized detail/history reads refresh within 15 seconds,
+  new work and summary metadata appear, and its task link carries B. The
+  organization collection has bounded refresh while its stream is narrowed.
+- **When**: Scope coverage returns, detail unmounts or access is denied.
+- **Then**: Off-feed polling stops as appropriate; denial remains visible, and
+  aligned pending rows still refresh for silent expiry. No second stream or
+  silent project switch is introduced.
+
+### TC-013: Accepted manual feedback (T04, exit 4)
+
+- **Type**: GUI and CLI tests/browser.
+- **Given**: A manual response is queued/running/interrupted or terminal.
+- **When**: It is displayed and history later changes, or another schedule opens.
+- **Then**: Copy acknowledges acceptance and uses history for current state;
+  terminal results show safe reasons/task links. Old feedback does not appear
+  on another schedule, and recovery does not submit another manual intent.
+
+### TC-014: Editor survives background read failure (T04, exit 4)
+
+- **Type**: Clock-controlled GUI RPC test/browser.
+- **Given**: B's off-feed schedule is open for editing with typed unsaved text.
+- **When**: A detail refresh fails and subsequently recovers.
+- **Then**: The editor stays mounted with the same draft; a clear refresh error
+  offers Retry and recovery removes that error without replacing user text.
+  No save or additional manual creation request is submitted automatically.

@@ -117,11 +117,17 @@ recording; preserve its UTC cadence, creator attribution and ordinary-task model
   No new archive navigation or retry button is introduced in this milestone.
 - Existing history adds readable state labels, attempt/recovery times and live
   refresh from domain.schedule events. Existing semantic tones and typography
-  apply. While the visible page contains queued/running/interrupted rows, refetch
-  history every 15 seconds so a crashed worker needs no new event to expose
-  expiry. The server derives interrupted from lease expiry; eligibility does not
-  imply a retry started. Agents need tasks:read for schedule events, matching
-  schedule reads.
+  apply. While visible history contains queued/running/interrupted rows, refetch
+  it every 15 seconds so a crashed worker needs no new event to expose expiry.
+  Organization-wide schedule browsing can display a project outside the selected
+  project's feed: in that case poll its detail/history every 15 seconds even
+  when empty or terminal, and poll the organization list while its feed is
+  project-narrowed. Stop fallback on covering scope, unmount or access denial.
+  A second stream would duplicate connection state; silently switching projects
+  would override user intent. Use the existing authorized reads instead. M53
+  still owns application-wide scope/subscription alignment. The server derives
+  interrupted from lease expiry; eligibility does not imply a retry started.
+  Agents need tasks:read for schedule events, matching schedule reads.
 
 ## Consequences
 

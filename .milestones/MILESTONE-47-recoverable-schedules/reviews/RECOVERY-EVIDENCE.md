@@ -88,3 +88,24 @@ TASKER_REAL_INTEGRATION=1 TASKER_MYSQL_INTEGRATION=1 \
 This environment's private MySQL runner supplies credentials without printing
 them. Original development services and databases are preserved. No remote
 final-head CI or milestone completion is inferred from these local results.
+
+## T04 recovery and history candidate
+
+The expanded real process suite passes both SQLite and MySQL, including frozen
+workflow rollback before receipt commit and a SIGSTOP owner resuming after a
+successor takes its lease. Together with the populated MySQL upgrade, the restored
+run passes 3 tests / 118 assertions. Legacy history and nullable slots survive; a
+20-step multilingual snapshot larger than 64 KiB persists and executes its graph.
+Removing uniqueness fails the upgrade proof; removing the execution lease fence
+fails the resumed-owner process assertion. Sources are restored before verification.
+
+Four GUI faults fail: missing history polling, missing off-feed detail polling,
+editor unmount on refresh error, and task links using the selected project instead
+of their owning schedule. Silent-expiry projection and event scope/correlation
+regressions fail before correction. Focused GUI tests pass 35 cases. Source UX v3
+approves after draft preservation. Browser/rendered and full checks remain pending.
+
+Bun 1.3.11 experimentally mutates a received property used with
+`toMatchObject({taskId: expect.any(String)})` into a matcher object. The process
+proof now asserts primitive type/nonempty ID separately and compares the actual
+ID across storage and later process replay; it does not reuse matcher-mutated data.

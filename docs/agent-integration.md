@@ -611,19 +611,37 @@ tasker schedules create --name "Weekly triage" --weekdays mon,thu --hour 9 \
 tasker schedules create --name "Monthly report" --day 1 --hour 6 --workflow "$WF"
 
 tasker schedules list                 # next run, last outcome
-tasker schedules run "$S"             # fire one now, as you (agents may)
-tasker schedules runs "$S"            # created / skipped / failed, with reasons
+tasker schedules run "$S"             # accept a new creation intent, as you
+tasker schedules runs "$S"            # creation receipts and recovery details
 ```
 
 - **Cadence:** daily, chosen weekdays, or a day of the month (1-28), at an
-  hour in UTC. A minute's sweep fires each due schedule exactly once, even
-  with several backends; missed slots after downtime fire once, not once per
-  slot.
+  hour in UTC. A sweep durably accepts the original due slot and advances to
+  the first future slot in one transaction. Several backends share that one
+  occurrence; downtime does not produce one catch-up intent per missed slot.
+- **Recovery:** queued work survives restart. A fenced lease allows another
+  worker to resume interrupted creation using the accepted task/workflow inputs,
+  even after its template changes. Work, its terminal receipt and its events
+  commit together. The retained receipt reuses the original task ID after
+  ordinary idempotency keys expire. These are Tasker creation states, not
+  evidence that an external agent started or finished execution.
 - **No pile-ups:** by default a run is skipped while the previous run's task
   is unfinished (`--allow-overlap` turns that off). Every run is recorded.
 - **Who it runs as:** the work is created as the schedule's author (whoever
-  last saved it). If they lose access, runs fail visibly rather than run as
-  someone else. Created tasks carry `scheduleId`.
+  last saved it), or the caller of Run now. Current membership and the exact
+  original agent credential are checked again before creation; revoked,
+  expired or narrowed credentials fail visibly. Created tasks carry `scheduleId`.
+- **History:** `queued`, `running`, `interrupted`, `created`, `skipped`,
+  `failed` and `cancelled` describe work creation. New receipts expose attempt
+  count, scheduled due time, recovery eligibility and completion time when
+  applicable. `schedules runs --json` preserves these optional fields; legacy
+  receipts have no invented attempt or due metadata. Recovery eligibility is
+  the earliest retry time, not a promised execution time.
+- **Controls:** editing affects future admissions. Pause stops future scheduled
+  admissions while accepted work can recover; Run now still works. Delete
+  cancels waiting creation and retains receipts; already-created tasks remain.
+  Each Run now call is a new intent, so inspect history instead of repeating
+  it to poll or retry an accepted request.
 - **Agents** list and run schedules (`tasks:read` / `tasks:write`; MCP
   `list_schedules`, `run_schedule`); only people define them.
 
@@ -651,6 +669,8 @@ tasker schedules runs "$S"            # created / skipped / failed, with reasons
   started as ordinary tasks.
 - `ADR-0036` in `.specs/adr/` — why schedules use a small UTC cadence, fire
   once by compare-and-swap, and run as their author.
+- `ADR-0041` in `.specs/adr/` — durable occurrences, current-authority recovery,
+  fenced leases and atomic creation receipts supersede split firing.
 - `ADR-0027` in `.specs/adr/` — why an agent may release a claim it took but
   never an assignment a person gave it.
 - `.agents/skills/capture-belief/SKILL.md` — the same §9 guidance, written

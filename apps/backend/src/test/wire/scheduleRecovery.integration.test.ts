@@ -9,7 +9,9 @@ import { createContextValues } from '@connectrpc/connect';
 import { setupDatabase } from '../../db/db';
 import { currentUserIdKey } from '../../modules/auth/session';
 import { purgeExpiredIdempotencyKeys } from '../../lib/idempotency';
-import { createSchedulesHandler } from '../../modules/schedules/schedules.handler';
+import { createTaskManagementHandler } from '../../modules/tasks/tasks.handler';
+import { createWorkflowsHandler } from '../../modules/workflows/workflows.handler';
+import { createSchedulesHandler, createScheduleAdmission } from '../../modules/schedules/schedules.handler';
 
 const WORKER = String.raw`
 const c = JSON.parse(process.env.TASKER_SCHEDULE_CASE);
@@ -37,6 +39,11 @@ try {
     } });
     const executor = createScheduleExecutor(db, null, () => new Date(c.now));
     const lease = await executor.claim(c.runId);
+    if (c.mode === 'claim-wait') {
+      if (!lease) throw new Error('expected a recoverable lease');
+      await Bun.write(c.checkpoint, JSON.stringify({ lease }));
+      while (!await Bun.file(c.release).exists()) await Bun.sleep(20);
+    }
     if (lease) await executor.execute(lease);
     const receipt = await executor.loadRun(c.runId);
     result = { id: receipt?.id, outcome: receipt?.outcome, taskId: receipt?.taskId };
@@ -44,7 +51,7 @@ try {
     const admitted = await createScheduleAdmission(db, null, () => new Date(c.now))();
     result = { count: admitted.length, ids: admitted.map(x => x.run.id) };
   }
-  if (c.checkpoint) {
+  if (c.checkpoint && c.mode !== 'claim-wait') {
     await Bun.write(c.checkpoint, JSON.stringify(result));
     await new Promise(() => { setInterval(() => {}, 1000); });
   }
@@ -59,7 +66,7 @@ type Child = { process: Subprocess; output: Promise<string>; errors: Promise<str
 for (const driver of ['sqlite', 'mysql'] as Driver[]) {
   const enabled = process.env.TASKER_REAL_INTEGRATION === '1'
     && (driver === 'sqlite' || process.env.TASKER_MYSQL_INTEGRATION === '1');
-  (enabled ? it : it.skip)(`schedule admission survives real process contention and SIGKILL (${driver})`, async () => {
+  (enabled ? it : it.skip)(`schedule recovery survives real process contention, SIGKILL and stale SIGSTOP owners (${driver})`, async () => {
     const oldStandalone = process.env.STANDALONE, oldName = process.env.DB_NAME;
     const directory = mkdtempSync(join(tmpdir(), `tasker-schedule-${driver}-`));
     const path = join(directory, 'source.sqlite');
@@ -151,7 +158,11 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       const recoveryTime = new Date(now.getTime() + 61_000).toISOString();
       const after = worker(recoveryTime, afterPath, { mode: 'after-receipt', runId });
       const completed = await checkpoint(after, afterPath);
-      expect(completed).toMatchObject({ id: runId, outcome: 'created', taskId: expect.any(String) });
+      // Bun 1.3.11 mutates received properties matched with expect.any(String).
+      // Keep the real ID intact: later process replays must compare exact IDs.
+      expect(completed).toMatchObject({ id: runId, outcome: 'created' });
+      expect(typeof completed.taskId).toBe('string');
+      expect(completed.taskId.length).toBeGreaterThan(0);
       after.process.kill('SIGKILL'); await after.process.exited;
       expect((await db.select().from(S.tasks)).map((task: any) => task.id)).toEqual([completed.taskId]);
       expect(await db.select().from(S.domainEvents).where(eq(S.domainEvents.subject, 'domain.task.created'))).toHaveLength(1);
@@ -161,7 +172,58 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       expect(await purgeExpiredIdempotencyKeys(db, driver === 'sqlite', later)).toBeGreaterThan(0);
       const replay = await result(worker(later.toISOString(), undefined, { mode: 'execute', runId }));
       expect(replay).toEqual(completed);
+      expect(replay.taskId).toBe(completed.taskId);
       expect((await db.select().from(S.tasks)).map((task: any) => task.id)).toEqual([completed.taskId]);
+
+      const workflows = createWorkflowsHandler(db);
+      const { template } = await workflows.createWorkflowTemplate({ orgId, name: 'Frozen graph', description: 'Original parent',
+        steps: [{ key: 'first', title: 'First' }, { key: 'second', title: 'Second', dependsOn: ['first'] }],
+      }, { values });
+      await handler.updateSchedule({ id: schedule.id, name: 'Frozen graph run', cadence: 'daily', hourUtc: 9,
+        templateId: template.id, skipIfOpen: false }, { values });
+      now = new Date('2026-11-11T10:00:00Z');
+      const admittedGraph = await createScheduleAdmission(db, null, () => now)();
+      expect(admittedGraph).toHaveLength(1);
+      const graphId = admittedGraph[0]!.run.id;
+      await workflows.deleteWorkflowTemplate({ id: template.id }, { values });
+      const graphBeforePath = join(directory, 'graph-before.json');
+      const graphBefore = worker(now.toISOString(), graphBeforePath, { mode: 'before-receipt', runId: graphId });
+      const provisionalGraph = await checkpoint(graphBefore, graphBeforePath);
+      expect(provisionalGraph.provisional).toHaveLength(4);
+      graphBefore.process.kill('SIGKILL'); await graphBefore.process.exited;
+      expect((await db.select().from(S.tasks)).map((task: any) => task.id)).toEqual([completed.taskId]);
+      expect(await db.select().from(S.domainEvents).where(eq(S.domainEvents.subject, 'domain.task.workflow_started'))).toHaveLength(0);
+
+      const oldPath = join(directory, 'old-owner.json'), oldRelease = join(directory, 'old-release');
+      const oldTime = new Date(now.getTime() + 61_000);
+      const oldOwner = worker(oldTime.toISOString(), oldPath, { mode: 'claim-wait', runId: graphId, release: oldRelease });
+      const oldLease = await checkpoint(oldOwner, oldPath);
+      oldOwner.process.kill('SIGSTOP');
+      const successorPath = join(directory, 'successor.json'), successorRelease = join(directory, 'successor-release');
+      const successor = worker(new Date(oldTime.getTime() + 61_000).toISOString(), successorPath,
+        { mode: 'claim-wait', runId: graphId, release: successorRelease });
+      const nextLease = await checkpoint(successor, successorPath);
+      expect(nextLease.lease.token).not.toBe(oldLease.lease.token);
+      await Bun.write(oldRelease, 'continue'); oldOwner.process.kill('SIGCONT');
+      expect((await result(oldOwner)).outcome).toBe('running');
+      expect((await db.select().from(S.tasks)).map((task: any) => task.id)).toEqual([completed.taskId]);
+      const [owned] = await db.select().from(S.scheduleRuns).where(eq(S.scheduleRuns.id, graphId));
+      expect(owned.leaseToken).toBe(nextLease.lease.token);
+      await Bun.write(successorRelease, 'continue');
+      const graphResult = await result(successor);
+      expect(graphResult).toMatchObject({ id: graphId, outcome: 'created' });
+      expect(typeof graphResult.taskId).toBe('string');
+      expect(graphResult.taskId.length).toBeGreaterThan(0);
+      const graph = await db.select().from(S.tasks).where(eq(S.tasks.parentTaskId, graphResult.taskId));
+      expect(graph.map((task: any) => task.title).sort()).toEqual(['First', 'Second']);
+      const firstStep = graph.find((task: any) => task.title === 'First');
+      const secondStep = graph.find((task: any) => task.title === 'Second');
+      const links = await createTaskManagementHandler(db).listTaskLinks({ taskId: secondStep.id }, { values });
+      expect(links.blockedBy.map((task: any) => task.id)).toEqual([firstStep.id]);
+      const [graphReceipt] = await db.select().from(S.scheduleRuns).where(eq(S.scheduleRuns.id, graphId));
+      expect(graphReceipt).toMatchObject({ outcome: 'created', attempts: 3, frozenInputs: null, taskId: graphResult.taskId });
+      expect(await db.select().from(S.domainEvents).where(eq(S.domainEvents.subject, 'domain.task.workflow_started'))).toHaveLength(1);
+      expect(await db.select().from(S.domainEvents).where(eq(S.domainEvents.subject, 'domain.task.created'))).toHaveLength(4);
     } finally {
       for (const child of children) {
         if (child.process.exitCode === null) child.process.kill('SIGKILL');
