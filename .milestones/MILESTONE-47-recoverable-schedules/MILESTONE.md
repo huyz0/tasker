@@ -39,7 +39,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: .specs/adr/ADR-0041-recoverable-schedules.md; .test-plans/TEST-PLAN-0047-recoverable-schedules/.
   - **Verify**: Define unique schedule-plus-slot identity, frozen execution inputs, lease owner/version, failed retry policy and intentional missed-slot semantics.
 
-- [ ] **M47-T02** — Persist due occurrences atomically with advancing the schedule.
+- [x] **M47-T02** — Persist due occurrences atomically with advancing the schedule.
   - **Files**: apps/backend/src/modules/schedules/schedules.handler.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/.
   - **Verify**: Two sweepers create one occurrence; killing the winner after advancement leaves a resumable occurrence; editing/pausing a stale candidate cannot silently overwrite a new schedule.
 

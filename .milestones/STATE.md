@@ -1,8 +1,8 @@
 ---
 active_milestone: M47
-active_task: M47-T02
+active_task: null
 last_updated: 2026-11-09
-last_commit: 3f55f55
+last_commit: 6016b64
 blocked: false
 blocker: null
 ---
@@ -15,9 +15,13 @@ blocker: null
 
 ## Now
 
+**2026-11-09 — M47-T02 verified.** Durable occurrence admission and advancement commit together; immutable workflow defaults/graph, current revision/state, cleanup locks, tombstones and admission events are covered. Archived cleanup and post-insert rollback review findings are fixed; removing the unit fails the stronger regression. Real independent-process contention and post-admission SIGKILL pass SQLite/MySQL (26 assertions); all 35 local checks pass, independent v2 approves. Leased recovery, frozen-input consumption and atomic work/terminal receipts remain T03. Populated MySQL upgrade remains T04. Overall 40 tasks remain.
+
+**2026-11-09 — M48 published.** PR #4 merged as `3f55f55` after all ten final-head jobs passed (CI 42591652507; real integration 42591652468), including browser journeys and all 169 Storybook checks. M47 is rebased onto this main commit; total 355 tasks done, one dropped and 41 pending. Its T02 remains in progress. Only the owned M48 :8091/:5180 fixture was stopped/removed; existing development services and original relay WIP remain preserved.
+
 **2026-11-09 — M47-T02 in progress.** Durable admission/storage foundations precede leased sweep activation in T03. Regressions must cover original-slot identity, atomic advancement, frozen workflow defaults and stale edit/pause/delete candidates. No intermediate worker is published independently.
 
-**2026-11-09 — M47-T01 design approved.** ADR-0041, history UX and TC-001–011 define durable original-slot admission, frozen workflow/status inputs, fenced current-authority recovery and atomic work/receipt/events. Independent reliability and human-workflow re-review approve after concrete history/expiry/action/link corrections. All 35 local checks pass serially; the initial existing dashboard setup-hook timeout passes three isolated reruns. T02 admission is next. This branch still starts from M46; reconcile M48 publication and four task completions on rebase.
+**2026-11-09 — M47-T01 design approved.** ADR-0041, history UX and TC-001–011 define durable original-slot admission, frozen workflow/status inputs, fenced current-authority recovery and atomic work/receipt/events. Independent reliability and human-workflow re-review approve after concrete history/expiry/action/link corrections. All 35 local checks pass serially; the initial existing dashboard setup-hook timeout passes three isolated reruns. T02 admission is next. This branch is now rebased onto published M48; ledger totals retain its four completions.
 
 **2026-11-09 — M48 complete: 4/4 tasks and 4/4 exit criteria.** Reconnect and overflow reconcile current source data; bounded jitter, per-request CLI deadlines and signal/terminal cleanup are verified. All 35 local checks, four browser journeys, four native CLI journeys, deliberate fault checks and independent v8 review pass. PR #4 must obtain final-head remote CI before merge. M47-T01 is next; its dependencies M45/M46 are already published, allowing independent design during CI with rebase/ledger reconciliation before publication. Overall 42 tasks remain.
 
@@ -1876,7 +1880,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
-| M47 | Recoverable Schedules | in-progress | M45, M46 | 4 | 1 |
+| M47 | Recoverable Schedules | in-progress | M45, M46 | 4 | 2 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
@@ -1889,7 +1893,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 355 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 356 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

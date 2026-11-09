@@ -99,7 +99,7 @@ export function orderSteps(steps: Step[]): Step[] {
 
 const iso = (d: unknown) => (d instanceof Date ? d.toISOString() : d ? String(d) : "");
 
-export function createWorkflowsHandler(db: any, nc: any = null) {
+export function createWorkflowOperations(db: any, nc: any = null) {
   const isStandalone = process.env.STANDALONE === "true";
   const S = isStandalone ? schemaSqlite : schemaMysql;
   const templates = S.workflowTemplates as any;
@@ -165,6 +165,25 @@ export function createWorkflowsHandler(db: any, nc: any = null) {
     const [row] = await db.select().from(templates).where(eq(templates.id, id)).limit(1);
     if (!row) throw new ConnectError("workflow template not found", Code.NotFound);
     return row;
+  }
+
+  /** Internal immutable input preparation; never registered as an RPC. */
+  async function freezeWorkflow(templateId: string, projectId: string, title: string) {
+    const row = await load(templateId);
+    const orgId = await getProjectOrgId(db, projectId);
+    if (row.orgId !== orgId || (row.projectId && row.projectId !== projectId)) {
+      throw new ConnectError("workflow template not available in this project", Code.FailedPrecondition);
+    }
+    let steps: Step[];
+    try { steps = StepsSchema.parse(JSON.parse(row.steps)); }
+    catch { throw new ConnectError("workflow template inputs are invalid", Code.InvalidArgument); }
+    orderSteps(steps);
+    const defaults = await checkTypes(orgId, steps);
+    return { templateId: row.id as string, orgId, projectId, title,
+      description: (row.description ?? "") as string,
+      steps: steps.map(step => ({ ...step, dependsOn: [...new Set(step.dependsOn)],
+        status: step.status ?? (step.taskTypeId ? defaults.get(step.taskTypeId) : undefined) ?? "todo" })),
+    };
   }
 
   const handlers = {
@@ -289,8 +308,12 @@ export function createWorkflowsHandler(db: any, nc: any = null) {
       });
     },
   };
-  return {
+  return { freezeWorkflow, handlers: {
     ...handlers,
     instantiateWorkflow: transactionalOperation(db, handlers.instantiateWorkflow),
-  };
+  } };
+}
+
+export function createWorkflowsHandler(db: any, nc: any = null) {
+  return createWorkflowOperations(db, nc).handlers;
 }

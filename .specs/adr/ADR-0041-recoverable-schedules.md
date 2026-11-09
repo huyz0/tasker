@@ -56,6 +56,8 @@ recording; preserve its UTC cadence, creator attribution and ordinary-task model
   new scheduled admissions but retains admitted intents. Manual runs of paused
   schedules remain allowed. Deleting tombstones the schedule, prevents admission
   and atomically cancels unstarted recoverable occurrences. It retains history.
+  Archived project rows are still locked for authorized schedule edit/cleanup;
+  archival must not prevent an administrator pausing/deleting pending work.
 
 ### Fenced execution and atomic result
 
