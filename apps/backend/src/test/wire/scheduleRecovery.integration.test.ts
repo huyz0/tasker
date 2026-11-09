@@ -8,16 +8,42 @@ import { eq } from 'drizzle-orm';
 import { createContextValues } from '@connectrpc/connect';
 import { setupDatabase } from '../../db/db';
 import { currentUserIdKey } from '../../modules/auth/session';
+import { purgeExpiredIdempotencyKeys } from '../../lib/idempotency';
 import { createSchedulesHandler } from '../../modules/schedules/schedules.handler';
 
 const WORKER = String.raw`
 const c = JSON.parse(process.env.TASKER_SCHEDULE_CASE);
 const { setupDatabase } = await import(c.sourceRoot + '/db/db.ts');
 const { createScheduleAdmission } = await import(c.sourceRoot + '/modules/schedules/schedules.handler.ts');
-const db = await setupDatabase(c.driver, c.path);
+const real = await setupDatabase(c.driver, c.path);
+let db = real;
 try {
-  const admitted = await createScheduleAdmission(db, null, () => new Date(c.now))();
-  const result = { count: admitted.length, ids: admitted.map(x => x.run.id) };
+  const { setDurableDomainEventCapture } = await import(c.sourceRoot + '/lib/natsCorrelation.ts');
+  const { captureDomainEvent } = await import(c.sourceRoot + '/lib/domainEventOutbox.ts');
+  setDurableDomainEventCapture((tx, standalone, event) => captureDomainEvent(tx, standalone, event, { brokerRequired: false }));
+  let result;
+  if (c.mode && c.mode !== 'admit') {
+    const S = await import(c.sourceRoot + '/db/schema.' + c.driver + '.ts');
+    const { createScheduleExecutor } = await import(c.sourceRoot + '/modules/schedules/occurrenceExecution.ts');
+    if (c.mode === 'before-receipt') db = new Proxy(real, { get(target, key) {
+      if (key === 'update') return table => table === S.scheduleRuns ? {
+        set: value => value.outcome === 'created' ? { where: async () => {
+          const provisional = await db.select({ id: S.tasks.id }).from(S.tasks);
+          await Bun.write(c.checkpoint, JSON.stringify({ provisional }));
+          await new Promise(() => { setInterval(() => {}, 1000); });
+        } } : target.update(table).set(value),
+      } : target.update(table);
+      return Reflect.get(target, key);
+    } });
+    const executor = createScheduleExecutor(db, null, () => new Date(c.now));
+    const lease = await executor.claim(c.runId);
+    if (lease) await executor.execute(lease);
+    const receipt = await executor.loadRun(c.runId);
+    result = { id: receipt?.id, outcome: receipt?.outcome, taskId: receipt?.taskId };
+  } else {
+    const admitted = await createScheduleAdmission(db, null, () => new Date(c.now))();
+    result = { count: admitted.length, ids: admitted.map(x => x.run.id) };
+  }
   if (c.checkpoint) {
     await Bun.write(c.checkpoint, JSON.stringify(result));
     await new Promise(() => { setInterval(() => {}, 1000); });
@@ -43,10 +69,10 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
     const orgId = `org-${key}`, userId = `user-${key}`, projectId = `project-${key}`;
     const children: Child[] = [];
     let db: any, admin: mysql.Connection | undefined;
-    function worker(now: string, checkpoint?: string) {
+    function worker(now: string, checkpoint?: string, extra: Record<string, unknown> = {}) {
       const process = spawn({ cmd: [Bun.argv[0]!, '--eval', WORKER], cwd: join(sourceRoot, '..'),
         env: { ...globalThis.process.env, LOG_LEVEL: 'silent', NODE_ENV: 'test', TASKER_SCHEDULE_CASE:
-          JSON.stringify({ sourceRoot, driver, path, now, checkpoint }) }, stdout: 'pipe', stderr: 'pipe' });
+          JSON.stringify({ sourceRoot, driver, path, now, checkpoint, ...extra }) }, stdout: 'pipe', stderr: 'pipe' });
       const child = { process, output: new Response(process.stdout).text(), errors: new Response(process.stderr).text() };
       children.push(child); return child;
     }
@@ -57,6 +83,15 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
         expect({ code, errors }).toEqual({ code: 0, errors: '' });
         return JSON.parse(out);
       } finally { clearTimeout(timer); }
+    }
+    async function checkpoint(child: Child, name: string) {
+      const deadline = Date.now() + 15_000;
+      while (!existsSync(name) && Date.now() < deadline) {
+        if (child.process.exitCode !== null) throw new Error(`worker exited before checkpoint: ${await child.errors}`);
+        await Bun.sleep(20);
+      }
+      expect(existsSync(name)).toBe(true);
+      return Bun.file(name).json();
     }
     try {
       process.env.STANDALONE = driver === 'sqlite' ? 'true' : 'false';
@@ -82,15 +117,15 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       expect(await db.select().from(S.scheduleRuns)).toHaveLength(1);
       expect(await db.select().from(S.tasks)).toHaveLength(0);
       now = new Date('2026-11-10T10:00:00Z');
-      const checkpoint = join(directory, 'committed.json');
-      const owner = worker(now.toISOString(), checkpoint);
+      const admittedCheckpoint = join(directory, 'committed.json');
+      const owner = worker(now.toISOString(), admittedCheckpoint);
       const deadline = Date.now() + 15_000;
-      while (!existsSync(checkpoint) && Date.now() < deadline) {
+      while (!existsSync(admittedCheckpoint) && Date.now() < deadline) {
         if (owner.process.exitCode !== null) throw new Error(`owner exited before admission: ${await owner.errors}`);
         await Bun.sleep(20);
       }
-      expect(existsSync(checkpoint)).toBe(true);
-      const committed = await Bun.file(checkpoint).json();
+      expect(existsSync(admittedCheckpoint)).toBe(true);
+      const committed = await Bun.file(admittedCheckpoint).json();
       expect(committed.count).toBe(1);
       owner.process.kill('SIGKILL');
       await owner.process.exited;
@@ -100,6 +135,33 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       expect((await result(worker(now.toISOString()))).count).toBe(0);
       expect((await handler.getSchedule({ id: schedule.id }, { values })).schedule.nextRunAt).toBe('2026-11-11T09:00:00.000Z');
       expect(await db.select().from(S.tasks)).toHaveLength(0);
+
+      const runId = raced.find(value => value.count === 1)!.ids[0];
+      const beforePath = join(directory, 'before-receipt.json');
+      const before = worker(now.toISOString(), beforePath, { mode: 'before-receipt', runId });
+      const provisional = await checkpoint(before, beforePath);
+      expect(provisional.provisional).toHaveLength(1);
+      before.process.kill('SIGKILL'); await before.process.exited;
+      expect(await db.select().from(S.tasks)).toHaveLength(0);
+      expect(await db.select().from(S.domainEvents).where(eq(S.domainEvents.subject, 'domain.task.created'))).toHaveLength(0);
+      const [running] = await db.select().from(S.scheduleRuns).where(eq(S.scheduleRuns.id, runId));
+      expect(running).toMatchObject({ outcome: 'running', attempts: 1, taskId: null });
+
+      const afterPath = join(directory, 'after-receipt.json');
+      const recoveryTime = new Date(now.getTime() + 61_000).toISOString();
+      const after = worker(recoveryTime, afterPath, { mode: 'after-receipt', runId });
+      const completed = await checkpoint(after, afterPath);
+      expect(completed).toMatchObject({ id: runId, outcome: 'created', taskId: expect.any(String) });
+      after.process.kill('SIGKILL'); await after.process.exited;
+      expect((await db.select().from(S.tasks)).map((task: any) => task.id)).toEqual([completed.taskId]);
+      expect(await db.select().from(S.domainEvents).where(eq(S.domainEvents.subject, 'domain.task.created'))).toHaveLength(1);
+      const [receipt] = await db.select().from(S.scheduleRuns).where(eq(S.scheduleRuns.id, runId));
+      expect(receipt).toMatchObject({ outcome: 'created', attempts: 2, taskId: completed.taskId, frozenInputs: null });
+      const later = new Date(now.getTime() + 3 * 86_400_000);
+      expect(await purgeExpiredIdempotencyKeys(db, driver === 'sqlite', later)).toBeGreaterThan(0);
+      const replay = await result(worker(later.toISOString(), undefined, { mode: 'execute', runId }));
+      expect(replay).toEqual(completed);
+      expect((await db.select().from(S.tasks)).map((task: any) => task.id)).toEqual([completed.taskId]);
     } finally {
       for (const child of children) {
         if (child.process.exitCode === null) child.process.kill('SIGKILL');
@@ -111,5 +173,5 @@ for (const driver of ['sqlite', 'mysql'] as Driver[]) {
       if (oldName === undefined) delete process.env.DB_NAME; else process.env.DB_NAME = oldName;
       rmSync(directory, { recursive: true, force: true });
     }
-  }, 60_000);
+  }, 120_000);
 }

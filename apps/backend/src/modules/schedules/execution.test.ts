@@ -153,11 +153,22 @@ describe('leased schedule execution (M47-T03)', () => {
     return { principal, agentId, tokenId, roleId: `role-${key}` };
   }
 
-  for (const change of ['revoked', 'expired', 'invalid-expiry', 'scope-removed', 'agent-deleted', 'binding-changed'] as const) {
+  for (const change of ['revoked', 'expired', 'invalid-expiry', 'scope-removed', 'agent-deleted', 'binding-changed', 'replacement-token', 'org-rebound'] as const) {
     it(`revalidates the exact manual credential after admission (${change})`, async () => {
       const { principal, agentId, tokenId, roleId } = await agentCredential();
       const run = await createManualScheduleAdmission(db, nc, clock)(schedule.id, principal);
       expect(JSON.parse(run.actorJson)).toEqual({ kind: 'agent', orgId, agentId, tokenId });
+      if (change === 'replacement-token') {
+        await db.update(S.apiTokens).set({ revokedAt: now }).where(eq(S.apiTokens.id, tokenId));
+        await db.insert(S.apiTokens).values({ id: `replacement-${tokenId}`, agentId, orgId, name: 'Replacement', tokenPrefix: 'fixture',
+          tokenHash: crypto.randomUUID().replaceAll('-', '').repeat(2), scopes: '["tasks:read","tasks:write"]',
+          createdBy: userId, createdAt: new Date(now.getTime() + 1000), expiresAt: new Date(now.getTime() + 3600_000) });
+      }
+      if (change === 'org-rebound') {
+        const other = `org-${crypto.randomUUID()}`;
+        await db.insert(S.organizations).values({ id: other, name: 'Other', slug: other, createdAt: now });
+        await db.update(S.apiTokens).set({ orgId: other }).where(eq(S.apiTokens.id, tokenId));
+      }
       if (change === 'revoked') await db.update(S.apiTokens).set({ revokedAt: now }).where(eq(S.apiTokens.id, tokenId));
       if (change === 'invalid-expiry') await db.run(sql`UPDATE api_tokens SET expires_at = 'invalid' WHERE id = ${tokenId}`);
       if (change === 'expired') await db.update(S.apiTokens).set({ expiresAt: now }).where(eq(S.apiTokens.id, tokenId));
@@ -228,6 +239,116 @@ describe('leased schedule execution (M47-T03)', () => {
     expect((await db.select().from(S.scheduleRuns))[0].outcome).toBe('queued');
     expect(await executor.runPending()).toBe(1);
     expect(await db.select().from(S.tasks)).toHaveLength(1);
+  });
+
+  for (const change of ['membership', 'role', 'project-archived'] as const) {
+    it(`revalidates accepted human intent authority (${change})`, async () => {
+      const run = await createManualScheduleAdmission(db, nc, clock)(schedule.id, { kind: 'user', userId });
+      if (change === 'membership') await db.delete(S.organizationMembers).where(eq(S.organizationMembers.userId, userId));
+      if (change === 'role') await db.update(S.organizationMembers).set({ role: 'viewer' }).where(eq(S.organizationMembers.userId, userId));
+      if (change === 'project-archived') await db.update(S.projects).set({ deletedAt: now }).where(eq(S.projects.id, projectId));
+      const executor = createScheduleExecutor(db, nc, clock);
+      await executor.execute((await executor.claim(run.id))!);
+      expect(await db.select().from(S.tasks)).toHaveLength(0);
+      expect(await executor.loadRun(run.id)).toMatchObject({ outcome: 'failed', frozenInputs: null });
+    });
+  }
+
+  it('rolls back a partially created frozen graph before recording business failure', async () => {
+    const wf = createWorkflowsHandler(db, nc);
+    const { template } = await wf.createWorkflowTemplate({ orgId, name: 'Workflow', steps: [
+      { key: 'a', title: 'First' }, { key: 'b', title: 'Second', dependsOn: ['a'] },
+    ] }, ctx);
+    await handler.updateSchedule({ id: schedule.id, name: 'Workflow', cadence: 'daily', hourUtc: 9, templateId: template.id }, ctx);
+    now = new Date('2026-11-10T10:00:00Z');
+    const admitted = await createScheduleAdmission(db, nc, clock)();
+    const run = admitted[0]!.run, inputs = JSON.parse(run.frozenInputs);
+    inputs.workflow.steps[1].status = 'fixture-invalid-status';
+    await db.update(S.scheduleRuns).set({ frozenInputs: JSON.stringify(inputs) }).where(eq(S.scheduleRuns.id, run.id));
+    nc.clear();
+    await createScheduleSweep(db, nc, clock)();
+    expect(await db.select().from(S.tasks)).toHaveLength(0);
+    expect(nc.publishedMessages.filter((m: any) => m.subject.startsWith('domain.task.'))).toHaveLength(0);
+    const [receipt] = await db.select().from(S.scheduleRuns);
+    expect(receipt).toMatchObject({ outcome: 'failed', taskId: null, frozenInputs: null });
+    expect(receipt.detail).not.toContain('fixture-invalid-status');
+  });
+
+  it('isolates a terminal receipt failure from other due schedules', async () => {
+    now = new Date('2026-11-09T08:00:00Z');
+    const fine = (await handler.createSchedule({ projectId, name: 'Fine', cadence: 'daily', hourUtc: 9, taskTitle: 'Fine task' }, ctx)).schedule;
+    now = new Date('2026-11-09T10:00:00Z');
+    const failing = new Proxy(db, { get(target, key) {
+      if (key === 'update') return (table: any) => table === S.scheduleRuns ? {
+        set: (value: any) => value.outcome === 'created' ? { where: async (condition: any) => {
+          const [task] = await target.select({ title: S.tasks.title }).from(S.tasks).where(eq(S.tasks.id, value.taskId));
+          if (task.title.startsWith('Original task')) throw new Error('fixture-sensitive-body');
+          return await target.update(table).set(value).where(condition);
+        } } : target.update(table).set(value),
+      } : target.update(table);
+      return Reflect.get(target, key);
+    } });
+    expect(await createScheduleSweep(failing, nc, clock)()).toBe(2);
+    expect((await db.select().from(S.tasks)).map((task: any) => task.title)).toEqual(['Fine task — 2026-11-09']);
+    const receipts = await db.select().from(S.scheduleRuns);
+    expect(receipts.find((run: any) => run.scheduleId === schedule.id).outcome).toBe('interrupted');
+    expect(receipts.find((run: any) => run.scheduleId === fine.id).outcome).toBe('created');
+    expect(JSON.stringify(receipts)).not.toContain('fixture-sensitive-body');
+    expect(JSON.stringify(nc.publishedMessages)).not.toContain('fixture-sensitive-body');
+  });
+
+  it('bounds retry backoff while retaining the same interrupted intent', async () => {
+    const failing = new Proxy(db, { get(target, key) {
+      if (key === 'update') return (table: any) => table === S.scheduleRuns ? {
+        set: (value: any) => value.outcome === 'created' ? { where: async () => { throw new Error('fixture transient failure'); } }
+          : target.update(table).set(value),
+      } : target.update(table);
+      return Reflect.get(target, key);
+    } });
+    let runId: string | undefined;
+    for (const delay of [5000, 10000, 20000, 40000, 80000, 160000, 300000, 300000]) {
+      await createScheduleSweep(failing, nc, clock)();
+      const [run] = await db.select().from(S.scheduleRuns);
+      runId ??= run.id;
+      expect(run).toMatchObject({ id: runId, outcome: 'interrupted', taskId: null });
+      expect(run.nextAttemptAt.getTime() - now.getTime()).toBe(delay);
+      expect(await db.select().from(S.tasks)).toHaveLength(0);
+      now = run.nextAttemptAt;
+    }
+    expect(await db.select().from(S.scheduleRuns)).toHaveLength(1);
+  });
+
+  it('returns its accepted manual intent when lease acquisition hits transient contention', async () => {
+    await handler.updateSchedule({ id: schedule.id, name: 'Paused', cadence: 'daily', hourUtc: 9, taskTitle: 'Original task', active: false }, ctx);
+    let conflicted = false;
+    const busy = new Proxy(db, { get(target, key) {
+      if (key === 'select') return (...args: any[]) => {
+        if (!conflicted && args[0]?.scheduleId === S.scheduleRuns.scheduleId) {
+          conflicted = true;
+          return { from: () => ({ where: () => ({ limit: async () => {
+            throw Object.assign(new Error('injected manual lease contention'), { code: 'SQLITE_BUSY' });
+          } }) }) };
+        }
+        return target.select(...args);
+      };
+      return Reflect.get(target, key);
+    } });
+    const response = await createSchedulesHandler(busy, nc, clock).runSchedule({ id: schedule.id }, ctx);
+    expect(conflicted).toBe(true);
+    expect(response.run).toMatchObject({ outcome: 'queued', trigger: 'manual' });
+    expect(await db.select().from(S.scheduleRuns)).toHaveLength(1);
+    await createScheduleSweep(db, nc, clock)();
+    expect(await db.select().from(S.tasks)).toHaveLength(1);
+    expect((await db.select().from(S.scheduleRuns))[0]).toMatchObject({ id: response.run.id, outcome: 'created' });
+  });
+
+  it('serializes a manual run racing the scheduled sweeper under skip-if-open', async () => {
+    await Promise.all([handler.runSchedule({ id: schedule.id }, ctx), createScheduleSweep(db, nc, clock)()]);
+    const receipts = await db.select().from(S.scheduleRuns);
+    expect(receipts.map((run: any) => run.trigger).sort()).toEqual(['manual', 'schedule']);
+    expect(receipts.map((run: any) => run.outcome).sort()).toEqual(['created', 'skipped']);
+    expect(await db.select().from(S.tasks)).toHaveLength(1);
+    expect((await handler.getSchedule({ id: schedule.id }, ctx)).schedule.nextRunAt).toBe('2026-11-10T09:00:00.000Z');
   });
 
 });

@@ -43,7 +43,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/modules/schedules/schedules.handler.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/.
   - **Verify**: Two sweepers create one occurrence; killing the winner after advancement leaves a resumable occurrence; editing/pausing a stale candidate cannot silently overwrite a new schedule.
 
-- [ ] **M47-T03** — Execute leased occurrences through keyed task/workflow operations and durable run recording.
+- [x] **M47-T03** — Execute leased occurrences through keyed task/workflow operations and durable run recording.
   - **Files**: apps/backend/src/modules/schedules/schedules.handler.ts; apps/backend/src/modules/tasks/tasks.handler.ts; apps/backend/src/modules/workflows/workflows.handler.ts.
   - **Verify**: Kill before the atomic work/receipt commit and recover one complete graph; kill after commit and retain the original task beyond retry-key expiry; enforce skip-if-open across manual and scheduled execution.
 

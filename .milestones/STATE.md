@@ -1,8 +1,8 @@
 ---
 active_milestone: M47
-active_task: M47-T03
+active_task: null
 last_updated: 2026-11-09
-last_commit: 86f97fa
+last_commit: ad3993c
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M47-T03 verified.** Leased recovery consumes frozen inputs, revalidates original authority, and commits work/receipt/events atomically. Four behavioral faults plus a real orphan-after-SIGKILL fault fail; restored SQLite/MySQL process proofs pass 54 assertions beyond key expiry. Manual failure summaries, scan conflicts, finite expiry and occurrence-local event context are corrected. Independent v6 approves; all 35 local checks pass (backend2165/zero failures). T04 still owns populated MySQL upgrade, full graph/SIGSTOP matrix, bounded history UI refresh and docs. Draft PR #5 remains unmergeable until then and final-head CI. Overall 39 tasks remain.
 
 **2026-11-09 — M47-T03 in progress.** Draft PR #5 is pushed at verified T01/T02 head 86f97fa. Replace the legacy split firing path with recoverable leases and atomic work/terminal receipts; current original token authority and frozen graph/status inputs must survive restart without weakening tenant boundaries. Forty overall tasks remain; no intermediate head is ready to merge.
 
@@ -1882,7 +1884,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
-| M47 | Recoverable Schedules | in-progress | M45, M46 | 4 | 2 |
+| M47 | Recoverable Schedules | in-progress | M45, M46 | 4 | 3 |
 | M48 | Client Recovery | done | M44 | 4 | 4 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
@@ -1895,7 +1897,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 356 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 357 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

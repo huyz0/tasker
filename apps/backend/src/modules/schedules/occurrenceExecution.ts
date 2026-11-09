@@ -77,7 +77,15 @@ export function createScheduleExecutor(db: any, nc: any = null, clock: () => Dat
       let runQuery = db.select().from(runs).where(eq(runs.id, id));
       if (!standalone) runQuery = runQuery.for('update');
       const [row] = await runQuery.limit(1);
-      return row ? action(row, schedule) : null;
+      if (!row) return null;
+      let actor: { kind: 'user'; userId: string } | { kind: 'agent'; agentId: string } | undefined;
+      try {
+        const original = ActorSchema.parse(JSON.parse(row.actorJson));
+        actor = original.kind === 'user' ? { kind: 'user', userId: original.userId } : { kind: 'agent', agentId: original.agentId };
+      } catch { /* Invalid persisted actors fail validation before work creation. */ }
+      return runWithRequestContext({ requestId: `schedule-${row.id}`, orgId: schedule.orgId,
+        projectId: schedule.projectId, actor,
+      }, () => action(row, schedule));
     });
   }
 

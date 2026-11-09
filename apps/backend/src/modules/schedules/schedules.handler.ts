@@ -1,3 +1,4 @@
+import { runWithRequestContext } from "../../lib/requestContext";
 import { createScheduleExecutor } from "./occurrenceExecution";
 import { transactionConflict } from "../../db/errors";
 import { withUnitOfWork } from '../../db/access';
@@ -252,11 +253,17 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
       const { id } = IdSchema.parse(req);
       const run = await admitManualSchedule(id, principal);
       if (run.outcome !== "queued") return { run: runToWire(run) };
-      const lease = await executor.claim(run.id);
-      if (lease) await executor.execute(lease);
-      const result = await executor.loadRun(run.id);
-      if (!result) throw new ConnectError("schedule run no longer exists", Code.NotFound);
-      return { run: runToWire(result) };
+      try {
+        const lease = await executor.claim(run.id);
+        if (lease) await executor.execute(lease);
+        const result = await executor.loadRun(run.id);
+        if (!result) throw new ConnectError("schedule run no longer exists", Code.NotFound);
+        return { run: runToWire(result) };
+      } catch (error) {
+        if (!transactionConflict(error)) throw error;
+        logger.warn({ occurrenceId: run.id, failure: "manual_execution_conflict" }, "schedule.manual_deferred");
+        return { run: runToWire(run) };
+      }
     },
 
     async listScheduleRuns(req: unknown, { values }: { values: any }) {
@@ -273,6 +280,14 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
       return { runs: items.map(runToWire), page: { nextCursor, totalCount } };
     },
   };
+
+  function inOccurrenceScope<T>(row: any, principal: Principal, action: () => T): T {
+    return runWithRequestContext({ requestId: `schedule-${row.id}-${crypto.randomUUID()}`,
+      orgId: row.orgId, projectId: row.projectId,
+      actor: principal.kind === "user" ? { kind: "user", userId: principal.userId }
+        : { kind: "agent", agentId: principal.agentId },
+    }, action);
+  }
 
   /** Called only while the project and schedule locks belong to the admission. */
   async function prepareOccurrence(row: any, principal: Principal, trigger: "schedule" | "manual", now: Date) {
@@ -312,7 +327,7 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
   }
 
   async function admitManualSchedule(id: string, principal: Principal) {
-    return mutateSchedule(id, async row => {
+    return mutateSchedule(id, row => inOccurrenceScope(row, principal, async () => {
       const fresh = await executor.authorizeActor(principal, row.orgId);
       const prepared = await prepareOccurrence(row, fresh, "manual", clock());
       await db.insert(runs).values(prepared);
@@ -321,7 +336,7 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
       }
       admissionEvent(row, prepared);
       return prepared;
-    });
+    }));
   }
 
   function admissionEvent(row: any, run: any) {
@@ -356,13 +371,15 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
           const [row] = await query.limit(1);
           if (!row || !row.active || row.deletedAt || row.revision !== candidate.revision
             || new Date(row.nextRunAt).getTime() !== new Date(candidate.nextRunAt).getTime()) return null;
-          const run = await prepareOccurrence(row, { kind: "user", userId: row.createdBy }, "schedule", now);
-          await db.insert(runs).values(run);
-          await db.update(schedules).set({ nextRunAt: nextRunAfter(specOf(row), now),
-            ...(run.outcome === "failed" ? { lastRunAt: now, lastOutcome: "failed" } : {}) })
-            .where(and(eq(schedules.id, row.id), eq(schedules.revision, row.revision), eq(schedules.active, true), isNull(schedules.deletedAt)));
-          admissionEvent(row, run);
-          return { row, run };
+          return inOccurrenceScope(row, { kind: "user", userId: row.createdBy }, async () => {
+            const run = await prepareOccurrence(row, { kind: "user", userId: row.createdBy }, "schedule", now);
+            await db.insert(runs).values(run);
+            await db.update(schedules).set({ nextRunAt: nextRunAfter(specOf(row), now),
+              ...(run.outcome === "failed" ? { lastRunAt: now, lastOutcome: "failed" } : {}) })
+              .where(and(eq(schedules.id, row.id), eq(schedules.revision, row.revision), eq(schedules.active, true), isNull(schedules.deletedAt)));
+            admissionEvent(row, run);
+            return { row, run };
+          });
         });
         if (result) admitted.push(result);
       } catch {
