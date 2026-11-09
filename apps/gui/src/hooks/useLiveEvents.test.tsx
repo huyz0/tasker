@@ -183,7 +183,7 @@ describe('useLiveEvents', () => {
     unmount();
   });
 
-  it('replaces a still-pending initial snapshot on reconnect and ignores its late result', async () => {
+  it.each(['reconnect', 'resync'])('replaces a still-pending initial snapshot on %s and ignores its late result', async recovery => {
     vi.useFakeTimers();
     const first = fakeStream(), second = fakeStream();
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } });
@@ -199,12 +199,38 @@ describe('useLiveEvents', () => {
     await act(async () => { first.push('stream.ready'); });
     expect(read).toHaveBeenCalledTimes(1);
     expect(view.result.current).toBeUndefined();
-    await act(async () => { first.fail(new Error('dropped')); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(1000); second.push('stream.ready'); await vi.advanceTimersByTimeAsync(0); });
+    if (recovery === 'reconnect') {
+      await act(async () => { first.fail(new Error('dropped')); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); second.push('stream.ready'); await vi.advanceTimersByTimeAsync(0); });
+    } else {
+      await act(async () => { first.push('stream.resync'); await vi.advanceTimersByTimeAsync(0); });
+    }
     expect(read).toHaveBeenCalledTimes(2);
     expect(view.result.current).toBe('current source');
     await act(async () => { resolveOld('stale initial snapshot'); await vi.advanceTimersByTimeAsync(0); });
     expect(view.result.current).toBe('current source');
+    view.unmount(); queryClient.clear();
+  });
+
+  it('refetches a dropped entity on resync while another entity survives on the same stream', async () => {
+    vi.useFakeTimers();
+    const stream = fakeStream();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } });
+    let taskValue = 'old task';
+    const read = vi.fn(async () => taskValue);
+    const client = { subscribeEvents: vi.fn(() => stream) };
+    const view = renderHook(() => {
+      const live = useLiveEvents({ client });
+      return { ...live, task: useQuery({ queryKey: ['tasks', 'project-1'], queryFn: read }).data };
+    }, { wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider> });
+    await act(async () => { stream.push('stream.ready'); await vi.advanceTimersByTimeAsync(0); });
+    expect(view.result.current.task).toBe('old task');
+    taskValue = 'task whose event was dropped';
+    await act(async () => { stream.push('stream.resync'); stream.push('domain.artifact.updated'); await vi.advanceTimersByTimeAsync(0); });
+    expect(view.result.current.task).toBe('task whose event was dropped');
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(view.result.current.status).toBe('live');
+    expect(client.subscribeEvents).toHaveBeenCalledTimes(1);
     view.unmount(); queryClient.clear();
   });
 

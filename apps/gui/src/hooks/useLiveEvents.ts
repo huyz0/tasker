@@ -3,7 +3,7 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { EventService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { transport } from '../lib/connectTransport';
-import { queryKeysForSubject, isControlFrame } from '../lib/eventQueryKeys';
+import { queryKeysForSubject, isControlFrame, isResyncFrame } from '../lib/eventQueryKeys';
 
 /**
  * The live event feed, as the GUI consumes it (M08-T08, M08-T09).
@@ -129,7 +129,7 @@ export function useLiveEvents(options: UseLiveEventsOptions = {}): { status: Liv
             // nothing: a wedged server looks identical from here.
             failures = 0;
             setStatus('live');
-            if (needsReconciliation) {
+            if (needsReconciliation || isResyncFrame(event.subject)) {
               needsReconciliation = false;
               // invalidateQueries reuses a pending initial fetch with no data.
               // Cancel it explicitly so its pre-outage snapshot cannot win.

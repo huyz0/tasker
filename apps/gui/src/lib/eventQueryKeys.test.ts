@@ -82,6 +82,11 @@ describe('queryKeysForSubject', () => {
     expect(queryKeysForSubject('stream.ready')).toEqual([]);
     expect(queryKeysForSubject('stream.heartbeat')).toEqual([]);
   });
+
+  it('reconciles every source after the feed reports a dropped event', () => {
+    expect(isControlFrame('stream.resync')).toBe(true);
+    expect(queryKeysForSubject('stream.resync')).toBeNull();
+  });
 });
 
 describe('isControlFrame', () => {

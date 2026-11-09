@@ -2,7 +2,7 @@
 active_milestone: M48
 active_task: null
 last_updated: 2026-11-09
-last_commit: 4c5c99e
+last_commit: cd1d9f2
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M48-T02 verified.** Coalesced stream.resync repairs authorized event loss and actual organization-set changes. Foreign membership activity stays in separate internal state and cannot trigger a global refetch or displace authorized data. Forty-two backend/43 GUI focused tests, 11 actual socket/broker tests, independent v4 review and all 35 local gates pass (GUI branches 95.26%). T03 CLI cancellation/unary deadlines is next. Overall 44 tasks remain.
 
 **2026-11-09 — M48-T01 verified.** First-frame recovery cancels active reads before refetch, so a stale pending initial response cannot win; inactive cache becomes stale without fetching. Equal jitter stays between half/all of the capped tiers. Twenty-five focused tests, two deliberate faults and independent v2 review pass; all 35 local gates pass with GUI branch coverage 95.25%. T02 overflow control is next; T04 still owns actual browser/CLI journeys. Overall 45 tasks remain.
 
@@ -1865,7 +1867,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
-| M48 | Client Recovery | in-progress | M44 | 4 | 1 |
+| M48 | Client Recovery | in-progress | M44 | 4 | 2 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
@@ -1877,7 +1879,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 351 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 352 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

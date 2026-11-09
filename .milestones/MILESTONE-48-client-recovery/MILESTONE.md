@@ -39,7 +39,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/gui/src/hooks/useLiveEvents.ts; apps/gui/src/hooks/useLiveEvents.test.tsx.
   - **Verify**: Fake-timer tests miss a mutation during a one-drop outage then reconnect; active scoped data refetches; initial ready/heartbeat behavior and offline fallback remain correct.
 
-- [ ] **M48-T02** — Signal queue overflow and force browser reconciliation.
+- [x] **M48-T02** — Signal queue overflow and force browser reconciliation.
   - **Files**: apps/backend/src/modules/events/events.handler.ts; apps/gui/src/lib/eventQueryKeys.ts; apps/gui/src/hooks/useLiveEvents.ts.
   - **Verify**: A tiny queue drops an event for one entity while another survives; resync signal causes the dropped entity to refetch; no cross-tenant payload is exposed.
 

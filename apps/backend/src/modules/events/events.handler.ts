@@ -42,6 +42,7 @@ const FEED_SUBJECT = "domain.>";
  */
 const READY_SUBJECT = "stream.ready";
 const HEARTBEAT_SUBJECT = "stream.heartbeat";
+const RESYNC_SUBJECT = "stream.resync";
 const DEFAULT_HEARTBEAT_MS = 25_000;
 
 /**
@@ -63,6 +64,7 @@ async function resolveAuthorizedOrgIds(db: any, principal: any): Promise<Set<str
 
 const CLOSED = Symbol("closed");
 const IDLE = Symbol("idle");
+const REFRESH_SCOPE = Symbol("refresh scope");
 
 /**
  * A one-reader queue between the shared NATS pump and one client's generator.
@@ -74,24 +76,53 @@ const IDLE = Symbol("idle");
  * Bounded (M30-T08): the feed "would rather drop than block", and until this
  * queue had a limit it did neither - a client that stopped reading grew the
  * process's memory without bound. When full it drops the *oldest* entry: a
- * client that fell behind wants current state, and it reconciles the gap by
- * refetching, which is what every event already triggers.
+ * client that fell behind wants current state. One coalesced resync flag sits
+ * outside that queue so a surviving entity cannot hide a different lost one.
  */
 function createOutbox<T>(maxQueue: number) {
   const queue: T[] = [];
   let wake: (() => void) | null = null;
   let closed = false;
   let dropped = 0;
+  let resync = false;
+  let scopeDirty = false;
+
+  function queued(): T | typeof REFRESH_SCOPE | typeof CLOSED | undefined {
+    if (scopeDirty || resync) return REFRESH_SCOPE;
+    if (queue.length) return queue.shift() as T;
+    return closed ? CLOSED : undefined;
+  }
 
   return {
     get dropped() {
       return dropped;
+    },
+    scopeChanged() {
+      if (closed) return;
+      scopeDirty = true;
+      wake?.();
+    },
+    requestResync() {
+      resync = true;
+      wake?.();
+    },
+    consumeScopeChange() {
+      const pending = scopeDirty;
+      scopeDirty = false;
+      return pending;
+    },
+    consumeResync() {
+      const pending = resync;
+      resync = false;
+      return pending;
     },
     push(item: T) {
       if (closed) return;
       if (queue.length >= maxQueue) {
         queue.shift();
         dropped++;
+        resync = true;
+        scopeDirty = true;
       }
       queue.push(item);
       wake?.();
@@ -100,9 +131,9 @@ function createOutbox<T>(maxQueue: number) {
       closed = true;
       wake?.();
     },
-    async take(idleMs: number): Promise<T | typeof CLOSED | typeof IDLE> {
-      if (queue.length) return queue.shift() as T;
-      if (closed) return CLOSED;
+    async take(idleMs: number): Promise<T | typeof CLOSED | typeof IDLE | typeof REFRESH_SCOPE> {
+      const ready = queued();
+      if (ready !== undefined) return ready;
 
       let timer: any;
       await new Promise<void>((resolve) => {
@@ -117,8 +148,7 @@ function createOutbox<T>(maxQueue: number) {
       });
       clearTimeout(timer);
 
-      if (queue.length) return queue.shift() as T;
-      return closed ? CLOSED : IDLE;
+      return queued() ?? IDLE;
     },
   };
 }
@@ -260,9 +290,12 @@ export function createEventsHandler(db: any, nc: any, opts: {
           throw new ConnectError("this token lacks the events:read scope", Code.PermissionDenied);
         }
         principal = fresh;
+        const authorizedOrgIds = await resolveAuthorizedOrgIds(db, principal);
+        if (scope.authorizedOrgIds.size !== authorizedOrgIds.size
+          || [...authorizedOrgIds].some(id => !scope.authorizedOrgIds.has(id))) outbox.requestResync();
         scope = {
           ...scope,
-          authorizedOrgIds: await resolveAuthorizedOrgIds(db, principal),
+          authorizedOrgIds,
           ...(principal.kind === "agent" ? { agentScopes: new Set(principal.scopes) } : {}),
         };
         revalidateAt = now() + revalidateMs;
@@ -276,9 +309,10 @@ export function createEventsHandler(db: any, nc: any, opts: {
       const listener: Listener = {
         offer(item) {
           // Cheap and synchronous, so another org's traffic never occupies
-          // this client's queue. A membership event always passes: the
-          // generator re-resolves scope from it before deciding.
-          if (invalidatesScope(item.event) || shouldDeliver(item.event, scope)) outbox.push(item);
+          // this client's domain queue. Membership discovery is a separate
+          // internal flag; unrelated changes cannot cause a visible gap.
+          if (invalidatesScope(item.event)) outbox.scopeChanged();
+          if (shouldDeliver(item.event, scope)) outbox.push(item);
         },
         close: () => outbox.close(),
       };
@@ -300,16 +334,21 @@ export function createEventsHandler(db: any, nc: any, opts: {
           // An event or timer can wake us after the credential deadline.
           // Check before yielding either domain data or another heartbeat.
           await revalidate();
+          if (next === REFRESH_SCOPE) {
+            const currentOrgIds = outbox.consumeScopeChange()
+              ? await resolveAuthorizedOrgIds(db, principal) : scope.authorizedOrgIds;
+            const changed = scope.authorizedOrgIds.size !== currentOrgIds.size
+              || [...currentOrgIds].some(id => !scope.authorizedOrgIds.has(id));
+            scope = { ...scope, authorizedOrgIds: currentOrgIds };
+            const requestedResync = outbox.consumeResync();
+            if (changed || requestedResync) yield control(RESYNC_SUBJECT);
+            continue;
+          }
           if (next === IDLE) {
             yield control(HEARTBEAT_SUBJECT);
             continue;
           }
           const { event, occurredAt } = next;
-          // Re-resolve before deciding, not after: a removal event is exactly
-          // the message that must not be delivered under the stale answer.
-          if (invalidatesScope(event)) {
-            scope = { ...scope, authorizedOrgIds: await resolveAuthorizedOrgIds(db, principal) };
-          }
           if (!shouldDeliver(event, scope)) continue;
           yield { subject: event.subject, orgId: event.orgId!, projectId: event.projectId ?? undefined, occurredAt };
         }

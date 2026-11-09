@@ -30,6 +30,19 @@ full GUI coverage/type/lint gates.
 - Given repeated overflow before consumption, then bounded state coalesces the
   resync indication rather than growing another queue. Current credentials and
   membership still govern every domain event yielded.
+- Given a dropped membership-removal event followed by queued task data, then
+  membership refresh at resync prevents that data from being delivered. Given
+  only another org/project's domain traffic, then it does not fill this queue
+  or cause a false gap. Expired credentials fail before a queued resync frame.
+- Given a burst of foreign membership events, then separate internal scope
+  refresh coalesces without displacing an authorized event or emitting resync.
+  Given the caller actually joins an organization, then resync and later data
+  reflect that new authorized set.
+- Given periodic revalidation discovers an organization-set change without its
+  membership event, then it also requests resync rather than silently losing
+  the refresh indication before comparing scope again.
+- Given an initial source read still pending at resync, then the same explicit
+  cancellation/reconciliation used after reconnect replaces its stale snapshot.
 
 ## CLI (T03)
 
