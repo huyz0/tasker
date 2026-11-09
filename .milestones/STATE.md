@@ -1,8 +1,8 @@
 ---
 active_milestone: M54
-active_task: null
+active_task: M54-T02
 last_updated: 2026-11-09
-last_commit: 53b47d6
+last_commit: 6a62b3b
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54-T02 in progress.** T01 is committed/pushed as6a62b3b after approved amended design and all35 checks, rebased onto published M53main53b47d6. Reproduce bounded body/link/tool/provenance failures before contract-first implementation and additive migrations. Draft PR #7 remains unready;1/5 M54 tasks complete and30 tasks remain.
 
 **2026-11-09 — M54-T01 verified:1/5 tasks.** Accepted ADR0042/UX/TC001–009 and amended ARCH-v2/UX-v2 define bounded stored representations, metadata on every page, opt-in permissions, forward link provenance and mutable-reference/open-view freshness. All35 fresh-worktree checks pass (GUI1475/95.43%, backend2207/zero failures, CLI93.8%). T02 next implements observed-red tools/SQL bounds/paging/provenance; no M54 runtime behavior is delivered yet. M53 is published as53b47d6 after ten final-head jobs. Overall30 tasks remain.
 

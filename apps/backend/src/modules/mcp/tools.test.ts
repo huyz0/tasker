@@ -104,7 +104,8 @@ describe("MCP tool catalogue (M36-T02)", () => {
     for (const tool of TOOL_SPECS) {
       for (const key of tool.inputSchema.required ?? []) {
         if ((tool.inputSchema.properties[key] as any).type !== "string"
-          || (tool.name === "set_task_summary" && key === "text")) continue;
+          || (tool.name === "set_task_summary" && key === "text")
+          || (tool.name === "create_artifact" && key === "content")) continue;
         await expect(host.call(tool.name, { ...sampleArgs(tool), [key]: "" }))
           .rejects.toBeInstanceOf(InvalidToolArguments);
         checked++;

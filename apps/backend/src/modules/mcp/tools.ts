@@ -7,7 +7,7 @@
  * tool can never do more than the token could do directly.
  */
 import {
-  AuthService, ProjectService, TaskService, TaskTypeService, TaskNoteService, CommentService, MemoryService, WorkflowService, ScheduleService,
+  ArtifactService, AuthService, ProjectService, TaskService, TaskTypeService, TaskNoteService, CommentService, MemoryService, WorkflowService, ScheduleService,
 } from "shared-contract/gen/ts/tasker/health/v1/health_pb";
 import { InvalidToolArguments, type ToolHost, type Tool, type ToolResult } from "./protocol";
 
@@ -66,7 +66,7 @@ function validate(tool: Tool, args: Args): void {
   for (const [key, value] of Object.entries(args)) {
     const p = props[key];
     if (!p) throw new InvalidToolArguments(`unknown argument "${key}" - expected one of: ${Object.keys(props).join(", ") || "(none)"}`);
-    if (value === undefined || value === null) continue;
+    if (value === undefined) continue;
     const ok =
       p.type === "string" ? typeof value === "string" :
       p.type === "boolean" ? typeof value === "boolean" :
@@ -115,6 +115,50 @@ export const TOOL_SPECS: ToolSpec[] = [
     description: "The calling agent (or person): id, name, organization and token scopes. Call it first.",
     inputSchema: schema({}), annotations: readOnly,
     service: AuthService, method: "GetIdentity", request: () => ({}),
+  },
+  {
+    name: "list_folders", title: "List artifact folders",
+    description: "Discover artifact folders in a project. Follow nextCursor explicitly; no content is read.",
+    inputSchema: schema({ project_id: str("Project id"), limit, cursor }, ["project_id"]), annotations: readOnly,
+    service: ArtifactService, method: "ListFolders",
+    request: (a) => ({ projectId: a.project_id, page: defined({ limit: a.limit ?? 20, cursor: a.cursor }) }),
+  },
+  {
+    name: "list_artifacts", title: "List stored artifacts",
+    description: "Artifact metadata in one folder, without stored bodies. Follow nextCursor explicitly.",
+    inputSchema: schema({ folder_id: str("Folder id"), limit, cursor }, ["folder_id"]), annotations: readOnly,
+    service: ArtifactService, method: "ListArtifacts",
+    request: (a) => ({ folderId: a.folder_id, page: defined({ limit: a.limit ?? 20, cursor: a.cursor }) }),
+  },
+  {
+    name: "create_artifact", title: "Create a stored artifact",
+    description: "Create bounded stored content in an existing folder. Content is literal, at most16000 UTF-16 code units, and may be empty. After an ambiguous result, discover the folder/name before creating again; this is not exactly-once.",
+    inputSchema: schema({ folder_id: str("Folder id"), name: str("Artifact name", { maxLength: 256 }),
+      content: str("Literal stored content, at most16000 UTF-16 code units", { minLength: 0, maxLength: 16000 }),
+      description: str("Description", { maxLength: 1024 }), content_type: str("MIME type", { maxLength: 128 }),
+    }, ["folder_id", "name", "content"]), annotations: { readOnlyHint: false },
+    service: ArtifactService, method: "CreateArtifact",
+    request: (a) => defined({ folderId: a.folder_id, name: a.name, content: a.content, description: a.description, contentType: a.content_type }),
+  },
+  {
+    name: "link_task_artifact", title: "Link task evidence",
+    description: "Attach a mutable artifact reference to a task in the same organization. This records the current linker, not content authorship or verified completion.",
+    inputSchema: schema({ task_id: str("Task id"), artifact_id: str("Artifact id") }, ["task_id", "artifact_id"]), annotations: { readOnlyHint: false },
+    service: ArtifactService, method: "LinkTaskArtifact", request: (a) => ({ taskId: a.task_id, artifactId: a.artifact_id }),
+  },
+  {
+    name: "list_task_artifact_links", title: "List task evidence",
+    description: "A bounded page of artifact links and current metadata, without bodies. Follow nextCursor explicitly.",
+    inputSchema: schema({ task_id: str("Task id"), limit, cursor }, ["task_id"]), annotations: readOnly,
+    service: ArtifactService, method: "ListTaskArtifactLinks",
+    request: (a) => ({ taskId: a.task_id, page: defined({ limit: a.limit ?? 20, cursor: a.cursor }) }),
+  },
+  {
+    name: "get_artifact_content", title: "Read a stored content prefix",
+    description: "Explicit literal stored-representation read. Defaults to4000 code points, maximum16000. truncated reports omitted content; storedBytes counts stored UTF-8 bytes. Encoded prefixes are not decoded files.",
+    inputSchema: schema({ artifact_id: str("Artifact id"), max_characters: int("Maximum Unicode code points", 1, 16000) }, ["artifact_id"]), annotations: readOnly,
+    service: ArtifactService, method: "GetArtifactContent",
+    request: (a) => ({ artifactId: a.artifact_id, maxCharacters: a.max_characters ?? 4000 }),
   },
   {
     name: "list_projects", title: "List projects",

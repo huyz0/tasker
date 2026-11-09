@@ -524,6 +524,10 @@ export const taskArtifactLinks = sqliteTable("task_artifact_links", {
   id: text("id").primaryKey(),
   taskId: text("task_id").notNull().references(() => tasks.id),
   artifactId: text("artifact_id").notNull().references(() => artifacts.id),
+  linkedAt: integer("linked_at", { mode: "timestamp" }),
+  linkedByKind: text("linked_by_kind"),
+  linkedById: text("linked_by_id"),
+  linkedByName: text("linked_by_name"),
 }, (table) => {
   return {
     taskIdIdx: index("task_artifact_links_task_id_idx").on(table.taskId),

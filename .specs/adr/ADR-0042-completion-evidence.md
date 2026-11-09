@@ -97,6 +97,12 @@ its NUL limitation; MySQL byte length). It is deliberately coarse and must not
 be labeled exact bytes. Computing the old full-read UTF-16 length by loading
 the body would defeat the bound; omitted-limit full reads remain unchanged.
 
+Bun SQLite text binding consumes a leading BOM before storage. Create/update
+artifact writes that start with U+FEFF use binary UTF-8 binding cast to text to
+preserve the caller's literal; other writes and the MySQL path retain existing
+binding behavior. Empty SQLite BLOB prefixes arrive as null and decode as empty.
+These driver-specific boundaries require actual stored create/update/read proof.
+
 Return the stored representation literally. No base64 decoding, decompression,
 MIME inference, external URL fetch or automatic next-chunk loop. A prefix of
 encoded content is not promised to be a decodable file. Existing full GUI reads
