@@ -2,7 +2,7 @@
 
 ## M55-T01 — Define actionable source truth and grouped flow
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Define grouped questions, approvals, current-user reviews and stalled claims with source identities, scoped bounded SQL selectors, current permissions and existing resolution paths before code.
 - **Verified**: M48/M53 are published; M54 is locally closed as0682bab after all35 checks and reviewed real handoff/database/browser proof. Its final-head CI still gates main publication.
@@ -32,3 +32,17 @@ or response counter alone cannot reauthorize. NotFound remains local owner
 unavailability. The design retains contextual task actions and current source
 semantics. Static TDD exception applies; no runtime behavior is implemented.
 Fresh-worktree full35 checks are in progress before T01 completion.
+
+T01 fresh-worktree verification passes all35 checks (none cached): GUI1498/
+95.13% branches; backend2282/59environment-gated skips/zero failures with95.84%
+functions/96.75% lines; CLI, generated contracts/wire and standalone packaging.
+Accepted ADR0048/UX/TC001–012 receive ARCH-v2/UX-v2 approval after preserving two
+initial findings. Static design has no new runtime behavior and uses the stated
+TDD exception. This branch is reconciled onto published M54main858e2cf; its two
+post-merge GitHub/NATS integration jobs pass. M55 is not implemented or published.
+
+T01 is complete:1/5 M55 tasks,371 done/25 pending overall. T02 next reproduces
+bounded source rows, exact source/parent eligibility, principal/project/cursor
+isolation and silence/date semantics before contract-first implementation. No
+inbox record, new permission, generic Resolve action or unbounded source helper
+is authorized by the accepted design. Existing source actions remain contextual.

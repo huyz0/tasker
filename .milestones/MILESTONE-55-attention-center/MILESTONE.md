@@ -35,7 +35,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
 
 ## 5. Task Breakdown
 
-- [ ] **M55-T01** — Define actionable source states and a grouped attention flow with independent cursors.
+- [x] **M55-T01** — Define actionable source states and a grouped attention flow with independent cursors.
   - **Files**: .milestones/MILESTONE-55-attention-center/design/UX-DESIGN.md; .test-plans/TEST-PLAN-0055-attention-center/; packages/shared-contract/main.tsp.
   - **Verify**: For each source define ID, reason, age, owner, org/project, next action, permission and resolution rule; distinguish unresolved work from history; no duplicate inbox records or read/unread state.
 
