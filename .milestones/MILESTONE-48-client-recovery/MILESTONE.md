@@ -47,7 +47,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/cli/cmd/*.go; apps/cli/internal/backend/clients.go; apps/cli/cmd/root.go.
   - **Verify**: A server that accepts but never responds hits the configured deadline; command cancellation interrupts a call; MCP stdio and subscriptions retain appropriate long-lived semantics; generated docs match.
 
-- [ ] **M48-T04** — Verify reconnect, overflow and CLI timeout journeys.
+- [x] **M48-T04** — Verify reconnect, overflow and CLI timeout journeys.
   - **Files**: apps/gui/tests/e2e/; apps/cli/cmd/*_test.go; .milestones/MILESTONE-48-client-recovery/reviews/.
   - **Verify**: Full GUI and CLI suites, backend feed tests, browser reconnect journey, CLI reference generation and review.
 

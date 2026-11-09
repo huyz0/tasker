@@ -2,7 +2,7 @@
 active_milestone: M48
 active_task: null
 last_updated: 2026-11-09
-last_commit: f26255c
+last_commit: c45b21b
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M48 implementation verified: 4/4 tasks.** Four browser journeys use controlled feed bytes with real source RPC/SQL; four native CLI journeys cover timeout/signal/MCP/terminal. All corresponding deliberate faults fail, restored runs pass, independent v8 approves, and all 35 local checks pass. Close M48, then obtain final-head CI/browser success before PR #4 merge. M47's published dependencies are satisfied; its design may proceed independently during that CI wait, with rebase/ledger reconciliation before publication. Overall 42 tasks remain.
 
 **2026-11-09 — M48-T03 verified.** Each CLI request has a positive configurable timeout (30s default); cancellation reaches all command RPCs, raw HTTP and MCP. Page budgets/session lifetimes stay independent. Flushed-error-body causes preserve exit 7/130. Five deliberate faults, race suites, independent v6 review, PTY restoration proof, Windows/macOS builds, reference and all 35 local gates pass (fresh CLI coverage gate 93.7%). T04 commits actual browser/native journeys and closes M48 before publication; PR #4 remains draft. Overall 43 tasks remain.
 
@@ -1869,7 +1871,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
-| M48 | Client Recovery | in-progress | M44 | 4 | 3 |
+| M48 | Client Recovery | in-progress | M44 | 4 | 4 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
@@ -1881,7 +1883,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 353 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 354 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
