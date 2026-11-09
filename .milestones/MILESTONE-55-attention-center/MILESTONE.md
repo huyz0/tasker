@@ -1,12 +1,12 @@
 ---
 id: M55
 title: Attention Center
-status: todo
+status: in-progress
 goal: A person can find and resolve current questions, approvals, reviews and stalled claims from one scoped screen without losing underlying source truth.
 depends_on: [M48, M53, M54]
 surfaces: [backend, gui, contract, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-09
 completed_at: null
 ---
 

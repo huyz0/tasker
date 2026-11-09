@@ -1,8 +1,8 @@
 ---
 active_milestone: M55
-active_task: null
+active_task: M55-T01
 last_updated: 2026-11-09
-last_commit: b1892d6
+last_commit: 858e2cf
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,10 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54 published.** PR #7 merged as858e2cf after all8 final-head jobs42715671413 pass. Final0682bab and fetched main have identical trees. M55-T01's proposed ADR0048/UX/TC001–012 receive two precise acceptance amendments (GUI Answer versus external cancellation; org-wide late-response/project-switch access lifetime), now written for re-review. No M55 runtime implementation exists. Rebase this checkpoint onto published M54, then complete static design review/full checks.26 tasks remain.
+
+**2026-11-09 — M55-T01 in progress.** Define source-derived attention groups and independent bounded selectors before implementation in an isolated branch based on locally closed M54head0682bab. M54 PR #7 actual final CI42715671413 still gates its main publication; reconcile that base before publishing M55. API/security standards plus static-design TDD exception selected; existing independently reviewed typography/tokens and external UX references guide judgement. Source reviews have no independent outcome, existing question/approval selectors lack project filters, and current stalled helper filters after an unbounded held-row load. No new inbox/read-state or resolution state machine is allowed.26 tasks remain.
 
 **2026-11-09 — M54 complete locally:5/5 tasks,4/4 exit criteria.** T05 is committed asb1892d6 after all35 source and closure checks. Bounded artifacts/MCP/digest, one current Evidence surface, real SQLite/MySQL/socket/upgrade proof, old-client compatibility, reviewed captures and live worker-to-human automatic refresh are verified. Draft PR #7 still requires all applicable actual final-head CI before main merge. M55-T01 is next eligible, with M54 base reconciliation before its publication. Overall26 tasks remain; original worktree/services and private credentials remain preserved.
 
@@ -1952,7 +1956,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
 | M54 | Completion Evidence | done | M46, M53 | 5 | 5 |
-| M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
+| M55 | Attention Center | in-progress | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
