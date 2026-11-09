@@ -136,7 +136,7 @@ draft until T04/T05 and applicable final-head CI.
 
 ## M54-T04 — Present current evidence beside summary
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Evolve one task Evidence surface immediately after Summary, preserving reverse artifact Tasks, with bounded metadata/paging, current permission controls, scope-safe linker and visible refresh.
 - **Verified**: T03 committed/pushed as1fa68a7 after all35 full/closure gates; no pending source failures. Independent human preflight specifies placement outside Summary disclosure, compact rows, historical link labels, mutable references and no duplicated sidebar list.
@@ -216,3 +216,47 @@ processes exited; these are excluded harness failures. Only owned M54 processes
 are restarted detached, readiness200 verified, then the9 affected journeys rerun.
 No original service or data is reset. Final Storybook rebuild succeeds; full
 rendered matrices continue. T04 remains unchecked/in-progress.
+
+Final rendered matrices pass234 stories/936 accessibility scans/468 mobile checks
+on the rebuilt corrected source. All9 affected browser journeys pass after the
+owned-server harness restart. Evidence fixtures now create dedicated task records,
+avoiding inherited summary/link state from another journey; two consecutive runs
+pass4 cases. Six current captures include both-theme failed mobile states. Full2
+passes35 checks (GUI1497/95.17%, backend2275/59gated skips/zero failures and
+standalone smoke); final full35 runs on the cancellation-corrected source and its
+new regression. The seventh UI fault fails when counter advancement is removed.
+
+Prepare and exercise an owned-runtime MCP proof using memory-only temporary
+credentials, with finally revocation and public output IDs only. This strengthens
+actual agent-link provenance before T04 closure and supplies T05 handoff evidence;
+T05 integration examples and committed executable handoff coverage remain pending.
+No extra product implementation or task completion is implied by this probe.
+
+Owned deployed-runtime MCP handoff passes115 assertions: real discovery/create/
+link/repeat/digest/explicit prefix reads,20,003-byte BOM/Unicode/NUL literal and
+8,000-byte stored encoded representation, tasks-only omitted/false digests,
+positive-opt-in scope refusal, read-only writes, malformed bounds, and actual
+foreign org/project/task/artifact refusals. Returned link actor/time is the
+minted agent identity. Three current-run credentials are revoked in finally;
+plaintext remains memory-only and retained output contains public IDs/counts.
+Earlier probe harness attempts used incorrect ListOrgs field/default test user
+and expected invalid tool arguments as a result rather than JSON-RPC error;
+these are corrected before this valid run, with all3 issued credentials from
+that attempt also finally revoked. No production fix was needed by the probe.
+T05 still owns committed handoff coverage/integration examples and publication.
+
+T04 final source verification passes35 checks (25cached) on corrected code:
+GUI1498/95.13% branches; backend2275/59environment-gated skips/zero failures,
+95.84% functions/96.75% lines; generated contract/wire, CLI and standalone pass.
+Checkpoint90a3965 passes all8 actual CI jobs42710997686, including full browser
+and Storybook jobs. Final task/milestone publication still requires T05 and its
+applicable final-head CI. Independent CODE-v4/UX-v4 approval follows reproduced
+and corrected read/write/cancellation gaps;37 focused UI cases,45 backend cases,
+70 real MySQL assertions,18 old-client decodes,7 GUI/2 backend restored faults,
+9 actual affected browser journeys plus4 isolated repeat cases,234-story936/468
+rendered matrices and six current captures provide the detailed proof.
+
+T04 is complete:4/5 M54 tasks,369 done/27 pending overall. T05 next commits the
+real HTTP worker handoff coverage and precise docs, then closes/publishes M54.
+The115-assertion owned-runtime probe already passes with all temporary credentials
+revoked, but does not substitute for committed T05 coverage or publication gates.

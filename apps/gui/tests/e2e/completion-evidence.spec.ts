@@ -26,9 +26,12 @@ async function openWork(page: Page) {
   await page.getByRole('button', { name: 'Active project', exact: true }).click();
   await page.getByRole('combobox', { name: 'Search active project' }).fill('Seed Project');
   await page.getByRole('option', { name: 'Seed Project', exact: true }).click();
-  await page.getByRole('heading', { level: 3 }).getByRole('button').first().click();
+  const scope = new URL(page.url());
+  const projectId = scope.searchParams.get('project')!;
+  const created = await rpc<{ task: { id: string } }>(page, 'TaskService', 'CreateTask', { projectId, title: 'Review evidence output', status: 'todo' });
+  await page.goto(`/tasks/${created.task.id}${scope.search}`);
   await expect(page.getByRole('dialog')).toBeVisible();
-  return { taskId: new URL(page.url()).pathname.split('/').at(-1)!, projectId: new URL(page.url()).searchParams.get('project')! };
+  return { taskId: created.task.id, projectId };
 }
 
 test('real bounded evidence preserves summary writing, canonical artifact navigation and both-theme mobile layout', async ({ page }, testInfo) => {
@@ -71,8 +74,13 @@ test('real bounded evidence preserves summary writing, canonical artifact naviga
 });
 
 test('an evidence access failure hides accepted rows through a later offline retry', async ({ page }, testInfo) => {
-  await openWork(page);
+  const { taskId, projectId } = await openWork(page);
+  const folders = await rpc<{ folders: { id: string }[] }>(page, 'ArtifactService', 'ListFolders', { projectId, page: { limit: 1 } });
+  const artifacts = await rpc<{ artifacts: { id: string }[] }>(page, 'ArtifactService', 'ListArtifacts', { folderId: folders.folders[0].id, page: { limit: 1 } });
+  await rpc(page, 'ArtifactService', 'LinkTaskArtifact', { taskId, artifactId: artifacts.artifacts[0].id });
   const section = page.getByRole('region', { name: 'Evidence', exact: true });
+  await section.getByRole('button', { name: 'Refresh evidence' }).click();
+  await expect(section.getByRole('link')).toHaveCount(1);
   await expect(section.getByText(/loaded/)).toBeVisible();
   const path = 'http://localhost:8080/tasker.health.v1.ArtifactService/ListTaskArtifactLinks';
   await page.route(path, route => route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ code: 'permission_denied', message: 'Evidence access removed' }) }));

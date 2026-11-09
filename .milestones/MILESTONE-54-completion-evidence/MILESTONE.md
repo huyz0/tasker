@@ -47,7 +47,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/backend/src/modules/tasks/digest.ts; apps/backend/src/modules/artifacts/; packages/shared-contract/; apps/backend/src/modules/mcp/.
   - **Verify**: Existing digest contract remains compatible; includeArtifacts requires artifacts:read; cap links before metadata lookup and propagate truncation; assert body columns are not selected; fresh generated TS/Go and wire checks pass.
 
-- [ ] **M54-T04** — Present task completion evidence beside summaries and existing repository/build signals.
+- [x] **M54-T04** — Present task completion evidence beside summaries and existing repository/build signals.
   - **Files**: apps/gui/src/features/Tasks/; apps/gui/src/components/; apps/gui/tests/e2e/.
   - **Verify**: Review surface identifies author/time/source and accessible artifact links; distinguishes worker-reported evidence from provider-observed signals; handles no evidence, removed/inaccessible artifacts, loading/error and large content; responsive/keyboard stories pass.
 

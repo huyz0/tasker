@@ -1,8 +1,8 @@
 ---
 active_milestone: M54
-active_task: M54-T04
+active_task: M54-T05
 last_updated: 2026-11-09
-last_commit: 1fa68a7
+last_commit: 90a3965
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54-T04 verified:4/5 tasks.** One Evidence surface after Summary, current policy controls, paged/fresh metadata, protected query/mutation intent and separate recorded PR signals pass all35 final checks. GUI1498/95.13% branches; backend2275/zero failures.37 focused UI cases,70 MySQL assertions,9 behavioral faults,18 old-client decodes,9 browser journeys plus4 repeat cases and234-story936/468 rendered matrices pass; independent source/UX review approves after denial/cancellation corrections. Checkpoint90a3965 passes all8 CI jobs. T05 next commits live handoff coverage/docs and gates milestone publication/final-head CI. Overall27 tasks remain.
 
 **2026-11-09 — M54-T04 in progress.** T03 committed/pushed as1fa68a7 after all35 gates. Build one Evidence section after Summary (outside its disclosure), removing the task-side sidebar duplicate while preserving reverse Tasks. Preflight requires truthful permissions; add reviewed optional paged-response capability flags rather than client RBAC guesses. Current read-only access/lifetime, page extent, current-query linker, mutable-reference labels and summary protection require observed regressions and rendered/browser proof.3/5 M54 tasks complete;28 tasks remain.
 
@@ -1943,13 +1945,13 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
 | M52 | Release Candidate Validation | done | M44, M45, M51 | 2 | 2 |
 | M53 | Workflow Correctness | done | M28, M51 | 7 | 7 |
-| M54 | Completion Evidence | in-progress | M46, M53 | 5 | 3 |
+| M54 | Completion Evidence | in-progress | M46, M53 | 5 | 4 |
 | M55 | Attention Center | todo | M48, M53, M54 | 5 | 0 |
 | M56 | Agent Connection | todo | M54 | 4 | 0 |
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 368 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 369 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
