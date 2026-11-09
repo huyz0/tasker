@@ -28,12 +28,10 @@ jobs:
           fetch-depth: 0
       
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+        uses: ./.github/actions/setup-bun
           
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
           
       - name: Install dependencies
         run: |
@@ -46,16 +44,7 @@ jobs:
           TASKER_REAL_INTEGRATION: "1"
           GITHUB_TEST_TOKEN: ${{ secrets.INTEGRATION_TEST_TOKEN }}
           GITHUB_TEST_REPO: "huyz0/tasker-test-sandbox"
-          # repositories.integration.test.ts's mockDb only recognizes
-          # schema.sqlite's table objects (`table === schemaSqlite.X`
-          # identity checks) - authz.ts's isStandalone() picks the mysql
-          # schema instead whenever STANDALONE isn't set, which this step
-          # never did, so every authz lookup in the test silently matched
-          # nothing and threw "not found" regardless of what the mock
-          # returned. Every other place this repo runs standalone/sqlite
-          # mode (apps/backend/package.json's seed/measure scripts,
-          # ci.yml's own backend startup for GUI E2E) sets this explicitly;
-          # this step was the one place that didn't.
+          # The real provider fixture owns an in-memory managed SQLite database.
           STANDALONE: "true"
         run: moon run backend:test-integration
           
@@ -100,12 +89,10 @@ jobs:
           echo "nats did not come up in 20s"; docker logs nats; exit 1
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+        uses: ./.github/actions/setup-bun
 
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
 
       - name: Install dependencies
         run: |

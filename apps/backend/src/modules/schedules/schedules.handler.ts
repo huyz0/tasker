@@ -1,3 +1,5 @@
+import { withUnitOfWork } from '../../db/access';
+import { runWithRequestContext } from '../../lib/requestContext';
 /**
  * Recurring work (M43, ADR-0036): schedules that put a task or a workflow on
  * the queue on a cadence. The sweep fires each due schedule exactly once
@@ -151,40 +153,47 @@ function scheduleCore(db: any, nc: any, clock: () => Date) {
   }
 
   /**
-   * One firing: skip, create, or fail - always recorded. Never throws: a
-   * failing schedule must not stop the sweep for the others.
+   * One firing: creation failures are recorded. Bookkeeping storage failure
+   * stays loud; durable occurrence/sweep recovery is owned by M47.
    */
   async function fire(row: any, principal: Principal, trigger: "schedule" | "manual") {
-    const now = clock();
-    const run: any = { id: `srun-${crypto.randomUUID()}`, scheduleId: row.id, ranAt: now, trigger, taskId: null, detail: null };
-    try {
-      const skip = await openPrevious(row);
-      if (skip) {
-        run.outcome = "skipped";
-        run.detail = skip;
-      } else {
-        const ctx = contextFor(principal);
-        const title = `${row.taskTitle ?? row.name} — ${now.toISOString().slice(0, 10)}`;
-        const taskId = row.templateId
-          ? (await workflowHandler.instantiateWorkflow({ templateId: row.templateId, projectId: row.projectId, title }, ctx)).parent.id
-          : (await taskHandler.createTask({
-            projectId: row.projectId, title, status: "todo", description: row.taskDescription ?? "", priority: Number(row.taskPriority ?? 0),
-          }, ctx)).task.id;
-        await db.update(tasks).set({ scheduleId: row.id }).where(eq(tasks.id, taskId));
-        run.outcome = "created";
-        run.taskId = taskId;
+    return runWithRequestContext({
+      requestId: `schedule-${crypto.randomUUID()}`, orgId: row.orgId, projectId: row.projectId,
+      actor: principal.kind === 'agent' ? { kind: 'agent', agentId: principal.agentId } : { kind: 'user', userId: principal.userId },
+    }, async () => {
+      const now = clock();
+      const run: any = { id: `srun-${crypto.randomUUID()}`, scheduleId: row.id, ranAt: now, trigger, taskId: null, detail: null };
+      try {
+        const skip = await openPrevious(row);
+        if (skip) {
+          run.outcome = "skipped";
+          run.detail = skip;
+        } else {
+          const ctx = contextFor(principal);
+          const title = `${row.taskTitle ?? row.name} — ${now.toISOString().slice(0, 10)}`;
+          const taskId = row.templateId
+            ? (await workflowHandler.instantiateWorkflow({ templateId: row.templateId, projectId: row.projectId, title }, ctx)).parent.id
+            : (await taskHandler.createTask({
+              projectId: row.projectId, title, status: "todo", description: row.taskDescription ?? "", priority: Number(row.taskPriority ?? 0),
+            }, ctx)).task.id;
+          await db.update(tasks).set({ scheduleId: row.id }).where(eq(tasks.id, taskId));
+          run.outcome = "created";
+          run.taskId = taskId;
+        }
+      } catch (e) {
+        run.outcome = "failed";
+        run.detail = String((e as any)?.message ?? e).slice(0, 1000);
       }
-    } catch (e) {
-      run.outcome = "failed";
-      run.detail = String((e as any)?.message ?? e).slice(0, 1000);
-    }
-    await db.insert(runs).values(run);
-    await db.update(schedules).set({
-      lastRunAt: now, lastOutcome: run.outcome, ...(run.taskId ? { lastTaskId: run.taskId } : {}),
-    }).where(eq(schedules.id, row.id));
-    publishDomainEvent(nc, "domain.schedule.ran", { scheduleId: row.id, projectId: row.projectId, outcome: run.outcome, taskId: run.taskId, trigger });
-    logger.info({ scheduleId: row.id, cadence: describeCadence(specOf(row)), outcome: run.outcome, trigger }, "schedule.ran");
-    return run;
+      await withUnitOfWork(db, async () => {
+        await db.insert(runs).values(run);
+        await db.update(schedules).set({
+          lastRunAt: now, lastOutcome: run.outcome, ...(run.taskId ? { lastTaskId: run.taskId } : {}),
+        }).where(eq(schedules.id, row.id));
+        publishDomainEvent(nc, "domain.schedule.ran", { scheduleId: row.id, projectId: row.projectId, outcome: run.outcome, taskId: run.taskId, trigger });
+      });
+      logger.info({ scheduleId: row.id, cadence: describeCadence(specOf(row)), outcome: run.outcome, trigger }, "schedule.ran");
+      return run;
+    });
   }
 
   /** Mutations write the fields and recompute the next slot from now. */

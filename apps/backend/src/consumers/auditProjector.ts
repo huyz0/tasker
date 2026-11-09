@@ -1,16 +1,10 @@
+import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import * as schemaMysql from '../db/schema.mysql';
 import * as schemaSqlite from '../db/schema.sqlite';
 
-/**
- * Turns a `domain.*` event into a row in `audit_log` (M08-T03).
- *
- * Deliberately not a request-time write. Routing through JetStream is what
- * makes the trail survive an API crash mid-request: an inline insert in the
- * same transaction as the change would be rolled back with it, so the one
- * case an auditor most wants recorded — the request that failed halfway — is
- * exactly the case that would leave no trace.
- */
+/** Projects retained SQL events or compatible legacy broker payloads. Producer
+ * identity, not broker sequence, makes at-least-once delivery idempotent. */
 
 function isStandalone(): boolean {
   return process.env.STANDALONE === 'true';
@@ -23,6 +17,7 @@ export interface DomainEvent {
 }
 
 export interface AuditRow {
+  eventId: string;
   id: string;
   orgId: string | null;
   subject: string;
@@ -73,6 +68,7 @@ export function toAuditRow(event: DomainEvent, now: Date = new Date()): AuditRow
   const { actorType, actorId } = extractActor(event.payload);
   return {
     id: randomUUID(),
+    eventId: typeof event.payload.eventId === 'string' && event.payload.eventId ? event.payload.eventId : `legacy:${event.seq}`,
     orgId: extractOrgId(event.payload),
     subject: event.subject,
     actorType,
@@ -83,28 +79,38 @@ export function toAuditRow(event: DomainEvent, now: Date = new Date()): AuditRow
     // added one, and the trail would silently lose whatever had no column.
     payload: JSON.stringify(event.payload),
     streamSeq: event.seq,
-    occurredAt: now,
+    occurredAt: typeof event.payload.occurredAt === 'string' && Number.isFinite(Date.parse(event.payload.occurredAt)) ? new Date(event.payload.occurredAt) : now,
   };
 }
 
-/**
- * Writes one event to the trail.
- *
- * Returns whether the row was new. The consumer is at-least-once — JetStream
- * redelivers anything unacknowledged, so a crash between write and ack
- * replays the event — and `audit_log.stream_seq` is unique, which turns that
- * replay into a no-op rather than a duplicate row. Swallowing only the
- * uniqueness violation keeps every other failure loud, so it can go unacked
- * and be retried.
- */
+/** Resolve references from the authoritative source before any projection.
+ * A missing source or mismatched routing is retryable; never audit an envelope
+ * as if it were the source event. Legacy full messages pass through. */
+export async function hydrateDomainEvent(db: any, event: DomainEvent): Promise<DomainEvent> {
+  if (event.payload.eventRef !== true) return event;
+  const id = event.payload.eventId;
+  if (typeof id !== 'string' || !id || id.length > 256) throw new Error('invalid domain event reference');
+  const events = isStandalone() ? schemaSqlite.domainEvents : schemaMysql.domainEvents;
+  const [source] = await db.select().from(events).where(eq(events.id, id)).limit(1);
+  if (!source || source.subject !== event.subject || source.orgId !== (event.payload.orgId ?? null)
+    || source.projectId !== (event.payload.projectId ?? null)) throw new Error('domain event reference is missing or mismatched');
+  const payload = JSON.parse(source.payload);
+  if (payload.eventId !== id || payload.occurredAt !== event.payload.occurredAt) throw new Error('domain event source identity is mismatched');
+  return { ...event, payload };
+}
+
+/** Duplicate identity is accepted only when it describes the same source.
+ * An unrelated unique violation or a conflicting producer identity stays loud. */
 export async function projectEvent(db: any, event: DomainEvent, now: Date = new Date()): Promise<'written' | 'duplicate'> {
   const table = isStandalone() ? schemaSqlite.auditLog : schemaMysql.auditLog;
-  const row = toAuditRow(event, now);
+  const row = toAuditRow(await hydrateDomainEvent(db, event), now);
   try {
     await db.insert(table).values(row);
     return 'written';
   } catch (err) {
-    if (isUniqueViolation(err)) return 'duplicate';
+    if (!isUniqueViolation(err)) throw err;
+    const [existing] = await db.select().from(table).where(eq(table.eventId, row.eventId)).limit(1);
+    if (existing && existing.subject === row.subject && existing.orgId === row.orgId && existing.payload === row.payload) return 'duplicate';
     throw err;
   }
 }
@@ -117,12 +123,11 @@ export async function projectEvent(db: any, event: DomainEvent, now: Date = new 
  * "Duplicate entry"), and this repo runs both.
  */
 export function isUniqueViolation(err: unknown): boolean {
-  const message = String((err as Error)?.message ?? '').toLowerCase();
-  const code = String((err as any)?.code ?? '');
-  return (
-    code === 'ER_DUP_ENTRY' ||
-    code === 'SQLITE_CONSTRAINT_UNIQUE' ||
-    message.includes('unique constraint failed') ||
-    message.includes('duplicate entry')
-  );
+  let current: any = err;
+  for (let depth = 0; current && depth < 8; depth++, current = current.cause) {
+    const message = String(current.message ?? '').toLowerCase();
+    if (current.code === 'ER_DUP_ENTRY' || current.code === 'SQLITE_CONSTRAINT_UNIQUE'
+      || message.includes('unique constraint failed') || message.includes('duplicate entry')) return true;
+  }
+  return false;
 }

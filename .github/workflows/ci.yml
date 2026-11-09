@@ -19,11 +19,9 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: cd packages/shared-contract && bun install
       - name: Compile and Format (Cached)
@@ -45,11 +43,9 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Unused code and dependencies
         run: moon run :knip
       - name: Agent harness contract
@@ -70,11 +66,9 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: |
           # Install shared contract first so it can compile
@@ -108,11 +102,9 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: |
           cd packages/shared-contract && bun install && cd ../..
@@ -158,11 +150,9 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: |
           cd packages/shared-contract && bun install && cd ../..
@@ -176,9 +166,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Install dependencies
         run: bun install
       # A ratchet: fails on any high or critical advisory that is not on the
@@ -214,11 +202,9 @@ jobs:
         with:
           node-version: '24'
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: |
           cd packages/shared-contract && bun install && cd ../..
@@ -255,11 +241,9 @@ jobs:
           go-version-file: apps/cli/go.mod
           cache-dependency-path: apps/cli/go.sum
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 'latest'
+        uses: ./.github/actions/setup-bun
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Setup Shared Contract
         run: cd packages/shared-contract && bun install
       - name: Build & Test (Cached)

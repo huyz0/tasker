@@ -207,6 +207,7 @@ export function createEventsHandler(db: any, nc: any, opts: {
   const revalidateMs = opts.revalidateMs ?? 30_000;
   const now = opts.now ?? Date.now;
   let hub: ReturnType<typeof createHub> | null = null;
+  let hubConnection: any = null;
 
   return {
     async *subscribeEvents(req: any, ctx: any): AsyncGenerator<any> {
@@ -222,7 +223,8 @@ export function createEventsHandler(db: any, nc: any, opts: {
         throw new ConnectError("this token lacks the events:read scope", Code.PermissionDenied);
       }
 
-      if (!nc || nc.isClosed?.()) {
+      const currentConnection = typeof nc === "function" ? nc() : nc;
+      if (!currentConnection || currentConnection.isClosed?.()) {
         // Unavailable, not Internal: the client's backoff should retry this,
         // and a broker that is down comes back.
         throw new ConnectError("the event broker is not reachable", Code.Unavailable);
@@ -266,7 +268,10 @@ export function createEventsHandler(db: any, nc: any, opts: {
         revalidateAt = now() + revalidateMs;
       }
 
-      hub ??= createHub(nc);
+      if (!hub || hubConnection !== currentConnection) {
+        hub = createHub(currentConnection);
+        hubConnection = currentConnection;
+      }
       const outbox = createOutbox<QueuedEvent>(maxQueue);
       const listener: Listener = {
         offer(item) {

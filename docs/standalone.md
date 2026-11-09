@@ -68,11 +68,13 @@ path and is tested that way on every pull request — the binary is copied to a
 temporary directory and run with a scrubbed environment, so nothing it needs
 can leak in from the machine that built it.
 
-**Not included, and not needed.** A message broker. Standalone mode runs
-without NATS: domain events are still counted and the application works
-normally, but the audit trail and the live-updates feed both need a broker and
-stay quiet without one. Start one, and point `NATS_URL` at it, if you want
-them.
+**Not included, and not needed.** A message broker. Without `NATS_URL`,
+standalone mode stores domain events and projects the audit trail locally;
+webhook delivery also uses the database and needs no broker. The live event
+feed needs NATS, with browser polling as its fallback. To enable the feed, start
+a broker and set `NATS_URL`. With that explicit configuration, also run the
+audit consumer against the same SQLite database: its `DB_PATH` must match the
+API's `--db` path. See [event recovery and retention](webhooks.md#recovery-and-operations).
 
 **Sign-in.** Username and password work with no configuration. "Continue with
 Google" appears only when `GOOGLE_CLIENT_ID` and `GOOGLE_REDIRECT_URI` are both
@@ -93,6 +95,10 @@ can be opened by the binary and the other way round.
 
 Back up `.data/local.sqlite` first for anything you care about. It is one file;
 copying it while the server is stopped is a complete backup.
+
+When upgrading to durable domain events, stop every old API, audit consumer and
+webhook worker first. The new audit identity and webhook lease fence require
+compatible workers; see the [upgrade and rollback notes](webhooks.md#recovery-and-operations).
 
 ## Building it yourself
 

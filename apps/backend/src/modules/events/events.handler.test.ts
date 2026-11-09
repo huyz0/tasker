@@ -134,6 +134,25 @@ describe('subscribeEvents', () => {
     }
   });
 
+  it('uses recovered and replacement connections for new subscriptions', async () => {
+    let current: any = null;
+    const handler = createEventsHandler(fakeDb(['org-1']), () => current);
+    const { ctx } = ctxFor({ kind: 'user', userId: 'usr-1' });
+    await expect(handler.subscribeEvents({}, ctx).next()).rejects.toThrow('not reachable');
+    current = fakeNats(sub);
+    const first = handler.subscribeEvents({}, ctx);
+    expect((await first.next()).value.subject).toBe('stream.ready');
+    await first.return(undefined);
+    const replacement = fakeSubscription();
+    current = fakeNats(replacement);
+    const second = handler.subscribeEvents({}, ctx);
+    expect((await second.next()).value.subject).toBe('stream.ready');
+    replacement.push('domain.task.created', { orgId: 'org-1', projectId: 'project-1' });
+    expect((await second.next()).value).toMatchObject({ subject: 'domain.task.created', orgId: 'org-1', projectId: 'project-1' });
+    await second.return(undefined);
+    expect(replacement.unsubscribed).toBe(true);
+  });
+
   it('treats a closed connection as unavailable too', async () => {
     const handler = createEventsHandler(fakeDb(['org-1']), {
       isClosed: () => true,

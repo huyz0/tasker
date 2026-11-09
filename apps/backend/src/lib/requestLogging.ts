@@ -8,7 +8,8 @@ import { recordRpcDuration } from './rpcMetrics';
 export const requestIdKey = createContextKey<string>('');
 
 export const requestLoggingInterceptor: Interceptor = (next) => async (req) => {
-  const requestId = req.header.get('x-request-id') || crypto.randomUUID();
+  const suppliedId = req.header.get('x-request-id');
+  const requestId = suppliedId && suppliedId.length <= 128 ? suppliedId : crypto.randomUUID();
   req.contextValues.set(requestIdKey, requestId);
 
   const service = req.method.parent.typeName;

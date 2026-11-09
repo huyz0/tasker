@@ -344,6 +344,20 @@
       "when": 1794096000001,
       "tag": "0048_domain_events",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "5",
+      "when": 1794096000002,
+      "tag": "0049_audit_event_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "5",
+      "when": 1794096000003,
+      "tag": "0050_webhook_lease_token",
+      "breakpoints": true
     }
   ]
 }

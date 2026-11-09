@@ -1,13 +1,13 @@
 ---
 id: M46
 title: Durable Domain Events
-status: in-progress
+status: done
 goal: Domain changes and their emitted events commit together, and persisted events reach audit and matching webhooks despite process or broker failure.
 depends_on: [M45]
 surfaces: [backend, infra, specs]
-exit_criteria_met: false
+exit_criteria_met: true
 started_at: 2026-11-08
-completed_at: null
+completed_at: 2026-11-09
 ---
 
 # M46 — Durable Domain Events
@@ -22,10 +22,10 @@ A durable consumer cannot restore an event lost before publication; the durable 
 
 ## 3. Exit Criteria
 
-- [ ] Committed mutations survive a crash before event publication.
-- [ ] Audit and webhook consumers deduplicate repeated delivery of the same event.
-- [ ] Two backend instances safely recover expired relay leases.
-- [ ] Standalone webhooks function without a broker, and shutdown preserves pending work.
+- [x] Committed mutations survive a crash before event publication.
+- [x] Audit and webhook consumers deduplicate repeated delivery of the same event.
+- [x] Two backend instances safely recover expired relay leases.
+- [x] Standalone webhooks function without a broker, and shutdown preserves pending work.
 
 ## 4. Scope
 
@@ -43,21 +43,25 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/lib/natsCorrelation.ts; apps/backend/src/db/schema.*.ts; apps/backend/src/modules/**; apps/backend/drizzle-*/.
   - **Verify**: Mutation rollback produces no event; commit produces an event with stable ID, occurredAt, tenant, actor and trace metadata; migrate old databases and build the standalone binary.
 
-- [ ] **M46-T03** — Capture webhook delivery rows atomically and relay persisted events to the broker with retryable fenced leases.
+- [x] **M46-T03** — Capture webhook delivery rows atomically and relay persisted events to the broker with retryable fenced leases.
   - **Files**: apps/backend/src/modules/webhooks/outbox.ts; apps/backend/src/lib/domainEventRelay.ts; apps/backend/src/lib/domainEventOutbox.ts; apps/backend/src/index.ts.
   - **Verify**: Crash after sending but before acknowledgement retries the same event ID; two relays do not lose events; brokerless webhooks still work; matching delivery rows deduplicate.
 
-- [ ] **M46-T04** — Make audit projection idempotent by producer event identity and drain background workers.
+- [x] **M46-T04** — Make audit projection idempotent by producer event identity and drain background workers.
   - **Files**: apps/backend/src/consumers/auditProjector.ts; apps/backend/src/index.ts; apps/backend/src/lib/lifecycle.ts.
   - **Verify**: Repeated event delivery yields one audit row; shutdown stops new leases and awaits in-flight enqueue/relay work; restart resumes leases.
 
-- [ ] **M46-T05** — Verify crash boundaries and publish operating procedures.
+- [x] **M46-T05** — Verify crash boundaries and publish operating procedures.
   - **Files**: docs/webhooks.md; docs/standalone.md; .milestones/MILESTONE-46-durable-domain-events/reviews/.
   - **Verify**: Run real NATS outage/recovery and process-kill scenarios, both-dialect tests and full backend gates; document backlog inspection, retention and replay.
 
-- [ ] **M46-T06** — Fence webhook delivery completion/retry and enforce a total outbound attempt deadline.
+- [x] **M46-T06** — Fence webhook delivery completion/retry and enforce a total outbound attempt deadline.
   - **Files**: apps/backend/src/modules/webhooks/delivery.ts; apps/backend/src/modules/webhooks/httpSender.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/.
   - **Verify**: Reproduce an expired owner failing after its successor delivered; stale success/failure cannot change delivery or endpoint counters; trickling response bodies hit a bounded total deadline; both dialect migrations and real HTTP tests pass. Deliver before T05 closure; retain existing task IDs.
+
+- [x] **M46-T07** — Use a managed database in the real GitHub repository integration fixture.
+  - **Files**: apps/backend/src/modules/repositories/repositories.integration.test.ts; .github/workflows/integration.yml.
+  - **Verify**: Reproduce CI's `unit of work requires a managed database handle`; seed an isolated SQLite database, run real provider reads and persist sync results through the actual transaction; full local gates and actual remote integration pass. No sandbox mutations are required.
 
 ## 6. Verification
 

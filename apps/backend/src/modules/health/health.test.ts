@@ -41,6 +41,17 @@ describe("Health Handler Integration Logic", () => {
     expect(liveRes.natsLatencyMs).toBeGreaterThanOrEqual(0);
   });
 
+  test("ping resolves the current connection after startup failure or replacement", async () => {
+    const { db } = await setupIntegrationTest();
+    let current: any = null;
+    const handler = createHealthHandler(db, () => current);
+    expect((await handler.ping({})).natsStatus).toBe('disconnected');
+    current = { isClosed: () => false, flush: async () => {} };
+    expect((await handler.ping({})).natsStatus).toBe('connected');
+    current = { isClosed: () => true };
+    expect((await handler.ping({})).natsStatus).toBe('closed');
+  });
+
   test("ping omits natsLatencyMs when the NATS connection has no flush method", async () => {
     const { db } = await setupIntegrationTest();
     const liveNc = { isClosed: () => false };

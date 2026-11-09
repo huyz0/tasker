@@ -198,6 +198,17 @@ describe('failSpan', () => {
     });
   });
 
+  it('omits database parameters and event bodies from both tracing sinks', () => {
+    const content = 'private-artifact-body-fixture';
+    const cause = Object.assign(new Error(`driver ${content}`), { code: 'ER_DUP_ENTRY' });
+    const error = Object.assign(new Error(`Failed query params: ${content}`, { cause }), { query: 'INSERT event', params: [content] });
+    const exceptions: any[] = [], statuses: any[] = [];
+    failSpan({ recordException: (value: any) => exceptions.push(value), setStatus: (value: any) => statuses.push(value) } as any, error);
+    expect(exceptions[0]).toMatchObject({ name: 'DatabaseError', message: 'database operation failed' });
+    expect(JSON.stringify({ exceptions, statuses })).not.toContain(content);
+    expect(error.cause).toBe(cause);
+  });
+
   it('describes a thrown non-Error rather than recording "undefined"', async () => {
     initTelemetry(readTelemetryConfig({}));
     await getTracer().startActiveSpan('failing', async (span) => {

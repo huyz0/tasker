@@ -1,3 +1,4 @@
+import { databaseErrorDetails } from './databaseErrorDetails';
 import { getRequestContext } from './requestContext';
 
 // Keeps the last N reported errors in memory, so "what broke recently" is
@@ -21,11 +22,12 @@ const entries: RingBufferEntry[] = [];
 export function recordErrorEvent(message: string, severity: 'error' | 'fatal', err: unknown, context?: Record<string, unknown>): void {
   const requestCtx = getRequestContext();
   const errObj = err instanceof Error ? err : undefined;
+  const details = databaseErrorDetails(err);
   entries.push({
     timestamp: new Date().toISOString(),
     message,
     severity,
-    ...(errObj ? { errName: errObj.name, errMessage: errObj.message } : {}),
+    ...(details ? { errName: details.type, errMessage: details.message } : errObj ? { errName: errObj.name, errMessage: errObj.message } : {}),
     ...(requestCtx?.requestId ? { requestId: requestCtx.requestId } : {}),
     ...(requestCtx ? { userId: requestCtx.userId ?? null } : {}),
     ...(context ? { context } : {}),

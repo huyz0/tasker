@@ -1,8 +1,8 @@
 ---
-active_milestone: null
+active_milestone: M47
 active_task: null
 last_updated: 2026-11-09
-last_commit: 1ce74e1
+last_commit: 84bad8a
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,20 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M46 complete: 7/7 tasks, 4/4 exit criteria.** Durable event capture/ACKed fenced relay, producer-identity audit, brokerless projection, bounded webhook attempts and draining pass real SQLite/MySQL process recovery and all 35 local checks. Consumer DB_PATH, diagnostic privacy and the real provider database fixture were corrected. Actual GitHub/NATS integration passes. Final PR #3 head still needs complete CI/browser success before merge; do not describe publication as complete yet. M47-T01 is next after that merge. Recovery evidence and upgrade cautions live in M46 reviews and docs/webhooks.md; required recovery CI/load proof remains M49. Overall 46 tasks remain.
+
+**2026-11-09 — M46-T07 verified: 7/7 tasks.** The real provider integration now uses managed SQLite; actual GitHub and NATS CI jobs pass in run 42576021446. Full 35 local checks pass again. No sandbox PR/branch mutations are performed. Close the proven milestone, then wait for the final PR head's complete browser/CI gates before merging PR #3 and starting M47.
+
+**2026-11-09 — M46-T07 in progress.** Real GitHub CI reached sync and exposed its handcrafted database fake's incompatibility with managed transactions (`unit of work requires a managed database handle`). Replace the fixture with isolated seeded SQLite; preserve production transaction behavior. Task appended without renumbering. Earlier local recovery/gates remain green; merge remains gated on complete remote CI.
+
+**2026-11-09 — M46 implementation verified: 6/6 tasks.** Real process/broker recovery passes both dialects (56 assertions); custom consumer DB_PATH and body-free relay retry diagnostics are corrected. Final 35 local gates, five MySQL/upgrade tests, 12 socket/broker tests and standalone smoke pass. Independent v7 approved. PR #3's pinned native bootstrap is now running actual browser checks; wait for complete remote CI before milestone closure and merge. Then deliver M47; 46 tasks remain in the overall plan.
+
+**2026-11-09 — M46-T06 webhook ownership/deadline verified.** Delivery tokens fence stale results/counters, result/endpoint state commits atomically, and the total HTTP deadline covers stalled DNS/trickling bodies. SQLite, real MySQL and deliberate fault checks pass; all 35 local gates pass. T05 owns process crash/broker recovery and operating closure. Draft PR #3 is pushed; both remote workflows failed before tests because Moon installer downloads returned HTTP 504 twice. Resolve bootstrap and obtain actual green CI before merging.
+
+**2026-11-09 — M46-T04 runtime activation verified.** Capture, acknowledged reference relay, producer-ID audit projection and brokerless local audit are installed. External I/O stays outside SQL units; post-network authorization is fresh. Real handler/worker drain rejects late admission; SQL error bodies are removed from logs/ring/traces. All 35 local gates, real socket 11 and isolated MySQL four tests pass. T06 webhook fencing/deadline then T05 process-crash evidence remain before M46 closure/publication.
+
+**2026-11-09 — M46-T03 relay library verified.** Fenced retry/expiry, bounded broker references, delivered-only retention and worker-error drain pass on SQLite; real MySQL recovery passes in an isolated schema. Runtime capture/audit/relay activation remains T04. Original relay WIP remains untouched in the original worktree.
 
 **2026-11-09 — Review delivery planned; published fixes are on main.** [PR #1](https://github.com/huyz0/tasker/pull/1) merged as `579860f` after both workflows passed. M46–M50 retain reliability ownership; M46-T06 adds webhook fencing/total timeout. M53–M58 track workflow correctness, evidence, attention, connection, claim receipts and views. See [delivery map](DELIVERY-PLAN-2026-11-09.md) for acceptance, sequencing, boundaries and publication. Original relay WIP remains preserved in the original worktree until its validated port.
 
@@ -1843,7 +1857,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
-| M46 | Durable Domain Events | in-progress | M45 | 6 | 2 |
+| M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
 | M48 | Client Recovery | todo | M44 | 4 | 0 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
@@ -1857,7 +1871,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 396 tasks across 52 milestones — 345 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 350 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

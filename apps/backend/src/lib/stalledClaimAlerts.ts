@@ -1,3 +1,5 @@
+import { withUnitOfWork } from '../db/access';
+import { runWithRequestContext } from './requestContext';
 import { randomUUID } from 'node:crypto';
 import { eq, inArray } from 'drizzle-orm';
 import * as schemaMysql from '../db/schema.mysql';
@@ -93,12 +95,18 @@ export async function runStalledClaimAlertSweep(
   const won: StalledClaimCandidate[] = [];
   for (const c of unalerted) {
     try {
-      await db.insert(schema.stalledClaimAlerts).values({
-        id: randomUUID(),
-        taskId: c.taskId,
-        anchorAt: c.anchorAt,
-        alertedAt: new Date(),
-      });
+      await runWithRequestContext({ requestId: `stalled-${randomUUID()}`, orgId: c.orgId, projectId: c.projectId }, () => withUnitOfWork(db, async () => {
+        await db.insert(schema.stalledClaimAlerts).values({
+          id: randomUUID(),
+          taskId: c.taskId,
+          anchorAt: c.anchorAt,
+          alertedAt: new Date(),
+        });
+        publishDomainEvent(nc, 'domain.task.stalled', {
+          orgId: c.orgId, projectId: c.projectId, taskId: c.taskId,
+          stalledAgentId: c.agentId, hoursSilent: hoursSilent(c, Date.now()),
+        });
+      }));
       won.push(c);
     } catch (err) {
       logger.info({ err, taskId: c.taskId }, 'stalled_claim_alerts.record_skipped');
@@ -123,22 +131,6 @@ export async function runStalledClaimAlertSweep(
 
   const now = Date.now();
   for (const c of won) {
-    try {
-      // Decision 4: an explicit orgId (left untouched by the correlation
-      // Proxy precisely because it is present), and the claimed agent as
-      // `stalledAgentId` - never `agentId`, which `auditProjector.ts`'s
-      // `extractActor` would read first and misattribute to the agent
-      // instead of 'system'.
-      publishDomainEvent(nc, 'domain.task.stalled', {
-        orgId: c.orgId,
-        projectId: c.projectId,
-        taskId: c.taskId,
-        stalledAgentId: c.agentId,
-        hoursSilent: hoursSilent(c, now),
-      });
-    } catch (err) {
-      logger.error({ err, taskId: c.taskId }, 'stalled_claim_alerts.publish_failed');
-    }
 
     // M29-T04: the in-app channel. This sweep names a type and a payload and
     // hands over; it does not know what a notification looks like, and

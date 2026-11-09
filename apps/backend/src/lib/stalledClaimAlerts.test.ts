@@ -1,3 +1,4 @@
+import { setDurableDomainEventCapture } from './natsCorrelation';
 import { describe, it, expect } from "bun:test";
 import { eq } from "drizzle-orm";
 import { setupIntegrationTest } from "../test/setup";
@@ -626,4 +627,20 @@ describe("runStalledClaimAlertSweep - misc", () => {
     await expect(runStalledClaimAlertSweep(db, true, mailer, null)).resolves.toBeUndefined();
     expect(sent).toHaveLength(1);
   });
+});
+
+ it('rolls back a stalled alert claim when durable event capture fails', async () => {
+  const { db, nc } = await setupIntegrationTest();
+  const base = await seedOrg(db, 'capture-rollback');
+  const projectId = await seedProject(db, base, 'capture-rollback');
+  const agentId = await seedAgent(db, base, 'capture-rollback');
+  const taskId = await seedTask(db, projectId, 'capture-rollback');
+  await seedHold(db, taskId, agentId);
+  await recordActivity(db, { taskId, projectId, kind: 'claimed', occurredAt: ago(30 * HOUR), actorId: agentId, assigneeAgentId: agentId });
+  setDurableDomainEventCapture(async () => { throw new Error('capture unavailable'); });
+  try {
+    await runStalledClaimAlertSweep(db, true, disabledMailer(), nc);
+    expect(await alertRowsFor(db, taskId)).toHaveLength(0);
+    expect(await db.select().from(schema.domainEvents)).toHaveLength(0);
+  } finally { setDurableDomainEventCapture(null); }
 });

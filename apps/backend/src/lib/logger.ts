@@ -1,3 +1,4 @@
+import { safeErrorSerializer } from './databaseErrorDetails';
 import pino from 'pino';
 import { getRequestContext } from './requestContext';
 import { activeTraceIds } from './telemetry/otel';
@@ -30,8 +31,8 @@ const mixin = () => {
 const logFilePath = process.env.LOG_FILE;
 
 export const logger = logFilePath
-  ? pino({ level, mixin }, pino.multistream([
+  ? pino({ level, mixin, serializers: { err: safeErrorSerializer } }, pino.multistream([
       { stream: process.stdout },
       { stream: pino.destination({ dest: logFilePath, mkdir: true, append: true }) },
     ]))
-  : pino({ level, mixin });
+  : pino({ level, mixin, serializers: { err: safeErrorSerializer } });

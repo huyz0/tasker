@@ -824,10 +824,11 @@ export const auditLog = sqliteTable("audit_log", {
   // Ties a row back to the HTTP request that caused it, via the id
   // withRequestCorrelation stamps onto every payload.
   requestId: text("request_id"),
+  eventId: text("event_id"),
   payload: text("payload").notNull(),
   // JetStream's sequence for this event. The projector is at-least-once, so
   // a redelivery after a crash would otherwise write the same event twice;
-  // this is unique, which makes the write idempotent.
+  // producer eventId now owns deduplication; sequence is diagnostic only.
   streamSeq: integer("stream_seq").notNull(),
   occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull(),
 }, (table) => {
@@ -835,7 +836,7 @@ export const auditLog = sqliteTable("audit_log", {
     orgIdx: index("audit_log_org_idx").on(table.orgId, table.occurredAt),
     subjectIdx: index("audit_log_subject_idx").on(table.subject),
     actorIdx: index("audit_log_actor_idx").on(table.actorId),
-    streamSeqUnique: uniqueIndex("audit_log_stream_seq_unique").on(table.streamSeq),
+    eventIdUnique: uniqueIndex("audit_log_event_id_unique").on(table.eventId),
   };
 });
 
@@ -993,6 +994,7 @@ export const webhookDeliveries = sqliteTable("webhook_deliveries", {
   attempts: integer("attempts").notNull().default(0),
   nextAttemptAt: integer("next_attempt_at", { mode: "timestamp" }).notNull(),
   claimedUntil: integer("claimed_until", { mode: "timestamp" }),
+  leaseToken: text("lease_token"),
   lastStatusCode: integer("last_status_code"),
   lastError: text("last_error"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),

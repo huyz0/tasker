@@ -1,0 +1,18 @@
+name: Setup pinned Moon
+description: Install the pinned official native Moon binary through Bun.
+runs:
+  using: composite
+  steps:
+    - name: Install repository-pinned native Moon
+      shell: bash
+      run: |
+        moon_version=$(sed -nE 's/^moon[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$GITHUB_WORKSPACE/.prototools")
+        [[ "$moon_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+        [[ "$RUNNER_OS" == Linux && "$RUNNER_ARCH" == X64 ]]
+        tool_dir="$RUNNER_TEMP/tasker-moon"
+        mkdir -p "$tool_dir"
+        printf '{"private":true}\n' > "$tool_dir/package.json"
+        bun add --cwd "$tool_dir" --ignore-scripts --exact "@moonrepo/core-linux-x64-gnu@$moon_version"
+        bin_dir="$tool_dir/node_modules/@moonrepo/core-linux-x64-gnu"
+        "$bin_dir/moon" --version
+        printf '%s\n' "$bin_dir" >> "$GITHUB_PATH"

@@ -103,3 +103,54 @@ compatibility with old messages. SQL events must outlive broker retention;
 changing either retention requires revisiting that bound. The new access layer
 is shared by HTTP/RPC and background publishers; no second authorization policy
 or public RPC contract is introduced.
+
+## Activation details (M46-T04)
+
+The runtime installs capture before listening. An explicit service/method read
+inventory avoids units for reads/streams; unknown unary methods enter a unit
+before authentication. Repository OAuth/provider preparation and manual schedule
+firing explicitly own narrow write units. Repository writes refresh credentials,
+policy memo and resource routing after external I/O. Invitation email is deferred
+until commit. Stalled-alert claim and event share a per-candidate unit; each
+schedule firing has fresh tenant/actor context and atomic run bookkeeping.
+
+Shutdown rejects new non-probe HTTP and unary RPC requests once draining starts.
+Actual handler promises are tracked because Connect's Node adapter returns void.
+Periodic workers stop ticks and await active promises; the consumer stops intake
+and awaits the active SQL projection before draining its connection.
+
+Client request IDs are accepted up to 128 characters; longer values receive a
+server-generated ID. Broker reference metadata has a 16 KiB ceiling. SQL error
+messages can include full parameters: logger serialization, error-ring summaries
+and both tracing error sinks emit a fixed database-error description and safe
+code rather than SQL, parameters or original stacks. The thrown original error
+and its cause are retained for application handling.
+
+Audit migration adds nullable event_id, backfills legacy sequence identities and
+removes stream-sequence uniqueness. The current projector always supplies an
+identity; nullable storage preserves old rows/read compatibility, not permission
+to keep running the old projector. Stop old consumers before migration. A binary
+rollback must use a projector that understands producer IDs or restore a tested
+pre-migration backup; blindly re-adding sequence uniqueness is unsafe once two
+new producers legitimately share a sequence. Ambiguous conflicting legacy
+identities fail visibly rather than silently dropping a different payload.
+
+## Webhook delivery ownership (M46-T06)
+
+Each delivery claim also receives a nullable lease token. The winning token and
+pending status fence every result; row result, endpoint failure counters and
+auto-disable state commit in one post-send unit. The claim compare-and-swap
+rechecks the stored due time, so a stale candidate cannot bypass a newer backoff.
+Admin notification insertion retains its existing best-effort behavior; do not
+infer notification durability from the endpoint/result transaction.
+
+The sender imposes a ten-second total attempt ceiling as well as inactivity
+handling. The ceiling covers DNS, connection/handshake, headers and a continuously
+trickling body. Reject before destroying the request because Bun may emit response
+end during destruction. Drain aborts new leases and waits for active bounded
+sends; callback/storage errors settle all active workers before returning.
+
+Lease-column migrations are additive and preserve old rows/leases. Drain old
+webhook workers before rollout: an old binary cannot enforce the new token
+fence. Retry remains at least once; receivers must deduplicate delivery/event
+identity because an expired sender may already have reached the receiver.

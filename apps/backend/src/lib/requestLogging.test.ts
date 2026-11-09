@@ -37,6 +37,16 @@ describe('requestLoggingInterceptor', () => {
     expect((res as any).header.get('x-request-id')).toBe('client-supplied-id');
   });
 
+  it('replaces overlong client request IDs before they reach audit storage or broker metadata', async () => {
+    const supplied = 'x'.repeat(300);
+    const req = makeReq({ header: { 'x-request-id': supplied } });
+    const result = await requestLoggingInterceptor((async () => ({ stream: false, header: new Headers() })) as any)(req as any);
+    const id = req.contextValues.get(requestIdKey);
+    expect(id.length).toBeLessThanOrEqual(128);
+    expect(id).not.toBe(supplied);
+    expect((result as any).header.get('x-request-id')).toBe(id);
+  });
+
   it('binds requestId (and userId, when authenticated) into the request context for the duration of next()', async () => {
     const token = createSessionToken('user-obs-2');
     const req = makeReq({ header: { 'x-request-id': 'ctx-test-id', authorization: `Bearer ${token}` } });

@@ -1,3 +1,6 @@
+import { withUnitOfWork } from '../../db/access';
+import { withFreshAuthorizationContext } from '../../lib/requestContext';
+import { resolvePrincipal } from '../../lib/authenticate';
 import { publishDomainEvent } from "../../lib/natsCorrelation";
 import { z } from "zod/v4";
 import * as schemaMysql from "../../db/schema.mysql";
@@ -86,9 +89,21 @@ const ListDeploymentsSchema = z.object({
 
 export const createRepositoriesHandler = (db: any, nc: any = null) => {
   const isStandalone = process.env.STANDALONE === "true";
-  
+
+  async function writeUnit<T>(projectId: string, userId: string, permission: string, headers: Headers | undefined, work: () => Promise<T>): Promise<T> {
+    return withFreshAuthorizationContext(() => withUnitOfWork(db, async () => {
+      if (headers) {
+        const fresh = await resolvePrincipal(db, { cookie: headers.get('cookie'), authorization: headers.get('authorization') });
+        if (fresh?.kind !== 'user' || fresh.userId !== userId) throw new ConnectError('credentials expired or were revoked', Code.Unauthenticated);
+      }
+      const currentOrg = await getProjectOrgId(db, projectId);
+      await assertCan(db, { kind: 'user', userId }, { type: 'organization', id: currentOrg }, permission);
+      return work();
+    }));
+  }
+
   return {
-    async addRepositoryLink(req: unknown, { values: contextValues }: { values: any }) {
+    async addRepositoryLink(req: unknown, { values: contextValues, requestHeader }: { values: any; requestHeader?: Headers }) {
       const userId = requireUser(contextValues);
       const parsed = AddRepositoryLinkSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
@@ -181,15 +196,17 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         authEmail,
       };
 
-      await insertRecord(db, links, payload, isStandalone, true);
+      return writeUnit(parsed.projectId, userId, 'repository:admin', requestHeader, async () => {
+        await insertRecord(db, links, payload, isStandalone, true);
 
-      publishDomainEvent(nc, "domain.repository.linked", payload);
-      
-      return { 
-        link: { ...payload, createdAt: new Date().toISOString() } 
-      };
+        publishDomainEvent(nc, "domain.repository.linked", payload);
+
+        return {
+          link: { ...payload, createdAt: new Date().toISOString() }
+        };
+      });
     },
-    
+
     async removeRepositoryLink(req: unknown, { values: contextValues }: { values: any }) {
       const userId = requireUser(contextValues);
       const parsed = RemoveRepositoryLinkSchema.parse(req);
@@ -215,9 +232,9 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const links = isStandalone ? schemaSqlite.repositoryLinks : schemaMysql.repositoryLinks;
 
       const { items, nextCursor, totalCount } = await executePaginatedQuery(
-          db, 
-          links, 
-          eq((links as any).projectId, parsed.projectId), 
+          db,
+          links,
+          eq((links as any).projectId, parsed.projectId),
           parsed.page,
           {
             // `accessTokenEncrypted` is deliberately absent. It used to be
@@ -245,8 +262,8 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
         page: { nextCursor, totalCount },
       };
     },
-    
-    async syncPullRequests(req: unknown, { values: contextValues }: { values: any }) {
+
+    async syncPullRequests(req: unknown, { values: contextValues, requestHeader }: { values: any; requestHeader?: Headers }) {
       const userId = requireUser(contextValues);
       const parsed = SyncPullRequestsSchema.parse(req);
       const orgId = await getProjectOrgId(db, parsed.projectId);
@@ -259,49 +276,61 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
       const links = await db.select().from(linksTable).where(eq((linksTable as any).projectId, parsed.projectId));
       const failures: string[] = [];
 
-      // A PR's title conventionally references a task by its human-readable
-      // displayId (e.g. "SP-42: fix login bug") - resolve that back to a real
-      // taskId so the GUI can show PRs on their linked task instead of
-      // leaving remotePullRequests.taskId permanently null.
-      const projectTasks = await db.select({ id: (tasksTable as any).id, displayId: (tasksTable as any).displayId })
-        .from(tasksTable)
-        .where(eq((tasksTable as any).projectId, parsed.projectId));
-      const taskIdByDisplayId = new Map<string, string>(
-        projectTasks.filter((t: any) => t.displayId).map((t: any) => [t.displayId, t.id])
-      );
-      // Every task in a project shares the same displayId key prefix (e.g.
-      // "SP" in "SP-42" - see projects.key), so it only needs deriving once
-      // per sync call, from any one existing displayId, not looked up per PR.
-      const keyPrefix = (() => {
-        for (const t of projectTasks) {
-          const match = /^(.+)-\d+$/.exec(t.displayId ?? "");
-          if (match) return match[1];
-        }
-        return null;
-      })();
-      // Extracts a "KEY-<number>" token directly out of the title with one
-      // regex pass, instead of testing every one of the project's task
-      // displayIds against the title - the previous approach was
-      // O(tasks x PRs) regex compilations+tests per sync call, which gets
-      // very expensive for a project with thousands of tasks.
-      const displayIdPattern = keyPrefix ? new RegExp(`\\b${keyPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)\\b`, "g") : null;
-      function resolveTaskId(title: string): string | null {
-        if (!keyPrefix || !displayIdPattern) return null;
-        for (const match of title.matchAll(displayIdPattern)) {
-          const taskId = taskIdByDisplayId.get(`${keyPrefix}-${match[1]}`);
-          if (taskId) return taskId;
-        }
-        return null;
-      }
-
+      const prepared: Array<{ link: any; prs: any[] }> = [];
       for (const link of links) {
-        if (link.provider !== "github" && link.provider !== "bitbucket") continue;
+        if (link.provider !== 'github' && link.provider !== 'bitbucket') continue;
         try {
           const token = decryptToken(link.accessTokenEncrypted);
-          const normalizedPrs = link.provider === "github"
+          const prs = link.provider === 'github'
             ? await fetchGithubPullRequests(link.remoteName, token)
             : await fetchBitbucketPullRequests(link.remoteName, token, link.authEmail);
+          prepared.push({ link, prs });
+        } catch (e) {
+          failures.push(link.remoteName);
+          logger.error({ remoteName: link.remoteName, err: e }, 'syncPullRequests.failed');
+        }
+      }
+      return writeUnit(parsed.projectId, userId, 'repository:write', requestHeader, async () => {
+        // A PR's title conventionally references a task by its human-readable
+        // displayId (e.g. "SP-42: fix login bug") - resolve that back to a real
+        // taskId so the GUI can show PRs on their linked task instead of
+        // leaving remotePullRequests.taskId permanently null.
+        const projectTasks = await db.select({ id: (tasksTable as any).id, displayId: (tasksTable as any).displayId })
+          .from(tasksTable)
+          .where(eq((tasksTable as any).projectId, parsed.projectId));
+        const taskIdByDisplayId = new Map<string, string>(
+          projectTasks.filter((t: any) => t.displayId).map((t: any) => [t.displayId, t.id])
+        );
+        // Every task in a project shares the same displayId key prefix (e.g.
+        // "SP" in "SP-42" - see projects.key), so it only needs deriving once
+        // per sync call, from any one existing displayId, not looked up per PR.
+        const keyPrefix = (() => {
+          for (const t of projectTasks) {
+            const match = /^(.+)-\d+$/.exec(t.displayId ?? "");
+            if (match) return match[1];
+          }
+          return null;
+        })();
+        // Extracts a "KEY-<number>" token directly out of the title with one
+        // regex pass, instead of testing every one of the project's task
+        // displayIds against the title - the previous approach was
+        // O(tasks x PRs) regex compilations+tests per sync call, which gets
+        // very expensive for a project with thousands of tasks.
+        const displayIdPattern = keyPrefix ? new RegExp(`\\b${keyPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)\\b`, "g") : null;
+        function resolveTaskId(title: string): string | null {
+          if (!keyPrefix || !displayIdPattern) return null;
+          for (const match of title.matchAll(displayIdPattern)) {
+            const taskId = taskIdByDisplayId.get(`${keyPrefix}-${match[1]}`);
+            if (taskId) return taskId;
+          }
+          return null;
+        }
 
+
+        for (const { link, prs: normalizedPrs } of prepared) {
+          const [currentLink] = await db.select({ id: (linksTable as any).id }).from(linksTable)
+            .where(and(eq((linksTable as any).id, link.id), eq((linksTable as any).projectId, parsed.projectId))).limit(1);
+          if (!currentLink) { failures.push(link.remoteName); continue; }
           // Batch-fetch existing PRs for this link once, scoped by repositoryLinkId,
           // instead of querying per-PR (N+1) and matching on remotePrId globally
           // (which could collide with another repo's PR #<n>).
@@ -343,15 +372,10 @@ export const createRepositoriesHandler = (db: any, nc: any = null) => {
               }).where(and(eq((prsTable as any).id, existing.id), eq((prsTable as any).repositoryLinkId, link.id)));
             }
           }
-        } catch (e) {
-           failures.push(link.remoteName);
-           logger.error({ remoteName: link.remoteName, err: e }, "syncPullRequests.failed");
         }
-      }
-
-      publishDomainEvent(nc, "domain.repository.sync_requested", { projectId: parsed.projectId });
-
-      return { success: failures.length === 0 };
+        publishDomainEvent(nc, 'domain.repository.sync_requested', { projectId: parsed.projectId });
+        return { success: failures.length === 0 };
+      });
     },
 
     async listPullRequests(req: unknown, { values: contextValues }: { values: any }) {
