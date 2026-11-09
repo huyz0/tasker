@@ -23,7 +23,7 @@ jobs:
         with:
           bun-version: 'latest'
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: cd packages/shared-contract && bun install
       - name: Compile and Format (Cached)
@@ -49,7 +49,7 @@ jobs:
         with:
           bun-version: 'latest'
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Unused code and dependencies
         run: moon run :knip
       - name: Agent harness contract
@@ -74,7 +74,7 @@ jobs:
         with:
           bun-version: 'latest'
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: |
           # Install shared contract first so it can compile
@@ -112,7 +112,7 @@ jobs:
         with:
           bun-version: 'latest'
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: |
           cd packages/shared-contract && bun install && cd ../..
@@ -162,7 +162,7 @@ jobs:
         with:
           bun-version: 'latest'
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: |
           cd packages/shared-contract && bun install && cd ../..
@@ -218,7 +218,7 @@ jobs:
         with:
           bun-version: 'latest'
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Install dependencies
         run: |
           cd packages/shared-contract && bun install && cd ../..
@@ -259,7 +259,7 @@ jobs:
         with:
           bun-version: 'latest'
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
       - name: Setup Shared Contract
         run: cd packages/shared-contract && bun install
       - name: Build & Test (Cached)

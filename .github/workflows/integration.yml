@@ -33,7 +33,7 @@ jobs:
           bun-version: latest
           
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
           
       - name: Install dependencies
         run: |
@@ -105,7 +105,7 @@ jobs:
           bun-version: latest
 
       - name: Setup Moon
-        uses: moonrepo/setup-toolchain@v0
+        uses: ./.github/actions/setup-moon
 
       - name: Install dependencies
         run: |

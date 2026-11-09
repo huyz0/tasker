@@ -1,8 +1,8 @@
 ---
 active_milestone: M46
-active_task: null
+active_task: M46-T05
 last_updated: 2026-11-09
-last_commit: ab7b1a1
+last_commit: d36142f
 blocked: false
 blocker: null
 ---

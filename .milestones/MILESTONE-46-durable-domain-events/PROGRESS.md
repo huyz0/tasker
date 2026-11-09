@@ -44,3 +44,12 @@
 - **Verified**: Initial red: all six fencing/rollback/drain cases and trickling deadline failed. Restored implementation passes focused suites, real DNS/trickling HTTP, real MySQL fencing/counter rollback, and all 35 local gates (23 cached): backend 2120 pass / 41 explicitly gated skip / 0 fail. Removing tokens fails SQLite/MySQL; early-return worker and omitted-total-timer faults fail their regressions. Independent CODE-REVIEW-v5 approved.
 - **Notes**: Deliver before T05 closure as planned. ADR-0040 already establishes fenced ownership; add the webhook-specific timeout/fanout boundaries. Keep signing, SSRF filtering and retry/disable policy. Admin notifications retain existing best-effort persistence; atomic guarantee covers result and endpoint state. No public contract/UX change.
 - **Next**: M46-T05 real process/crash evidence and operating procedures.
+
+## M46-T05 — Process recovery evidence and operating closure
+
+- **Status**: in-progress
+- **Date**: 2026-11-09
+- **Changed**: Add isolated broker/two-process commit/ACK/webhook recovery tests on both dialects; exercise large SQL-backed reference projection and broker outage; document inspection, retention and rollout.
+- **Verified**: Pending real failure-boundary tests, gates and remote CI.
+- **Notes**: Two remote attempts failed before application tests while the unpinned global Moon installer returned HTTP 504. Include a narrow CI bootstrap correction selecting the existing .prototools Moon pin, bringing that part of M49-T05 forward without claiming M49 complete. Verify custom consumer DB_PATH when hydrating references. Existing ADR/test plan owns recovery semantics; no new public contract or UX.
+- **Next**: Close M46 only after real recovery and actual CI pass; M47 recoverable schedules follows.
