@@ -2,7 +2,9 @@
 
 Keep the existing task workspace, system sans/monospace roles, violet interaction
 and semantic ink/surfaces verified in M51/M53. Add no primary navigation item.
-Evidence belongs beside the written summary and existing repository/build signals.
+Evidence belongs immediately after Summary in the main reading column, outside
+its disclosure and before Agent plan/Usage/Comments, with repository signals
+clearly identified. It does not hide or remount the summary editor.
 Rename/evolve the existing task Artifacts section and controls into this single
 Evidence surface; do not add a duplicate list/linker.
 
@@ -93,3 +95,29 @@ source cannot regain a cached title through late events, stale pages or old
 responses. Sanitize TaskArtifactLink.artifactName inside unavailable entries too.
 New worker links/unlinks and edits/archive/purge of a cross-project source must
 converge in the open view by the next successful bounded refresh.
+
+## T04 source preflight amendment
+
+Use the paged response's optional current canLink/canUnlink flags for controls;
+server policy remains authoritative on every mutation. False means read-only for
+that action; missing means controls unavailable, without hiding existing links or
+claiming lack of permission. Unknown metadata/zero stored bytes remain distinct.
+The section is always open while the selected detail is mounted; document-hidden
+and unmounted views pause polling. Retain the artifact viewer's reverse Tasks
+section and its existing relationship actions. Use compact wrapping rows rather
+than oversized cards. Picker candidates must bind to current text/task/org/account
+immediately, before debounce, and late mutation receipts must not reset another
+resource's picker or error state.
+
+## Recorded repository signals
+
+Reuse the workbench's existing project pull-request read; filter positive records
+by exact taskId. This selector returns stored project records without paging,
+so no boundedness or completeness claim is introduced. Its scaling remains an
+M49 concern; do not add a second request or per-row lookup here. Separate the
+subsection as Synced pull requests, label local upsert time Last recorded, and
+state that provider records may be incomplete/outdated. Empty means No linked
+pull requests recorded; loading/error/denied are distinct and hide cached rows.
+The query is partitioned by project/org/account and consumes AbortSignal. Current
+models cannot correlate a repository build to a task/PR head, so do not display a
+repository's latest build as task evidence or infer verified completion.

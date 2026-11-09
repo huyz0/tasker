@@ -1704,6 +1704,12 @@ model ListTaskArtifactLinksResponse {
 
   // Only paged reads hydrate bounded current evidence metadata.
   @field(3) evidence: TaskArtifactEvidence[];
+
+  // Advisory current controls on paged reads. Writes independently authorize.
+  // Omitted means unknown; false is a verified current denial.
+  @field(4) canLink?: boolean;
+
+  @field(5) canUnlink?: boolean;
 }
 
 model ListArtifactsRequest {

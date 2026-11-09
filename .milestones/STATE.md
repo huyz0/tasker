@@ -1,8 +1,8 @@
 ---
 active_milestone: M54
-active_task: null
+active_task: M54-T04
 last_updated: 2026-11-09
-last_commit: 8e757f1
+last_commit: 1fa68a7
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M54-T04 in progress.** T03 committed/pushed as1fa68a7 after all35 gates. Build one Evidence section after Summary (outside its disclosure), removing the task-side sidebar duplicate while preserving reverse Tasks. Preflight requires truthful permissions; add reviewed optional paged-response capability flags rather than client RBAC guesses. Current read-only access/lifetime, page extent, current-query linker, mutable-reference labels and summary protection require observed regressions and rendered/browser proof.3/5 M54 tasks complete;28 tasks remain.
 
 **2026-11-09 — M54-T03 verified:3/5 tasks.** Optional digest metadata preserves ordinary task-only/no-artifact-query behavior, checks current artifact authority, caps source21→metadata20 and combines truncation.64 focused cases, real MySQL62assertions, seven faults and eighteen old-client decodes pass; CODE-v3 approves. All35 gates pass (GUI1475/95.43%, backend2270/zero failures). T04 next implements one Evidence surface after Summary, current-reference provenance, paging/freshness and protected intent; final T04/T05/head CI still gate draft PR #7. Overall28 tasks remain.
 

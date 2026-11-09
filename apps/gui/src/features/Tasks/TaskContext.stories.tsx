@@ -6,6 +6,9 @@ import { create } from '@bufbuild/protobuf';
 import { PlanStepSchema, TaskSummarySchema, UsageTotalsSchema } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
 import { SummaryPreview } from '../../../.storybook/SummaryPreview';
 import { TaskContext } from './TaskContext';
+import { TaskArtifactLinks } from './TaskArtifactLinks';
+import { evidenceFixture } from '../../../.storybook/evidenceFixture';
+import { expect, within } from 'storybook/test';
 
 function ContextOwner({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -16,11 +19,14 @@ function ContextOwner({ children }: { children: ReactNode }) {
   return ready ? children : null;
 }
 
-const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function ContextCache({ children }: { children: ReactNode }) {
+  const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 const meta = {
   title: 'Features/Tasks/Optional context', component: TaskContext,
   args: { taskId: 'task-story' },
-  decorators: [(Story) => <ContextOwner><QueryClientProvider client={client}><div className="max-w-2xl p-panel"><Story /></div></QueryClientProvider></ContextOwner>],
+  decorators: [(Story) => <ContextOwner><ContextCache><div className="max-w-2xl p-panel"><Story /></div></ContextCache></ContextOwner>],
 } satisfies Meta<typeof TaskContext>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -32,3 +38,9 @@ export const Populated: Story = { args: {
 } };
 
 export const RestoredDraft: Story = { render: () => <SummaryPreview state="restored" /> };
+
+export const EvidenceAfterSummary: Story = {
+  beforeEach: () => evidenceFixture(),
+  args: { ...Populated.args, taskId: 'task-storybook', children: <TaskArtifactLinks taskId="task-storybook" orgId="org-storybook" /> },
+  play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('link', { name: 'release-verification.md' })).resolves.toBeVisible(); },
+};

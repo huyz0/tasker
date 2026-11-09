@@ -133,3 +133,43 @@ old-client decodes with442 messages/1241 existing fields preserved. T03 is
 complete:3/5 M54 tasks,368 done/28 pending overall. T04 next moves the single
 Evidence surface after Summary, with actual previews/browser proof; PR #7 stays
 draft until T04/T05 and applicable final-head CI.
+
+## M54-T04 — Present current evidence beside summary
+
+- **Status**: in-progress
+- **Date**: 2026-11-09
+- **Changed**: Evolve one task Evidence surface immediately after Summary, preserving reverse artifact Tasks, with bounded metadata/paging, current permission controls, scope-safe linker and visible refresh.
+- **Verified**: T03 committed/pushed as1fa68a7 after all35 full/closure gates; no pending source failures. Independent human preflight specifies placement outside Summary disclosure, compact rows, historical link labels, mutable references and no duplicated sidebar list.
+- **Notes**: Frontend/security standards plus TDD selected; accepted ADR0042/UX/TC006–009 govern heavy UI. Source has no authoritative capability-read RPC; client role/grant reconstruction would drift from policy. Amend the paged response with fresh optional canLink4/canUnlink5 advisory flags, using existing server write policy and preserving independent write authorization. This requires small backend/contract additions beyond initial GUI hints, with review and regressions before code. No new permission, event family, font, palette or dependency.
+- **Next**: Approve capability/placement amendment; observe capability and UI state/paging/access/query-intent reds before implementation, then actual previews/browser/full proof.
+
+T04 implementation checkpoint: five observed capability reds now pass using
+existing server policy, with optional paged flags4/5 and independent write checks.
+Eight initial UI reds pass; adapted reverse-link tests give22 focused successes.
+Five additional access/page-chain/current-query/late-write/pending-reopen cases
+pass against the real Connect transport. The access test's initial failure was a
+fixture label mismatch (Retry versus the existing Try again), corrected before
+accepting the result; deliberate behavior faults remain pending.
+
+One Evidence surface is outside Summary and before Agent plan; task-side sidebar
+duplication is removed, reverse artifact Tasks retained. Metadata refreshes without
+body/owner reads. New recorded pull-request subsection consumes the workbench's
+existing project query, filtering exact task IDs; no additional provider request
+or build attribution. Last recorded is local upsert time, with incomplete/stale
+sync copy. The existing unbounded project selector remains an M49 scale concern;
+this UI does not imply a bounded or complete provider read. Account/org keys and
+AbortSignal now partition that cache. Denied/error states hide cached records.
+Five recorded-signal cases pass after the absent-component red. New deterministic
+wire-backed stories cover evidence states without a live account; actual rendered
+and broader/full verification are pending. T04 remains in-progress and unchecked.
+
+Independent T04 source review identifies two control-state defects: global cache
+invalidation could bypass explicit retry after read denial, and Refresh cleared
+write denial before a fresh capability response. Both regressions fail as expected
+(two observed reds). Query enablement now excludes unaccepted cached errors;
+manual refetch can reauthorize only on success. A local write-denial latch survives
+mutation reset/cancel and clears only after successful capability refresh. Seven
+focused lifetime/denial cases pass after correction. Broader workbench97 cases
+pass after its fixture supplies authenticated session; remaining21 affected
+suites passed. TypeScript is clean and Storybook builds. Full rendering/coverage,
+controlled faults and current-source browser proof remain pending. T04 is WIP.

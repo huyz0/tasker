@@ -5,7 +5,7 @@ import * as schemaSqlite from "../../db/schema.sqlite";
 import { eq, and, not, inArray, sql, isNull, asc, gt } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById, encodeCursor, decodeCursor } from "../../db/query-builder";
 import { requireUser, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
-import { assertCan } from "../../lib/policy";
+import { assertCan, can } from "../../lib/policy";
 import { setRequestProject } from "../../lib/requestContext";
 import { ConnectError, Code } from "@connectrpc/connect";
 
@@ -384,7 +384,9 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
         ]);
         const selected = rows.slice(0, limit), last = selected.at(-1);
         const metadata = await evidenceMetadata(db, isStandalone, orgId, selected);
-        return { ...metadata, page: {
+        const canLink = principal.kind === 'agent' ? principal.scopes.includes('artifacts:write')
+          : await can(db, principal, { type: 'organization', id: orgId }, 'artifact:write');
+        return { ...metadata, canLink, canUnlink: principal.kind === 'user' && canLink, page: {
           totalCount: Number(count?.n ?? 0),
           nextCursor: rows.length > limit ? encodeCursor(last.id, last.id, 'id', undefined, undefined, binding) : '',
         } };

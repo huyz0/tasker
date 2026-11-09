@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
+import * as policy from '../../lib/policy';
 import { eq, sql } from 'drizzle-orm';
 import { Code } from '@connectrpc/connect';
 import * as S from '../../db/schema.sqlite';
@@ -265,7 +266,7 @@ describe('evidence SQL result bounds', () => {
     expect(large.truncated).toBe(true);
     expect(large.storedBytes).toBe(64004n);
     const page: any = await f.handler.listTaskArtifactLinks({ taskId: f.taskId, page: { limit: 20 } }, f.ctx);
-    expect(page).toEqual({ links: [], evidence: [], page: { nextCursor: '', totalCount: 0 } });
+    expect(page).toEqual({ links: [], evidence: [], canLink: true, canUnlink: true, page: { nextCursor: '', totalCount: 0 } });
   });
 });
 
@@ -290,4 +291,57 @@ it('preserves a stored leading BOM when replacing existing artifact content', as
   await f.handler.updateArtifactContent({ artifactId: f.artifactIds[0]!, content: '\uFEFFupdated' }, f.ctx);
   const read: any = await f.handler.getArtifactContent({ artifactId: f.artifactIds[0]! }, f.ctx);
   expect(read.content).toBe('\uFEFFupdated');
+});
+
+
+describe('current paged relationship controls (M54-T04)', () => {
+  it('reports current human write ability without changing legacy unpaged responses', async () => {
+    const f = await fixture();
+    const paged: any = await f.handler.listTaskArtifactLinks({ taskId: f.taskId, page: { limit: 20 } }, f.ctx);
+    expect(paged.canLink).toBe(true);
+    expect(paged.canUnlink).toBe(true);
+    const legacy: any = await f.handler.listTaskArtifactLinks({ taskId: f.taskId }, f.ctx);
+    expect(legacy).not.toHaveProperty('canLink');
+    expect(legacy).not.toHaveProperty('canUnlink');
+  });
+
+  it.each([false, true])('keeps agent unlink human-only with write scope%s', async write => {
+    const f = await fixture(), ctx = makeAuthContext(null);
+    ctx.values.set(currentPrincipalKey, { kind: 'agent', agentId: 'reader', tokenId: 'fixture', orgId: f.orgId,
+      scopes: ['artifacts:read', ...(write ? ['artifacts:write'] : [])] });
+    const page: any = await f.handler.listTaskArtifactLinks({ taskId: f.taskId, page: { limit: 20 } }, ctx);
+    expect(page.canLink).toBe(write);
+    expect(page.canUnlink).toBe(false);
+    ctx.values.set(currentPrincipalKey, { kind: 'agent', agentId: 'reader', tokenId: 'fixture', orgId: f.orgId, scopes: ['artifacts:read'] });
+    await expect(f.handler.linkTaskArtifact({ taskId: f.taskId, artifactId: f.artifactIds[0]!, canLink: true }, ctx))
+      .rejects.toMatchObject({ code: Code.PermissionDenied });
+    await expect(f.handler.unlinkTaskArtifact({ taskId: f.taskId, artifactId: f.artifactIds[0]!, canUnlink: true }, ctx))
+      .rejects.toMatchObject({ code: Code.PermissionDenied });
+  });
+
+  it('uses actual custom-role permission rather than a membership/role-name guess', async () => {
+    const f = await fixture(), userId = `viewer-${f.userId}`, roleId = `viewer-role-${f.taskId}`;
+    await f.db.insert(S.users).values({ id: userId, email: `${userId}@example.test`, createdAt: new Date() });
+    await f.db.insert(S.roles).values({ id: roleId, orgId: f.orgId, name: 'Custom evidence reader', createdAt: new Date() });
+    await f.db.insert(S.rolePermissions).values({ roleId, permissionKey: 'artifact:read' });
+    await f.db.insert(S.grants).values({ id: `grant-${userId}`, subjectType: 'user', subjectId: userId,
+      scopeType: 'organization', scopeId: f.orgId, roleId, createdAt: new Date() });
+    const page: any = await f.handler.listTaskArtifactLinks({ taskId: f.taskId, page: { limit: 20 } }, makeAuthContext(userId));
+    expect(page.canLink).toBe(false);
+    expect(page.canUnlink).toBe(false);
+  });
+
+  it('propagates capability lookup failure and does not add it to legacy reads', async () => {
+    const f = await fixture(), original = policy.can;
+    const check = spyOn(policy, 'can').mockImplementation(async (...args: Parameters<typeof policy.can>) => {
+      if (args[3] === 'artifact:write') throw new Error('write policy lookup unavailable');
+      return original(...args);
+    });
+    try {
+      const legacy: any = await f.handler.listTaskArtifactLinks({ taskId: f.taskId }, f.ctx);
+      expect(legacy.links).toEqual([]);
+      await expect(f.handler.listTaskArtifactLinks({ taskId: f.taskId, page: { limit: 20 } }, f.ctx))
+        .rejects.toThrow('write policy lookup unavailable');
+    } finally { check.mockRestore(); }
+  });
 });

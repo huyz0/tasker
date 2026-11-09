@@ -1,175 +1,171 @@
-import { useState } from 'react';
-import { ListState } from '../../components/ui/ListState';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useId, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { useDebounce } from 'use-debounce';
-import { transport } from '../../lib/connectTransport';
 import { ArtifactService, SearchService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
+import { transport } from '../../lib/connectTransport';
+import { actionErrorMessage } from '../../lib/actionErrorMessage';
+import { formatDateTime } from '../../lib/format';
+import { useAuthSession } from '../../hooks/useAuthSession';
+import { Button } from '../../components/ui/button';
+import { ListState } from '../../components/ui/ListState';
+import { RELATIONSHIP_WRITES, relationshipAccessLost, relationshipKey, useArtifactRelationships, type EvidenceRow, type RelationshipOwner, type RelationshipWrite } from './useArtifactRelationships';
 
-const artifactClient = createClient(ArtifactService, transport);
+const artifacts = createClient(ArtifactService, transport);
 const searchClient = createClient(SearchService, transport);
+interface TaskArtifactLinksProps { taskId?: string; artifactId?: string; orgId: string; children?: ReactNode; }
 
-const PAGE = 10;
+/** Both ends share one relationship control. A new owner remounts local intent. */
+export function TaskArtifactLinks(props: TaskArtifactLinksProps) {
+  const session = useAuthSession();
+  if (!session.authenticated || !session.userId) return <p className="type-caption text-muted-foreground" role="status">
+    {session.isLoading ? 'Checking account…' : 'Sign in to view linked evidence.'}
+  </p>;
+  if (!(props.taskId || props.artifactId) || !props.orgId) return <p className="type-caption text-muted-foreground">Choose a resource to view its links.</p>;
+  const owner = { accountId: session.userId, orgId: props.orgId, taskId: props.taskId, artifactId: props.artifactId };
+  return <RelationshipPanel key={JSON.stringify(relationshipKey(owner))} owner={owner}>{props.children}</RelationshipPanel>;
+}
 
-/**
- * The task ↔ artifact relation, rendered from whichever end the caller is
- * standing at. Pass `taskId` on a task detail to see its artifacts; pass
- * `artifactId` in the artifact viewer to see its tasks.
- *
- * One component rather than two because — unlike assignees and reviewers, which
- * draw from different sets — this is a single table read from two ends. The
- * rows have the same shape either way, so splitting it would duplicate the
- * search, the mutations and the empty states to change two labels.
- *
- * Candidates come from `universalSearch`, which is bounded and already splits
- * its page evenly between tasks and artifacts, so neither type can crowd the
- * other out. It requires a query, so this picker asks for one rather than
- * opening onto a list of everything — which is also what keeps it from
- * repeating M05-T04's enumeration.
- */
-export function TaskArtifactLinks({ taskId, artifactId, orgId }: { taskId?: string; artifactId?: string; orgId: string }) {
-  const anchor = taskId ? 'task' : 'artifact';
+interface RelationshipPanelProps { owner: RelationshipOwner; children?: ReactNode; }
+function RelationshipPanel({ owner, children }: RelationshipPanelProps) {
+  const taskSide = !!owner.taskId;
   const queryClient = useQueryClient();
+  const { query, rows, blocked, denied, canLink, canUnlink, totalCount } = useArtifactRelationships(owner);
   const [isPicking, setIsPicking] = useState(false);
+  const [writeAccessLost, setWriteAccessLost] = useState(false);
   const [search, setSearch] = useState('');
-  const [debouncedSearch] = useDebounce(search, 250);
+  const raw = search.trim();
+  const requested = useRef(raw); requested.current = raw;
+  const [debounced] = useDebounce(raw, 250);
+  const settled = raw === debounced;
+  const inputId = useId(), headingId = useId();
+  const pending = useIsMutating({ mutationKey: RELATIONSHIP_WRITES, predicate: mutation => {
+    const write = mutation.state.variables as RelationshipWrite | undefined;
+    return write?.orgId === owner.orgId && (owner.taskId ? write.taskId === owner.taskId : write.artifactId === owner.artifactId);
+  } }) > 0;
 
-  const key = ['taskArtifactLinks', anchor, taskId ?? artifactId];
-  const linksQuery = useQuery({
-    queryKey: key,
-    enabled: !!(taskId || artifactId),
-    queryFn: async () =>
-      (await artifactClient.listTaskArtifactLinks(taskId ? { taskId } : { artifactId })).links,
+  const invalidate = (write: RelationshipWrite) => {
+    queryClient.invalidateQueries({ queryKey: ['taskArtifactLinks', write.accountId, write.orgId] });
+    queryClient.invalidateQueries({ queryKey: ['taskDigest', write.taskId] });
+    queryClient.invalidateQueries({ queryKey: ['task', write.taskId] });
+  };
+  const link = useMutation({
+    mutationKey: RELATIONSHIP_WRITES,
+    mutationFn: (write: RelationshipWrite) => artifacts.linkTaskArtifact({ taskId: write.taskId, artifactId: write.artifactId }),
+    onSuccess: (_response, write) => { setIsPicking(false); setSearch(''); invalidate(write); },
+    onError: error => { if (relationshipAccessLost(error)) setWriteAccessLost(true); },
   });
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: key });
-
+  const unlink = useMutation({
+    mutationKey: RELATIONSHIP_WRITES,
+    mutationFn: (write: RelationshipWrite) => artifacts.unlinkTaskArtifact({ taskId: write.taskId, artifactId: write.artifactId }),
+    onSuccess: (_response, write) => invalidate(write),
+    onError: error => { if (relationshipAccessLost(error)) setWriteAccessLost(true); },
+  });
+  const mutationError = link.error || unlink.error;
+  const writeDenied = writeAccessLost || relationshipAccessLost(mutationError);
+  const writable = !blocked && !writeDenied && !pending;
   const candidates = useQuery({
-    queryKey: ['linkCandidates', anchor, orgId, debouncedSearch],
-    enabled: isPicking && !!orgId && debouncedSearch.trim().length > 0,
-    queryFn: async () => {
-      const r = await searchClient.universalSearch({ orgId, query: debouncedSearch, page: { limit: PAGE } });
-      // The opposite end of the relation: a task detail is looking for
-      // artifacts, the artifact viewer for tasks.
-      return r.results.filter((x: any) => x.type === (anchor === 'task' ? 'artifact' : 'task'));
-    },
+    queryKey: ['linkCandidates', ...relationshipKey(owner), raw],
+    enabled: isPicking && canLink === true && writable && !!raw && settled,
+    queryFn: async ({ signal }) => (await searchClient.universalSearch({ orgId: owner.orgId, query: raw,
+      page: { limit: 10 } }, { signal })).results,
+    retry: false,
   });
-
-  const linkMutation = useMutation({
-    mutationFn: async (otherId: string) => {
-      await artifactClient.linkTaskArtifact(
-        taskId ? { taskId, artifactId: otherId } : { taskId: otherId, artifactId: artifactId! },
-      );
-    },
-    onSuccess: () => { setIsPicking(false); setSearch(''); invalidate(); },
-  });
-
-  const unlinkMutation = useMutation({
-    mutationFn: async (link: any) => {
-      await artifactClient.unlinkTaskArtifact({ taskId: link.taskId, artifactId: link.artifactId });
-    },
-    onSuccess: invalidate,
-  });
-
-  const links = linksQuery.data ?? [];
-  const nameOf = (l: any) => (anchor === 'task' ? l.artifactName : l.taskTitle);
-  const linkedIds = new Set(links.map((l: any) => (anchor === 'task' ? l.artifactId : l.taskId)));
-  const offered = (candidates.data ?? []).filter((c: any) => !linkedIds.has(c.id));
-  const noun = anchor === 'task' ? 'artifact' : 'task';
-
-  return (
-    <div className="flex flex-col gap-2">
-      {linksQuery.isLoading || linksQuery.error || links.length === 0 ? (
-        // "No linked artifacts" was rendered for a failed load too, so a broken
-        // read looked exactly like an unlinked task (M06-T11).
-        <ListState
-          isLoading={linksQuery.isLoading}
-          error={linksQuery.error}
-          isEmpty
-          loadingMessage="Loading links…"
-          emptyMessage={anchor === 'task' ? 'No linked artifacts' : 'Not linked to any task'}
-          emptyAction={<p className="text-xs">Use the link control below to add one.</p>}
-          onRetry={() => linksQuery.refetch()}
-        />
-      ) : (
-        <ul className="flex flex-col gap-1">
-          {links.map((l: any) => (
-            <li key={l.id} className="flex items-center gap-2 text-xs">
-              <span className="truncate">{nameOf(l)}</span>
-              <button
-                aria-label={`Unlink ${nameOf(l)}`}
-                onClick={() => unlinkMutation.mutate(l)}
-                disabled={unlinkMutation.isPending}
-                className="ml-auto text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {isPicking ? (
-        <div className="flex flex-col gap-1 border rounded-md p-2 bg-card">
-          <label className="text-xs font-medium" htmlFor={`link-search-${anchor}`}>
-            {anchor === 'task' ? 'Search artifacts' : 'Search tasks'}
-          </label>
-          <input
-            id={`link-search-${anchor}`}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Name or contents"
-            className="text-xs rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
-          />
-          {!debouncedSearch.trim() && (
-            // The search is org-wide, so there is no bounded "everything" to
-            // show before a query — saying so beats an empty list that reads as
-            // "nothing exists".
-            <span className="text-xs text-muted-foreground">Type to search.</span>
-          )}
-          {candidates.isLoading && <span className="text-xs text-muted-foreground">Searching…</span>}
-          {candidates.error && (
-            <ListState
-              isLoading={false}
-              error={candidates.error}
-              isEmpty={false}
-              emptyMessage=""
-              onRetry={() => candidates.refetch()}
-            />
-          )}
-          {offered.map((c: any) => (
-            <button
-              key={c.id}
-              onClick={() => linkMutation.mutate(c.id)}
-              disabled={linkMutation.isPending}
-              className="text-left text-xs px-1 py-0.5 rounded hover:bg-accent disabled:opacity-50"
-            >
-              {c.title}
-            </button>
-          ))}
-          {candidates.isSuccess && offered.length === 0 && (
-            <span className="text-xs text-muted-foreground">
-              {candidates.data?.length ? `Every matching ${noun} is already linked.` : `No ${noun} matches that.`}
-            </span>
-          )}
-          <button
-            onClick={() => { setIsPicking(false); setSearch(''); }}
-            className="self-start text-xs text-muted-foreground mt-1"
-          >
-            Cancel
-          </button>
-        </div>
-      ) : (
-        <button onClick={() => setIsPicking(true)} className="self-start text-xs text-primary hover:underline">
-          {anchor === 'task' ? 'Link an artifact…' : 'Link a task…'}
-        </button>
-      )}
-
-      {linkMutation.isError && (
-        <span className="text-xs text-destructive-subtle-foreground">Failed to link: {(linkMutation.error as Error).message}</span>
-      )}
-      {unlinkMutation.isError && (
-        <span className="text-xs text-destructive-subtle-foreground">Failed to unlink: {(unlinkMutation.error as Error).message}</span>
-      )}
+  const linkedIds = new Set(rows.map(row => taskSide ? row.link.artifactId : row.link.taskId));
+  const offered = settled && raw && candidates.isSuccess && !candidates.isFetching && writable
+    ? candidates.data.filter(candidate => candidate.type === (taskSide ? 'artifact' : 'task') && !linkedIds.has(candidate.id)) : [];
+  const refresh = async () => {
+    const result = await query.refetch();
+    if (result.isSuccess) { setWriteAccessLost(false); link.reset(); unlink.reset(); }
+  };
+  const noun = taskSide ? 'evidence' : 'task links';
+  const content = <>
+    <div className="flex items-start justify-between gap-3">
+      {taskSide ? <h3 id={headingId} className="type-section-title">Evidence</h3> : <span className="type-caption text-muted-foreground">Linked tasks</span>}
+      <Button type="button" variant="ghost" size="sm" aria-label={`Refresh ${noun}`} disabled={query.isFetching} onClick={refresh}>
+        {query.isRefetching && !query.isFetchingNextPage ? 'Refreshing…' : 'Refresh'}
+      </Button>
     </div>
-  );
+    {taskSide && <p className="type-caption text-muted-foreground">Linked artifacts are reported outputs. Links show current content, not a frozen completion version.</p>}
+    {!blocked && <p className="type-caption text-muted-foreground">{rows.length} loaded{totalCount !== undefined ? ` of ${totalCount}` : ''}</p>}
+    {query.isLoading || blocked ? <ListState isLoading={query.isLoading || (blocked && !query.error)} error={query.error} isEmpty={false}
+      loadingMessage={taskSide ? 'Loading evidence…' : 'Loading links…'} emptyMessage="" onRetry={refresh} /> : <>
+      {query.error && <div role="alert" className="rounded-md border bg-destructive-subtle p-3 type-caption text-destructive-subtle-foreground">
+        <p>{query.isFetchNextPageError ? 'Could not load more evidence.' : 'Evidence may be out of date.'} {actionErrorMessage(query.error)}</p>
+        <Button variant="outline" size="sm" type="button" disabled={query.isFetching}
+          onClick={() => query.isFetchNextPageError ? query.fetchNextPage() : refresh()}>
+          {query.isFetchNextPageError ? 'Retry loading more evidence' : 'Retry evidence'}
+        </Button>
+      </div>}
+      {rows.length ? <ul className="divide-y">
+        {rows.map(row => <EvidenceItem key={row.id} row={row} taskSide={taskSide} orgId={owner.orgId}
+          canUnlink={canUnlink === true} disabled={!writable}
+          onUnlink={() => unlink.mutate({ ...owner, taskId: row.link.taskId, artifactId: row.link.artifactId })} />)}
+      </ul> : <p className="type-caption text-muted-foreground">{taskSide ? 'No evidence linked' : 'Not linked to any task'}</p>}
+      {query.hasNextPage && !query.isFetchNextPageError && <Button variant="outline" size="sm" type="button" className="self-start"
+        disabled={query.isFetching} onClick={() => query.fetchNextPage()}>
+        {query.isFetchingNextPage ? 'Loading more…' : taskSide ? 'Load more evidence' : 'Load more task links'}
+      </Button>}
+      {canLink === false && canUnlink === false && <p className="type-caption text-muted-foreground">Read only</p>}
+      {(canLink === undefined || canUnlink === undefined) && <p className="type-caption text-muted-foreground">Linking controls unavailable. Refresh to verify current access.</p>}
+      {pending && <p role="status" className="type-caption text-muted-foreground">Saving relationship changes…</p>}
+      {canLink === true && (isPicking ? <div className="flex flex-col gap-2 rounded-md border bg-card p-3">
+        <label className="type-caption font-medium" htmlFor={inputId}>{taskSide ? 'Search artifacts' : 'Search tasks'}</label>
+        <input id={inputId} value={search} disabled={!writable} placeholder={taskSide ? 'Artifact name' : 'Task title or description'}
+          onChange={event => { requested.current = event.target.value.trim(); setSearch(event.target.value); link.reset(); }}
+          className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:text-muted-foreground" />
+        {!raw && <p className="type-caption text-muted-foreground">Type to search.</p>}
+        {raw && (!settled || candidates.isFetching) && <p role="status" className="type-caption text-muted-foreground">Searching…</p>}
+        {settled && candidates.error && <ListState isLoading={false} error={candidates.error} isEmpty={false} emptyMessage="" onRetry={() => candidates.refetch()} />}
+        {offered.map(candidate => <button key={candidate.id} type="button" disabled={!writable}
+          className="rounded-md px-2 py-2 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:text-muted-foreground"
+          onClick={() => { if (requested.current === raw && settled && writable) link.mutate({ ...owner,
+            taskId: owner.taskId || candidate.id, artifactId: owner.artifactId || candidate.id }); }}>
+          {candidate.title}
+        </button>)}
+        {raw && settled && candidates.isSuccess && !candidates.isFetching && offered.length === 0 && <p className="type-caption text-muted-foreground">
+          {candidates.data.some(candidate => linkedIds.has(candidate.id)) ? `The matching ${taskSide ? 'artifacts' : 'tasks'} shown here are already linked. Refine the name to find another.` : `No ${taskSide ? 'artifact' : 'task'} matches that.`}
+        </p>}
+        <Button variant="ghost" size="sm" type="button" className="self-start" disabled={pending}
+          onClick={() => { setIsPicking(false); setSearch(''); link.reset(); }}>Cancel</Button>
+      </div> : <Button variant="outline" size="sm" type="button" className="self-start" disabled={!writable}
+        onClick={() => { setIsPicking(true); link.reset(); }}>{taskSide ? 'Link an artifact…' : 'Link a task…'}</Button>)}
+    </>}
+    {denied && <p className="type-caption text-muted-foreground">Current access must be verified before showing linked data.</p>}
+    {mutationError && <p role="alert" className="type-caption text-destructive-subtle-foreground">
+      {link.error ? 'Failed to link: ' : 'Failed to unlink: '}{actionErrorMessage(mutationError)}
+      {writeDenied && ' Refresh to verify current controls.'}
+    </p>}
+    {children}
+  </>;
+  return taskSide ? <section aria-labelledby={headingId} className="mt-6 flex flex-col gap-3">{content}</section>
+    : <div className="flex flex-col gap-3">{content}</div>;
+}
+
+interface EvidenceItemProps { row: EvidenceRow; taskSide: boolean; orgId: string; canUnlink: boolean; disabled: boolean; onUnlink: () => void; }
+function EvidenceItem({ row, taskSide, orgId, canUnlink, disabled, onUnlink }: EvidenceItemProps) {
+  const unavailable = taskSide && row.availability === 'unavailable';
+  const name = unavailable ? 'Artifact unavailable' : (taskSide ? row.link.artifactName : row.link.taskTitle);
+  const actor = row.link.linkedBy;
+  const linkedAt = formatDateTime(row.link.linkedAt), createdAt = formatDateTime(row.artifactCreatedAt);
+  return <li className="min-w-0 py-3">
+    <div className="flex min-w-0 items-start justify-between gap-3">
+      <div className="min-w-0 flex-1 break-words text-sm font-medium">
+        {taskSide && !unavailable ? <Link className="rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          to={`/artifacts/${encodeURIComponent(row.link.artifactId)}?${new URLSearchParams({ org: orgId })}`}>{name}</Link> : <span>{name}</span>}
+      </div>
+      {canUnlink && <Button variant="ghost" size="sm" type="button" aria-label={`Unlink ${name}`} disabled={disabled} onClick={onUnlink}>Unlink</Button>}
+    </div>
+    {taskSide && <div className="mt-1 flex min-w-0 flex-wrap gap-x-4 gap-y-1 break-words type-caption text-muted-foreground">
+      {row.availability === 'archived' && <span>Archived</span>}
+      {!unavailable && <>
+        <span>{row.contentType || 'Type not recorded'}</span>
+        <span>{row.storedBytes !== undefined ? `Stored bytes: ${row.storedBytes.toLocaleString()}` : 'Stored bytes not recorded'}</span>
+        <span>{createdAt ? `Created ${createdAt}` : 'Creation time not recorded'}</span>
+      </>}
+      <span>{actor ? `Linked by ${actor.kind === 'agent' ? 'Agent' : actor.kind === 'user' ? 'User' : 'Linker'} ${actor.name || actor.id}` : 'Link author not recorded'}</span>
+      <span>{linkedAt ? `Linked at ${linkedAt}` : 'Link time not recorded'}</span>
+    </div>}
+  </li>;
 }

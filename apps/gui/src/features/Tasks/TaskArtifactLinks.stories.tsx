@@ -1,50 +1,38 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { expect, userEvent, within } from 'storybook/test';
+import { evidenceFixture } from '../../../.storybook/evidenceFixture';
 import { TaskArtifactLinks } from './TaskArtifactLinks';
 
-// Links are fetched on mount (listTaskArtifactLinks) via a real
-// createClient(...) call - the same documented gap as Memory/Handoffs' own
-// stories: no MSW is wired in, so this is the real loading state against an
-// unreachable-in-Storybook backend.
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
-});
-
 const meta = {
-  title: 'Features/Tasks/TaskArtifactLinks',
-  component: TaskArtifactLinks,
-  parameters: {
-    layout: 'padded',
-  },
-  args: {
-    orgId: 'org-storybook',
-  },
-  decorators: [
-    (Story) => (
-      <QueryClientProvider client={queryClient}>
-        <div className="max-w-xs">
-          <Story />
-        </div>
-      </QueryClientProvider>
-    ),
-  ],
+  title: 'Features/Tasks/TaskArtifactLinks', component: TaskArtifactLinks,
+  args: { orgId: 'org-storybook', taskId: 'task-storybook' },
+  parameters: { layout: 'padded' },
+  decorators: [(Story) => <div className="max-w-2xl"><Story /></div>],
+  beforeEach: () => evidenceFixture(),
+  play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('link', { name: 'release-verification.md' })).resolves.toBeVisible(); },
 } satisfies Meta<typeof TaskArtifactLinks>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
-
-// From a task's own detail view, looking outward at its linked artifacts.
-export const FromTask: Story = {
-  args: {
-    taskId: 'task-storybook',
-  },
-};
-
-// From the artifact viewer, looking outward at the tasks it's linked to -
-// the same component, the opposite end of the relation (see
-// TaskArtifactLinks.tsx's own doc comment).
-export const FromArtifact: Story = {
-  args: {
-    artifactId: 'artifact-storybook',
-  },
-};
+export const FromTask: Story = {};
+export const FromArtifact: Story = { args: { taskId: undefined, artifactId: 'artifact-storybook' }, play: async ({ canvasElement }) => { await expect(within(canvasElement).findByText('Verify the release')).resolves.toBeVisible(); } };
+export const Empty: Story = { beforeEach: () => evidenceFixture('empty'), play: async ({ canvasElement }) => { await expect(within(canvasElement).findByText('No evidence linked')).resolves.toBeVisible(); } };
+export const Loading: Story = { beforeEach: () => evidenceFixture('loading'), play: async ({ canvasElement }) => { await expect(within(canvasElement).findByText('Loading evidence…')).resolves.toBeVisible(); } };
+export const Error: Story = { beforeEach: () => evidenceFixture('error'), play: async ({ canvasElement }) => { await expect(within(canvasElement).findByRole('alert')).resolves.toBeVisible(); } };
+export const Denied: Story = { beforeEach: () => evidenceFixture('denied'), play: Error.play };
+export const ReadOnly: Story = { beforeEach: () => evidenceFixture('readonly') };
+export const LegacyUnknown: Story = { beforeEach: () => evidenceFixture('legacy') };
+export const Unavailable: Story = { beforeEach: () => evidenceFixture('unavailable'), play: async ({ canvasElement }) => { await expect(within(canvasElement).findByText('Artifact unavailable')).resolves.toBeVisible(); } };
+export const LongArchived: Story = { beforeEach: () => evidenceFixture('long'), play: async ({ canvasElement }) => { await expect(within(canvasElement).findByText('Archived')).resolves.toBeVisible(); } };
+export const MultiplePages: Story = { beforeEach: () => evidenceFixture('pages'), play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement); await userEvent.click(await canvas.findByRole('button', { name: 'Load more evidence' }));
+  await expect(canvas.findByRole('link', { name: 'deployment-notes.txt' })).resolves.toBeVisible();
+} };
+export const NextPageError: Story = { beforeEach: () => evidenceFixture('page-error'), play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement); await userEvent.click(await canvas.findByRole('button', { name: 'Load more evidence' }));
+  await expect(canvas.findByRole('button', { name: 'Retry loading more evidence' })).resolves.toBeVisible();
+} };
+export const Picker: Story = { play: async ({ canvasElement }) => {
+  const canvas = within(canvasElement); await userEvent.click(await canvas.findByRole('button', { name: 'Link an artifact…' }));
+  await userEvent.type(canvas.getByRole('textbox', { name: 'Search artifacts' }), 'follow');
+  await expect(canvas.findByRole('button', { name: 'follow-up.md' })).resolves.toBeVisible();
+} };

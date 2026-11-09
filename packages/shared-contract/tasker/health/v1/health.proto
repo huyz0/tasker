@@ -1414,6 +1414,8 @@ message ListTaskArtifactLinksResponse {
   repeated TaskArtifactLink links = 1;
   PageResponse page = 2;
   repeated TaskArtifactEvidence evidence = 3;
+  optional bool canLink = 4;
+  optional bool canUnlink = 5;
 }
 
 message ListArtifactsRequest {

@@ -100,3 +100,12 @@ loss, then rows/nested names are hidden and polling stops until successful
 explicit reauthorization; late old results cannot revive them. Given a link then
 artifact edit then human review, then current content/Stored bytes are shown
 without claiming an immutable linked version or changing link provenance.
+
+## TC-010 — Authoritative current controls (T04/T05, exit3)
+
+Given an authorized paged reader, when current effective artifact-write policy
+is false, then canLink/canUnlink are false for human controls; a write-capable
+agent can link but cannot unlink. Given missing capability fields, then existing
+links remain visible with unavailable controls rather than an invented permission
+or empty state. Current server writes independently enforce policy even if a
+previous response allowed the action. Legacy unpaged reads retain shape/cost.

@@ -57,7 +57,7 @@ No number is reserved merely by this document.
 | GetArtifactContentRequest | maxCharacters field2, int32 |
 | GetArtifactContentResponse | truncated field4, boolean; storedBytes field5, int64 |
 | ListTaskArtifactLinksRequest | page field3, PageRequest |
-| ListTaskArtifactLinksResponse | page field2, PageResponse; evidence field3, TaskArtifactEvidence[] |
+| ListTaskArtifactLinksResponse | page field2, PageResponse; evidence field3, TaskArtifactEvidence[]; canLink4/canUnlink5 optional booleans |
 | GetTaskDigestRequest | includeArtifacts field2, boolean |
 | TaskDigest | artifacts field7, TaskArtifactEvidence[] |
 | TaskArtifactLink | linkedAt field6, string; linkedBy field7, EvidenceActor |
@@ -161,6 +161,19 @@ again. Sequential link repeats reuse the pair; concurrent repeats need an actual
 both-dialect proof before stronger guarantees are documented. Do not invent an
 MCP idempotency-key argument that the loopback caller cannot forward. Permission
 failures are not retryable as network failures; read/paging retries retain scope.
+
+### Current control permissions (T04 amendment)
+
+The GUI has no authoritative effective-permission read. Reconstructing parent/
+team/custom-role grants in a component would drift from policy; always showing
+write controls causes avoidable read-only failures. Paged relationship reads
+therefore add optional canLink field4/canUnlink field5, freshly verified free
+against1fa68a7. They are advisory current control state, never write authority.
+Human flags use the same artifact:write organization policy as link/unlink;
+agent canLink reflects artifacts:write after current-org read authorization,
+and canUnlink remains false. Existing writes still independently authorize.
+Legacy unpaged reads retain their shape/cost. Missing flags mean unknown, not
+false: show existing evidence without inventing permission or empty-success.
 
 ### Open-view reconciliation
 

@@ -22,6 +22,9 @@ import { Label } from '../../components/ui/labels';
 import { AssigneePicker } from './AssigneePicker';
 import { ReviewerPicker } from './ReviewerPicker';
 import { TaskArtifactLinks } from './TaskArtifactLinks';
+import { TaskRepositorySignals } from './TaskRepositorySignals';
+import { relationshipAccessLost } from './useArtifactRelationships';
+import { useAuthSession } from '../../hooks/useAuthSession';
 import { Dialog } from '../../components/ui/Dialog';
 import { fetchAllPages } from '../../lib/fetchAllPages';
 import { InlineCreateForm } from '../../components/ui/InlineCreateForm';
@@ -471,6 +474,7 @@ function BoardColumn({
 }
 
 export function TasksWorkbench() {
+  const account = useAuthSession();
   const { confirm, confirmDialog } = useConfirm();
   const setActivePageTitle = useLayoutStore((s) => s.setActivePageTitle);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
@@ -651,14 +655,16 @@ export function TasksWorkbench() {
   // declares is a data defect rather than a column to invent.
 
 
-  const { data: pullRequestsData } = useQuery({
-    queryKey: ['pullRequests', activeProjectId],
-    queryFn: async () => {
-      const resp = await repositoryClient.listPullRequests({ projectId: activeProjectId });
+  const pullRequestsQuery = useQuery({
+    queryKey: ['pullRequests', activeProjectId, activeOrgId, account.userId],
+    queryFn: async ({ signal }) => {
+      const resp = await repositoryClient.listPullRequests({ projectId: activeProjectId }, { signal });
       return resp.pullRequests;
     },
-    enabled: !!activeProjectId,
+    enabled: !!activeProjectId && account.authenticated && !!account.userId,
+    retry: false,
   });
+  const pullRequestsData = pullRequestsQuery.isSuccess && pullRequestsQuery.isFetchedAfterMount ? pullRequestsQuery.data : undefined;
   const pullRequestsByTaskId = new Map<string, NonNullable<typeof pullRequestsData>>();
   for (const pr of pullRequestsData ?? []) {
     if (!pr.taskId) continue;
@@ -1219,7 +1225,13 @@ export function TasksWorkbench() {
                   )}
                </div>
              )}
-             <TaskContext key={expandedTask.id} taskId={expandedTask.id} summary={expandedTask.summary} plan={expandedTask.plan} usage={expandedTask.usage} />
+             <TaskContext key={expandedTask.id} taskId={expandedTask.id} summary={expandedTask.summary} plan={expandedTask.plan} usage={expandedTask.usage}>
+               <TaskArtifactLinks taskId={expandedTask.id} orgId={activeOrgId}>
+                 <TaskRepositorySignals taskId={expandedTask.id} records={pullRequestsData ?? []}
+                   state={pullRequestsQuery.isError ? (relationshipAccessLost(pullRequestsQuery.error) ? 'denied' : 'error')
+                     : pullRequestsData ? 'ready' : 'loading'} onRetry={() => { void pullRequestsQuery.refetch(); }} />
+               </TaskArtifactLinks>
+             </TaskContext>
              <div className="mt-8">
                <h3 className="text-lg font-semibold tracking-tight mb-4">Comments</h3>
                <Comment.Provider entityId={expandedTask.id} entityType="task">
@@ -1280,10 +1292,6 @@ export function TasksWorkbench() {
              <div>
                <h3 className="text-sm font-semibold tracking-tight mb-3">Reviewers</h3>
                <ReviewerPicker taskId={expandedTask.id} orgId={activeOrgId} />
-             </div>
-             <div>
-               <h3 className="text-sm font-semibold tracking-tight mb-3">Artifacts</h3>
-               <TaskArtifactLinks taskId={expandedTask.id} orgId={activeOrgId} />
              </div>
              <div>
                <h3 className="text-sm font-semibold tracking-tight mb-3">Labels</h3>
