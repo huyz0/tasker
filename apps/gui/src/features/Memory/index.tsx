@@ -691,13 +691,14 @@ export function MemoryExplorer() {
     orgId: direct.orgId, projectId: tier === 'project' ? direct.scopeId : '', memoryTier: tier,
   } : undefined;
   const beliefScopeReady = useCanonicalResourceScope(routeBeliefId ? `belief:${routeBeliefId}` : null, owner,
-    directBeliefQuery.isSuccess && !directBeliefQuery.isFetching);
+    directBeliefQuery.isSuccess && !directBeliefQuery.isFetching, directBeliefQuery.error);
   const ownerError = directBeliefQuery.error || (directBeliefQuery.isSuccess && !directBeliefQuery.isFetching
     && !owner ? new Error('Could not resolve this belief’s workspace.') : null);
   const scopeId = scopeType === 'project' ? activeProjectId : scopeType === 'organization' ? activeOrgId : direct?.scopeId ?? '';
   useEffect(() => {
-    if (scopeType !== 'team' || routeBeliefId) return;
+    if (routeBeliefId || scopeType === 'project') return;
     const params = new URLSearchParams(search);
+    if (scopeType === 'organization' && !params.has('project')) return;
     params.set('scope', 'organization'); params.delete('project');
     navigate({ pathname: '/memory', search: params.toString() }, { replace: true });
   }, [scopeType, routeBeliefId, search, navigate]);
@@ -778,6 +779,7 @@ export function MemoryExplorer() {
         description="Facts and conventions your team and its agents have learned, kept so nobody has to rediscover them."
         actions={scopeType === 'team' ? undefined : <Button onClick={() => setRecordOpen(true)}><Plus className="mr-1 h-4 w-4" /> Record belief</Button>}
       />
+      {ownerError && <ListState isLoading={false} error={ownerError} isEmpty={false} emptyMessage="" errorLabel="Could not refresh this belief" onRetry={() => directBeliefQuery.refetch()} />}
       <div className="flex flex-col gap-6 md:flex-row">
         {scopeType !== 'team' && <div className="flex w-full flex-col gap-3 md:w-96 md:shrink-0">
 

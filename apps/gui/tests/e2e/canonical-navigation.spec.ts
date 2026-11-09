@@ -17,6 +17,17 @@ async function rpc<T>(page: Page, service: string, method: string, body: object)
   return response.json();
 }
 
+async function captureLayouts(page: Page, outputPath: (name: string) => string, name: string) {
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const theme of ['dark', 'light']) {
+      await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: outputPath(`${name}-${width}-${theme}.png`), fullPage: true, animations: 'disabled' });
+    }
+  }
+}
+
 async function projects(page: Page) {
   await selectSeededOrg(page);
   await page.getByRole('button', { name: 'Active project', exact: true }).click();
@@ -47,12 +58,12 @@ for (const kind of ['task', 'artifact'] as const) {
     await page.getByRole('combobox').fill(title);
     await page.getByRole('option').filter({ hasText: title }).click();
     await expect.poll(() => new URL(page.url()).searchParams.get('project')).toBe(projectB.id);
-    await expect(page.getByRole('button', { name: 'Active project', exact: true, hidden: true })).toContainText(projectB.name);
+    await expect(page.getByRole('button', { name: 'Active project', exact: true, includeHidden: true })).toContainText(projectB.name);
     await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText(projectB.name);
     expect(new URL(page.url()).pathname).toBe(`/${kind === 'task' ? 'tasks' : 'artifacts'}/${id}`);
     if (kind === 'task') await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
     else await expect(page.getByText('Owned artifact body', { exact: true })).toBeVisible();
-    await page.screenshot({ path: info.outputPath(`${kind}-owned.png`), fullPage: true, animations: 'disabled' });
+    await captureLayouts(page, name => info.outputPath(name), `${kind}-owned`);
     await page.goBack();
     await expect.poll(() => new URL(page.url()).pathname + new URL(page.url()).search).toBe(origin);
     await page.goForward();
@@ -79,9 +90,9 @@ for (const tier of ['project', 'organization', 'team'] as const) {
     await expect.poll(() => new URL(page.url()).searchParams.get('scope')).toBe(tier);
     await expect(page.getByRole('button', { name: 'Active organization' })).toContainText('Seed Org');
     if (tier === 'project') {
-      await expect(page.getByRole('button', { name: 'Active project', exact: true, hidden: true })).toContainText(projectB.name);
+      await expect(page.getByRole('button', { name: 'Active project', exact: true, includeHidden: true })).toContainText(projectB.name);
     } else {
-      await expect(page.getByRole('button', { name: 'Active project', exact: true })).toContainText('No projects');
+      await expect(page.getByRole('button', { name: 'Active project', exact: true })).toContainText('Select project');
       expect(new URL(page.url()).searchParams.has('project')).toBe(false);
       await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).not.toContainText(projectB.name);
     }
@@ -92,7 +103,7 @@ for (const tier of ['project', 'organization', 'team'] as const) {
     await page.reload();
     await expect(page.getByRole('region', { name: 'Belief detail' })).toContainText(statement);
     expect(new URL(page.url()).searchParams.get('project')).toBe(tier === 'project' ? projectB.id : null);
-    await page.screenshot({ path: info.outputPath(`${tier}-memory.png`), fullPage: true, animations: 'disabled' });
+    await captureLayouts(page, name => info.outputPath(name), `${tier}-memory`);
     await page.goBack();
     await expect.poll(() => new URL(page.url()).pathname + new URL(page.url()).search).toBe(origin);
     await page.goForward();

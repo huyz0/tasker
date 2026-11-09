@@ -1,3 +1,4 @@
+import { Code, ConnectError } from '@connectrpc/connect';
 import { useCallback, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLayoutStore } from '../store/layout';
@@ -166,6 +167,7 @@ export function useCanonicalResourceScope(
   resourceKey: string | null,
   owner: (Scope & { memoryTier?: 'project' | 'organization' | 'team' }) | undefined,
   readSucceeded: boolean,
+  readError?: unknown,
 ): boolean {
   const location = useLocation();
   const navigate = useNavigate();
@@ -173,9 +175,14 @@ export function useCanonicalResourceScope(
   const activeProjectId = useLayoutStore(s => s.activeProjectId);
   const latest = useRef(location);
   latest.current = location;
+  const failureCode = readError ? ConnectError.from(readError).code : undefined;
+  const accessUnavailable = failureCode === Code.PermissionDenied || failureCode === Code.Unauthenticated || failureCode === Code.NotFound;
   const accepted = useRef<{ key: string | null; owner?: typeof owner }>({ key: null });
   if (accepted.current.key !== resourceKey) accepted.current = { key: resourceKey };
-  if (resourceKey && readSucceeded && owner?.orgId
+  // A known access loss revokes previous acceptance until a fresh read wins.
+  // A later network error must never resurrect the old accepted owner.
+  if (accessUnavailable) accepted.current.owner = undefined;
+  if (resourceKey && readSucceeded && !accessUnavailable && owner?.orgId
     && (owner.projectId || owner.memoryTier === 'organization' || owner.memoryTier === 'team')) {
     accepted.current.owner = owner;
   }
@@ -199,7 +206,7 @@ export function useCanonicalResourceScope(
 
   // Keep an already-resolved editor mounted during background reads. A new
   // entity must earn its own authorized owner before content/actions appear.
-  return !resourceKey || (matches && activeOrgId === resolved?.orgId && activeProjectId === resolved?.projectId);
+  return !resourceKey || (!accessUnavailable && matches && activeOrgId === resolved?.orgId && activeProjectId === resolved?.projectId);
 }
 
 /**

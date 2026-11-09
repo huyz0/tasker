@@ -585,10 +585,14 @@ export function TasksWorkbench() {
     ? { orgId: ownerOrgId, projectId: expandedTask.projectId } : undefined;
   const ownerReadSucceeded = expandedTaskQuery.isSuccess && !expandedTaskQuery.isFetching
     && (!!expandedTask?.ownerOrgId || (legacyOwner.isSuccess && !legacyOwner.isFetching));
-  const taskScopeReady = useCanonicalResourceScope(expandedTaskId ? `task:${expandedTaskId}` : null, taskOwner, ownerReadSucceeded);
+  const taskScopeReady = useCanonicalResourceScope(expandedTaskId ? `task:${expandedTaskId}` : null, taskOwner, ownerReadSucceeded, expandedTaskQuery.error || (!expandedTask?.ownerOrgId && legacyOwner.error));
   const ownerError = expandedTaskQuery.error || (!expandedTask?.ownerOrgId && legacyOwner.error)
     || (expandedTask && expandedTaskQuery.isSuccess && !expandedTaskQuery.isFetching
       && !legacyOwner.isFetching && !taskOwner ? new Error('Could not resolve this task’s workspace.') : null);
+  const retryTaskOwner = () => {
+    expandedTaskQuery.refetch();
+    if (expandedTask?.projectId && !expandedTask.ownerOrgId) legacyOwner.refetch();
+  };
 
   // The project's own name, for the breadcrumb. Resolved by `useScopeLabels`,
   // which is where this query moved (M28-T07) once Memory needed the same
@@ -1087,7 +1091,7 @@ export function TasksWorkbench() {
               emptyMessage=""
               loadingMessage="Loading task…"
               errorLabel="Could not open this task"
-              onRetry={() => { expandedTaskQuery.refetch(); if (expandedTask?.projectId && !expandedTask.ownerOrgId) legacyOwner.refetch(); }}
+              onRetry={retryTaskOwner}
             />
           </div>
         </Dialog>
@@ -1132,6 +1136,7 @@ export function TasksWorkbench() {
             </div>
           }
         >
+           {ownerError && <ListState isLoading={false} error={ownerError} isEmpty={false} emptyMessage="" errorLabel="Could not refresh this task" onRetry={retryTaskOwner} />}
            {/* A task reached by a deep link has no history behind it: the
                browser's Back button leaves the app. */}
            <Breadcrumbs

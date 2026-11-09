@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { useNavigate, type NavigateFunction } from 'react-router-dom';
 import {
   TaskService, CommentService, LabelService, RepositoryService, TaskTypeService,
@@ -53,6 +53,10 @@ describe('current authorized resource ownership drives task navigation', () => {
       expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
       if (code === 'permission_denied') expect(screen.queryByRole('heading', { name: 'Task in project B' })).not.toBeInTheDocument();
       else expect(screen.getByRole('heading', { name: 'Task in project B' })).toBeInTheDocument();
+      mockRpc(TaskService, 'GetTask', { orgId: 'o1', task: { id: 'task-b', projectId: 'p2', title: 'Task in project B', status: 'todo' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      await screen.findByRole('heading', { name: 'Task in project B' });
+      await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
     });
   }
 
@@ -149,4 +153,34 @@ describe('current authorized resource ownership drives task navigation', () => {
     expect(view.location.url).toBe('/tasks/task-b?org=o1&project=p2');
   });
 
+});
+
+describe('known access loss invalidates earlier resource acceptance', () => {
+  it('keeps a task hidden after denied then unavailable, until a successful retry', async () => {
+    const view = renderScoped(<TaskHarness />, { paths: ['/tasks', '/tasks/:taskId'], initialEntry: '/tasks/task-b?org=o1&project=p1' });
+    await screen.findByRole('heading', { name: 'Task in project B' });
+    mockRpcError(TaskService, 'GetTask', 'permission_denied', 'Access removed');
+    await act(async () => { await view.queryClient.invalidateQueries({ queryKey: ['task', 'task-b'] }); });
+    await screen.findByText(/Access removed/);
+    mockRpcError(TaskService, 'GetTask', 'unavailable', 'Retry offline');
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByText(/Retry offline/);
+    expect(screen.queryByRole('heading', { name: 'Task in project B' })).not.toBeInTheDocument();
+    mockRpc(TaskService, 'GetTask', { orgId: 'o1', task: { id: 'task-b', projectId: 'p2', title: 'Task in project B', status: 'todo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByRole('heading', { name: 'Task in project B' });
+  });
+});
+
+describe('legacy task ownership retry', () => {
+  it('retries a failed project lookup and opens its canonical task', async () => {
+    mockRpc(TaskService, 'GetTask', { task: { id: 'task-b', projectId: 'p2', title: 'Legacy B task', status: 'todo' } });
+    mockRpcError(ProjectService, 'GetProject', 'unavailable', 'Project lookup offline');
+    const view = renderScoped(<TaskHarness />, { paths: ['/tasks', '/tasks/:taskId'], initialEntry: '/tasks/task-b?org=o1&project=p1' });
+    await screen.findByText(/Project lookup offline/);
+    mockRpc(ProjectService, 'GetProject', { project: { id: 'p2', orgId: 'o1', name: 'Project B' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByRole('heading', { name: 'Legacy B task' });
+    expect(view.location.search).toContain('project=p2');
+  });
 });

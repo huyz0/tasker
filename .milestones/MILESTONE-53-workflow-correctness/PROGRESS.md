@@ -90,3 +90,22 @@ Back/Forward/reload; browser reds identify artifact missing project trail (now
 corrected) and stale project labels on projectless Memory. Independent read-only
 review identifies same-org re-selection clearing and invisible background read
 failures; new reds are in flight before corrections. No task completion claimed.
+
+
+### T02 independent revision and restored candidate
+
+Review fixes have observable regressions: same-org selection does not clear its
+project/detail; labels are keyed by owner ID and cannot reuse A for an off-page B;
+known access loss clears accepted ownership until a fresh success, including
+denial then unavailable retry. Transient reads retain the editor with a visible
+retry. Composite retry includes valid bounded legacy project/folder dependencies;
+a duplicate folder alert is consolidated. Organization Memory list URLs also
+clear irrelevant project ownership. All64 focused cases pass. Removing owner
+normalization fails; hiding background failures fails all6 targeted cases;
+removing fallback retries fails2 recovery cases. SQLite/MySQL body-read faults
+fail and restored MySQL passes8 assertions. Five real browser journeys pass
+Back/Forward/reload; pre-M53 binary/Go clients read actual JSON/protobuf responses
+with unknown owner fields. Independent human/product/agent reviewers approve the
+corrected source/tests, subject to full gates and expanded rendered checks.
+The first full run was intentionally interrupted during CLI checks when the
+remaining review cases were found; it is not claimed as a passing full run.

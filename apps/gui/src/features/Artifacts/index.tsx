@@ -168,11 +168,16 @@ export function ArtifactsBrowser() {
     ? { orgId: ownerOrgId, projectId: ownerProjectId } : undefined;
   const ownerReadSucceeded = locatedQuery.isSuccess && !locatedQuery.isFetching
     && (!!locatedArtifact?.orgId || (legacyOwner.isSuccess && !legacyOwner.isFetching));
-  const artifactScopeReady = useCanonicalResourceScope(artifactId ? `artifact:${artifactId}` : null, owner, ownerReadSucceeded);
+  const artifactScopeReady = useCanonicalResourceScope(artifactId ? `artifact:${artifactId}` : null, owner, ownerReadSucceeded, locatedQuery.error || (!locatedArtifact?.orgId && legacyOwner.error));
   const ownerError = locatedQuery.error || (!locatedArtifact?.orgId && legacyOwner.error)
     || (!locatedArtifact?.projectId && foldersError)
     || (locatedQuery.isSuccess && !locatedQuery.isFetching && !isLoadingFolders
       && !legacyOwner.isFetching && !owner ? new Error('Could not resolve this artifact’s workspace.') : null);
+  const retryArtifactOwner = () => {
+    locatedQuery.refetch();
+    if (ownerProjectId && !locatedArtifact?.orgId) legacyOwner.refetch();
+    if (activeProjectId && !locatedArtifact?.projectId) refetchFolders();
+  };
 
   useEffect(() => {
     if (artifactScopeReady && locatedArtifact && selectedFolderId !== locatedArtifact.folderId) {
@@ -590,7 +595,7 @@ export function ArtifactsBrowser() {
     <PageHeader title="Artifacts" description="Files kept for this project, in folders." />
     <ListState isLoading={!ownerError} error={ownerError} isEmpty={false} emptyMessage=""
       loadingMessage="Loading this artifact…" errorLabel="Could not open this artifact"
-      onRetry={() => { locatedQuery.refetch(); if (ownerProjectId && !locatedArtifact?.orgId) legacyOwner.refetch(); if (activeProjectId) refetchFolders(); }} />
+      onRetry={retryArtifactOwner} />
   </div>;
 
   return (
@@ -600,6 +605,7 @@ export function ArtifactsBrowser() {
     // beside the detail pane left the detail one word wide on a phone.
     <div className="flex flex-col gap-6 md:h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-6rem)]">
       <PageHeader title="Artifacts" description="Files kept for this project, in folders." />
+      {ownerError && ownerError !== foldersError && <ListState isLoading={false} error={ownerError} isEmpty={false} emptyMessage="" errorLabel="Could not refresh this artifact" onRetry={retryArtifactOwner} />}
       <div className="flex flex-col gap-6 md:flex-row md:flex-1 md:min-h-0">
       {/* File Tree Left Sidebar */}
       <div className="w-full md:w-64 shrink-0 flex flex-col bg-card border rounded-lg overflow-hidden shadow-sm">

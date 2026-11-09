@@ -48,6 +48,7 @@ function SearchSelect({
   onSearch,
   onPick,
   emptyMessage,
+  placeholder,
 }: {
   label: string;
   value: string;
@@ -63,6 +64,7 @@ function SearchSelect({
   onSearch: (next: string) => void;
   onPick: (choice: Choice) => void;
   emptyMessage: string;
+  placeholder?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -101,7 +103,7 @@ function SearchSelect({
         onClick={() => setIsOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-2 rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/50"
       >
-        <span className="truncate">{valueLabel || (error ? 'Unavailable' : emptyMessage)}</span>
+        <span className="truncate">{(value && valueLabel) || (error ? 'Unavailable' : placeholder ?? emptyMessage)}</span>
         <ChevronsUpDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
       </button>
 
@@ -178,8 +180,8 @@ export function OrgProjectSwitcher() {
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
 
-  const [orgLabel, setOrgLabel] = useState('');
-  const [projectLabel, setProjectLabel] = useState('');
+  const [orgLabel, setOrgLabel] = useState({ id: '', name: '' });
+  const [projectLabel, setProjectLabel] = useState({ id: '', name: '' });
   const [orgSearch, setOrgSearch] = useState('');
   const [projectSearch, setProjectSearch] = useState('');
   const [debouncedOrgSearch] = useDebounce(orgSearch, 250);
@@ -216,7 +218,7 @@ export function OrgProjectSwitcher() {
       // `replace`: a scope the user never chose should not leave the
       // scopeless URL in history for Back to return to (M28-T03).
       setScope({ orgId: orgs[0].id }, { replace: true });
-      setOrgLabel(orgs[0].name);
+      setOrgLabel({ id: orgs[0].id, name: orgs[0].name });
       return;
     }
     // M20-T05: this used to be gated on `!orgLabel`, so once set it was
@@ -228,7 +230,7 @@ export function OrgProjectSwitcher() {
     // fetch, and still leaves the label untouched (not blanked) on pages
     // that don't happen to include it.
     const found = orgs.find((o: any) => o.id === activeOrgId);
-    if (found) setOrgLabel(found.name);
+    if (found) setOrgLabel({ id: found.id, name: found.name });
   }, [orgs, activeOrgId, setScope]);
 
   useEffect(() => {
@@ -242,14 +244,14 @@ export function OrgProjectSwitcher() {
     if (!activeProjectId) {
       if (projectlessMemory) return;
       setScope({ projectId: projects[0].id }, { replace: true });
-      setProjectLabel(projects[0].name);
+      setProjectLabel({ id: projects[0].id, name: projects[0].name });
       return;
     }
     // M20-T05: same re-sync fix as the org effect above - a rename used to
     // never reach the sidebar because this only ever ran once, gated on
     // `!projectLabel`.
     const found = projects.find((p: any) => p.id === activeProjectId);
-    if (found) setProjectLabel(found.name);
+    if (found) setProjectLabel({ id: found.id, name: found.name });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects, activeProjectId, projectlessMemory]);
 
@@ -273,7 +275,7 @@ export function OrgProjectSwitcher() {
       <SearchSelect
         label="Active organization"
         value={activeOrgId}
-        valueLabel={orgLabel}
+        valueLabel={orgLabel.id === activeOrgId ? orgLabel.name : activeOrgId ? `Organization ${activeOrgId}` : ''}
         choices={orgChoices}
         total={orgsQuery.data?.total ?? 0}
         isLoading={orgsQuery.isLoading}
@@ -285,16 +287,17 @@ export function OrgProjectSwitcher() {
           // M28-T03: writes the URL; the store follows via useScopeSync.
           // The projects of the old organization are not the projects of this
           // one, and keeping the stale id would leave every list empty.
+          if (choice.id === activeOrgId) return;
           setScope({ orgId: choice.id, projectId: '' });
-          setOrgLabel(choice.label);
-          setProjectLabel('');
+          setOrgLabel({ id: choice.id, name: choice.label });
+          setProjectLabel({ id: '', name: '' });
         }}
         emptyMessage={orgsQuery.isLoading ? 'Loading organizations…' : 'No organizations'}
       />
       <SearchSelect
         label="Active project"
         value={activeProjectId}
-        valueLabel={projectLabel}
+        valueLabel={projectLabel.id === activeProjectId ? projectLabel.name : activeProjectId ? `Project ${activeProjectId}` : ''}
         choices={projects.map((p: any) => ({ id: p.id, label: p.name }))}
         total={projectsQuery.data?.total ?? 0}
         isLoading={projectsQuery.isLoading}
@@ -302,7 +305,8 @@ export function OrgProjectSwitcher() {
         onRetry={() => projectsQuery.refetch()}
         search={projectSearch}
         onSearch={setProjectSearch}
-        onPick={(choice) => { setScope({ projectId: choice.id }); setProjectLabel(choice.label); }}
+        onPick={(choice) => { setScope({ projectId: choice.id }); setProjectLabel({ id: choice.id, name: choice.label }); }}
+        placeholder="Select project"
         emptyMessage="No projects"
       />
     </div>

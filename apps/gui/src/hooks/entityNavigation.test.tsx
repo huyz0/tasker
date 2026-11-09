@@ -27,7 +27,7 @@ function ScopeWriter({ next, automatic = false }: { next: Partial<Scope>; automa
 function Switcher() {
   useScopeSync();
   const navigate = useNavigate();
-  return <><OrgProjectSwitcher /><button onClick={() => navigate('/memory?org=o1&scope=organization')}>Organization memory</button><button onClick={() => navigate('/tasks?org=o1')}>Open tasks</button></>;
+  return <><OrgProjectSwitcher /><button onClick={() => navigate('/tasks/task-b?org=o2&project=p2')}>Open off-page owner</button><button onClick={() => navigate('/memory?org=o1&scope=organization')}>Organization memory</button><button onClick={() => navigate('/tasks?org=o1')}>Open tasks</button></>;
 }
 
 describe('entity navigation distinguishes explicit selection from owner normalization', () => {
@@ -113,5 +113,19 @@ describe('switcher ownership labels and same-org intent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Organization memory' }));
     await waitFor(() => expect(view.location.search).not.toContain('project='));
     expect(screen.getByRole('button', { name: 'Active project' })).toHaveTextContent('Select project');
+  });
+});
+
+describe('switcher labels follow owner identity beyond the loaded page', () => {
+  it('never retains A labels after an off-page B owner resolves', async () => {
+    const view = renderScoped(<Switcher />, { paths, initialEntry: '/tasks?org=o1&project=p1' });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Active project' })).toHaveTextContent('Project one'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Active organization' })).toHaveTextContent('Organization one'));
+    fireEvent.click(screen.getByRole('button', { name: 'Open off-page owner' }));
+    await waitFor(() => expect(view.location.search).toBe('?org=o2&project=p2'));
+    expect(screen.getByRole('button', { name: 'Active project' })).not.toHaveTextContent('Project one');
+    expect(screen.getByRole('button', { name: 'Active organization' })).not.toHaveTextContent('Organization one');
+    expect(screen.getByRole('button', { name: 'Active project' })).toHaveTextContent('p2');
+    expect(screen.getByRole('button', { name: 'Active organization' })).toHaveTextContent('o2');
   });
 });
