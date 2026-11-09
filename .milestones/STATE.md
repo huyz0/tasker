@@ -1,8 +1,8 @@
 ---
 active_milestone: M46
-active_task: M46-T07
+active_task: null
 last_updated: 2026-11-09
-last_commit: f23e9ce
+last_commit: b83a670
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M46-T07 verified: 7/7 tasks.** The real provider integration now uses managed SQLite; actual GitHub and NATS CI jobs pass in run 42576021446. Full 35 local checks pass again. No sandbox PR/branch mutations are performed. Close the proven milestone, then wait for the final PR head's complete browser/CI gates before merging PR #3 and starting M47.
 
 **2026-11-09 — M46-T07 in progress.** Real GitHub CI reached sync and exposed its handcrafted database fake's incompatibility with managed transactions (`unit of work requires a managed database handle`). Replace the fixture with isolated seeded SQLite; preserve production transaction behavior. Task appended without renumbering. Earlier local recovery/gates remain green; merge remains gated on complete remote CI.
 
@@ -1853,7 +1855,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
-| M46 | Durable Domain Events | in-progress | M45 | 7 | 6 |
+| M46 | Durable Domain Events | in-progress | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
 | M48 | Client Recovery | todo | M44 | 4 | 0 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
@@ -1867,7 +1869,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 397 tasks across 52 milestones — 349 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 350 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 

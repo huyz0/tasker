@@ -56,9 +56,9 @@
 
 ## M46-T07 — Repair real provider integration database fixture
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Replace the handcrafted read-only fake with the existing managed in-memory SQLite fixture and seeded authorization/repository rows. Remove unused sandbox mutation teardown from this read-only test.
-- **Verified**: Red: remote GitHub integration job 129021858085 fails sync with `unit of work requires a managed database handle`; provider reads pass. Pending restored real CI and local gates.
+- **Verified**: Red: remote GitHub integration job 129021858085 fails sync with `unit of work requires a managed database handle`; provider reads pass. Restored actual GitHub job 129023803194 and NATS job 129023803614 pass (run 42576021446). Full local `moon check --all`: 35 completed (23 cached), backend 2122 pass / 43 gated skip / 0 fail; typecheck passes. Read-only fixture seeds encrypted token/current authorization rows, enters the real transaction and checks stable local identities on repeated sync. Empty sandbox has no deployment round trip, explicitly reported by the existing test.
 - **Notes**: No ADR or UX: no production alternative or public flow changes. Existing transaction architecture requires a real managed handle; bypassing the unit for mocks would weaken the guarantee. Standards: testing/security.
 - **Next**: Verify and close M46 after actual remote checks.
