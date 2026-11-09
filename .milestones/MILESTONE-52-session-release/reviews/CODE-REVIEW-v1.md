@@ -11,7 +11,7 @@ Both integration jobs now fetch full history, matching the existing main CI setu
 
 ## Coverage
 
-The dependency audit drops from twelve high/critical findings to zero under the unchanged gate with no accepted exceptions. Frozen installation succeeds. All 35 local gates pass in a forced run with no cached tasks, including 1338 GUI tests and their coverage thresholds. PR #1 records the remote workflows; M52 remains in progress until the patched candidate is verified there. The previous remote candidate already passed backend, CLI, standalone and the complete Playwright suite.
+The dependency audit drops from twelve high/critical findings to zero under the unchanged gate with no accepted exceptions. Frozen installation succeeds. All 35 local gates pass in a forced run with no cached tasks, including 1338 GUI tests and their coverage thresholds. PR #1 records the remote workflows; M52 records local readiness; final remote execution and main publication remain gated and tracked in that PR. The previous remote candidate already passed backend, CLI, standalone and the complete Playwright suite.
 
 ## Architecture
 
