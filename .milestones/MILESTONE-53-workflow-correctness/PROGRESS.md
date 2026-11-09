@@ -34,3 +34,28 @@ backend2175/zero failures, GUI1360/95.34% branches and CLI gate93.8%. Design
 acceptance is reviewed against current readers/switcher/pagination/mutation
 boundaries; no runtime implementation is claimed. Next M53-T02 writes the
 canonical ownership regressions before API/GUI changes. Overall37 tasks remain.
+
+## M53-T02 — Resolve authorized entity navigation
+
+- **Status**: in-progress
+- **Date**: 2026-11-09
+- **Changed**: Add compatible authorized ownership metadata and resolve task/artifact/Memory navigation without losing detail or trusting caller scope.
+- **Verified**: T01 accepted design and final35 checks pass; implementation regressions are next. M47 PR #5 remains at unchanged e34924e while final remote checks run.
+- **Notes**: Heavy task follows ADR-0047, approved UX and TC-001–003/011. Frontend/security standards selected; TDD. Source inspection confirms getArtifactOrgId currently selects full artifact body; metadata regressions cover the authorization path too. No new ADR, persistence, font or palette is needed.
+- **Next**: Reproduce missing metadata/body projection and wrong-scope navigation; implement bounded authorized scope and distinguish deliberate selection from normalization, then verify both dialects and actual navigation.
+
+### T02 metadata and selector checkpoint
+
+Three initial backend reds reproduce absent owner metadata and a full artifact
+body read during authorization. Corrected scoped metadata joins/projections pass
+98 focused backend tests; real MySQL passes7 assertions including foreign denial
+and archived-parent behavior. Generated TypeSpec/proto/TS/Go fields compile and
+1116 contract round trips pass. Six initial UI reds reproduce scope selection
+and projectless switcher failures; corrected selector foundation passes44
+focused hook/switcher tests. Canonical resource resolution, full Memory behavior,
+both-dialect fault/old-client/browser evidence and full task gates remain pending.
+
+M47 PR #5 is now published as eeca2741d1e1e042430c7798aee7a8e0450c81b8 after
+all ten final-head jobs passed (CI42614414075; real integration42614414067).
+Remote GUI logs confirm1360 tests and all174 Storybook axe/375px checks. This
+WIP checkpoint will be rebased onto that published main before further work.

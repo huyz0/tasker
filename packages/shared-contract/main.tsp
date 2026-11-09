@@ -1220,6 +1220,9 @@ model GetTaskResponse {
   // - inspecting a task should surface prior handoff context without a
   // separate listTaskNotes call.
   @field(2) latestHandoffNote?: TaskNote;
+
+  // Authorized owner for canonical navigation; Task.projectId supplies project.
+  @field(3) orgId?: string;
 }
 
 model ListTasksRequest {
@@ -1571,6 +1574,11 @@ model GetArtifactRequest {
 
 model GetArtifactResponse {
   @field(1) artifact: Artifact;
+
+  // Derived from the authorized artifact's actual folder/project, without body.
+  @field(2) orgId?: string;
+
+  @field(3) projectId?: string;
 }
 
 model GetArtifactContentRequest {

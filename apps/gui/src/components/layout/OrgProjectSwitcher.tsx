@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@connectrpc/connect';
 import { useDebounce } from 'use-debounce';
+import { useLocation } from 'react-router-dom';
 import { ChevronsUpDown } from 'lucide-react';
 import { transport } from '../../lib/connectTransport';
 import { OrgService, ProjectService } from 'shared-contract/gen/ts/tasker/health/v1/health_pb';
@@ -169,6 +170,10 @@ function SearchSelect({
 }
 
 export function OrgProjectSwitcher() {
+  const location = useLocation();
+  const memoryTier = new URLSearchParams(location.search).get('scope');
+  const projectlessMemory = (location.pathname === '/memory' || location.pathname.startsWith('/memory/'))
+    && (memoryTier === 'organization' || memoryTier === 'team');
   const setScope = useSetScope();
   const activeOrgId = useLayoutStore((s) => s.activeOrgId);
   const activeProjectId = useLayoutStore((s) => s.activeProjectId);
@@ -235,6 +240,7 @@ export function OrgProjectSwitcher() {
     // user just made. Picking project 1234 of 2000 put the switcher back on
     // project 0999 (M06-T09).
     if (!activeProjectId) {
+      if (projectlessMemory) return;
       setScope({ projectId: projects[0].id }, { replace: true });
       setProjectLabel(projects[0].name);
       return;

@@ -6,6 +6,7 @@ import { eq, and, not, inArray, sql, isNull } from "drizzle-orm";
 import { insertRecord, executePaginatedQuery, notDeleted, softDeleteById, restoreById } from "../../db/query-builder";
 import { requireUser, getProjectOrgId, getFolderOrgId, getTaskOrgId, getArtifactOrgId, requirePrincipal, authorizePrincipal } from "../../lib/authz";
 import { assertCan } from "../../lib/policy";
+import { setRequestProject } from "../../lib/requestContext";
 import { ConnectError, Code } from "@connectrpc/connect";
 
 // --- Zod Request Schemas ---
@@ -501,42 +502,28 @@ export const createArtifactsHandler = (db: any, nc: any = null) => {
     async getArtifact(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = GetArtifactContentSchema.parse(req);
-      const orgId = await getArtifactOrgId(db, parsed.artifactId);
-      await authorizePrincipal(db, principal, orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
-
-      const arts = isStandalone ? schemaSqlite.artifacts : schemaMysql.artifacts;
-      // Names its columns for the same reason the list does: `content` can hold
-      // ~15 MB of base64, and this response is not where it belongs.
-      //
-      // M18-T01: deliberately not filtered on notDeleted, matching
-      // getArtifactContent, getTask, and getProject - none of this codebase's
-      // other single-row "get" RPCs 404 an archived/soft-deleted row, and this
-      // one used to be the sole exception, which meant a deep link to an
-      // archived artifact resolved via getArtifactContent but not via this
-      // RPC, even though both are meant to serve the same deep-linked viewer.
-      const rows = await db
-        .select({
-          id: (arts as any).id,
-          folderId: (arts as any).folderId,
-          name: (arts as any).name,
-          description: (arts as any).description,
-          contentType: (arts as any).contentType,
-          createdAt: (arts as any).createdAt,
-        })
-        .from(arts)
-        .where(eq((arts as any).id, parsed.artifactId))
-        .limit(1);
-      if (rows.length === 0) throw new ConnectError("Artifact not found", Code.NotFound);
-
-      const artifact = rows[0];
-      return {
-        artifact: {
-          ...artifact,
-          createdAt: artifact.createdAt instanceof Date ? artifact.createdAt.toISOString() : artifact.createdAt,
-        },
-      };
+      const S = isStandalone ? schemaSqlite : schemaMysql;
+      const arts = S.artifacts as any, folders = S.folders as any, projects = S.projects as any;
+      // One bounded row supplies both metadata and its owner. A separate owner
+      // lookup followed by a moving artifact read could attribute it elsewhere.
+      // Archived artifacts/folders remain readable, as before; archived projects
+      // retain the previous getArtifactOrgId/getProjectOrgId exclusion.
+      const [row] = await db.select({
+        id: arts.id, folderId: arts.folderId, name: arts.name, description: arts.description,
+        contentType: arts.contentType, createdAt: arts.createdAt,
+        projectId: folders.projectId, orgId: projects.orgId,
+      }).from(arts).innerJoin(folders, eq(arts.folderId, folders.id))
+        .innerJoin(projects, eq(folders.projectId, projects.id))
+        .where(and(eq(arts.id, parsed.artifactId), isNull(projects.deletedAt))).limit(1);
+      if (!row) throw new ConnectError("Artifact not found", Code.NotFound);
+      await authorizePrincipal(db, principal, row.orgId, { scope: 'artifacts:read', permission: 'artifact:read' });
+      setRequestProject(row.projectId);
+      const { orgId, projectId, ...artifact } = row;
+      return { orgId, projectId, artifact: {
+        ...artifact,
+        createdAt: artifact.createdAt instanceof Date ? artifact.createdAt.toISOString() : artifact.createdAt,
+      } };
     },
-
     async getArtifactContent(req: unknown, { values: contextValues }: { values: any }) {
       const principal = requirePrincipal(contextValues);
       const parsed = GetArtifactContentSchema.parse(req);

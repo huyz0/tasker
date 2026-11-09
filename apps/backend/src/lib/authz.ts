@@ -283,7 +283,7 @@ export async function getFolderOrgId(db: any, folderId: string, includeDeleted =
  */
 export async function getArtifactOrgId(db: any, artifactId: string, includeDeleted = false): Promise<string> {
   const artifacts = isStandalone() ? schemaSqlite.artifacts : schemaMysql.artifacts;
-  const rows = await db.select().from(artifacts).where(eq(artifacts.id, artifactId)).limit(1);
+  const rows = await db.select({ folderId: artifacts.folderId }).from(artifacts).where(eq(artifacts.id, artifactId)).limit(1);
   if (!rows || rows.length === 0) {
     throw new ConnectError('Artifact not found', Code.NotFound);
   }

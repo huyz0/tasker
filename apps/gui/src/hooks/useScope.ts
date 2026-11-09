@@ -95,7 +95,7 @@ export function useSetScope() {
   const latest = useRef(location);
   latest.current = location;
   return useCallback(
-    (next: Partial<Scope>, options?: { replace?: boolean }) => {
+    (next: Partial<Scope>, options?: { replace?: boolean; intent?: 'selection' | 'normalization' }) => {
       const { pathname, search, hash } = currentLocation(latest.current);
       const updated = new URLSearchParams(search);
       const apply = (key: string, value: string | undefined) => {
@@ -105,8 +105,26 @@ export function useSetScope() {
       };
       apply(ORG_PARAM, next.orgId);
       apply(PROJECT_PARAM, next.projectId);
+      const before = new URLSearchParams(search);
+      const changed = before.get(ORG_PARAM) !== updated.get(ORG_PARAM)
+        || before.get(PROJECT_PARAM) !== updated.get(PROJECT_PARAM);
+      if (!changed) return;
+      // Existing replace callers fill/correct scope automatically. Explicit
+      // selection leaves incompatible detail in the same navigation, rather
+      // than relying on a later store effect that also closes deep links.
+      const intent = options?.intent ?? (options?.replace ? 'normalization' : 'selection');
+      let destination = pathname;
+      if (intent === 'selection') {
+        const detail = /^\/(tasks|artifacts)\/[^/]+\/?$/.exec(pathname);
+        if (detail) destination = `/${detail[1]}`;
+        if (pathname === '/memory' || pathname.startsWith('/memory/')) {
+          destination = '/memory';
+          if (next.projectId) updated.set('scope', 'project');
+          else if (updated.get('scope') === 'team') updated.set('scope', 'organization');
+        }
+      }
       const query = updated.toString();
-      navigate({ pathname, search: query ? `?${query}` : '', hash }, { replace: options?.replace ?? false });
+      navigate({ pathname: destination, search: query ? `?${query}` : '', hash }, { replace: options?.replace ?? false });
     },
     // Empty on purpose: the target is absolute and read from the ref, so the
     // first render's `navigate` is as correct as any later one.
