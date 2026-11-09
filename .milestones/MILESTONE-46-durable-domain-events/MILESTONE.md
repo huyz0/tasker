@@ -59,6 +59,10 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/modules/webhooks/delivery.ts; apps/backend/src/modules/webhooks/httpSender.ts; apps/backend/src/db/schema.*.ts; apps/backend/drizzle-*/.
   - **Verify**: Reproduce an expired owner failing after its successor delivered; stale success/failure cannot change delivery or endpoint counters; trickling response bodies hit a bounded total deadline; both dialect migrations and real HTTP tests pass. Deliver before T05 closure; retain existing task IDs.
 
+- [ ] **M46-T07** — Use a managed database in the real GitHub repository integration fixture.
+  - **Files**: apps/backend/src/modules/repositories/repositories.integration.test.ts; .github/workflows/integration.yml.
+  - **Verify**: Reproduce CI's `unit of work requires a managed database handle`; seed an isolated SQLite database, run real provider reads and persist sync results through the actual transaction; full local gates and actual remote integration pass. No sandbox mutations are required.
+
 ## 6. Verification
 
 1. Reproduce the stated failure with an observable regression test before implementation.

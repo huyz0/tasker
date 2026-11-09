@@ -1,8 +1,8 @@
 ---
 active_milestone: M46
-active_task: null
+active_task: M46-T07
 last_updated: 2026-11-09
-last_commit: f3ea494
+last_commit: f23e9ce
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M46-T07 in progress.** Real GitHub CI reached sync and exposed its handcrafted database fake's incompatibility with managed transactions (`unit of work requires a managed database handle`). Replace the fixture with isolated seeded SQLite; preserve production transaction behavior. Task appended without renumbering. Earlier local recovery/gates remain green; merge remains gated on complete remote CI.
 
 **2026-11-09 — M46 implementation verified: 6/6 tasks.** Real process/broker recovery passes both dialects (56 assertions); custom consumer DB_PATH and body-free relay retry diagnostics are corrected. Final 35 local gates, five MySQL/upgrade tests, 12 socket/broker tests and standalone smoke pass. Independent v7 approved. PR #3's pinned native bootstrap is now running actual browser checks; wait for complete remote CI before milestone closure and merge. Then deliver M47; 46 tasks remain in the overall plan.
 
@@ -1851,7 +1853,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M43 | Recurring Work                  | done   | M42        | 6     | 6    |
 | M44 | Authorization Lifecycle | done | — | 4 | 4 |
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
-| M46 | Durable Domain Events | in-progress | M45 | 6 | 6 |
+| M46 | Durable Domain Events | in-progress | M45 | 7 | 6 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
 | M48 | Client Recovery | todo | M44 | 4 | 0 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
@@ -1865,7 +1867,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M57 | Attempt Correlation | todo | M46, M54 | 5 | 0 |
 | M58 | Operational Views | todo | M53 | 4 | 0 |
 
-**Total: 396 tasks across 52 milestones — 349 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
+**Total: 397 tasks across 52 milestones — 349 done, 1 dropped.** Binary *signing* was scoped out of M09 and M12 as a
 note, not a task — it needs certificates this project does not have — so M12's
 ledger row counts 11/11 (M34-T02 corrected it from 10).
 
