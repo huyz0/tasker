@@ -80,7 +80,7 @@ export function RegisterForm() {
           aria-describedby={fieldErrors.username ? 'register-username-error' : undefined}
         />
         {fieldErrors.username && (
-          <p id="register-username-error" className="text-xs text-destructive">{fieldErrors.username}</p>
+          <p id="register-username-error" className="text-xs text-destructive-subtle-foreground">{fieldErrors.username}</p>
         )}
       </div>
       <div className="flex flex-col gap-1">
@@ -102,7 +102,7 @@ export function RegisterForm() {
           aria-describedby={fieldErrors.password ? 'register-password-error' : 'register-password-hint'}
         />
         {fieldErrors.password ? (
-          <p id="register-password-error" className="text-xs text-destructive">{fieldErrors.password}</p>
+          <p id="register-password-error" className="text-xs text-destructive-subtle-foreground">{fieldErrors.password}</p>
         ) : (
           <p id="register-password-hint" className="text-xs text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p>
         )}
@@ -122,7 +122,7 @@ export function RegisterForm() {
         />
       </div>
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-subtle-foreground">
           {error.message}
         </p>
       )}

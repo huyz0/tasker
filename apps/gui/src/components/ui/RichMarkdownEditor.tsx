@@ -69,7 +69,9 @@ export function RichMarkdownEditor({ value, onChange, placeholder, className, re
           markdownShortcutPlugin(),
           toolbarPlugin({
             toolbarClassName: "rich-markdown-editor-toolbar",
-            toolbarContents: () => (
+            toolbarContents: () => readOnly ? (
+              <span className="type-caption text-muted-foreground">Read only</span>
+            ) : (
               <>
                 <UndoRedo />
                 <Separator />

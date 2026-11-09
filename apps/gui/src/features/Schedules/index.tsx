@@ -220,7 +220,7 @@ export function SchedulesScreen() {
                     {detail.data.active ? 'Pause' : 'Resume'}
                   </button>
                   <button onClick={() => setEditing(true)} className="inline-flex min-h-11 items-center type-label text-primary hover:underline sm:min-h-control">Edit</button>
-                  <button onClick={() => remove.mutate()} disabled={remove.isPending} className="inline-flex min-h-11 items-center type-label text-muted-foreground hover:text-destructive disabled:opacity-50 sm:min-h-control">
+                  <button onClick={() => remove.mutate()} disabled={remove.isPending} className="inline-flex min-h-11 items-center type-label text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50 sm:min-h-control">
                     Delete
                   </button>
                 </div>
@@ -238,7 +238,7 @@ export function SchedulesScreen() {
                 </p>
               )}
               {[runNow, toggle, remove].map((m, i) => m.isError && (
-                <p key={i} className="text-sm text-destructive">Could not {['run', 'change', 'delete'][i]} it: {(m.error as Error).message}</p>
+                <p key={i} className="text-sm text-destructive-subtle-foreground">Could not {['run', 'change', 'delete'][i]} it: {(m.error as Error).message}</p>
               ))}
               <section className="flex flex-col gap-2">
                 <h3 className="text-sm font-semibold tracking-tight">Recent runs</h3>

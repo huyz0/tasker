@@ -38,7 +38,9 @@ test('it runs in a real browser, because color-contrast needs layout', () => {
 test('it waits for the story to render before measuring', () => {
   // A story measured before it paints gives axe an empty root, and an empty
   // root has no violations — a pass for the wrong reason.
-  assert.match(source, /waitForSelector\('#storybook-root > \*'/);
+  assert.match(source, /waitForSelector\('#storybook-root'/);
+  assert.match(source, /sb-show-errordisplay/);
+  assert.match(source, /Preview failed to render/);
 });
 
 test('it checks WCAG A and AA, not just best practices', () => {

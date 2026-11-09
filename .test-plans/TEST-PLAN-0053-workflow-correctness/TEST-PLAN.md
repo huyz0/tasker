@@ -129,3 +129,15 @@ Affected full GUI coverage/backend/MCP/wire tests, relevant actual SQL/browser
 proofs, unchanged coverage gates, moon check --all and independent four-lens
 review must pass. Keep exact evidence and public docs current. Publish final PR
 head only after actual required CI succeeds; no unexecuted scenario is a pass.
+
+## TC-012 — Rendered catalogue truth and semantic ink (T07, exit5)
+
+Given every story and its actual provider/router context, when the catalogue is
+rendered in both themes and desktop/mobile widths, then the UI renders rather
+than a framework error, portal contents are audited, intentional absent states
+remain absent and error/action ink meets AA on its surface. Solid/highlighted
+destructive foreground/fill pairs retain their meaning. Given a mobile report
+table, when keyboard focus reaches its named scroller and ArrowRight is pressed,
+then its content can scroll. Given the read-only editor, when it renders, then
+disabled off-screen formatting controls do not create an unreachable scroll area.
+A deliberate unnamed control outside the Storybook root must fail the gate.

@@ -128,7 +128,7 @@ export function AccountSettings() {
             <p className="text-xs text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p>
           </div>
           {(passwordProblem || setPasswordError) && (
-            <p role="alert" className="text-sm text-destructive">{passwordProblem ?? setPasswordError?.message}</p>
+            <p role="alert" className="text-sm text-destructive-subtle-foreground">{passwordProblem ?? setPasswordError?.message}</p>
           )}
           {setPasswordMutation.isSuccess && (
             <p role="status" className="text-sm text-success">Password updated.</p>

@@ -69,7 +69,7 @@ export function StalledWorkCard({ stalledClaims, unclaimed }: {
       <div id={listId}>
         <SectionHeading>Claimed and silent</SectionHeading>
         {unassignMutation.isError && (
-          <p className="px-2 pb-1 text-xs text-destructive">
+          <p className="px-2 pb-1 text-xs text-destructive-subtle-foreground">
             Failed to unassign: {(unassignMutation.error as Error).message}
           </p>
         )}

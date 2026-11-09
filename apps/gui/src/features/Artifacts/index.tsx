@@ -457,7 +457,7 @@ export function ArtifactsBrowser() {
                     }}
                     disabled={archiveFolderMutation.isPending}
                     aria-label={`Delete folder ${folder.name}`}
-                    className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                    className="text-muted-foreground hover:text-destructive-subtle-foreground text-xs disabled:opacity-50"
                   >
                     <X aria-hidden="true" className="w-3.5 h-3.5" />
                   </button>
@@ -469,7 +469,7 @@ export function ArtifactsBrowser() {
               {selectedFolderId === folder.id && (
                 <div className="pl-6 mt-1 space-y-1">
                   {artifactMutationError && (
-                    <p className="text-xs text-destructive px-2">
+                    <p className="text-xs text-destructive-subtle-foreground px-2">
                       Failed to {artifactMutationError.label}: {(artifactMutationError.error as Error).message}
                     </p>
                   )}
@@ -519,7 +519,7 @@ export function ArtifactsBrowser() {
                           }}
                           disabled={archiveArtifactMutation.isPending}
                           aria-label={`Delete artifact ${artifact.name}`}
-                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-destructive disabled:opacity-50"
+                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-destructive-subtle-foreground disabled:opacity-50"
                         >
                           <X aria-hidden="true" className="w-3.5 h-3.5" />
                         </button>
@@ -621,7 +621,7 @@ export function ArtifactsBrowser() {
         </div>
         <div className="p-2 space-y-1 text-sm overflow-y-auto scrollbar-thin">
           {folderMutationError && (
-            <p className="text-xs text-destructive px-1">
+            <p className="text-xs text-destructive-subtle-foreground px-1">
               Failed to {folderMutationError.label}: {(folderMutationError.error as Error).message}
             </p>
           )}
@@ -696,7 +696,7 @@ export function ArtifactsBrowser() {
             )}
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
                {updateContentMutation.isError && (
-                 <p className="text-sm text-destructive mb-3">Failed to save: {(updateContentMutation.error as Error).message}</p>
+                 <p className="text-sm text-destructive-subtle-foreground mb-3">Failed to save: {(updateContentMutation.error as Error).message}</p>
                )}
                {isEditingContent ? (
                  // M23's follow-up reaches artifact content, but only where

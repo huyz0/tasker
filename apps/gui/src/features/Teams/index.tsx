@@ -137,7 +137,7 @@ function CreateTeamDialog({ open, onClose, orgId }: { open: boolean; onClose: ()
           />
         </div>
         {createMutation.isError && (
-          <p className="text-sm text-destructive">Failed to create team: {(createMutation.error as Error).message}</p>
+          <p className="text-sm text-destructive-subtle-foreground">Failed to create team: {(createMutation.error as Error).message}</p>
         )}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -232,7 +232,7 @@ function AddMemberPicker({ teamId, orgId, memberIds }: { teamId: string; orgId: 
       )}
 
       {addMutation.isError && (
-        <p role="alert" className="text-xs text-destructive">Failed to add: {(addMutation.error as Error).message}</p>
+        <p role="alert" className="text-xs text-destructive-subtle-foreground">Failed to add: {(addMutation.error as Error).message}</p>
       )}
 
       <button onClick={() => { setIsPicking(false); setSearch(''); }} className="mt-1 self-start text-xs text-muted-foreground">
@@ -354,7 +354,7 @@ function TeamDetail({ team, orgId }: { team: Team; orgId: string }) {
                     aria-label={`Remove ${member.name || member.email} from this team`}
                     onClick={() => handleRemoveMember(member)}
                     disabled={removeMemberMutation.isPending}
-                    className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    className="text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
                   >
                     ✕
                   </button>
@@ -375,7 +375,7 @@ function TeamDetail({ team, orgId }: { team: Team; orgId: string }) {
           </div>
         </ListState>
         {removeMemberMutation.isError && (
-          <p role="alert" className="text-sm text-destructive">Failed to remove member: {(removeMemberMutation.error as Error).message}</p>
+          <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to remove member: {(removeMemberMutation.error as Error).message}</p>
         )}
         <AddMemberPicker teamId={team.id} orgId={orgId} memberIds={memberIds} />
       </section>
@@ -404,7 +404,7 @@ function TeamDetail({ team, orgId }: { team: Team; orgId: string }) {
                     aria-label={`Revoke ${grant.roleName} from ${subjectLabel(grant)}`}
                     onClick={() => revokeMutation.mutate(grant.id)}
                     disabled={revokeMutation.isPending}
-                    className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    className="text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
                   >
                     ✕
                   </button>
@@ -425,7 +425,7 @@ function TeamDetail({ team, orgId }: { team: Team; orgId: string }) {
           </div>
         </ListState>
         {revokeMutation.isError && (
-          <p role="alert" className="text-sm text-destructive">Failed to revoke grant: {(revokeMutation.error as Error).message}</p>
+          <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to revoke grant: {(revokeMutation.error as Error).message}</p>
         )}
 
         {/* The subject is a member already on this roster, not a second
@@ -469,7 +469,7 @@ function TeamDetail({ team, orgId }: { team: Team; orgId: string }) {
           </Button>
         </form>
         {grantMutation.isError && (
-          <p role="alert" className="text-sm text-destructive">Failed to grant role: {(grantMutation.error as Error).message}</p>
+          <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to grant role: {(grantMutation.error as Error).message}</p>
         )}
       </section>
 
@@ -548,13 +548,13 @@ export function TeamsManager() {
           </button>
 
           {renameMutation.isError && (
-            <p role="alert" className="text-sm text-destructive">Failed to rename: {(renameMutation.error as Error).message}</p>
+            <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to rename: {(renameMutation.error as Error).message}</p>
           )}
           {archiveMutation.isError && (
-            <p role="alert" className="text-sm text-destructive">Failed to archive: {(archiveMutation.error as Error).message}</p>
+            <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to archive: {(archiveMutation.error as Error).message}</p>
           )}
           {restoreMutation.isError && (
-            <p role="alert" className="text-sm text-destructive">Failed to restore: {(restoreMutation.error as Error).message}</p>
+            <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to restore: {(restoreMutation.error as Error).message}</p>
           )}
 
           <ListState

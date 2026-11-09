@@ -68,7 +68,7 @@ function Deliveries({ webhookId }: { webhookId: string }) {
             <span className="text-muted-foreground">
               {d.attempts} attempt{d.attempts === 1 ? '' : 's'}{d.lastStatusCode ? ` · HTTP ${d.lastStatusCode}` : ''}
             </span>
-            {d.lastError && <span className="text-destructive basis-full">{d.lastError}</span>}
+            {d.lastError && <span className="text-destructive-subtle-foreground basis-full">{d.lastError}</span>}
           </li>
         ))}
       </ul>
@@ -210,9 +210,9 @@ export function Webhooks({ orgId }: WebhooksProps) {
                 ))}
               </div>
             </details>
-            {events.length === 0 && <p className="text-xs text-destructive">Choose at least one event.</p>}
+            {events.length === 0 && <p className="text-xs text-destructive-subtle-foreground">Choose at least one event.</p>}
           </fieldset>
-          {create.isError && <p className="text-sm text-destructive">Failed to add webhook: {(create.error as Error).message}</p>}
+          {create.isError && <p className="text-sm text-destructive-subtle-foreground">Failed to add webhook: {(create.error as Error).message}</p>}
           <div className="flex gap-2">
             <button
               type="submit"
@@ -228,7 +228,7 @@ export function Webhooks({ orgId }: WebhooksProps) {
         </form>
       )}
 
-      {actionError && <p className="text-sm text-destructive">{(actionError as Error).message}</p>}
+      {actionError && <p className="text-sm text-destructive-subtle-foreground">{(actionError as Error).message}</p>}
 
       <ListState
         isLoading={list.isLoading}
@@ -255,7 +255,7 @@ export function Webhooks({ orgId }: WebhooksProps) {
                   {w.lastDeliveryAt ? ` · last delivered ${formatDateTime(w.lastDeliveryAt)}` : ''}
                   {w.consecutiveFailures > 0 ? ` · ${w.consecutiveFailures} failed in a row` : ''}
                 </p>
-                {w.disabledReason && <p className="text-xs text-destructive">{w.disabledReason}</p>}
+                {w.disabledReason && <p className="text-xs text-destructive-subtle-foreground">{w.disabledReason}</p>}
                 <div className="flex flex-wrap gap-3 text-sm">
                   <button onClick={() => ping.mutate(w.id)} disabled={!w.active || ping.isPending} className="text-primary hover:underline disabled:opacity-50 disabled:no-underline">
                     Send ping
@@ -292,7 +292,7 @@ export function Webhooks({ orgId }: WebhooksProps) {
                         confirmLabel: 'Delete',
                       })) remove.mutate(w.id);
                     }}
-                    className="text-destructive hover:underline"
+                    className="text-destructive-subtle-foreground hover:underline"
                   >
                     Delete
                   </button>

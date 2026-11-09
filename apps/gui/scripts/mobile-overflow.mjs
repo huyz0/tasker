@@ -88,7 +88,7 @@ const pages = await Promise.all(
 /** Runs inside the page — no access to anything in this file's closure. */
 function findOverflow(width) {
   const offenders = [];
-  const root = document.getElementById('storybook-root') ?? document.body;
+  const root = document.body;
   for (const el of root.querySelectorAll('*')) {
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.right <= width + 1) continue;
@@ -122,8 +122,15 @@ async function measureStories(page) {
       waitUntil: 'networkidle',
       timeout: 60000,
     });
-    await page.waitForSelector('#storybook-root > *', { timeout: 20000 }).catch(() => {});
+    await page.waitForSelector('#storybook-root', { state: 'attached', timeout: 20000 });
+    // An intentionally empty component is valid; a Storybook error screen is
+    // not. That error screen lives outside the story root, like real portals.
+    await page.waitForFunction(() => ['sb-show-main', 'sb-show-errordisplay', 'sb-show-nopreview']
+      .some(state => document.body.classList.contains(state)), undefined, { timeout: 20000 });
     await page.waitForTimeout(250);
+    const previewError = await page.evaluate(() => document.body.classList.contains('sb-show-errordisplay')
+      || document.body.classList.contains('sb-show-nopreview'));
+    if (previewError) throw new Error(`Preview failed to render: ${story.id}`);
 
     const offenders = await page.evaluate(findOverflow, WIDTH);
     // One offender per element is noise once the ancestor is already reported —
@@ -137,14 +144,16 @@ async function measureStories(page) {
   }
 }
 
-await Promise.all(pages.map(measureStories));
+try {
+  await Promise.all(pages.map(measureStories));
+} finally {
+  await browser.close();
+  server.close();
+}
 
 // Pages finish out of order; sorting keeps the report stable across runs on
 // an unchanged tree.
 failures.sort((a, b) => a.story.localeCompare(b.story));
-
-await browser.close();
-server.close();
 
 if (failures.length === 0) {
   console.log(`✓ mobile overflow — ${stories.length} stories, nothing wider than ${WIDTH}px (${CONCURRENCY} pages)`);

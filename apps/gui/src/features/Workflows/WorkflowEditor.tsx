@@ -140,7 +140,7 @@ export function WorkflowEditor({ initial, saving, error, onSave, onCancel }: Wor
                   onClick={() => removeStep(i)}
                   disabled={draft.steps.length === 1}
                   aria-label={`Remove step ${i + 1}`}
-                  className="text-muted-foreground hover:text-destructive disabled:opacity-40 px-1"
+                  className="text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-40 px-1"
                 >
                   ✕
                 </button>
@@ -170,7 +170,7 @@ export function WorkflowEditor({ initial, saving, error, onSave, onCancel }: Wor
         Add step
       </button>
 
-      {error && <p className="text-sm text-destructive">Could not save: {error}</p>}
+      {error && <p className="text-sm text-destructive-subtle-foreground">Could not save: {error}</p>}
       <div className="flex gap-2">
         <button
           type="submit"

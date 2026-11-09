@@ -417,3 +417,46 @@ including exact dialog names/actions. A broader216-story dark375 whole-body
 audit follows because default-theme gates alone cannot establish the palette's
 error-text contrast. All rule sets remain unchanged; no production correction
 is inferred from a test-only blank-root assumption.
+
+T07 broad dark audit rejects final closure:18 violations include two real raw
+destructive-ink contrast failures (WorkflowEditor refusal1.93:1 and repository
+configuration1.83:1), a report horizontal scroller and a read-only editor toolbar
+without keyboard targets. Several other reports are Storybook's own error pre:
+default screens lack QueryClient and some local routers nest inside the global
+router; NotFound DeepPath also nests two local routers. AgentTokens' unreachable
+admin lookup intentionally hides it; give its default story a deterministic
+authorized empty cache. Breadcrumb/Priority/Pagination intentional absence and
+alertdialog portals are classified separately from runtime errors. CODE-v10 and
+UX-v7 retain these findings. Extend T07's verification/fix scope to real catalogue
+rendering, all-theme whole-body gates, existing semantic standalone error ink and
+keyboard scrolling; no new palette/font/ADR is required. Independent palette
+judgment explicitly preserves fill/on-fill and highlighted-menu pairs.
+
+T07 expanded correction reuses existing standalone error foreground in135 text/
+hover classes across35 files; solid/highlighted fill pairs and token values stay
+unchanged. A surface/ink story documents canvas/panel/raised/callout use. The named
+Fleet table scroller has visible inset keyboard focus; read-only MDX keeps its
+bar/field with compact Read only copy instead of unreachable disabled tools.
+Preview defaults now have a per-story query provider, local routers opt out of
+the global router, NotFound has one local router and AgentTokens has a seeded
+authorized empty state. A follow-up review catches its local module cache
+surviving story revisits; its fixture now creates/seeds a client per mount.
+Other legacy local providers remain explicit overrides, not a claim that all
+local caches are isolated. This preview-only correction adds no product behavior.
+
+Gates now reject actual Storybook error/no-preview states, accept intentionally
+empty rendered states, audit portals/whole body in2themes×2widths and measure
+portal overflow. Existing14 configuration checks and TypeScript pass. The new
+guard rejects the old crashed Agents preview. A deliberately unnamed control
+outside the root passes the old root-only version but fails the new gate with
+button-name in all4 scans. Browser/server resources close in finally. Fresh
+corrected217-story rendered checks are in progress; the small per-mount fixture
+refinement follows with a fresh build and targeted verification.
+
+The strengthened217-story ×4 audit renders every fixture correctly; all prior
+product stories pass. It catches only a new demonstration's muted button on a
+light error callout at4.3:1 in both widths. The example now uses the same error
+foreground at rest, with underline hover. Native browser proof also passes Fleet
+keyboard focus/ArrowRight scrolling and read-only toolbar no-overflow. The cache
+per-mount refinement and demonstration correction are included in the next fresh
+build/full217 audit; final screenshots are recaptured from that build.

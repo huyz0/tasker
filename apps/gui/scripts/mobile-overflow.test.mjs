@@ -33,7 +33,9 @@ test('it runs in a real browser, because overflow needs layout', () => {
 });
 
 test('it waits for the story to render before measuring', () => {
-  assert.match(source, /waitForSelector\('#storybook-root > \*'/);
+  assert.match(source, /waitForSelector\('#storybook-root'/);
+  assert.match(source, /sb-show-errordisplay/);
+  assert.match(source, /Preview failed to render/);
 });
 
 test('a deliberate horizontal scroller is exempt, not a violation', () => {

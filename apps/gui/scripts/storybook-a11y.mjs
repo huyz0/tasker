@@ -125,43 +125,60 @@ async function auditStories(page) {
     });
     // Storybook renders asynchronously; a story measured before it paints has
     // nothing for axe to look at and passes for the wrong reason.
-    await page.waitForSelector('#storybook-root > *', { timeout: 20000 }).catch(() => {});
+    await page.waitForSelector('#storybook-root', { state: 'attached', timeout: 20000 });
+    // An intentionally empty component is valid; a Storybook error screen is
+    // not. That error screen lives outside the story root, like real portals.
+    await page.waitForFunction(() => ['sb-show-main', 'sb-show-errordisplay', 'sb-show-nopreview']
+      .some(state => document.body.classList.contains(state)), undefined, { timeout: 20000 });
     await page.waitForTimeout(250);
+    const previewError = await page.evaluate(() => document.body.classList.contains('sb-show-errordisplay')
+      || document.body.classList.contains('sb-show-nopreview'));
+    if (previewError) throw new Error(`Preview failed to render: ${story.id}`);
 
     await page.addScriptTag({ content: axeSource });
-    const result = await page.evaluate(async () =>
-      // eslint-disable-next-line no-undef
-      await window.axe.run('#storybook-root', {
-        runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
-      }),
-    );
+    await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' });
+    for (const theme of ['light', 'dark']) {
+      for (const width of [375, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
+        await page.evaluate(() => document.fonts.ready);
+        const result = await page.evaluate(async () =>
+          // eslint-disable-next-line no-undef
+          await window.axe.run(document.body, {
+            runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
+          }),
+        );
 
-    for (const v of result.violations) {
-      failures.push({
-        story: story.title ? `${story.title} › ${story.name}` : story.id,
-        id: v.id,
-        impact: v.impact,
-        help: v.help,
-        nodes: v.nodes.slice(0, 3).map((n) => n.target.join(' ')),
-      });
+        for (const v of result.violations) {
+          failures.push({
+            story: `${story.title} › ${story.name} (${theme}, ${width}px)`,
+            id: v.id,
+            impact: v.impact,
+            help: v.help,
+            nodes: v.nodes.slice(0, 3).map((n) => n.target.join(' ') + ' ' + n.failureSummary),
+          });
+        }
+      }
     }
   }
 }
 
-await Promise.all(pages.map(auditStories));
+try {
+  await Promise.all(pages.map(auditStories));
+} finally {
+  await browser.close();
+  server.close();
+}
 
 // Pages finish out of order, so without this the report reshuffles between
 // runs on an unchanged tree - noise when diffing two CI logs.
 failures.sort((a, b) => a.story.localeCompare(b.story) || a.id.localeCompare(b.id));
 
-await browser.close();
-server.close();
-
 if (failures.length === 0) {
   // Reports the page count too: it is derived from the machine, so this is
   // the only way to see what CI actually chose without guessing at the
   // runner's core count.
-  console.log(`✓ storybook a11y — ${stories.length} stories, 0 violations (${CONCURRENCY} pages)`);
+  console.log(`✓ storybook a11y — ${stories.length} stories ×2themes ×2widths, 0 violations (${CONCURRENCY} pages)`);
   process.exit(0);
 }
 

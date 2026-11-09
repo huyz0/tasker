@@ -256,7 +256,7 @@ export function AgentsDashboard() {
                 ))}
               </select>
               {createAgentMutation.isError && (
-                <p className="text-xs text-destructive">Failed to deploy agent: {(createAgentMutation.error as Error).message}</p>
+                <p className="text-xs text-destructive-subtle-foreground">Failed to deploy agent: {(createAgentMutation.error as Error).message}</p>
               )}
               <button
                 type="submit"
@@ -268,10 +268,10 @@ export function AgentsDashboard() {
             </form>
           )}
           {archiveAgentMutation.isError && (
-            <p className="text-sm text-destructive mb-2">Failed to delete agent: {(archiveAgentMutation.error as Error).message}</p>
+            <p className="text-sm text-destructive-subtle-foreground mb-2">Failed to delete agent: {(archiveAgentMutation.error as Error).message}</p>
           )}
           {updateAgentMutation.isError && (
-            <p className="text-sm text-destructive mb-2">Failed to update agent: {(updateAgentMutation.error as Error).message}</p>
+            <p className="text-sm text-destructive-subtle-foreground mb-2">Failed to update agent: {(updateAgentMutation.error as Error).message}</p>
           )}
           <div className="border rounded-md divide-y">
             <div className={`${AGENT_ROW_GRID} min-h-row p-3 text-xs font-medium text-muted-foreground bg-muted/30`}>
@@ -364,7 +364,7 @@ export function AgentsDashboard() {
                         }
                       }}
                       disabled={archiveAgentMutation.isPending}
-                      className="text-muted-foreground hover:text-destructive text-xs disabled:opacity-50"
+                      className="text-muted-foreground hover:text-destructive-subtle-foreground text-xs disabled:opacity-50"
                     >
                       Delete
                     </button>
@@ -481,10 +481,10 @@ export function AgentsDashboard() {
               className="text-sm bg-transparent border rounded-md px-2 py-1"
             />
             {!isValidCapabilitiesJson(newRoleCapabilities) && (
-              <p className="text-xs text-destructive">Capabilities must be valid JSON.</p>
+              <p className="text-xs text-destructive-subtle-foreground">Capabilities must be valid JSON.</p>
             )}
             {createAgentRoleMutation.isError && (
-              <p className="text-xs text-destructive">Failed to create role: {(createAgentRoleMutation.error as Error).message}</p>
+              <p className="text-xs text-destructive-subtle-foreground">Failed to create role: {(createAgentRoleMutation.error as Error).message}</p>
             )}
             <button
               type="submit"
@@ -550,10 +550,10 @@ export function AgentsDashboard() {
                     className="text-sm bg-transparent border rounded-md px-2 py-1"
                   />
                   {!isValidCapabilitiesJson(editRoleCapabilities) && (
-                    <p className="text-xs text-destructive">Capabilities must be valid JSON.</p>
+                    <p className="text-xs text-destructive-subtle-foreground">Capabilities must be valid JSON.</p>
                   )}
                   {updateAgentRoleMutation.isError && (
-                    <p className="text-xs text-destructive">Failed to update role: {(updateAgentRoleMutation.error as Error).message}</p>
+                    <p className="text-xs text-destructive-subtle-foreground">Failed to update role: {(updateAgentRoleMutation.error as Error).message}</p>
                   )}
                   <div className="flex gap-2 self-end">
                     <button

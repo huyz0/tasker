@@ -119,7 +119,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
               className="text-sm rounded-md border bg-background px-2 py-1 outline-none focus:ring-2 focus:ring-primary/50"
             />
             {updateNoteMutation.isError && (
-              <p className="text-xs text-destructive">Failed to update note: {(updateNoteMutation.error as Error).message}</p>
+              <p className="text-xs text-destructive-subtle-foreground">Failed to update note: {(updateNoteMutation.error as Error).message}</p>
             )}
             <div className="flex gap-2 self-end">
               <button type="submit" disabled={!editNoteContent.trim() || updateNoteMutation.isPending} className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-md text-xs font-medium">Save</button>
@@ -148,7 +148,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
                       deleteNoteMutation.mutate(note.id);
                     }
                   }}
-                  className="text-muted-foreground hover:text-destructive text-xs"
+                  className="text-muted-foreground hover:text-destructive-subtle-foreground text-xs"
                 >
                   Delete
                 </button>
@@ -162,7 +162,7 @@ function TaskNotesPanel({ taskId }: { taskId: string }) {
         )
       ))}
       {deleteNoteMutation.isError && (
-        <p className="text-xs text-destructive">Failed to delete note: {(deleteNoteMutation.error as Error).message}</p>
+        <p className="text-xs text-destructive-subtle-foreground">Failed to delete note: {(deleteNoteMutation.error as Error).message}</p>
       )}
       {confirmDialog}
     </div>
@@ -911,7 +911,7 @@ export function TasksWorkbench() {
             </div>
           )}
           {bulkStatusMutation.isError && (
-            <p className="text-sm text-destructive">{(bulkStatusMutation.error as Error).message}</p>
+            <p className="text-sm text-destructive-subtle-foreground">{(bulkStatusMutation.error as Error).message}</p>
           )}
           {/* The rows are virtualized, so the table always needs a bounded
               height: the rest of the screen from `md:`, most of a dynamic
@@ -1034,7 +1034,7 @@ export function TasksWorkbench() {
       ) : (
       <>
       {updateStatusMutation.isError && (
-        <p className="text-sm text-destructive mb-3">
+        <p className="text-sm text-destructive-subtle-foreground mb-3">
           Failed to move task: {(updateStatusMutation.error as Error).message}
         </p>
       )}
@@ -1062,7 +1062,7 @@ export function TasksWorkbench() {
       </>
       )}
       {createTaskMutation.isError && (
-        <p className="text-sm text-destructive">Failed to create task: {(createTaskMutation.error as Error).message}</p>
+        <p className="text-sm text-destructive-subtle-foreground">Failed to create task: {(createTaskMutation.error as Error).message}</p>
       )}
 
       {/* Focused task-detail overlay (Jira/Linear pattern): takes over most
@@ -1154,7 +1154,7 @@ export function TasksWorkbench() {
              ]}
            />
            {deleteTaskMutation.isError && (
-             <p className="text-sm text-destructive px-4 pt-2 shrink-0">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
+             <p className="text-sm text-destructive-subtle-foreground px-4 pt-2 shrink-0">Failed to delete task: {(deleteTaskMutation.error as Error).message}</p>
            )}
            <div className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden flex flex-col md:flex-row">
            <div className="flex-none md:flex-1 md:min-w-0 p-6 overflow-visible md:overflow-y-auto custom-scrollbar">
@@ -1184,7 +1184,7 @@ export function TasksWorkbench() {
                    placeholder="Description (Markdown supported)"
                  />
                  {updateTaskMutation.isError && (
-                   <p className="text-destructive text-xs">Failed to update task: {(updateTaskMutation.error as Error).message}</p>
+                   <p className="text-destructive-subtle-foreground text-xs">Failed to update task: {(updateTaskMutation.error as Error).message}</p>
                  )}
                  <div className="flex gap-2">
                    <button
@@ -1246,7 +1246,7 @@ export function TasksWorkbench() {
                   </select>
                 </div>
                 {updateStatusMutation.isError && (
-                  <p className="text-destructive text-xs">Failed to update status: {(updateStatusMutation.error as Error).message}</p>
+                  <p className="text-destructive-subtle-foreground text-xs">Failed to update status: {(updateStatusMutation.error as Error).message}</p>
                 )}
                 <div className="flex justify-between items-center">
                   <span className="w-20">Priority:</span>
@@ -1262,7 +1262,7 @@ export function TasksWorkbench() {
                   </select>
                 </div>
                 {updatePriorityMutation.isError && (
-                  <p className="text-destructive text-xs">Failed to update priority: {(updatePriorityMutation.error as Error).message}</p>
+                  <p className="text-destructive-subtle-foreground text-xs">Failed to update priority: {(updatePriorityMutation.error as Error).message}</p>
                 )}
                 {/* Was a hardcoded "Unassigned", shown whether or not the task
                     had assignees — the detail view's version of M05-T02's chip. */}

@@ -110,7 +110,7 @@ export function LabelsManager() {
           </button>
         </form>
         {createLabelMutation.isError && (
-          <p className="text-sm text-destructive mt-3">Failed to create label: {(createLabelMutation.error as Error).message}</p>
+          <p className="text-sm text-destructive-subtle-foreground mt-3">Failed to create label: {(createLabelMutation.error as Error).message}</p>
         )}
       </div>
 
@@ -194,7 +194,7 @@ export function LabelsManager() {
           )}
         </ListState>
         {updateLabelMutation.isError && (
-          <p className="text-sm text-destructive mt-3">Failed to update label: {(updateLabelMutation.error as Error).message}</p>
+          <p className="text-sm text-destructive-subtle-foreground mt-3">Failed to update label: {(updateLabelMutation.error as Error).message}</p>
         )}
       </div>
     </div>

@@ -73,7 +73,7 @@ export function FleetScorecardCard({ agentRows, roleRows }: {
       ) : (
         // The table is wider than a phone; it scrolls inside the card rather
         // than forcing the page wider than the viewport.
-        <div className="overflow-x-auto scrollbar-thin">
+        <div role="region" aria-label="Fleet scorecard table" tabIndex={0} className="overflow-x-auto scrollbar-thin outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-muted-foreground">

@@ -93,7 +93,7 @@ export function TaskTypeHeader({ typeId, name }: { typeId: string; name: string 
         </div>
       )}
       {updateType.isError && (
-        <p className="text-sm text-destructive mt-1">Failed to rename: {(updateType.error as Error).message}</p>
+        <p className="text-sm text-destructive-subtle-foreground mt-1">Failed to rename: {(updateType.error as Error).message}</p>
       )}
     </section>
   );

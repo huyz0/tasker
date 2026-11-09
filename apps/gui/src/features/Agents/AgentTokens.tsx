@@ -146,7 +146,7 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
               I've saved it
             </button>
             {copyFailed && (
-              <span className="text-xs text-destructive">
+              <span className="text-xs text-destructive-subtle-foreground">
                 Could not copy automatically - select the text above.
               </span>
             )}
@@ -202,11 +202,11 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
               imply the user chose 90 when they did not. */}
           <p className="text-xs text-muted-foreground">Leave blank for 90 days. Maximum {MAX_EXPIRY_DAYS}.</p>
           {expiryError(expiresInDays) && (
-            <p className="text-xs text-destructive">{expiryError(expiresInDays)}</p>
+            <p className="text-xs text-destructive-subtle-foreground">{expiryError(expiresInDays)}</p>
           )}
 
           {createMutation.isError && (
-            <p className="text-xs text-destructive">
+            <p className="text-xs text-destructive-subtle-foreground">
               Failed to create token: {(createMutation.error as Error).message}
             </p>
           )}
@@ -221,7 +221,7 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
       )}
 
       {revokeMutation.isError && (
-        <p className="text-xs text-destructive mb-2">
+        <p className="text-xs text-destructive-subtle-foreground mb-2">
           Failed to revoke token: {(revokeMutation.error as Error).message}
         </p>
       )}
@@ -259,7 +259,7 @@ export function AgentTokens({ agentId, agentName }: { agentId: string; agentName
                       }
                     }}
                     disabled={revokeMutation.isPending}
-                    className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    className="text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
                   >
                     ✕
                   </button>

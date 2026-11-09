@@ -116,7 +116,7 @@ export function TaskSummaryPanel({ taskId, summary }: TaskSummaryPanelProps) {
           type="button"
           disabled={!scope.accountId || pending || ending}
           onClick={() => submit('')}
-          className="text-xs font-medium text-muted-foreground hover:text-destructive disabled:opacity-50"
+          className="text-xs font-medium text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
         >
           {pending && clearing ? 'Clearing…' : 'Clear'}
         </button>

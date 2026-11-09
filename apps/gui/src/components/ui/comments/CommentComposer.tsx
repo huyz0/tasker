@@ -23,7 +23,7 @@ export function CommentComposer() {
   return (
     <div className="pt-4 border-t border-border mt-4">
       {state.isError && (
-        <p className="text-sm text-destructive mb-3">Failed to post comment: {state.error?.message}</p>
+        <p className="text-sm text-destructive-subtle-foreground mb-3">Failed to post comment: {state.error?.message}</p>
       )}
       <form onSubmit={handleSubmit} className="flex flex-col space-y-3">
         {/* M23's named follow-up: comments were the second surface the rich

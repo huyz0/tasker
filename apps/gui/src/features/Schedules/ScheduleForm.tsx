@@ -167,7 +167,7 @@ export function ScheduleForm({ initial, projects, templates, projectLocked, savi
         Skip a run while the previous one is unfinished
       </label>
 
-      {error && <p className="text-sm text-destructive">Could not save: {error}</p>}
+      {error && <p className="text-sm text-destructive-subtle-foreground">Could not save: {error}</p>}
       <div className="flex gap-2">
         <button type="submit" disabled={!valid || saving} className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
           {saving ? 'Saving…' : 'Save schedule'}

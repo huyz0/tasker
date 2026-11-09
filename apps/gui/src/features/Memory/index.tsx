@@ -173,7 +173,7 @@ function RecordBeliefDialog({ open, onClose, orgId, scopeType, scopeId }: { open
             {CONFIDENCE_LEVELS.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        {mutation.isError && <p role="alert" className="text-sm text-destructive">Failed to record belief: {(mutation.error as Error).message}</p>}
+        {mutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to record belief: {(mutation.error as Error).message}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={!statement.trim() || mutation.isPending}>{mutation.isPending ? 'Recording…' : 'Record belief'}</Button>
@@ -230,7 +230,7 @@ function SupersedeBeliefDialog({ open, onClose, belief, onSuperseded }: { open: 
             {CONFIDENCE_LEVELS.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        {mutation.isError && <p role="alert" className="text-sm text-destructive">Failed to supersede: {(mutation.error as Error).message}</p>}
+        {mutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to supersede: {(mutation.error as Error).message}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={!statement.trim() || mutation.isPending}>{mutation.isPending ? 'Superseding…' : 'Supersede'}</Button>
@@ -313,7 +313,7 @@ function RelateBeliefPicker({ belief, existingRelatedIds, scopeType, scopeId }: 
       {candidates.isSuccess && debouncedSearch && results.length === 0 && (
         <span className="text-xs text-muted-foreground">No matching beliefs.</span>
       )}
-      {relateMutation.isError && <p role="alert" className="text-xs text-destructive">Failed to relate: {(relateMutation.error as Error).message}</p>}
+      {relateMutation.isError && <p role="alert" className="text-xs text-destructive-subtle-foreground">Failed to relate: {(relateMutation.error as Error).message}</p>}
 
       <button onClick={() => { setIsPicking(false); setSearch(''); }} className="mt-1 self-start text-xs text-muted-foreground">Done</button>
     </div>
@@ -477,7 +477,7 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
           >
             {CONFIDENCE_LEVELS.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          {updateMutation.isError && <p role="alert" className="text-sm text-destructive">Failed to save: {(updateMutation.error as Error).message}</p>}
+          {updateMutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to save: {(updateMutation.error as Error).message}</p>}
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={!draftStatement.trim() || updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save'}</Button>
             <Button type="button" size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
@@ -491,9 +491,9 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
       )}
 
       <ProvenanceLine belief={belief} />
-      {archiveMutation.isError && <p role="alert" className="text-sm text-destructive">Failed to archive: {(archiveMutation.error as Error).message}</p>}
-      {restoreMutation.isError && <p role="alert" className="text-sm text-destructive">Failed to restore: {(restoreMutation.error as Error).message}</p>}
-      {purgeMutation.isError && <p role="alert" className="text-sm text-destructive">Failed to delete: {(purgeMutation.error as Error).message}</p>}
+      {archiveMutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to archive: {(archiveMutation.error as Error).message}</p>}
+      {restoreMutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to restore: {(restoreMutation.error as Error).message}</p>}
+      {purgeMutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to delete: {(purgeMutation.error as Error).message}</p>}
 
       {/* Radix, not a hand-rolled tab pair - `design-system.md` §4 ("Do not
           hand-roll a second overlay, menu, or tab implementation"), the same
@@ -539,7 +539,7 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
                       aria-label="Remove relation"
                       onClick={() => unrelateMutation.mutate(relation.id)}
                       disabled={unrelateMutation.isPending}
-                      className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                      className="text-muted-foreground hover:text-destructive-subtle-foreground disabled:opacity-50"
                     >
                       ✕
                     </button>
@@ -548,7 +548,7 @@ export function BeliefDetail({ belief, onSelect }: { belief: Belief; onSelect: (
               />
             </div>
           </ListState>
-          {unrelateMutation.isError && <p role="alert" className="text-sm text-destructive">Failed to remove relation: {(unrelateMutation.error as Error).message}</p>}
+          {unrelateMutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to remove relation: {(unrelateMutation.error as Error).message}</p>}
           <RelateBeliefPicker belief={belief} existingRelatedIds={existingRelatedIds} scopeType={belief.scopeType as ScopeType} scopeId={belief.scopeId} />
         </Tabs.Content>
 
@@ -635,7 +635,7 @@ function PromoteBeliefDialog({ open, onClose, belief, orgId }: { open: boolean; 
             className="rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
-        {mutation.isError && <p role="alert" className="text-sm text-destructive">Failed to promote: {(mutation.error as Error).message}</p>}
+        {mutation.isError && <p role="alert" className="text-sm text-destructive-subtle-foreground">Failed to promote: {(mutation.error as Error).message}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="button" onClick={handlePromote} disabled={mutation.isPending}>{mutation.isPending ? 'Promoting…' : 'Promote'}</Button>

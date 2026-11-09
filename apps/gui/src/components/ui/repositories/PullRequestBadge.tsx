@@ -20,7 +20,7 @@ export function PullRequestBadge({ pr }: PullRequestBadgeProps) {
         // without merging. The colour said "bad" and the shape said "done",
         // which is the failure mode the "never by colour alone" rule exists to
         // prevent: a reader who cannot see the red reads a success (M06-T01).
-        return <GitPullRequestClosed className="w-4 h-4 text-destructive" aria-label="closed" />;
+        return <GitPullRequestClosed className="w-4 h-4 text-destructive-subtle-foreground" aria-label="closed" />;
       case 'open':
         return <CircleDot className="w-4 h-4 text-success" aria-label="open" />;
       default:

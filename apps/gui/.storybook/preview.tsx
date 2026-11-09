@@ -1,13 +1,14 @@
 import type { Preview } from '@storybook/react-vite'
 import '../src/index.css';
 import { BrowserRouter } from 'react-router-dom';
+import { PreviewProviders } from './PreviewProviders';
 
 const preview: Preview = {
   decorators: [
-    (Story, context) => context.parameters.router === false ? <Story /> : (
-      <BrowserRouter>
-        <Story />
-      </BrowserRouter>
+    (Story, context) => (
+      <PreviewProviders key={context.id}>
+        {context.parameters.router === false ? <Story /> : <BrowserRouter><Story /></BrowserRouter>}
+      </PreviewProviders>
     ),
   ],
   parameters: {

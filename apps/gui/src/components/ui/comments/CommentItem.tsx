@@ -61,7 +61,7 @@ export function CommentItem({ comment }: { comment: CommentData }) {
                     actions.deleteComment(comment.id).catch(() => {});
                   }
                 }}
-                className="text-muted-foreground hover:text-destructive text-xs"
+                className="text-muted-foreground hover:text-destructive-subtle-foreground text-xs"
               >
                 Delete
               </button>
@@ -90,7 +90,7 @@ export function CommentItem({ comment }: { comment: CommentData }) {
             onChange={setEditContent}
             placeholder="Edit your comment…"
           />
-          {editFailed && <p className="text-xs text-destructive">Failed to save this comment: {editFailed.message}</p>}
+          {editFailed && <p className="text-xs text-destructive-subtle-foreground">Failed to save this comment: {editFailed.message}</p>}
           <div className="flex gap-2 self-end">
             <button type="submit" disabled={!editContent.trim()} className="px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary-subtle disabled:text-primary-subtle-foreground rounded-md text-xs font-medium">Save</button>
             <button type="button" onClick={() => setIsEditing(false)} className="px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md text-xs font-medium">Cancel</button>
@@ -99,7 +99,7 @@ export function CommentItem({ comment }: { comment: CommentData }) {
       ) : (
         <MarkdownRenderer content={comment.content} />
       )}
-      {deleteFailed && <p className="text-xs text-destructive">Failed to delete this comment: {deleteFailed.message}</p>}
+      {deleteFailed && <p className="text-xs text-destructive-subtle-foreground">Failed to delete this comment: {deleteFailed.message}</p>}
       {confirmDialog}
     </div>
   );
