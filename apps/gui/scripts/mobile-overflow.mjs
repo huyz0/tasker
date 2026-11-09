@@ -29,6 +29,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { join, extname, resolve } from 'node:path';
 import { chromium } from 'playwright';
+import { waitForStory } from './storybook-ready.mjs';
 
 const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const STATIC = join(ROOT, 'storybook-static');
@@ -62,7 +63,6 @@ const base = `http://127.0.0.1:${server.address().port}`;
 const index = JSON.parse(readFileSync(join(STATIC, 'index.json'), 'utf8'));
 const stories = Object.values(index.entries).filter((e) => e.type === 'story');
 
-const browser = await chromium.launch({ headless: true });
 
 // Several pages at once, for the reason storybook-a11y.mjs sets out at
 // length: per-story cost is CPU-bound page load and render, so a serial loop
@@ -71,84 +71,87 @@ const browser = await chromium.launch({ headless: true });
 const CONCURRENCY = Number(process.env.STORYBOOK_CHECK_CONCURRENCY)
   || Math.max(2, Math.min(4, availableParallelism() - 1));
 
-const pages = await Promise.all(
-  Array.from({ length: CONCURRENCY }, async () => {
-    const page = await browser.newPage({ viewport: { width: WIDTH, height: 900 }, reducedMotion: 'reduce' });
-    // Same reasoning as storybook-a11y.mjs's own route() call: a story with a
-    // real, unconditional useQuery on mount and no MSW to answer it fires a real
-    // createClient(...) call against BACKEND_URL, which in this environment
-    // hangs rather than fails fast against a closed local port - never letting
-    // `networkidle` resolve. Aborting it at the network layer fails it
-    // immediately instead.
-    await page.route('http://localhost:8080/**', (route) => route.abort());
-    return page;
-  }),
-);
-
-/** Runs inside the page — no access to anything in this file's closure. */
-function findOverflow(width) {
-  const offenders = [];
-  const root = document.body;
-  for (const el of root.querySelectorAll('*')) {
-    const rect = el.getBoundingClientRect();
-    if (rect.width === 0 || rect.right <= width + 1) continue;
-    let scrollable = false;
-    for (let p = el.parentElement; p; p = p.parentElement) {
-      const overflowX = getComputedStyle(p).overflowX;
-      if (overflowX === 'auto' || overflowX === 'scroll') { scrollable = true; break; }
-    }
-    if (scrollable) continue;
-    offenders.push({
-      tag: el.tagName.toLowerCase(),
-      cls: (el.getAttribute('class') || '').slice(0, 80),
-      text: (el.textContent || '').trim().slice(0, 40),
-      right: Math.round(rect.right),
-    });
-  }
-  return offenders;
-}
-
 const failures = [];
-// Shared cursor rather than fixed per-page slices, so a page that draws a
-// run of cheap stories keeps pulling work instead of finishing early.
-let cursor = 0;
+let browser;
+try {
+  browser = await chromium.launch({ headless: true });
+  const pages = await Promise.all(
+    Array.from({ length: CONCURRENCY }, async () => {
+      const page = await browser.newPage({ viewport: { width: WIDTH, height: 900 }, reducedMotion: 'reduce' });
+      // Same reasoning as storybook-a11y.mjs's own route() call: a story with a
+      // real, unconditional useQuery on mount and no MSW to answer it fires a real
+      // createClient(...) call against BACKEND_URL, which in this environment
+      // hangs rather than fails fast against a closed local port - never letting
+      // `networkidle` resolve. Aborting it at the network layer fails it
+      // immediately instead.
+      await page.route('http://localhost:8080/**', (route) => route.abort());
+      return page;
+    }),
+  );
 
-async function measureStories(page) {
-  for (;;) {
-    const story = stories[cursor++];
-    if (!story) return;
-
-    await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {
-      waitUntil: 'networkidle',
-      timeout: 60000,
-    });
-    await page.waitForSelector('#storybook-root', { state: 'attached', timeout: 20000 });
-    // An intentionally empty component is valid; a Storybook error screen is
-    // not. That error screen lives outside the story root, like real portals.
-    await page.waitForFunction(() => ['sb-show-main', 'sb-show-errordisplay', 'sb-show-nopreview']
-      .some(state => document.body.classList.contains(state)), undefined, { timeout: 20000 });
-    await page.waitForTimeout(250);
-    const previewError = await page.evaluate(() => document.body.classList.contains('sb-show-errordisplay')
-      || document.body.classList.contains('sb-show-nopreview'));
-    if (previewError) throw new Error(`Preview failed to render: ${story.id}`);
-
-    const offenders = await page.evaluate(findOverflow, WIDTH);
-    // One offender per element is noise once the ancestor is already reported —
-    // report only the widest handful, which is enough to find the source.
-    if (offenders.length) {
-      failures.push({
-        story: story.title ? `${story.title} › ${story.name}` : story.id,
-        offenders: offenders.sort((a, b) => b.right - a.right).slice(0, 3),
+  /** Runs inside the page — no access to anything in this file's closure. */
+  function findOverflow(width) {
+    const offenders = [];
+    const root = document.body;
+    for (const el of root.querySelectorAll('*')) {
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.right <= width + 1) continue;
+      let scrollable = false;
+      for (let p = el.parentElement; p; p = p.parentElement) {
+        const overflowX = getComputedStyle(p).overflowX;
+        if (overflowX === 'auto' || overflowX === 'scroll') { scrollable = true; break; }
+      }
+      if (scrollable) continue;
+      offenders.push({
+        tag: el.tagName.toLowerCase(),
+        cls: (el.getAttribute('class') || '').slice(0, 80),
+        text: (el.textContent || '').trim().slice(0, 40),
+        right: Math.round(rect.right),
       });
     }
+    return offenders;
   }
-}
 
-try {
+  // Shared cursor rather than fixed per-page slices, so a page that draws a
+  // run of cheap stories keeps pulling work instead of finishing early.
+  let cursor = 0;
+
+  async function measureStories(page) {
+    for (;;) {
+      const story = stories[cursor++];
+      if (!story) return;
+
+      await page.goto(`${base}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000,
+      });
+      await page.waitForSelector('#storybook-root', { state: 'attached', timeout: 20000 });
+      // Successful null renders are valid; preview visibility is not completion.
+      await waitForStory(page, story.id);
+      await page.waitForTimeout(250);
+      for (const theme of ['light', 'dark']) {
+        await page.evaluate(value => document.documentElement.setAttribute('data-theme', value), theme);
+        await page.evaluate(() => document.fonts.ready);
+        await waitForStory(page, story.id);
+
+        const offenders = await page.evaluate(findOverflow, WIDTH);
+        await waitForStory(page, story.id);
+      // One offender per element is noise once the ancestor is already reported —
+      // report only the widest handful, which is enough to find the source.
+      if (offenders.length) {
+        failures.push({
+          story: `${story.title} › ${story.name} (${theme})`,
+          offenders: offenders.sort((a, b) => b.right - a.right).slice(0, 3),
+        });
+      }
+      }
+    }
+  }
+
   await Promise.all(pages.map(measureStories));
+
 } finally {
-  await browser.close();
-  server.close();
+  try { await browser?.close(); } finally { server.close(); }
 }
 
 // Pages finish out of order; sorting keeps the report stable across runs on
@@ -156,7 +159,7 @@ try {
 failures.sort((a, b) => a.story.localeCompare(b.story));
 
 if (failures.length === 0) {
-  console.log(`✓ mobile overflow — ${stories.length} stories, nothing wider than ${WIDTH}px (${CONCURRENCY} pages)`);
+  console.log(`✓ mobile overflow — ${stories.length} stories ×2themes, nothing wider than ${WIDTH}px (${CONCURRENCY} pages)`);
   process.exit(0);
 }
 

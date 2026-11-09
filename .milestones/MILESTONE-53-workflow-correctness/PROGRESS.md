@@ -460,3 +460,38 @@ foreground at rest, with underline hover. Native browser proof also passes Fleet
 keyboard focus/ArrowRight scrolling and read-only toolbar no-overflow. The cache
 per-mount refinement and demonstration correction are included in the next fresh
 build/full217 audit; final screenshots are recaptured from that build.
+
+The next217-story audit stops at TaskTypesDefault's60s global network-idle
+wait, without reporting an accessibility failure. Isolated actual rendering
+passes, including network idle, with no repeated RPC loop or memory exhaustion.
+The gates now navigate to DOMContentLoaded and require Storybook's actual
+rendered/error lifecycle, settled styles and font readiness, rather than requiring
+all background traffic to stop. Existing timeouts stay unchanged. This follows
+Playwright's guidance to assess readiness with assertions instead of networkidle;
+preview errors still fail and no accessibility/overflow rule changes. Current
+static build3 already contains the final product/fixture/example code; fresh
+gate invocation follows without changing those assets mid-run.
+
+Independent reliability review invalidates the intermediate sb-show-main guard:
+Storybook10.6 sets it before mount/play, and completed precedes afterEach. The
+intermediate217×4 zero-violation output is excluded as final evidence. CODE-v11
+records this race and acquisition cleanup. Nine observed pure-runtime reds drive
+a shared guard: require matching retained storyFinished success and current/
+prepared story in finished phase; reject body errors and retained missing/render/
+play/unhandled events even with zero arguments. Suppressed play exceptions need
+separate event rejection because finish status may still say success. Ten
+readiness cases and fourteen existing config cases pass; matching completion is
+rechecked after fonts and before/after scans. Acquisition is enclosed by cleanup
+with nested finally for server closure. Fresh iframe navigation resets retained
+channels between stories. Browser delayed/suppressed-play faults and a fresh
+final217 audit follow; no timing heuristic replaces lifecycle evidence.
+
+Actual delayed-play proof passes against temporary compiled stories: a650ms
+successful play completes and audits normally; the old visible-body guard
+incorrectly accepts a650ms suppressed play exception, while the shared completion
+guard rejects it via retained playFunctionThrewException. Source is restored in
+finally and a fresh clean217-story build completes. No temporary fault exports
+remain. The mobile gate now checks both themes at375px as well, with readiness
+and fonts rechecked. Acquisition/page setup and browser-close failure paths
+retain nested server cleanup. Final matrix is217×2themes×2widths accessibility
+and217×2themes mobile overflow, not the earlier default-only overflow wording.

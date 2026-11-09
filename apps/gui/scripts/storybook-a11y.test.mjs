@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 const DIR = dirname(fileURLToPath(import.meta.url));
 const GUI = join(DIR, '..');
 const source = readFileSync(join(DIR, 'storybook-a11y.mjs'), 'utf8');
+const readiness = readFileSync(join(DIR, 'storybook-ready.mjs'), 'utf8');
 
 test('the a11y addon is set to error, not todo or off', () => {
   const preview = readFileSync(join(GUI, '.storybook', 'preview.tsx'), 'utf8');
@@ -39,8 +40,9 @@ test('it waits for the story to render before measuring', () => {
   // A story measured before it paints gives axe an empty root, and an empty
   // root has no violations — a pass for the wrong reason.
   assert.match(source, /waitForSelector\('#storybook-root'/);
-  assert.match(source, /sb-show-errordisplay/);
-  assert.match(source, /Preview failed to render/);
+  assert.match(source, /await waitForStory/);
+  assert.match(readiness, /storyFinished/);
+  assert.match(readiness, /Preview failed to render/);
 });
 
 test('it checks WCAG A and AA, not just best practices', () => {

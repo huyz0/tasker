@@ -3,11 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TaskTypesEditor } from './index';
 import { useLayoutStore } from '../../store/layout';
 
-// Owns real createClient(...) calls (TaskTypeService, ProjectTemplateService).
-// No global QueryClientProvider decorator exists in .storybook/preview.tsx
-// and no MSW is wired in - the same documented gap as Memory/Handoffs' own
-// stories: this is the real loading state against an unreachable-in-
-// Storybook backend.
+// This local client is an explicit override of the global preview provider.
+// Its real resource reads settle into an unavailable state without a backend.
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
