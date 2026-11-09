@@ -23,3 +23,12 @@ M54 is published as858e2cf via PR #7 after all8 final-head jobs42715671413 pass.
 Its final0682bab source tree equals fetched main exactly. This isolated M55 WIP
 is checkpointed before rebasing onto that published base; no user work/services
 are reset.26 tasks remain and M55-T01 stays in-progress.
+
+Amended ADR0048/UX/TC001–012 receive independent ARCH-v2/UX-v2 approval, with no
+design blockers. ADR is accepted. Explicit GUI Answer vs external cancellation,
+account+organization shared-authority epochs, pre-denial sibling responses and
+same-org project transitions are named acceptance cases. A canceled cached success
+or response counter alone cannot reauthorize. NotFound remains local owner
+unavailability. The design retains contextual task actions and current source
+semantics. Static TDD exception applies; no runtime behavior is implemented.
+Fresh-worktree full35 checks are in progress before T01 completion.

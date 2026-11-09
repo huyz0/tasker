@@ -1,6 +1,6 @@
 ---
 id: ADR-0048
-status: proposed
+status: accepted
 date: 2026-11-09
 milestone: M55
 ---
