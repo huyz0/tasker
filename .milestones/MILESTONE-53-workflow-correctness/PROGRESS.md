@@ -129,3 +129,24 @@ build runs from apps/gui; transitions are disabled for stable contrast snapshots
 No UI timeout or coverage threshold changed. Next T03 covers all six search
 result types, current-query error/retry and visible-order keyboard navigation.
 Overall36 tasks remain; M53 publication waits for T03–T07 and final-head CI.
+
+## M53-T03 — Complete supported search and current-query states
+
+- **Status**: in-progress
+- **Date**: 2026-11-09
+- **Changed**: Reproduce omitted Memory hits, grouped/keyboard order mismatch and dishonest failed/debouncing query states before correcting the existing palette.
+- **Verified**: T02 is committed/pushed as ad39df7; draft PR #6 is attached and awaits CI. All35 local checks,1402 GUI tests and100 rendered state audits pass on that completed task.
+- **Notes**: Frontend/security standards selected again, plus TDD. Reuse ADR-0047, approved UX and TC-004: no new API, navigation destination, font or palette. Fresh WAI-ARIA combobox/status-message references support input focus, visible suggestion order and distinct live status/errors. Keep server state in TanStack Query; bind displayed/keyboard results to the current query and org. Project/agent list destinations preserve the searched organization; project hits select their project.
+- **Next**: Run GUI reds with real debounce, out-of-order/error/retry/type fixtures; inspect both SQL dialects' supported result types, add actual browser and deterministic story states, then full gates and independent review.
+
+T03 checkpoint: ten new GUI reds reproduce missing Memory/actionable list scope,
+visual/keyboard order, stale debounce Enter and missing current error/status
+states. The corrected shared current-query predicate, ordered result sequence,
+input focus/scroll behavior and semantic loading/error states pass40 focused
+search tests including query/org races and access-denial recovery. App TypeScript
+passes. Existing SQLite search passes36 tests/73 assertions; real MySQL passes6/
+16 assertions across all supported types/ranking/paging/beliefs. The first MySQL
+attempt timed out during cold schema bootstrap and then hit overlapping DDL;
+preparing the owned schema before timed cases passes without timeout changes.
+Deterministic search stories are added; actual rendered/browser/fault/full-gate
+verification remains pending. No backend search behavior or contract changed.

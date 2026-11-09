@@ -101,7 +101,7 @@ describe('GlobalSearch', () => {
     // Every shortcut named here has to actually work — a legend for a
     // shortcut that does nothing is the same defect as the placeholder that
     // used to promise "commands" this palette has never had.
-    expect(screen.getByText(/Search across tasks, artifacts, projects, agents and comments\./)).toBeInTheDocument();
+    expect(screen.getByText(/Search across tasks, artifacts, projects, agents, comments and Memory\./)).toBeInTheDocument();
     expect(screen.getByText('to navigate')).toBeInTheDocument();
     expect(screen.getByText('to open')).toBeInTheDocument();
     expect(screen.getByText('to close')).toBeInTheDocument();

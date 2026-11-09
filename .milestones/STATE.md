@@ -2,7 +2,7 @@
 active_milestone: M53
 active_task: M53-T03
 last_updated: 2026-11-09
-last_commit: 252e4d1
+last_commit: ad39df7
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,8 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M53-T03 in progress.** Draft PR #6 contains verified T01/T02 at ad39df7; CI runs while search work starts. Reproduce missing Memory hits, visual/keyboard order, stale debounce Enter and initial/subsequent failed-query states before code. Existing authorized scope resolution remains the destination boundary. Overall36 tasks remain.
 
 **2026-11-09 — M53-T02 verified:2/7 tasks.** Authorized task/artifact/Memory scope, owner-keyed labels, explicit selection and access/error recovery pass64 focused cases, five real browser journeys,100 settled story contrast checks and all35 local gates. GUI1402/95.24% branches; backend2180/zero failures; CLI93.8%. SQLite/MySQL body-bound faults and old-client HTTP JSON/protobuf proofs pass. Independent implementation/UX approval is recorded. Next T03 fixes supported search types/current-query states/keyboard order. Main remains published M47; this M53 candidate is not merged. Overall36 tasks remain.
 

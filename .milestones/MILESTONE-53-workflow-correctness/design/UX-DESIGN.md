@@ -69,6 +69,16 @@ must not masquerade as the current failed query or capture Enter. Ignore late
 responses for earlier query/org. Empty query is an invitation; successful zero
 results is No matches. Escape, focus restoration and arrow/Enter behavior remain.
 
+Fresh search research read2026-11-09: [WAI-ARIA combobox pattern](https://www.w3.org/WAI/ARIA/apg/patterns/combobox/)
+and [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html).
+Keep focus in the input while aria-activedescendant identifies the visible
+suggestion; arrows and Enter follow displayed order. Searching, result counts
+and no matches are status messages; a failed read is an explicit retryable error.
+Require a selected organization before issuing a search. A missing scope is a
+clear choose-organization state, never an invalid empty-org RPC. Preserve the
+searched organization for supported project/agent list routes; project hits
+select their project. Resource routes still resolve current authorized ownership.
+
 ## Actionable work and history
 
 Task panels show separate Questions/Approvals sections: pending work first,
