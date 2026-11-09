@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Code, ConnectError } from '@connectrpc/connect';
@@ -34,20 +34,27 @@ export function WorkPreview({ kind, state, organization = false }: {
         q.removeQueries({ queryKey: key, exact: true });
         void q.fetchInfiniteQuery({ queryKey: key, initialPageParam: undefined, queryFn: () => new Promise<never>(() => {}), getNextPageParam: () => undefined });
       }
-      if (status === pending && ['error', 'denied', 'denied-cached', 'next-error', 'refresh-error'].includes(state)) {
-        // Seed a cached read failure, including the forward-fetch marker used
-        // by InfiniteQueryObserver. No service or credentials are needed.
-        const query = q.getQueryCache().find({ queryKey: key, exact: true })!;
-        query.setState({ status: 'error', fetchStatus: 'idle',
-          error: new ConnectError(state.startsWith('denied') ? 'Access is no longer available.' : 'This page is temporarily unavailable.', state.startsWith('denied') ? Code.PermissionDenied : Code.Unavailable),
+      if (status === pending && ['error', 'denied'].includes(state)) {
+        q.getQueryCache().find({ queryKey: key, exact: true })!.setState({ status: 'error', fetchStatus: 'idle', data: undefined,
+          error: new ConnectError(state === 'denied' ? 'Access is no longer available.' : 'This page is temporarily unavailable.', state === 'denied' ? Code.PermissionDenied : Code.Unavailable),
           errorUpdatedAt: Date.now(),
-          ...(state === 'error' || state === 'denied' ? { data: undefined } : {}),
-          fetchMeta: state === 'next-error' ? { fetchMore: { direction: 'forward' } } : null,
         });
       }
     }
     return q;
   });
+  useEffect(() => {
+    if (!['next-error', 'refresh-error', 'denied-cached'].includes(state)) return;
+    // Let the mounted panel accept the successful read before transitioning
+    // its cache to a failed refresh. A prefailed cache on first mount must
+    // correctly keep actions disabled until access has been verified.
+    const key = [kind === 'questions' ? 'inputRequests' : 'approvals', organization ? 'org' : 'task',
+      organization ? 'org-storybook' : 'task-storybook', kind === 'questions' ? 'open' : 'pending'];
+    client.getQueryCache().find({ queryKey: key, exact: true })!.setState({ status: 'error', fetchStatus: 'idle',
+      error: new ConnectError(state === 'denied-cached' ? 'Access is no longer available.' : 'This page is temporarily unavailable.', state === 'denied-cached' ? Code.PermissionDenied : Code.Unavailable),
+      errorUpdatedAt: Date.now(), fetchMeta: state === 'next-error' ? { fetchMore: { direction: 'forward' } } : null,
+    });
+  }, [client, kind, organization, state]);
   return <QueryClientProvider client={client}><MemoryRouter initialEntries={['/tasks?org=org-storybook&project=project-storybook']}>
     <div className="min-h-dvh bg-surface-canvas p-panel text-foreground">
       <div className="mx-auto flex max-w-xl flex-col gap-section">

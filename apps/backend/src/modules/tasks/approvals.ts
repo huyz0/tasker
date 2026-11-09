@@ -169,7 +169,7 @@ export function createApprovalHandlers(db: any, nc: any, isStandalone: boolean, 
         });
         return { approval: (await toWire([await load(row.id)]))[0] };
       })();
-      if ("staleMessage" in result) throw new ConnectError(result.staleMessage, Code.FailedPrecondition);
+      if (typeof result.staleMessage === "string") throw new ConnectError(result.staleMessage, Code.FailedPrecondition);
       return result;
     },
 

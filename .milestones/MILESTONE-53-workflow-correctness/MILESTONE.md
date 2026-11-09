@@ -48,7 +48,7 @@ Related work: event reliability M46; schedule recovery M47; client reconciliatio
   - **Files**: apps/gui/src/components/layout/GlobalSearch.tsx; apps/gui/src/components/layout/GlobalSearch.test.tsx; apps/backend/src/modules/search/.
   - **Verify**: Task/artifact/project/agent/belief fixtures remain actionable; initial and subsequent failed queries show retry; out-of-order requests cannot replace current results; keyboard navigation remains usable; test both SQL dialects for requested types.
 
-- [ ] **M53-T04** — Separate open requests from paginated history and make all organization pending rows reachable.
+- [x] **M53-T04** — Separate open requests from paginated history and make all organization pending rows reachable.
   - **Files**: apps/backend/src/modules/tasks/inputRequests.ts; apps/backend/src/modules/tasks/approvals.ts; apps/backend/src/db/query-builder.ts; apps/backend/src/modules/mcp/tools.ts; packages/shared-contract/main.tsp; apps/gui/src/features/Tasks/InputRequests.tsx; apps/gui/src/features/Tasks/Approvals.tsx; apps/gui/src/features/Tasks/; apps/gui/tests/e2e/.
   - **Verify**: An old open question beyond 20 newer closed rows and approval beyond 10 remain visible; more than 50 organization pending rows are reachable by bounded paging; next-page errors retry without hiding earlier rows; source decisions reconcile both sections.
 

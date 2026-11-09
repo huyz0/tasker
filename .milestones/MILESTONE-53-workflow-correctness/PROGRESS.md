@@ -177,7 +177,7 @@ real mutation unit. Overall35 tasks remain; M53 still requires T04–T07 and fin
 
 ## M53-T04 — Separate pending work from bounded history
 
-- **Status**: in-progress
+- **Status**: done
 - **Date**: 2026-11-09
 - **Changed**: Reproduce stale approval rollback through the real mutation interceptor, then implement SQL closed selectors, bound cursor position/count and independent reachable pending/history pages.
 - **Verified**: T03 committed/pushed as fc684f9; all35 local gates pass with1421 GUI tests. Draft PR #6 contains completed T01–T03 and remains unmerged.
@@ -212,3 +212,15 @@ dark375px0axe. A suspected delimiter-format change is disproved at byte/runtime
 level: source has one JS escape, preserving runtime NUL. The pre-existing facet
 cursor test passes; a deliberate two-backslash literal fault fails3vs4 and is
 restored. Backend focused36/485 assertions pass. Full/rendered closure remains.
+
+T04 verified complete: all35 checks pass (25 cached), GUI1440/95.45% branches,
+backend2194/57 gated skips/zero failures/95.80% functions/96.70% lines and CLI
+gate93.8%; standalone builds. Final focused49, SQLite/MySQL16/128 assertions,
+two actual browser journeys and18 previews/72 settled axe plus18 overflow pass.
+Closed-filter/cursor/GUI-page/access faults fail2/3/4/4 cases and restore; owned
+unit and literal-delimiter faults fail too. The first full run's TypeScript
+result narrowing is corrected and15 approval cases rerun before final success.
+CODE-v5/UX-v4 approve. The failed-refresh preview is corrected to transition from
+a mounted success rather than seed unaccepted failed data. Next T05 protects
+summary intent across every exit/save/identity race. Overall34 tasks remain;
+M53 publication still awaits T05–T07 and final-head remote CI.
