@@ -1,12 +1,12 @@
 ---
 id: M48
 title: Client Recovery
-status: todo
+status: in-progress
 goal: Browsers reconcile missed changes and CLI calls terminate predictably when the server stalls.
 depends_on: [M44]
 surfaces: [backend, gui, cli, specs]
 exit_criteria_met: false
-started_at: null
+started_at: 2026-11-09
 completed_at: null
 ---
 

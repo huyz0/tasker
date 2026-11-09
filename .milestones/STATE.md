@@ -1,8 +1,8 @@
 ---
-active_milestone: M47
-active_task: null
+active_milestone: M48
+active_task: M48-T01
 last_updated: 2026-11-09
-last_commit: 84bad8a
+last_commit: 62a0c3f
 blocked: false
 blocker: null
 ---
@@ -14,6 +14,10 @@ blocker: null
 > with the repository and survives the end of any session.
 
 ## Now
+
+**2026-11-09 — M46 published.** PR #3 merged as `62a0c3f` after all ten final-head jobs passed: CI run 42576354349 and real integration run 42576354329. All 169 Storybook accessibility/overflow checks pass. M48 started independently during that wait and continues before M47; no remaining task is implied complete.
+
+**2026-11-09 — M48-T01 in progress in an independent worktree.** Client recovery depends only on completed M44 and starts from published main while M46 PR #3's final browser checks run. Reconnect must refetch source truth after even one dropped stream; bounded jitter reduces synchronized retries. Now rebased onto published M46; its seven-task ledger and 397-task total are retained. Original M46 worktree and preserved relay WIP remain untouched.
 
 **2026-11-09 — M46 complete: 7/7 tasks, 4/4 exit criteria.** Durable event capture/ACKed fenced relay, producer-identity audit, brokerless projection, bounded webhook attempts and draining pass real SQLite/MySQL process recovery and all 35 local checks. Consumer DB_PATH, diagnostic privacy and the real provider database fixture were corrected. Actual GitHub/NATS integration passes. Final PR #3 head still needs complete CI/browser success before merge; do not describe publication as complete yet. M47-T01 is next after that merge. Recovery evidence and upgrade cautions live in M46 reviews and docs/webhooks.md; required recovery CI/load proof remains M49. Overall 46 tasks remain.
 
@@ -1859,7 +1863,7 @@ If `blocked: true`, read `blocker` above and resolve it before continuing.
 | M45 | Mutation Recovery | done | M44 | 6 | 6 |
 | M46 | Durable Domain Events | done | M45 | 7 | 7 |
 | M47 | Recoverable Schedules | todo | M45, M46 | 4 | 0 |
-| M48 | Client Recovery | todo | M44 | 4 | 0 |
+| M48 | Client Recovery | in-progress | M44 | 4 | 0 |
 | M49 | Production Evidence | todo | M46, M47, M48 | 5 | 0 |
 | M50 | Operational Truth | todo | M49 | 3 | 0 |
 | M51 | UI Navigation and Layout | done | — | 7 | 7 |
