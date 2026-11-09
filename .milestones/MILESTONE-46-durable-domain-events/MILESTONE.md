@@ -43,7 +43,7 @@ Related work is owned explicitly: authorization M44, atomic operations M45, dura
   - **Files**: apps/backend/src/lib/natsCorrelation.ts; apps/backend/src/db/schema.*.ts; apps/backend/src/modules/**; apps/backend/drizzle-*/.
   - **Verify**: Mutation rollback produces no event; commit produces an event with stable ID, occurredAt, tenant, actor and trace metadata; migrate old databases and build the standalone binary.
 
-- [ ] **M46-T03** — Capture webhook delivery rows atomically and relay persisted events to the broker with retryable fenced leases.
+- [x] **M46-T03** — Capture webhook delivery rows atomically and relay persisted events to the broker with retryable fenced leases.
   - **Files**: apps/backend/src/modules/webhooks/outbox.ts; apps/backend/src/lib/domainEventRelay.ts; apps/backend/src/lib/domainEventOutbox.ts; apps/backend/src/index.ts.
   - **Verify**: Crash after sending but before acknowledgement retries the same event ID; two relays do not lose events; brokerless webhooks still work; matching delivery rows deduplicate.
 
